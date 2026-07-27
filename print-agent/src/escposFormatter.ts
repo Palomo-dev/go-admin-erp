@@ -1,4 +1,5 @@
 import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment } from './types';
+import type { PaperSpec } from './paper';
 
 function formatMoney(value: number): string {
   return value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -41,19 +42,103 @@ const STATION_LABELS: Record<string, string> = {
   all: 'COMANDA',
 };
 
-const SEP = '================================';
-const SEP_LIGHT = '--------------------------------';
+/**
+ * Tamanos de texto ESC/POS (`GS ! n`).
+ *
+ * CUIDADO: en escpos@3.0.0-alpha.6 `size(w, h)` calcula `n = w * 16 + h`, donde
+ * cada unidad es un MULTIPLICADOR. Por lo tanto `size(1, 1)` NO es tamano
+ * normal: produce texto al doble de ancho y al doble de alto. El tamano normal
+ * es `size(0, 0)`.
+ *
+ * Consecuencia practica: cualquier linea en doble ancho dispone de la MITAD de
+ * columnas, asi que su alineacion debe calcularse con `charsPerLine / 2`.
+ */
+const SIZE_NORMAL: readonly [number, number] = [0, 0];
+/** Doble alto con ancho normal: destaca sin consumir columnas. */
+const SIZE_TALL: readonly [number, number] = [0, 1];
+/** Doble ancho y doble alto: consume el doble de columnas. */
+const SIZE_DOUBLE: readonly [number, number] = [1, 1];
 
-function padRight(label: string, value: string, width = 32): string {
-  const spaces = Math.max(1, width - label.length - value.length);
-  return label + ' '.repeat(spaces) + value;
+/** Linea separadora fuerte al ancho exacto del papel. */
+function sep(chars: number): string {
+  return '='.repeat(chars);
+}
+
+/** Linea separadora suave al ancho exacto del papel. */
+function sepLight(chars: number): string {
+  return '-'.repeat(chars);
+}
+
+/**
+ * Alinea `label` a la izquierda y `value` a la derecha rellenando con espacios.
+ *
+ * `width` es el numero de caracteres que caben en la linea; para texto en doble
+ * ancho hay que pasar la mitad. Si no caben ambos, se recorta `label` para que
+ * el importe quede siempre completo y pegado al margen derecho, en lugar de
+ * desbordarse a la linea siguiente.
+ */
+function padRight(label: string, value: string, width: number): string {
+  const maxLabel = width - value.length - 1;
+  const safeLabel = label.length > maxLabel ? label.slice(0, Math.max(0, maxLabel)) : label;
+  const spaces = Math.max(1, width - safeLabel.length - value.length);
+  return safeLabel + ' '.repeat(spaces) + value;
+}
+
+/**
+ * Parte un texto en lineas de como maximo `width` caracteres sin cortar
+ * palabras. Una palabra mas larga que la linea se trocea por fuerza.
+ *
+ * Necesario porque la impresora hace su propio salto de linea en un punto
+ * arbitrario, lo que descuadra la maquetacion.
+ */
+function wrapText(text: string, width: number): string[] {
+  if (width <= 0) return [text];
+
+  const lines: string[] = [];
+  let current = '';
+
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (!current) current = word;
+    else if (current.length + 1 + word.length <= width) current += ` ${word}`;
+    else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+
+  return lines.flatMap((line) => {
+    if (line.length <= width) return [line];
+    const chunks: string[] = [];
+    for (let i = 0; i < line.length; i += width) chunks.push(line.slice(i, i + width));
+    return chunks;
+  });
+}
+
+/**
+ * Imprime el nombre de un item y su importe. Si ambos caben van en la misma
+ * linea con el importe alineado a la derecha; si no, el nombre se envuelve en
+ * varias lineas y el importe cierra alineado a la derecha.
+ */
+function writeItemLine(device: any, label: string, value: string, chars: number): void {
+  if (label.length + value.length + 1 <= chars) {
+    device.style('b').text(padRight(label, value, chars)).style('normal');
+    return;
+  }
+
+  device.style('b');
+  for (const line of wrapText(label, chars)) device.text(line);
+  device.style('normal').text(padRight('', value, chars));
 }
 
 function formatDateParts(iso: string): { date: string; time: string } {
   const d = new Date(iso);
   return {
     date: d.toLocaleDateString('es-CO'),
-    time: d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+    // hour12: false evita el sufijo "p. m." que agrega el locale es-CO. Ese
+    // sufijo gasta 6 columnas y hace que la linea de fecha desborde las 32
+    // columnas disponibles en papel de 58mm.
+    time: d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false }),
   };
 }
 
@@ -62,37 +147,37 @@ function formatDateParts(iso: string): { date: string; time: string } {
  * comanda de cocina. `device` es una instancia de `escpos.Printer` ya
  * conectada a un `escpos.<Interface>` (network/usb/bluetooth).
  */
-export function printKitchenTicket(device: any, payload: KitchenTicketPrintPayload): void {
+export function printKitchenTicket(device: any, payload: KitchenTicketPrintPayload, paper: PaperSpec): void {
+  const chars = paper.charsPerLine;
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const { date, time } = formatDateParts(payload.createdAt);
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   // --- Header: datos del negocio ---
-  device
-    .font('a')
-    .align('ct')
-    .style('b')
-    .size(1, 1);
+  // Doble alto (no doble ancho) para que un nombre largo no se parta de linea.
+  device.font('a').align('ct').style('b').size(...SIZE_TALL);
 
   if (payload.businessName) device.text(payload.businessName);
-  device.style('normal').size(1, 1);
+  device.style('normal').size(...SIZE_NORMAL);
   if (payload.branchName && payload.branchName !== payload.businessName) {
     device.text(payload.branchName);
   }
 
   // --- Banner de comanda ---
+  // Es el texto mas importante del ticket: doble ancho y alto. Ocupa 30 de las
+  // 32 columnas disponibles en 58mm, por lo que sigue entrando en una linea.
   device
-    .text(SEP)
+    .text(sep(chars))
     .style('b')
-    .size(1, 1)
+    .size(...SIZE_DOUBLE)
     .text('*** COMANDA ***')
     .style('normal')
-    .size(1, 1)
-    .text(SEP)
+    .size(...SIZE_NORMAL)
+    .text(sep(chars))
     .align('lt');
 
   // --- Estación ---
-  device.style('b').size(1, 1).text(`Estacion: ${stationLabel}`).style('normal');
+  device.style('b').size(...SIZE_TALL).text(`Estacion: ${stationLabel}`).style('normal').size(...SIZE_NORMAL);
 
   // --- Info del ticket ---
   device.text(`Ticket: #${payload.ticketId}`);
@@ -100,26 +185,38 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
   if (payload.serverName) device.text(`Mesero: ${payload.serverName}`);
   device.text(`Fecha: ${date}  Hora: ${time}`);
   device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
-  device.text(SEP_LIGHT);
+  device.text(sepLight(chars));
 
   // --- Items ---
   for (const item of payload.items) {
-    device.style('b').size(1, 1).text(`${item.quantity}x  ${item.productName}`).style('normal').size(1, 1);
+    // Doble alto para que el cocinero lo lea de lejos, ancho normal para
+    // aprovechar las columnas completas en nombres largos.
+    device.style('b').size(...SIZE_TALL);
+    for (const line of wrapText(`${item.quantity}x  ${item.productName}`, chars)) {
+      device.text(line);
+    }
+    device.style('normal').size(...SIZE_NORMAL);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
-      device.style('b').text(`  * ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`).style('normal');
+      const text = `* ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`;
+      device.style('b');
+      for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
+      device.style('normal');
     }
 
     if (item.modifiers && item.modifiers.length > 0) {
-      device.style('b').text(`  + ${item.modifiers.map((m) => m.name).join(', ')}`).style('normal');
+      const text = `+ ${item.modifiers.map((m) => m.name).join(', ')}`;
+      device.style('b');
+      for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
+      device.style('normal');
     }
 
     if (item.notes) {
-      device.text(`  >> ${item.notes}`);
+      for (const line of wrapText(`>> ${item.notes}`, chars - 2)) device.text(`  ${line}`);
     }
 
-    device.text(SEP_LIGHT);
+    device.text(sepLight(chars));
   }
 
   // --- Footer ---
@@ -137,7 +234,8 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
  * 'system' (impresora del sistema operativo vía spooler estándar), que no
  * habla ESC/POS directamente.
  */
-export function buildPlainTextTicket(payload: KitchenTicketPrintPayload): string {
+export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: PaperSpec): string {
+  const chars = paper.charsPerLine;
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const { date, time } = formatDateParts(payload.createdAt);
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
@@ -148,31 +246,35 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload): string
   if (payload.branchName && payload.branchName !== payload.businessName) {
     lines.push(payload.branchName);
   }
-  lines.push(SEP);
+  lines.push(sep(chars));
   lines.push('*** COMANDA ***');
-  lines.push(SEP);
+  lines.push(sep(chars));
   lines.push(`Estacion: ${stationLabel}`);
   lines.push(`Ticket: #${payload.ticketId}`);
   lines.push(`Mesa: ${payload.tableName || '-'}`);
   if (payload.serverName) lines.push(`Mesero: ${payload.serverName}`);
   lines.push(`Fecha: ${date}  Hora: ${time}`);
   lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
-  lines.push(SEP_LIGHT);
+  lines.push(sepLight(chars));
 
   for (const item of payload.items) {
-    lines.push(`${item.quantity}x  ${item.productName}`);
+    lines.push(...wrapText(`${item.quantity}x  ${item.productName}`, chars));
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
-      lines.push(`  * ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`);
+      const text = `* ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`;
+      lines.push(...wrapText(text, chars - 2).map((l) => `  ${l}`));
     }
 
     if (item.modifiers && item.modifiers.length > 0) {
-      lines.push(`  + ${item.modifiers.map((m) => m.name).join(', ')}`);
+      const text = `+ ${item.modifiers.map((m) => m.name).join(', ')}`;
+      lines.push(...wrapText(text, chars - 2).map((l) => `  ${l}`));
     }
 
-    if (item.notes) lines.push(`  >> ${item.notes}`);
-    lines.push(SEP_LIGHT);
+    if (item.notes) {
+      lines.push(...wrapText(`>> ${item.notes}`, chars - 2).map((l) => `  ${l}`));
+    }
+    lines.push(sepLight(chars));
   }
 
   lines.push('Comanda generada por GO Admin');
@@ -185,20 +287,19 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload): string
 /**
  * Imprime el ticket de venta (recibo de caja) en un dispositivo escpos.
  */
-export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): void {
+export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, paper: PaperSpec): void {
+  const chars = paper.charsPerLine;
+  // Una linea en doble ancho dispone de la mitad de columnas.
+  const doubleChars = Math.floor(chars / 2);
   const { date, time } = formatDateParts(payload.createdAt);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   // --- Header: datos del negocio ---
-  device
-    .font('a')
-    .align('ct')
-    .style('b')
-    .size(1, 1);
+  device.font('a').align('ct').style('b').size(...SIZE_TALL);
 
   if (payload.businessName) device.text(payload.businessName);
-  device.style('normal').size(1, 1);
+  device.style('normal').size(...SIZE_NORMAL);
   if (payload.businessNit) device.text(`NIT: ${payload.businessNit}`);
   if (payload.businessPhone) device.text(`Tel: ${payload.businessPhone}`);
   if (payload.businessAddress) device.text(payload.businessAddress);
@@ -217,13 +318,13 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
 
   // --- Titulo del documento ---
   device
-    .text(SEP)
+    .text(sep(chars))
     .style('b')
-    .size(1, 1)
+    .size(...SIZE_DOUBLE)
     .text(payload.title || 'TICKET DE VENTA')
     .style('normal')
-    .size(1, 1)
-    .text(SEP)
+    .size(...SIZE_NORMAL)
+    .text(sep(chars))
     .align('lt');
 
   // --- Info del ticket ---
@@ -236,7 +337,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
 
   // --- Info del cliente ---
   if (payload.customerName || payload.customerDocNumber) {
-    device.text(SEP_LIGHT);
+    device.text(sepLight(chars));
     if (payload.customerName) device.text(`Cliente: ${payload.customerName}`);
     if (payload.customerDocType && payload.customerDocNumber) {
       device.text(`${payload.customerDocType}: ${payload.customerDocNumber}`);
@@ -252,30 +353,37 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
 
   // --- Delivery ---
   if (payload.deliveryInfo) {
-    device.text(SEP_LIGHT);
+    device.text(sepLight(chars));
     device.text(`Entrega: ${payload.deliveryInfo.type}`);
     device.text(`Direccion: ${payload.deliveryInfo.address}`);
     if (payload.deliveryInfo.driverName) device.text(`Conductor: ${payload.deliveryInfo.driverName}`);
   }
 
   // --- Encabezado de items ---
-  device.text(SEP_LIGHT);
-  device.style('b').text(padRight('DESCRIPCION', 'TOTAL')).style('normal');
-  device.text(SEP_LIGHT);
+  device.text(sepLight(chars));
+  device.style('b').text(padRight('DESCRIPCION', 'TOTAL', chars)).style('normal');
+  device.text(sepLight(chars));
 
   // --- Items ---
   for (const item of payload.items) {
-    device.style('b').text(`${item.quantity}x  ${item.productName}`).style('normal');
-    device.align('rt').text(formatMoney(item.total)).align('lt');
+    // Nombre e importe en la misma linea; si no caben, el nombre se envuelve y
+    // el importe cierra alineado a la derecha.
+    writeItemLine(device, `${item.quantity}x  ${item.productName}`, formatMoney(item.total), chars);
     device.text(`  ${formatMoney(item.unitPrice)} c/u`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
-      device.style('b').text(`  * ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`).style('normal');
+      const text = `* ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`;
+      device.style('b');
+      for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
+      device.style('normal');
     }
 
     if (item.modifiers && item.modifiers.length > 0) {
-      device.style('b').text(`  + ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`).style('normal');
+      const text = `+ ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`;
+      device.style('b');
+      for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
+      device.style('normal');
     }
 
     if (item.taxAmount && item.taxAmount > 0) {
@@ -285,46 +393,46 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
       device.text(`  Desc: -${formatMoney(item.discountAmount)}`);
     }
 
-    device.text(SEP_LIGHT);
+    device.text(sepLight(chars));
   }
 
   // --- Totales ---
+  device.align('lt');
   if (payload.subtotal != null) {
-    device.align('lt').text(padRight('Subtotal:', formatMoney(payload.subtotal))).align('lt');
+    device.text(padRight('Subtotal:', formatMoney(payload.subtotal), chars));
   }
   if (payload.discountTotal && payload.discountTotal > 0) {
-    device.align('lt').text(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`)).align('lt');
+    device.text(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`, chars));
   }
   if (payload.taxTotal && payload.taxTotal > 0) {
-    device.align('lt').text(padRight('Impuestos:', formatMoney(payload.taxTotal))).align('lt');
+    device.text(padRight('Impuestos:', formatMoney(payload.taxTotal), chars));
   }
   if (payload.deliveryFee && payload.deliveryFee > 0) {
-    device.align('lt').text(padRight('Envio:', formatMoney(payload.deliveryFee))).align('lt');
+    device.text(padRight('Envio:', formatMoney(payload.deliveryFee), chars));
   }
   if (payload.tipAmount && payload.tipAmount > 0) {
-    device.align('lt').text(padRight('Propina:', formatMoney(payload.tipAmount))).align('lt');
+    device.text(padRight('Propina:', formatMoney(payload.tipAmount), chars));
   }
 
+  // El TOTAL va en doble ancho, por lo que se alinea sobre `doubleChars`.
   device
-    .text(SEP)
-    .align('lt')
+    .text(sep(chars))
     .style('b')
-    .size(1, 1)
-    .text(padRight('TOTAL:', formatMoney(payload.total)))
+    .size(...SIZE_DOUBLE)
+    .text(padRight('TOTAL:', formatMoney(payload.total), doubleChars))
     .style('normal')
-    .size(1, 1)
-    .align('lt');
+    .size(...SIZE_NORMAL);
 
   // --- Pagos ---
   if (payload.payments && payload.payments.length > 0) {
-    device.text(SEP_LIGHT);
+    device.text(sepLight(chars));
     for (const payment of payload.payments) {
-      device.align('lt').text(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount))).align('lt');
+      device.text(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount), chars));
     }
   }
 
   // --- QR ---
-  device.text(SEP).align('ct');
+  device.text(sep(chars)).align('ct');
   try {
     device.qrimage('https://goadmin.io', { cellSize: 3 });
   } catch {
@@ -333,18 +441,21 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
 
   // --- Footer ---
   if (isPreCuenta) {
+    // Doble alto y no doble ancho: en 58mm este aviso ocuparia 42 de 32
+    // columnas y se partiria en dos lineas.
     device
-      .text(SEP_LIGHT)
+      .text(sepLight(chars))
       .style('b')
-      .size(1, 1)
+      .size(...SIZE_TALL)
       .text('*** NO ES FACTURA ***')
       .style('normal')
+      .size(...SIZE_NORMAL)
       .text('Documento solo informativo')
       .text('Gracias por su preferencia!')
       .feed(1);
   } else {
     device
-      .text(SEP_LIGHT)
+      .text(sepLight(chars))
       .text('Gracias por su compra!')
       .feed(1);
   }
@@ -359,7 +470,8 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload): v
 /**
  * Versión en texto plano del ticket de venta, para impresoras 'system'.
  */
-export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): string {
+export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper: PaperSpec): string {
+  const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
@@ -383,9 +495,9 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
   }
   if (payload.branchPhone) lines.push(`Tel: ${payload.branchPhone}`);
 
-  lines.push(SEP);
+  lines.push(sep(chars));
   lines.push(payload.title || 'TICKET DE VENTA');
-  lines.push(SEP);
+  lines.push(sep(chars));
 
   // --- Info del ticket ---
   if (payload.saleNumber) lines.push(`Venta: #${payload.saleNumber}`);
@@ -397,7 +509,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
 
   // --- Info del cliente ---
   if (payload.customerName || payload.customerDocNumber) {
-    lines.push(SEP_LIGHT);
+    lines.push(sepLight(chars));
     if (payload.customerName) lines.push(`Cliente: ${payload.customerName}`);
     if (payload.customerDocType && payload.customerDocNumber) {
       lines.push(`${payload.customerDocType}: ${payload.customerDocNumber}`);
@@ -413,55 +525,64 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload): strin
 
   // --- Delivery ---
   if (payload.deliveryInfo) {
-    lines.push(SEP_LIGHT);
+    lines.push(sepLight(chars));
     lines.push(`Entrega: ${payload.deliveryInfo.type}`);
     lines.push(`Direccion: ${payload.deliveryInfo.address}`);
     if (payload.deliveryInfo.driverName) lines.push(`Conductor: ${payload.deliveryInfo.driverName}`);
   }
 
   // --- Encabezado de items ---
-  lines.push(SEP_LIGHT);
-  lines.push(padRight('DESCRIPCION', 'TOTAL'));
-  lines.push(SEP_LIGHT);
+  lines.push(sepLight(chars));
+  lines.push(padRight('DESCRIPCION', 'TOTAL', chars));
+  lines.push(sepLight(chars));
 
   // --- Items ---
   for (const item of payload.items) {
-    lines.push(`${item.quantity}x  ${item.productName}`);
-    lines.push(`  ${formatMoney(item.unitPrice)} c/u   ${formatMoney(item.total)}`);
+    const label = `${item.quantity}x  ${item.productName}`;
+    const money = formatMoney(item.total);
+    if (label.length + money.length + 1 <= chars) {
+      lines.push(padRight(label, money, chars));
+    } else {
+      lines.push(...wrapText(label, chars));
+      lines.push(padRight('', money, chars));
+    }
+    lines.push(`  ${formatMoney(item.unitPrice)} c/u`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
-      lines.push(`  * ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`);
+      const text = `* ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`;
+      lines.push(...wrapText(text, chars - 2).map((l) => `  ${l}`));
     }
 
     if (item.modifiers && item.modifiers.length > 0) {
-      lines.push(`  + ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`);
+      const text = `+ ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`;
+      lines.push(...wrapText(text, chars - 2).map((l) => `  ${l}`));
     }
 
     if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
     if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
-    lines.push(SEP_LIGHT);
+    lines.push(sepLight(chars));
   }
 
   // --- Totales ---
-  if (payload.subtotal != null) lines.push(padRight('Subtotal:', formatMoney(payload.subtotal)));
-  if (payload.discountTotal && payload.discountTotal > 0) lines.push(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`));
-  if (payload.taxTotal && payload.taxTotal > 0) lines.push(padRight('Impuestos:', formatMoney(payload.taxTotal)));
-  if (payload.deliveryFee && payload.deliveryFee > 0) lines.push(padRight('Envio:', formatMoney(payload.deliveryFee)));
-  if (payload.tipAmount && payload.tipAmount > 0) lines.push(padRight('Propina:', formatMoney(payload.tipAmount)));
-  lines.push(SEP);
-  lines.push(padRight('TOTAL:', formatMoney(payload.total)));
+  if (payload.subtotal != null) lines.push(padRight('Subtotal:', formatMoney(payload.subtotal), chars));
+  if (payload.discountTotal && payload.discountTotal > 0) lines.push(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`, chars));
+  if (payload.taxTotal && payload.taxTotal > 0) lines.push(padRight('Impuestos:', formatMoney(payload.taxTotal), chars));
+  if (payload.deliveryFee && payload.deliveryFee > 0) lines.push(padRight('Envio:', formatMoney(payload.deliveryFee), chars));
+  if (payload.tipAmount && payload.tipAmount > 0) lines.push(padRight('Propina:', formatMoney(payload.tipAmount), chars));
+  lines.push(sep(chars));
+  lines.push(padRight('TOTAL:', formatMoney(payload.total), chars));
 
   // --- Pagos ---
   if (payload.payments && payload.payments.length > 0) {
-    lines.push(SEP_LIGHT);
+    lines.push(sepLight(chars));
     for (const payment of payload.payments) {
-      lines.push(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount)));
+      lines.push(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount), chars));
     }
   }
 
   // --- Footer ---
-  lines.push(SEP_LIGHT);
+  lines.push(sepLight(chars));
   if (isPreCuenta) {
     lines.push('*** NO ES FACTURA ***');
     lines.push('Documento solo informativo');

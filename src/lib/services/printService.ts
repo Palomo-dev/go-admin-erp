@@ -145,11 +145,16 @@ export class PrintService {
     <title>Ticket de Venta</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; max-width: 100%; }
+        /* El tamano de pagina usa el ancho IMPRIMIBLE (72mm en un rollo de
+           80mm: 576 puntos a 203 dpi), no el ancho del rollo. Los bordes son
+           inalcanzables para el cabezal, y declarar 80mm hace que el driver
+           desplace o escale el contenido. Dentro de @media print el ancho se
+           define solo en @page; html/body usan 100% para llenarla. */
         @media print {
-            @page { margin: 0; size: 80mm auto !important; }
-            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 80mm !important; max-width: 80mm !important; overflow: hidden !important; }
+            @page { margin: 0; size: 72mm auto !important; }
+            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 100% !important; max-width: 100% !important; overflow: hidden !important; }
         }
-        html, body { width: 80mm; max-width: 80mm; overflow: hidden; }
+        html, body { width: 72mm; max-width: 72mm; overflow: hidden; }
         body {
             margin: 0;
             font-family: 'Courier New', monospace;
@@ -659,11 +664,16 @@ export class PrintService {
     <title>Pre-Cuenta - ${tableName}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; max-width: 100%; }
+        /* El tamano de pagina usa el ancho IMPRIMIBLE (72mm en un rollo de
+           80mm: 576 puntos a 203 dpi), no el ancho del rollo. Los bordes son
+           inalcanzables para el cabezal, y declarar 80mm hace que el driver
+           desplace o escale el contenido. Dentro de @media print el ancho se
+           define solo en @page; html/body usan 100% para llenarla. */
         @media print {
-            @page { margin: 0; size: 80mm auto !important; }
-            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 80mm !important; max-width: 80mm !important; overflow: hidden !important; }
+            @page { margin: 0; size: 72mm auto !important; }
+            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 100% !important; max-width: 100% !important; overflow: hidden !important; }
         }
-        html, body { width: 80mm; max-width: 80mm; overflow: hidden; }
+        html, body { width: 72mm; max-width: 72mm; overflow: hidden; }
         body {
             margin: 0;
             font-family: 'Courier New', monospace;
@@ -900,11 +910,12 @@ export class PrintService {
     <title>Comanda - ${tableName}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* Ver nota sobre el ancho imprimible (72mm) en generateTicketHTML. */
         @media print {
-            @page { margin: 0; size: 80mm auto; }
-            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 80mm; max-width: 80mm; }
+            @page { margin: 0; size: 72mm auto; }
+            html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 100%; max-width: 100%; }
         }
-        html, body { width: 80mm; max-width: 80mm; overflow: hidden; }
+        html, body { width: 72mm; max-width: 72mm; overflow: hidden; }
         body {
             margin: 0;
             font-family: 'Courier New', monospace;

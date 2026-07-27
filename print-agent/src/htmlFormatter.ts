@@ -1,4 +1,5 @@
 import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from './types';
+import type { PaperSpec } from './paper';
 
 function formatMoney(value: number): string {
   return value.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -33,11 +34,17 @@ const STATION_LABELS: Record<string, string> = {
 // - Todo debe ser NEGRO PURO (#000). Los grises se difuminan (dithering) y salen
 //   casi invisibles en papel térmico.
 // - Fuentes < 10px resultan ilegibles a 203dpi.
-// - El body NO debe centrarse (margin: 0 auto) ni tener ancho fijo en mm: el
-//   pageSize ya lo define Electron. Un ancho fijo + centrado desplaza el contenido.
-const SHARED_CSS = `
+// - El ancho se define UNA sola vez, en `@page size`. Poner además un ancho en
+//   `html`/`body` crea dos fuentes de verdad que se contradicen: Chromium
+//   maqueta con el tamaño de página y el driver escala el resultado, lo que
+//   produce texto diminuto y desplazado. `body` usa width: 100% para llenar
+//   exactamente la página que declara `@page`.
+// - `size` usa el ancho IMPRIMIBLE (72mm en un rollo de 80mm), no el ancho del
+//   rollo: los bordes son mecánicamente inalcanzables para el cabezal.
+function buildCss(paper: PaperSpec): string {
+  return `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { margin: 0; }
+  @page { size: ${paper.printableMm}mm auto; margin: 0; }
   html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body {
     width: 100%;
@@ -223,13 +230,14 @@ const SHARED_CSS = `
     font-size: 12px;
   }
 `;
+}
 
-export function buildSaleTicketHTML(payload: SaleTicketPrintPayload): string {
+export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: PaperSpec): string {
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const title = payload.title || 'TICKET DE VENTA';
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO');
-  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
@@ -304,7 +312,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
-  <style>${SHARED_CSS}</style>
+  <style>${buildCss(paper)}</style>
 </head>
 <body>
   <div class="header">
@@ -362,11 +370,11 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload): string {
 </html>`;
 }
 
-export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload): string {
+export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload, paper: PaperSpec): string {
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO');
-  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   const itemsHTML = payload.items.map(item => {
@@ -401,7 +409,7 @@ export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload): stri
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Comanda #${payload.ticketId}</title>
-  <style>${SHARED_CSS}</style>
+  <style>${buildCss(paper)}</style>
 </head>
 <body>
   <div class="header">

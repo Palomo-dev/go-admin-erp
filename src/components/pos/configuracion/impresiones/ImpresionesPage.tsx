@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Printer, Receipt, ChefHat, FileText, Monitor, Usb } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { PreviewViewer } from './PreviewViewer';
+import { usePreviewBusiness } from './usePreviewBusiness';
 import {
   usePrintPreview,
   type DocumentKind,
@@ -40,7 +41,8 @@ export function ImpresionesPage() {
   const [path, setPath] = useState<RenderPath>('html');
   const [width, setWidth] = useState<PaperOption>('80mm');
 
-  const preview = usePrintPreview(kind, path, width);
+  const { business, isLoading: isLoadingBusiness, isReal } = usePreviewBusiness();
+  const preview = usePrintPreview(kind, path, width, business);
   const { paper } = preview;
 
   const handlePrintTest = () => {
@@ -101,8 +103,9 @@ export function ImpresionesPage() {
             Que quieres revisar
           </CardTitle>
           <CardDescription className="text-gray-500 dark:text-gray-400">
-            Se usan las mismas plantillas que imprimen las impresoras, con datos de ejemplo
-            pensados para forzar los casos que suelen descuadrar el ticket.
+            Se usan las mismas plantillas que imprimen las impresoras. La cabecera (logo, razon
+            social, NIT, direccion y sucursal) es la de tu negocio; el cliente, los productos y el
+            domicilio son de ejemplo, elegidos para forzar los casos que suelen descuadrar el ticket.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -176,7 +179,21 @@ export function ImpresionesPage() {
               : 'Texto tal como lo recibe la impresora termica, con la regla de columnas.'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {!isLoadingBusiness && !isReal && (
+            <p className="rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+              No se pudieron cargar los datos de tu negocio, asi que la cabecera es de ejemplo.
+              Completalos en Configuracion de la organizacion para verlos aqui.
+            </p>
+          )}
+
+          {path === 'escpos' && business?.businessLogoUrl && (
+            <p className="rounded-md bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-sm text-blue-700 dark:text-blue-400">
+              El logo no aparece en esta vista porque aqui se muestra el texto que viaja a la
+              impresora, y el logo viaja aparte como imagen. En papel se imprime centrado sobre el
+              nombre del negocio. Usa la vista HTML para revisar como se ve.
+            </p>
+          )}
           <PreviewViewer preview={preview} path={path} />
         </CardContent>
       </Card>

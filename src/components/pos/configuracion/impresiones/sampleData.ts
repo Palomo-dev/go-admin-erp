@@ -3,7 +3,13 @@ import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from '@printin
 /**
  * Datos de ejemplo para la previsualizacion de impresiones.
  *
- * Estan pensados para provocar los casos que suelen romper la maquetacion:
+ * La cabecera (logo, razon social, NIT, direccion, sucursal) se toma de la
+ * organizacion real, porque es la parte que cada negocio necesita verificar
+ * antes de imprimir: que el logo se lea en termico y que los datos fiscales
+ * salgan bien.
+ *
+ * El resto (cliente, productos, domicilio, pagos) sigue siendo ficticio a
+ * proposito, para provocar los casos que suelen romper la maquetacion:
  *   - Nombres de producto muy largos, que deben partirse sin descuadrar la
  *     columna de importes.
  *   - Varios modificadores en una linea.
@@ -15,7 +21,31 @@ import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from '@printin
  * datos reales.
  */
 
-const BUSINESS = {
+/**
+ * Cabecera del ticket. Son los campos de `SaleTicketPrintPayload` que
+ * describen al negocio, por lo que se pueden derramar directamente en el
+ * payload.
+ */
+export type PreviewBusiness = Pick<
+  SaleTicketPrintPayload,
+  | 'businessName'
+  | 'businessNit'
+  | 'businessPhone'
+  | 'businessAddress'
+  | 'businessCity'
+  | 'businessEmail'
+  | 'businessFiscalResponsibilities'
+  | 'businessLogoUrl'
+  | 'branchName'
+  | 'branchAddress'
+  | 'branchPhone'
+>;
+
+/**
+ * Respaldo para cuando aun no ha cargado la organizacion o el negocio no tiene
+ * los datos completos. Nunca deberia verse en un negocio configurado.
+ */
+const FALLBACK_BUSINESS: PreviewBusiness = {
   businessName: 'Restaurante La Buena Mesa',
   businessNit: '901479683-5',
   businessPhone: '3113195711',
@@ -26,6 +56,18 @@ const BUSINESS = {
   branchAddress: 'Carrera 7 #60-20',
   branchPhone: '3009998877',
 };
+
+/**
+ * Completa con el respaldo solo los campos que el negocio no tenga definidos,
+ * de modo que un negocio a medio configurar siga mostrando un ticket legible.
+ */
+function resolveBusiness(business?: PreviewBusiness): PreviewBusiness {
+  if (!business) return FALLBACK_BUSINESS;
+  return {
+    ...business,
+    businessName: business.businessName || FALLBACK_BUSINESS.businessName,
+  };
+}
 
 const ITEMS = [
   {
@@ -79,9 +121,9 @@ const TAX_LINES = [
 ];
 const TOTAL = 149920;
 
-export function buildSampleSaleTicket(): SaleTicketPrintPayload {
+export function buildSampleSaleTicket(business?: PreviewBusiness): SaleTicketPrintPayload {
   return {
-    ...BUSINESS,
+    ...resolveBusiness(business),
     saleId: 'a1b2c3d4',
     saleNumber: 'FV-00123',
     customerName: 'Maria Fernanda Rodriguez Gomez',
@@ -108,9 +150,9 @@ export function buildSampleSaleTicket(): SaleTicketPrintPayload {
   };
 }
 
-export function buildSamplePreCuenta(): SaleTicketPrintPayload {
+export function buildSamplePreCuenta(business?: PreviewBusiness): SaleTicketPrintPayload {
   return {
-    ...BUSINESS,
+    ...resolveBusiness(business),
     saleId: 'pre-mesa-7',
     title: 'PRE-CUENTA',
     tableName: 'Mesa 7',
@@ -128,15 +170,16 @@ export function buildSamplePreCuenta(): SaleTicketPrintPayload {
   };
 }
 
-export function buildSampleKitchenTicket(): KitchenTicketPrintPayload {
+export function buildSampleKitchenTicket(business?: PreviewBusiness): KitchenTicketPrintPayload {
+  const resolved = resolveBusiness(business);
   return {
     ticketId: 1042,
     station: 'hot_kitchen',
     tableName: 'Mesa 7',
     serverName: 'Ana Lucia',
     createdAt: new Date().toISOString(),
-    businessName: BUSINESS.businessName,
-    branchName: BUSINESS.branchName,
+    businessName: resolved.businessName,
+    branchName: resolved.branchName,
     items: [
       {
         productName: 'Hamburguesa Doble con Queso Cheddar y Tocineta Crocante',

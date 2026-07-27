@@ -9,7 +9,12 @@ import {
   getPaperSpec,
   type PaperSpec,
 } from '@printing';
-import { buildSampleSaleTicket, buildSamplePreCuenta, buildSampleKitchenTicket } from './sampleData';
+import {
+  buildSampleSaleTicket,
+  buildSamplePreCuenta,
+  buildSampleKitchenTicket,
+  type PreviewBusiness,
+} from './sampleData';
 
 /** Documento a previsualizar. Coincide con `print_jobs.job_type`. */
 export type DocumentKind = 'sale_ticket' | 'pre_cuenta' | 'kitchen_ticket';
@@ -47,17 +52,21 @@ export interface PrintPreview {
  * el agente de impresion y el ERP en produccion (`@printing`). No hay una
  * plantilla aparte para la vista previa: si aqui se ve bien, en papel sale
  * bien.
+ *
+ * `business` es la cabecera real del negocio. Se recibe como parametro en vez
+ * de leerla aqui para que el hook siga siendo sincrono y facil de razonar.
  */
 export function usePrintPreview(
   kind: DocumentKind,
   path: RenderPath,
   width: PaperOption,
+  business?: PreviewBusiness,
 ): PrintPreview {
   return useMemo(() => {
     const paper = getPaperSpec(width);
 
     if (kind === 'kitchen_ticket') {
-      const payload = buildSampleKitchenTicket();
+      const payload = buildSampleKitchenTicket(business);
       const text = buildPlainTextTicket(payload, paper);
       return {
         paper,
@@ -67,7 +76,8 @@ export function usePrintPreview(
       };
     }
 
-    const payload = kind === 'pre_cuenta' ? buildSamplePreCuenta() : buildSampleSaleTicket();
+    const payload =
+      kind === 'pre_cuenta' ? buildSamplePreCuenta(business) : buildSampleSaleTicket(business);
     const text = buildPlainTextSaleTicket(payload, paper);
 
     return {
@@ -76,7 +86,7 @@ export function usePrintPreview(
       text,
       overflow: findOverflow(text, paper.charsPerLine),
     };
-  }, [kind, path, width]);
+  }, [kind, path, width, business]);
 }
 
 function findOverflow(text: string, charsPerLine: number): OverflowLine[] {

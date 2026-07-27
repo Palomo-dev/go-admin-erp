@@ -259,11 +259,11 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
             </div>
             <LocationSelector
               value={{
-                country: form.country,
+                country: form.country || '',
                 countryCode: form.country_code || '',
-                state: form.state,
+                state: form.state || '',
                 stateCode: form.state_code || '',
-                city: form.city,
+                city: form.city || '',
                 municipalityId: form.municipality_id || '',
               }}
               onChange={(locData) => setForm({

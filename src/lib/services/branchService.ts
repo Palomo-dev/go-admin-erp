@@ -373,46 +373,6 @@ export const branchService = {
   },
 
   /**
-   * Generate a unique branch code
-   */
-  async generateBranchCode(organizationId: number, branchName: string): Promise<string> {
-    try {
-      // Get existing branch codes for this organization
-      const { data: existingBranches, error } = await supabase
-        .from('branches')
-        .select('branch_code')
-        .eq('organization_id', organizationId);
-      
-      if (error) {
-        console.error('Error fetching existing branch codes:', error);
-        throw new Error(error.message);
-      }
-
-      const existingCodes = new Set(existingBranches?.map(b => b.branch_code) || []);
-      
-      // Generate code based on branch name
-      const baseCode = branchName
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, '')
-        .substring(0, 4) || 'BRANCH';
-      
-      // Try with base code first, then add numbers
-      let counter = 1;
-      let proposedCode = baseCode;
-      
-      while (existingCodes.has(proposedCode)) {
-        proposedCode = `${baseCode}${counter.toString().padStart(3, '0')}`;
-        counter++;
-      }
-      
-      return proposedCode;
-    } catch (error) {
-      console.error('Error generating branch code:', error);
-      throw error;
-    }
-  },
-
-  /**
    * Geocode a branch and update its coordinates
    */
   async geocodeBranch(branchId: number): Promise<Branch> {

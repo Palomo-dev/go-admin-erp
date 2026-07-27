@@ -140,14 +140,29 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
     try {
       const ids = lista.map(p => p.id);
 
-      const [{ data: productsMeta }, { data: stockRows }] = await Promise.all([
-        supabase.from('products').select('id, track_stock').in('id', ids),
-        branchId
-          ? supabase.from('stock_levels').select('product_id, qty_on_hand').eq('branch_id', branchId).in('product_id', ids)
-          : Promise.resolve({ data: [] as any[] }),
-      ]);
+      const { data: productsMeta } = await supabase
+        .from('products')
+        .select('id, track_stock, is_parent')
+        .in('id', ids);
 
       const trackMap = new Map((productsMeta || []).map((p: any) => [p.id, p.track_stock]));
+
+      // Un producto padre no tiene existencias propias: las lleva cada variante.
+      // Sin esto un padre con track_stock=true aparecia agotado aunque sus
+      // variantes tuvieran inventario, porque no existe fila suya en stock_levels.
+      const parentIds = (productsMeta || []).filter((p: any) => p.is_parent).map((p: any) => p.id);
+
+      const { data: variants } = parentIds.length > 0
+        ? await supabase.from('products').select('id, parent_product_id').in('parent_product_id', parentIds)
+        : { data: [] as any[] };
+
+      const { data: stockRows } = branchId
+        ? await supabase
+            .from('stock_levels')
+            .select('product_id, qty_on_hand')
+            .eq('branch_id', branchId)
+            .in('product_id', [...ids, ...(variants || []).map((v: any) => v.id)])
+        : { data: [] as any[] };
 
       // Un producto puede tener varias filas de stock (una por lote): se suman.
       const stockMap = new Map<number, number>();
@@ -155,9 +170,20 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
         stockMap.set(row.product_id, (stockMap.get(row.product_id) || 0) + (Number(row.qty_on_hand) || 0));
       }
 
+      // Acumular en cada padre el stock de sus variantes.
+      const stockDeVariantes = new Map<number, number>();
+      for (const variant of (variants || []) as any[]) {
+        stockDeVariantes.set(
+          variant.parent_product_id,
+          (stockDeVariantes.get(variant.parent_product_id) || 0) + (stockMap.get(variant.id) || 0)
+        );
+      }
+
       return lista.map(product => {
         const track = trackMap.get(product.id) === true;
-        const qty = stockMap.get(product.id) || 0;
+        // Se suman ambos: un padre normal solo aporta variantes, y un producto
+        // simple (o un padre sin variantes) solo aporta su propia fila.
+        const qty = (stockMap.get(product.id) || 0) + (stockDeVariantes.get(product.id) || 0);
         return {
           ...product,
           track_stock: track,

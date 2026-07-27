@@ -202,9 +202,11 @@ class AdjustmentService {
             id,
             name
           ),
-          creator:created_by (
+          profiles (
             id,
-            email
+            email,
+            first_name,
+            last_name
           )
         `)
         .eq('id', adjustmentId)

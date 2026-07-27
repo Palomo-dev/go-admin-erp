@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { stockMovementService } from '@/lib/services/stockMovementService';
+import { stockMovementService, type StockDecrementResult } from '@/lib/services/stockMovementService';
 
 // Tipos para Órdenes de Compra
 export interface PurchaseOrder {
@@ -20,6 +20,9 @@ export interface PurchaseOrder {
     id: number;
     name: string;
     uuid: string;
+    email?: string;
+    phone?: string;
+    contact?: string;
   };
   branches?: {
     id: number;
@@ -153,7 +156,7 @@ class PurchaseOrderService {
         .from('purchase_orders')
         .select(`
           *,
-          suppliers:supplier_id (id, name, uuid, email, phone, contact_name),
+          suppliers:supplier_id (id, name, uuid, email, phone, contact),
           branches:branch_id (id, name)
         `)
         .eq('uuid', orderUuid)
@@ -322,9 +325,13 @@ class PurchaseOrderService {
   }
 
   /**
-   * Cambiar estado de orden de compra por UUID
+   * Escribe el estado tal cual, sin validar. Uso interno.
+   *
+   * Solo `receiveItems` puede dejar una orden en 'partial' o 'received', porque
+   * esos dos estados significan "esta mercancia ya entro al inventario" y se
+   * derivan de las cantidades realmente recibidas.
    */
-  async updateStatus(
+  private async setStatus(
     orderUuid: string,
     organizationId: number,
     newStatus: 'draft' | 'sent' | 'partial' | 'received' | 'cancelled'
@@ -344,6 +351,79 @@ class PurchaseOrderService {
       return { success: true, error: null };
     } catch (error: any) {
       console.error('Error actualizando estado:', error?.message || error);
+      return { success: false, error: error as Error };
+    }
+  }
+
+  /**
+   * Cambiar estado de orden de compra por UUID.
+   *
+   * No acepta 'received' ni 'partial': antes si los aceptaba, y marcar una orden
+   * como recibida desde el listado solo cambiaba el status sin sumar una sola
+   * unidad al inventario. Para recibir hay que pasar por `receiveItems` o
+   * `receiveAllPending`, que son los unicos que mueven stock.
+   */
+  async updateStatus(
+    orderUuid: string,
+    organizationId: number,
+    newStatus: 'draft' | 'sent' | 'cancelled'
+  ): Promise<{ success: boolean; error: Error | null }> {
+    // Guarda defensiva en runtime: el tipo ya excluye estos estados, pero la
+    // llamada puede venir de codigo sin tipar (o de un cast) y el coste de dejar
+    // pasar un 'received' aqui es una orden recibida sin stock.
+    if (['received', 'partial'].includes(newStatus)) {
+      return {
+        success: false,
+        error: new Error('Para recibir una orden usa receiveItems/receiveAllPending, que si registran el stock'),
+      };
+    }
+
+    return this.setStatus(orderUuid, organizationId, newStatus);
+  }
+
+  /**
+   * Recibe de golpe todo lo que quede pendiente de la orden y suma el stock.
+   *
+   * Es lo que necesita el boton "marcar como recibida" del listado: completar
+   * cada linea hasta su cantidad pedida pasando por el mismo camino que la
+   * recepcion manual, en vez de tocar el status por su cuenta.
+   */
+  async receiveAllPending(
+    orderUuid: string,
+    organizationId: number
+  ): Promise<{ success: boolean; error: Error | null; stock?: StockDecrementResult }> {
+    try {
+      const { data: order } = await supabase
+        .from('purchase_orders')
+        .select('id')
+        .eq('uuid', orderUuid)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (!order) {
+        return { success: false, error: new Error('Orden no encontrada') };
+      }
+
+      const { data: items } = await supabase
+        .from('purchase_order_items')
+        .select('id, quantity, received_quantity')
+        .eq('purchase_order_id', order.id);
+
+      if (!items || items.length === 0) {
+        return { success: false, error: new Error('La orden no tiene items para recibir') };
+      }
+
+      const pending = items
+        .filter((item) => Number(item.received_quantity) < Number(item.quantity))
+        .map((item) => ({ itemId: item.id, quantity: Number(item.quantity) }));
+
+      if (pending.length === 0) {
+        return { success: false, error: new Error('La orden ya fue recibida por completo') };
+      }
+
+      return this.receiveItems(orderUuid, organizationId, pending);
+    } catch (error: any) {
+      console.error('Error recibiendo orden completa:', error?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -432,7 +512,7 @@ class PurchaseOrderService {
     orderUuid: string,
     organizationId: number,
     itemsReceived: { itemId: number; quantity: number }[]
-  ): Promise<{ success: boolean; error: Error | null }> {
+  ): Promise<{ success: boolean; error: Error | null; stock?: StockDecrementResult }> {
     try {
       // Obtener el ID numérico de la orden y branch_id
       const { data: order } = await supabase
@@ -474,6 +554,7 @@ class PurchaseOrderService {
       }
 
       // Sumar stock por el delta recibido (nuevo - anterior)
+      let stockResult: StockDecrementResult | undefined;
       try {
         const stockItems = itemsReceived
           .map(item => {
@@ -492,7 +573,7 @@ class PurchaseOrderService {
           .filter((item): item is { product_id: number; quantity: number; unit_price: number } => item !== null);
 
         if (stockItems.length > 0) {
-          const stockResult = await stockMovementService.incrementOnPurchase(
+          stockResult = await stockMovementService.incrementOnPurchase(
             organizationId,
             branchId,
             orderId,
@@ -504,8 +585,16 @@ class PurchaseOrderService {
           }
           console.log(`📦 Stock incrementado (OC ${orderId}): ${stockItems.length - stockResult.skipped} items`);
         }
-      } catch (stockError) {
+      } catch (stockError: any) {
+        // El stock no bloquea la recepcion, pero el fallo se devuelve para que la
+        // UI pueda avisar en vez de dejarlo enterrado en la consola.
         console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
+        stockResult = {
+          success: false,
+          skipped: 0,
+          skippedItems: [],
+          errors: [stockError?.message || 'Error desconocido sumando stock'],
+        };
       }
 
       // Verificar si es recepción total o parcial
@@ -520,7 +609,7 @@ class PurchaseOrderService {
 
         const newStatus = isComplete ? 'received' : (isPartial ? 'partial' : 'sent');
 
-        await this.updateStatus(orderUuid, organizationId, newStatus);
+        await this.setStatus(orderUuid, organizationId, newStatus);
 
         // Si la recepción es completa, generar factura de compra y cuenta por pagar automáticamente
         if (isComplete) {
@@ -532,7 +621,7 @@ class PurchaseOrderService {
         }
       }
 
-      return { success: true, error: null };
+      return { success: true, error: null, stock: stockResult };
     } catch (error: any) {
       console.error('Error recibiendo items:', error?.message || error);
       return { success: false, error: error as Error };

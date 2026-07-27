@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrder, type PurchaseOrderStats } from '@/lib/services/purchaseOrderService';
+import { describeSkippedItems } from '@/lib/services/stockMovementService';
 import { Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -153,17 +154,49 @@ export default function OrdenesCompraPage() {
     }
   };
 
-  const handleStatusChange = async (orderUuid: string, newStatus: 'sent' | 'partial' | 'received' | 'cancelled') => {
+  const handleStatusChange = async (orderUuid: string, newStatus: 'sent' | 'received' | 'cancelled') => {
     try {
       const organizationId = getOrganizationId();
-      const { success, error } = await purchaseOrderService.updateStatus(orderUuid, organizationId, newStatus);
+
+      // Recibir no es un simple cambio de estado: tiene que entrar la mercancia al
+      // inventario. Antes esto llamaba a updateStatus y la orden quedaba en
+      // 'received' sin un solo movimiento de stock asociado.
+      if (newStatus === 'received') {
+        const { error, stock } = await purchaseOrderService.receiveAllPending(orderUuid, organizationId);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Orden recibida',
+          description: 'Se recibio el pendiente y se sumo al stock de la sucursal'
+        });
+
+        if (stock?.skippedItems.length) {
+          toast({
+            variant: 'destructive',
+            title: `${stock.skippedItems.length} item(s) no afectaron el inventario`,
+            description: describeSkippedItems(stock.skippedItems)
+          });
+        }
+
+        if (stock?.errors.length) {
+          toast({
+            variant: 'destructive',
+            title: 'Errores al sumar stock',
+            description: stock.errors.join('; ')
+          });
+        }
+
+        loadData();
+        return;
+      }
+
+      const { error } = await purchaseOrderService.updateStatus(orderUuid, organizationId, newStatus);
 
       if (error) throw error;
 
       const statusLabels: Record<string, string> = {
         sent: 'enviada',
-        partial: 'marcada como parcial',
-        received: 'marcada como recibida',
         cancelled: 'cancelada'
       };
 

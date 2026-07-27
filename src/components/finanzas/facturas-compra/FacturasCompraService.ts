@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
-import { stockMovementService } from '@/lib/services/stockMovementService';
+import { stockMovementService, describeSkippedItems } from '@/lib/services/stockMovementService';
 import { 
   InvoicePurchase, 
   SupplierBase, 
@@ -1141,79 +1141,27 @@ export class FacturasCompraService {
         };
       }
 
-      // 3. Procesar cada item con producto
+      // 3. Delegar el movimiento de inventario al servicio compartido.
+      // Antes esto reimplementaba a mano el update de stock_levels y el insert de
+      // stock_movements: no comprobaba track_stock y buscaba el stock_level sin
+      // filtrar por lot_id, asi que divergia del comportamiento de la recepcion
+      // de ordenes de compra.
       const userId = await getCurrentUserId();
-      let itemsRecepcionados = 0;
 
-      for (const item of itemsConProducto) {
-        try {
-          // Verificar si existe stock_level para este producto y sucursal
-          const { data: stockExistente, error: stockCheckError } = await supabase
-            .from('stock_levels')
-            .select('id, qty_on_hand, avg_cost')
-            .eq('product_id', item.product_id)
-            .eq('branch_id', factura.branch_id)
-            .maybeSingle();
+      const resultadoStock = await stockMovementService.incrementOnPurchase(
+        organizationId,
+        factura.branch_id,
+        facturaId,
+        itemsConProducto.map((item: any) => ({
+          product_id: item.product_id,
+          quantity: Number(item.qty) || 0,
+          unit_price: Number(item.unit_price) || 0,
+        })),
+        'purchase',
+        userId || undefined
+      );
 
-          if (stockCheckError) {
-            console.error(`Error verificando stock para producto ${item.product_id}:`, stockCheckError);
-            continue;
-          }
-
-          const cantidadAnterior = stockExistente?.qty_on_hand || 0;
-          const costoAnterior = stockExistente?.avg_cost || 0;
-          const nuevaCantidad = cantidadAnterior + item.qty;
-          
-          // Calcular nuevo costo promedio ponderado
-          const nuevoCostoPromedio = cantidadAnterior > 0 
-            ? ((costoAnterior * cantidadAnterior) + (item.unit_price * item.qty)) / nuevaCantidad
-            : item.unit_price;
-
-          if (stockExistente) {
-            // Actualizar stock existente
-            await supabase
-              .from('stock_levels')
-              .update({
-                qty_on_hand: nuevaCantidad,
-                avg_cost: nuevoCostoPromedio,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', stockExistente.id);
-          } else {
-            // Crear nuevo registro de stock
-            await supabase
-              .from('stock_levels')
-              .insert({
-                product_id: item.product_id,
-                branch_id: factura.branch_id,
-                qty_on_hand: item.qty,
-                qty_reserved: 0,
-                avg_cost: item.unit_price,
-                min_level: 0
-              });
-          }
-
-          // Crear movimiento de inventario
-          await supabase
-            .from('stock_movements')
-            .insert({
-              organization_id: organizationId,
-              branch_id: factura.branch_id,
-              product_id: item.product_id,
-              direction: 'in',
-              qty: item.qty,
-              unit_cost: item.unit_price,
-              source: 'purchase',
-              source_id: facturaId,
-              note: `Recepción factura ${factura.number_ext}`,
-              updated_by: userId
-            });
-
-          itemsRecepcionados++;
-        } catch (itemError) {
-          console.error(`Error procesando item ${item.product_id}:`, itemError);
-        }
-      }
+      const itemsRecepcionados = itemsConProducto.length - resultadoStock.skipped;
 
       // 4. Actualizar estado de la factura a 'received'
       await supabase
@@ -1221,10 +1169,18 @@ export class FacturasCompraService {
         .update({ status: 'received', updated_at: new Date().toISOString() })
         .eq('id', facturaId);
 
+      const avisos: string[] = [];
+      if (resultadoStock.skippedItems.length > 0) {
+        avisos.push(`No afectaron inventario: ${describeSkippedItems(resultadoStock.skippedItems)}`);
+      }
+      if (resultadoStock.errors.length > 0) {
+        avisos.push(`Errores: ${resultadoStock.errors.join('; ')}`);
+      }
+
       return {
         success: true,
         itemsRecepcionados,
-        mensaje: `Inventario recepcionado: ${itemsRecepcionados} producto(s) actualizados`
+        mensaje: [`Inventario recepcionado: ${itemsRecepcionados} producto(s) actualizados`, ...avisos].join('. ')
       };
 
     } catch (error: any) {

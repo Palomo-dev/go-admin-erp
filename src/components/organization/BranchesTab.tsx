@@ -482,6 +482,14 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                                 {t('main')}
                               </span>
                             )}
+                            {branch.is_web_stock_source && (
+                              <span
+                                className="ml-2 px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800"
+                                title="El sitio web usa el inventario de esta sucursal"
+                              >
+                                Web
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-500">{branch.branch_code || t('noCode')}</div>
                         </div>

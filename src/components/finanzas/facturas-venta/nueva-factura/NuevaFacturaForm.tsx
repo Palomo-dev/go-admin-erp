@@ -666,6 +666,30 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // mediante el trigger trg_auto_journal_sale (fn_auto_journal_sale) al
       // insertar en invoice_sales, usando la tabla accounting_rules.
 
+      // 6.6. Avisar si la factura no tiene existencias para emitirse.
+      // Guardar un borrador no compromete inventario, asi que no se bloquea: el
+      // bloqueo esta en la emision, que es cuando la mercancia sale. Esto solo
+      // evita la sorpresa de descubrirlo al final. La comprobacion corre sobre la
+      // factura ya guardada porque debe expandir las recetas igual que el descuento.
+      try {
+        const { data: faltantes } = await supabase
+          .rpc('fn_invoice_stock_shortages', { p_invoice_id: invoiceData.id });
+
+        if (faltantes && faltantes.length > 0) {
+          const detalle = faltantes
+            .map((f: any) => `${f.product_name}: necesita ${f.required}, hay ${f.available}`)
+            .join(' | ');
+
+          toast({
+            title: 'Guardada, pero sin existencias para emitir',
+            description: `${detalle}. Repon el inventario antes de emitirla.`,
+            variant: 'destructive',
+          });
+        }
+      } catch (stockCheckError) {
+        console.warn('No se pudo verificar el stock de la factura guardada:', stockCheckError);
+      }
+
       // 7. Si está activada la opción de factura electrónica, enviar a DIAN
       if (sendToFactus) {
         try {
@@ -866,6 +890,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           items={items} 
           onItemsChange={handleItemsChange}
           taxIncluded={taxIncluded}
+          branchId={branchId}
         />
       </div>
       

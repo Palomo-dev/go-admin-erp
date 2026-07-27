@@ -27,6 +27,7 @@ export interface Branch {
   zone?: string;
   branch_code: string;
   is_active?: boolean;
+  is_web_stock_source?: boolean;
 }
 
 export interface OpeningHours {

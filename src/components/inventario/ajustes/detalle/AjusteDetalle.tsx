@@ -543,12 +543,12 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
               </div>
 
               {/* Info de quién creó el ajuste */}
-              {(adjustment as any)?.creator?.email && (
+              {adjustment?.profiles?.email && (
                 <div className="pt-3 border-t dark:border-gray-700 space-y-2">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Auditoría</p>
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <User className="h-3.5 w-3.5" />
-                    Creado por: {(adjustment as any).creator.email}
+                    Creado por: {adjustment.profiles.email}
                   </div>
                 </div>
               )}

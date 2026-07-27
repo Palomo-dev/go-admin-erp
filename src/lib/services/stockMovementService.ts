@@ -6,9 +6,48 @@ export interface SaleItemForStock {
   unit_price?: number;
 }
 
+/**
+ * Motivo por el que un item no llego a afectar el inventario.
+ * Antes estos casos solo incrementaban un contador `skipped` que nadie leia, asi
+ * que una recepcion podia "funcionar" sin mover una sola unidad de stock y el
+ * usuario no tenia forma de enterarse.
+ */
+export type StockSkipReason =
+  | 'no_product'
+  | 'invalid_qty'
+  | 'product_not_found'
+  | 'not_tracked';
+
+export interface StockSkippedItem {
+  productId: number | null;
+  productName?: string;
+  reason: StockSkipReason;
+}
+
+export const STOCK_SKIP_REASON_LABELS: Record<StockSkipReason, string> = {
+  no_product: 'la linea no esta asociada a un producto',
+  invalid_qty: 'la cantidad no es valida',
+  product_not_found: 'el producto no existe',
+  not_tracked: 'el producto no rastrea inventario',
+};
+
+/**
+ * Devuelve un resumen legible de los items omitidos, listo para mostrar en un toast.
+ */
+export function describeSkippedItems(skippedItems: StockSkippedItem[]): string {
+  return skippedItems
+    .map((item) => {
+      const name = item.productName || (item.productId ? `Producto ${item.productId}` : 'Linea sin producto');
+      return `${name}: ${STOCK_SKIP_REASON_LABELS[item.reason]}`;
+    })
+    .join('; ');
+}
+
 export interface StockDecrementResult {
   success: boolean;
   skipped: number;
+  /** Detalle de cada item omitido, para poder avisar al usuario. */
+  skippedItems: StockSkippedItem[];
   errors: string[];
 }
 
@@ -40,18 +79,18 @@ export const stockMovementService = {
     updatedBy?: string
   ): Promise<StockDecrementResult> {
     const errors: string[] = [];
-    let skipped = 0;
+    const skippedItems: StockSkippedItem[] = [];
 
     for (const item of items) {
       // Saltar items sin product_id (ej: propinas, cargos personalizados)
       if (!item.product_id) {
-        skipped++;
+        skippedItems.push({ productId: null, reason: 'no_product' });
         continue;
       }
 
       const qty = Number(item.quantity) || 0;
       if (qty <= 0) {
-        skipped++;
+        skippedItems.push({ productId: item.product_id, reason: 'invalid_qty' });
         continue;
       }
 
@@ -77,7 +116,8 @@ export const stockMovementService = {
 
     return {
       success: errors.length === 0,
-      skipped,
+      skipped: skippedItems.length,
+      skippedItems,
       errors,
     };
   },
@@ -94,29 +134,34 @@ export const stockMovementService = {
     updatedBy?: string
   ): Promise<StockDecrementResult> {
     const errors: string[] = [];
-    let skipped = 0;
+    const skippedItems: StockSkippedItem[] = [];
 
     for (const item of items) {
       if (!item.product_id) {
-        skipped++;
+        skippedItems.push({ productId: null, reason: 'no_product' });
         continue;
       }
 
       const qty = Number(item.quantity) || 0;
       if (qty <= 0) {
-        skipped++;
+        skippedItems.push({ productId: item.product_id, reason: 'invalid_qty' });
         continue;
       }
 
       // Verificar track_stock del producto
       const { data: product } = await supabase
         .from('products')
-        .select('track_stock')
+        .select('track_stock, name')
         .eq('id', item.product_id)
-        .single();
+        .maybeSingle();
 
-      if (!product || product.track_stock === false) {
-        skipped++;
+      if (!product) {
+        skippedItems.push({ productId: item.product_id, reason: 'product_not_found' });
+        continue;
+      }
+
+      if (product.track_stock === false) {
+        skippedItems.push({ productId: item.product_id, productName: product.name, reason: 'not_tracked' });
         continue;
       }
 
@@ -156,7 +201,7 @@ export const stockMovementService = {
       }
     }
 
-    return { success: errors.length === 0, skipped, errors };
+    return { success: errors.length === 0, skipped: skippedItems.length, skippedItems, errors };
   },
 
   /**
@@ -168,17 +213,17 @@ export const stockMovementService = {
     items: SaleItemForStock[]
   ): Promise<StockDecrementResult> {
     const errors: string[] = [];
-    let skipped = 0;
+    const skippedItems: StockSkippedItem[] = [];
 
     for (const item of items) {
       if (!item.product_id) {
-        skipped++;
+        skippedItems.push({ productId: null, reason: 'no_product' });
         continue;
       }
 
       const qty = Number(item.quantity) || 0;
       if (qty <= 0) {
-        skipped++;
+        skippedItems.push({ productId: item.product_id, reason: 'invalid_qty' });
         continue;
       }
 
@@ -204,7 +249,7 @@ export const stockMovementService = {
       }
     }
 
-    return { success: errors.length === 0, skipped, errors };
+    return { success: errors.length === 0, skipped: skippedItems.length, skippedItems, errors };
   },
 
   /**
@@ -227,29 +272,34 @@ export const stockMovementService = {
     updatedBy?: string
   ): Promise<StockDecrementResult> {
     const errors: string[] = [];
-    let skipped = 0;
+    const skippedItems: StockSkippedItem[] = [];
 
     for (const item of items) {
       if (!item.product_id) {
-        skipped++;
+        skippedItems.push({ productId: null, reason: 'no_product' });
         continue;
       }
 
       const qty = Number(item.quantity) || 0;
       if (qty <= 0) {
-        skipped++;
+        skippedItems.push({ productId: item.product_id, reason: 'invalid_qty' });
         continue;
       }
 
       // Verificar track_stock del producto
       const { data: product } = await supabase
         .from('products')
-        .select('track_stock')
+        .select('track_stock, name')
         .eq('id', item.product_id)
-        .single();
+        .maybeSingle();
 
-      if (!product || product.track_stock === false) {
-        skipped++;
+      if (!product) {
+        skippedItems.push({ productId: item.product_id, reason: 'product_not_found' });
+        continue;
+      }
+
+      if (product.track_stock === false) {
+        skippedItems.push({ productId: item.product_id, productName: product.name, reason: 'not_tracked' });
         continue;
       }
 
@@ -325,6 +375,6 @@ export const stockMovementService = {
       }
     }
 
-    return { success: errors.length === 0, skipped, errors };
+    return { success: errors.length === 0, skipped: skippedItems.length, skippedItems, errors };
   },
 };

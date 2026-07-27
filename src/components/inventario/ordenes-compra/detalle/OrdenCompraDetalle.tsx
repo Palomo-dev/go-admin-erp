@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderWithItems } from '@/lib/services/purchaseOrderService';
+import { describeSkippedItems } from '@/lib/services/stockMovementService';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -141,20 +142,18 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   }, [loadData]);
 
   // Handlers
-  const handleStatusChange = async (newStatus: 'sent' | 'partial' | 'received' | 'cancelled') => {
+  const handleStatusChange = async (newStatus: 'sent' | 'cancelled') => {
     if (!order) return;
 
     try {
       setIsProcessing(true);
       const organizationId = getOrganizationId();
-      const { success, error } = await purchaseOrderService.updateStatus(order.uuid, organizationId, newStatus);
+      const { error } = await purchaseOrderService.updateStatus(order.uuid, organizationId, newStatus);
 
       if (error) throw error;
 
       const statusLabels: Record<string, string> = {
         sent: 'enviada al proveedor',
-        partial: 'marcada como recepción parcial',
-        received: 'marcada como recibida',
         cancelled: 'cancelada'
       };
 
@@ -216,7 +215,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
         quantity
       }));
 
-      const { success, error } = await purchaseOrderService.receiveItems(
+      const { error, stock } = await purchaseOrderService.receiveItems(
         order.uuid,
         organizationId,
         itemsToReceive
@@ -226,8 +225,26 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
 
       toast({
         title: 'Recepción registrada',
-        description: 'Las cantidades recibidas han sido actualizadas'
+        description: 'Las cantidades recibidas han sido actualizadas y sumadas al stock'
       });
+
+      // Recibir sin mover inventario es el fallo silencioso que mas confunde:
+      // la orden queda "recibida" pero el stock no cambia. Hay que decirlo.
+      if (stock?.skippedItems.length) {
+        toast({
+          variant: 'destructive',
+          title: `${stock.skippedItems.length} item(s) no afectaron el inventario`,
+          description: describeSkippedItems(stock.skippedItems)
+        });
+      }
+
+      if (stock?.errors.length) {
+        toast({
+          variant: 'destructive',
+          title: 'Errores al sumar stock',
+          description: stock.errors.join('; ')
+        });
+      }
 
       setShowReceiveDialog(false);
       loadData();
@@ -473,25 +490,25 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
               </div>
 
               {/* Info de contacto del proveedor */}
-              {(order.suppliers as any)?.email || (order.suppliers as any)?.phone || (order.suppliers as any)?.contact_name ? (
+              {order.suppliers?.email || order.suppliers?.phone || order.suppliers?.contact ? (
                 <div className="pt-3 border-t dark:border-gray-700 space-y-2">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Contacto del Proveedor</p>
-                  {(order.suppliers as any)?.contact_name && (
+                  {order.suppliers?.contact && (
                     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <User className="h-3.5 w-3.5" />
-                      {(order.suppliers as any).contact_name}
+                      {order.suppliers.contact}
                     </div>
                   )}
-                  {(order.suppliers as any)?.email && (
+                  {order.suppliers?.email && (
                     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <Mail className="h-3.5 w-3.5" />
-                      {(order.suppliers as any).email}
+                      {order.suppliers.email}
                     </div>
                   )}
-                  {(order.suppliers as any)?.phone && (
+                  {order.suppliers?.phone && (
                     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <Phone className="h-3.5 w-3.5" />
-                      {(order.suppliers as any).phone}
+                      {order.suppliers.phone}
                     </div>
                   )}
                 </div>

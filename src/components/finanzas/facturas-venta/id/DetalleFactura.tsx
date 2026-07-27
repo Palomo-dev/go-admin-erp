@@ -57,6 +57,7 @@ import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { PDFService, InvoiceDataForPDF } from '@/lib/services/pdfService';
 import { SendToFactusButton, FactusStatusBadge } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService, type EInvoiceStatus } from '@/lib/services/electronicInvoicingService';
+import { stockMovementService } from '@/lib/services/stockMovementService';
 
 // Mapeo de estados a colores de badge
 const estadoColors: Record<string, string> = {
@@ -466,9 +467,136 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   // Determinar si la factura está en estado borrador
   const isDraft = facturaActual.status === 'draft';
   
+  /**
+   * Comprueba si hay existencias suficientes para emitir la factura.
+   *
+   * La verificacion vive en la BD (fn_invoice_stock_shortages) porque debe
+   * replicar lo que hara el descuento: los productos con receta consumen sus
+   * ingredientes, no el producto en si.
+   *
+   * Devuelve la lista de faltantes; vacia significa que se puede emitir.
+   */
+  const verificarStockParaEmision = async (): Promise<
+    { product_name: string; required: number; available: number }[]
+  > => {
+    const { data, error } = await supabase
+      .rpc('fn_invoice_stock_shortages', { p_invoice_id: facturaActual.id });
+
+    if (error) {
+      // Si la verificacion falla no se bloquea la emision: el descuento posterior
+      // permite negativos y avisa, que es el respaldo previsto.
+      console.error('No se pudo verificar el stock antes de emitir:', error);
+      return [];
+    }
+
+    return data || [];
+  };
+
+  /**
+   * Avisa si tras el descuento algun producto quedo con existencias negativas.
+   *
+   * Es la red de seguridad de la validacion previa: si otra caja vendio la ultima
+   * unidad entre la comprobacion y la emision, el descuento se aplica igual (no
+   * se revierte una factura ya emitida) pero el operador se entera.
+   */
+  const avisarSiQuedoStockNegativo = async (productIds: number[]) => {
+    if (productIds.length === 0) return;
+
+    const { data, error } = await supabase
+      .from('stock_levels')
+      .select('qty_on_hand, products(name)')
+      .eq('branch_id', facturaActual.branch_id)
+      .in('product_id', productIds)
+      .lt('qty_on_hand', 0);
+
+    if (error || !data || data.length === 0) return;
+
+    const detalle = data
+      .map((row: any) => `${row.products?.name || 'Producto'}: ${row.qty_on_hand}`)
+      .join(', ');
+
+    toast({
+      title: 'Inventario en negativo',
+      description: `La factura se emitio, pero estas existencias quedaron bajo cero: ${detalle}. Revisa el inventario de la sucursal.`,
+      variant: 'destructive',
+    });
+  };
+
+  /**
+   * Descuenta del inventario los items de la factura recien emitida.
+   *
+   * Los product_id se releen de la BD en vez de usar los del estado local para
+   * no depender de como venga poblada la relacion de items en cada vista.
+   * Un fallo aqui no revierte la emision (la factura ya esta emitida), pero se
+   * avisa para que no pase inadvertido como venia pasando.
+   */
+  const descontarStockPorEmision = async () => {
+    try {
+      const { data: itemsFactura, error: itemsError } = await supabase
+        .from('invoice_items')
+        .select('product_id, qty, unit_price')
+        .eq('invoice_sales_id', facturaActual.id);
+
+      if (itemsError) throw itemsError;
+
+      const itemsConProducto = (itemsFactura || []).filter((item: any) => item.product_id);
+
+      if (itemsConProducto.length === 0) return;
+
+      const resultado = await stockMovementService.decrementOnSale(
+        Number(facturaActual.organization_id),
+        Number(facturaActual.branch_id),
+        facturaActual.sale_id || facturaActual.id,
+        itemsConProducto.map((item: any) => ({
+          product_id: item.product_id,
+          quantity: Number(item.qty) || 0,
+          unit_price: Number(item.unit_price) || 0,
+        })),
+        'invoice_sale'
+      );
+
+      if (resultado.errors.length > 0) {
+        toast({
+          title: 'Inventario no actualizado por completo',
+          description: resultado.errors.join('; '),
+          variant: 'destructive',
+        });
+      }
+
+      // Respaldo: la validacion previa puede quedar desactualizada si otra caja
+      // vendio entre la comprobacion y la emision. En ese caso el descuento se
+      // aplica igual (el stock puede quedar negativo) pero se avisa.
+      await avisarSiQuedoStockNegativo(itemsConProducto.map((i: any) => i.product_id));
+    } catch (stockError: any) {
+      console.error('Error descontando stock al emitir la factura:', stockError);
+      toast({
+        title: 'La factura se emitio, pero el inventario no se actualizo',
+        description: stockError?.message || 'Revisa el stock de la sucursal manualmente',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Función para emitir la factura (cambiar de draft a issued)
   const emitirFactura = async () => {
     try {
+      // No se emite si falta mercancia: emitir descuenta inventario, y hacerlo sin
+      // existencias dejaria el stock en negativo silenciosamente.
+      const faltantes = await verificarStockParaEmision();
+
+      if (faltantes.length > 0) {
+        const detalle = faltantes
+          .map(f => `${f.product_name}: necesita ${f.required}, hay ${f.available}`)
+          .join(' | ');
+
+        toast({
+          title: 'Sin existencias suficientes para emitir',
+          description: `${detalle}. Repon el inventario o ajusta las cantidades de la factura.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       // Llamamos a la función RPC para emitir la factura
       const { data, error } = await supabase
         .rpc('issue_invoice', { invoice_id_param: factura.id });
@@ -485,7 +613,14 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         title: "Factura emitida",
         description: "La factura ha sido emitida exitosamente.",
       });
-      
+
+      // Emitir es el momento en que la mercancia sale: hasta ahora ninguna
+      // factura de venta descontaba inventario (el POS si lo hacia, finanzas no),
+      // asi que se vendia sin que el stock bajara nunca.
+      // Se hace despues del RPC a proposito: `issue_invoice` falla si la factura
+      // no estaba en draft, asi que no se puede descontar dos veces la misma.
+      await descontarStockPorEmision();
+
       // Recargamos los datos para mostrar la información actualizada
       actualizarPagos();
       

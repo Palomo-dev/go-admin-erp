@@ -35,15 +35,23 @@ type Product = {
   tax_code?: string;
   tax_name?: string;
   tax_rate?: number;
+  /** Si el producto rastrea inventario. Los que no, siempre se pueden vender. */
+  track_stock?: boolean;
+  /** Existencias disponibles en la sucursal de la factura. */
+  stock_qty?: number;
+  /** Rastrea inventario y no queda nada en la sucursal. */
+  is_out_of_stock?: boolean;
 };
 
 type ItemsFacturaProps = {
   items: InvoiceItem[];
   onItemsChange: (items: InvoiceItem[]) => void;
   taxIncluded?: boolean; // Prop para saber si los impuestos están incluidos
+  /** Sucursal de la factura: el stock disponible depende de ella. */
+  branchId?: number;
 };
 
-export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: ItemsFacturaProps) {
+export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId }: ItemsFacturaProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -51,12 +59,12 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const organizationId = getOrganizationId();
 
-  // Cargar productos al iniciar
+  // Cargar productos al iniciar y cuando cambie la sucursal (el stock es por sucursal)
   useEffect(() => {
     if (organizationId) {
       cargarProductos();
     }
-  }, [organizationId]);
+  }, [organizationId, branchId]);
 
   // Función para cargar productos
   const cargarProductos = async () => {
@@ -98,10 +106,10 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
           tax_rate: undefined
         })) || [];
         
-        setProducts(formattedProducts);
+        setProducts(await agregarDisponibilidad(formattedProducts));
       } else {
         // Si la función RPC funciona correctamente
-        setProducts(data || []);
+        setProducts(await agregarDisponibilidad(data || []));
       }
       
     } catch (error) {
@@ -116,6 +124,82 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
     }
   };
 
+  /**
+   * Completa cada producto con su disponibilidad en la sucursal de la factura.
+   *
+   * El RPC `get_products_with_latest_prices` no devuelve nada de inventario, por
+   * eso el selector permitia agregar productos agotados. Se consulta aparte y se
+   * mezcla, en vez de cambiar el RPC, que lo usan otras pantallas.
+   *
+   * El criterio de agotado es el mismo que aplica el POS: solo bloquea si el
+   * producto rastrea inventario Y no queda existencia.
+   */
+  const agregarDisponibilidad = async (lista: Product[]): Promise<Product[]> => {
+    if (lista.length === 0) return lista;
+
+    try {
+      const ids = lista.map(p => p.id);
+
+      const { data: productsMeta } = await supabase
+        .from('products')
+        .select('id, track_stock, is_parent')
+        .in('id', ids);
+
+      const trackMap = new Map((productsMeta || []).map((p: any) => [p.id, p.track_stock]));
+
+      // Un producto padre no tiene existencias propias: las lleva cada variante.
+      // Sin esto un padre con track_stock=true aparecia agotado aunque sus
+      // variantes tuvieran inventario, porque no existe fila suya en stock_levels.
+      const parentIds = (productsMeta || []).filter((p: any) => p.is_parent).map((p: any) => p.id);
+
+      const { data: variants } = parentIds.length > 0
+        ? await supabase.from('products').select('id, parent_product_id').in('parent_product_id', parentIds)
+        : { data: [] as any[] };
+
+      const { data: stockRows } = branchId
+        ? await supabase
+            .from('stock_levels')
+            .select('product_id, qty_on_hand')
+            .eq('branch_id', branchId)
+            .in('product_id', [...ids, ...(variants || []).map((v: any) => v.id)])
+        : { data: [] as any[] };
+
+      // Un producto puede tener varias filas de stock (una por lote): se suman.
+      const stockMap = new Map<number, number>();
+      for (const row of stockRows || []) {
+        stockMap.set(row.product_id, (stockMap.get(row.product_id) || 0) + (Number(row.qty_on_hand) || 0));
+      }
+
+      // Acumular en cada padre el stock de sus variantes.
+      const stockDeVariantes = new Map<number, number>();
+      for (const variant of (variants || []) as any[]) {
+        stockDeVariantes.set(
+          variant.parent_product_id,
+          (stockDeVariantes.get(variant.parent_product_id) || 0) + (stockMap.get(variant.id) || 0)
+        );
+      }
+
+      return lista.map(product => {
+        const track = trackMap.get(product.id) === true;
+        // Se suman ambos: un padre normal solo aporta variantes, y un producto
+        // simple (o un padre sin variantes) solo aporta su propia fila.
+        const qty = (stockMap.get(product.id) || 0) + (stockDeVariantes.get(product.id) || 0);
+        return {
+          ...product,
+          track_stock: track,
+          stock_qty: qty,
+          // Sin sucursal seleccionada no se puede afirmar que algo este agotado.
+          is_out_of_stock: Boolean(branchId) && track && qty <= 0,
+        };
+      });
+    } catch (error) {
+      // Si falla la consulta de stock se devuelven los productos sin marcar:
+      // es preferible permitir facturar que bloquear la pantalla completa.
+      console.error('No se pudo cargar la disponibilidad de los productos:', error);
+      return lista;
+    }
+  };
+
   // Filtrar productos por búsqueda
   const filteredProducts = searchTerm 
     ? products.filter(p => 
@@ -127,6 +211,17 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
 
   // Agregar ítem a la factura
   const agregarItem = (product: Product) => {
+    // No se puede facturar lo que no hay. El boton ya viene deshabilitado, pero
+    // la lista pudo cargarse antes de que otra caja vendiera la ultima unidad.
+    if (product.is_out_of_stock) {
+      toast({
+        title: 'Producto agotado',
+        description: `"${product.name}" no tiene existencias en la sucursal seleccionada.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // PRIMERO: Obtenemos el estado actual de taxIncluded para mayor claridad
     const includeTax = taxIncluded;
     console.log('Estado actual de taxIncluded al agregar item:', includeTax);
@@ -305,15 +400,33 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                     <TableRow className="bg-gray-50 dark:bg-gray-900/50">
                       <TableHead className="text-gray-700 dark:text-gray-300">Nombre</TableHead>
                       <TableHead className="text-gray-700 dark:text-gray-300">SKU</TableHead>
+                      <TableHead className="text-right text-gray-700 dark:text-gray-300">Disponible</TableHead>
                       <TableHead className="text-right text-gray-700 dark:text-gray-300">Precio</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredProducts.map(product => (
-                      <TableRow key={product.id} className="border-b border-gray-200 dark:border-gray-700">
-                        <TableCell className="text-gray-900 dark:text-gray-100">{product.name}</TableCell>
+                      <TableRow
+                        key={product.id}
+                        className={`border-b border-gray-200 dark:border-gray-700 ${product.is_out_of_stock ? 'opacity-60' : ''}`}
+                      >
+                        <TableCell className="text-gray-900 dark:text-gray-100">
+                          <div className="flex items-center gap-2">
+                            <span>{product.name}</span>
+                            {product.is_out_of_stock && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                                Agotado
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-gray-700 dark:text-gray-300">{product.sku}</TableCell>
+                        <TableCell className="text-right text-gray-700 dark:text-gray-300">
+                          {product.track_stock
+                            ? <span className={product.is_out_of_stock ? 'text-red-600 dark:text-red-400 font-medium' : ''}>{product.stock_qty ?? 0}</span>
+                            : <span className="text-xs text-gray-400 dark:text-gray-500">Sin control</span>}
+                        </TableCell>
                         <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100">
                           ${product.price.toLocaleString()}
                         </TableCell>
@@ -321,11 +434,14 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                           <Button 
                             size="sm" 
                             onClick={() => agregarItem(product)}
+                            disabled={product.is_out_of_stock}
+                            title={product.is_out_of_stock ? 'Sin existencias en la sucursal seleccionada' : undefined}
                             className="
                               h-8 px-3
                               bg-blue-600 hover:bg-blue-700
                               dark:bg-blue-600 dark:hover:bg-blue-500
                               text-white text-xs
+                              disabled:opacity-50 disabled:cursor-not-allowed
                             "
                           >
                             Agregar
@@ -340,7 +456,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false }: Item
                     ))}
                     {filteredProducts.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <TableCell colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
                           No se encontraron productos
                         </TableCell>
                       </TableRow>

@@ -1239,8 +1239,65 @@ export class POSService {
         // No lanzamos error para que no falle todo el checkout
       } else {
         console.log('Invoice created successfully:', invoiceData.number);
-        
-        // Crear los invoice_items basados en cart.items
+      }
+
+      // Crear los pagos - asociar con la factura (invoice_sales)
+      //
+      // IMPORTANTE: los pagos se insertan ANTES de los invoice_items.
+      // El trigger fn_recalc_invoice_totals (en invoice_items) recalcula
+      // balance = total - pagos_completados. Si los items se insertan primero, el
+      // pago todavia no existe y el trigger escribe balance = total, pisando el
+      // balance correcto y dejando la factura como 'paid' con saldo pendiente.
+      const currentUser = await supabase.auth.getUser();
+      const userId = currentUser.data.user?.id;
+      
+      for (const payment of payments) {
+        if (payment.amount > 0) {
+          const paymentData: any = {
+            organization_id: cart.organization_id,
+            branch_id: getCurrentBranchId(), // Usar branch_id actual del usuario
+            amount: payment.amount,
+            method: payment.method,
+            currency: baseCurrency.code,
+            status: 'completed'
+          };
+          
+          // Asociar con la factura si existe, sino con la venta
+          if (invoiceData && !invoiceError) {
+            paymentData.source = 'invoice_sales';
+            paymentData.source_id = invoiceData.id;
+          } else {
+            paymentData.source = 'sale';
+            paymentData.source_id = saleData.id;
+          }
+          
+          // Asignar created_by si hay usuario autenticado
+          if (userId) {
+            paymentData.created_by = userId;
+          }
+          
+          console.log('Creating payment:', paymentData);
+          
+          const { data: paymentResult, error: paymentError } = await supabase
+            .from('payments')
+            .insert(paymentData)
+            .select()
+            .single();
+
+          if (paymentError) {
+            console.error('Error creating payment:', {
+              error: paymentError,
+              paymentData: paymentData
+            });
+            throw paymentError;
+          } else {
+            console.log('Payment created successfully:', paymentResult);
+          }
+        }
+      }
+
+      // Crear los invoice_items basados en cart.items (despues de los pagos)
+      if (invoiceData && !invoiceError) {
         try {
           // Obtener información de productos para las descripciones
           const productIds = cart.items.map(item => item.product_id).filter(id => id);
@@ -1292,55 +1349,6 @@ export class POSService {
           }
         } catch (itemsError) {
           console.error('Exception creating invoice items:', itemsError);
-        }
-      }
-
-      // Crear los pagos - asociar con la factura (invoice_sales)
-      const currentUser = await supabase.auth.getUser();
-      const userId = currentUser.data.user?.id;
-      
-      for (const payment of payments) {
-        if (payment.amount > 0) {
-          const paymentData: any = {
-            organization_id: cart.organization_id,
-            branch_id: getCurrentBranchId(), // Usar branch_id actual del usuario
-            amount: payment.amount,
-            method: payment.method,
-            currency: baseCurrency.code,
-            status: 'completed'
-          };
-          
-          // Asociar con la factura si existe, sino con la venta
-          if (invoiceData && !invoiceError) {
-            paymentData.source = 'invoice_sales';
-            paymentData.source_id = invoiceData.id;
-          } else {
-            paymentData.source = 'sale';
-            paymentData.source_id = saleData.id;
-          }
-          
-          // Asignar created_by si hay usuario autenticado
-          if (userId) {
-            paymentData.created_by = userId;
-          }
-          
-          console.log('Creating payment:', paymentData);
-          
-          const { data: paymentResult, error: paymentError } = await supabase
-            .from('payments')
-            .insert(paymentData)
-            .select()
-            .single();
-
-          if (paymentError) {
-            console.error('Error creating payment:', {
-              error: paymentError,
-              paymentData: paymentData
-            });
-            throw paymentError;
-          } else {
-            console.log('Payment created successfully:', paymentResult);
-          }
         }
       }
 

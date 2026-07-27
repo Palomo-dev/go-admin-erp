@@ -38,7 +38,7 @@ interface OrdenesCompraTableProps {
   orders: PurchaseOrder[];
   onDuplicate: (uuid: string) => void;
   onDelete: (uuid: string) => void;
-  onStatusChange: (uuid: string, status: 'sent' | 'partial' | 'received' | 'cancelled') => void;
+  onStatusChange: (uuid: string, status: 'sent' | 'received' | 'cancelled') => void;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {

@@ -186,7 +186,8 @@ export const branchService = {
         branch_type: branch.branch_type || null,
         zone: branch.zone || null,
         branch_code: branch.branch_code,
-        is_active: branch.is_active ?? true
+        is_active: branch.is_active ?? true,
+        is_web_stock_source: branch.is_web_stock_source ?? false
       };
 
       const { data, error } = await supabase
@@ -236,6 +237,7 @@ export const branchService = {
     if (branch.zone !== undefined) formattedBranch.zone = branch.zone;
     if (branch.branch_code !== undefined) formattedBranch.branch_code = branch.branch_code;
     if (branch.is_active !== undefined) formattedBranch.is_active = branch.is_active;
+    if (branch.is_web_stock_source !== undefined) formattedBranch.is_web_stock_source = branch.is_web_stock_source;
     
     // Handle JSON fields - normalize opening hours
     if (branch.opening_hours !== undefined) {
@@ -368,46 +370,6 @@ export const branchService = {
     }
 
     return data || [];
-  },
-
-  /**
-   * Generate a unique branch code
-   */
-  async generateBranchCode(organizationId: number, branchName: string): Promise<string> {
-    try {
-      // Get existing branch codes for this organization
-      const { data: existingBranches, error } = await supabase
-        .from('branches')
-        .select('branch_code')
-        .eq('organization_id', organizationId);
-      
-      if (error) {
-        console.error('Error fetching existing branch codes:', error);
-        throw new Error(error.message);
-      }
-
-      const existingCodes = new Set(existingBranches?.map(b => b.branch_code) || []);
-      
-      // Generate code based on branch name
-      const baseCode = branchName
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, '')
-        .substring(0, 4) || 'BRANCH';
-      
-      // Try with base code first, then add numbers
-      let counter = 1;
-      let proposedCode = baseCode;
-      
-      while (existingCodes.has(proposedCode)) {
-        proposedCode = `${baseCode}${counter.toString().padStart(3, '0')}`;
-        counter++;
-      }
-      
-      return proposedCode;
-    } catch (error) {
-      console.error('Error generating branch code:', error);
-      throw error;
-    }
   },
 
   /**

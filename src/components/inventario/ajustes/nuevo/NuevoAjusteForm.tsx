@@ -119,7 +119,35 @@ export function NuevoAjusteForm() {
           .eq('status', 'active')
           .order('name');
         if (data) {
-          setProducts(data.map((p: any) => ({ id: p.id, uuid: p.uuid, sku: p.sku, name: p.name, status: p.status })));
+          const productIds = data.map((p: any) => p.id);
+          const imageMap: Record<number, string | null> = {};
+
+          // Cargar imágenes principales en lotes
+          const CHUNK = 300;
+          for (let i = 0; i < productIds.length; i += CHUNK) {
+            const chunk = productIds.slice(i, i + CHUNK);
+            const { data: imgData } = await supabase
+              .from('product_images')
+              .select('product_id, storage_path, is_primary')
+              .in('product_id', chunk)
+              .eq('is_primary', true);
+            if (imgData) {
+              imgData.forEach((img: any) => {
+                if (img.storage_path) {
+                  imageMap[img.product_id] = getPublicUrl(img.storage_path);
+                }
+              });
+            }
+          }
+
+          setProducts(data.map((p: any) => ({
+            id: p.id,
+            uuid: p.uuid,
+            sku: p.sku,
+            name: p.name,
+            status: p.status,
+            image: imageMap[p.id] || null,
+          })));
         }
       } catch (error) {
         console.error('Error cargando productos:', error);
@@ -315,6 +343,7 @@ export function NuevoAjusteForm() {
         product_id: product.id,
         product_name: product.name,
         product_sku: product.sku,
+        product_image: (product as ProductOption).image || null,
         system_qty: currentQty,
         counted_qty: currentQty,
         difference: 0,

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import LogoUploader from './LogoUploader';
 import LocationSelector from '../common/LocationSelector';
+import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 
 interface OrganizationData {
   name: string;
@@ -556,7 +557,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               <option value="">Seleccionar...</option>
               {organizationTypes.map((type) => (
                 <option key={type.id} value={type.id}>
-                  {type.name}
+                  {getOrgTypeLabel(type.name, typeof navigator !== 'undefined' ? navigator.language : 'es')}
                 </option>
               ))}
             </select>

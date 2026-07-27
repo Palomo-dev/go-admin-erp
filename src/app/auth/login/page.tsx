@@ -19,12 +19,14 @@ import {
 import GeolocationModal from '@/components/auth/GeolocationModal';
 import EmailNotConfirmedAlert from '@/components/auth/EmailNotConfirmedAlert';
 import { type GeolocationPreference, shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 
 function LoginContent() {
   const t = useTranslations('auth.login');
   const tc = useTranslations('common');
   const tErr = useTranslations('auth.errors');
+  const locale = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -355,7 +357,7 @@ function LoginContent() {
                     {/* Organization details */}
                     <div className="flex-grow min-w-0">
                       <div className="font-medium text-sm sm:text-base text-gray-800 truncate">{org.name}</div>
-                      <div className="text-xs text-gray-500 truncate">{org.type_id?.name || 'Organización'}</div>
+                      <div className="text-xs text-gray-500 truncate">{getOrgTypeLabel(org.type_id?.name || '', locale)}</div>
                     </div>
                     
                     <div className="flex flex-col items-end ml-2 space-y-1">

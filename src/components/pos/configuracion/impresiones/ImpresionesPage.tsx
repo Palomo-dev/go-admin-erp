@@ -30,6 +30,21 @@ const PATHS: Array<{ value: RenderPath; label: string; description: string; icon
 const WIDTHS: PaperOption[] = ['80mm', '58mm'];
 
 /**
+ * Avance horizontal de un caracter en Courier New, en fracciones de em.
+ *
+ * Es una fuente monoespaciada, asi que el ancho de una linea es exactamente
+ * `numeroDeCaracteres * fontSize * 0.6`. De ahi se despeja el tamano que hace
+ * que `charsPerLine` columnas quepan justo en el area imprimible, en vez de
+ * fijar un tamano a ojo: con 11px, 48 columnas median 317px sobre un papel de
+ * 272px y el ticket se salia de la hoja.
+ *
+ * La negrita no altera este calculo (en una monoespaciada el avance no cambia)
+ * pero es imprescindible: el trazo normal de Courier New es tan fino que apenas
+ * quema el papel termico y la prueba salia casi invisible.
+ */
+const COURIER_CHAR_ADVANCE_EM = 0.6;
+
+/**
  * Previsualizacion de impresiones.
  *
  * Renderiza los tickets con las mismas funciones que usan el agente y el ERP
@@ -48,7 +63,7 @@ export function ImpresionesPage() {
   const handlePrintTest = () => {
     if (path === 'html') {
       if (!preview.html) return;
-      const win = window.open('', '_blank', `width=${paper.cssPx + 60},height=700`);
+      const win = window.open('', '_blank', `width=${paper.rollCssPx + 60},height=700`);
       if (!win) return;
       win.document.write(preview.html);
       win.document.close();
@@ -58,10 +73,24 @@ export function ImpresionesPage() {
       };
     } else {
       if (!preview.text) return;
-      const win = window.open('', '_blank', `width=${paper.cssPx + 60},height=700`);
+      const win = window.open('', '_blank', `width=${paper.rollCssPx + 60},height=700`);
       if (!win) return;
-      win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ESC/POS</title>
-        <style>@page{margin:0;size:${paper.printableMm}mm auto}body{font-family:'Courier New',monospace;font-size:11px;white-space:pre;padding:4px;color:#000}</style>
+      const fontSizePx =
+        Math.floor((paper.cssPx / (paper.charsPerLine * COURIER_CHAR_ADVANCE_EM)) * 100) / 100;
+      win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Simulacion monoespaciada</title>
+        <style>
+          @page{margin:0;size:${paper.rollMm}mm auto}
+          body{
+            font-family:'Courier New',monospace;
+            font-size:${fontSizePx}px;
+            font-weight:700;
+            line-height:1.35;
+            white-space:pre;
+            padding:6px ${paper.safeMarginMm}mm;
+            color:#000;
+            -webkit-print-color-adjust:exact;print-color-adjust:exact;
+          }
+        </style>
         </head><body>${preview.text.replace(/</g, '&lt;')}</body></html>`);
       win.document.close();
       win.onload = () => {
@@ -93,7 +122,7 @@ export function ImpresionesPage() {
 
         <Button onClick={handlePrintTest} variant="outline">
           <Printer className="h-4 w-4 mr-2" />
-          Imprimir prueba
+          {path === 'html' ? 'Imprimir prueba' : 'Imprimir simulacion'}
         </Button>
       </div>
 
@@ -155,14 +184,16 @@ export function ImpresionesPage() {
               ))}
 
               <div className="flex flex-wrap gap-2 ml-2">
+                <Badge variant="outline">Rollo {paper.rollMm} mm</Badge>
                 <Badge variant="outline">Imprimible {paper.printableMm} mm</Badge>
+                <Badge variant="outline">Margen {paper.safeMarginMm} mm</Badge>
                 <Badge variant="outline">{paper.charsPerLine} columnas</Badge>
-                <Badge variant="outline">{paper.cssPx} px CSS</Badge>
               </div>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               El ancho imprimible es menor que el del rollo porque los bordes quedan fuera del
-              alcance del cabezal. Es la medida con la que se maqueta.
+              alcance del cabezal. La pagina se declara al ancho del rollo, para que el driver no
+              la escale, y esos bordes se reservan con el margen.
             </p>
           </div>
         </CardContent>
@@ -184,6 +215,15 @@ export function ImpresionesPage() {
             <p className="rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
               No se pudieron cargar los datos de tu negocio, asi que la cabecera es de ejemplo.
               Completalos en Configuracion de la organizacion para verlos aqui.
+            </p>
+          )}
+
+          {path === 'escpos' && (
+            <p className="rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+              El boton imprime una <strong>simulacion</strong>: el texto en fuente monoespaciada
+              enviado a la impresora del sistema. Sirve para revisar la maquetacion en columnas,
+              pero no son comandos ESC/POS reales, asi que no prueba como responde una termica por
+              red, USB o Bluetooth.
             </p>
           )}
 

@@ -168,7 +168,8 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
 
   console.log(
     `[printer] printViaSystem: printer="${printer.name}", paper_width="${printer.paper_width}" -> ` +
-    `${paper.width} (imprimible ${paper.printableMm}mm, ${paper.cssPx}px CSS, ${paper.charsPerLine} cols)`
+    `${paper.width} (rollo ${paper.rollMm}mm, imprimible ${paper.printableMm}mm, ` +
+    `margen ${paper.safeMarginMm}mm, ${paper.charsPerLine} cols)`
   );
 
   // 1. Intentar impresión via Electron (Chromium embebido)
@@ -212,13 +213,18 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
  * imprimir. La altura del ticket se calcula midiendo `scrollHeight`, y ese valor
  * depende del ancho con el que se maqueta: una ventana más ancha produce menos
  * saltos de línea y por tanto una altura menor que la real. Si la ventana mide
- * 400px pero se imprime a 272px, la página resulta más corta que el contenido y
+ * 400px pero se imprime a 302px, la página resulta más corta que el contenido y
  * el ticket sale recortado.
+ *
+ * El ancho es el del ROLLO, no el imprimible: la página debe medir lo mismo que
+ * el papel para que el driver no la escale. El área que el cabezal no alcanza la
+ * reserva el propio HTML con su padding lateral. Ver la nota en paper.ts.
  */
 function printViaElectron(html: string, printerName: string, paper: PaperSpec): Promise<void> {
   console.log(
     `[printer] printViaElectron: printer="${printerName}", ${paper.width} -> ` +
-    `ancho ${paper.printableMicrons} micrones / ${paper.cssPx}px CSS`
+    `ancho de pagina ${paper.rollMicrons} micrones / ${paper.rollCssPx}px CSS ` +
+    `(area util ${paper.printableMm}mm)`
   );
 
   return new Promise((resolve, reject) => {
@@ -226,7 +232,7 @@ function printViaElectron(html: string, printerName: string, paper: PaperSpec): 
     const win = new electron.BrowserWindow({
       // El ancho debe coincidir con el de impresión para que la altura medida
       // más abajo corresponda a la maquetación real.
-      width: paper.cssPx,
+      width: paper.rollCssPx,
       height: 600,
       show: false,
       webPreferences: { contextIsolation: true, nodeIntegration: false },
@@ -278,7 +284,7 @@ function printViaElectron(html: string, printerName: string, paper: PaperSpec): 
             silent: true,
             printBackground: true,
             deviceName: printerName,
-            pageSize: { width: paper.printableMicrons, height: heightMicrons },
+            pageSize: { width: paper.rollMicrons, height: heightMicrons },
             margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
           },
           (success: boolean, errorType: string) => {

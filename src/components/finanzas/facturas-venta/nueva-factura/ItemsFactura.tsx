@@ -6,8 +6,9 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
-import { Plus, Trash2, Search, PackagePlus } from 'lucide-react';
+import { Plus, Trash2, Search, PackagePlus, Package } from 'lucide-react';
 import { ProductoFormDialog } from '@/components/shared/form-dialogs';
+import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import {
   Table,
   TableBody,
@@ -41,6 +42,7 @@ type Product = {
   stock_qty?: number;
   /** Rastrea inventario y no queda nada en la sucursal. */
   is_out_of_stock?: boolean;
+  image?: string | null;
 };
 
 type ItemsFacturaProps = {
@@ -106,10 +108,12 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           tax_rate: undefined
         })) || [];
         
-        setProducts(await agregarDisponibilidad(formattedProducts));
+        const conDisp = await agregarDisponibilidad(formattedProducts);
+        setProducts(await agregarImagenes(conDisp));
       } else {
         // Si la función RPC funciona correctamente
-        setProducts(await agregarDisponibilidad(data || []));
+        const conDisp = await agregarDisponibilidad(data || []);
+        setProducts(await agregarImagenes(conDisp));
       }
       
     } catch (error) {
@@ -200,6 +204,37 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
     }
   };
 
+  /**
+   * Carga la imagen principal de cada producto en lotes.
+   */
+  const agregarImagenes = async (lista: Product[]): Promise<Product[]> => {
+    if (lista.length === 0) return lista;
+    try {
+      const ids = lista.map(p => p.id);
+      const imageMap: Record<number, string | null> = {};
+      const CHUNK = 300;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const chunk = ids.slice(i, i + CHUNK);
+        const { data: imgData } = await supabase
+          .from('product_images')
+          .select('product_id, storage_path, is_primary')
+          .in('product_id', chunk)
+          .eq('is_primary', true);
+        if (imgData) {
+          imgData.forEach((img: any) => {
+            if (img.storage_path) {
+              imageMap[img.product_id] = getPublicUrl(img.storage_path);
+            }
+          });
+        }
+      }
+      return lista.map(p => ({ ...p, image: imageMap[p.id] || null }));
+    } catch (error) {
+      console.error('No se pudieron cargar las imágenes:', error);
+      return lista;
+    }
+  };
+
   // Filtrar productos por búsqueda
   const filteredProducts = searchTerm 
     ? products.filter(p => 
@@ -211,15 +246,12 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
 
   // Agregar ítem a la factura
   const agregarItem = (product: Product) => {
-    // No se puede facturar lo que no hay. El boton ya viene deshabilitado, pero
-    // la lista pudo cargarse antes de que otra caja vendiera la ultima unidad.
+    // Avisar si está agotado pero permitir agregarlo
     if (product.is_out_of_stock) {
       toast({
         title: 'Producto agotado',
-        description: `"${product.name}" no tiene existencias en la sucursal seleccionada.`,
-        variant: 'destructive',
+        description: `"${product.name}" no tiene existencias en la sucursal seleccionada. Se agregará de todas formas.`,
       });
-      return;
     }
 
     // PRIMERO: Obtenemos el estado actual de taxIncluded para mayor claridad
@@ -398,6 +430,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                      <TableHead className="w-[60px] text-gray-700 dark:text-gray-300"></TableHead>
                       <TableHead className="text-gray-700 dark:text-gray-300">Nombre</TableHead>
                       <TableHead className="text-gray-700 dark:text-gray-300">SKU</TableHead>
                       <TableHead className="text-right text-gray-700 dark:text-gray-300">Disponible</TableHead>
@@ -411,6 +444,24 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                         key={product.id}
                         className={`border-b border-gray-200 dark:border-gray-700 ${product.is_out_of_stock ? 'opacity-60' : ''}`}
                       >
+                        <TableCell>
+                          <div className="h-10 w-10 rounded-md overflow-hidden border dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                                }}
+                              />
+                            ) : (
+                              <Package className="h-5 w-5 text-gray-400" />
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-gray-900 dark:text-gray-100">
                           <div className="flex items-center gap-2">
                             <span>{product.name}</span>
@@ -434,14 +485,11 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                           <Button 
                             size="sm" 
                             onClick={() => agregarItem(product)}
-                            disabled={product.is_out_of_stock}
-                            title={product.is_out_of_stock ? 'Sin existencias en la sucursal seleccionada' : undefined}
                             className="
                               h-8 px-3
                               bg-blue-600 hover:bg-blue-700
                               dark:bg-blue-600 dark:hover:bg-blue-500
                               text-white text-xs
-                              disabled:opacity-50 disabled:cursor-not-allowed
                             "
                           >
                             Agregar
@@ -456,7 +504,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                     ))}
                     {filteredProducts.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
                           No se encontraron productos
                         </TableCell>
                       </TableRow>

@@ -7,7 +7,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { proceedWithLogin } from '@/lib/auth';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 
 interface Organization {
   id: string;
@@ -23,6 +24,7 @@ function SelectOrganizationContent() {
   const searchParams = useSearchParams();
   const t = useTranslations('auth.selectOrganization');
   const tc = useTranslations('common');
+  const locale = useLocale();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +137,7 @@ function SelectOrganizationContent() {
         return {
           id: member.organizations.id,
           name: member.organizations.name,
-          type_name: member.organizations.organization_types?.name || 'Organización',
+          type_name: getOrgTypeLabel(member.organizations.organization_types?.name || '', locale),
           plan_name: planName,
           status: member.organizations.status,
           logo_url: member.organizations.logo_url

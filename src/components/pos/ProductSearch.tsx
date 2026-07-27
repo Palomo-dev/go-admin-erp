@@ -173,14 +173,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
   // Manejar selección de producto (con o sin variantes)
   const handleProductClick = (product: any) => {
-    // Bloquear si el producto está agotado
+    // Avisar si está agotado pero permitir agregarlo
     if (product.is_out_of_stock) {
       toast({
         title: 'Producto agotado',
-        description: `${product.name} no tiene stock disponible`,
-        variant: 'destructive',
+        description: `${product.name} no tiene stock disponible. Se agregará de todas formas.`,
       });
-      return;
     }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
     if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
@@ -422,7 +420,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                     className={cn(
                       "group overflow-hidden hover:shadow-xl transition-all duration-200 border-gray-200 dark:border-gray-700 dark:bg-gray-800/50 bg-white",
                       product.is_out_of_stock
-                        ? "opacity-60 cursor-not-allowed"
+                        ? "opacity-70 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                         : "cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                     )}
                     onClick={() => handleProductClick(product)}
@@ -551,14 +549,13 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                         className={cn(
                           "w-full text-white h-7 sm:h-8 text-xs sm:text-sm",
                           product.is_out_of_stock
-                            ? "bg-gray-400 cursor-not-allowed"
+                            ? "bg-red-500 hover:bg-red-600"
                             : product.has_variants && product.variant_count > 0
                             ? "bg-purple-600 hover:bg-purple-700"
                             : product.has_modifiers
                             ? "bg-amber-600 hover:bg-amber-700"
                             : "bg-blue-600 hover:bg-blue-700"
                         )}
-                        disabled={product.is_out_of_stock}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleProductClick(product);

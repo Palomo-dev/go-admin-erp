@@ -2,7 +2,13 @@ import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from './types'
 import type { PaperSpec } from './paper';
 
 function formatMoney(value: number): string {
-  return value.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  // `style: 'currency'` separa el simbolo del importe con U+00A0 (espacio
+  // duro). Ese byte es 0xA0, que las impresoras termicas interpretan en CP437
+  // como "a" acentuada: en papel salia "$a36.480". Se normaliza a espacio
+  // normal, que es identico en pantalla y correcto en la impresora.
+  return value
+    .toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 })
+    .replace(/\u00a0/g, ' ');
 }
 
 const FISCAL_LABELS: Record<string, string> = {
@@ -39,12 +45,16 @@ const STATION_LABELS: Record<string, string> = {
 //   maqueta con el tamaño de página y el driver escala el resultado, lo que
 //   produce texto diminuto y desplazado. `body` usa width: 100% para llenar
 //   exactamente la página que declara `@page`.
-// - `size` usa el ancho IMPRIMIBLE (72mm en un rollo de 80mm), no el ancho del
-//   rollo: los bordes son mecánicamente inalcanzables para el cabezal.
+// - `size` usa el ancho del ROLLO (80mm), para que la página coincida con el
+//   papel y el driver no la escale. Los bordes que el cabezal no alcanza se
+//   respetan con el padding lateral de `body` (`safeMarginMm`).
 function buildCss(paper: PaperSpec): string {
   return `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  @page { size: ${paper.printableMm}mm auto; margin: 0; }
+  /* La pagina mide el ancho REAL del rollo. Declararla al area imprimible
+     hacia que el driver la escalase para llenar el papel y el ticket se
+     recortaba por ambos lados. Ver la nota en paper.ts. */
+  @page { size: ${paper.rollMm}mm auto; margin: 0; }
   html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body {
     width: 100%;
@@ -54,7 +64,9 @@ function buildCss(paper: PaperSpec): string {
     line-height: 1.3;
     color: #000;
     background: #fff;
-    padding: 6px 8px;
+    /* El padding lateral es el margen que el cabezal no alcanza: mantiene el
+       contenido dentro del area imprimible sin necesidad de escalar. */
+    padding: 6px ${paper.safeMarginMm}mm;
     font-weight: 500;
   }
   .header {
@@ -374,7 +386,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
 <body>
   <div class="header">
     ${payload.businessLogoUrl ? `<img class="business-logo" src="${payload.businessLogoUrl}" alt="" />` : ''}
-    <div class="business-name">${payload.businessName || 'Restaurante'}</div>
+    ${payload.businessName ? `<div class="business-name">${payload.businessName}</div>` : ''}
     ${payload.businessNit ? `<div class="business-info">NIT: ${payload.businessNit}</div>` : ''}
     ${payload.businessAddress ? `<div class="business-info">${payload.businessAddress}</div>` : ''}
     ${payload.businessCity ? `<div class="business-info">${payload.businessCity}</div>` : ''}
@@ -464,7 +476,7 @@ function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
 
   return `
   <div class="header">
-    <div class="business-name">${payload.businessName || 'Restaurante'}</div>
+    ${payload.businessName ? `<div class="business-name">${payload.businessName}</div>` : ''}
     ${payload.branchName && payload.branchName !== payload.businessName ? `<div class="branch-name">${payload.branchName}</div>` : ''}
   </div>
 

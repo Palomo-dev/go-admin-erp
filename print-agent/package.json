@@ -20,7 +20,8 @@
   "optionalDependencies": {
     "escpos-usb": "^3.0.0-alpha.4",
     "escpos-bluetooth": "^3.0.0-alpha.2",
-    "printer": "^0.4.0"
+    "printer": "^0.4.0",
+    "usb": "^3.0.0"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

@@ -46,6 +46,7 @@ interface OrderItem extends PurchaseOrderItemInput {
   id: string;
   productName: string;
   sku: string;
+  image?: string | null;
 }
 
 export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps) {
@@ -119,6 +120,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
         product_id: item.product_id,
         productName: item.products?.name || 'Producto',
         sku: item.products?.sku || '',
+        image: (item.products as any)?.image || null,
         quantity: item.quantity,
         unit_cost: item.unit_cost,
         notes: item.notes
@@ -163,6 +165,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       product_id: product.id,
       productName: product.name,
       sku: product.sku,
+      image: (product as any).image || null,
       quantity,
       unit_cost: cost
     };
@@ -360,7 +363,12 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
                   <ProductSearchCombobox
                     products={products as ProductOption[]}
                     value={selectedProduct}
-                    onSelect={(product) => setSelectedProduct(product ? product.id.toString() : '')}
+                    onSelect={(product) => {
+                      setSelectedProduct(product ? product.id.toString() : '');
+                      if (product?.cost && product.cost > 0) {
+                        setItemCost(product.cost.toString());
+                      }
+                    }}
                     placeholder="Buscar por nombre o SKU..."
                   />
                 </div>
@@ -417,8 +425,21 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
                         <TableRow key={item.id} className="dark:border-gray-700">
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <Package className="h-5 w-5 text-gray-400" />
+                              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                {item.image ? (
+                                  <img
+                                    src={item.image}
+                                    alt={item.productName}
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                                    }}
+                                  />
+                                ) : (
+                                  <Package className="h-5 w-5 text-gray-400" />
+                                )}
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium text-gray-900 dark:text-white truncate">{item.productName}</p>

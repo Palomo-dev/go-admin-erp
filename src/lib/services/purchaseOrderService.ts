@@ -837,19 +837,21 @@ class PurchaseOrderService {
   /**
    * Obtener productos para selector
    */
-  async getProducts(organizationId: number): Promise<{ id: number; uuid: string; sku: string; name: string; unit_code?: string; category?: string; cost?: number }[]> {
+  async getProducts(organizationId: number): Promise<{ id: number; uuid: string; sku: string; name: string; unit_code?: string; category?: string; cost?: number; track_stock?: boolean; image?: string | null }[]> {
     try {
       const { data } = await supabase
         .from('products')
-        .select('id, uuid, sku, name, unit_code, categories(name)')
+        .select('id, uuid, sku, name, unit_code, track_stock, categories(name)')
         .eq('organization_id', organizationId)
         .eq('status', 'active')
+        .eq('track_stock', true)
         .order('name');
 
       if (!data) return [];
 
-      // Obtener costos actuales de product_costs
       const productIds = data.map(p => p.id);
+
+      // Obtener costos actuales de product_costs
       const { data: costs } = await supabase
         .from('product_costs')
         .select('product_id, cost')
@@ -859,6 +861,27 @@ class PurchaseOrderService {
       const costMap = new Map<number, number>();
       (costs || []).forEach(c => costMap.set(c.product_id, Number(c.cost)));
 
+      // Obtener imágenes principales
+      const imageMap: Record<number, string | null> = {};
+      const CHUNK = 300;
+      for (let i = 0; i < productIds.length; i += CHUNK) {
+        const chunk = productIds.slice(i, i + CHUNK);
+        const { data: imgData } = await supabase
+          .from('product_images')
+          .select('product_id, storage_path, is_primary')
+          .in('product_id', chunk)
+          .eq('is_primary', true);
+        if (imgData) {
+          imgData.forEach((img: any) => {
+            if (img.storage_path) {
+              const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
+              const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(img.storage_path);
+              imageMap[img.product_id] = urlData?.publicUrl || null;
+            }
+          });
+        }
+      }
+
       return data.map((p: any) => ({
         id: p.id,
         uuid: p.uuid,
@@ -867,6 +890,8 @@ class PurchaseOrderService {
         unit_code: p.unit_code,
         category: p.categories?.name,
         cost: costMap.get(p.id) || 0,
+        track_stock: p.track_stock,
+        image: imageMap[p.id] || null,
       }));
     } catch (error) {
       console.error('Error obteniendo productos:', error);

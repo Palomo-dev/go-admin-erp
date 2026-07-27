@@ -12,9 +12,11 @@ interface PreviewViewerProps {
 /**
  * Muestra el ticket al ancho real del papel.
  *
- * El HTML va en un iframe con el ancho exacto en px CSS que tendra al
- * imprimirse (`paper.cssPx`), de modo que lo que se ve aqui es lo que sale
- * por la impresora, no una aproximacion.
+ * El HTML va en un iframe con el ancho del ROLLO (`paper.rollCssPx`), que es el
+ * mismo que declara `@page`. El ticket no ocupa todo ese ancho porque la
+ * plantilla reserva con padding los margenes que el cabezal no alcanza, igual
+ * que en papel. Usar aqui el ancho imprimible restaria esos margenes dos veces
+ * y el contenido se veria mas estrecho de lo que sale impreso.
  */
 export function PreviewViewer({ preview, path }: PreviewViewerProps) {
   const { paper, html, text, overflow } = preview;
@@ -30,7 +32,7 @@ export function PreviewViewer({ preview, path }: PreviewViewerProps) {
             srcDoc={html ?? ''}
             // El alto es generoso a proposito: el papel es continuo y el
             // contenido crece. El scroll queda dentro del iframe.
-            style={{ width: paper.cssPx, height: 620, border: 'none', background: '#fff' }}
+            style={{ width: paper.rollCssPx, height: 620, border: 'none', background: '#fff' }}
             className="shadow-lg"
           />
         ) : (

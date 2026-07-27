@@ -8,9 +8,16 @@ import {
   buildSaleTicketHTML,
   buildKitchenTicketsHTML,
   getPaperSpec,
+  type SaleTicketDeliveryInfo,
   type SaleTicketPrintPayload,
   type KitchenTicketPrintPayload,
 } from '@printing';
+
+/**
+ * Datos de entrega tal como los arma el POS. Coincide con el tipo compartido;
+ * se declara aqui para que los llamadores no dependan de `@printing`.
+ */
+export type DeliveryInfo = SaleTicketDeliveryInfo;
 
 // Interfaz para datos del negocio/organización
 export interface BusinessInfo {
@@ -44,6 +51,25 @@ export interface CashierInfo {
 export interface TaxLine {
   name: string;
   amount: number;
+}
+
+/**
+ * Extras opcionales de la pre-cuenta.
+ *
+ * Van agrupados en un objeto y no como parametros sueltos porque la firma de
+ * `printPreCuenta` ya tenia nueve posicionales y anadir mas hacia imposible
+ * saber en la llamada que significaba cada valor.
+ */
+export interface PreCuentaPrintOptions {
+  /** Desglose por impuesto. Sustituye al total agregado si viene informado. */
+  taxLines?: TaxLine[];
+  /** Si los precios de la carta ya incluyen impuestos. */
+  taxIncluded?: boolean;
+  /** Flete. Solo se imprime si el pedido ya lo tiene definido. */
+  deliveryFee?: number;
+  tipAmount?: number;
+  /** Datos de entrega, para pre-cuentas de domicilio. */
+  deliveryInfo?: DeliveryInfo;
 }
 
 // Traducción de métodos de pago a español
@@ -156,7 +182,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
+    deliveryInfo?: DeliveryInfo
   ): string {
     const payload = this.toSalePayload(
       sale,
@@ -189,7 +215,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
+    deliveryInfo?: DeliveryInfo
   ): SaleTicketPrintPayload {
     const anySale = sale as any;
 
@@ -204,9 +230,14 @@ export class PrintService {
       saleId: String(sale.id),
       saleNumber: anySale.sale_number || undefined,
       customerName,
+      // El tipo de documento (CC, NIT, CE...) importa en el recibo fiscal: sin
+      // el, un numero suelto no identifica al cliente ante la DIAN.
+      customerDocType: (customer as any)?.doc_type || (customer as any)?.identification_type || undefined,
       customerDocNumber: customer?.doc_number || (customer as any)?.identification_number || undefined,
       customerPhone: (customer as any)?.phone || undefined,
       customerEmail: customer?.email || undefined,
+      customerAddress: (customer as any)?.address || undefined,
+      customerFiscalResponsibilities: (customer as any)?.fiscal_responsibilities || undefined,
       cashierName: cashier?.name,
       createdAt: anySale.created_at || new Date().toISOString(),
       items: saleItems.map((item) => {
@@ -236,6 +267,8 @@ export class PrintService {
         methodName: translatePaymentMethod(p.method),
         amount: p.amount,
       })),
+      totalPaid: payments.length > 0 ? payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : undefined,
+      changeAmount: Number(anySale.change_amount) || undefined,
       businessName: business?.name,
       businessNit: business?.nit || business?.taxId,
       businessPhone: business?.phone,
@@ -243,12 +276,13 @@ export class PrintService {
       businessCity: business?.city,
       businessEmail: business?.email,
       businessFiscalResponsibilities: business?.fiscal_responsibilities,
+      businessLogoUrl: business?.logoUrl,
       branchName: branch?.name,
       branchAddress: branch?.address,
       branchPhone: branch?.phone,
-      deliveryInfo: deliveryInfo
-        ? { type: deliveryInfo.type, address: deliveryInfo.address, driverName: deliveryInfo.driverName }
-        : undefined,
+      // Se pasa el objeto completo: el conductor necesita telefono, ciudad e
+      // indicaciones, no solo la direccion.
+      deliveryInfo,
     };
   }
 
@@ -265,7 +299,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
+    deliveryInfo?: DeliveryInfo
   ): void {
     const html = this.generateTicketHTML(
       sale, 
@@ -339,7 +373,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
+    deliveryInfo?: DeliveryInfo
   ): void {
     const html = this.generateTicketHTML(
       sale, 
@@ -385,8 +419,7 @@ export class PrintService {
     business?: BusinessInfo,
     branch?: BranchInfo,
     serverName?: string,
-    driverName?: string,
-    deliveryAddress?: string,
+    options?: PreCuentaPrintOptions,
   ): void {
     const payload: SaleTicketPrintPayload = {
       saleId: `pre-${tableName}`,
@@ -409,7 +442,13 @@ export class PrintService {
       }),
       subtotal,
       taxTotal,
+      taxLines: options?.taxLines && options.taxLines.length > 0 ? options.taxLines : null,
+      taxIncluded: options?.taxIncluded,
       discountTotal,
+      // El flete solo aparece si el pedido ya lo tiene definido; en una mesa
+      // normal no existe y una linea "Envio: 0" solo confunde al cliente.
+      deliveryFee: options?.deliveryFee && options.deliveryFee > 0 ? options.deliveryFee : undefined,
+      tipAmount: options?.tipAmount && options.tipAmount > 0 ? options.tipAmount : undefined,
       total,
       businessName: business?.name,
       businessNit: business?.nit,
@@ -418,12 +457,11 @@ export class PrintService {
       businessCity: business?.city,
       businessEmail: business?.email,
       businessFiscalResponsibilities: business?.fiscal_responsibilities,
+      businessLogoUrl: business?.logoUrl,
       branchName: branch?.name,
       branchAddress: branch?.address,
       branchPhone: branch?.phone,
-      deliveryInfo: deliveryAddress
-        ? { type: 'delivery', address: deliveryAddress, driverName }
-        : undefined,
+      deliveryInfo: options?.deliveryInfo,
     };
 
     this.openPrintWindow(buildSaleTicketHTML(payload, BROWSER_PAPER));
@@ -522,7 +560,7 @@ export class PrintService {
     cashier?: CashierInfo,
     branch?: BranchInfo,
     taxLines?: TaxLine[],
-    deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string }
+    deliveryInfo?: DeliveryInfo
   ): void {
     if (this.canPrint()) {
       this.printTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo);

@@ -9,6 +9,7 @@ import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from '@printin
  *   - Varios modificadores en una linea.
  *   - Desglose de impuestos con mas de una linea (IVA + ICA).
  *   - Importes de 6 cifras, los mas anchos en pesos colombianos.
+ *   - Bloque de entrega completo, con indicaciones largas.
  *
  * Si un cambio de plantilla se ve bien con estos datos, se vera bien con
  * datos reales.
@@ -55,6 +56,22 @@ const ITEMS = [
   },
 ];
 
+/**
+ * Entrega de ejemplo. Las indicaciones son deliberadamente largas: es el campo
+ * con mas riesgo de desbordar las 32 columnas de un papel de 58mm.
+ */
+const DELIVERY = {
+  type: 'Domicilio propio',
+  address: 'Carrera 15 #85-40 Apto 502 Torre B',
+  city: 'Bogota D.C.',
+  contactName: 'Maria Fernanda Rodriguez',
+  contactPhone: '3201234567',
+  driverName: 'Jose Antonio Martinez',
+  instructions: 'Portal amarillo junto a la panaderia, timbre danado, llamar al llegar',
+};
+
+const DELIVERY_FEE = 8000;
+
 const SUBTOTAL = 128000;
 const TAX_LINES = [
   { name: 'IVA 19%', amount: 20520 },
@@ -79,11 +96,15 @@ export function buildSampleSaleTicket(): SaleTicketPrintPayload {
     taxIncluded: true,
     discountTotal: 2000,
     tipAmount: 15000,
+    deliveryFee: DELIVERY_FEE,
     total: TOTAL,
     payments: [
-      { method: 'cash', methodName: 'Efectivo', amount: 100000 },
+      { method: 'cash', methodName: 'Efectivo', amount: 110000 },
       { method: 'card', methodName: 'Tarjeta', amount: 49920 },
     ],
+    totalPaid: 159920,
+    changeAmount: 2000,
+    deliveryInfo: DELIVERY,
   };
 }
 
@@ -100,7 +121,10 @@ export function buildSamplePreCuenta(): SaleTicketPrintPayload {
     taxLines: TAX_LINES,
     taxIncluded: true,
     discountTotal: 2000,
+    // La pre-cuenta tambien puede llevar flete cuando el pedido es a domicilio.
+    deliveryFee: DELIVERY_FEE,
     total: TOTAL - 15000,
+    deliveryInfo: DELIVERY,
   };
 }
 

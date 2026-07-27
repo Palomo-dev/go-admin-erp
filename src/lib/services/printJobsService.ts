@@ -1,6 +1,40 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { PrintersService, type PrinterStation } from '@/components/pos/configuracion/printersService';
+import {
+  getPaperSpec,
+  type MonochromeRaster,
+  type SaleTicketPrintPayload as SharedSaleTicketPrintPayload,
+} from '@printing';
+import { rasterizeLogo } from './logoRasterService';
+
+/**
+ * Rasteriza el logo una vez por cada ancho de papel presente entre las
+ * impresoras destino.
+ *
+ * Se agrupa por ancho y no por impresora porque dos impresoras de 80mm
+ * comparten exactamente el mismo bitmap, y rasterizar es la parte cara del
+ * proceso (descarga + canvas + recorrido de pixeles).
+ */
+async function buildLogoRasters(
+  logoUrl: string | undefined,
+  printers: Array<{ paper_width?: string | null }>,
+): Promise<Map<string, MonochromeRaster | null>> {
+  const byWidth = new Map<string, MonochromeRaster | null>();
+  if (!logoUrl) return byWidth;
+
+  // Array.from y no `for...of` sobre el Set: el tsconfig del ERP no habilita
+  // downlevelIteration y el iterador nativo no compila.
+  const widths = Array.from(new Set(printers.map((p) => getPaperSpec(p.paper_width).width)));
+
+  for (const width of widths) {
+    const spec = getPaperSpec(width);
+    // charsPerLine * 12 reconstruye los puntos del cabezal: 576 u 384.
+    byWidth.set(width, await rasterizeLogo(logoUrl, spec.charsPerLine * 12));
+  }
+
+  return byWidth;
+}
 
 export interface KitchenTicketPrintPayload {
   ticketId: number;
@@ -19,14 +53,12 @@ export interface KitchenTicketPrintPayload {
   branchName?: string;
 }
 
-export interface SaleTicketPrintPayload {
-  saleId: string;
-  saleNumber?: string;
-  customerName?: string;
-  createdAt: string;
-  items: Array<{ productName: string; quantity: number; unitPrice: number; total: number }>;
-  total: number;
-}
+/**
+ * El payload del ticket de venta es el mismo que consume el agente, asi que se
+ * reexporta el tipo compartido en lugar de mantener aqui una copia reducida
+ * que se quedaba corta cada vez que la plantilla ganaba un campo.
+ */
+export type SaleTicketPrintPayload = SharedSaleTicketPrintPayload;
 
 export interface PrintJobWithPrinter {
   id: string;
@@ -224,6 +256,9 @@ export class PrintJobsService {
       branchPhone?: string;
       serverName?: string;
       cashierName?: string;
+      totalPaid?: number;
+      changeAmount?: number;
+      businessLogoUrl?: string;
       deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string };
     }
   ): Promise<{ enqueued: number }> {
@@ -231,6 +266,8 @@ export class PrintJobsService {
     const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
 
     if (printers.length === 0) return { enqueued: 0 };
+
+    const logoRasters = await buildLogoRasters(sale.businessLogoUrl, printers);
 
     const payload: SaleTicketPrintPayload = {
       saleId: sale.saleId,
@@ -263,9 +300,14 @@ export class PrintJobsService {
       branchPhone: sale.branchPhone,
       serverName: sale.serverName,
       cashierName: sale.cashierName,
+      totalPaid: sale.totalPaid,
+      changeAmount: sale.changeAmount,
+      businessLogoUrl: sale.businessLogoUrl,
       deliveryInfo: sale.deliveryInfo,
     };
 
+    // El raster se adjunta por impresora: una de 58mm y otra de 80mm necesitan
+    // bitmaps de distinto ancho, asi que el payload no puede ser el mismo.
     const rows = printers.map((printer) => ({
       organization_id: orgId,
       branch_id: printer.branch_id || branchId,
@@ -273,7 +315,10 @@ export class PrintJobsService {
       station: 'cashier',
       job_type: 'sale_ticket' as const,
       reference_id: sale.saleId,
-      payload: payload as any,
+      payload: {
+        ...payload,
+        businessLogoRaster: logoRasters.get(getPaperSpec(printer.paper_width).width) ?? null,
+      } as any,
       status: 'pending' as const,
     }));
 
@@ -306,16 +351,22 @@ export class PrintJobsService {
       businessEmail?: string;
       businessCity?: string;
       businessFiscalResponsibilities?: string[] | null;
+      businessLogoUrl?: string;
       branchName?: string;
       branchAddress?: string;
       branchPhone?: string;
       serverName?: string;
+      deliveryFee?: number;
+      tipAmount?: number;
+      deliveryInfo?: { type: string; address: string; driverName?: string; contactName?: string; contactPhone?: string; city?: string; instructions?: string };
     }
   ): Promise<{ enqueued: number }> {
     const orgId = getOrganizationId();
     const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
 
     if (printers.length === 0) return { enqueued: 0 };
+
+    const logoRasters = await buildLogoRasters(preCuenta.businessLogoUrl, printers);
 
     const payload = {
       saleId: `pre-${preCuenta.tableId}`,
@@ -327,6 +378,11 @@ export class PrintJobsService {
       subtotal: preCuenta.subtotal,
       taxTotal: preCuenta.taxTotal,
       discountTotal: preCuenta.discountTotal,
+      // Solo si el pedido ya tiene flete definido: en una mesa de salon no
+      // existe y una linea "Envio: 0" solo genera dudas al cliente.
+      deliveryFee: preCuenta.deliveryFee && preCuenta.deliveryFee > 0 ? preCuenta.deliveryFee : undefined,
+      tipAmount: preCuenta.tipAmount && preCuenta.tipAmount > 0 ? preCuenta.tipAmount : undefined,
+      deliveryInfo: preCuenta.deliveryInfo,
       total: preCuenta.total,
       businessName: preCuenta.businessName,
       businessNit: preCuenta.businessNit,
@@ -335,6 +391,7 @@ export class PrintJobsService {
       businessEmail: preCuenta.businessEmail,
       businessCity: preCuenta.businessCity,
       businessFiscalResponsibilities: preCuenta.businessFiscalResponsibilities,
+      businessLogoUrl: preCuenta.businessLogoUrl,
       branchName: preCuenta.branchName,
       branchAddress: preCuenta.branchAddress,
       branchPhone: preCuenta.branchPhone,
@@ -347,7 +404,10 @@ export class PrintJobsService {
       station: 'cashier',
       job_type: 'pre_cuenta' as const,
       reference_id: preCuenta.tableId,
-      payload: payload as any,
+      payload: {
+        ...payload,
+        businessLogoRaster: logoRasters.get(getPaperSpec(printer.paper_width).width) ?? null,
+      } as any,
       status: 'pending' as const,
     }));
 

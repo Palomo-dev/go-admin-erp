@@ -44,15 +44,29 @@ export function ImpresionesPage() {
   const { paper } = preview;
 
   const handlePrintTest = () => {
-    if (!preview.html) return;
-    const win = window.open('', '_blank', `width=${paper.cssPx + 60},height=700`);
-    if (!win) return;
-    win.document.write(preview.html);
-    win.document.close();
-    win.onload = () => {
-      win.focus();
-      win.print();
-    };
+    if (path === 'html') {
+      if (!preview.html) return;
+      const win = window.open('', '_blank', `width=${paper.cssPx + 60},height=700`);
+      if (!win) return;
+      win.document.write(preview.html);
+      win.document.close();
+      win.onload = () => {
+        win.focus();
+        win.print();
+      };
+    } else {
+      if (!preview.text) return;
+      const win = window.open('', '_blank', `width=${paper.cssPx + 60},height=700`);
+      if (!win) return;
+      win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ESC/POS</title>
+        <style>@page{margin:0;size:${paper.printableMm}mm auto}body{font-family:'Courier New',monospace;font-size:11px;white-space:pre;padding:4px;color:#000}</style>
+        </head><body>${preview.text.replace(/</g, '&lt;')}</body></html>`);
+      win.document.close();
+      win.onload = () => {
+        win.focus();
+        win.print();
+      };
+    }
   };
 
   return (
@@ -75,12 +89,10 @@ export function ImpresionesPage() {
           </div>
         </div>
 
-        {path === 'html' && (
-          <Button onClick={handlePrintTest} variant="outline">
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimir prueba
-          </Button>
-        )}
+        <Button onClick={handlePrintTest} variant="outline">
+          <Printer className="h-4 w-4 mr-2" />
+          Imprimir prueba
+        </Button>
       </div>
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

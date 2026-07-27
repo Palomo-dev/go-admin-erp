@@ -23,9 +23,12 @@ export type {
   KitchenTicketItemModifier,
   KitchenTicketItemPayload,
   KitchenTicketPrintPayload,
+  MonochromeRaster,
+  SaleTicketDeliveryInfo,
   SaleTicketItemPayload,
   SaleTicketPayment,
   SaleTicketPrintPayload,
+  SaleTicketTaxLine,
   TicketKind,
 } from './types';
 
@@ -37,3 +40,5 @@ export {
   printSaleTicket,
   printKitchenTicket,
 } from './renderEscpos';
+
+export { buildRasterImageCommand, isValidRaster, writeRasterImage } from './escposImage';

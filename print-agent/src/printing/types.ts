@@ -62,6 +62,40 @@ export interface SaleTicketTaxLine {
   amount: number;
 }
 
+/**
+ * Logo del negocio ya convertido a bitmap monocromo, listo para el comando
+ * `GS v 0` de ESC/POS.
+ *
+ * Se rasteriza en el ERP (con el canvas del navegador) y no en el agente
+ * porque el agente no tiene ninguna libreria capaz de decodificar PNG/JPEG y
+ * anadirla implicaria un modulo nativo mas que compilar en cada equipo.
+ *
+ * `data` son los bits empaquetados en base64: 1 = punto negro, 8 pixeles por
+ * byte, de izquierda a derecha. Cada fila se rellena hasta completar el byte.
+ */
+export interface MonochromeRaster {
+  /** Ancho en pixeles. Debe ser <= a los puntos del cabezal (576 u 384). */
+  width: number;
+  /** Alto en pixeles. */
+  height: number;
+  /** Bits empaquetados en base64, `ceil(width / 8) * height` bytes. */
+  data: string;
+}
+
+/**
+ * Datos de la entrega a domicilio. Lo que necesita el conductor para llegar
+ * y lo que necesita el cliente para reclamar.
+ */
+export interface SaleTicketDeliveryInfo {
+  type: string;
+  address: string;
+  driverName?: string;
+  contactName?: string;
+  contactPhone?: string;
+  city?: string;
+  instructions?: string;
+}
+
 export interface SaleTicketPrintPayload {
   saleId: string;
   saleNumber?: string;
@@ -89,6 +123,10 @@ export interface SaleTicketPrintPayload {
   deliveryFee?: number;
   total: number;
   payments?: SaleTicketPayment[];
+  /** Suma entregada por el cliente. Se imprime bajo los pagos. */
+  totalPaid?: number;
+  /** Vuelto. Solo se imprime si es mayor que cero. */
+  changeAmount?: number;
   businessName?: string;
   businessNit?: string;
   businessPhone?: string;
@@ -96,10 +134,14 @@ export interface SaleTicketPrintPayload {
   businessEmail?: string;
   businessCity?: string;
   businessFiscalResponsibilities?: string[] | null;
+  /** URL del logo. Solo la usa el camino HTML; ESC/POS necesita el raster. */
+  businessLogoUrl?: string;
+  /** Logo rasterizado para impresoras termicas. Ver `MonochromeRaster`. */
+  businessLogoRaster?: MonochromeRaster | null;
   branchName?: string;
   branchAddress?: string;
   branchPhone?: string;
-  deliveryInfo?: { type: string; address: string; driverName?: string };
+  deliveryInfo?: SaleTicketDeliveryInfo;
 }
 
 /** Tipo de documento a imprimir. Coincide con `print_jobs.job_type`. */

@@ -63,6 +63,18 @@ function buildCss(paper: PaperSpec): string {
     padding-bottom: 5px;
     margin-bottom: 5px;
   }
+  .business-logo {
+    /* El alto se acota porque el rollo es continuo: un logo grande no rompe
+       la maquetacion, pero se come varios centimetros de papel en cada
+       ticket. En 58mm se reduce proporcionalmente via max-width. */
+    max-width: 60%;
+    max-height: 90px;
+    margin: 0 auto 4px;
+    display: block;
+    /* El termico solo imprime negro: se fuerza el contraste para que un logo
+       de color no salga como una mancha gris ilegible. */
+    filter: grayscale(100%) contrast(140%);
+  }
   .business-name {
     font-size: 17px;
     font-weight: 800;
@@ -229,6 +241,26 @@ function buildCss(paper: PaperSpec): string {
     margin: 4px 0;
     font-size: 12px;
   }
+  .delivery-box .label { font-weight: 700; color: #000; }
+  .delivery-title {
+    font-weight: 800;
+    text-align: center;
+    border-bottom: 1px solid #000;
+    margin-bottom: 3px;
+    padding-bottom: 2px;
+  }
+  .delivery-instructions {
+    margin-top: 3px;
+    padding-top: 3px;
+    border-top: 1px dashed #000;
+  }
+  .change-line {
+    font-weight: 800;
+    font-size: 14px;
+    border-top: 1px solid #000;
+    margin-top: 3px;
+    padding-top: 3px;
+  }
 `;
 }
 
@@ -284,11 +316,20 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
       ${customerFiscal ? `<div><span class="label">Regimen:</span> ${customerFiscal}</div>` : ''}
     </div>` : '';
 
-  const deliveryHTML = payload.deliveryInfo ? `
+  // Bloque de entrega: es lo que lee el conductor, asi que va completo aunque
+  // ocupe papel. Las instrucciones se separan porque suelen ser el dato que
+  // evita la llamada de "no encuentro la direccion".
+  const delivery = payload.deliveryInfo;
+  const deliveryHTML = delivery ? `
     <div class="delivery-box">
-      <div><span class="label">Entrega:</span> ${payload.deliveryInfo.type}</div>
-      <div><span class="label">Direccion:</span> ${payload.deliveryInfo.address}</div>
-      ${payload.deliveryInfo.driverName ? `<div><span class="label">Conductor:</span> ${payload.deliveryInfo.driverName}</div>` : ''}
+      <div class="delivery-title">DATOS DE ENTREGA</div>
+      <div><span class="label">Tipo:</span> ${delivery.type}</div>
+      <div><span class="label">Direccion:</span> ${delivery.address}</div>
+      ${delivery.city ? `<div><span class="label">Ciudad:</span> ${delivery.city}</div>` : ''}
+      ${delivery.contactName ? `<div><span class="label">Recibe:</span> ${delivery.contactName}</div>` : ''}
+      ${delivery.contactPhone ? `<div><span class="label">Tel:</span> ${delivery.contactPhone}</div>` : ''}
+      ${delivery.driverName ? `<div><span class="label">Conductor:</span> ${delivery.driverName}</div>` : ''}
+      ${delivery.instructions ? `<div class="delivery-instructions"><span class="label">Indicaciones:</span> ${delivery.instructions}</div>` : ''}
     </div>` : '';
 
   // Con desglose (IVA, ICA...) se imprime una linea por impuesto; sin el, solo
@@ -312,9 +353,14 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
       <div class="total-line total-final"><span>TOTAL:</span><span>${formatMoney(payload.total)}</span></div>
     </div>`;
 
-  const paymentsHTML = payload.payments && payload.payments.length > 0 ? `
+  // El vuelto solo tiene sentido si hubo pago, por eso vive dentro de este
+  // bloque y no en los totales.
+  const hasPayments = !!payload.payments && payload.payments.length > 0;
+  const paymentsHTML = hasPayments ? `
     <div class="payments">
-      ${payload.payments.map(p => `<div class="payment-line"><span>${p.methodName || p.method || 'Efectivo'}:</span><span>${formatMoney(p.amount)}</span></div>`).join('')}
+      ${payload.payments!.map(p => `<div class="payment-line"><span>${p.methodName || p.method || 'Efectivo'}:</span><span>${formatMoney(p.amount)}</span></div>`).join('')}
+      ${payload.totalPaid && payload.totalPaid > 0 ? `<div class="payment-line"><span>Recibido:</span><span>${formatMoney(payload.totalPaid)}</span></div>` : ''}
+      ${payload.changeAmount && payload.changeAmount > 0 ? `<div class="payment-line change-line"><span>CAMBIO:</span><span>${formatMoney(payload.changeAmount)}</span></div>` : ''}
     </div>` : '';
 
   return `<!DOCTYPE html>
@@ -327,11 +373,13 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
 </head>
 <body>
   <div class="header">
+    ${payload.businessLogoUrl ? `<img class="business-logo" src="${payload.businessLogoUrl}" alt="" />` : ''}
     <div class="business-name">${payload.businessName || 'Restaurante'}</div>
     ${payload.businessNit ? `<div class="business-info">NIT: ${payload.businessNit}</div>` : ''}
     ${payload.businessAddress ? `<div class="business-info">${payload.businessAddress}</div>` : ''}
     ${payload.businessCity ? `<div class="business-info">${payload.businessCity}</div>` : ''}
     ${payload.businessPhone ? `<div class="business-info">Tel: ${payload.businessPhone}</div>` : ''}
+    ${payload.businessEmail ? `<div class="business-info">${payload.businessEmail}</div>` : ''}
     ${businessFiscal ? `<div class="business-info">Regimen: ${businessFiscal}</div>` : ''}
     ${payload.branchName && payload.branchName !== payload.businessName ? `<div class="branch-name">Sucursal: ${payload.branchName}</div>` : ''}
     ${payload.branchAddress && payload.branchAddress !== payload.businessAddress ? `<div class="business-info">${payload.branchAddress}</div>` : ''}

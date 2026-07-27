@@ -678,10 +678,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           businessEmail: organization?.email,
           businessCity: (organization as any)?.city,
           businessFiscalResponsibilities: (organization as any)?.fiscal_responsibilities || null,
+          businessLogoUrl: (organization as any)?.logo_url || undefined,
           branchName: branch?.name,
           branchAddress: branch?.address,
           branchPhone: branch?.phone,
           cashierName: currentUser?.name,
+          // El recibido y el cambio se calculan aqui y antes no viajaban al
+          // ticket fisico: el cliente veia el vuelto en pantalla pero no en
+          // el papel.
+          totalPaid,
+          changeAmount: change > 0 ? change : undefined,
           deliveryInfo: deliveryType !== 'pickup' && deliveryAddress ? {
             type: deliveryType === 'delivery_own' ? 'Domicilio propio' : 'Domicilio',
             address: deliveryAddress,
@@ -820,7 +826,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       const { business, branch: branchInfo } = await PrintService.getBusinessAndBranch(completedSale.organization_id);
       const businessInfo: BusinessInfo = business || {
         name: organization?.name || 'Mi Empresa',
-        logoUrl: organization?.logo_url
+        logoUrl: (organization as any)?.logo_url
       };
 
       // Datos del cajero (quien facturó en el POS)
@@ -858,6 +864,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         tip_amount: tipAmount > 0 ? tipAmount : completedSale.tip_amount,
         total: cartTotal,
         tax_included: taxIncluded,
+        // Lo lee `toSalePayload` para imprimir la linea de CAMBIO.
+        change_amount: change > 0 ? change : undefined,
         _source: 'pos',
       } as any;
 

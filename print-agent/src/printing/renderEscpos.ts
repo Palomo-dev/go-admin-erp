@@ -1,5 +1,6 @@
 import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment } from './types';
 import type { PaperSpec } from './paper';
+import { writeRasterImage } from './escposImage';
 
 function formatMoney(value: number): string {
   return value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -315,8 +316,14 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
   const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
 
   // --- Header: datos del negocio ---
-  device.font('a').align('ct').style('b').size(...SIZE_TALL);
+  device.font('a').align('ct');
 
+  // El logo va antes del nombre y centrado. `charsPerLine * 12` reconstruye
+  // los puntos del cabezal (576 en 80mm, 384 en 58mm), que es el limite duro
+  // de ancho que acepta la impresora.
+  writeRasterImage(device, payload.businessLogoRaster, chars * 12);
+
+  device.style('b').size(...SIZE_TALL);
   if (payload.businessName) device.text(payload.businessName);
   device.style('normal').size(...SIZE_NORMAL);
   if (payload.businessNit) device.text(`NIT: ${payload.businessNit}`);
@@ -371,11 +378,23 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
   }
 
   // --- Delivery ---
+  // Se envuelve cada campo: una direccion larga desbordaria las 32 columnas de
+  // un papel de 58mm y la impresora la partiria por donde le conviene.
   if (payload.deliveryInfo) {
+    const d = payload.deliveryInfo;
     device.text(sepLight(chars));
-    device.text(`Entrega: ${payload.deliveryInfo.type}`);
-    device.text(`Direccion: ${payload.deliveryInfo.address}`);
-    if (payload.deliveryInfo.driverName) device.text(`Conductor: ${payload.deliveryInfo.driverName}`);
+    device.style('b').text('DATOS DE ENTREGA').style('normal');
+    device.text(`Tipo: ${d.type}`);
+    for (const line of wrapText(`Direccion: ${d.address}`, chars)) device.text(line);
+    if (d.city) device.text(`Ciudad: ${d.city}`);
+    if (d.contactName) for (const line of wrapText(`Recibe: ${d.contactName}`, chars)) device.text(line);
+    if (d.contactPhone) device.text(`Tel: ${d.contactPhone}`);
+    if (d.driverName) for (const line of wrapText(`Conductor: ${d.driverName}`, chars)) device.text(line);
+    if (d.instructions) {
+      device.style('b');
+      for (const line of wrapText(`Indicaciones: ${d.instructions}`, chars)) device.text(line);
+      device.style('normal');
+    }
   }
 
   // --- Encabezado de items ---
@@ -447,6 +466,13 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
     device.text(sepLight(chars));
     for (const payment of payload.payments) {
       device.text(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount), chars));
+    }
+    if (payload.totalPaid && payload.totalPaid > 0) {
+      device.text(padRight('Recibido:', formatMoney(payload.totalPaid), chars));
+    }
+    // El cambio en negrita: es el dato que el cajero comprueba de un vistazo.
+    if (payload.changeAmount && payload.changeAmount > 0) {
+      device.style('b').text(padRight('CAMBIO:', formatMoney(payload.changeAmount), chars)).style('normal');
     }
   }
 
@@ -544,10 +570,16 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
 
   // --- Delivery ---
   if (payload.deliveryInfo) {
+    const d = payload.deliveryInfo;
     lines.push(sepLight(chars));
-    lines.push(`Entrega: ${payload.deliveryInfo.type}`);
-    lines.push(`Direccion: ${payload.deliveryInfo.address}`);
-    if (payload.deliveryInfo.driverName) lines.push(`Conductor: ${payload.deliveryInfo.driverName}`);
+    lines.push('DATOS DE ENTREGA');
+    lines.push(`Tipo: ${d.type}`);
+    lines.push(...wrapText(`Direccion: ${d.address}`, chars));
+    if (d.city) lines.push(`Ciudad: ${d.city}`);
+    if (d.contactName) lines.push(...wrapText(`Recibe: ${d.contactName}`, chars));
+    if (d.contactPhone) lines.push(`Tel: ${d.contactPhone}`);
+    if (d.driverName) lines.push(...wrapText(`Conductor: ${d.driverName}`, chars));
+    if (d.instructions) lines.push(...wrapText(`Indicaciones: ${d.instructions}`, chars));
   }
 
   // --- Encabezado de items ---
@@ -597,6 +629,12 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
     lines.push(sepLight(chars));
     for (const payment of payload.payments) {
       lines.push(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount), chars));
+    }
+    if (payload.totalPaid && payload.totalPaid > 0) {
+      lines.push(padRight('Recibido:', formatMoney(payload.totalPaid), chars));
+    }
+    if (payload.changeAmount && payload.changeAmount > 0) {
+      lines.push(padRight('CAMBIO:', formatMoney(payload.changeAmount), chars));
     }
   }
 

@@ -291,11 +291,22 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
       ${payload.deliveryInfo.driverName ? `<div><span class="label">Conductor:</span> ${payload.deliveryInfo.driverName}</div>` : ''}
     </div>` : '';
 
+  // Con desglose (IVA, ICA...) se imprime una linea por impuesto; sin el, solo
+  // el agregado. El rotulo cambia si el precio ya lleva el impuesto incluido.
+  const taxSuffix = payload.taxIncluded ? ' (incluido)' : '';
+  const taxHTML = payload.taxLines && payload.taxLines.length > 0
+    ? payload.taxLines
+        .map(t => `<div class="total-line"><span>${t.name}${taxSuffix}:</span><span>${formatMoney(t.amount)}</span></div>`)
+        .join('')
+    : (payload.taxTotal && payload.taxTotal > 0
+        ? `<div class="total-line"><span>Impuestos${taxSuffix}:</span><span>${formatMoney(payload.taxTotal)}</span></div>`
+        : '');
+
   const totalsHTML = `
     <div class="totals">
       ${payload.subtotal != null ? `<div class="total-line"><span>Subtotal:</span><span>${formatMoney(payload.subtotal)}</span></div>` : ''}
       ${payload.discountTotal && payload.discountTotal > 0 ? `<div class="total-line"><span>Descuento:</span><span>-${formatMoney(payload.discountTotal)}</span></div>` : ''}
-      ${payload.taxTotal && payload.taxTotal > 0 ? `<div class="total-line"><span>Impuestos:</span><span>${formatMoney(payload.taxTotal)}</span></div>` : ''}
+      ${taxHTML}
       ${payload.deliveryFee && payload.deliveryFee > 0 ? `<div class="total-line"><span>Envio:</span><span>${formatMoney(payload.deliveryFee)}</span></div>` : ''}
       ${payload.tipAmount && payload.tipAmount > 0 ? `<div class="total-line"><span>Propina:</span><span>${formatMoney(payload.tipAmount)}</span></div>` : ''}
       <div class="total-line total-final"><span>TOTAL:</span><span>${formatMoney(payload.total)}</span></div>
@@ -370,7 +381,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
 </html>`;
 }
 
-export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload, paper: PaperSpec): string {
+function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO');
@@ -403,15 +414,7 @@ export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload, paper
     </div>`;
   }).join('');
 
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Comanda #${payload.ticketId}</title>
-  <style>${buildCss(paper)}</style>
-</head>
-<body>
+  return `
   <div class="header">
     <div class="business-name">${payload.businessName || 'Restaurante'}</div>
     ${payload.branchName && payload.branchName !== payload.businessName ? `<div class="branch-name">${payload.branchName}</div>` : ''}
@@ -438,7 +441,42 @@ export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload, paper
   <div class="footer">
     <div>Comanda generada por GO Admin</div>
     <div style="margin-top:3px;font-size:8px;color:#888">${dateStr} ${timeStr}</div>
-  </div>
+  </div>`;
+}
+
+/** Envuelve uno o varios cuerpos en un documento imprimible completo. */
+function wrapDocument(title: string, paper: PaperSpec, bodies: string[]): string {
+  // Cada comanda ocupa su propia hoja: en papel continuo eso se traduce en un
+  // corte por estacion, que es como salen tambien por impresora fisica.
+  const sections = bodies
+    .map((body, i) => `<div${i < bodies.length - 1 ? ' style="page-break-after: always"' : ''}>${body}</div>`)
+    .join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>${buildCss(paper)}</style>
+</head>
+<body>
+${sections}
 </body>
 </html>`;
+}
+
+export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload, paper: PaperSpec): string {
+  return wrapDocument(`Comanda #${payload.ticketId}`, paper, [buildKitchenTicketBody(payload)]);
+}
+
+/**
+ * Varias comandas en un unico documento, una por estacion.
+ *
+ * Lo usa la impresion por navegador: al no haber una impresora por estacion,
+ * se emite un solo documento con un salto de pagina entre comandas.
+ */
+export function buildKitchenTicketsHTML(payloads: KitchenTicketPrintPayload[], paper: PaperSpec): string {
+  const title = payloads.length === 1 ? `Comanda #${payloads[0].ticketId}` : 'Comandas';
+  return wrapDocument(title, paper, payloads.map(buildKitchenTicketBody));
 }

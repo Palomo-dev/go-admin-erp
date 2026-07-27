@@ -1,8 +1,8 @@
 import type { PrinterRow, PrintJobPayload, PrintJobRow } from './types';
-import type { PaperSpec } from './paper';
-import { getPaperSpec } from './paper';
-import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket } from './escposFormatter';
-import { buildSaleTicketHTML, buildKitchenTicketHTML } from './htmlFormatter';
+import type { PaperSpec } from './printing/paper';
+import { getPaperSpec } from './printing/paper';
+import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket } from './printing/renderEscpos';
+import { buildSaleTicketHTML, buildKitchenTicketHTML } from './printing/renderHtml';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {

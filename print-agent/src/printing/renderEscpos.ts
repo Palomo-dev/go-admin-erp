@@ -5,6 +5,25 @@ function formatMoney(value: number): string {
   return value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+/**
+ * Lineas de impuesto a imprimir: el desglose por tipo (IVA, ICA...) si viene
+ * informado y, si no, el total agregado. Devuelve [] si no hay impuestos.
+ *
+ * El sufijo se abrevia a "(incl)" porque en 58mm solo hay 32 columnas y
+ * "(incluido)" desplazaria el importe fuera del papel.
+ */
+function taxLines(payload: SaleTicketPrintPayload): Array<{ label: string; amount: number }> {
+  const suffix = payload.taxIncluded ? ' (incl)' : '';
+
+  if (payload.taxLines && payload.taxLines.length > 0) {
+    return payload.taxLines.map((t) => ({ label: `${t.name}${suffix}:`, amount: t.amount }));
+  }
+  if (payload.taxTotal && payload.taxTotal > 0) {
+    return [{ label: `Impuestos${suffix}:`, amount: payload.taxTotal }];
+  }
+  return [];
+}
+
 function getPaymentLabel(payment: { method: string; methodName?: string; amount: number }): string {
   return payment.methodName || payment.method || 'Efectivo';
 }
@@ -404,8 +423,8 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
   if (payload.discountTotal && payload.discountTotal > 0) {
     device.text(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`, chars));
   }
-  if (payload.taxTotal && payload.taxTotal > 0) {
-    device.text(padRight('Impuestos:', formatMoney(payload.taxTotal), chars));
+  for (const line of taxLines(payload)) {
+    device.text(padRight(line.label, formatMoney(line.amount), chars));
   }
   if (payload.deliveryFee && payload.deliveryFee > 0) {
     device.text(padRight('Envio:', formatMoney(payload.deliveryFee), chars));
@@ -567,7 +586,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
   // --- Totales ---
   if (payload.subtotal != null) lines.push(padRight('Subtotal:', formatMoney(payload.subtotal), chars));
   if (payload.discountTotal && payload.discountTotal > 0) lines.push(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`, chars));
-  if (payload.taxTotal && payload.taxTotal > 0) lines.push(padRight('Impuestos:', formatMoney(payload.taxTotal), chars));
+  for (const t of taxLines(payload)) lines.push(padRight(t.label, formatMoney(t.amount), chars));
   if (payload.deliveryFee && payload.deliveryFee > 0) lines.push(padRight('Envio:', formatMoney(payload.deliveryFee), chars));
   if (payload.tipAmount && payload.tipAmount > 0) lines.push(padRight('Propina:', formatMoney(payload.tipAmount), chars));
   lines.push(sep(chars));

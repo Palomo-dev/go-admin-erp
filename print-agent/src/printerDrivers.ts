@@ -5,9 +5,13 @@ import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTe
 import { buildSaleTicketHTML, buildKitchenTicketHTML } from './printing/renderHtml';
 import { buildEscposBuffer } from './printing/escposBuffer';
 import { sendRawToPrinter } from './transports/rawSpooler';
-import { sendToNetworkPrinter } from './transports/networkSocket';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
+  // CP858 = Latin-1 + Euro. Soporta Ñ, tildes, °, ¿, ¡, €.
+  // encode() cambia el encoding de iconv (cómo se codifican los strings a bytes).
+  // setCharacterCodeTable(19) envía ESC t 19 para que la impresora use Code Page 858.
+  device_.encode('CP858').setCharacterCodeTable(19);
+
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
     printSaleTicket(device_, payload as any, paper);
   } else {
@@ -78,23 +82,44 @@ async function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_ty
   const port = printer.port || 9100;
   const paper = getPaperSpec(printer.paper_width);
 
-  // Fase 3: generar el buffer ESC/POS primero, luego enviarlo por el socket.
-  // Esto desacopla la generación del transporte: el mismo buffer puede enviarse
-  // por red, USB, Bluetooth o spooler de Windows sin cambiar la lógica de render.
-  const buffer = await buildEscposBuffer(jobType, payload, paper);
+  console.log(`[printer] printViaNetwork: printer="${printer.name}" ${printer.ip_address}:${port}`);
 
-  console.log(
-    `[printer] printViaNetwork: printer="${printer.name}" ${printer.ip_address}:${port}, ` +
-    `buffer ESC/POS generado (${buffer.length} bytes)`
-  );
+  return new Promise((resolve, reject) => {
+    const device = new escpos.Network(printer.ip_address, port);
+    const device_ = new escpos.Printer(device);
 
-  // sendToNetworkPrinter solo resuelve cuando el socket se cerró limpiamente
-  // tras drenar el buffer. Antes se usaba escpos-network, que cerraba con
-  // destroy() y resolvía aunque los bytes nunca salieran: los jobs quedaban
-  // marcados como "impreso" sin que saliera papel.
-  await sendToNetworkPrinter(printer.ip_address, port, buffer);
+    // Timeout de conexión: si la impresora no responde en 5s, fallar.
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try { device.device.destroy(); } catch { /* ignore */ }
+      reject(new Error(`Timeout conectando a ${printer.ip_address}:${port} — ¿IP correcta? ¿impresora encendida?`));
+    }, 5000);
 
-  console.log(`[printer] printViaNetwork: enviado a "${printer.name}" (${printer.ip_address}:${port})`);
+    device.open((err: any) => {
+      if (settled) return;
+      if (err) {
+        settled = true;
+        clearTimeout(timer);
+        reject(new Error(`No se pudo conectar a ${printer.ip_address}:${port} — ${err.message || err}`));
+        return;
+      }
+      clearTimeout(timer);
+      try {
+        renderToDevice(device_, jobType, payload, paper);
+        device_.close(() => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        });
+      } catch (printErr) {
+        if (settled) return;
+        settled = true;
+        reject(printErr);
+      }
+    });
+  });
 }
 
 /**

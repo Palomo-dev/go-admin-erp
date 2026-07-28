@@ -211,6 +211,16 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
 
   // Agregar ítem a la factura
   const agregarItem = (product: Product) => {
+    // Bloquear productos agotados (con control de inventario y stock <= 0)
+    if (product.is_out_of_stock) {
+      toast({
+        title: 'Producto agotado',
+        description: `"${product.name}" no tiene existencias disponibles.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // PRIMERO: Obtenemos el estado actual de taxIncluded para mayor claridad
     const includeTax = taxIncluded;
     console.log('Estado actual de taxIncluded al agregar item:', includeTax);
@@ -401,7 +411,14 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                         className={`border-b border-gray-200 dark:border-gray-700 ${product.is_out_of_stock ? 'opacity-60' : ''}`}
                       >
                         <TableCell className="text-gray-900 dark:text-gray-100">
-                          {product.name}
+                          <div className="flex items-center gap-2">
+                            <span>{product.name}</span>
+                            {product.is_out_of_stock && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                                Agotado
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-gray-700 dark:text-gray-300">{product.sku}</TableCell>
                         <TableCell className="text-right text-gray-700 dark:text-gray-300">
@@ -416,6 +433,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                           <Button 
                             size="sm" 
                             onClick={() => agregarItem(product)}
+                            disabled={product.is_out_of_stock}
                             className="
                               h-8 px-3
                               bg-blue-600 hover:bg-blue-700

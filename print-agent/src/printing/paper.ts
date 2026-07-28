@@ -9,14 +9,13 @@
  *     576 / 203 = 2.837 pulgadas = 72.06 mm  -> area imprimible real
  *   Los ~4mm de cada borde son mecanicamente inalcanzables.
  *
- * Por que la PAGINA mide `rollMm` y no `printableMm`:
- *   `printableMm` es el area que alcanza el cabezal, no el tamano del papel.
- *   Si se declara `@page size: 72.06mm` sobre un papel de 80mm, el driver
- *   entiende que la hoja es mas pequena que el papel y ESCALA la pagina para
- *   llenarlo (x1.11), con lo que el contenido termina midiendo 80mm sobre un
- *   cabezal de 72mm y se recorta por AMBOS lados.
- *   Por eso la pagina se declara al ancho real del rollo y el area imprimible
- *   se respeta con un padding de `safeMarginMm`: asi no hay nada que escalar.
+ * Por que la PAGINA mide `printableMm` y no `rollMm`:
+ *   El driver de la impresora del sistema ya expone solo el area imprimible.
+ *   Si se declara `@page size: 80mm` (el rollo), el driver recorta o escala
+ *   el contenido para que quepa en su area imprimible, lo que produce
+ *   margenes dobles y recortes en el lado derecho.
+ *   Declarar `@page size: printableMm` hace que la pagina coincida exactamente
+ *   con lo que el cabezal puede imprimir, sin escalado ni recorte.
  *
  * Por que `charsPerLine` es 48 y 32:
  *   La fuente Font A de ESC/POS mide 12 puntos de ancho.
@@ -35,21 +34,12 @@ export interface PaperSpec {
   rollMm: number;
   /** Ancho imprimible real en mm. Es el que se usa para maquetar. */
   printableMm: number;
-  /** Ancho imprimible en micrones. Informativo: la pagina usa `rollMicrons`. */
+  /** Ancho imprimible en micrones, para `webContents.print({ pageSize })`. */
   printableMicrons: number;
-  /** Ancho imprimible en px CSS a 96 dpi. Ancho util para maquetar. */
+  /** Ancho imprimible en px CSS a 96 dpi. Ancho de la BrowserWindow oculta. */
   cssPx: number;
   /** Caracteres por linea con Font A. Base de separadores y alineacion. */
   charsPerLine: number;
-  /** Ancho del rollo en micrones, para `webContents.print({ pageSize })`. */
-  rollMicrons: number;
-  /** Ancho del rollo en px CSS. Ancho de la BrowserWindow oculta. */
-  rollCssPx: number;
-  /**
-   * Margen lateral inalcanzable por el cabezal, en mm. Se aplica como padding
-   * para que el contenido caiga dentro del area imprimible sin escalar.
-   */
-  safeMarginMm: number;
 }
 
 const MM_TO_CSS_PX = 96 / 25.4;
@@ -57,8 +47,6 @@ const MM_TO_CSS_PX = 96 / 25.4;
 function buildSpec(width: PaperWidth, rollMm: number, dots: number): PaperSpec {
   // 203 dpi es el estandar de facto en impresoras termicas de tickets.
   const printableMm = (dots / 203) * 25.4;
-  // El sobrante del rollo se reparte a partes iguales entre los dos bordes.
-  const safeMarginMm = Math.max(0, (rollMm - printableMm) / 2);
   return {
     width,
     rollMm,
@@ -67,9 +55,6 @@ function buildSpec(width: PaperWidth, rollMm: number, dots: number): PaperSpec {
     cssPx: Math.floor(printableMm * MM_TO_CSS_PX),
     // Font A = 12 puntos de ancho.
     charsPerLine: Math.floor(dots / 12),
-    rollMicrons: Math.round(rollMm * 1000),
-    rollCssPx: Math.floor(rollMm * MM_TO_CSS_PX),
-    safeMarginMm: Math.round(safeMarginMm * 100) / 100,
   };
 }
 

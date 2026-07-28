@@ -160,12 +160,23 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
     const quantity = parseFloat(itemQuantity) || 1;
     const cost = parseFloat(itemCost) || 0;
 
+    // Construir nombre con atributos de variante si aplica
+    let displayName = product.name;
+    if ((product as any).parent_name && (product as any).variant_data) {
+      const entries = Object.entries((product as any).variant_data)
+        .filter(([, v]) => v && v.trim() !== '');
+      if (entries.length > 0) {
+        const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
+        displayName = `${(product as any).parent_name} · ${attrs}`;
+      }
+    }
+
     const newItem: OrderItem = {
       id: `temp-${Date.now()}`,
       product_id: product.id,
-      productName: product.name,
+      productName: displayName,
       sku: product.sku,
-      image: (product as any).image || null,
+      image: (product as any).image || (product as any).parent_image || null,
       quantity,
       unit_cost: cost
     };

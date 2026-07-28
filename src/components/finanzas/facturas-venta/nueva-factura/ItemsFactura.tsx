@@ -6,9 +6,8 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
-import { Plus, Trash2, Search, PackagePlus, Package } from 'lucide-react';
+import { Plus, Trash2, Search, PackagePlus } from 'lucide-react';
 import { ProductoFormDialog } from '@/components/shared/form-dialogs';
-import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import {
   Table,
   TableBody,
@@ -42,7 +41,6 @@ type Product = {
   stock_qty?: number;
   /** Rastrea inventario y no queda nada en la sucursal. */
   is_out_of_stock?: boolean;
-  image?: string | null;
 };
 
 type ItemsFacturaProps = {
@@ -108,12 +106,10 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           tax_rate: undefined
         })) || [];
         
-        const conDisp = await agregarDisponibilidad(formattedProducts);
-        setProducts(await agregarImagenes(conDisp));
+        setProducts(await agregarDisponibilidad(formattedProducts));
       } else {
         // Si la función RPC funciona correctamente
-        const conDisp = await agregarDisponibilidad(data || []);
-        setProducts(await agregarImagenes(conDisp));
+        setProducts(await agregarDisponibilidad(data || []));
       }
       
     } catch (error) {
@@ -204,37 +200,6 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
     }
   };
 
-  /**
-   * Carga la imagen principal de cada producto en lotes.
-   */
-  const agregarImagenes = async (lista: Product[]): Promise<Product[]> => {
-    if (lista.length === 0) return lista;
-    try {
-      const ids = lista.map(p => p.id);
-      const imageMap: Record<number, string | null> = {};
-      const CHUNK = 300;
-      for (let i = 0; i < ids.length; i += CHUNK) {
-        const chunk = ids.slice(i, i + CHUNK);
-        const { data: imgData } = await supabase
-          .from('product_images')
-          .select('product_id, storage_path, is_primary')
-          .in('product_id', chunk)
-          .eq('is_primary', true);
-        if (imgData) {
-          imgData.forEach((img: any) => {
-            if (img.storage_path) {
-              imageMap[img.product_id] = getPublicUrl(img.storage_path);
-            }
-          });
-        }
-      }
-      return lista.map(p => ({ ...p, image: imageMap[p.id] || null }));
-    } catch (error) {
-      console.error('No se pudieron cargar las imágenes:', error);
-      return lista;
-    }
-  };
-
   // Filtrar productos por búsqueda
   const filteredProducts = searchTerm 
     ? products.filter(p => 
@@ -246,14 +211,6 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
 
   // Agregar ítem a la factura
   const agregarItem = (product: Product) => {
-    // Avisar si está agotado pero permitir agregarlo
-    if (product.is_out_of_stock) {
-      toast({
-        title: 'Producto agotado',
-        description: `"${product.name}" no tiene existencias en la sucursal seleccionada. Se agregará de todas formas.`,
-      });
-    }
-
     // PRIMERO: Obtenemos el estado actual de taxIncluded para mayor claridad
     const includeTax = taxIncluded;
     console.log('Estado actual de taxIncluded al agregar item:', includeTax);
@@ -430,7 +387,6 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                      <TableHead className="w-[60px] text-gray-700 dark:text-gray-300"></TableHead>
                       <TableHead className="text-gray-700 dark:text-gray-300">Nombre</TableHead>
                       <TableHead className="text-gray-700 dark:text-gray-300">SKU</TableHead>
                       <TableHead className="text-right text-gray-700 dark:text-gray-300">Disponible</TableHead>
@@ -444,33 +400,8 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                         key={product.id}
                         className={`border-b border-gray-200 dark:border-gray-700 ${product.is_out_of_stock ? 'opacity-60' : ''}`}
                       >
-                        <TableCell>
-                          <div className="h-10 w-10 rounded-md overflow-hidden border dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                            {product.image ? (
-                              <img
-                                src={product.image}
-                                alt={product.name}
-                                className="h-full w-full object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                                }}
-                              />
-                            ) : (
-                              <Package className="h-5 w-5 text-gray-400" />
-                            )}
-                          </div>
-                        </TableCell>
                         <TableCell className="text-gray-900 dark:text-gray-100">
-                          <div className="flex items-center gap-2">
-                            <span>{product.name}</span>
-                            {product.is_out_of_stock && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                                Agotado
-                              </span>
-                            )}
-                          </div>
+                          {product.name}
                         </TableCell>
                         <TableCell className="text-gray-700 dark:text-gray-300">{product.sku}</TableCell>
                         <TableCell className="text-right text-gray-700 dark:text-gray-300">

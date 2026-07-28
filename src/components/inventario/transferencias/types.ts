@@ -9,6 +9,7 @@ export interface Branch {
 
 export interface Product {
   id: number;
+  uuid?: string;
   name: string;
   sku?: string;
   barcode?: string;
@@ -16,6 +17,11 @@ export interface Product {
   track_stock?: boolean;
   image?: string | null;
   category?: string;
+  is_parent?: boolean;
+  parent_product_id?: number | null;
+  variant_data?: Record<string, string> | null;
+  parent_name?: string | null;
+  parent_image?: string | null;
 }
 
 export interface Lot {

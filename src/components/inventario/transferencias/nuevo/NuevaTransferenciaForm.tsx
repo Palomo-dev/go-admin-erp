@@ -14,6 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ProductSearchCombobox, type ProductOption } from '@/components/inventario/ordenes-compra/ProductSearchCombobox';
+import { Badge } from '@/components/ui/badge';
+import { Package } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -30,6 +33,7 @@ import { useToast } from '@/components/ui/use-toast';
 interface ItemTransferencia {
   product_id: number;
   product_name: string;
+  product_image?: string | null;
   quantity: number;
   lot_id?: number | null;
   lot_code?: string;
@@ -108,10 +112,8 @@ export function NuevaTransferenciaForm() {
     if (cantidadAgregar > stockDisponible) {
       toast({
         title: 'Stock insuficiente',
-        description: `Solo hay ${stockDisponible} unidades disponibles`,
-        variant: 'destructive'
+        description: `Solo hay ${stockDisponible} unidades disponibles. Se agregará de todas formas.`,
       });
-      return;
     }
 
     const producto = productos.find(p => p.id === parseInt(productoSeleccionado));
@@ -127,9 +129,21 @@ export function NuevaTransferenciaForm() {
       return;
     }
 
+    // Construir nombre con atributos de variante si aplica
+    let displayName = producto.name;
+    if (producto.parent_name && producto.variant_data) {
+      const entries = Object.entries(producto.variant_data)
+        .filter(([, v]) => v && v.trim() !== '');
+      if (entries.length > 0) {
+        const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
+        displayName = `${producto.parent_name} · ${attrs}`;
+      }
+    }
+
     setItems([...items, {
       product_id: producto.id,
-      product_name: producto.name,
+      product_name: displayName,
+      product_image: producto.image || producto.parent_image || null,
       quantity: cantidadAgregar,
       stock_disponible: stockDisponible
     }]);
@@ -294,22 +308,13 @@ export function NuevaTransferenciaForm() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <Label className="dark:text-gray-300">Producto</Label>
-                  <Select 
-                    value={productoSeleccionado} 
-                    onValueChange={setProductoSeleccionado}
+                  <ProductSearchCombobox
+                    products={productos as ProductOption[]}
+                    value={productoSeleccionado}
+                    onSelect={(product) => setProductoSeleccionado(product ? product.id.toString() : '')}
+                    placeholder={origenId ? 'Buscar producto por nombre o SKU...' : 'Seleccione origen primero'}
                     disabled={!origenId}
-                  >
-                    <SelectTrigger className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:text-white">
-                      <SelectValue placeholder={origenId ? "Seleccionar producto" : "Seleccione origen primero"} />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-gray-800 dark:border-gray-600 max-h-60">
-                      {productos.map(p => (
-                        <SelectItem key={p.id} value={p.id.toString()}>
-                          {p.sku ? `[${p.sku}] ` : ''}{p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
 
                 <div className="w-32">
@@ -323,9 +328,16 @@ export function NuevaTransferenciaForm() {
                     className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
                   />
                   {productoSeleccionado && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Disponible: {stockDisponible}
-                    </p>
+                    <div className="mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Disponible: {stockDisponible}
+                      </p>
+                      {stockDisponible <= 0 && (
+                        <Badge className="mt-1 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-[10px]">
+                          Agotado
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -345,6 +357,7 @@ export function NuevaTransferenciaForm() {
                 <Table>
                   <TableHeader>
                     <TableRow className="dark:border-gray-700">
+                      <TableHead className="w-[60px]"></TableHead>
                       <TableHead className="dark:text-gray-300">Producto</TableHead>
                       <TableHead className="dark:text-gray-300 text-center">Cantidad</TableHead>
                       <TableHead className="dark:text-gray-300 text-right">Acciones</TableHead>
@@ -353,8 +366,33 @@ export function NuevaTransferenciaForm() {
                   <TableBody>
                     {items.map((item) => (
                       <TableRow key={item.product_id} className="dark:border-gray-700">
+                        <TableCell>
+                          <div className="h-10 w-10 rounded-md overflow-hidden border dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            {item.product_image ? (
+                              <img
+                                src={item.product_image}
+                                alt={item.product_name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                                }}
+                              />
+                            ) : (
+                              <Package className="h-5 w-5 text-gray-400" />
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="dark:text-white">
-                          {item.product_name}
+                          <div className="flex items-center gap-2">
+                            <span>{item.product_name}</span>
+                            {item.stock_disponible <= 0 && (
+                              <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 text-[10px]">
+                                Agotado
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center dark:text-gray-300">
                           {item.quantity}

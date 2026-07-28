@@ -366,9 +366,10 @@ export class TransferenciasService {
   static async obtenerProductos(): Promise<Product[]> {
     const organizationId = getOrganizationId();
 
-    const { data, error } = await supabase
+    // Cargar todos los productos activos (incluyendo padres para mapeo)
+    const { data: allData, error } = await supabase
       .from('products')
-      .select('id, name, sku, barcode, unit_code')
+      .select('id, uuid, name, sku, barcode, unit_code, track_stock, is_parent, parent_product_id, variant_data, categories(name)')
       .eq('organization_id', organizationId)
       .eq('status', 'active')
       .order('name');
@@ -378,7 +379,92 @@ export class TransferenciasService {
       throw error;
     }
 
-    return data || [];
+    if (!allData || allData.length === 0) return [];
+
+    // Mapa de padres: id -> { name, sku }
+    const parentMap = new Map<number, { name: string; sku: string }>();
+    allData.forEach((p: any) => {
+      if (p.is_parent) parentMap.set(p.id, { name: p.name, sku: p.sku });
+    });
+
+    // Mapa de SKU base -> nombre del padre (para variantes huérfanas)
+    const skuToParent = new Map<string, string>();
+    allData.forEach((p: any) => {
+      if (p.is_parent) skuToParent.set(p.sku, p.name);
+    });
+
+    // Filtrar: excluir padres y productos con variant_data vacío
+    const data = allData.filter((p: any) => {
+      if (p.is_parent) return false;
+      if (p.variant_data && typeof p.variant_data === 'object') {
+        const hasValues = Object.values(p.variant_data).some((v: any) => v && String(v).trim() !== '');
+        if (!hasValues && Object.keys(p.variant_data).length > 0) return false;
+      }
+      return true;
+    });
+
+    const productIds = data.map(p => p.id);
+    const parentIds = Array.from(parentMap.keys());
+    const allIdsForImages = [...productIds, ...parentIds];
+
+    // Cargar imágenes principales en lotes
+    const imageMap: Record<number, string | null> = {};
+    const CHUNK = 300;
+    for (let i = 0; i < allIdsForImages.length; i += CHUNK) {
+      const chunk = allIdsForImages.slice(i, i + CHUNK);
+      const { data: imgData } = await supabase
+        .from('product_images')
+        .select('product_id, storage_path, is_primary')
+        .in('product_id', chunk)
+        .eq('is_primary', true);
+      if (imgData) {
+        imgData.forEach((img: any) => {
+          if (img.storage_path) {
+            const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
+            const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(img.storage_path);
+            imageMap[img.product_id] = urlData?.publicUrl || null;
+          }
+        });
+      }
+    }
+
+    return data.map((p: any) => {
+      // Determinar parent_name e imagen del padre
+      let parentName: string | null = null;
+      let parentImage: string | null = null;
+
+      if (p.parent_product_id && parentMap.has(p.parent_product_id)) {
+        parentName = parentMap.get(p.parent_product_id)!.name;
+        parentImage = imageMap[p.parent_product_id] || null;
+      } else if (p.variant_data && typeof p.variant_data === 'object') {
+        const skuMatch = p.sku.match(/^(.+)-V[A-Z0-9]+/);
+        if (skuMatch) {
+          const baseSku = skuMatch[1];
+          if (skuToParent.has(baseSku)) {
+            parentName = skuToParent.get(baseSku)!;
+            const parentEntry = allData.find((pp: any) => pp.sku === baseSku && pp.is_parent);
+            if (parentEntry) parentImage = imageMap[parentEntry.id] || null;
+          }
+        }
+      }
+
+      return {
+        id: p.id,
+        uuid: p.uuid,
+        name: p.name,
+        sku: p.sku,
+        barcode: p.barcode,
+        unit_code: p.unit_code,
+        track_stock: p.track_stock,
+        category: p.categories?.name,
+        image: imageMap[p.id] || null,
+        is_parent: p.is_parent,
+        parent_product_id: p.parent_product_id,
+        variant_data: p.variant_data,
+        parent_name: parentName,
+        parent_image: parentImage,
+      } as Product;
+    });
   }
 
   static async obtenerStockDisponible(

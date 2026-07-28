@@ -837,19 +837,46 @@ class PurchaseOrderService {
   /**
    * Obtener productos para selector
    */
-  async getProducts(organizationId: number): Promise<{ id: number; uuid: string; sku: string; name: string; unit_code?: string; category?: string; cost?: number; track_stock?: boolean; image?: string | null }[]> {
+  async getProducts(organizationId: number): Promise<any[]> {
     try {
-      const { data } = await supabase
+      // Cargar todos los productos activos (incluyendo padres para mapeo)
+      const { data: allData } = await supabase
         .from('products')
-        .select('id, uuid, sku, name, unit_code, track_stock, categories(name)')
+        .select('id, uuid, sku, name, unit_code, track_stock, is_parent, parent_product_id, variant_data, categories(name)')
         .eq('organization_id', organizationId)
         .eq('status', 'active')
-        .eq('track_stock', true)
         .order('name');
 
-      if (!data) return [];
+      if (!allData) return [];
+
+      // Mapa de padres: id -> { name, sku }
+      const parentMap = new Map<number, { name: string; sku: string }>();
+      allData.forEach((p: any) => {
+        if (p.is_parent) {
+          parentMap.set(p.id, { name: p.name, sku: p.sku });
+        }
+      });
+
+      // Mapa de SKU base -> nombre del padre (para variantes huérfanas sin parent_product_id)
+      const skuToParent = new Map<string, string>();
+      allData.forEach((p: any) => {
+        if (p.is_parent) {
+          skuToParent.set(p.sku, p.name);
+        }
+      });
+
+      // Filtrar: excluir padres y productos con variant_data vacío
+      const data = allData.filter((p: any) => {
+        if (p.is_parent) return false;
+        if (p.variant_data && typeof p.variant_data === 'object') {
+          const hasValues = Object.values(p.variant_data).some((v: any) => v && String(v).trim() !== '');
+          if (!hasValues && Object.keys(p.variant_data).length > 0) return false;
+        }
+        return true;
+      });
 
       const productIds = data.map(p => p.id);
+      const parentIds = Array.from(parentMap.keys());
 
       // Obtener costos actuales de product_costs
       const { data: costs } = await supabase
@@ -861,11 +888,12 @@ class PurchaseOrderService {
       const costMap = new Map<number, number>();
       (costs || []).forEach(c => costMap.set(c.product_id, Number(c.cost)));
 
-      // Obtener imágenes principales
+      // Obtener imágenes principales de productos
       const imageMap: Record<number, string | null> = {};
+      const allIdsForImages = [...productIds, ...parentIds];
       const CHUNK = 300;
-      for (let i = 0; i < productIds.length; i += CHUNK) {
-        const chunk = productIds.slice(i, i + CHUNK);
+      for (let i = 0; i < allIdsForImages.length; i += CHUNK) {
+        const chunk = allIdsForImages.slice(i, i + CHUNK);
         const { data: imgData } = await supabase
           .from('product_images')
           .select('product_id, storage_path, is_primary')
@@ -882,17 +910,47 @@ class PurchaseOrderService {
         }
       }
 
-      return data.map((p: any) => ({
-        id: p.id,
-        uuid: p.uuid,
-        sku: p.sku,
-        name: p.name,
-        unit_code: p.unit_code,
-        category: p.categories?.name,
-        cost: costMap.get(p.id) || 0,
-        track_stock: p.track_stock,
-        image: imageMap[p.id] || null,
-      }));
+      return data.map((p: any) => {
+        // Determinar parent_name: por parent_product_id o por prefijo de SKU
+        let parentName: string | null = null;
+        let parentImage: string | null = null;
+
+        if (p.parent_product_id && parentMap.has(p.parent_product_id)) {
+          parentName = parentMap.get(p.parent_product_id)!.name;
+          parentImage = imageMap[p.parent_product_id] || null;
+        } else if (p.variant_data && typeof p.variant_data === 'object') {
+          // Intentar match por prefijo de SKU (todo antes del último "-V...")
+          const skuMatch = p.sku.match(/^(.+)-V[A-Z0-9]+/);
+          if (skuMatch) {
+            const baseSku = skuMatch[1];
+            if (skuToParent.has(baseSku)) {
+              parentName = skuToParent.get(baseSku)!;
+              // Buscar imagen del padre
+              const parentEntry = allData.find((pp: any) => pp.sku === baseSku && pp.is_parent);
+              if (parentEntry) {
+                parentImage = imageMap[parentEntry.id] || null;
+              }
+            }
+          }
+        }
+
+        return {
+          id: p.id,
+          uuid: p.uuid,
+          sku: p.sku,
+          name: p.name,
+          unit_code: p.unit_code,
+          category: p.categories?.name,
+          cost: costMap.get(p.id) || 0,
+          track_stock: p.track_stock,
+          image: imageMap[p.id] || null,
+          is_parent: p.is_parent,
+          parent_product_id: p.parent_product_id,
+          variant_data: p.variant_data,
+          parent_name: parentName,
+          parent_image: parentImage,
+        };
+      });
     } catch (error) {
       console.error('Error obteniendo productos:', error);
       return [];

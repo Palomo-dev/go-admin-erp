@@ -112,43 +112,94 @@ export function NuevoAjusteForm() {
     const loadProducts = async () => {
       if (!organization?.id) return;
       try {
-        const { data } = await supabase
+        // Cargar todos los productos activos (incluyendo padres para mapeo)
+        const { data: allData } = await supabase
           .from('products')
-          .select('id, uuid, sku, name, status')
+          .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data')
           .eq('organization_id', organization.id)
           .eq('status', 'active')
           .order('name');
-        if (data) {
-          const productIds = data.map((p: any) => p.id);
-          const imageMap: Record<number, string | null> = {};
 
-          // Cargar imágenes principales en lotes
-          const CHUNK = 300;
-          for (let i = 0; i < productIds.length; i += CHUNK) {
-            const chunk = productIds.slice(i, i + CHUNK);
-            const { data: imgData } = await supabase
-              .from('product_images')
-              .select('product_id, storage_path, is_primary')
-              .in('product_id', chunk)
-              .eq('is_primary', true);
-            if (imgData) {
-              imgData.forEach((img: any) => {
-                if (img.storage_path) {
-                  imageMap[img.product_id] = getPublicUrl(img.storage_path);
-                }
-              });
+        if (!allData) return;
+
+        // Mapa de padres: id -> { name, sku }
+        const parentMap = new Map<number, { name: string; sku: string }>();
+        allData.forEach((p: any) => {
+          if (p.is_parent) parentMap.set(p.id, { name: p.name, sku: p.sku });
+        });
+
+        // Mapa de SKU base -> nombre del padre
+        const skuToParent = new Map<string, string>();
+        allData.forEach((p: any) => {
+          if (p.is_parent) skuToParent.set(p.sku, p.name);
+        });
+
+        // Filtrar: excluir padres y productos con variant_data vacío
+        const data = allData.filter((p: any) => {
+          if (p.is_parent) return false;
+          if (p.variant_data && typeof p.variant_data === 'object') {
+            const hasValues = Object.values(p.variant_data).some((v: any) => v && String(v).trim() !== '');
+            if (!hasValues && Object.keys(p.variant_data).length > 0) return false;
+          }
+          return true;
+        });
+
+        const productIds = data.map((p: any) => p.id);
+        const parentIds = Array.from(parentMap.keys());
+        const allIdsForImages = [...productIds, ...parentIds];
+        const imageMap: Record<number, string | null> = {};
+
+        // Cargar imágenes principales en lotes
+        const CHUNK = 300;
+        for (let i = 0; i < allIdsForImages.length; i += CHUNK) {
+          const chunk = allIdsForImages.slice(i, i + CHUNK);
+          const { data: imgData } = await supabase
+            .from('product_images')
+            .select('product_id, storage_path, is_primary')
+            .in('product_id', chunk)
+            .eq('is_primary', true);
+          if (imgData) {
+            imgData.forEach((img: any) => {
+              if (img.storage_path) {
+                imageMap[img.product_id] = getPublicUrl(img.storage_path);
+              }
+            });
+          }
+        }
+
+        setProducts(data.map((p: any) => {
+          let parentName: string | null = null;
+          let parentImage: string | null = null;
+
+          if (p.parent_product_id && parentMap.has(p.parent_product_id)) {
+            parentName = parentMap.get(p.parent_product_id)!.name;
+            parentImage = imageMap[p.parent_product_id] || null;
+          } else if (p.variant_data && typeof p.variant_data === 'object') {
+            const skuMatch = p.sku?.match(/^(.+)-V[A-Z0-9]+/);
+            if (skuMatch) {
+              const baseSku = skuMatch[1];
+              if (skuToParent.has(baseSku)) {
+                parentName = skuToParent.get(baseSku)!;
+                const parentEntry = allData.find((pp: any) => pp.sku === baseSku && pp.is_parent);
+                if (parentEntry) parentImage = imageMap[parentEntry.id] || null;
+              }
             }
           }
 
-          setProducts(data.map((p: any) => ({
+          return {
             id: p.id,
             uuid: p.uuid,
             sku: p.sku,
             name: p.name,
             status: p.status,
             image: imageMap[p.id] || null,
-          })));
-        }
+            is_parent: p.is_parent,
+            parent_product_id: p.parent_product_id,
+            variant_data: p.variant_data,
+            parent_name: parentName,
+            parent_image: parentImage,
+          };
+        }));
       } catch (error) {
         console.error('Error cargando productos:', error);
       }
@@ -339,11 +390,23 @@ export function NuevoAjusteForm() {
       const currentQty = stockData?.qty_on_hand || 0;
       const unitCost = costData ? parseFloat(costData.cost) : parseFloat(stockData?.avg_cost || '0');
 
+      // Construir nombre con atributos de variante si aplica
+      let displayName = product.name;
+      const opt = product as ProductOption;
+      if (opt.parent_name && opt.variant_data) {
+        const entries = Object.entries(opt.variant_data)
+          .filter(([, v]) => v && v.trim() !== '');
+        if (entries.length > 0) {
+          const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
+          displayName = `${opt.parent_name} · ${attrs}`;
+        }
+      }
+
       const newItem: AdjustmentItemInput = {
         product_id: product.id,
-        product_name: product.name,
+        product_name: displayName,
         product_sku: product.sku,
-        product_image: (product as ProductOption).image || null,
+        product_image: (product as ProductOption).image || (product as ProductOption).parent_image || null,
         system_qty: currentQty,
         counted_qty: currentQty,
         difference: 0,

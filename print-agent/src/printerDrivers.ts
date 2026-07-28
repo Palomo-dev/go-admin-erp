@@ -3,6 +3,8 @@ import type { PaperSpec } from './printing/paper';
 import { getPaperSpec } from './printing/paper';
 import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket } from './printing/renderEscpos';
 import { buildSaleTicketHTML, buildKitchenTicketHTML } from './printing/renderHtml';
+import { buildEscposBuffer } from './printing/escposBuffer';
+import { sendRawToPrinter } from './transports/rawSpooler';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
@@ -42,7 +44,6 @@ function tryRequire(moduleName: string): any {
   }
 }
 
-escpos.USB = tryRequire('escpos-usb');
 escpos.Bluetooth = tryRequire('escpos-bluetooth');
 
 /**
@@ -55,11 +56,15 @@ export async function printToDevice(printer: PrinterRow, jobType: PrintJobRow['j
     case 'network':
       return printViaNetwork(printer, jobType, payload);
     case 'usb':
-      return printViaUsb(printer, jobType, payload);
+      // USB delega al spooler RAW de Windows: envía ESC/POS directo sin Zadig/libusb.
+      // Requiere system_printer_name con el nombre exacto de la impresora en Windows.
+      return printViaRawSpooler(printer, jobType, payload);
     case 'bluetooth':
       return printViaBluetooth(printer, jobType, payload);
     case 'system':
       return printViaSystem(printer, jobType, payload);
+    case 'raw_spooler':
+      return printViaRawSpooler(printer, jobType, payload);
     default:
       throw new Error(`Tipo de conexión no soportado: ${printer.connection_type}`);
   }
@@ -70,58 +75,21 @@ function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_type'], 
     throw new Error(`Impresora "${printer.name}" no tiene ip_address configurada`);
   }
   const port = printer.port || 9100;
-
   const paper = getPaperSpec(printer.paper_width);
 
-  return new Promise((resolve, reject) => {
-    const device = new escpos.Network(printer.ip_address, port);
-    const device_ = new escpos.Printer(device);
-
-    device.open((err: any) => {
-      if (err) return reject(new Error(`No se pudo conectar a ${printer.ip_address}:${port} — ${err.message || err}`));
-      try {
-        renderToDevice(device_, jobType, payload, paper);
-        device_.close(() => resolve());
-      } catch (printErr) {
-        reject(printErr);
-      }
-    });
-  });
-}
-
-/**
- * NOTA: requiere que el vendor_id/product_id estén en formato hexadecimal
- * (ej. "0x04b8"), y que el sistema operativo tenga el driver/permiso correcto
- * (en Windows normalmente vía Zadig/WinUSB; en Linux, reglas udev).
- * Validar con el dispositivo físico antes de usar en producción.
- */
-function printViaUsb(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
-  if (!escpos.USB) {
-    throw new Error('Soporte USB no disponible: el módulo nativo escpos-usb no se pudo instalar en este equipo');
-  }
-  if (!printer.vendor_id || !printer.product_id) {
-    throw new Error(`Impresora "${printer.name}" no tiene vendor_id/product_id configurados`);
-  }
-
-  const paper = getPaperSpec(printer.paper_width);
-
-  return new Promise((resolve, reject) => {
-    try {
-      const device = new escpos.USB(Number(printer.vendor_id), Number(printer.product_id));
-      const device_ = new escpos.Printer(device);
-
+  // Fase 3: generar el buffer ESC/POS primero, luego enviarlo por el socket.
+  // Esto desacopla la generación del transporte: el mismo buffer puede enviarse
+  // por red, USB, Bluetooth o spooler de Windows sin cambiar la lógica de render.
+  return buildEscposBuffer(jobType, payload, paper).then((buffer) => {
+    return new Promise((resolve, reject) => {
+      const device = new escpos.Network(printer.ip_address!, port);
       device.open((err: any) => {
-        if (err) return reject(new Error(`No se pudo abrir la impresora USB "${printer.name}" — ${err.message || err}`));
-        try {
-          renderToDevice(device_, jobType, payload, paper);
-          device_.close(() => resolve());
-        } catch (printErr) {
-          reject(printErr);
-        }
+        if (err) return reject(new Error(`No se pudo conectar a ${printer.ip_address}:${port} — ${err.message || err}`));
+        device.write(buffer, () => {
+          device.close(() => resolve());
+        });
       });
-    } catch (err: any) {
-      reject(new Error(`Error inicializando impresora USB "${printer.name}": ${err.message || err}`));
-    }
+    });
   });
 }
 
@@ -166,17 +134,29 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
   const paper = getPaperSpec(printer.paper_width);
   const html = renderHTML(jobType, payload, paper);
 
+  // El nombre real en Windows puede diferir del nombre interno del ERP.
+  // Si system_printer_name no está configurado, caer en printer.name
+  // pero avisar para que el usuario lo configure correctamente.
+  const printerName = printer.system_printer_name || printer.name;
+  if (!printer.system_printer_name) {
+    console.warn(
+      `[printer] printViaSystem: "${printer.name}" no tiene system_printer_name configurado. ` +
+      `Usando "${printer.name}" como nombre de impresora. ` +
+      `Configura system_printer_name con el nombre exacto de Windows para evitar errores.`
+    );
+  }
+
   console.log(
-    `[printer] printViaSystem: printer="${printer.name}", paper_width="${printer.paper_width}" -> ` +
+    `[printer] printViaSystem: printer="${printerName}", paper_width="${printer.paper_width}" -> ` +
     `${paper.width} (rollo ${paper.rollMm}mm, imprimible ${paper.printableMm}mm, ` +
-    `margen ${paper.safeMarginMm}mm, ${paper.charsPerLine} cols)`
+    `${paper.charsPerLine} cols)`
   );
 
   // 1. Intentar impresión via Electron (Chromium embebido)
   const electron = tryRequire('electron');
   if (electron && electron.BrowserWindow) {
     try {
-      await printViaElectron(html, printer.name, paper);
+      await printViaElectron(html, printerName, paper);
       return;
     } catch (err: any) {
       console.error('[printer] Error con Electron print, fallback a texto plano:', err.message);
@@ -190,15 +170,15 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
     return new Promise((resolve, reject) => {
       nodePrinter.printDirect({
         data: text,
-        printer: printer.name,
+        printer: printerName,
         type: 'RAW',
         success: () => resolve(),
-        error: (err: any) => reject(new Error(`Error imprimiendo en impresora del sistema "${printer.name}": ${err}`)),
+        error: (err: any) => reject(new Error(`Error imprimiendo en impresora del sistema "${printerName}": ${err}`)),
       });
     });
   }
 
-  throw new Error(`No se pudo imprimir en "${printer.name}": Electron print no disponible y módulo printer no instalado`);
+  throw new Error(`No se pudo imprimir en "${printerName}": Electron print no disponible y módulo printer no instalado`);
 }
 
 /**
@@ -216,15 +196,14 @@ async function printViaSystem(printer: PrinterRow, jobType: PrintJobRow['job_typ
  * 400px pero se imprime a 302px, la página resulta más corta que el contenido y
  * el ticket sale recortado.
  *
- * El ancho es el del ROLLO, no el imprimible: la página debe medir lo mismo que
- * el papel para que el driver no la escale. El área que el cabezal no alcanza la
- * reserva el propio HTML con su padding lateral. Ver la nota en paper.ts.
+ * El ancho es el IMPRIMIBLE, no el del rollo: el driver ya recorta al área del
+ * cabezal. Usar el ancho del rollo provocaba margenes dobles y recortes.
  */
 function printViaElectron(html: string, printerName: string, paper: PaperSpec): Promise<void> {
   console.log(
     `[printer] printViaElectron: printer="${printerName}", ${paper.width} -> ` +
-    `ancho de pagina ${paper.rollMicrons} micrones / ${paper.rollCssPx}px CSS ` +
-    `(area util ${paper.printableMm}mm)`
+    `ancho de pagina ${paper.printableMicrons} micrones / ${paper.cssPx}px CSS ` +
+    `(area imprimible ${paper.printableMm}mm)`
   );
 
   return new Promise((resolve, reject) => {
@@ -232,7 +211,7 @@ function printViaElectron(html: string, printerName: string, paper: PaperSpec): 
     const win = new electron.BrowserWindow({
       // El ancho debe coincidir con el de impresión para que la altura medida
       // más abajo corresponda a la maquetación real.
-      width: paper.rollCssPx,
+      width: paper.cssPx,
       height: 600,
       show: false,
       webPreferences: { contextIsolation: true, nodeIntegration: false },
@@ -284,7 +263,7 @@ function printViaElectron(html: string, printerName: string, paper: PaperSpec): 
             silent: true,
             printBackground: true,
             deviceName: printerName,
-            pageSize: { width: paper.rollMicrons, height: heightMicrons },
+            pageSize: { width: paper.printableMicrons, height: heightMicrons },
             margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
           },
           (success: boolean, errorType: string) => {
@@ -301,4 +280,37 @@ function printViaElectron(html: string, printerName: string, paper: PaperSpec): 
       finish(new Error(`Error cargando HTML para impresión: ${desc}`));
     });
   });
+}
+
+/**
+ * Transporte RAW por spooler de Windows (winspool.drv).
+ *
+ * Genera el buffer ESC/POS con buildEscposBuffer (Fase 3) y lo envía crudo a la
+ * impresora usando PowerShell + C# embebido que llama a OpenPrinter con
+ * datatype = "RAW". Esto permite usar una impresora térmica USB instalada en
+ * Windows (POS-80C) sin Zadig ni libusb: el spooler ya tiene el handle.
+ *
+ * Requiere `system_printer_name` con el nombre exacto de la impresora en Windows.
+ */
+async function printViaRawSpooler(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
+  const printerName = printer.system_printer_name || printer.name;
+  if (!printer.system_printer_name) {
+    console.warn(
+      `[printer] printViaRawSpooler: "${printer.name}" no tiene system_printer_name configurado. ` +
+      `Usando "${printer.name}" como nombre de impresora. ` +
+      `Configura system_printer_name con el nombre exacto de Windows para evitar errores.`
+    );
+  }
+
+  const paper = getPaperSpec(printer.paper_width);
+  console.log(
+    `[printer] printViaRawSpooler: printer="${printerName}", paper_width="${printer.paper_width}" -> ` +
+    `${paper.width} (imprimible ${paper.printableMm}mm, ${paper.charsPerLine} cols)`
+  );
+
+  const buffer = await buildEscposBuffer(jobType, payload, paper);
+  console.log(`[printer] printViaRawSpooler: buffer ESC/POS generado (${buffer.length} bytes)`);
+
+  await sendRawToPrinter(printerName, buffer);
+  console.log(`[printer] printViaRawSpooler: enviado a "${printerName}"`);
 }

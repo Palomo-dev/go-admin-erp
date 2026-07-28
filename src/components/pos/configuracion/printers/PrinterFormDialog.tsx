@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SearchSelect } from '@/components/ui/search-select';
-import { Loader2, Wifi, Printer as PrinterIcon, Check, Usb, AlertTriangle } from 'lucide-react';
+import { Loader2, Wifi, Printer as PrinterIcon, Check, Usb } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import {
   type Printer,
@@ -44,7 +44,7 @@ interface PrinterFormDialogProps {
   onSave: (form: PrinterFormData) => Promise<void>;
 }
 
-const CONNECTION_TYPES: PrinterConnectionType[] = ['usb', 'network', 'bluetooth', 'system'];
+const CONNECTION_TYPES: PrinterConnectionType[] = ['usb', 'network', 'bluetooth', 'system', 'raw_spooler'];
 const STATIONS: PrinterStation[] = ['hot_kitchen', 'cold_kitchen', 'bar', 'cashier', 'all'];
 
 const emptyForm: PrinterFormData = {
@@ -59,6 +59,7 @@ const emptyForm: PrinterFormData = {
   driver: 'escpos_generic',
   paper_width: '80mm',
   is_active: true,
+  system_printer_name: null,
   notes: '',
   stations: [],
 };
@@ -150,7 +151,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
   };
 
   const selectSystemPrinter = (name: string) => {
-    setForm((f) => ({ ...f, connection_type: 'system', name: f.name || name }));
+    setForm((f) => ({ ...f, system_printer_name: name, name: f.name || name }));
     setShowDetected(false);
   };
 
@@ -160,11 +161,13 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
   };
 
   const selectUsbDevice = (device: DesktopUsbDevice) => {
+    // USB ahora delega al spooler RAW de Windows: se necesita system_printer_name,
+    // no vendor_id/product_id. Si el dispositivo detectado coincide con una impresora
+    // instalada en Windows, usamos su nombre; si no, dejamos el nombre del dispositivo.
     setForm((f) => ({
       ...f,
       connection_type: 'usb',
-      vendor_id: device.vendorId,
-      product_id: device.productId,
+      system_printer_name: device.name || `${device.vendorId}:${device.productId}`,
       name: f.name || device.name || `USB ${device.vendorId}:${device.productId}`,
     }));
     setShowDetected(false);
@@ -185,6 +188,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
         driver: printer.driver,
         paper_width: printer.paper_width,
         is_active: printer.is_active,
+        system_printer_name: printer.system_printer_name || null,
         notes: printer.notes || '',
         stations: (printer.printer_station_assignments || []).map((s) => s.station),
       });
@@ -215,11 +219,17 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
     if (form.connection_type === 'network' && !form.ip_address?.trim()) {
       return 'Una impresora de red necesita su direccion IP.';
     }
-    if (form.connection_type === 'usb' && (!form.vendor_id?.trim() || !form.product_id?.trim())) {
-      return 'Una impresora USB necesita Vendor ID y Product ID. Pulsa "Detectar impresoras" para rellenarlos.';
+    if (form.connection_type === 'usb' && !form.system_printer_name?.trim()) {
+      return 'Una impresora USB necesita el nombre exacto de Windows. Pulsa "Detectar impresoras" y selecciona una del sistema.';
     }
     if (form.connection_type === 'bluetooth' && !form.mac_address?.trim()) {
       return 'Una impresora Bluetooth necesita su direccion MAC.';
+    }
+    if (form.connection_type === 'system' && !form.system_printer_name?.trim()) {
+      return 'Una impresora del sistema necesita el nombre exacto de Windows. Pulsa "Detectar impresoras" y selecciona una.';
+    }
+    if (form.connection_type === 'raw_spooler' && !form.system_printer_name?.trim()) {
+      return 'Una impresora ESC/POS directo necesita el nombre exacto de Windows. Pulsa "Detectar impresoras" y selecciona una.';
     }
     return null;
   })();
@@ -423,38 +433,6 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
             </div>
           )}
 
-          {form.connection_type === 'usb' && (
-            <div className="flex gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>
-                La conexion USB le habla al dispositivo por libusb, saltandose Windows. Si esta
-                impresora ya aparece instalada en Windows, el spooler tiene el dispositivo tomado y
-                esta via <strong>no va a funcionar</strong>: elige <strong>Impresora del sistema</strong>{' '}
-                y seleccionala por su nombre.
-              </span>
-            </div>
-          )}
-
-          {form.connection_type === 'usb' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Vendor ID</Label>
-                <Input
-                  value={form.vendor_id || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, vendor_id: e.target.value }))}
-                  placeholder="0x04b8"
-                />
-              </div>
-              <div>
-                <Label>Product ID</Label>
-                <Input
-                  value={form.product_id || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}
-                  placeholder="0x0202"
-                />
-              </div>
-            </div>
-          )}
 
           {form.connection_type === 'bluetooth' && (
             <div>
@@ -464,6 +442,25 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                 onChange={(e) => setForm((f) => ({ ...f, mac_address: e.target.value }))}
                 placeholder="00:11:22:33:44:55"
               />
+            </div>
+          )}
+
+          {(form.connection_type === 'system' || form.connection_type === 'raw_spooler' || form.connection_type === 'usb') && (
+            <div className="flex gap-2 rounded-md bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400">
+              <PrinterIcon className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                {form.connection_type === 'system' ? (
+                  <>Selecciona la impresora instalada en Windows. Se imprimirá como HTML (más lento, sin corte automático ni cajón).</>
+                ) : (
+                  <>Selecciona la impresora térmica instalada en Windows. Se enviarán comandos ESC/POS crudos (corte automático, cajón monedero) sin pasar por el driver de texto.</>
+                )}
+              </span>
+            </div>
+          )}
+
+          {(form.connection_type === 'system' || form.connection_type === 'raw_spooler' || form.connection_type === 'usb') && form.system_printer_name && (
+            <div className="text-xs text-gray-500">
+              Impresora de Windows: <strong>{form.system_printer_name}</strong>
             </div>
           )}
 

@@ -45,16 +45,15 @@ const STATION_LABELS: Record<string, string> = {
 //   maqueta con el tamaño de página y el driver escala el resultado, lo que
 //   produce texto diminuto y desplazado. `body` usa width: 100% para llenar
 //   exactamente la página que declara `@page`.
-// - `size` usa el ancho del ROLLO (80mm), para que la página coincida con el
-//   papel y el driver no la escale. Los bordes que el cabezal no alcanza se
-//   respetan con el padding lateral de `body` (`safeMarginMm`).
+// - `size` usa el área IMPRIMIBLE (72mm para 80mm), porque el driver de la
+//   impresora del sistema ya recorta al área del cabezal. Usar el ancho del
+//   rollo provocaba margenes dobles y recortes en el lado derecho.
 function buildCss(paper: PaperSpec): string {
   return `
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  /* La pagina mide el ancho REAL del rollo. Declararla al area imprimible
-     hacia que el driver la escalase para llenar el papel y el ticket se
-     recortaba por ambos lados. Ver la nota en paper.ts. */
-  @page { size: ${paper.rollMm}mm auto; margin: 0; }
+  /* La pagina mide el area imprimible real. El driver ya recorta al area del
+     cabezal, asi que usar el ancho del rollo provocaba margenes dobles. */
+  @page { size: ${paper.printableMm}mm auto; margin: 0; }
   html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body {
     width: 100%;
@@ -64,9 +63,8 @@ function buildCss(paper: PaperSpec): string {
     line-height: 1.3;
     color: #000;
     background: #fff;
-    /* El padding lateral es el margen que el cabezal no alcanza: mantiene el
-       contenido dentro del area imprimible sin necesidad de escalar. */
-    padding: 6px ${paper.safeMarginMm}mm;
+    /* Padding lateral minimo: el driver ya respeta el area imprimible. */
+    padding: 6px 8px;
     font-weight: 500;
   }
   .header {

@@ -26,6 +26,7 @@ export interface Printer {
   driver: string;
   paper_width: PrinterPaperWidth;
   is_active: boolean;
+  system_printer_name: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -45,6 +46,7 @@ export interface PrinterFormData {
   driver?: string;
   paper_width: PrinterPaperWidth;
   is_active?: boolean;
+  system_printer_name?: string | null;
   notes?: string | null;
   stations: PrinterStation[];
 }
@@ -61,7 +63,8 @@ export const CONNECTION_TYPE_LABELS: Record<PrinterConnectionType, string> = {
   usb: 'USB',
   network: 'Red (IP/Puerto)',
   bluetooth: 'Bluetooth',
-  system: 'Impresora del sistema',
+  system: 'Impresora del sistema (HTML)',
+  raw_spooler: 'Sistema (ESC/POS directo)',
 };
 
 export class PrintersService {
@@ -100,6 +103,7 @@ export class PrintersService {
         driver: form.driver || 'escpos_generic',
         paper_width: form.paper_width,
         is_active: form.is_active ?? true,
+        system_printer_name: form.system_printer_name || null,
         notes: form.notes || null,
       })
       .select()
@@ -126,6 +130,7 @@ export class PrintersService {
         mac_address: form.mac_address || null,
         driver: form.driver || 'escpos_generic',
         paper_width: form.paper_width,
+        system_printer_name: form.system_printer_name || null,
         notes: form.notes || null,
       })
       .eq('id', id);

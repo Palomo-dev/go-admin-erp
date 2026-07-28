@@ -1,4 +1,4 @@
-export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth' | 'system';
+export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth' | 'system' | 'raw_spooler';
 
 export interface PrinterRow {
   id: string;
@@ -12,6 +12,7 @@ export interface PrinterRow {
   driver: string;
   paper_width: '58mm' | '80mm';
   is_active: boolean;
+  system_printer_name: string | null;
 }
 
 // Los tipos del CONTENIDO de los tickets viven en `printing/`, que es la

@@ -15,6 +15,7 @@ import { POSService } from '@/lib/services/posService';
 import { supabase } from '@/lib/supabase/config';
 import { PrintService, BusinessInfo, CashierInfo, BranchInfo } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
+import { toast } from 'sonner';
 import { Cart, PaymentMethod, CheckoutData, Sale, Currency, SaleItem } from './types';
 import { formatCurrency } from '@/utils/Utils';
 import { 
@@ -697,7 +698,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             city: deliveryCity || undefined,
             instructions: deliveryInstructions || undefined,
           } : undefined,
-        }).catch((err) => console.warn('No se pudo encolar impresión física del recibo:', err));
+        }).then(({ enqueued }) => {
+          if (enqueued === 0) {
+            toast.warning('No hay impresora de caja configurada para esta sucursal. El recibo quedó disponible para impresión manual.');
+          }
+        }).catch((err) => {
+          toast.error('No se pudo encolar la impresión física del recibo: ' + (err.message || err));
+        });
+      } else {
+        toast.warning('Esta venta no tiene sucursal asignada. No se encoló impresión física.');
       }
 
       // Crear shipment si es delivery propio

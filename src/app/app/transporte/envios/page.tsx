@@ -82,11 +82,14 @@ export default function EnviosPage() {
   const [showBulkAssignDriver, setShowBulkAssignDriver] = useState(false);
   const [availableDrivers, setAvailableDrivers] = useState<AvailableDriver[]>([]);
   const [isLoadingDrivers, setIsLoadingDrivers] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const loadData = useCallback(async () => {
     if (!organizationId) return;
 
     setIsLoading(true);
+    setPage(1);
     try {
       const [shipmentsData, statsData, tripsData, stopsData] = await Promise.all([
         shipmentsService.getShipments(organizationId, {
@@ -439,6 +442,10 @@ export default function EnviosPage() {
         onBulkPrintLabels={handleBulkPrintLabels}
         onBulkMarkPaid={handleBulkMarkPaid}
         onBulkAddIncident={handleBulkAddIncident}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
       />
 
       <ShipmentDialog

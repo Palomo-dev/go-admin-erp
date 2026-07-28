@@ -40,7 +40,9 @@ import {
   DollarSign,
   AlertTriangle,
   ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import { ShipmentPagination } from './ShipmentPagination';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { ShipmentWithDetails } from '@/lib/services/shipmentsService';
@@ -64,6 +66,10 @@ interface ShipmentsListProps {
   onBulkPrintLabels?: () => void;
   onBulkMarkPaid?: () => void;
   onBulkAddIncident?: () => void;
+  page?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
 }
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
@@ -106,14 +112,30 @@ export function ShipmentsList({
   onBulkPrintLabels,
   onBulkMarkPaid,
   onBulkAddIncident,
+  page = 1,
+  pageSize = 25,
+  onPageChange,
+  onPageSizeChange,
 }: ShipmentsListProps) {
   const router = useRouter();
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
+  const [showSelectMenu, setShowSelectMenu] = useState(false);
   const selected = selectedIds ?? internalSelected;
   const setSelected = (ids: Set<string>) => {
     if (onSelectionChange) onSelectionChange(ids);
     else setInternalSelected(ids);
   };
+
+  const totalPages = Math.ceil(shipments.length / pageSize);
+  const currentPage = Math.min(page, totalPages || 1);
+  const paginatedShipments = shipments.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  const pageIds = paginatedShipments.map((s) => s.id);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const someOnPageSelected = pageIds.some((id) => selected.has(id));
 
   const toggleSelect = (id: string) => {
     const next = new Set(selected);
@@ -122,9 +144,19 @@ export function ShipmentsList({
     setSelected(next);
   };
 
-  const toggleSelectAll = () => {
-    if (selected.size === shipments.length) setSelected(new Set());
-    else setSelected(new Set(shipments.map((s) => s.id)));
+  const toggleSelectPage = () => {
+    const next = new Set(selected);
+    if (allOnPageSelected) {
+      pageIds.forEach((id) => next.delete(id));
+    } else {
+      pageIds.forEach((id) => next.add(id));
+    }
+    setSelected(next);
+  };
+
+  const selectAllShipments = () => {
+    setSelected(new Set(shipments.map((s) => s.id)));
+    setShowSelectMenu(false);
   };
 
   const clearSelection = () => setSelected(new Set());
@@ -227,11 +259,36 @@ export function ShipmentsList({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-10">
-              <Checkbox
-                checked={shipments.length > 0 && selected.size === shipments.length}
-                onCheckedChange={toggleSelectAll}
-              />
+            <TableHead className="w-10 relative">
+              <div className="flex items-center gap-1">
+                <Checkbox
+                  checked={allOnPageSelected ? true : someOnPageSelected ? 'indeterminate' : false}
+                  onCheckedChange={toggleSelectPage}
+                />
+                <DropdownMenu open={showSelectMenu} onOpenChange={setShowSelectMenu}>
+                  <DropdownMenuTrigger asChild>
+                    <button className="ml-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={toggleSelectPage}>
+                      Seleccionar {pageSize} de esta página
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={selectAllShipments}>
+                      Seleccionar todos los envíos ({shipments.length})
+                    </DropdownMenuItem>
+                    {selected.size > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => { clearSelection(); setShowSelectMenu(false); }}>
+                          Limpiar selección
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </TableHead>
             <TableHead>Tracking</TableHead>
             <TableHead>Remitente</TableHead>
@@ -246,7 +303,7 @@ export function ShipmentsList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {shipments.map((shipment) => {
+          {paginatedShipments.map((shipment) => {
             const status = STATUS_CONFIG[shipment.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
             const payment = PAYMENT_CONFIG[shipment.payment_status as keyof typeof PAYMENT_CONFIG] || PAYMENT_CONFIG.pending;
 
@@ -414,6 +471,16 @@ export function ShipmentsList({
           })}
         </TableBody>
       </Table>
+        {onPageChange && onPageSizeChange && (
+          <ShipmentPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={shipments.length}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        )}
     </Card>
     </>
   );

@@ -34,6 +34,8 @@ import {
   ProofOfDelivery,
   ShipmentTimeline,
   IncidentDialog,
+  AssignDriverDialog,
+  type AvailableDriver,
 } from '@/components/transporte/envios/id';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -70,6 +72,10 @@ export default function ShipmentDetailPage() {
   const [pod, setPod] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showIncidentDialog, setShowIncidentDialog] = useState(false);
+  const [showAssignDriverDialog, setShowAssignDriverDialog] = useState(false);
+  const [availableDrivers, setAvailableDrivers] = useState<AvailableDriver[]>([]);
+  const [isLoadingDrivers, setIsLoadingDrivers] = useState(false);
+  const [currentDriverId, setCurrentDriverId] = useState<string | undefined>(undefined);
   const [driverInfo, setDriverInfo] = useState<{
     name: string;
     phone?: string;
@@ -119,6 +125,7 @@ export default function ShipmentDetailPage() {
       // Cargar información del conductor desde metadata.driver_id
       const meta = shipmentData?.metadata as Record<string, unknown> | null;
       const driverId = meta?.driver_id as string | undefined;
+      setCurrentDriverId(driverId);
       if (driverId) {
         const { data: driverData } = await supabase
           .from('driver_credentials')
@@ -256,6 +263,44 @@ export default function ShipmentDetailPage() {
     } catch (error) {
       console.error('Error reporting incident:', error);
       toast({ title: 'Error', description: 'No se pudo reportar el incidente', variant: 'destructive' });
+      throw error;
+    }
+  };
+
+  const handleLoadDrivers = useCallback(async () => {
+    if (!organizationId) return;
+    setIsLoadingDrivers(true);
+    try {
+      const drivers = await shipmentsService.getAvailableDrivers(organizationId);
+      setAvailableDrivers(drivers);
+    } catch (error) {
+      console.error('Error loading drivers:', error);
+      toast({ title: 'Error', description: 'No se pudieron cargar los conductores', variant: 'destructive' });
+    } finally {
+      setIsLoadingDrivers(false);
+    }
+  }, [organizationId, toast]);
+
+  const handleAssignDriver = async (driverId: string) => {
+    try {
+      await shipmentsService.assignDriver(shipmentId, driverId);
+      toast({ title: 'Conductor asignado', description: 'El envío ha sido asignado al conductor.' });
+      loadData();
+    } catch (error) {
+      console.error('Error assigning driver:', error);
+      toast({ title: 'Error', description: 'No se pudo asignar el conductor', variant: 'destructive' });
+      throw error;
+    }
+  };
+
+  const handleUnassignDriver = async () => {
+    try {
+      await shipmentsService.unassignDriver(shipmentId);
+      toast({ title: 'Conductor desasignado', description: 'El envío ya no tiene conductor asignado.' });
+      loadData();
+    } catch (error) {
+      console.error('Error unassigning driver:', error);
+      toast({ title: 'Error', description: 'No se pudo desasignar el conductor', variant: 'destructive' });
       throw error;
     }
   };
@@ -503,6 +548,19 @@ export default function ShipmentDetailPage() {
               Marcar Pagado
             </Button>
           )}
+          {canEdit && (shipment.status === 'pending' || shipment.status === 'assigned') && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                handleLoadDrivers();
+                setShowAssignDriverDialog(true);
+              }}
+              className="border-blue-500 text-blue-600"
+            >
+              <User className="h-4 w-4 mr-2" />
+              {driverInfo ? 'Cambiar Conductor' : 'Asignar Conductor'}
+            </Button>
+          )}
           {canEdit && (
             <Button variant="outline" onClick={() => setShowIncidentDialog(true)} className="border-red-300 text-red-600">
               <AlertTriangle className="h-4 w-4 mr-2" />
@@ -735,8 +793,13 @@ export default function ShipmentDetailPage() {
                 items={items}
                 isLoading={isLoading}
                 canEdit={canEdit}
+                organizationId={organizationId || undefined}
                 onAddItem={handleAddItem}
                 onDeleteItem={handleDeleteItem}
+                onSearchProduct={async (query) => {
+                  if (!organizationId) return [];
+                  return shipmentsService.searchProducts(organizationId, query);
+                }}
               />
             </TabsContent>
 
@@ -829,6 +892,18 @@ export default function ShipmentDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Assign Driver Dialog */}
+      <AssignDriverDialog
+        open={showAssignDriverDialog}
+        onOpenChange={setShowAssignDriverDialog}
+        drivers={availableDrivers}
+        isLoading={isLoadingDrivers}
+        currentDriverId={currentDriverId}
+        currentDriverName={driverInfo?.name}
+        onAssign={handleAssignDriver}
+        onUnassign={handleUnassignDriver}
+      />
 
       {/* Incident Dialog */}
       <IncidentDialog

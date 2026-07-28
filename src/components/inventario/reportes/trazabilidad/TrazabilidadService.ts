@@ -130,13 +130,23 @@ export class TrazabilidadService {
     const orgId = getOrganizationId();
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, sku')
+      .select('id, name, sku, is_parent, variant_data')
       .eq('organization_id', orgId)
       .order('name', { ascending: true })
       .limit(100);
 
     if (error) throw new Error(`Error: ${error.message}`);
-    return data || [];
+
+    const filtered = (data || []).filter((p: any) => {
+      if (p.is_parent) return false;
+      if (p.variant_data && typeof p.variant_data === 'object') {
+        const hasValues = Object.values(p.variant_data).some((v: any) => v && String(v).trim() !== '');
+        if (!hasValues && Object.keys(p.variant_data).length > 0) return false;
+      }
+      return true;
+    });
+
+    return filtered.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku }));
   }
 
   static async obtenerSucursales(): Promise<{ id: number; name: string }[]> {

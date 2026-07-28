@@ -47,6 +47,30 @@ interface ProductOption {
   name: string;
   sku: string;
   unit_code: string | null;
+  is_parent?: boolean;
+  parent_product_id?: number | null;
+  variant_data?: Record<string, string> | null;
+  parent_name?: string | null;
+}
+
+function formatProductDisplayName(product: ProductOption): string {
+  if (product.parent_name && product.variant_data) {
+    const attrs = Object.entries(product.variant_data)
+      .filter(([, v]) => v && String(v).trim() !== '')
+      .map(([k, v]) => `${k}: ${v}`);
+    if (attrs.length > 0) {
+      return `${product.parent_name} · ${attrs.join(' · ')}`;
+    }
+  }
+  return product.name;
+}
+
+function hasEmptyVariantData(p: ProductOption): boolean {
+  if (p.variant_data && typeof p.variant_data === 'object') {
+    const hasValues = Object.values(p.variant_data).some((v: any) => v && String(v).trim() !== '');
+    if (!hasValues && Object.keys(p.variant_data).length > 0) return true;
+  }
+  return false;
 }
 
 interface RecipeDialogProps {
@@ -122,7 +146,7 @@ export function RecipeDialog({
   const cargarProductos = async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, sku, unit_code')
+      .select('id, name, sku, unit_code, is_parent, parent_product_id, variant_data')
       .eq('organization_id', organizationId)
       .order('name', { ascending: true })
       .limit(200);
@@ -132,7 +156,20 @@ export function RecipeDialog({
       return;
     }
 
-    setProducts(data || []);
+    const allProducts = (data || []) as ProductOption[];
+
+    const parentMap = new Map<number, string>();
+    allProducts.forEach((p) => {
+      if (p.is_parent) parentMap.set(p.id, p.name);
+    });
+
+    allProducts.forEach((p) => {
+      if (p.parent_product_id && parentMap.has(p.parent_product_id)) {
+        p.parent_name = parentMap.get(p.parent_product_id)!;
+      }
+    });
+
+    setProducts(allProducts);
   };
 
   const cargarUnidades = async () => {
@@ -152,14 +189,19 @@ export function RecipeDialog({
   const filteredProducts = products.filter(
     (p) =>
       p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(productSearch.toLowerCase())
+      p.sku?.toLowerCase().includes(productSearch.toLowerCase()) ||
+      (p.parent_name && p.parent_name.toLowerCase().includes(productSearch.toLowerCase()))
+  );
+
+  const ingredientProducts = products.filter(
+    (p) => !p.is_parent && !hasEmptyVariantData(p)
   );
 
   const handleSelectProduct = (product: ProductOption) => {
     setFormData((prev) => ({
       ...prev,
       product_id: product.id,
-      product_name: product.name,
+      product_name: formatProductDisplayName(product),
       yield_unit_code: product.unit_code ?? prev.yield_unit_code,
     }));
     setShowProductDropdown(false);
@@ -315,7 +357,7 @@ export function RecipeDialog({
                         onClick={() => handleSelectProduct(product)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
                       >
-                        <div className="font-medium text-sm dark:text-white">{product.name}</div>
+                        <div className="font-medium text-sm dark:text-white">{formatProductDisplayName(product)}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           SKU: {product.sku || 'N/A'} {product.unit_code ? `· ${product.unit_code}` : ''}
                         </div>
@@ -411,7 +453,7 @@ export function RecipeDialog({
                     key={index}
                     index={index}
                     ingredient={ing}
-                    products={products}
+                    products={ingredientProducts}
                     units={units}
                     onRemove={() => handleRemoveIngredient(index)}
                     onChange={(field, value) => handleIngredientChange(index, field, value)}
@@ -492,7 +534,7 @@ function IngredientRowCard({
             {selectedProduct ? (
               <div className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-600">
                 <span className="text-sm font-medium dark:text-white truncate">
-                  {selectedProduct.name}
+                  {formatProductDisplayName(selectedProduct)}
                 </span>
                 <button
                   onClick={() => {
@@ -528,7 +570,7 @@ function IngredientRowCard({
                         }}
                         className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
                       >
-                        <div className="text-sm font-medium dark:text-white">{product.name}</div>
+                        <div className="text-sm font-medium dark:text-white">{formatProductDisplayName(product)}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {product.sku || 'N/A'}
                         </div>

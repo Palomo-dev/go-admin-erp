@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Package, Plus, Trash2, Loader2, Tag, Percent } from 'lucide-react';
+import { Package, Plus, Trash2, Loader2, Tag, Percent, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
@@ -49,19 +49,34 @@ interface ShipmentItem {
   products?: { id: number; name: string; sku: string };
 }
 
+interface ProductSearchResult {
+  id: number;
+  sku?: string;
+  name: string;
+  unit_code?: string;
+  description?: string;
+  price: number;
+}
+
 interface ShipmentItemsProps {
   items: ShipmentItem[];
   isLoading: boolean;
   canEdit: boolean;
+  organizationId?: number;
   onAddItem: (item: Omit<ShipmentItem, 'id' | 'products'>) => Promise<void>;
   onDeleteItem: (itemId: string) => Promise<void>;
+  onSearchProduct?: (query: string) => Promise<ProductSearchResult[]>;
 }
 
-export function ShipmentItems({ items, isLoading, canEdit, onAddItem, onDeleteItem }: ShipmentItemsProps) {
+export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAddItem, onDeleteItem, onSearchProduct }: ShipmentItemsProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ShipmentItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [productResults, setProductResults] = useState<ProductSearchResult[]>([]);
+  const [searchingProducts, setSearchingProducts] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     description: '',
     sku: '',
@@ -72,12 +87,41 @@ export function ShipmentItems({ items, isLoading, canEdit, onAddItem, onDeleteIt
     notes: '',
   });
 
+  const handleProductSearch = async () => {
+    if (!onSearchProduct || !productSearch.trim()) return;
+    setSearchingProducts(true);
+    try {
+      const results = await onSearchProduct(productSearch);
+      setProductResults(results);
+    } catch (error) {
+      console.error('Error searching products:', error);
+    } finally {
+      setSearchingProducts(false);
+    }
+  };
+
+  const selectProduct = (product: ProductSearchResult) => {
+    setSelectedProductId(product.id);
+    setFormData((prev) => ({
+      ...prev,
+      description: product.name,
+      sku: product.sku || '',
+      unit: product.unit_code || 'und',
+      unit_value: product.price,
+    }));
+    setProductResults([]);
+    setProductSearch('');
+  };
+
   const handleSubmit = async () => {
     if (!formData.description) return;
     
     setIsSubmitting(true);
     try {
-      await onAddItem(formData);
+      await onAddItem({
+        ...formData,
+        product_id: selectedProductId || undefined,
+      });
       setShowDialog(false);
       setFormData({
         description: '',
@@ -88,6 +132,7 @@ export function ShipmentItems({ items, isLoading, canEdit, onAddItem, onDeleteIt
         weight_kg: 0,
         notes: '',
       });
+      setSelectedProductId(null);
     } catch (error) {
       console.error('Error adding item:', error);
     } finally {
@@ -271,17 +316,66 @@ export function ShipmentItems({ items, isLoading, canEdit, onAddItem, onDeleteIt
         </>
       )}
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={(open) => {
+        setShowDialog(open);
+        if (!open) {
+          setSelectedProductId(null);
+          setProductResults([]);
+          setProductSearch('');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Agregar Item</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {onSearchProduct && (
+              <div className="space-y-2">
+                <Label>Buscar Producto del Inventario</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Buscar por nombre, SKU o código de barras..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleProductSearch()}
+                  />
+                  <Button type="button" variant="outline" onClick={handleProductSearch} disabled={searchingProducts}>
+                    {searchingProducts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {productResults.length > 0 && (
+                  <div className="border rounded-lg divide-y max-h-32 overflow-y-auto">
+                    {productResults.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => selectProduct(p)}
+                        className="w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                      >
+                        <p className="font-medium">{p.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {p.sku && `${p.sku} · `}
+                          {p.unit_code || 'und'} · {formatCOP(p.price)}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {selectedProductId && (
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    ✓ Producto del inventario seleccionado
+                  </p>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Descripción *</Label>
               <Input
                 value={formData.description}
-                onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                onChange={(e) => {
+                  setFormData((p) => ({ ...p, description: e.target.value }));
+                  setSelectedProductId(null);
+                }}
                 placeholder="Descripción del producto"
               />
             </div>

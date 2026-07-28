@@ -7,6 +7,11 @@ import { buildEscposBuffer } from './printing/escposBuffer';
 import { sendRawToPrinter } from './transports/rawSpooler';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
+  // CP858 = Latin-1 + Euro. Soporta Ñ, tildes, °, ¿, ¡, €.
+  // encode() cambia el encoding de iconv (cómo se codifican los strings a bytes).
+  // setCharacterCodeTable(19) envía ESC t 19 para que la impresora use Code Page 858.
+  device_.encode('CP858').setCharacterCodeTable(19);
+
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
     printSaleTicket(device_, payload as any, paper);
   } else {

@@ -56,6 +56,9 @@ export async function buildEscposBuffer(
   const adapter = new BufferAdapter();
   const printer = new escpos.Printer(adapter);
 
+  // CP858 = Latin-1 + Euro. Soporta Ñ, tildes, °, ¿, ¡, €.
+  printer.encode('CP858').setCharacterCodeTable(19);
+
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
     printSaleTicket(printer, payload as SaleTicketPrintPayload, paper);
   } else {
@@ -66,6 +69,12 @@ export async function buildEscposBuffer(
   // pasa callback. Esperar un tick para que los bytes del QR lleguen al
   // adapter antes de retornar el buffer.
   await new Promise((resolve) => setTimeout(resolve, 50));
+
+  // close() hace flush() del MutableBuffer interno del Printer al adapter.
+  // Sin esto, los bytes se quedan en el buffer interno y getBuffer() retorna vacío.
+  await new Promise<void>((resolve) => {
+    printer.close(() => resolve());
+  });
 
   return adapter.getBuffer();
 }

@@ -5,6 +5,7 @@ import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTe
 import { buildSaleTicketHTML, buildKitchenTicketHTML } from './printing/renderHtml';
 import { buildEscposBuffer } from './printing/escposBuffer';
 import { sendRawToPrinter } from './transports/rawSpooler';
+import { sendToNetworkPrinter } from './transports/networkSocket';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
@@ -70,7 +71,7 @@ export async function printToDevice(printer: PrinterRow, jobType: PrintJobRow['j
   }
 }
 
-function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
+async function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
   if (!printer.ip_address) {
     throw new Error(`Impresora "${printer.name}" no tiene ip_address configurada`);
   }
@@ -80,17 +81,20 @@ function printViaNetwork(printer: PrinterRow, jobType: PrintJobRow['job_type'], 
   // Fase 3: generar el buffer ESC/POS primero, luego enviarlo por el socket.
   // Esto desacopla la generación del transporte: el mismo buffer puede enviarse
   // por red, USB, Bluetooth o spooler de Windows sin cambiar la lógica de render.
-  return buildEscposBuffer(jobType, payload, paper).then((buffer) => {
-    return new Promise((resolve, reject) => {
-      const device = new escpos.Network(printer.ip_address!, port);
-      device.open((err: any) => {
-        if (err) return reject(new Error(`No se pudo conectar a ${printer.ip_address}:${port} — ${err.message || err}`));
-        device.write(buffer, () => {
-          device.close(() => resolve());
-        });
-      });
-    });
-  });
+  const buffer = await buildEscposBuffer(jobType, payload, paper);
+
+  console.log(
+    `[printer] printViaNetwork: printer="${printer.name}" ${printer.ip_address}:${port}, ` +
+    `buffer ESC/POS generado (${buffer.length} bytes)`
+  );
+
+  // sendToNetworkPrinter solo resuelve cuando el socket se cerró limpiamente
+  // tras drenar el buffer. Antes se usaba escpos-network, que cerraba con
+  // destroy() y resolvía aunque los bytes nunca salieran: los jobs quedaban
+  // marcados como "impreso" sin que saliera papel.
+  await sendToNetworkPrinter(printer.ip_address, port, buffer);
+
+  console.log(`[printer] printViaNetwork: enviado a "${printer.name}" (${printer.ip_address}:${port})`);
 }
 
 /**

@@ -12,6 +12,7 @@ import {
 } from '@/components/transporte/envios';
 import { AssignDriverDialog, type AvailableDriver } from '@/components/transporte/envios/id';
 import { shipmentsService, type ShipmentWithDetails } from '@/lib/services/shipmentsService';
+import { printShipmentLabel } from '@/components/transporte/envios/shipmentLabelPrinter';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -248,10 +249,7 @@ export default function EnviosPage() {
   };
 
   const handlePrintLabel = (shipment: ShipmentWithDetails) => {
-    toast({
-      title: 'Imprimir etiqueta',
-      description: `Etiqueta de ${shipment.tracking_number}`,
-    });
+    printShipmentLabel(shipment);
   };
 
   const handleCancel = (shipment: ShipmentWithDetails) => {

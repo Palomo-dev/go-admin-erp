@@ -1,5 +1,15 @@
 import { supabase } from '@/lib/supabase/config';
 
+export interface AvailableDriver {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  avatar_url?: string;
+  license_number?: string;
+  license_category?: string;
+}
+
 export interface ShipmentWithDetails {
   id: string;
   organization_id: number;
@@ -72,6 +82,7 @@ export interface ShipmentWithDetails {
   destination_stop?: { id: string; name: string; city?: string };
   sender_customer?: { id: string; full_name: string; phone?: string; email?: string };
   receiver_customer?: { id: string; full_name: string; phone?: string; email?: string };
+  driver_name?: string;
 }
 
 export interface ShipmentFilters {
@@ -96,6 +107,12 @@ class ShipmentsService {
 
     if (filters?.status && filters.status !== 'all') {
       query = query.eq('status', filters.status);
+    }
+    if (filters?.payment_status && filters.payment_status !== 'all') {
+      query = query.eq('payment_status', filters.payment_status);
+    }
+    if (filters?.tripId && filters.tripId !== 'all') {
+      query = query.eq('trip_id', filters.tripId);
     }
     if (filters?.dateFrom) {
       query = query.gte('created_at', `${filters.dateFrom}T00:00:00`);
@@ -153,6 +170,88 @@ class ShipmentsService {
       }
       return s;
     });
+
+    // Batch fetch driver names desde metadata.driver_id
+    const driverIds = results
+      .map((s) => (s.metadata as Record<string, unknown> | null)?.driver_id as string)
+      .filter(Boolean) as string[];
+
+    if (driverIds.length > 0) {
+      const uniqueDriverIds = [...new Set(driverIds)];
+
+      // Step 1: Get driver_credentials with employment_id
+      const { data: driversData } = await supabase
+        .from('driver_credentials')
+        .select('id, employment_id')
+        .in('id', uniqueDriverIds);
+
+      const driverNameMap = new Map<string, string>();
+
+      if (driversData && driversData.length > 0) {
+        // Step 2: Get employments to find organization_member_ids
+        const employmentIds = driversData.map((d: any) => d.employment_id).filter(Boolean);
+        if (employmentIds.length > 0) {
+          const { data: employmentsData } = await supabase
+            .from('employments')
+            .select('id, organization_member_id')
+            .in('id', employmentIds);
+
+          if (employmentsData && employmentsData.length > 0) {
+            // Step 3: Get organization_members to find user_ids
+            const memberIds = employmentsData.map((e: any) => e.organization_member_id).filter(Boolean);
+            if (memberIds.length > 0) {
+              const { data: membersData } = await supabase
+                .from('organization_members')
+                .select('id, user_id')
+                .in('id', memberIds);
+
+              if (membersData && membersData.length > 0) {
+                // Step 4: Get profiles by user_ids
+                const userIds = membersData.map((m: any) => m.user_id).filter(Boolean);
+                if (userIds.length > 0) {
+                  const { data: profilesData } = await supabase
+                    .from('profiles')
+                    .select('id, first_name, last_name')
+                    .in('id', userIds);
+
+                  // Build lookup maps
+                  const profileMap = new Map<string, string>();
+                  (profilesData || []).forEach((p: any) => {
+                    profileMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim());
+                  });
+
+                  const memberUserMap = new Map<number, string>();
+                  membersData.forEach((m: any) => {
+                    if (m.user_id) memberUserMap.set(m.id, m.user_id);
+                  });
+
+                  const employmentMemberMap = new Map<string, number>();
+                  employmentsData.forEach((e: any) => {
+                    if (e.organization_member_id) employmentMemberMap.set(e.id, e.organization_member_id);
+                  });
+
+                  // Map driver_id -> name
+                  driversData.forEach((d: any) => {
+                    const memberId = d.employment_id ? employmentMemberMap.get(d.employment_id) : null;
+                    const userId = memberId ? memberUserMap.get(memberId) : null;
+                    const name = userId ? profileMap.get(userId) : null;
+                    if (name) driverNameMap.set(d.id, name);
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      results = results.map((s) => {
+        const driverId = (s.metadata as Record<string, unknown> | null)?.driver_id as string | undefined;
+        if (driverId) {
+          s.driver_name = driverNameMap.get(driverId);
+        }
+        return s;
+      });
+    }
 
     if (filters?.search) {
       const search = filters.search.toLowerCase();
@@ -301,25 +400,53 @@ class ShipmentsService {
   }
 
   async getShipmentStats(organizationId: number) {
-    const today = new Date().toISOString().split('T')[0];
-
     const { data, error } = await supabase
       .from('shipments')
-      .select('status, total_cost')
-      .eq('organization_id', organizationId)
-      .gte('created_at', `${today}T00:00:00`);
+      .select('status, total_cost, weight_kg, declared_value, created_at, metadata')
+      .eq('organization_id', organizationId);
 
     if (error) throw error;
 
     const shipments = data || [];
+    const statusCounts: Record<string, number> = {};
+    let totalWeight = 0;
+    let totalDeclaredValue = 0;
+    let unassignedPending = 0;
+    const today = new Date().toISOString().split('T')[0];
+    let shipmentsToday = 0;
+
+    for (const s of shipments) {
+      const st = s.status || 'pending';
+      statusCounts[st] = (statusCounts[st] || 0) + 1;
+      totalWeight += Number(s.weight_kg) || 0;
+      totalDeclaredValue += Number(s.declared_value) || 0;
+      if (s.created_at && s.created_at.startsWith(today)) shipmentsToday++;
+      const meta = s.metadata as Record<string, unknown> | null;
+      if (st === 'pending' && !meta?.driver_id) unassignedPending++;
+    }
+
+    const delivered = statusCounts['delivered'] || 0;
+    const total = shipments.length;
+    const deliveryRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+
     return {
-      total: shipments.length,
-      pending: shipments.filter((s) => s.status === 'pending').length,
-      pickedUp: shipments.filter((s) => s.status === 'picked').length,
-      inTransit: shipments.filter((s) => s.status === 'in_transit').length,
-      delivered: shipments.filter((s) => s.status === 'delivered').length,
-      cancelled: shipments.filter((s) => s.status === 'cancelled').length,
+      total,
+      pending: statusCounts['pending'] || 0,
+      assigned: statusCounts['assigned'] || 0,
+      pickedUp: statusCounts['picked'] || 0,
+      dispatched: statusCounts['dispatched'] || 0,
+      inTransit: statusCounts['in_transit'] || 0,
+      outForDelivery: statusCounts['out_for_delivery'] || 0,
+      delivered,
+      failed: statusCounts['failed'] || 0,
+      returned: statusCounts['returned'] || 0,
+      cancelled: statusCounts['cancelled'] || 0,
       revenue: shipments.filter((s) => s.status === 'delivered').reduce((sum, s) => sum + (Number(s.total_cost) || 0), 0),
+      totalWeight,
+      totalDeclaredValue,
+      shipmentsToday,
+      unassignedPending,
+      deliveryRate,
     };
   }
 
@@ -335,7 +462,12 @@ class ShipmentsService {
       .limit(100);
 
     if (error) throw error;
-    return data || [];
+
+    return (data || []).map((t: any) => ({
+      id: t.id,
+      trip_code: t.trip_code,
+      transport_routes: Array.isArray(t.transport_routes) ? t.transport_routes[0] : t.transport_routes,
+    }));
   }
 
   async getShipmentEvents(shipmentId: string) {
@@ -399,6 +531,39 @@ class ShipmentsService {
 
     if (error) throw error;
     return data || [];
+  }
+
+  async searchProducts(organizationId: number, query: string) {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        id,
+        sku,
+        name,
+        unit_code,
+        description,
+        product_prices(price)
+      `)
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .or(`name.ilike.%${query}%,sku.ilike.%${query}%,barcode.ilike.%${query}%`)
+      .limit(10);
+
+    if (error) throw error;
+
+    return (data || []).map((p: any) => {
+      const activePrice = p.product_prices?.find((pp: any) =>
+        !pp.effective_to || new Date(pp.effective_to) > new Date()
+      );
+      return {
+        id: p.id,
+        sku: p.sku || undefined,
+        name: p.name,
+        unit_code: p.unit_code?.trim() || undefined,
+        description: p.description || undefined,
+        price: activePrice?.price ? Number(activePrice.price) : 0,
+      };
+    });
   }
 
   async searchCustomers(organizationId: number, query: string) {
@@ -711,11 +876,189 @@ class ShipmentsService {
     return data;
   }
 
+  // ==================== DRIVER ASSIGNMENT ====================
+
+  async getAvailableDrivers(organizationId: number) {
+    // Step 1: Get all active driver_credentials
+    const { data: driversData, error: driversError } = await supabase
+      .from('driver_credentials')
+      .select('id, license_number, license_category, employment_id')
+      .eq('is_active', true);
+
+    if (driversError) throw driversError;
+    if (!driversData || driversData.length === 0) return [];
+
+    // Step 2: Get active employments for these drivers
+    const employmentIds = driversData.map((d: any) => d.employment_id).filter(Boolean);
+    if (employmentIds.length === 0) return [];
+
+    const { data: employmentsData, error: empError } = await supabase
+      .from('employments')
+      .select('id, status, organization_member_id')
+      .in('id', employmentIds)
+      .eq('status', 'active');
+
+    if (empError || !employmentsData || employmentsData.length === 0) return [];
+
+    // Step 3: Get organization_members filtered by org
+    const memberIds = employmentsData.map((e: any) => e.organization_member_id).filter(Boolean);
+    if (memberIds.length === 0) return [];
+
+    const { data: membersData, error: memberError } = await supabase
+      .from('organization_members')
+      .select('id, user_id, organization_id, is_active')
+      .in('id', memberIds)
+      .eq('organization_id', organizationId)
+      .eq('is_active', true);
+
+    if (memberError || !membersData || membersData.length === 0) return [];
+
+    // Step 4: Get profiles for these users
+    const userIds = membersData.map((m: any) => m.user_id).filter(Boolean);
+    if (userIds.length === 0) return [];
+
+    const { data: profilesData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, phone, email, avatar_url')
+      .in('id', userIds);
+
+    if (profileError || !profilesData) return [];
+
+    // Build lookup maps
+    const profileMap = new Map<string, any>();
+    profilesData.forEach((p: any) => profileMap.set(p.id, p));
+
+    const memberUserMap = new Map<number, string>();
+    membersData.forEach((m: any) => {
+      if (m.user_id) memberUserMap.set(m.id, m.user_id);
+    });
+
+    const employmentMemberMap = new Map<string, number>();
+    employmentsData.forEach((e: any) => {
+      if (e.organization_member_id) employmentMemberMap.set(e.id, e.organization_member_id);
+    });
+
+    // Build result
+    const result: AvailableDriver[] = [];
+    driversData.forEach((driver: any) => {
+      const memberId = driver.employment_id ? employmentMemberMap.get(driver.employment_id) : null;
+      if (!memberId) return;
+      const userId = memberUserMap.get(memberId);
+      if (!userId) return;
+      const profile = profileMap.get(userId);
+      if (!profile) return;
+
+      result.push({
+        id: driver.id,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+        phone: profile.phone || undefined,
+        email: profile.email || undefined,
+        avatar_url: profile.avatar_url || undefined,
+        license_number: driver.license_number || undefined,
+        license_category: driver.license_category || undefined,
+      });
+    });
+
+    return result;
+  }
+
+  async assignDriver(shipmentId: string, driverId: string) {
+    // Obtener metadata actual
+    const { data: current } = await supabase
+      .from('shipments')
+      .select('metadata')
+      .eq('id', shipmentId)
+      .single();
+
+    const currentMetadata = (current?.metadata as Record<string, unknown> | null) || {};
+    const updatedMetadata = { ...currentMetadata, driver_id: driverId };
+
+    const updated = await this.updateShipment(shipmentId, {
+      metadata: updatedMetadata,
+      status: 'assigned',
+    } as Partial<ShipmentWithDetails>);
+
+    await this.createEvent(shipmentId, {
+      event_type: 'driver_assigned',
+      description: 'Conductor asignado al envío',
+    });
+
+    return updated;
+  }
+
+  async unassignDriver(shipmentId: string) {
+    const { data: current } = await supabase
+      .from('shipments')
+      .select('metadata')
+      .eq('id', shipmentId)
+      .single();
+
+    const currentMetadata = (current?.metadata as Record<string, unknown> | null) || {};
+    delete currentMetadata.driver_id;
+
+    const updated = await this.updateShipment(shipmentId, {
+      metadata: currentMetadata,
+      status: 'pending',
+    } as Partial<ShipmentWithDetails>);
+
+    await this.createEvent(shipmentId, {
+      event_type: 'driver_unassigned',
+      description: 'Conductor desasignado del envío',
+    });
+
+    return updated;
+  }
+
+  async bulkAssignDriver(shipmentIds: string[], driverId: string) {
+    const results = await Promise.allSettled(
+      shipmentIds.map((id) => this.assignDriver(id, driverId))
+    );
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    return { succeeded, failed };
+  }
+
+  async bulkUpdateStatus(shipmentIds: string[], status: string) {
+    const results = await Promise.allSettled(
+      shipmentIds.map((id) => this.updateStatus(id, status))
+    );
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    return { succeeded, failed };
+  }
+
+  async bulkCancel(shipmentIds: string[]) {
+    const results = await Promise.allSettled(
+      shipmentIds.map((id) => this.updateStatus(id, 'cancelled'))
+    );
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    return { succeeded, failed };
+  }
+
+  async bulkMarkReturned(shipmentIds: string[]) {
+    const results = await Promise.allSettled(
+      shipmentIds.map((id) => this.updateStatus(id, 'returned'))
+    );
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    return { succeeded, failed };
+  }
+
+  async bulkMarkPaid(shipmentIds: string[]) {
+    const results = await Promise.allSettled(
+      shipmentIds.map((id) => this.updateShipment(id, { payment_status: 'paid' } as Partial<ShipmentWithDetails>))
+    );
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    return { succeeded, failed };
+  }
+
   // ==================== COD PAYMENT ====================
 
   async registerCODPayment(shipmentId: string, organizationId: number, amount: number, paymentMethod: string = 'cash') {
     await this.updateShipment(shipmentId, { payment_status: 'paid' });
-    
+
     await this.createEvent(shipmentId, {
       event_type: 'cod_collected',
       description: `Pago COD de ${amount} recibido (${paymentMethod})`,

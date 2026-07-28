@@ -40,16 +40,29 @@ export default function MisEnviosPage() {
 
       try {
         // Verificar si el usuario es admin de la organización
+        // organization_members usa role_id (integer FK a roles), no role (string)
         const { data: memberData } = await supabase
           .from('organization_members')
-          .select('role')
+          .select('role_id, is_super_admin')
           .eq('user_id', user.id)
           .eq('organization_id', organization?.id)
           .maybeSingle();
 
-        const userRole = memberData?.role;
-        const adminRoles = ['admin', 'owner', 'super_admin', 'manager'];
-        if (adminRoles.includes(userRole)) {
+        let isAdminUser = false;
+        if (memberData?.is_super_admin) {
+          isAdminUser = true;
+        } else if (memberData?.role_id) {
+          const { data: roleData } = await supabase
+            .from('roles')
+            .select('name')
+            .eq('id', memberData.role_id)
+            .maybeSingle();
+          const adminRoleNames = ['admin', 'owner', 'super_admin', 'manager', 'Admin de organización'];
+          if (roleData?.name && adminRoleNames.includes(roleData.name.toLowerCase())) {
+            isAdminUser = true;
+          }
+        }
+        if (isAdminUser) {
           setIsAdmin(true);
         }
 

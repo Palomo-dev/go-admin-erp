@@ -20,8 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Package, Search, User } from 'lucide-react';
+import { Loader2, Package, Plus, Trash2, Box, User } from 'lucide-react';
 import type { ShipmentWithDetails } from '@/lib/services/shipmentsService';
+import { CustomerSearchSelect, type CustomerSearchResult } from './CustomerSearchSelect';
 
 interface Stop {
   id: string;
@@ -36,6 +37,14 @@ interface Customer {
   phone?: string;
   address?: string;
   city?: string;
+}
+
+interface ShipmentItem {
+  id: string;
+  description: string;
+  quantity: number;
+  weight_kg?: number;
+  unit_value?: number;
 }
 
 interface ShipmentDialogProps {
@@ -77,12 +86,7 @@ export function ShipmentDialog({
   onSearchCustomer,
 }: ShipmentDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchingSender, setSearchingSender] = useState(false);
-  const [searchingReceiver, setSearchingReceiver] = useState(false);
-  const [senderResults, setSenderResults] = useState<Customer[]>([]);
-  const [receiverResults, setReceiverResults] = useState<Customer[]>([]);
-  const [senderSearch, setSenderSearch] = useState('');
-  const [receiverSearch, setReceiverSearch] = useState('');
+  const [items, setItems] = useState<ShipmentItem[]>([]);
 
   const [formData, setFormData] = useState({
     sender_name: '',
@@ -109,25 +113,26 @@ export function ShipmentDialog({
   useEffect(() => {
     if (open) {
       if (shipment) {
+        const meta = (shipment.metadata as Record<string, unknown> | null) || {};
         setFormData({
-          sender_name: shipment.sender_name || '',
-          sender_phone: shipment.sender_phone || '',
-          sender_customer_id: shipment.sender_customer_id || '',
-          receiver_name: shipment.receiver_name || '',
-          receiver_phone: shipment.receiver_phone || '',
-          receiver_customer_id: shipment.receiver_customer_id || '',
-          origin_stop_id: shipment.origin_stop_id || '',
-          destination_stop_id: shipment.destination_stop_id || '',
-          package_type: shipment.package_type || 'small_box',
+          sender_name: (meta.sender_name as string) || shipment.sender_name || '',
+          sender_phone: (meta.sender_phone as string) || shipment.sender_phone || '',
+          sender_customer_id: (meta.sender_customer_id as string) || shipment.sender_customer_id || '',
+          receiver_name: shipment.delivery_contact_name || shipment.receiver_name || shipment.customer?.full_name || '',
+          receiver_phone: shipment.delivery_contact_phone || shipment.receiver_phone || shipment.customer?.phone || '',
+          receiver_customer_id: shipment.customer_id || shipment.receiver_customer_id || '',
+          origin_stop_id: (meta.origin_stop_id as string) || shipment.origin_stop_id || '',
+          destination_stop_id: (meta.destination_stop_id as string) || shipment.destination_stop_id || '',
+          package_type: (meta.package_type as string) || shipment.package_type || 'small_box',
           weight_kg: shipment.weight_kg || 0,
           declared_value: shipment.declared_value || 0,
-          freight_cost: shipment.freight_cost || 0,
-          insurance_cost: shipment.insurance_cost || 0,
+          freight_cost: shipment.shipping_fee || shipment.freight_cost || 0,
+          insurance_cost: shipment.insurance_fee || shipment.insurance_cost || 0,
           total_cost: shipment.total_cost || 0,
-          delivery_type: shipment.delivery_type || 'standard',
+          delivery_type: (meta.delivery_type as string) || shipment.delivery_type || 'standard',
           payment_status: shipment.payment_status || 'pending',
-          is_fragile: shipment.is_fragile || false,
-          requires_signature: shipment.requires_signature || false,
+          is_fragile: (meta.is_fragile as boolean) || shipment.is_fragile || false,
+          requires_signature: (meta.requires_signature as boolean) || shipment.requires_signature || false,
           notes: shipment.notes || '',
         });
       } else {
@@ -153,10 +158,7 @@ export function ShipmentDialog({
           notes: '',
         });
       }
-      setSenderResults([]);
-      setReceiverResults([]);
-      setSenderSearch('');
-      setReceiverSearch('');
+      setItems(shipment?.metadata ? ((shipment.metadata as any).items || []) : []);
     }
   }, [open, shipment]);
 
@@ -165,52 +167,34 @@ export function ShipmentDialog({
     setFormData((prev) => ({ ...prev, total_cost: total }));
   }, [formData.freight_cost, formData.insurance_cost]);
 
-  const handleSearchSender = async () => {
-    if (!onSearchCustomer || !senderSearch.trim()) return;
-    setSearchingSender(true);
-    try {
-      const results = await onSearchCustomer(senderSearch);
-      setSenderResults(results);
-    } catch (error) {
-      console.error('Error searching sender:', error);
-    } finally {
-      setSearchingSender(false);
-    }
-  };
-
-  const handleSearchReceiver = async () => {
-    if (!onSearchCustomer || !receiverSearch.trim()) return;
-    setSearchingReceiver(true);
-    try {
-      const results = await onSearchCustomer(receiverSearch);
-      setReceiverResults(results);
-    } catch (error) {
-      console.error('Error searching receiver:', error);
-    } finally {
-      setSearchingReceiver(false);
-    }
-  };
-
-  const selectSender = (customer: Customer) => {
+  const selectSender = (customer: CustomerSearchResult) => {
     setFormData((prev) => ({
       ...prev,
       sender_customer_id: customer.id,
       sender_name: customer.full_name,
       sender_phone: customer.phone || '',
     }));
-    setSenderResults([]);
-    setSenderSearch('');
   };
 
-  const selectReceiver = (customer: Customer) => {
+  const selectReceiver = (customer: CustomerSearchResult) => {
     setFormData((prev) => ({
       ...prev,
       receiver_customer_id: customer.id,
       receiver_name: customer.full_name,
       receiver_phone: customer.phone || '',
     }));
-    setReceiverResults([]);
-    setReceiverSearch('');
+  };
+
+  const addItem = () => {
+    setItems((prev) => [...prev, { id: crypto.randomUUID(), description: '', quantity: 1 }]);
+  };
+
+  const updateItem = (id: string, field: keyof ShipmentItem, value: string | number) => {
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  };
+
+  const removeItem = (id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleSubmit = async () => {
@@ -218,26 +202,31 @@ export function ShipmentDialog({
 
     setIsSubmitting(true);
     try {
-      await onSave({
+      const metadata: Record<string, unknown> = {
         sender_name: formData.sender_name,
         sender_phone: formData.sender_phone || undefined,
         sender_customer_id: formData.sender_customer_id || undefined,
-        receiver_name: formData.receiver_name,
-        receiver_phone: formData.receiver_phone || undefined,
-        receiver_customer_id: formData.receiver_customer_id || undefined,
         origin_stop_id: formData.origin_stop_id || undefined,
         destination_stop_id: formData.destination_stop_id || undefined,
         package_type: formData.package_type,
-        weight_kg: formData.weight_kg || undefined,
-        declared_value: formData.declared_value || undefined,
-        freight_cost: formData.freight_cost,
-        insurance_cost: formData.insurance_cost || undefined,
-        total_cost: formData.total_cost,
-        delivery_type: formData.delivery_type as ShipmentWithDetails['delivery_type'],
-        payment_status: formData.payment_status as ShipmentWithDetails['payment_status'],
+        delivery_type: formData.delivery_type,
         is_fragile: formData.is_fragile,
         requires_signature: formData.requires_signature,
+        items: items.length > 0 ? items : undefined,
+      };
+
+      await onSave({
+        customer_id: formData.receiver_customer_id || undefined,
+        delivery_contact_name: formData.receiver_name,
+        delivery_contact_phone: formData.receiver_phone || undefined,
+        weight_kg: formData.weight_kg || undefined,
+        declared_value: formData.declared_value || undefined,
+        shipping_fee: formData.freight_cost,
+        insurance_fee: formData.insurance_cost || undefined,
+        total_cost: formData.total_cost,
+        payment_status: formData.payment_status as ShipmentWithDetails['payment_status'],
         notes: formData.notes || undefined,
+        metadata,
       });
       onOpenChange(false);
     } catch (error) {
@@ -266,32 +255,13 @@ export function ShipmentDialog({
             </h4>
             {onSearchCustomer && (
               <div className="mb-3">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Buscar cliente..."
-                    value={senderSearch}
-                    onChange={(e) => setSenderSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearchSender()}
-                  />
-                  <Button type="button" variant="outline" onClick={handleSearchSender} disabled={searchingSender}>
-                    {searchingSender ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  </Button>
-                </div>
-                {senderResults.length > 0 && (
-                  <div className="border rounded-lg divide-y max-h-32 overflow-y-auto mt-2">
-                    {senderResults.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => selectSender(c)}
-                        className="w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-                      >
-                        <p className="font-medium">{c.full_name}</p>
-                        <p className="text-xs text-gray-500">{c.phone} · {c.city}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <CustomerSearchSelect
+                  onSearch={onSearchCustomer}
+                  onSelect={selectSender}
+                  selectedName={formData.sender_name || undefined}
+                  selectedPhone={formData.sender_phone || undefined}
+                  placeholder="Buscar remitente..."
+                />
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">
@@ -322,32 +292,13 @@ export function ShipmentDialog({
             </h4>
             {onSearchCustomer && (
               <div className="mb-3">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Buscar cliente..."
-                    value={receiverSearch}
-                    onChange={(e) => setReceiverSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearchReceiver()}
-                  />
-                  <Button type="button" variant="outline" onClick={handleSearchReceiver} disabled={searchingReceiver}>
-                    {searchingReceiver ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  </Button>
-                </div>
-                {receiverResults.length > 0 && (
-                  <div className="border rounded-lg divide-y max-h-32 overflow-y-auto mt-2">
-                    {receiverResults.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => selectReceiver(c)}
-                        className="w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-                      >
-                        <p className="font-medium">{c.full_name}</p>
-                        <p className="text-xs text-gray-500">{c.phone} · {c.city}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <CustomerSearchSelect
+                  onSearch={onSearchCustomer}
+                  onSelect={selectReceiver}
+                  selectedName={formData.receiver_name || undefined}
+                  selectedPhone={formData.receiver_phone || undefined}
+                  placeholder="Buscar destinatario..."
+                />
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">
@@ -530,6 +481,83 @@ export function ShipmentDialog({
                 <Label htmlFor="signature" className="cursor-pointer">Requiere Firma</Label>
               </div>
             </div>
+          </div>
+
+          {/* Items / Productos */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium flex items-center gap-2">
+                <Box className="h-4 w-4" />
+                Items del Envío
+              </h4>
+              <Button type="button" size="sm" variant="outline" onClick={addItem}>
+                <Plus className="h-4 w-4 mr-1" />
+                Agregar Item
+              </Button>
+            </div>
+            {items.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No hay items agregados
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div key={item.id} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-5">
+                      <Label className="text-xs">Descripción</Label>
+                      <Input
+                        value={item.description}
+                        onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                        placeholder="Descripción del item"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Cantidad</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value) || 1)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Peso (kg)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={item.weight_kg || ''}
+                        onChange={(e) => updateItem(item.id, 'weight_kg', Number(e.target.value) || 0)}
+                        placeholder="0"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Valor Unit.</Label>
+                      <Input
+                        type="number"
+                        value={item.unit_value || ''}
+                        onChange={(e) => updateItem(item.id, 'unit_value', Number(e.target.value) || 0)}
+                        placeholder="0"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="col-span-1 flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeItem(item.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Notas */}

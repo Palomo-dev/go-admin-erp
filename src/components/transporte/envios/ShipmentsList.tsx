@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -32,10 +34,17 @@ import {
   Tag,
   Phone,
   Copy,
+  User,
+  X,
+  Printer,
+  DollarSign,
+  AlertTriangle,
+  ChevronDown,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { ShipmentWithDetails } from '@/lib/services/shipmentsService';
+import { SHIPMENT_STATUSES } from './shipmentStatuses';
 
 interface ShipmentsListProps {
   shipments: ShipmentWithDetails[];
@@ -46,22 +55,31 @@ interface ShipmentsListProps {
   onCancel: (shipment: ShipmentWithDetails) => void;
   onDuplicate?: (shipment: ShipmentWithDetails) => void;
   onMarkReturned?: (shipment: ShipmentWithDetails) => void;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
+  onBulkAssignDriver?: () => void;
+  onBulkStatusChange?: (status: string) => void;
+  onBulkCancel?: () => void;
+  onBulkMarkReturned?: () => void;
+  onBulkPrintLabels?: () => void;
+  onBulkMarkPaid?: () => void;
+  onBulkAddIncident?: () => void;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-800', icon: <Package className="h-3 w-3" /> },
-  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: <Package className="h-3 w-3" /> },
-  assigned: { label: 'Asignado', color: 'bg-cyan-100 text-cyan-800', icon: <Package className="h-3 w-3" /> },
-  ready: { label: 'Listo', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-3 w-3" /> },
-  picked: { label: 'Recogido', color: 'bg-blue-100 text-blue-800', icon: <Package className="h-3 w-3" /> },
-  dispatched: { label: 'Despachado', color: 'bg-indigo-100 text-indigo-800', icon: <Truck className="h-3 w-3" /> },
-  in_transit: { label: 'En Tránsito', color: 'bg-purple-100 text-purple-800', icon: <Truck className="h-3 w-3" /> },
-  out_for_delivery: { label: 'En Entrega', color: 'bg-orange-100 text-orange-800', icon: <Truck className="h-3 w-3" /> },
-  delivered: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-3 w-3" /> },
-  failed: { label: 'Fallido', color: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" /> },
-  returned: { label: 'Devuelto', color: 'bg-orange-100 text-orange-800', icon: <RotateCcw className="h-3 w-3" /> },
-  cancelled: { label: 'Cancelado', color: 'bg-gray-100 text-gray-500', icon: <XCircle className="h-3 w-3" /> },
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  package: <Package className="h-3 w-3" />,
+  truck: <Truck className="h-3 w-3" />,
+  check: <CheckCircle className="h-3 w-3" />,
+  x: <XCircle className="h-3 w-3" />,
+  rotate: <RotateCcw className="h-3 w-3" />,
 };
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = Object.fromEntries(
+  Object.entries(SHIPMENT_STATUSES).map(([key, config]) => [
+    key,
+    { label: config.label, color: config.color, icon: STATUS_ICONS[config.icon] || <Package className="h-3 w-3" /> },
+  ])
+);
 
 const PAYMENT_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
@@ -79,8 +97,37 @@ export function ShipmentsList({
   onCancel,
   onDuplicate,
   onMarkReturned,
+  selectedIds,
+  onSelectionChange,
+  onBulkAssignDriver,
+  onBulkStatusChange,
+  onBulkCancel,
+  onBulkMarkReturned,
+  onBulkPrintLabels,
+  onBulkMarkPaid,
+  onBulkAddIncident,
 }: ShipmentsListProps) {
   const router = useRouter();
+  const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
+  const selected = selectedIds ?? internalSelected;
+  const setSelected = (ids: Set<string>) => {
+    if (onSelectionChange) onSelectionChange(ids);
+    else setInternalSelected(ids);
+  };
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === shipments.length) setSelected(new Set());
+    else setSelected(new Set(shipments.map((s) => s.id)));
+  };
+
+  const clearSelection = () => setSelected(new Set());
 
   if (isLoading) {
     return (
@@ -108,14 +155,89 @@ export function ShipmentsList({
   }
 
   return (
-    <Card>
+    <>
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-blue-50 dark:bg-blue-950/30 px-4 py-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              {selected.size} envío{selected.size > 1 ? 's' : ''} seleccionado{selected.size > 1 ? 's' : ''}
+            </span>
+            {onBulkAssignDriver && (
+              <Button size="sm" variant="outline" onClick={onBulkAssignDriver} className="border-blue-500 text-blue-600">
+                <User className="h-4 w-4 mr-1" />
+                Asignar Conductor
+              </Button>
+            )}
+            {onBulkStatusChange && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <Package className="h-4 w-4 mr-1" />
+                    Cambiar Estado
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => onBulkStatusChange('pending')}>Pendiente</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onBulkStatusChange('assigned')}>Asignado</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onBulkStatusChange('dispatched')}>Despachado</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onBulkStatusChange('in_transit')}>En Tránsito</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onBulkStatusChange('out_for_delivery')}>En Entrega</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onBulkStatusChange('delivered')}>Entregado</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {onBulkMarkPaid && (
+              <Button size="sm" variant="outline" onClick={onBulkMarkPaid} className="border-green-500 text-green-600">
+                <DollarSign className="h-4 w-4 mr-1" />
+                Marcar Pagado
+              </Button>
+            )}
+            {onBulkMarkReturned && (
+              <Button size="sm" variant="outline" onClick={onBulkMarkReturned} className="border-orange-500 text-orange-600">
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Devolución
+              </Button>
+            )}
+            {onBulkPrintLabels && (
+              <Button size="sm" variant="outline" onClick={onBulkPrintLabels}>
+                <Printer className="h-4 w-4 mr-1" />
+                Imprimir Etiquetas
+              </Button>
+            )}
+            {onBulkAddIncident && (
+              <Button size="sm" variant="outline" onClick={onBulkAddIncident} className="border-yellow-500 text-yellow-600">
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                Incidentes
+              </Button>
+            )}
+            {onBulkCancel && (
+              <Button size="sm" variant="outline" onClick={onBulkCancel} className="border-red-500 text-red-600">
+                <XCircle className="h-4 w-4 mr-1" />
+                Cancelar
+              </Button>
+            )}
+          </div>
+          <Button size="sm" variant="ghost" onClick={clearSelection} className="text-gray-500">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+      <Card>
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10">
+              <Checkbox
+                checked={shipments.length > 0 && selected.size === shipments.length}
+                onCheckedChange={toggleSelectAll}
+              />
+            </TableHead>
             <TableHead>Tracking</TableHead>
             <TableHead>Remitente</TableHead>
             <TableHead>Destinatario</TableHead>
             <TableHead>Tramo</TableHead>
+            <TableHead>Conductor</TableHead>
             <TableHead>Peso</TableHead>
             <TableHead>Total</TableHead>
             <TableHead>Estado</TableHead>
@@ -134,6 +256,12 @@ export function ShipmentsList({
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                 onClick={() => router.push(`/app/transporte/envios/${shipment.id}`)}
               >
+                <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selected.has(shipment.id)}
+                    onCheckedChange={() => toggleSelect(shipment.id)}
+                  />
+                </TableCell>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-gray-400" />
@@ -178,6 +306,16 @@ export function ShipmentsList({
                       <p className="text-gray-400 text-xs">{shipment.delivery_city}</p>
                     )}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {shipment.driver_name ? (
+                    <div className="flex items-center gap-1 text-sm">
+                      <User className="h-3 w-3 text-gray-400" />
+                      <span>{shipment.driver_name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">Sin asignar</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {shipment.weight_kg ? `${shipment.weight_kg} kg` : '-'}
@@ -226,24 +364,30 @@ export function ShipmentsList({
                       )}
                       <DropdownMenuSeparator />
                       {shipment.status === 'pending' && (
-                        <DropdownMenuItem onClick={() => onStatusChange(shipment, 'received')}>
-                          <Package className="h-4 w-4 mr-2 text-blue-600" />
-                          Marcar Recibido
+                        <DropdownMenuItem onClick={() => onStatusChange(shipment, 'assigned')}>
+                          <Package className="h-4 w-4 mr-2 text-cyan-600" />
+                          Marcar Asignado
                         </DropdownMenuItem>
                       )}
-                      {shipment.status === 'received' && (
-                        <DropdownMenuItem onClick={() => onStatusChange(shipment, 'in_transit')}>
-                          <Truck className="h-4 w-4 mr-2 text-purple-600" />
+                      {shipment.status === 'assigned' && (
+                        <DropdownMenuItem onClick={() => onStatusChange(shipment, 'dispatched')}>
+                          <Truck className="h-4 w-4 mr-2 text-indigo-600" />
                           Despachar
                         </DropdownMenuItem>
                       )}
-                      {shipment.status === 'in_transit' && (
-                        <DropdownMenuItem onClick={() => onStatusChange(shipment, 'arrived')}>
-                          <MapPin className="h-4 w-4 mr-2 text-indigo-600" />
-                          Marcar Llegada
+                      {shipment.status === 'dispatched' && (
+                        <DropdownMenuItem onClick={() => onStatusChange(shipment, 'in_transit')}>
+                          <Truck className="h-4 w-4 mr-2 text-purple-600" />
+                          En Tránsito
                         </DropdownMenuItem>
                       )}
-                      {shipment.status === 'arrived' && (
+                      {shipment.status === 'in_transit' && (
+                        <DropdownMenuItem onClick={() => onStatusChange(shipment, 'out_for_delivery')}>
+                          <MapPin className="h-4 w-4 mr-2 text-orange-600" />
+                          En Entrega
+                        </DropdownMenuItem>
+                      )}
+                      {shipment.status === 'out_for_delivery' && (
                         <DropdownMenuItem onClick={() => onStatusChange(shipment, 'delivered')}>
                           <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
                           Marcar Entregado
@@ -271,5 +415,6 @@ export function ShipmentsList({
         </TableBody>
       </Table>
     </Card>
+    </>
   );
 }

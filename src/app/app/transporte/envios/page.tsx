@@ -10,6 +10,7 @@ import {
   ShipmentsStats,
   ShipmentDialog,
 } from '@/components/transporte/envios';
+import { AssignDriverDialog, type AvailableDriver } from '@/components/transporte/envios/id';
 import { shipmentsService, type ShipmentWithDetails } from '@/lib/services/shipmentsService';
 import {
   AlertDialog,
@@ -44,11 +45,19 @@ export default function EnviosPage() {
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
-    received: 0,
+    assigned: 0,
     inTransit: 0,
+    outForDelivery: 0,
     delivered: 0,
+    failed: 0,
+    returned: 0,
     cancelled: 0,
     revenue: 0,
+    totalWeight: 0,
+    totalDeclaredValue: 0,
+    shipmentsToday: 0,
+    unassignedPending: 0,
+    deliveryRate: 0,
   });
   const [trips, setTrips] = useState<Trip[]>([]);
 
@@ -56,6 +65,10 @@ export default function EnviosPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [tripFilter, setTripFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [driverFilter, setDriverFilter] = useState('all');
+  const [driversList, setDriversList] = useState<{ id: string; name: string }[]>([]);
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [shipmentToCancel, setShipmentToCancel] = useState<ShipmentWithDetails | null>(null);
@@ -63,6 +76,11 @@ export default function EnviosPage() {
   const [showShipmentDialog, setShowShipmentDialog] = useState(false);
   const [shipmentToEdit, setShipmentToEdit] = useState<ShipmentWithDetails | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkAssignDriver, setShowBulkAssignDriver] = useState(false);
+  const [availableDrivers, setAvailableDrivers] = useState<AvailableDriver[]>([]);
+  const [isLoadingDrivers, setIsLoadingDrivers] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!organizationId) return;
@@ -74,6 +92,8 @@ export default function EnviosPage() {
           status: statusFilter !== 'all' ? statusFilter : undefined,
           payment_status: paymentFilter !== 'all' ? paymentFilter : undefined,
           tripId: tripFilter !== 'all' ? tripFilter : undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
           search: searchTerm || undefined,
         }),
         shipmentsService.getShipmentStats(organizationId),
@@ -81,24 +101,47 @@ export default function EnviosPage() {
         shipmentsService.getStops(organizationId),
       ]);
 
-      setShipments(shipmentsData);
+      // Construir lista de conductores desde los envíos
+      const driverMap = new Map<string, string>();
+      shipmentsData.forEach((s) => {
+        const driverId = (s.metadata as Record<string, unknown> | null)?.driver_id as string | undefined;
+        if (driverId && s.driver_name) {
+          driverMap.set(driverId, s.driver_name);
+        }
+      });
+      setDriversList(Array.from(driverMap.entries()).map(([id, name]) => ({ id, name })));
+
+      // Aplicar filtro de conductor en cliente (metadata.driver_id)
+      let filtered = shipmentsData;
+      if (driverFilter === 'unassigned') {
+        filtered = shipmentsData.filter(
+          (s) => !(s.metadata as Record<string, unknown> | null)?.driver_id
+        );
+      } else if (driverFilter !== 'all') {
+        filtered = shipmentsData.filter(
+          (s) => (s.metadata as Record<string, unknown> | null)?.driver_id === driverFilter
+        );
+      }
+      setShipments(filtered);
+
       setStats({
         total: statsData.total || 0,
         pending: statsData.pending || 0,
-        received: statsData.pickedUp || 0,
+        assigned: statsData.assigned || 0,
         inTransit: statsData.inTransit || 0,
+        outForDelivery: statsData.outForDelivery || 0,
         delivered: statsData.delivered || 0,
+        failed: statsData.failed || 0,
+        returned: statsData.returned || 0,
         cancelled: statsData.cancelled || 0,
         revenue: statsData.revenue || 0,
+        totalWeight: statsData.totalWeight || 0,
+        totalDeclaredValue: statsData.totalDeclaredValue || 0,
+        shipmentsToday: statsData.shipmentsToday || 0,
+        unassignedPending: statsData.unassignedPending || 0,
+        deliveryRate: statsData.deliveryRate || 0,
       });
-      // Mapear trips para asegurar compatibilidad de tipos
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mappedTrips: Trip[] = (tripsData as any[]).map((t) => ({
-        id: t.id,
-        trip_code: t.trip_code,
-        transport_routes: Array.isArray(t.transport_routes) ? t.transport_routes[0] : t.transport_routes,
-      }));
-      setTrips(mappedTrips);
+      setTrips(tripsData as Trip[]);
       setStops(stopsData);
     } catch (error) {
       console.error('Error loading shipments:', error);
@@ -110,19 +153,22 @@ export default function EnviosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, statusFilter, paymentFilter, tripFilter, searchTerm, toast]);
+  }, [organizationId, statusFilter, paymentFilter, tripFilter, searchTerm, dateFrom, dateTo, driverFilter, toast]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const hasFilters = searchTerm !== '' || statusFilter !== 'all' || paymentFilter !== 'all' || tripFilter !== 'all';
+  const hasFilters = searchTerm !== '' || statusFilter !== 'all' || paymentFilter !== 'all' || tripFilter !== 'all' || dateFrom !== '' || dateTo !== '' || driverFilter !== 'all';
 
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setPaymentFilter('all');
     setTripFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setDriverFilter('all');
   };
 
   const handleNew = () => {
@@ -229,6 +275,127 @@ export default function EnviosPage() {
     }
   };
 
+  const handleOpenBulkAssignDriver = async () => {
+    if (!organizationId || selectedIds.size === 0) return;
+    setShowBulkAssignDriver(true);
+    setIsLoadingDrivers(true);
+    try {
+      const drivers = await shipmentsService.getAvailableDrivers(organizationId);
+      setAvailableDrivers(drivers);
+    } catch (error) {
+      console.error('Error loading drivers:', error);
+      toast({ title: 'Error', description: 'No se pudieron cargar los conductores', variant: 'destructive' });
+    } finally {
+      setIsLoadingDrivers(false);
+    }
+  };
+
+  const handleBulkAssignDriver = async (driverId: string) => {
+    if (selectedIds.size === 0) return;
+    try {
+      const { succeeded, failed } = await shipmentsService.bulkAssignDriver(
+        Array.from(selectedIds),
+        driverId
+      );
+      toast({
+        title: 'Asignación masiva completada',
+        description: `${succeeded} envío(s) asignado(s)${failed > 0 ? `, ${failed} fallaron` : ''}`,
+        variant: failed > 0 ? 'destructive' : 'default',
+      });
+      setSelectedIds(new Set());
+      setShowBulkAssignDriver(false);
+      loadData();
+    } catch (error) {
+      console.error('Error bulk assigning driver:', error);
+      toast({ title: 'Error', description: 'No se pudo asignar el conductor', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkStatusChange = async (status: string) => {
+    if (selectedIds.size === 0) return;
+    try {
+      const { succeeded, failed } = await shipmentsService.bulkUpdateStatus(Array.from(selectedIds), status);
+      toast({
+        title: 'Estado actualizado',
+        description: `${succeeded} envío(s) actualizado(s)${failed > 0 ? `, ${failed} fallaron` : ''}`,
+        variant: failed > 0 ? 'destructive' : 'default',
+      });
+      setSelectedIds(new Set());
+      loadData();
+    } catch (error) {
+      console.error('Error bulk status change:', error);
+      toast({ title: 'Error', description: 'No se pudo actualizar el estado', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkCancel = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const { succeeded, failed } = await shipmentsService.bulkCancel(Array.from(selectedIds));
+      toast({
+        title: 'Cancelación masiva completada',
+        description: `${succeeded} envío(s) cancelado(s)${failed > 0 ? `, ${failed} fallaron` : ''}`,
+        variant: failed > 0 ? 'destructive' : 'default',
+      });
+      setSelectedIds(new Set());
+      loadData();
+    } catch (error) {
+      console.error('Error bulk cancel:', error);
+      toast({ title: 'Error', description: 'No se pudieron cancelar los envíos', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkMarkReturned = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const { succeeded, failed } = await shipmentsService.bulkMarkReturned(Array.from(selectedIds));
+      toast({
+        title: 'Devolución masiva completada',
+        description: `${succeeded} envío(s) marcado(s) como devuelto(s)${failed > 0 ? `, ${failed} fallaron` : ''}`,
+        variant: failed > 0 ? 'destructive' : 'default',
+      });
+      setSelectedIds(new Set());
+      loadData();
+    } catch (error) {
+      console.error('Error bulk mark returned:', error);
+      toast({ title: 'Error', description: 'No se pudieron marcar las devoluciones', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkPrintLabels = () => {
+    if (selectedIds.size === 0) return;
+    toast({ title: 'Imprimir etiquetas', description: `Generando ${selectedIds.size} etiqueta(s)...` });
+    const selectedShipments = shipments.filter((s) => selectedIds.has(s.id));
+    selectedShipments.forEach((s) => handlePrintLabel(s));
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkMarkPaid = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const { succeeded, failed } = await shipmentsService.bulkMarkPaid(Array.from(selectedIds));
+      toast({
+        title: 'Pago masivo completado',
+        description: `${succeeded} envío(s) marcado(s) como pagado(s)${failed > 0 ? `, ${failed} fallaron` : ''}`,
+        variant: failed > 0 ? 'destructive' : 'default',
+      });
+      setSelectedIds(new Set());
+      loadData();
+    } catch (error) {
+      console.error('Error bulk mark paid:', error);
+      toast({ title: 'Error', description: 'No se pudieron marcar como pagados', variant: 'destructive' });
+    }
+  };
+
+  const handleBulkAddIncident = () => {
+    if (selectedIds.size === 0) return;
+    toast({
+      title: 'Incidentes masivos',
+        description: `Se abrirá el gestor de incidentes para ${selectedIds.size} envío(s)`,
+    });
+    // TODO: Abrir IncidentDialog para los envíos seleccionados
+  };
+
   return (
     <div className="p-6 space-y-6">
       <ShipmentsHeader onNew={handleNew} onRefresh={loadData} isLoading={isLoading} />
@@ -245,6 +412,13 @@ export default function EnviosPage() {
         tripFilter={tripFilter}
         onTripChange={setTripFilter}
         trips={trips}
+        dateFrom={dateFrom}
+        onDateFromChange={setDateFrom}
+        dateTo={dateTo}
+        onDateToChange={setDateTo}
+        driverFilter={driverFilter}
+        onDriverChange={setDriverFilter}
+        drivers={driversList}
         onClearFilters={clearFilters}
         hasFilters={hasFilters}
       />
@@ -258,6 +432,15 @@ export default function EnviosPage() {
         onCancel={handleCancel}
         onDuplicate={handleDuplicate}
         onMarkReturned={handleMarkReturned}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
+        onBulkAssignDriver={handleOpenBulkAssignDriver}
+        onBulkStatusChange={handleBulkStatusChange}
+        onBulkCancel={handleBulkCancel}
+        onBulkMarkReturned={handleBulkMarkReturned}
+        onBulkPrintLabels={handleBulkPrintLabels}
+        onBulkMarkPaid={handleBulkMarkPaid}
+        onBulkAddIncident={handleBulkAddIncident}
       />
 
       <ShipmentDialog
@@ -267,6 +450,14 @@ export default function EnviosPage() {
         stops={stops}
         onSave={handleSaveShipment}
         onSearchCustomer={handleSearchCustomer}
+      />
+
+      <AssignDriverDialog
+        open={showBulkAssignDriver}
+        onOpenChange={setShowBulkAssignDriver}
+        drivers={availableDrivers}
+        isLoading={isLoadingDrivers}
+        onAssign={handleBulkAssignDriver}
       />
 
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>

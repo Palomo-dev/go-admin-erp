@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import {
   ShipmentsHeader,
   ShipmentsFilters,
@@ -12,6 +12,7 @@ import {
 } from '@/components/transporte/envios';
 import { AssignDriverDialog, type AvailableDriver } from '@/components/transporte/envios/id';
 import { shipmentsService, type ShipmentWithDetails } from '@/lib/services/shipmentsService';
+import { printShipmentGuideWithCut, printShipmentGuidesWithCut } from '@/components/transporte/envios/shipmentLabelPrinter';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,11 +82,14 @@ export default function EnviosPage() {
   const [showBulkAssignDriver, setShowBulkAssignDriver] = useState(false);
   const [availableDrivers, setAvailableDrivers] = useState<AvailableDriver[]>([]);
   const [isLoadingDrivers, setIsLoadingDrivers] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const loadData = useCallback(async () => {
     if (!organizationId) return;
 
     setIsLoading(true);
+    setPage(1);
     try {
       const [shipmentsData, statsData, tripsData, stopsData] = await Promise.all([
         shipmentsService.getShipments(organizationId, {
@@ -247,11 +251,24 @@ export default function EnviosPage() {
     }
   };
 
-  const handlePrintLabel = (shipment: ShipmentWithDetails) => {
-    toast({
-      title: 'Imprimir etiqueta',
-      description: `Etiqueta de ${shipment.tracking_number}`,
-    });
+  const handlePrintLabel = async (shipment: ShipmentWithDetails) => {
+    const branchId = getCurrentBranchId();
+    const result = await printShipmentGuideWithCut(
+      shipment,
+      {
+        orgInfo: organization ? {
+          name: organization.name,
+          nit: organization.nit,
+          tax_id: organization.tax_id,
+          address: organization.address,
+          phone: organization.phone,
+        } : undefined,
+      },
+      branchId || undefined,
+    );
+    if (result.method === 'agent') {
+      toast({ title: 'Guia enviada a impresora termica', description: `${result.enqueued} job(s) encolado(s) con corte automatico` });
+    }
   };
 
   const handleCancel = (shipment: ShipmentWithDetails) => {
@@ -362,11 +379,25 @@ export default function EnviosPage() {
     }
   };
 
-  const handleBulkPrintLabels = () => {
+  const handleBulkPrintLabels = async () => {
     if (selectedIds.size === 0) return;
-    toast({ title: 'Imprimir etiquetas', description: `Generando ${selectedIds.size} etiqueta(s)...` });
+    toast({ title: 'Imprimir guias', description: `Generando ${selectedIds.size} guia(s)...` });
     const selectedShipments = shipments.filter((s) => selectedIds.has(s.id));
-    selectedShipments.forEach((s) => handlePrintLabel(s));
+    const orgInfo = organization ? {
+      name: organization.name,
+      nit: organization.nit,
+      tax_id: organization.tax_id,
+      address: organization.address,
+      phone: organization.phone,
+    } : undefined;
+    const branchId = getCurrentBranchId();
+    const result = await printShipmentGuidesWithCut(
+      selectedShipments.map((s) => ({ shipment: s, options: { orgInfo } })),
+      branchId || undefined,
+    );
+    if (result.method === 'agent') {
+      toast({ title: 'Guias enviadas a impresora termica', description: `${result.enqueued} job(s) encolado(s) con corte automatico` });
+    }
     setSelectedIds(new Set());
   };
 
@@ -441,6 +472,10 @@ export default function EnviosPage() {
         onBulkPrintLabels={handleBulkPrintLabels}
         onBulkMarkPaid={handleBulkMarkPaid}
         onBulkAddIncident={handleBulkAddIncident}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
       />
 
       <ShipmentDialog
@@ -450,6 +485,7 @@ export default function EnviosPage() {
         stops={stops}
         onSave={handleSaveShipment}
         onSearchCustomer={handleSearchCustomer}
+        organizationId={organizationId}
       />
 
       <AssignDriverDialog

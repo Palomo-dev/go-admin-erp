@@ -15,6 +15,7 @@ import {
   ShipmentCard,
   MisEnviosEmpty,
 } from './components';
+import type { DateFilterPreset } from './components/MisEnviosFilters';
 
 export default function MisEnviosPage() {
   const { toast } = useToast();
@@ -23,6 +24,9 @@ export default function MisEnviosPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<DateFilterPreset>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [driver, setDriver] = useState<DeliveryDriver | null>(null);
   const [driverLoaded, setDriverLoaded] = useState(false);
@@ -263,6 +267,47 @@ export default function MisEnviosPage() {
     }
   };
 
+  const getDateRange = () => {
+    if (dateFilter === 'all') return null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    switch (dateFilter) {
+      case 'today': {
+        const end = new Date(today);
+        end.setDate(end.getDate() + 1);
+        return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+      }
+      case 'yesterday': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 1);
+        return { from: start.toISOString().split('T')[0], to: today.toISOString().split('T')[0] };
+      }
+      case '7days': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 7);
+        return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
+      }
+      case '15days': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 15);
+        return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
+      }
+      case '30days': {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 30);
+        return { from: start.toISOString().split('T')[0], to: now.toISOString().split('T')[0] };
+      }
+      case 'custom': {
+        if (!dateFrom || !dateTo) return null;
+        const to = new Date(dateTo);
+        to.setDate(to.getDate() + 1);
+        return { from: dateFrom, to: to.toISOString().split('T')[0] };
+      }
+      default:
+        return null;
+    }
+  };
+
   const filteredShipments = shipments.filter((s) => {
     const matchesSearch =
       !searchTerm ||
@@ -271,7 +316,13 @@ export default function MisEnviosPage() {
       s.delivery_contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.customer as { full_name?: string } | null)?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const range = getDateRange();
+    let matchesDate = true;
+    if (range) {
+      const shipmentDate = s.created_at?.split('T')[0] || '';
+      matchesDate = shipmentDate >= range.from && shipmentDate < range.to;
+    }
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const stats = {
@@ -318,6 +369,12 @@ export default function MisEnviosPage() {
         onSearchChange={setSearchTerm}
         statusFilter={statusFilter}
         onStatusChange={setStatusFilter}
+        dateFilter={dateFilter}
+        onDateFilterChange={setDateFilter}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
       />
       {filteredShipments.length === 0 ? (
         <MisEnviosEmpty hasShipments={shipments.length > 0} />

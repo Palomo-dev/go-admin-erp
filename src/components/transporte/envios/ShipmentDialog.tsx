@@ -20,9 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Package, Plus, Trash2, Box, User } from 'lucide-react';
+import { Loader2, Package, Plus, Trash2, Box, User, Truck } from 'lucide-react';
 import type { ShipmentWithDetails } from '@/lib/services/shipmentsService';
 import { CustomerSearchSelect, type CustomerSearchResult } from './CustomerSearchSelect';
+import { shippingRatesService, type ShippingRateWithCarrier } from '@/lib/services/shippingRatesService';
 
 interface Stop {
   id: string;
@@ -54,6 +55,7 @@ interface ShipmentDialogProps {
   stops: Stop[];
   onSave: (data: Partial<ShipmentWithDetails>) => Promise<void>;
   onSearchCustomer?: (query: string) => Promise<Customer[]>;
+  organizationId?: number;
 }
 
 const PACKAGE_TYPES = [
@@ -84,9 +86,13 @@ export function ShipmentDialog({
   stops,
   onSave,
   onSearchCustomer,
+  organizationId,
 }: ShipmentDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [items, setItems] = useState<ShipmentItem[]>([]);
+  const [shippingRates, setShippingRates] = useState<ShippingRateWithCarrier[]>([]);
+  const [loadingRates, setLoadingRates] = useState(false);
+  const [showRateSelector, setShowRateSelector] = useState(false);
 
   const [formData, setFormData] = useState({
     sender_name: '',
@@ -161,6 +167,16 @@ export function ShipmentDialog({
       setItems(shipment?.metadata ? ((shipment.metadata as any).items || []) : []);
     }
   }, [open, shipment]);
+
+  useEffect(() => {
+    if (open && organizationId) {
+      setLoadingRates(true);
+      shippingRatesService.getShippingRates(organizationId, { is_active: true })
+        .then((rates) => setShippingRates(rates))
+        .catch((err) => console.error('Error loading shipping rates:', err))
+        .finally(() => setLoadingRates(false));
+    }
+  }, [open, organizationId]);
 
   useEffect(() => {
     const total = (formData.freight_cost || 0) + (formData.insurance_cost || 0);
@@ -404,11 +420,51 @@ export function ShipmentDialog({
           <div className="grid grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Flete</Label>
-              <Input
-                type="number"
-                value={formData.freight_cost}
-                onChange={(e) => setFormData((p) => ({ ...p, freight_cost: Number(e.target.value) || 0 }))}
-              />
+              <div className="flex gap-1">
+                <Input
+                  type="number"
+                  value={formData.freight_cost}
+                  onChange={(e) => setFormData((p) => ({ ...p, freight_cost: Number(e.target.value) || 0 }))}
+                  className="flex-1"
+                />
+                {organizationId && shippingRates.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowRateSelector(!showRateSelector)}
+                    title="Ver tarifas configuradas"
+                  >
+                    {loadingRates ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
+              {showRateSelector && shippingRates.length > 0 && (
+                <div className="absolute z-50 mt-1 w-72 max-h-60 overflow-y-auto rounded-lg border bg-white dark:bg-gray-900 shadow-lg">
+                  {shippingRates.map((rate) => (
+                    <button
+                      key={rate.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0"
+                      onClick={() => {
+                        setFormData((p) => ({ ...p, freight_cost: rate.base_rate || rate.min_charge || 0 }));
+                        setShowRateSelector(false);
+                      }}
+                    >
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{rate.rate_name}</div>
+                      <div className="text-xs text-gray-500 flex items-center gap-2">
+                        {rate.transport_carriers && <span>{rate.transport_carriers.name}</span>}
+                        <span className="font-semibold text-green-600 dark:text-green-400">
+                          ${rate.base_rate || rate.min_charge || 0}
+                        </span>
+                        {rate.calculation_method === 'weight' && rate.rate_per_kg && (
+                          <span>+ ${rate.rate_per_kg}/kg</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Seguro</Label>

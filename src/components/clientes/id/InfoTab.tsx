@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/config';
 import { formatDate } from '@/utils/Utils';
+import { Building2 } from 'lucide-react';
 
 interface InfoTabProps {
   clienteId: string;
@@ -18,6 +20,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   const [municipalityState, setMunicipalityState] = useState<string | null>(null);
   const [municipalityPostalCode, setMunicipalityPostalCode] = useState<string | null>(null);
   const [primaryContact, setPrimaryContact] = useState<{ name: string; email: string | null; phone: string | null; position: string | null } | null>(null);
+  const [linkedCompanies, setLinkedCompanies] = useState<Array<{ id: string; name: string; position: string | null; is_primary: boolean }>>([]);
 
   // Cargar datos completos del cliente
   useEffect(() => {
@@ -54,6 +57,32 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
             setMunicipalityName(`${muni.name} (${muni.code}) - ${muni.state_name}`);
             setMunicipalityState(muni.state_name);
             setMunicipalityPostalCode(muni.code);
+          }
+        }
+
+        // Si es persona, cargar las empresas a las que está vinculada
+        if (data.customer_type !== 'company') {
+          const { data: companyLinks } = await supabase
+            .from('customer_company_links')
+            .select(`
+              is_primary,
+              position,
+              company:customers!customer_company_links_company_id_fkey(
+                id,
+                full_name
+              )
+            `)
+            .eq('person_id', clienteId)
+            .order('is_primary', { ascending: false });
+
+          if (companyLinks && companyLinks.length > 0) {
+            const companies = companyLinks.map((link: any) => ({
+              id: link.company?.id || '',
+              name: link.company?.full_name || 'Sin nombre',
+              position: link.position || null,
+              is_primary: link.is_primary || false,
+            })).filter((c: any) => c.id);
+            setLinkedCompanies(companies);
           }
         }
 
@@ -222,6 +251,45 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Empresas vinculadas - solo para personas */}
+      {!isCompany && linkedCompanies.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              Empresas vinculadas
+            </CardTitle>
+            <CardDescription>Empresas con las que este contacto está asociado</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {linkedCompanies.map((company) => (
+                <div key={company.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <Link href={`/app/clientes/${company.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                        {company.name}
+                      </Link>
+                      {company.position && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{company.position}</p>
+                      )}
+                    </div>
+                  </div>
+                  {company.is_primary && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                      Principal
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       {/* Datos Empresariales y Fiscales - solo mostrar si hay datos */}
       {(isCompany || clienteInfo.company_name || clienteInfo.trade_name || clienteInfo.dv != null || fiscalResp.length > 0) && (

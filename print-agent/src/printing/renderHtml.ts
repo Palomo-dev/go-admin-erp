@@ -1,4 +1,4 @@
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from './types';
+import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload } from './types';
 import type { PaperSpec } from './paper';
 
 function formatMoney(value: number): string {
@@ -537,4 +537,99 @@ export function buildKitchenTicketHTML(payload: KitchenTicketPrintPayload, paper
 export function buildKitchenTicketsHTML(payloads: KitchenTicketPrintPayload[], paper: PaperSpec): string {
   const title = payloads.length === 1 ? `Comanda #${payloads[0].ticketId}` : 'Comandas';
   return wrapDocument(title, paper, payloads.map(buildKitchenTicketBody));
+}
+
+function buildShipmentGuideBody(payload: ShipmentGuidePrintPayload): string {
+  const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
+  const dateStr = new Date(payload.createdAt).toLocaleDateString('es-CO');
+  const timeStr = new Date(payload.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  const itemsHtml = (payload.items || []).map((item) => {
+    const qty = item.quantity || 1;
+    const desc = item.description || '-';
+    const total = item.totalValue || (qty * (item.unitValue || 0));
+    let details = '';
+    if (item.sku) details += `<div style="font-size:9px;color:#555">SKU: ${item.sku}</div>`;
+    if (item.weightKg) details += `<div style="font-size:9px;color:#555">Peso: ${item.weightKg} kg</div>`;
+    if (item.variantData) {
+      const entries = Object.entries(item.variantData);
+      if (entries.length > 0) details += `<div style="font-size:9px;color:#555;word-break:break-word;overflow-wrap:anywhere">${entries.map(([k, v]) => `${k}: ${v}`).join(', ')}</div>`;
+    }
+    if (item.modifiers && item.modifiers.length > 0) {
+      const modStr = item.modifiers.map((m) => `${m.name}${m.extraPrice > 0 ? ` (+${formatMoney(m.extraPrice)})` : ''}`).join(', ');
+      details += `<div style="font-size:9px;color:#555;word-break:break-word;overflow-wrap:anywhere">${modStr}</div>`;
+    }
+    if (item.discountAmount && item.discountAmount > 0) details += `<div style="font-size:9px;color:#555">Desc: -${formatMoney(item.discountAmount)}</div>`;
+    if (item.taxAmount && item.taxAmount > 0) details += `<div style="font-size:9px;color:#555">Imp: ${formatMoney(item.taxAmount)}</div>`;
+    return `<div style="border-bottom:1px dashed #ccc;padding:2px 0">
+      <div style="display:flex;justify-content:space-between;font-weight:bold"><span>${qty}x ${desc}</span><span>${formatMoney(total)}</span></div>
+      ${details}
+    </div>`;
+  }).join('');
+
+  const totalsHtml = `
+    <div class="totals">
+      ${payload.itemsTotalValue ? `<div class="total-line"><span>Valor Items:</span><span>${formatMoney(payload.itemsTotalValue)}</span></div>` : ''}
+      ${payload.freightCost ? `<div class="total-line"><span>Flete:</span><span>${formatMoney(payload.freightCost)}</span></div>` : ''}
+      ${payload.insuranceCost ? `<div class="total-line"><span>Seguro:</span><span>${formatMoney(payload.insuranceCost)}</span></div>` : ''}
+      ${payload.codAmount ? `<div class="total-line"><span>Contra Entrega:</span><span>${formatMoney(payload.codAmount)}</span></div>` : ''}
+      ${payload.totalCost ? `<div class="total-line" style="font-weight:bold;font-size:12px"><span>TOTAL:</span><span>${formatMoney(payload.totalCost)}</span></div>` : ''}
+    </div>`;
+
+  const driverHtml = payload.driver ? `
+    <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">CONDUCTOR</div>
+    <div>${payload.driver.name || 'Sin asignar'}</div>
+    ${payload.driver.phone ? `<div style="font-size:10px">Tel: ${payload.driver.phone}</div>` : ''}
+    ${payload.driver.licenseNumber ? `<div style="font-size:10px">Lic: ${payload.driver.licenseNumber}${payload.driver.licenseCategory ? ` (${payload.driver.licenseCategory})` : ''}</div>` : ''}
+  ` : '';
+
+  return `
+  <div style="text-align:center;font-weight:bold;font-size:14px">${payload.businessName || ''}</div>
+  ${payload.businessNit ? `<div style="font-size:10px">NIT: ${payload.businessNit}</div>` : ''}
+  ${payload.businessPhone ? `<div style="font-size:10px">Tel: ${payload.businessPhone}</div>` : ''}
+  ${payload.businessAddress ? `<div style="font-size:10px">${payload.businessAddress}</div>` : ''}
+  <div style="border-top:2px solid #000;border-bottom:2px solid #000;text-align:center;font-weight:bold;font-size:16px;margin:4px 0;padding:2px 0">GUIA DE ENVIO</div>
+  <div style="font-weight:bold">No: ${tracking}</div>
+  <div style="font-size:10px">Fecha: ${dateStr} ${timeStr}</div>
+  ${payload.status ? `<div style="font-size:10px">Estado: ${payload.status.toUpperCase()}</div>` : ''}
+  <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">REMITENTE</div>
+  <div>${payload.senderName || '-'}</div>
+  ${payload.senderPhone ? `<div style="font-size:10px">Tel: ${payload.senderPhone}</div>` : ''}
+  <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">DESTINATARIO</div>
+  <div>${payload.receiverName || '-'}</div>
+  ${payload.receiverPhone ? `<div style="font-size:10px">Tel: ${payload.receiverPhone}</div>` : ''}
+  ${payload.receiverAddress ? `<div style="font-size:10px;word-break:break-word;overflow-wrap:anywhere">Dir: ${payload.receiverAddress}</div>` : ''}
+  ${payload.receiverCity ? `<div style="font-size:10px">Ciudad: ${payload.receiverCity}</div>` : ''}
+  ${payload.receiverInstructions ? `<div style="font-size:10px;word-break:break-word;overflow-wrap:anywhere">Instr: ${payload.receiverInstructions}</div>` : ''}
+  <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">RUTA</div>
+  <div style="font-size:10px">Origen: ${payload.originStop || '-'} -> Destino: ${payload.destinationStop || '-'}</div>
+  ${driverHtml}
+  <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">DETALLES</div>
+  <div style="font-size:10px">
+    ${payload.weightKg ? `Peso: ${payload.weightKg} kg | ` : ''}Paquetes: ${payload.packageCount || 1}
+    ${payload.packageType ? `| Tipo: ${payload.packageType}` : ''}
+    ${payload.deliveryType ? `| Entrega: ${payload.deliveryType}` : ''}
+  </div>
+  ${payload.declaredValue ? `<div style="font-size:10px">Valor Declarado: ${formatMoney(payload.declaredValue)}</div>` : ''}
+  ${payload.isFragile ? '<div style="font-weight:bold">** FRAGIL **</div>' : ''}
+  ${payload.requiresSignature ? '<div style="font-weight:bold">** REQUIERE FIRMA **</div>' : ''}
+  ${itemsHtml ? `<div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">ITEMS</div>${itemsHtml}` : ''}
+  ${totalsHtml}
+  <div style="text-align:center;margin:6px 0">
+    <svg data-barcode="${tracking}"></svg>
+    <div style="font-size:10px;margin-top:2px">${tracking}</div>
+  </div>
+  <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
+    <div style="margin-bottom:24px">Firma Conductor:<br>________________</div>
+    <div>Firma Destinatario:<br>________________</div>
+  </div>`;
+}
+
+export function buildShipmentGuideHTML(payload: ShipmentGuidePrintPayload, paper: PaperSpec): string {
+  return wrapDocument(`Guia ${payload.trackingNumber || payload.shipmentId}`, paper, [buildShipmentGuideBody(payload)]);
+}
+
+export function buildShipmentGuidesHTML(payloads: ShipmentGuidePrintPayload[], paper: PaperSpec): string {
+  const title = payloads.length === 1 ? `Guia ${payloads[0].trackingNumber || payloads[0].shipmentId}` : `Guias (${payloads.length})`;
+  return wrapDocument(title, paper, payloads.map(buildShipmentGuideBody));
 }

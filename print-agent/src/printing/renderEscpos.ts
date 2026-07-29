@@ -1,4 +1,4 @@
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment } from './types';
+import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment, ShipmentGuidePrintPayload } from './types';
 import type { PaperSpec } from './paper';
 import { writeRasterImage } from './escposImage';
 
@@ -648,6 +648,252 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
     lines.push('Gracias por su compra!');
   }
   lines.push('');
+  for (const line of GO_ADMIN_FOOTER) {
+    lines.push(line);
+  }
+  lines.push('\n\n');
+
+  return lines.join('\n');
+}
+
+/**
+ * Imprime la guia de envio en un dispositivo ESC/POS con corte automatico.
+ */
+export function printShipmentGuide(device: any, payload: ShipmentGuidePrintPayload, paper: PaperSpec): void {
+  const chars = paper.charsPerLine;
+  const { date, time } = formatDateParts(payload.createdAt);
+  const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
+
+  // --- Header: datos del negocio ---
+  device.font('a').align('ct');
+  if (payload.businessName) {
+    device.style('b').size(...SIZE_TALL).text(payload.businessName).style('normal').size(...SIZE_NORMAL);
+  }
+  if (payload.businessNit) device.text(`NIT: ${payload.businessNit}`);
+  if (payload.businessPhone) device.text(`Tel: ${payload.businessPhone}`);
+  if (payload.businessAddress) device.text(payload.businessAddress);
+
+  // --- Titulo ---
+  device
+    .text(sep(chars))
+    .style('b')
+    .size(...SIZE_DOUBLE)
+    .text('GUIA DE ENVIO')
+    .size(...SIZE_NORMAL)
+    .style('normal')
+    .text(sep(chars));
+
+  // --- Tracking number ---
+  device.style('b').text(`No: ${tracking}`).style('normal');
+  device.text(`Fecha: ${date} ${time}`);
+  if (payload.status) device.text(`Estado: ${payload.status.toUpperCase()}`);
+
+  // --- Remitente ---
+  device.text(sepLight(chars)).style('b').text('REMITENTE').style('normal');
+  if (payload.senderName) device.text(payload.senderName);
+  if (payload.senderPhone) device.text(`Tel: ${payload.senderPhone}`);
+
+  // --- Destinatario ---
+  device.text(sepLight(chars)).style('b').text('DESTINATARIO').style('normal');
+  if (payload.receiverName) device.text(payload.receiverName);
+  if (payload.receiverPhone) device.text(`Tel: ${payload.receiverPhone}`);
+  if (payload.receiverAddress) {
+    for (const line of wrapText(`Dir: ${payload.receiverAddress}`, chars)) device.text(line);
+  }
+  if (payload.receiverCity) device.text(`Ciudad: ${payload.receiverCity}`);
+  if (payload.receiverInstructions) {
+    for (const line of wrapText(`Instr: ${payload.receiverInstructions}`, chars)) device.text(line);
+  }
+
+  // --- Ruta ---
+  device.text(sepLight(chars)).style('b').text('RUTA').style('normal');
+  if (payload.originStop) device.text(`Origen: ${payload.originStop}`);
+  if (payload.destinationStop) device.text(`Destino: ${payload.destinationStop}`);
+
+  // --- Conductor ---
+  if (payload.driver) {
+    device.text(sepLight(chars)).style('b').text('CONDUCTOR').style('normal');
+    device.text(payload.driver.name || 'Sin asignar');
+    if (payload.driver.phone) device.text(`Tel: ${payload.driver.phone}`);
+    if (payload.driver.licenseNumber) device.text(`Lic: ${payload.driver.licenseNumber}`);
+    if (payload.driver.licenseCategory) device.text(`Cat: ${payload.driver.licenseCategory}`);
+  }
+
+  // --- Detalles ---
+  device.text(sepLight(chars)).style('b').text('DETALLES').style('normal');
+  if (payload.weightKg) device.text(padRight('Peso:', `${payload.weightKg} kg`, chars));
+  if (payload.packageCount) device.text(padRight('Paquetes:', String(payload.packageCount), chars));
+  if (payload.packageType) device.text(padRight('Tipo:', payload.packageType, chars));
+  if (payload.deliveryType) device.text(padRight('Entrega:', payload.deliveryType, chars));
+  if (payload.declaredValue) device.text(padRight('Valor Decl.:', formatMoney(payload.declaredValue), chars));
+  if (payload.isFragile) device.text('** FRAGIL **');
+  if (payload.requiresSignature) device.text('** REQUIERE FIRMA **');
+
+  // --- Items ---
+  if (payload.items && payload.items.length > 0) {
+    device.text(sepLight(chars)).style('b').text('ITEMS').style('normal');
+    device.text(sepLight(chars));
+    for (const item of payload.items) {
+      const qty = item.quantity || 1;
+      const desc = item.description || '-';
+      const total = item.totalValue || (qty * (item.unitValue || 0));
+      writeItemLine(device, `${qty}x ${desc}`, formatMoney(total), chars);
+      if (item.sku) device.text(`  SKU: ${item.sku}`);
+      if (item.weightKg) device.text(`  Peso: ${item.weightKg} kg`);
+      if (item.variantData) {
+        const entries = Object.entries(item.variantData);
+        if (entries.length > 0) {
+          for (const line of wrapText(`  ${entries.map(([k, v]) => `${k}: ${v}`).join(', ')}`, chars)) device.text(line);
+        }
+      }
+      if (item.modifiers && item.modifiers.length > 0) {
+        const modStr = item.modifiers.map((m) => `${m.name}${m.extraPrice > 0 ? ` (+${formatMoney(m.extraPrice)})` : ''}`).join(', ');
+        for (const line of wrapText(`  ${modStr}`, chars)) device.text(line);
+      }
+      if (item.discountAmount && item.discountAmount > 0) device.text(`  Desc: -${formatMoney(item.discountAmount)}`);
+      if (item.taxAmount && item.taxAmount > 0) device.text(`  Imp: ${formatMoney(item.taxAmount)}`);
+      device.text(sepLight(chars));
+    }
+  }
+
+  // --- Totales ---
+  device.text(sepLight(chars)).style('b').text('TOTALES').style('normal');
+  if (payload.itemsTotalValue) device.text(padRight('Valor Items:', formatMoney(payload.itemsTotalValue), chars));
+  if (payload.freightCost) device.text(padRight('Flete:', formatMoney(payload.freightCost), chars));
+  if (payload.insuranceCost) device.text(padRight('Seguro:', formatMoney(payload.insuranceCost), chars));
+  if (payload.codAmount) device.text(padRight('Contra Entrega:', formatMoney(payload.codAmount), chars));
+  if (payload.totalCost) device.style('b').text(padRight('TOTAL:', formatMoney(payload.totalCost), chars)).style('normal');
+
+  // --- Barcode ---
+  device.text(sepLight(chars));
+  device.align('ct');
+  try {
+    device.code128(tracking, { width: 2, height: 50 });
+  } catch {
+    device.text(`** ${tracking} **`);
+  }
+  device.text(tracking);
+
+  // --- Firma ---
+  device.text(sepLight(chars)).text('').text('');
+  device.text('Firma Conductor:');
+  device.text('________________');
+  device.text('').text('');
+  device.text('Firma Destinatario:');
+  device.text('________________');
+
+  // --- Footer ---
+  device.text(sepLight(chars));
+  for (const line of GO_ADMIN_FOOTER) {
+    device.text(line);
+  }
+
+  device.feed(2).cut();
+}
+
+/**
+ * Version en texto plano de la guia de envio, para impresoras 'system'.
+ */
+export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, paper: PaperSpec): string {
+  const chars = paper.charsPerLine;
+  const { date, time } = formatDateParts(payload.createdAt);
+  const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
+  const lines: string[] = [];
+
+  if (payload.businessName) lines.push(payload.businessName);
+  if (payload.businessNit) lines.push(`NIT: ${payload.businessNit}`);
+  if (payload.businessPhone) lines.push(`Tel: ${payload.businessPhone}`);
+  if (payload.businessAddress) lines.push(payload.businessAddress);
+
+  lines.push(sep(chars));
+  lines.push('GUIA DE ENVIO');
+  lines.push(sep(chars));
+  lines.push(`No: ${tracking}`);
+  lines.push(`Fecha: ${date} ${time}`);
+  if (payload.status) lines.push(`Estado: ${payload.status.toUpperCase()}`);
+
+  lines.push(sepLight(chars));
+  lines.push('REMITENTE');
+  if (payload.senderName) lines.push(payload.senderName);
+  if (payload.senderPhone) lines.push(`Tel: ${payload.senderPhone}`);
+
+  lines.push(sepLight(chars));
+  lines.push('DESTINATARIO');
+  if (payload.receiverName) lines.push(...wrapText(payload.receiverName, chars));
+  if (payload.receiverPhone) lines.push(`Tel: ${payload.receiverPhone}`);
+  if (payload.receiverAddress) lines.push(...wrapText(`Dir: ${payload.receiverAddress}`, chars));
+  if (payload.receiverCity) lines.push(`Ciudad: ${payload.receiverCity}`);
+  if (payload.receiverInstructions) lines.push(...wrapText(`Instr: ${payload.receiverInstructions}`, chars));
+
+  lines.push(sepLight(chars));
+  lines.push('RUTA');
+  if (payload.originStop) lines.push(`Origen: ${payload.originStop}`);
+  if (payload.destinationStop) lines.push(`Destino: ${payload.destinationStop}`);
+
+  if (payload.driver) {
+    lines.push(sepLight(chars));
+    lines.push('CONDUCTOR');
+    lines.push(payload.driver.name || 'Sin asignar');
+    if (payload.driver.phone) lines.push(`Tel: ${payload.driver.phone}`);
+    if (payload.driver.licenseNumber) lines.push(`Lic: ${payload.driver.licenseNumber}`);
+    if (payload.driver.licenseCategory) lines.push(`Cat: ${payload.driver.licenseCategory}`);
+  }
+
+  lines.push(sepLight(chars));
+  lines.push('DETALLES');
+  if (payload.weightKg) lines.push(padRight('Peso:', `${payload.weightKg} kg`, chars));
+  if (payload.packageCount) lines.push(padRight('Paquetes:', String(payload.packageCount), chars));
+  if (payload.packageType) lines.push(padRight('Tipo:', payload.packageType, chars));
+  if (payload.deliveryType) lines.push(padRight('Entrega:', payload.deliveryType, chars));
+  if (payload.declaredValue) lines.push(padRight('Valor Decl.:', formatMoney(payload.declaredValue), chars));
+  if (payload.isFragile) lines.push('** FRAGIL **');
+  if (payload.requiresSignature) lines.push('** REQUIERE FIRMA **');
+
+  if (payload.items && payload.items.length > 0) {
+    lines.push(sepLight(chars));
+    lines.push('ITEMS');
+    lines.push(sepLight(chars));
+    for (const item of payload.items) {
+      const qty = item.quantity || 1;
+      const desc = item.description || '-';
+      const total = item.totalValue || (qty * (item.unitValue || 0));
+      lines.push(padRight(`${qty}x ${desc}`, formatMoney(total), chars));
+      if (item.sku) lines.push(`  SKU: ${item.sku}`);
+      if (item.weightKg) lines.push(`  Peso: ${item.weightKg} kg`);
+      if (item.variantData) {
+        const entries = Object.entries(item.variantData);
+        if (entries.length > 0) lines.push(...wrapText(`  ${entries.map(([k, v]) => `${k}: ${v}`).join(', ')}`, chars));
+      }
+      if (item.modifiers && item.modifiers.length > 0) {
+        const modStr = item.modifiers.map((m) => `${m.name}${m.extraPrice > 0 ? ` (+${formatMoney(m.extraPrice)})` : ''}`).join(', ');
+        lines.push(...wrapText(`  ${modStr}`, chars));
+      }
+      if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
+      if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
+      lines.push(sepLight(chars));
+    }
+  }
+
+  lines.push(sepLight(chars));
+  lines.push('TOTALES');
+  if (payload.itemsTotalValue) lines.push(padRight('Valor Items:', formatMoney(payload.itemsTotalValue), chars));
+  if (payload.freightCost) lines.push(padRight('Flete:', formatMoney(payload.freightCost), chars));
+  if (payload.insuranceCost) lines.push(padRight('Seguro:', formatMoney(payload.insuranceCost), chars));
+  if (payload.codAmount) lines.push(padRight('Contra Entrega:', formatMoney(payload.codAmount), chars));
+  if (payload.totalCost) lines.push(padRight('TOTAL:', formatMoney(payload.totalCost), chars));
+
+  lines.push(sepLight(chars));
+  lines.push(`** ${tracking} **`);
+
+  lines.push(sepLight(chars));
+  lines.push('');
+  lines.push('Firma Conductor:');
+  lines.push('________________');
+  lines.push('');
+  lines.push('Firma Destinatario:');
+  lines.push('________________');
+
+  lines.push(sepLight(chars));
   for (const line of GO_ADMIN_FOOTER) {
     lines.push(line);
   }

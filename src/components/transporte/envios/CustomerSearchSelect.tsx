@@ -57,8 +57,10 @@ export function CustomerSearchSelect({
   const [query, setQuery] = React.useState('');
   const [results, setResults] = React.useState<CustomerSearchResult[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [hasInitialLoad, setHasInitialLoad] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout>>();
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -70,21 +72,44 @@ export function CustomerSearchSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const sortAlpha = (data: CustomerSearchResult[]) =>
+    [...data].sort((a, b) => a.full_name.localeCompare(b.full_name, 'es'));
+
   const handleSearch = async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
-      setResults([]);
-      return;
-    }
     setLoading(true);
     try {
       const data = await onSearch(searchQuery);
-      setResults(data);
+      setResults(sortAlpha(data));
     } catch (error) {
       console.error('Error searching customers:', error);
       setResults([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadInitial = React.useCallback(async () => {
+    if (hasInitialLoad) return;
+    setHasInitialLoad(true);
+    setLoading(true);
+    try {
+      const data = await onSearch('');
+      setResults(sortAlpha(data));
+    } catch (error) {
+      console.error('Error loading customers:', error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [hasInitialLoad, onSearch]);
+
+  const handleInputChange = (value: string) => {
+    setQuery(value);
+    setOpen(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      handleSearch(value);
+    }, 300);
   };
 
   const handleSelect = (customer: CustomerSearchResult) => {
@@ -123,32 +148,30 @@ export function CustomerSearchSelect({
           )}
         </div>
       ) : (
-        <div className="flex gap-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           <Input
             ref={inputRef}
             placeholder={placeholder}
             value={query}
             disabled={disabled}
-            onChange={(e) => {
-              setQuery(e.target.value);
+            className="pl-9"
+            onChange={(e) => handleInputChange(e.target.value)}
+            onFocus={() => {
               setOpen(true);
+              if (!hasInitialLoad) loadInitial();
             }}
-            onFocus={() => setOpen(true)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
+                if (debounceRef.current) clearTimeout(debounceRef.current);
                 handleSearch(query);
               }
             }}
           />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={disabled || loading}
-            onClick={() => handleSearch(query)}
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          </Button>
+          {loading && (
+            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+          )}
         </div>
       )}
 
@@ -206,9 +229,13 @@ export function CustomerSearchSelect({
             <div className="py-6 text-center text-sm text-gray-500">
               No se encontraron clientes
             </div>
+          ) : loading ? (
+            <div className="py-6 text-center text-sm text-gray-500">
+              Cargando clientes...
+            </div>
           ) : (
             <div className="py-6 text-center text-sm text-gray-500">
-              Escriba para buscar clientes
+              {results.length === 0 ? 'No hay clientes registrados' : 'Escriba para filtrar'}
             </div>
           )}
         </div>

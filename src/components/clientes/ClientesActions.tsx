@@ -105,11 +105,11 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
             <Button
               variant="default"
               size="sm"
-              className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white min-h-[40px] text-sm"
+              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white min-h-[40px] text-sm"
               onClick={() => window.location.href = '/app/clientes/new'}
             >
-              <Plus className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Nuevo cliente</span>
+              <Plus className="w-4 h-4 mr-1.5" />
+              <span>Nuevo cliente</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>Crear un nuevo cliente</TooltipContent>
@@ -124,8 +124,8 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               onClick={() => setIsTagDialogOpen(true)}
               className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
             >
-              <Tag className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Etiquetar</span>
+              <Tag className="w-4 h-4 mr-1.5" />
+              <span>Etiquetar</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>Aplicar etiquetas a clientes seleccionados</TooltipContent>
@@ -140,8 +140,8 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               onClick={() => setIsMergeDialogOpen(true)}
               className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
             >
-              <Users className="w-4 h-4 sm:mr-1" />
-              <span className="hidden lg:inline">Unificar</span>
+              <Users className="w-4 h-4 mr-1.5" />
+              <span>Unificar</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>Unificar clientes duplicados</TooltipContent>
@@ -155,8 +155,8 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
               onClick={onExportCSV}
               className="text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 min-h-[40px] text-sm"
             >
-              <Download className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Exportar</span>
+              <Download className="w-4 h-4 mr-1.5" />
+              <span>Exportar</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>Exportar a CSV</TooltipContent>

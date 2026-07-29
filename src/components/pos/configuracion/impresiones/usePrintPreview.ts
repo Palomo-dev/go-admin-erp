@@ -4,8 +4,10 @@ import { useMemo } from 'react';
 import {
   buildSaleTicketHTML,
   buildKitchenTicketHTML,
+  buildShipmentGuideHTML,
   buildPlainTextSaleTicket,
   buildPlainTextTicket,
+  buildPlainTextShipmentGuide,
   getPaperSpec,
   type PaperSpec,
 } from '@printing';
@@ -13,11 +15,12 @@ import {
   buildSampleSaleTicket,
   buildSamplePreCuenta,
   buildSampleKitchenTicket,
+  buildSampleShipmentGuide,
   type PreviewBusiness,
 } from './sampleData';
 
 /** Documento a previsualizar. Coincide con `print_jobs.job_type`. */
-export type DocumentKind = 'sale_ticket' | 'pre_cuenta' | 'kitchen_ticket';
+export type DocumentKind = 'sale_ticket' | 'pre_cuenta' | 'kitchen_ticket' | 'shipment_guide';
 
 /**
  * Camino de impresion:
@@ -71,6 +74,26 @@ export function usePrintPreview(
       return {
         paper,
         html: path === 'html' ? buildKitchenTicketHTML(payload, paper) : null,
+        text,
+        overflow: findOverflow(text, paper.charsPerLine),
+      };
+    }
+
+    if (kind === 'shipment_guide') {
+      const payload = buildSampleShipmentGuide(business);
+      const text = buildPlainTextShipmentGuide(payload, paper);
+      const rawHtml = path === 'html' ? buildShipmentGuideHTML(payload, paper) : null;
+      const html = rawHtml
+        ? rawHtml.replace(
+            '</body>',
+            `<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script>window.onload=function(){try{document.querySelectorAll('svg[data-barcode]').forEach(function(el){JsBarcode(el,el.getAttribute('data-barcode').trim(),{format:"CODE128",width:2,height:50,displayValue:false,margin:0,background:"#ffffff",lineColor:"#000000"})})}catch(e){}};</script>
+</body>`,
+          )
+        : null;
+      return {
+        paper,
+        html,
         text,
         overflow: findOverflow(text, paper.charsPerLine),
       };

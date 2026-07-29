@@ -25,12 +25,15 @@ export type {
   SaleTicketItemPayload,
   SaleTicketPayment,
   SaleTicketPrintPayload,
+  ShipmentGuideItemPayload,
+  ShipmentGuideDriverPayload,
+  ShipmentGuidePrintPayload,
   TicketKind,
 } from './printing/types';
 
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from './printing/types';
+import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload } from './printing/types';
 
-export type PrintJobPayload = KitchenTicketPrintPayload | SaleTicketPrintPayload;
+export type PrintJobPayload = KitchenTicketPrintPayload | SaleTicketPrintPayload | ShipmentGuidePrintPayload;
 
 export interface PrintJobRow {
   id: string;
@@ -38,7 +41,7 @@ export interface PrintJobRow {
   branch_id: number | null;
   printer_id: string;
   station: string | null;
-  job_type: 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket';
+  job_type: 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket' | 'shipment_guide';
   reference_id: string | null;
   payload: PrintJobPayload;
   status: 'pending' | 'sent' | 'printed' | 'error';

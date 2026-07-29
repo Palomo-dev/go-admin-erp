@@ -712,15 +712,16 @@ export default function ClientesPage() {
             Administra tu cartera de clientes
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button 
             variant="outline" 
-            size="icon" 
+            size="sm"
             onClick={() => organizationId && loadCustomers(organizationId)}
             disabled={isLoading}
-            className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
+            className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 min-h-[40px]"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Actualizar</span>
           </Button>
           <ClientesActions 
             onExportCSV={handleExportCSV}

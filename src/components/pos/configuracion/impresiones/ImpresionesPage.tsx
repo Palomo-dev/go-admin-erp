@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Printer, Receipt, ChefHat, FileText, Monitor, Usb } from 'lucide-react';
+import { ArrowLeft, Printer, Receipt, ChefHat, FileText, Monitor, Usb, Package } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { PreviewViewer } from './PreviewViewer';
 import { usePreviewBusiness } from './usePreviewBusiness';
@@ -20,6 +20,7 @@ const DOCUMENTS: Array<{ value: DocumentKind; label: string; description: string
   { value: 'sale_ticket', label: 'Ticket de venta', description: 'Recibo de caja con pagos', icon: Receipt },
   { value: 'pre_cuenta', label: 'Pre-cuenta', description: 'Cuenta de mesa sin pago', icon: FileText },
   { value: 'kitchen_ticket', label: 'Comanda', description: 'Orden para cocina o bar', icon: ChefHat },
+  { value: 'shipment_guide', label: 'Guia de envio', description: 'Guia con corte automatico', icon: Package },
 ];
 
 const PATHS: Array<{ value: RenderPath; label: string; description: string; icon: typeof Monitor }> = [

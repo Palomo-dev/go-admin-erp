@@ -13,8 +13,8 @@
 
 import type { PrintJobPayload, PrintJobRow } from '../types';
 import type { PaperSpec } from './paper';
-import type { SaleTicketPrintPayload, KitchenTicketPrintPayload } from './types';
-import { printSaleTicket, printKitchenTicket } from './renderEscpos';
+import type { SaleTicketPrintPayload, KitchenTicketPrintPayload, ShipmentGuidePrintPayload } from './types';
+import { printSaleTicket, printKitchenTicket, printShipmentGuide } from './renderEscpos';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const escpos = require('escpos');
@@ -61,6 +61,8 @@ export async function buildEscposBuffer(
 
   if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
     printSaleTicket(printer, payload as SaleTicketPrintPayload, paper);
+  } else if (jobType === 'shipment_guide') {
+    printShipmentGuide(printer, payload as ShipmentGuidePrintPayload, paper);
   } else {
     printKitchenTicket(printer, payload as KitchenTicketPrintPayload, paper);
   }

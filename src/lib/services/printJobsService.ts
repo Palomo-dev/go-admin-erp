@@ -5,6 +5,7 @@ import {
   getPaperSpec,
   type MonochromeRaster,
   type SaleTicketPrintPayload as SharedSaleTicketPrintPayload,
+  type ShipmentGuidePrintPayload as SharedShipmentGuidePrintPayload,
 } from '@printing';
 import { rasterizeLogo } from './logoRasterService';
 import { PrintService } from './printService';
@@ -112,6 +113,7 @@ export interface KitchenTicketPrintPayload {
  * que se quedaba corta cada vez que la plantilla ganaba un campo.
  */
 export type SaleTicketPrintPayload = SharedSaleTicketPrintPayload;
+export type ShipmentGuidePrintPayload = SharedShipmentGuidePrintPayload;
 
 export interface PrintJobWithPrinter {
   id: string;
@@ -622,5 +624,68 @@ export class PrintJobsService {
         branch_name: agent.branches?.name || null,
       };
     });
+  }
+
+  /**
+   * Encola la impresion fisica de una guia de envio.
+   * Usa la estacion 'cashier' (o 'all') para resolver las impresoras.
+   * El print-agent enviara el comando ESC/POS cut() para corte automatico.
+   */
+  static async enqueueShipmentGuide(
+    branchId: number,
+    guide: ShipmentGuidePrintPayload,
+  ): Promise<{ enqueued: number }> {
+    const orgId = getOrganizationId();
+    const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
+
+    if (printers.length === 0) return { enqueued: 0 };
+
+    const header = await resolveBusinessHeader({
+      businessName: guide.businessName,
+      businessNit: guide.businessNit,
+      businessPhone: guide.businessPhone,
+      businessAddress: guide.businessAddress,
+    });
+
+    const payload: ShipmentGuidePrintPayload = {
+      ...guide,
+      businessName: header.businessName,
+      businessNit: header.businessNit,
+      businessPhone: header.businessPhone,
+      businessAddress: header.businessAddress,
+    };
+
+    const rows = printers.map((printer) => ({
+      organization_id: orgId,
+      branch_id: printer.branch_id || branchId,
+      printer_id: printer.id,
+      station: 'cashier',
+      job_type: 'shipment_guide' as const,
+      reference_id: guide.shipmentId,
+      payload: payload as any,
+      status: 'pending' as const,
+    }));
+
+    const { error } = await supabase.from('print_jobs').insert(rows);
+    if (error) throw error;
+
+    return { enqueued: rows.length };
+  }
+
+  /**
+   * Encola la impresion fisica de varias guias de envio en lote.
+   * Cada guia se encola como un job independiente para que la impresora
+   * corte el papel despues de cada una (ESC/POS cut() por job).
+   */
+  static async enqueueShipmentGuides(
+    branchId: number,
+    guides: ShipmentGuidePrintPayload[],
+  ): Promise<{ enqueued: number }> {
+    let total = 0;
+    for (const guide of guides) {
+      const result = await this.enqueueShipmentGuide(branchId, guide);
+      total += result.enqueued;
+    }
+    return { enqueued: total };
   }
 }

@@ -108,8 +108,13 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
             {customer.phone && (
               <>
                 <span className="text-gray-300">•</span>
-                <Phone className="h-3 w-3" />
-                <span>{customer.phone}</span>
+                <a
+                  href={`tel:${customer.phone}`}
+                  className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  <Phone className="h-3 w-3" />
+                  <span>{customer.phone}</span>
+                </a>
               </>
             )}
           </div>
@@ -134,7 +139,14 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
             <Phone className="h-4 w-4 text-gray-400" />
             <span>
               {shipment.delivery_contact_name}
-              {shipment.delivery_contact_phone && ` - ${shipment.delivery_contact_phone}`}
+              {shipment.delivery_contact_phone && (
+                <a
+                  href={`tel:${shipment.delivery_contact_phone}`}
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {` - ${shipment.delivery_contact_phone}`}
+                </a>
+              )}
             </span>
           </div>
         )}

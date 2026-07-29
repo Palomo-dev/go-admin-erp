@@ -60,39 +60,71 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
   const [avatarUrl, setAvatarUrl] = useState(cliente.avatar_url);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [primaryContact, setPrimaryContact] = useState<{ name: string; email: string | null; phone: string | null; position: string | null } | null>(null);
+  const [linkedCompanies, setLinkedCompanies] = useState<Array<{ id: string; name: string; position: string | null; is_primary: boolean }>>([]);
 
   useEffect(() => {
-    if (cliente.customer_type !== 'company' || !cliente.id) return;
-    async function loadPrimaryContact() {
-      const { data: linkData } = await supabase
-        .from('customer_company_links')
-        .select(`
-          is_primary,
-          position,
-          person:customers!customer_company_links_person_id_fkey(
-            first_name,
-            last_name,
-            email,
-            phone
-          )
-        `)
-        .eq('company_id', cliente.id)
-        .order('is_primary', { ascending: false });
+    if (!cliente.id) return;
 
-      if (linkData && linkData.length > 0) {
-        const primary = linkData.find((l: any) => l.is_primary) || linkData[0];
-        const person = primary.person as any;
-        if (person) {
-          setPrimaryContact({
-            name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
-            email: person.email || null,
-            phone: person.phone || null,
-            position: primary.position || null,
-          });
+    // Si es empresa, cargar contacto principal
+    if (cliente.customer_type === 'company') {
+      async function loadPrimaryContact() {
+        const { data: linkData } = await supabase
+          .from('customer_company_links')
+          .select(`
+            is_primary,
+            position,
+            person:customers!customer_company_links_person_id_fkey(
+              first_name,
+              last_name,
+              email,
+              phone
+            )
+          `)
+          .eq('company_id', cliente.id)
+          .order('is_primary', { ascending: false });
+
+        if (linkData && linkData.length > 0) {
+          const primary = linkData.find((l: any) => l.is_primary) || linkData[0];
+          const person = primary.person as any;
+          if (person) {
+            setPrimaryContact({
+              name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
+              email: person.email || null,
+              phone: person.phone || null,
+              position: primary.position || null,
+            });
+          }
         }
       }
+      loadPrimaryContact();
+    } else {
+      // Si es persona, cargar empresas vinculadas
+      async function loadLinkedCompanies() {
+        const { data: companyLinks } = await supabase
+          .from('customer_company_links')
+          .select(`
+            is_primary,
+            position,
+            company:customers!customer_company_links_company_id_fkey(
+              id,
+              full_name
+            )
+          `)
+          .eq('person_id', cliente.id)
+          .order('is_primary', { ascending: false });
+
+        if (companyLinks && companyLinks.length > 0) {
+          const companies = companyLinks.map((link: any) => ({
+            id: link.company?.id || '',
+            name: link.company?.full_name || 'Sin nombre',
+            position: link.position || null,
+            is_primary: link.is_primary || false,
+          })).filter((c: any) => c.id);
+          setLinkedCompanies(companies);
+        }
+      }
+      loadLinkedCompanies();
     }
-    loadPrimaryContact();
   }, [cliente.id, cliente.customer_type]);
 
   const handleAvatarClick = () => {
@@ -199,6 +231,26 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               Contacto: {primaryContact.name}{primaryContact.position ? ` (${primaryContact.position})` : ''}
             </p>
+          )}
+          
+          {/* Mostrar empresas vinculadas para personas */}
+          {cliente.customer_type !== 'company' && linkedCompanies.length > 0 && (
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Vinculado a:</span>
+              {linkedCompanies.map((company, idx) => (
+                <span key={company.id} className="inline-flex items-center gap-1">
+                  <Link 
+                    href={`/app/clientes/${company.id}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full hover:underline"
+                  >
+                    <Building2 className="h-3 w-3" />
+                    {company.name}
+                    {company.is_primary && <span className="text-blue-400">·</span>}
+                  </Link>
+                  {idx < linkedCompanies.length - 1 && <span className="text-gray-300">,</span>}
+                </span>
+              ))}
+            </div>
           )}
           
           <div className="mt-1 flex items-center gap-3">

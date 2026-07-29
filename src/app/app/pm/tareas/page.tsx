@@ -249,32 +249,32 @@ export default function PMTasksPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-fit">
+        <div className="flex items-center gap-1 p-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full sm:w-fit overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all flex-1 sm:flex-none justify-center ${
                 activeTab === tab.id
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
 
         {/* Filters (except for AI tab) */}
         {activeTab !== 'ai' && (
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
+            <div className="relative col-span-2 sm:flex-1 sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input placeholder="Buscar tareas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 bg-white dark:bg-gray-800" />
             </div>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); }}>
-              <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-800"><SelectValue placeholder="Estado" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="open">Pendiente</SelectItem>
@@ -284,14 +284,14 @@ export default function PMTasksPage() {
               </SelectContent>
             </Select>
             <Select value={projectFilter} onValueChange={(v) => { setProjectFilter(v); }}>
-              <SelectTrigger className="w-[200px] bg-white dark:bg-gray-800"><SelectValue placeholder="Proyecto" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800"><SelectValue placeholder="Proyecto" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los proyectos</SelectItem>
                 {projects.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
               </SelectContent>
             </Select>
             <Select value={dueFilter} onValueChange={setDueFilter}>
-              <SelectTrigger className="w-[170px] bg-white dark:bg-gray-800"><SelectValue placeholder="Vencimiento" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px] bg-white dark:bg-gray-800"><SelectValue placeholder="Vencimiento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toda fecha</SelectItem>
                 <SelectItem value="overdue">Vencidas</SelectItem>
@@ -304,14 +304,14 @@ export default function PMTasksPage() {
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-800"><SelectValue placeholder="Prioridad" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[140px] bg-white dark:bg-gray-800"><SelectValue placeholder="Prioridad" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toda prioridad</SelectItem>
                 {Object.entries(PRIORITY_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
               </SelectContent>
             </Select>
             <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="w-[170px] bg-white dark:bg-gray-800"><SelectValue placeholder="Asignado" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px] bg-white dark:bg-gray-800"><SelectValue placeholder="Asignado" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los asignados</SelectItem>
                 <SelectItem value="unassigned">Sin asignar</SelectItem>
@@ -319,7 +319,7 @@ export default function PMTasksPage() {
               </SelectContent>
             </Select>
             <Select value={moduleFilter} onValueChange={setModuleFilter}>
-              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-800"><SelectValue placeholder="Módulo" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[140px] bg-white dark:bg-gray-800"><SelectValue placeholder="Módulo" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los módulos</SelectItem>
                 <SelectItem value="crm">CRM</SelectItem>
@@ -328,7 +328,7 @@ export default function PMTasksPage() {
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-800"><SelectValue placeholder="Tipo" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los tipos</SelectItem>
                 {Object.entries(TASK_TYPE_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
@@ -337,11 +337,11 @@ export default function PMTasksPage() {
           </div>
         )}
         {activeTab !== 'ai' && dueFilter === 'custom' && (
-          <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
             <span className="text-sm text-gray-500 dark:text-gray-400">Rango:</span>
-            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-[170px] bg-white dark:bg-gray-800" />
-            <span className="text-sm text-gray-400">a</span>
-            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-[170px] bg-white dark:bg-gray-800" />
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-full sm:w-[170px] bg-white dark:bg-gray-800" />
+            <span className="text-sm text-gray-400 text-center">a</span>
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-full sm:w-[170px] bg-white dark:bg-gray-800" />
           </div>
         )}
 
@@ -390,6 +390,7 @@ export default function PMTasksPage() {
               <AITaskPlanner
                 projectId={projectFilter !== 'all' ? projectFilter : undefined}
                 onTasksCreated={loadTasks}
+                projects={projects}
               />
             )}
           </>

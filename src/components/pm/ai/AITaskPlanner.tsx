@@ -51,6 +51,7 @@ interface AIGeneratedTask {
 interface AITaskPlannerProps {
   projectId?: string;
   onTasksCreated?: () => void;
+  projects?: Array<{ id: string; name: string }>;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -71,7 +72,7 @@ const EXAMPLE_PROMPTS = [
   'Rediseño de app móvil: wireframes, diseño UI, prototipo interactivo, tests de usabilidad. 3 semanas.',
 ];
 
-export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps) {
+export function AITaskPlanner({ projectId: initialProjectId, onTasksCreated, projects = [] }: AITaskPlannerProps) {
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -80,6 +81,9 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
   const [goals, setGoals] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   const [autoAssign, setAutoAssign] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId || 'none');
+
+  const projectId = selectedProjectId !== 'none' ? selectedProjectId : undefined;
   const { toast } = useToast();
 
   const {
@@ -111,7 +115,7 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
       const response = await fetch('/api/ai-assistant/pm-planner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim(), projectId }),
+        body: JSON.stringify({ prompt: prompt.trim(), projectId: projectId || null }),
       });
 
       if (!response.ok) {
@@ -139,6 +143,11 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
       setGenerating(false);
     }
   }, [prompt, projectId, toast]);
+
+  // Sincronizar si el prop cambia desde el filtro externo
+  useEffect(() => {
+    if (initialProjectId) setSelectedProjectId(initialProjectId);
+  }, [initialProjectId]);
 
   const toggleTask = (index: number) => {
     setGeneratedTasks(prev => prev.map((t, i) => i === index ? { ...t, selected: !t.selected } : t));
@@ -304,6 +313,24 @@ export function AITaskPlanner({ projectId, onTasksCreated }: AITaskPlannerProps)
               <span>Transcribiendo con Whisper...</span>
             </div>
           )}
+
+          {/* Selector de proyecto */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-gray-500 whitespace-nowrap">Proyecto:</Label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger className="h-9 w-full sm:w-[220px] text-sm bg-white dark:bg-gray-900">
+                  <SelectValue placeholder="Sin proyecto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin proyecto</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {/* Sugerencias */}
           <div className="flex flex-wrap gap-1.5">

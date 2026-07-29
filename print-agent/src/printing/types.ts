@@ -145,4 +145,72 @@ export interface SaleTicketPrintPayload {
 }
 
 /** Tipo de documento a imprimir. Coincide con `print_jobs.job_type`. */
-export type TicketKind = 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket';
+export type TicketKind = 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket' | 'shipment_guide';
+
+export interface ShipmentGuideItemPayload {
+  description: string;
+  sku?: string;
+  quantity: number;
+  unit?: string;
+  unitValue?: number;
+  totalValue?: number;
+  weightKg?: number;
+  variantData?: Record<string, string> | null;
+  modifiers?: Array<{ name: string; extraPrice: number }> | null;
+  discountAmount?: number;
+  taxAmount?: number;
+}
+
+export interface ShipmentGuideDriverPayload {
+  name: string;
+  phone?: string;
+  licenseNumber?: string;
+  licenseCategory?: string;
+}
+
+export interface ShipmentGuidePrintPayload {
+  shipmentId: string;
+  trackingNumber?: string;
+  shipmentNumber?: string;
+  status?: string;
+  createdAt: string;
+
+  businessName?: string;
+  businessNit?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+
+  senderName?: string;
+  senderPhone?: string;
+
+  receiverName?: string;
+  receiverPhone?: string;
+  receiverAddress?: string;
+  receiverCity?: string;
+  receiverInstructions?: string;
+
+  originStop?: string;
+  destinationStop?: string;
+
+  driver?: ShipmentGuideDriverPayload;
+
+  items?: ShipmentGuideItemPayload[];
+  itemsTotalValue?: number;
+
+  weightKg?: number;
+  packageCount?: number;
+  packageType?: string;
+  deliveryType?: string;
+  declaredValue?: number;
+  isFragile?: boolean;
+  requiresSignature?: boolean;
+
+  shippingFee?: number;
+  freightCost?: number;
+  insuranceCost?: number;
+  codAmount?: number;
+  totalCost?: number;
+  currency?: string;
+
+  notes?: string;
+}

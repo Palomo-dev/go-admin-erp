@@ -29,16 +29,21 @@ export type {
   SaleTicketPayment,
   SaleTicketPrintPayload,
   SaleTicketTaxLine,
+  ShipmentGuideItemPayload,
+  ShipmentGuideDriverPayload,
+  ShipmentGuidePrintPayload,
   TicketKind,
 } from './types';
 
-export { buildSaleTicketHTML, buildKitchenTicketHTML, buildKitchenTicketsHTML } from './renderHtml';
+export { buildSaleTicketHTML, buildKitchenTicketHTML, buildKitchenTicketsHTML, buildShipmentGuideHTML, buildShipmentGuidesHTML } from './renderHtml';
 
 export {
   buildPlainTextSaleTicket,
   buildPlainTextTicket,
+  buildPlainTextShipmentGuide,
   printSaleTicket,
   printKitchenTicket,
+  printShipmentGuide,
 } from './renderEscpos';
 
 export { buildRasterImageCommand, isValidRaster, writeRasterImage } from './escposImage';

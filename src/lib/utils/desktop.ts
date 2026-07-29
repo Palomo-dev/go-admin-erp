@@ -44,6 +44,19 @@ export interface DesktopUsbResponse {
   devices?: DesktopUsbDevice[];
 }
 
+/** Respuesta al imprimir directamente via IPC. */
+export interface DesktopPrintResult {
+  success: boolean;
+  error?: string;
+}
+
+/** Estado del agente de impresión embebido. */
+export interface DesktopAgentStatus {
+  online: boolean;
+  pid: number | null;
+  error: string | null;
+}
+
 /**
  * API expuesta por el preload de Go Admin Desktop.
  * Los métodos son opcionales porque un cliente puede tener una versión antigua
@@ -53,10 +66,18 @@ export interface GoAdminDesktopBridge {
   listPrinters?: () => Promise<DesktopPrintersResponse>;
   discoverNetwork?: () => Promise<DesktopDiscoverResponse>;
   listUsbDevices?: () => Promise<DesktopUsbResponse>;
+  /** Imprimir directamente a una impresora via IPC (no requiere HTTP). */
+  printRaw?: (printerId: string, payload: unknown) => Promise<DesktopPrintResult>;
+  /** Reimprimir un job existente por ID. */
+  reprintJob?: (jobId: string) => Promise<DesktopPrintResult>;
+  /** Estado del agente de impresión embebido. */
+  agentStatus?: () => Promise<DesktopAgentStatus>;
   version?: () => Promise<string>;
-  updateState?: () => Promise<unknown>;
-  checkForUpdates?: () => Promise<unknown>;
+  checkForUpdates?: () => Promise<{ available: boolean; version?: string }>;
   installUpdate?: () => Promise<boolean>;
+  /** Habilitar/deshabilitar arranque automático con Windows. */
+  enableAutoStart?: () => Promise<boolean>;
+  disableAutoStart?: () => Promise<boolean>;
 }
 
 /**

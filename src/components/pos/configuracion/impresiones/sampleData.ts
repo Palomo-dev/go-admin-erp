@@ -1,4 +1,4 @@
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload } from '@printing';
+import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload } from '@printing';
 
 /**
  * Datos de ejemplo para la previsualizacion de impresiones.
@@ -193,5 +193,91 @@ export function buildSampleKitchenTicket(business?: PreviewBusiness): KitchenTic
       },
       { productName: 'Papas a la francesa', quantity: 2, notes: 'Bien doradas' },
     ],
+  };
+}
+
+export function buildSampleShipmentGuide(business?: PreviewBusiness): ShipmentGuidePrintPayload {
+  const resolved = resolveBusiness(business);
+  return {
+    shipmentId: 'shp-00251',
+    trackingNumber: 'ENV-2025-001234',
+    shipmentNumber: 'ENV-001234',
+    status: 'dispatched',
+    createdAt: new Date().toISOString(),
+
+    businessName: resolved.businessName,
+    businessNit: resolved.businessNit,
+    businessPhone: resolved.businessPhone,
+    businessAddress: resolved.businessAddress,
+
+    senderName: 'Bodega Central',
+    senderPhone: '3113195711',
+
+    receiverName: 'Maria Fernanda Rodriguez Gomez',
+    receiverPhone: '3201234567',
+    receiverAddress: 'Carrera 15 #85-40 Apto 502 Torre B',
+    receiverCity: 'Bogota D.C.',
+    receiverInstructions: 'Portal amarillo junto a la panaderia, timbre danado, llamar al llegar',
+
+    originStop: 'Bodega Central',
+    destinationStop: 'Chapinero Norte',
+
+    driver: {
+      name: 'Jose Antonio Martinez',
+      phone: '3009998877',
+      licenseNumber: 'LIC-456789',
+      licenseCategory: 'B1',
+    },
+
+    items: [
+      {
+        description: 'Hamburguesa Doble con Queso Cheddar y Tocineta Crocante',
+        sku: 'HBG-002',
+        quantity: 2,
+        unit: 'und',
+        unitValue: 38500,
+        totalValue: 77000,
+        weightKg: 0.5,
+        variantData: { Termino: 'Tres cuartos' },
+        modifiers: [
+          { name: 'Sin cebolla', extraPrice: 0 },
+          { name: 'Queso extra', extraPrice: 3500 },
+        ],
+      },
+      {
+        description: 'Limonada de coco',
+        sku: 'BEB-010',
+        quantity: 3,
+        unit: 'und',
+        unitValue: 12000,
+        totalValue: 36000,
+        weightKg: 0.9,
+      },
+      {
+        description: 'Postre del dia',
+        sku: 'POST-001',
+        quantity: 1,
+        unit: 'und',
+        unitValue: 15000,
+        totalValue: 15000,
+        discountAmount: 2000,
+      },
+    ],
+    itemsTotalValue: 128000,
+
+    weightKg: 2.4,
+    packageCount: 3,
+    packageType: 'Caja',
+    deliveryType: 'Domicilio propio',
+    declaredValue: 128000,
+    isFragile: true,
+    requiresSignature: true,
+
+    shippingFee: 8000,
+    freightCost: 5000,
+    insuranceCost: 1000,
+    codAmount: 0,
+    totalCost: 14000,
+    currency: 'COP',
   };
 }

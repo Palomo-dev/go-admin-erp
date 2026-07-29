@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
-import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { shipmentsService, type ShipmentWithDetails } from '@/lib/services/shipmentsService';
+import { printShipmentGuideWithCut, type ShipmentGuideItem } from '@/components/transporte/envios/shipmentLabelPrinter';
 import {
   ShipmentItems,
   DeliveryAttempts,
@@ -84,7 +85,7 @@ export default function ShipmentDetailPage() {
     license_number?: string;
     license_category?: string;
   } | null>(null);
-  const [orgInfo, setOrgInfo] = useState<{ name: string; logo_url?: string; phone?: string; email?: string; address?: string } | null>(null);
+  const [orgInfo, setOrgInfo] = useState<{ name: string; logo_url?: string; phone?: string; email?: string; address?: string; nit?: string; tax_id?: string } | null>(null);
 
   const loadData = useCallback(async () => {
     if (!shipmentId) return;
@@ -108,7 +109,7 @@ export default function ShipmentDetailPage() {
       if (shipmentData?.organization_id) {
         const { data: orgData } = await supabase
           .from('organizations')
-          .select('name, logo_url, phone, email, address')
+          .select('name, logo_url, phone, email, address, nit, tax_id')
           .eq('id', shipmentData.organization_id)
           .single();
         if (orgData) {
@@ -118,6 +119,8 @@ export default function ShipmentDetailPage() {
             phone: orgData.phone || undefined,
             email: orgData.email || undefined,
             address: orgData.address || undefined,
+            nit: orgData.nit || undefined,
+            tax_id: orgData.tax_id || undefined,
           });
         }
       }
@@ -341,95 +344,26 @@ export default function ShipmentDetailPage() {
   const canRegisterAttempt = shipment?.status === 'in_transit' || shipment?.status === 'dispatched' || shipment?.status === 'out_for_delivery';
   const showCODButton = shipment?.payment_status === 'cod' && shipment?.status === 'delivered';
 
-  const imprimirEtiqueta = () => {
+  const imprimirGuia = async () => {
     if (!shipment) return;
-
-    const tracking = shipment.tracking_number || shipment.shipment_number || shipment.id.slice(0, 8).toUpperCase();
-    const destinatario = shipment.delivery_contact_name || shipment.customer?.full_name || 'N/A';
-    const telefono = shipment.delivery_contact_phone || shipment.customer?.phone || '';
-    const direccion = shipment.delivery_address || 'N/A';
-    const ciudad = [shipment.delivery_city, shipment.delivery_department].filter(Boolean).join(', ') || '';
-    const remitente = orgInfo?.name || 'N/A';
-    const remitentePhone = orgInfo?.phone || '';
-    const peso = shipment.weight_kg ? `${shipment.weight_kg} kg` : '';
-    const paquetes = shipment.package_count ? `${shipment.package_count} paq` : '';
-    const fecha = shipment.created_at ? format(new Date(shipment.created_at), 'dd/MM/yyyy') : '';
-
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) {
-      toast({ title: 'Error', description: 'No se pudo abrir la ventana de impresión. Verifica que no estén bloqueadas las ventanas emergentes.', variant: 'destructive' });
-      return;
+    const branchId = getCurrentBranchId();
+    const result = await printShipmentGuideWithCut(
+      shipment,
+      {
+        items: items as ShipmentGuideItem[] | undefined,
+        driver: driverInfo,
+        orgInfo: orgInfo ? {
+          name: orgInfo.name,
+          nit: orgInfo.nit || orgInfo.tax_id,
+          address: orgInfo.address,
+          phone: orgInfo.phone,
+        } : undefined,
+      },
+      branchId || undefined,
+    );
+    if (result.method === 'agent') {
+      toast({ title: 'Guia enviada a impresora termica', description: `${result.enqueued} job(s) encolado(s) con corte automatico` });
     }
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-        <meta charset="utf-8">
-        <title>Etiqueta - ${tracking}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Courier New', monospace; width: 96mm; padding: 4mm; color: #000; }
-          .label { border: 2px solid #000; padding: 8px; }
-          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px; }
-          .header h2 { font-size: 14px; font-weight: bold; }
-          .tracking { text-align: center; font-size: 18px; font-weight: bold; letter-spacing: 2px; margin: 8px 0; padding: 6px; border: 1px solid #000; }
-          .section { margin-bottom: 6px; }
-          .section-title { font-size: 9px; font-weight: bold; text-transform: uppercase; border-bottom: 1px dashed #000; margin-bottom: 2px; padding-bottom: 1px; }
-          .section-content { font-size: 12px; font-weight: bold; }
-          .section-sub { font-size: 10px; }
-          .footer { margin-top: 8px; padding-top: 6px; border-top: 1px solid #000; font-size: 9px; text-align: center; }
-          .grid { display: flex; justify-content: space-between; font-size: 10px; margin-top: 6px; }
-          .grid-item { text-align: center; }
-          .grid-item strong { display: block; font-size: 12px; }
-          @media print { body { width: auto; } }
-        </style>
-      </head>
-      <body>
-        <div class="label">
-          <div class="header">
-            <h2>${remitente}</h2>
-            ${remitentePhone ? `<div style="font-size:10px">Tel: ${remitentePhone}</div>` : ''}
-          </div>
-
-          <div class="tracking">${tracking}</div>
-
-          <div class="section">
-            <div class="section-title">Destinatario</div>
-            <div class="section-content">${destinatario}</div>
-            ${telefono ? `<div class="section-sub">Tel: ${telefono}</div>` : ''}
-          </div>
-
-          <div class="section">
-            <div class="section-title">Direccion de Entrega</div>
-            <div class="section-content">${direccion}</div>
-            ${ciudad ? `<div class="section-sub">${ciudad}</div>` : ''}
-          </div>
-
-          ${shipment.delivery_instructions ? `
-          <div class="section">
-            <div class="section-title">Instrucciones</div>
-            <div class="section-sub">${shipment.delivery_instructions}</div>
-          </div>
-          ` : ''}
-
-          <div class="grid">
-            ${peso ? `<div class="grid-item"><strong>${peso}</strong>Peso</div>` : ''}
-            ${paquetes ? `<div class="grid-item"><strong>${paquetes}</strong>Bultos</div>` : ''}
-            ${fecha ? `<div class="grid-item"><strong>${fecha}</strong>Fecha</div>` : ''}
-          </div>
-
-          <div class="footer">
-            ${shipment.status ? `Estado: ${shipment.status.toUpperCase()}` : ''}
-          </div>
-        </div>
-        <script>
-          window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };
-        </script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
   };
 
   if (isLoading) {
@@ -567,9 +501,9 @@ export default function ShipmentDetailPage() {
               Reportar Incidente
             </Button>
           )}
-          <Button variant="outline" onClick={imprimirEtiqueta}>
+          <Button variant="outline" onClick={imprimirGuia}>
             <Tag className="h-4 w-4 mr-2" />
-            Imprimir Etiqueta
+            Imprimir Guía
           </Button>
         </div>
       </div>

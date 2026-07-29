@@ -234,7 +234,7 @@ export function ShipmentsList({
             {onBulkPrintLabels && (
               <Button size="sm" variant="outline" onClick={onBulkPrintLabels}>
                 <Printer className="h-4 w-4 mr-1" />
-                Imprimir Etiquetas
+                Imprimir Guías
               </Button>
             )}
             {onBulkAddIncident && (
@@ -411,7 +411,7 @@ export function ShipmentsList({
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onPrintLabel(shipment)}>
                         <Tag className="h-4 w-4 mr-2" />
-                        Imprimir etiqueta
+                        Imprimir guía
                       </DropdownMenuItem>
                       {onDuplicate && (
                         <DropdownMenuItem onClick={() => onDuplicate(shipment)}>

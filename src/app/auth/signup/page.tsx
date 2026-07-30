@@ -47,6 +47,7 @@ interface SignupData {
   organizationPostalCode?: string;
   organizationTaxId?: string;
   organizationNit?: string;
+  organizationDv?: string;
   organizationWebsite?: string;
   organizationPrimaryColor?: string;
   organizationSecondaryColor?: string;
@@ -128,6 +129,7 @@ function SignupContent() {
     organizationPostalCode: '',
     organizationTaxId: '',
     organizationNit: '',
+    organizationDv: '',
     organizationWebsite: '',
     organizationPrimaryColor: '',
     organizationSecondaryColor: '',
@@ -312,6 +314,7 @@ function SignupContent() {
             website: signupData.organizationWebsite || null,
             tax_id: signupData.organizationTaxId || null,
             nit: signupData.organizationNit || null,
+            dv: signupData.organizationDv ? parseInt(signupData.organizationDv, 10) : null,
             address: signupData.organizationAddress || null,
             city: signupData.organizationCity || null,
             state: signupData.organizationState || null,

@@ -1,4 +1,4 @@
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload } from './types';
+import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
 import type { PaperSpec } from './paper';
 
 function formatMoney(value: number): string {
@@ -632,4 +632,150 @@ export function buildShipmentGuideHTML(payload: ShipmentGuidePrintPayload, paper
 export function buildShipmentGuidesHTML(payloads: ShipmentGuidePrintPayload[], paper: PaperSpec): string {
   const title = payloads.length === 1 ? `Guia ${payloads[0].trackingNumber || payloads[0].shipmentId}` : `Guias (${payloads.length})`;
   return wrapDocument(title, paper, payloads.map(buildShipmentGuideBody));
+}
+
+function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): string {
+  const dateObj = new Date(payload.createdAt);
+  const dateStr = dateObj.toLocaleDateString('es-CO');
+  const timeStr = dateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+
+  const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
+  const customerFiscal = payload.customerFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
+
+  const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
+
+  const itemsHTML = payload.items.map(item => {
+    const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
+    const variantLine = variantEntries.length > 0
+      ? `<div class="item-detail item-variant">${variantEntries.map(([a, v]) => `${a}: ${v}`).join(' &middot; ')}</div>`
+      : '';
+
+    const modifiers = item.modifiers || [];
+    const modifierLine = modifiers.length > 0
+      ? `<div class="item-detail item-modifier">+ ${modifiers.map(m => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}</div>`
+      : '';
+
+    const taxLine = item.taxAmount && item.taxAmount > 0
+      ? `<div class="item-detail">Imp: ${formatMoney(item.taxAmount)}</div>`
+      : '';
+    const discLine = item.discountAmount && item.discountAmount > 0
+      ? `<div class="item-detail">Desc: -${formatMoney(item.discountAmount)}</div>`
+      : '';
+
+    return `
+    <div class="item">
+      <div class="item-line">
+        <span class="item-name">${item.quantity}x ${item.productName}</span>
+        <span class="item-total">${formatMoney(item.total)}</span>
+      </div>
+      <div class="item-detail">${formatMoney(item.unitPrice)} c/u</div>
+      ${variantLine}
+      ${modifierLine}
+      ${taxLine}
+      ${discLine}
+    </div>`;
+  }).join('');
+
+  const customerHTML = (payload.customerName || payload.customerDocNumber) ? `
+    <div class="customer-box">
+      ${payload.customerName ? `<div><span class="label">Cliente:</span> ${payload.customerName}</div>` : ''}
+      ${payload.customerDocType && payload.customerDocNumber ? `<div><span class="label">${payload.customerDocType}:</span> ${payload.customerDocNumber}</div>` : ''}
+      ${payload.customerPhone ? `<div><span class="label">Tel:</span> ${payload.customerPhone}</div>` : ''}
+      ${payload.customerAddress ? `<div><span class="label">Dir:</span> ${payload.customerAddress}</div>` : ''}
+      ${customerFiscal ? `<div><span class="label">Regimen:</span> ${customerFiscal}</div>` : ''}
+    </div>` : '';
+
+  const taxSuffix = payload.taxIncluded ? ' (incluido)' : '';
+  const taxHTML = payload.taxLines && payload.taxLines.length > 0
+    ? payload.taxLines
+        .map(t => `<div class="total-line"><span>${t.name}${taxSuffix}:</span><span>${formatMoney(t.amount)}</span></div>`)
+        .join('')
+    : (payload.taxTotal && payload.taxTotal > 0
+        ? `<div class="total-line"><span>Impuestos${taxSuffix}:</span><span>${formatMoney(payload.taxTotal)}</span></div>`
+        : '');
+
+  const totalsHTML = `
+    <div class="totals">
+      ${payload.subtotal != null ? `<div class="total-line"><span>Subtotal:</span><span>${formatMoney(payload.subtotal)}</span></div>` : ''}
+      ${payload.discountTotal && payload.discountTotal > 0 ? `<div class="total-line"><span>Descuento:</span><span>-${formatMoney(payload.discountTotal)}</span></div>` : ''}
+      ${taxHTML}
+      <div class="total-line total-final"><span>TOTAL:</span><span>${formatMoney(payload.total)}</span></div>
+    </div>`;
+
+  const hasPayments = !!payload.payments && payload.payments.length > 0;
+  const paymentsHTML = hasPayments ? `
+    <div class="payments">
+      ${payload.payments!.map(p => `<div class="payment-line"><span>${p.methodName || p.method || 'Efectivo'}:</span><span>${formatMoney(p.amount)}</span></div>`).join('')}
+      ${payload.totalPaid && payload.totalPaid > 0 ? `<div class="payment-line"><span>Recibido:</span><span>${formatMoney(payload.totalPaid)}</span></div>` : ''}
+      ${payload.changeAmount && payload.changeAmount > 0 ? `<div class="payment-line change-line"><span>CAMBIO:</span><span>${formatMoney(payload.changeAmount)}</span></div>` : ''}
+    </div>` : '';
+
+  const cufeShort = payload.cufe.length > 36 ? payload.cufe.substring(0, 36) + '...' : payload.cufe;
+  const validationDateStr = payload.validationDate
+    ? new Date(payload.validationDate).toLocaleString('es-CO')
+    : '';
+
+  return `
+  <div class="header">
+    ${payload.businessLogoUrl ? `<img class="business-logo" src="${payload.businessLogoUrl}" alt="" />` : ''}
+    ${payload.businessName ? `<div class="business-name">${payload.businessName}</div>` : ''}
+    ${payload.businessNit ? `<div class="business-info">NIT: ${payload.businessNit}</div>` : ''}
+    ${payload.businessAddress ? `<div class="business-info">${payload.businessAddress}</div>` : ''}
+    ${payload.businessCity ? `<div class="business-info">${payload.businessCity}</div>` : ''}
+    ${payload.businessPhone ? `<div class="business-info">Tel: ${payload.businessPhone}</div>` : ''}
+    ${payload.businessEmail ? `<div class="business-info">${payload.businessEmail}</div>` : ''}
+    ${businessFiscal ? `<div class="business-info">Regimen: ${businessFiscal}</div>` : ''}
+    ${payload.branchName && payload.branchName !== payload.businessName ? `<div class="branch-name">Sucursal: ${payload.branchName}</div>` : ''}
+    ${payload.branchAddress && payload.branchAddress !== payload.businessAddress ? `<div class="business-info">${payload.branchAddress}</div>` : ''}
+  </div>
+
+  <div class="banner" style="background:#000;color:#fff;border:none;padding:6px">FACTURA ELECTRONICA</div>
+  <div style="text-align:center;font-size:10px;font-weight:700;margin-bottom:4px">DIAN - Entorno: ${envLabel}</div>
+
+  <div class="meta">
+    <div class="meta-row"><span class="meta-label">Factura No:</span><span class="meta-value">${payload.invoiceNumber}</span></div>
+    <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${dateStr} ${timeStr}</span></div>
+    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${payload.items.length} (${itemCount} unidades)</span></div>
+    ${payload.cashierName ? `<div class="meta-row"><span class="meta-label">Cajero:</span><span class="meta-value">${payload.cashierName}</span></div>` : ''}
+    ${validationDateStr ? `<div class="meta-row"><span class="meta-label">Validacion DIAN:</span><span class="meta-value">${validationDateStr}</span></div>` : ''}
+  </div>
+
+  ${customerHTML}
+
+  <div class="items-header">
+    <span>Descripcion</span>
+    <span>Total</span>
+  </div>
+
+  ${itemsHTML}
+
+  ${totalsHTML}
+  ${paymentsHTML}
+
+  ${payload.notes ? `<div style="margin:4px 0;padding:4px;border:1px dashed #000;font-size:10px"><strong>Notas:</strong> ${payload.notes}</div>` : ''}
+
+  <div style="text-align:center;margin:8px 0 4px">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(payload.qrData)}" alt="QR DIAN" style="width:80px;height:80px" />
+  </div>
+
+  <div style="text-align:center;font-size:8px;word-break:break-all;overflow-wrap:anywhere;margin:4px 0">
+    <strong>CUFE:</strong> ${cufeShort}
+  </div>
+  <div style="text-align:center;font-size:7px;word-break:break-all;overflow-wrap:anywhere;color:#555;margin:2px 0">
+    ${payload.cufe}
+  </div>
+
+  <div class="footer">
+    <div>Factura Electronica validada por DIAN</div>
+    <div style="margin-top:3px">Gracias por su compra!</div>
+    <div class="footer-brand">
+      <div>GO Admin S.A.S | NIT: 901479683-5</div>
+      <div>www.goadmin.io | 3113195711 | servicio@goadmin.io</div>
+    </div>
+  </div>`;
+}
+
+export function buildElectronicInvoiceHTML(payload: ElectronicInvoicePrintPayload, paper: PaperSpec): string {
+  return wrapDocument(`Factura Electronica ${payload.invoiceNumber}`, paper, [buildElectronicInvoiceBody(payload)]);
 }

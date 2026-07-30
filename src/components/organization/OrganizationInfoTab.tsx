@@ -14,9 +14,13 @@ interface OrganizationProps {
   phone?: string;
   address?: string;
   city?: string;
+  state?: string;
   country?: string;
   postal_code?: string;
   tax_id?: string;
+  nit?: string;
+  dv?: string;
+  municipality_id?: string;
   created_at: string;
   description?: string;
   email?: string;
@@ -31,6 +35,26 @@ interface OrganizationProps {
   custom_domain?: string;
 }
 
+interface MunicipalityOption {
+  id: string;
+  name: string;
+  code: string;
+  state_name: string;
+}
+
+function calcularDV(nit: string): string {
+  const nitLimpio = nit.replace(/[^0-9]/g, '');
+  if (!nitLimpio) return '';
+  const pesos = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
+  const nitReverse = nitLimpio.split('').reverse().join('');
+  let suma = 0;
+  for (let i = 0; i < nitReverse.length; i++) {
+    suma += parseInt(nitReverse[i], 10) * (pesos[i] || pesos[pesos.length - 1]);
+  }
+  const residuo = suma % 11;
+  return (residuo === 0 || residuo === 1) ? residuo.toString() : (11 - residuo).toString();
+}
+
 export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
   const [formData, setFormData] = useState<Partial<OrganizationProps>>({});
   const [loading, setLoading] = useState(true);
@@ -39,6 +63,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
   const [success, setSuccess] = useState<string | null>(null);
   const t = useTranslations('org.orgInfo');
   const [organizationTypes, setOrganizationTypes] = useState<{id: number, description: string}[]>([]);
+  const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([]);
   
   useEffect(() => {
     if (orgData) {
@@ -86,9 +111,13 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
         phone: data.phone || '',
         address: data.address || '',
         city: data.city || '',
+        state: data.state || '',
         country: data.country || '',
         postal_code: data.postal_code || '',
         tax_id: data.tax_id || data.nit || '',
+        nit: data.nit || data.tax_id || '',
+        dv: data.dv?.toString() || '',
+        municipality_id: data.municipality_id || '',
         created_at: data.created_at,
         description: data.description || '',
         email: data.email || '',
@@ -102,6 +131,25 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
         subdomain: data.subdomain || '',
         custom_domain: data.custom_domain || ''
       });
+
+      // Cargar municipios filtrando por el state/departamento de la org
+      if (data.state) {
+        const { data: munis } = await supabase
+          .from('municipalities')
+          .select('id, name, code, state_name')
+          .ilike('state_name', data.state)
+          .order('name');
+        if (munis) setMunicipalities(munis);
+      }
+      // Si no hay state, cargar todos
+      if (!data.state || municipalities.length === 0) {
+        const { data: allMunis } = await supabase
+          .from('municipalities')
+          .select('id, name, code, state_name')
+          .order('name')
+          .limit(500);
+        if (allMunis) setMunicipalities(allMunis);
+      }
     } catch (err: any) {
       console.error('Error fetching organization details:', err);
       setError(err.message || t('errorLoading'));
@@ -129,7 +177,38 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      // Auto-calcular DV cuando cambia el tax_id/NIT
+      if (name === 'tax_id') {
+        const dvCalculado = calcularDV(value);
+        if (dvCalculado) next.dv = dvCalculado;
+      }
+      return next;
+    });
+  };
+
+  const handleMunicipalityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const muniId = e.target.value;
+    const selected = municipalities.find(m => m.id === muniId);
+    setFormData((prev) => ({
+      ...prev,
+      municipality_id: muniId,
+      city: selected?.name || prev.city,
+      state: selected?.state_name || prev.state,
+    }));
+  };
+
+  const handleStateChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const stateValue = e.target.value;
+    setFormData((prev) => ({ ...prev, state: stateValue }));
+    // Recargar municipios filtrados por el nuevo state
+    const { data: munis } = await supabase
+      .from('municipalities')
+      .select('id, name, code, state_name')
+      .ilike('state_name', stateValue)
+      .order('name');
+    if (munis) setMunicipalities(munis);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -165,6 +244,10 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
           country: formData.country,
           postal_code: formData.postal_code,
           tax_id: formData.tax_id,
+          nit: formData.tax_id,
+          dv: formData.dv ? parseInt(formData.dv, 10) : null,
+          state: formData.state || null,
+          municipality_id: formData.municipality_id || null,
           description: formData.description,
           email: formData.email,
           primary_color: formData.primary_color,
@@ -440,24 +523,47 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
               </dd>
             </div>
             
-            {/* City */}
+            {/* Departamento / Estado */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">{t('city')}</dt>
+              <dt className="text-sm font-medium text-gray-500">Departamento / Estado</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
                   type="text"
-                  name="city"
-                  id="city"
-                  value={formData.city || ''}
-                  onChange={handleChange}
+                  name="state"
+                  id="state"
+                  value={formData.state || ''}
+                  onChange={handleStateChange}
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder={t('cityPlaceholder')}
+                  placeholder="Ej: Antioquia, Cundinamarca..."
                 />
+                <p className="mt-1 text-xs text-gray-400">Al cambiar el departamento, se cargan los municipios de DIAN correspondientes</p>
+              </dd>
+            </div>
+
+            {/* Municipio / Ciudad (select de DIAN) */}
+            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Municipio / Ciudad</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                <select
+                  name="municipality_id"
+                  id="municipality_id"
+                  value={formData.municipality_id || ''}
+                  onChange={handleMunicipalityChange}
+                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">-- Seleccione municipio --</option>
+                  {municipalities.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.code})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-400">Municipio registrado ante DIAN. Se actualiza automáticamente la ciudad y departamento.</p>
               </dd>
             </div>
             
             {/* Country */}
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">{t('country')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 <input
@@ -488,7 +594,7 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
               </dd>
             </div>
             
-            {/* Tax ID */}
+            {/* Tax ID / NIT */}
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">{t('taxId')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
@@ -501,6 +607,26 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
                   className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   placeholder={t('taxIdPlaceholder')}
                 />
+                <p className="mt-1 text-xs text-gray-400">NIT sin guión. El DV se calcula automáticamente.</p>
+              </dd>
+            </div>
+
+            {/* DV - Dígito de verificación (auto-calculado) */}
+            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">DV (Auto)</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                <input
+                  type="text"
+                  name="dv"
+                  id="dv"
+                  value={formData.dv || ''}
+                  onChange={handleChange}
+                  maxLength={1}
+                  readOnly
+                  className="block w-20 border border-gray-200 rounded-md shadow-sm py-2 px-3 bg-gray-50 text-gray-600 sm:text-sm"
+                  placeholder="Auto"
+                />
+                <p className="mt-1 text-xs text-gray-400">Calculado automáticamente desde el NIT</p>
               </dd>
             </div>
             

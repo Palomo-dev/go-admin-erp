@@ -6,37 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService from '@/lib/services/factusService';
-
-// Cache de token en memoria
-let tokenCache: { accessToken: string; expiresAt: Date } | null = null;
-
-function getFactusCredentials() {
-  const clientId = process.env.FACTUS_CLIENT_ID;
-  const clientSecret = process.env.FACTUS_CLIENT_SECRET;
-  const username = process.env.FACTUS_USERNAME;
-  const password = process.env.FACTUS_PASSWORD;
-  const environment = (process.env.FACTUS_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production';
-
-  if (!clientId || !clientSecret || !username || !password) {
-    return null;
-  }
-
-  return { clientId, clientSecret, username, password, environment };
-}
-
-async function getValidToken(): Promise<string | null> {
-  const credentials = getFactusCredentials();
-  if (!credentials) return null;
-
-  if (tokenCache && tokenCache.expiresAt > new Date()) {
-    return tokenCache.accessToken;
-  }
-
-  const token = await factusService.authenticate(credentials);
-  tokenCache = { accessToken: token.accessToken, expiresAt: token.expiresAt };
-  return token.accessToken;
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,7 +22,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const credentials = getFactusCredentials();
+    const credentials = getCredentials();
     if (!credentials) {
       return NextResponse.json(
         { error: 'Credenciales de Factus no configuradas' },
@@ -70,10 +41,9 @@ export async function GET(request: NextRequest) {
     const environment = credentials.environment;
 
     if (type === 'pdf') {
-      const pdfBlob = await factusService.downloadPDF(environment, accessToken, invoiceNumber);
-      const arrayBuffer = await pdfBlob.arrayBuffer();
+      const pdfBuffer = await factusService.downloadPDF(environment, accessToken, invoiceNumber);
       
-      return new NextResponse(arrayBuffer, {
+      return new NextResponse(pdfBuffer, {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="factura-${invoiceNumber}.pdf"`,

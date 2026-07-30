@@ -1,4 +1,4 @@
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment, ShipmentGuidePrintPayload } from './types';
+import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
 import type { PaperSpec } from './paper';
 import { writeRasterImage } from './escposImage';
 
@@ -894,6 +894,309 @@ export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, 
   lines.push('________________');
 
   lines.push(sepLight(chars));
+  for (const line of GO_ADMIN_FOOTER) {
+    lines.push(line);
+  }
+  lines.push('\n\n');
+
+  return lines.join('\n');
+}
+
+/**
+ * Imprime una factura electronica validada por DIAN en una impresora ESC/POS.
+ * Incluye CUFE, QR de validacion y entorno (produccion/pruebas).
+ */
+export function printElectronicInvoice(device: any, payload: ElectronicInvoicePrintPayload, paper: PaperSpec): void {
+  const chars = paper.charsPerLine;
+  const doubleChars = Math.floor(chars / 2);
+  const { date, time } = formatDateParts(payload.createdAt);
+  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
+
+  // --- Header: datos del negocio ---
+  device.font('a').align('ct');
+  writeRasterImage(device, payload.businessLogoRaster, chars * 12);
+
+  device.style('b').size(...SIZE_TALL);
+  if (payload.businessName) device.text(payload.businessName);
+  device.style('normal').size(...SIZE_NORMAL);
+  if (payload.businessNit) device.text(`NIT: ${payload.businessNit}`);
+  if (payload.businessPhone) device.text(`Tel: ${payload.businessPhone}`);
+  if (payload.businessAddress) device.text(payload.businessAddress);
+  if (payload.businessCity) device.text(payload.businessCity);
+  if (payload.businessEmail) device.text(payload.businessEmail);
+  if (payload.businessFiscalResponsibilities && payload.businessFiscalResponsibilities.length > 0) {
+    device.text(payload.businessFiscalResponsibilities.map(translateFiscalResponsibility).join(', '));
+  }
+  if (payload.branchName && payload.branchName !== payload.businessName) {
+    device.style('b').text(`Sucursal: ${payload.branchName}`).style('normal');
+  }
+  if (payload.branchAddress && payload.branchAddress !== payload.businessAddress) {
+    device.text(payload.branchAddress);
+  }
+
+  // --- Titulo del documento ---
+  device
+    .text(sep(chars))
+    .style('b')
+    .size(...SIZE_DOUBLE)
+    .text('FACTURA ELECTRONICA')
+    .style('normal')
+    .size(...SIZE_NORMAL)
+    .text(`DIAN - Entorno: ${envLabel}`)
+    .text(sep(chars))
+    .align('lt');
+
+  // --- Info del documento ---
+  device.text(`Factura No: ${payload.invoiceNumber}`);
+  device.text(`Fecha: ${date}  Hora: ${time}`);
+  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  if (payload.cashierName) device.text(`Cajero: ${payload.cashierName}`);
+  if (payload.validationDate) {
+    const vd = new Date(payload.validationDate);
+    device.text(`Validacion DIAN: ${vd.toLocaleDateString('es-CO')} ${vd.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`);
+  }
+
+  // --- Info del cliente ---
+  if (payload.customerName || payload.customerDocNumber) {
+    device.text(sepLight(chars));
+    if (payload.customerName) device.text(`Cliente: ${payload.customerName}`);
+    if (payload.customerDocType && payload.customerDocNumber) {
+      device.text(`${payload.customerDocType}: ${payload.customerDocNumber}`);
+    } else if (payload.customerDocNumber) {
+      device.text(`Doc: ${payload.customerDocNumber}`);
+    }
+    if (payload.customerPhone) device.text(`Tel: ${payload.customerPhone}`);
+    if (payload.customerAddress) {
+      for (const line of wrapText(`Dir: ${payload.customerAddress}`, chars)) device.text(line);
+    }
+    if (payload.customerFiscalResponsibilities && payload.customerFiscalResponsibilities.length > 0) {
+      device.text(payload.customerFiscalResponsibilities.map(translateFiscalResponsibility).join(', '));
+    }
+  }
+
+  // --- Encabezado de items ---
+  device.text(sepLight(chars));
+  device.style('b').text(padRight('DESCRIPCION', 'TOTAL', chars)).style('normal');
+  device.text(sepLight(chars));
+
+  // --- Items ---
+  for (const item of payload.items) {
+    writeItemLine(device, `${item.quantity}x  ${item.productName}`, formatMoney(item.total), chars);
+    device.text(`  ${formatMoney(item.unitPrice)} c/u`);
+
+    const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
+    if (variantEntries.length > 0) {
+      const text = `* ${variantEntries.map(([attr, value]) => `${attr}: ${value}`).join('  ')}`;
+      device.style('b');
+      for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
+      device.style('normal');
+    }
+
+    if (item.modifiers && item.modifiers.length > 0) {
+      const text = `+ ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`;
+      device.style('b');
+      for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
+      device.style('normal');
+    }
+
+    if (item.taxAmount && item.taxAmount > 0) {
+      device.text(`  Imp: ${formatMoney(item.taxAmount)}`);
+    }
+    if (item.discountAmount && item.discountAmount > 0) {
+      device.text(`  Desc: -${formatMoney(item.discountAmount)}`);
+    }
+
+    device.text(sepLight(chars));
+  }
+
+  // --- Totales ---
+  device.align('lt');
+  if (payload.subtotal != null) {
+    device.text(padRight('Subtotal:', formatMoney(payload.subtotal), chars));
+  }
+  if (payload.discountTotal && payload.discountTotal > 0) {
+    device.text(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`, chars));
+  }
+  if (payload.taxLines && payload.taxLines.length > 0) {
+    const suffix = payload.taxIncluded ? ' (incl)' : '';
+    for (const t of payload.taxLines) {
+      device.text(padRight(`${t.name}${suffix}:`, formatMoney(t.amount), chars));
+    }
+  } else if (payload.taxTotal && payload.taxTotal > 0) {
+    const suffix = payload.taxIncluded ? ' (incl)' : '';
+    device.text(padRight(`Impuestos${suffix}:`, formatMoney(payload.taxTotal), chars));
+  }
+
+  device
+    .text(sep(chars))
+    .style('b')
+    .size(...SIZE_DOUBLE)
+    .text(padRight('TOTAL:', formatMoney(payload.total), doubleChars))
+    .style('normal')
+    .size(...SIZE_NORMAL);
+
+  // --- Pagos ---
+  if (payload.payments && payload.payments.length > 0) {
+    device.text(sepLight(chars));
+    for (const payment of payload.payments) {
+      device.text(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount), chars));
+    }
+    if (payload.totalPaid && payload.totalPaid > 0) {
+      device.text(padRight('Recibido:', formatMoney(payload.totalPaid), chars));
+    }
+    if (payload.changeAmount && payload.changeAmount > 0) {
+      device.style('b').text(padRight('CAMBIO:', formatMoney(payload.changeAmount), chars)).style('normal');
+    }
+  }
+
+  // --- Notas ---
+  if (payload.notes) {
+    device.text(sepLight(chars));
+    device.style('b').text('Notas:').style('normal');
+    for (const line of wrapText(payload.notes, chars)) device.text(line);
+  }
+
+  // --- QR DIAN ---
+  device.text(sep(chars)).align('ct');
+  try {
+    device.qrimage(payload.qrData, { cellSize: 3 });
+  } catch {
+    // Si la impresora no soporta QR, se omite
+  }
+
+  // --- CUFE ---
+  device.style('b').text('CUFE:').style('normal');
+  for (let i = 0; i < payload.cufe.length; i += chars) {
+    device.text(payload.cufe.slice(i, i + chars));
+  }
+
+  // --- Footer ---
+  device.text(sepLight(chars));
+  device.text('Factura Electronica validada por DIAN');
+  device.text('Gracias por su compra!');
+  device.feed(1);
+
+  for (const line of GO_ADMIN_FOOTER) {
+    device.text(line);
+  }
+
+  device.feed(2).cut();
+}
+
+/**
+ * Version en texto plano de la factura electronica, para impresoras 'system'.
+ */
+export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintPayload, paper: PaperSpec): string {
+  const chars = paper.charsPerLine;
+  const { date, time } = formatDateParts(payload.createdAt);
+  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
+
+  const lines: string[] = [];
+
+  // --- Header ---
+  if (payload.businessName) lines.push(payload.businessName);
+  if (payload.businessNit) lines.push(`NIT: ${payload.businessNit}`);
+  if (payload.businessPhone) lines.push(`Tel: ${payload.businessPhone}`);
+  if (payload.businessAddress) lines.push(payload.businessAddress);
+  if (payload.businessCity) lines.push(payload.businessCity);
+  if (payload.businessEmail) lines.push(payload.businessEmail);
+  if (payload.businessFiscalResponsibilities && payload.businessFiscalResponsibilities.length > 0) {
+    lines.push(payload.businessFiscalResponsibilities.map(translateFiscalResponsibility).join(', '));
+  }
+  if (payload.branchName && payload.branchName !== payload.businessName) {
+    lines.push(`Sucursal: ${payload.branchName}`);
+  }
+
+  // --- Titulo ---
+  lines.push(sep(chars));
+  lines.push('FACTURA ELECTRONICA');
+  lines.push(`DIAN - Entorno: ${envLabel}`);
+  lines.push(sep(chars));
+
+  // --- Info ---
+  lines.push(`Factura No: ${payload.invoiceNumber}`);
+  lines.push(`Fecha: ${date}  Hora: ${time}`);
+  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  if (payload.cashierName) lines.push(`Cajero: ${payload.cashierName}`);
+  if (payload.validationDate) {
+    const vd = new Date(payload.validationDate);
+    lines.push(`Validacion DIAN: ${vd.toLocaleDateString('es-CO')} ${vd.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`);
+  }
+
+  // --- Cliente ---
+  if (payload.customerName || payload.customerDocNumber) {
+    lines.push(sepLight(chars));
+    if (payload.customerName) lines.push(`Cliente: ${payload.customerName}`);
+    if (payload.customerDocType && payload.customerDocNumber) {
+      lines.push(`${payload.customerDocType}: ${payload.customerDocNumber}`);
+    } else if (payload.customerDocNumber) {
+      lines.push(`Doc: ${payload.customerDocNumber}`);
+    }
+    if (payload.customerPhone) lines.push(`Tel: ${payload.customerPhone}`);
+    if (payload.customerAddress) {
+      for (const line of wrapText(`Dir: ${payload.customerAddress}`, chars)) lines.push(line);
+    }
+  }
+
+  // --- Items ---
+  lines.push(sepLight(chars));
+  lines.push(padRight('DESCRIPCION', 'TOTAL', chars));
+  lines.push(sepLight(chars));
+
+  for (const item of payload.items) {
+    lines.push(padRight(`${item.quantity}x ${item.productName}`, formatMoney(item.total), chars));
+    lines.push(`  ${formatMoney(item.unitPrice)} c/u`);
+    if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
+    if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
+    lines.push(sepLight(chars));
+  }
+
+  // --- Totales ---
+  if (payload.subtotal != null) lines.push(padRight('Subtotal:', formatMoney(payload.subtotal), chars));
+  if (payload.discountTotal && payload.discountTotal > 0) lines.push(padRight('Descuento:', `-${formatMoney(payload.discountTotal)}`, chars));
+  if (payload.taxLines && payload.taxLines.length > 0) {
+    const suffix = payload.taxIncluded ? ' (incl)' : '';
+    for (const t of payload.taxLines) {
+      lines.push(padRight(`${t.name}${suffix}:`, formatMoney(t.amount), chars));
+    }
+  } else if (payload.taxTotal && payload.taxTotal > 0) {
+    const suffix = payload.taxIncluded ? ' (incl)' : '';
+    lines.push(padRight(`Impuestos${suffix}:`, formatMoney(payload.taxTotal), chars));
+  }
+  lines.push(sep(chars));
+  lines.push(padRight('TOTAL:', formatMoney(payload.total), chars));
+  lines.push(sep(chars));
+
+  // --- Pagos ---
+  if (payload.payments && payload.payments.length > 0) {
+    for (const payment of payload.payments) {
+      lines.push(padRight(`${getPaymentLabel(payment)}:`, formatMoney(payment.amount), chars));
+    }
+    if (payload.totalPaid && payload.totalPaid > 0) lines.push(padRight('Recibido:', formatMoney(payload.totalPaid), chars));
+    if (payload.changeAmount && payload.changeAmount > 0) lines.push(padRight('CAMBIO:', formatMoney(payload.changeAmount), chars));
+  }
+
+  // --- Notas ---
+  if (payload.notes) {
+    lines.push(sepLight(chars));
+    lines.push('Notas:');
+    for (const line of wrapText(payload.notes, chars)) lines.push(line);
+  }
+
+  // --- CUFE ---
+  lines.push(sepLight(chars));
+  lines.push('CUFE:');
+  for (let i = 0; i < payload.cufe.length; i += chars) {
+    lines.push(payload.cufe.slice(i, i + chars));
+  }
+
+  // --- Footer ---
+  lines.push(sepLight(chars));
+  lines.push('Factura Electronica validada por DIAN');
+  lines.push('Gracias por su compra!');
+  lines.push('');
   for (const line of GO_ADMIN_FOOTER) {
     lines.push(line);
   }

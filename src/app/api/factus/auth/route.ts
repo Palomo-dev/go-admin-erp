@@ -11,31 +11,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import factusService from '@/lib/services/factusService';
-
-// Cache de token en memoria (para evitar autenticaciones repetidas)
-let tokenCache: {
-  accessToken: string;
-  expiresAt: Date;
-} | null = null;
-
-function getFactusCredentials() {
-  const clientId = process.env.FACTUS_CLIENT_ID;
-  const clientSecret = process.env.FACTUS_CLIENT_SECRET;
-  const username = process.env.FACTUS_USERNAME;
-  const password = process.env.FACTUS_PASSWORD;
-  const environment = (process.env.FACTUS_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production';
-
-  if (!clientId || !clientSecret || !username || !password) {
-    return null;
-  }
-
-  return { clientId, clientSecret, username, password, environment };
-}
+import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 
 export async function POST(request: NextRequest) {
   try {
-    const credentials = getFactusCredentials();
+    const credentials = getCredentials();
 
     if (!credentials) {
       return NextResponse.json(
@@ -44,31 +24,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar si el token en cache es válido
-    if (tokenCache && tokenCache.expiresAt > new Date()) {
+    // Verificar si el token en cache es válido (el token manager lo gestiona)
+    const accessToken = await getValidToken();
+    if (accessToken) {
       return NextResponse.json({
         success: true,
-        accessToken: tokenCache.accessToken,
-        expiresAt: tokenCache.expiresAt.toISOString(),
+        accessToken,
         fromCache: true,
       });
     }
 
-    // Autenticar con Factus
-    const token = await factusService.authenticate(credentials);
-
-    // Guardar en cache
-    tokenCache = {
-      accessToken: token.accessToken,
-      expiresAt: token.expiresAt,
-    };
-
-    return NextResponse.json({
-      success: true,
-      accessToken: token.accessToken,
-      expiresAt: token.expiresAt.toISOString(),
-      fromCache: false,
-    });
+    // Si getValidToken falló, retornar error
+    return NextResponse.json(
+      { error: 'Error de autenticación con Factus' },
+      { status: 500 }
+    );
 
   } catch (error: any) {
     console.error('Error en autenticación Factus:', error);

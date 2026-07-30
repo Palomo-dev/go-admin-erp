@@ -24,6 +24,7 @@ import {
   Image as ImageIcon,
   Search,
   Printer,
+  Monitor,
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/utils/Utils';
 import { SearchSelect } from '@/components/ui/search-select';
@@ -346,6 +347,23 @@ export function ConfiguracionPage() {
                     </div>
                   </div>
                   <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/app/pos/configuracion/agente-impresion">
+              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                      <Monitor className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Agente de Impresión</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Estado y configuración del agente</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
                 </div>
               </div>
             </Link>

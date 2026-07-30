@@ -230,7 +230,6 @@ class ElectronicInvoicingService {
     const errors: string[] = [];
 
     try {
-      // Obtener la factura con cliente
       const { data: invoice, error } = await supabase
         .from('invoice_sales')
         .select(`
@@ -241,9 +240,26 @@ class ElectronicInvoicingService {
             identification_number,
             dv,
             email,
+            phone,
+            address,
             fiscal_municipality_id,
             tribute_id,
-            legal_organization_id
+            legal_organization_id,
+            customer_type,
+            company_name,
+            trade_name,
+            first_name,
+            last_name
+          ),
+          organization:organizations(
+            id,
+            name,
+            nit,
+            dv,
+            address,
+            phone,
+            email,
+            municipality_id
           )
         `)
         .eq('id', invoiceId)
@@ -254,27 +270,80 @@ class ElectronicInvoicingService {
         return { valid: false, errors };
       }
 
-      // Validaciones del cliente
+      // === Validaciones del cliente ===
       if (!invoice.customer) {
         errors.push('La factura no tiene cliente asignado');
       } else {
-        if (!invoice.customer.identification_type) {
-          errors.push('El cliente no tiene tipo de identificación');
-        }
-        if (!invoice.customer.identification_number) {
-          errors.push('El cliente no tiene número de identificación');
-        }
-        if (!invoice.customer.email) {
-          errors.push('El cliente no tiene email');
-        }
-        if (!invoice.customer.fiscal_municipality_id) {
-          errors.push('El cliente no tiene municipio asignado');
+        const c = invoice.customer;
+        if (!c.identification_type) errors.push('El cliente no tiene tipo de identificación');
+        if (!c.identification_number) errors.push('El cliente no tiene número de identificación');
+        if (!c.email) errors.push('El cliente no tiene email');
+        if (!c.fiscal_municipality_id) errors.push('El cliente no tiene municipio fiscal asignado');
+        if (!c.address) errors.push('El cliente no tiene dirección');
+        if (!c.phone) errors.push('El cliente no tiene teléfono');
+        if (c.customer_type === 'company' || c.customer_type === 'empresa') {
+          if (!c.company_name) errors.push('El cliente empresa no tiene razón social');
+          if (!c.dv) errors.push('El cliente NIT no tiene dígito de verificación (DV)');
         }
       }
 
-      // Validaciones de la factura
-      if (!invoice.number) {
-        errors.push('La factura no tiene número');
+      // === Validaciones de la factura ===
+      if (!invoice.number) errors.push('La factura no tiene número');
+      // reference_code se auto-genera en el API route si no existe
+      if (!invoice.payment_form) errors.push('La factura no tiene forma de pago (payment_form)');
+      if (!invoice.payment_method_code && !invoice.payment_method) {
+        errors.push('La factura no tiene método de pago');
+      }
+      if (!invoice.total || Number(invoice.total) <= 0) {
+        errors.push('El total de la factura debe ser mayor a 0');
+      }
+
+      // === Validaciones de items ===
+      const { data: items } = await supabase
+        .from('invoice_items')
+        .select('id, code_reference, description, qty, unit_price, tax_code, tax_rate, unit_measure_id, standard_code_id')
+        .eq('invoice_sales_id', invoiceId);
+
+      if (!items || items.length === 0) {
+        errors.push('La factura no tiene items');
+      } else {
+        items.forEach((item, idx) => {
+          const itemNum = idx + 1;
+          // code_reference se auto-genera en el API route si no existe
+          if (!item.description) errors.push(`Item ${itemNum}: sin descripción`);
+          if (!item.qty || Number(item.qty) <= 0) errors.push(`Item ${itemNum}: cantidad debe ser mayor a 0`);
+          if (!item.unit_price || Number(item.unit_price) <= 0) errors.push(`Item ${itemNum}: precio debe ser mayor a 0`);
+          // tax_code se auto-mapea desde tax_rate en el API route
+          if (item.tax_rate === null || item.tax_rate === undefined) errors.push(`Item ${itemNum}: sin tasa de impuesto`);
+          if (!item.unit_measure_id) errors.push(`Item ${itemNum}: sin unidad de medida`);
+          if (!item.standard_code_id) errors.push(`Item ${itemNum}: sin código estándar`);
+        });
+      }
+
+      // === Validaciones de organización ===
+      if (!invoice.organization) {
+        errors.push('No se encontró la organización');
+      } else {
+        const org = invoice.organization;
+        if (!org.nit) errors.push('La organización no tiene NIT configurado');
+        if (!org.dv) errors.push('La organización no tiene dígito de verificación (DV)');
+        if (!org.address) errors.push('La organización no tiene dirección');
+        if (!org.municipality_id) errors.push('La organización no tiene municipio configurado');
+      }
+
+      // === Validaciones de secuencia ===
+      const { data: sequence } = await supabase
+        .from('invoice_sequences')
+        .select('id, factus_numbering_range_id, is_active')
+        .eq('organization_id', invoice.organization_id)
+        .eq('document_type', invoice.document_type || 'invoice')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!sequence) {
+        errors.push('No hay rango de numeración activo para este tipo de documento');
+      } else if (!sequence.factus_numbering_range_id) {
+        errors.push('El rango de numeración no tiene ID de Factus configurado (factus_numbering_range_id)');
       }
 
       return { valid: errors.length === 0, errors };

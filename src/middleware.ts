@@ -83,6 +83,7 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
     '/api/super-admin-access', // <-- Excluir canje de token de super admin (autenticación propia via token BD)
     '/api/super-admin-cleanup', // <-- Excluir cleanup de super admin (autenticación propia via body)
+    '/api/factus/', // <-- Excluir APIs de Factus (usan credenciales de entorno, no requieren sesión)
     '/auth/v1/',
     '/auth/callback', // <-- Excluir callback de OAuth para no interferir con PKCE
     '/.well-known/',
@@ -755,6 +756,6 @@ export const config = {
      * - api/stripe (Stripe API endpoints - handle their own auth)
      * - api/sessions (Session API endpoints - handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio|api/super-admin-access|api/super-admin-cleanup).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio|api/super-admin-access|api/super-admin-cleanup|api/factus).*)',
   ],
 };

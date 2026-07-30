@@ -15,6 +15,7 @@ import { Printer, Receipt, Split, Truck } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { PreCuenta } from './types';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
+import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 
 interface PreCuentaDialogProps {
   open: boolean;
@@ -42,6 +43,13 @@ export function PreCuentaDialog({
   deliveryInfo,
 }: PreCuentaDialogProps) {
   const [sendToFactus, setSendToFactus] = React.useState(false);
+  const { alwaysEnabled: eInvoiceAlwaysEnabled } = useElectronicInvoicePreference();
+
+  React.useEffect(() => {
+    if (eInvoiceAlwaysEnabled) {
+      setSendToFactus(true);
+    }
+  }, [eInvoiceAlwaysEnabled]);
   
   if (!preCuenta) return null;
 
@@ -186,14 +194,20 @@ export function PreCuentaDialog({
 
           {/* Opción de Factura Electrónica */}
           {showEInvoiceOption && (
-            <div className="p-2 sm:p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-              <ElectronicInvoiceToggle
-                checked={sendToFactus}
-                onCheckedChange={setSendToFactus}
-                showLabel={true}
-                showTooltip={true}
-                size="md"
-              />
+            <div className={`p-2 sm:p-3 rounded-lg ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
+              <div className="flex items-center justify-between">
+                <ElectronicInvoiceToggle
+                  checked={sendToFactus}
+                  onCheckedChange={setSendToFactus}
+                  disabled={eInvoiceAlwaysEnabled}
+                  showLabel={true}
+                  showTooltip={true}
+                  size="md"
+                />
+                {eInvoiceAlwaysEnabled && (
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">Global</span>
+                )}
+              </div>
             </div>
           )}
         </div>

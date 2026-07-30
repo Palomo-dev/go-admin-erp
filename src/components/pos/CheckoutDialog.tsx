@@ -24,6 +24,9 @@ import {
   type TaxCalculationItem 
 } from '@/lib/utils/taxCalculations';
 import { validateCompositeStock } from '@/lib/services/compositeStockValidation';
+import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
+import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
+import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -66,6 +69,23 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [isProcessing, setIsProcessing] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+  const [sendToFactus, setSendToFactus] = useState(false);
+  const [electronicInvoiceData, setElectronicInvoiceData] = useState<{
+    invoiceId: string;
+    invoiceNumber: string;
+    cufe: string;
+    qrData: string;
+    environment: 'production' | 'test';
+    validationDate?: string;
+  } | null>(null);
+  const { alwaysEnabled: eInvoiceAlwaysEnabled } = useElectronicInvoicePreference();
+
+  // Si la preferencia global está activa, forzar sendToFactus = true
+  useEffect(() => {
+    if (eInvoiceAlwaysEnabled) {
+      setSendToFactus(true);
+    }
+  }, [eInvoiceAlwaysEnabled]);
   
   // Estados para manejo de impuestos
   const [organizationTaxes, setOrganizationTaxes] = useState<TaxUtilOrganizationTax[]>([]);
@@ -777,7 +797,131 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           console.error('Error creando shipment:', shipmentError);
         }
       }
-      
+
+      // Enviar a Factus (factura electrónica) si el toggle está activado
+      if (sendToFactus) {
+        try {
+          // Buscar la invoice_sales creada durante el checkout
+          const { data: invoiceSale } = await supabase
+            .from('invoice_sales')
+            .select('id, number')
+            .eq('sale_id', sale.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (invoiceSale?.id) {
+            toast.info('Enviando factura a DIAN...');
+            const result = await electronicInvoicingService.sendToFactus(invoiceSale.id, cart.organization_id);
+            if (result.success) {
+              toast.success('Factura enviada a DIAN', {
+                description: `Factura ${invoiceSale.number} enviada para validación`,
+              });
+
+              // Consultar el job de DIAN para obtener CUFE y QR
+              try {
+                const { data: eJob } = await supabase
+                  .from('electronic_invoicing_jobs')
+                  .select('cufe, qr_code, status, processed_at, response_payload')
+                  .eq('invoice_id', invoiceSale.id)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                if (eJob?.cufe) {
+                  // Guardar datos para impresión manual desde el recibo
+                  setElectronicInvoiceData({
+                    invoiceId: invoiceSale.id,
+                    invoiceNumber: invoiceSale.number,
+                    cufe: eJob.cufe,
+                    qrData: eJob.qr_code || '',
+                    environment: 'test',
+                    validationDate: eJob.processed_at,
+                  });
+
+                  // Encolar impresión física de la factura electrónica
+                  if (cart.branch_id) {
+                    const envConfig = await supabase
+                      .from('electronic_invoicing_config')
+                      .select('environment')
+                      .eq('organization_id', cart.organization_id)
+                      .maybeSingle();
+
+                    PrintJobsService.enqueueElectronicInvoice(cart.branch_id, {
+                      invoiceId: invoiceSale.id,
+                      invoiceNumber: invoiceSale.number,
+                      cufe: eJob.cufe,
+                      qrData: eJob.qr_code || '',
+                      environment: envConfig.data?.environment === 'production' ? 'production' : 'test',
+                      validationDate: eJob.processed_at || undefined,
+                      createdAt: new Date().toISOString(),
+                      total: cartTotal,
+                      subtotal: calculatedTotals.subtotal,
+                      taxTotal: calculatedTotals.totalTaxAmount,
+                      taxIncluded: taxIncluded,
+                      taxLines: taxBreakdown.length > 0 ? taxBreakdown : null,
+                      items: updatedCart.items.map((item) => ({
+                        productName: (item as any).name || item.product?.name || 'Producto',
+                        quantity: item.quantity,
+                        unitPrice: item.unit_price,
+                        total: item.total,
+                        taxAmount: item.tax_amount,
+                        discountAmount: item.discount_amount,
+                        variantData: (item as any).product?.variant_data || null,
+                        modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+                      })),
+                      payments: payments.filter(p => p.amount > 0).map(p => ({
+                        method: p.method,
+                        methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
+                        amount: p.amount,
+                      })),
+                      customerName: customerData?.full_name,
+                      customerDocType: customerData?.doc_type,
+                      customerDocNumber: customerData?.doc_number,
+                      customerPhone: customerData?.phone,
+                      customerAddress: customerData?.address,
+                      businessName: organization?.name,
+                      businessNit: organization?.nit || organization?.tax_id,
+                      businessPhone: organization?.phone,
+                      businessAddress: organization?.address,
+                      businessEmail: organization?.email,
+                      businessCity: (organization as any)?.city,
+                      businessFiscalResponsibilities: (organization as any)?.fiscal_responsibilities || null,
+                      businessLogoUrl: (organization as any)?.logo_url || undefined,
+                      branchName: branch?.name,
+                      branchAddress: branch?.address,
+                      branchPhone: branch?.phone,
+                      cashierName: currentUser?.name,
+                      totalPaid,
+                      changeAmount: change > 0 ? change : undefined,
+                    }).then(({ enqueued }) => {
+                      if (enqueued > 0) {
+                        toast.success('Factura electrónica enviada a impresora', {
+                          description: 'El recibo DIAN se está imprimiendo',
+                        });
+                      }
+                    }).catch((err) => {
+                      console.error('Error encolando impresión factura electrónica:', err);
+                    });
+                  }
+                }
+              } catch (queryErr) {
+                console.warn('No se pudo consultar el CUFE para impresión:', queryErr);
+              }
+            } else {
+              toast.error('Error al enviar a DIAN', {
+                description: result.error || 'No se pudo enviar la factura',
+              });
+            }
+          } else {
+            toast.warning('No se encontró la factura para enviar a DIAN');
+          }
+        } catch (factusError: any) {
+          console.error('Error sending to Factus:', factusError);
+          toast.error('Error al enviar a DIAN: ' + (factusError.message || 'Error desconocido'));
+        }
+      }
+
       // NO cerrar automáticamente - el usuario debe cerrar manualmente después de imprimir
       
     } catch (error: any) {
@@ -911,6 +1055,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     setPayments([]);
     setShowReceipt(false);
     setCompletedSale(null);
+    setSendToFactus(false);
+    setElectronicInvoiceData(null);
     setTipAmount(0);
     setTipPercentage(null);
     setServerId('');
@@ -1023,6 +1169,63 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                   <Printer className="h-4 w-4 mr-2" />
                   Re-imprimir Recibo
                 </Button>
+                {electronicInvoiceData && (
+                  <Button
+                    onClick={() => {
+                      import('@printing').then(({ buildElectronicInvoiceHTML, getPaperSpec }) => {
+                        const payload = {
+                          invoiceId: electronicInvoiceData.invoiceId,
+                          invoiceNumber: electronicInvoiceData.invoiceNumber,
+                          cufe: electronicInvoiceData.cufe,
+                          qrData: electronicInvoiceData.qrData,
+                          environment: electronicInvoiceData.environment,
+                          validationDate: electronicInvoiceData.validationDate,
+                          createdAt: new Date().toISOString(),
+                          items: cart.items.map((item) => ({
+                            productName: (item as any).name || item.product?.name || 'Producto',
+                            quantity: item.quantity,
+                            unitPrice: item.unit_price,
+                            total: item.total,
+                            taxAmount: item.tax_amount,
+                            discountAmount: item.discount_amount,
+                            variantData: (item as any).product?.variant_data || null,
+                            modifiers: item.modifiers?.map(m => ({ name: m.name, extraPrice: m.extraPrice })) || null,
+                          })),
+                          total: cartTotal,
+                          subtotal: calculatedTotals.subtotal,
+                          taxTotal: calculatedTotals.totalTaxAmount,
+                          taxIncluded: taxIncluded,
+                          taxLines: taxBreakdown.length > 0 ? taxBreakdown : null,
+                          payments: payments.filter(p => p.amount > 0).map(p => ({
+                            method: p.method,
+                            methodName: paymentMethods.find(pm => pm.code === p.method)?.name || p.method,
+                            amount: p.amount,
+                          })),
+                          businessName: organization?.name,
+                          businessNit: organization?.nit || organization?.tax_id,
+                          businessPhone: organization?.phone,
+                          businessAddress: organization?.address,
+                          businessEmail: organization?.email,
+                          businessCity: (organization as any)?.city,
+                          businessFiscalResponsibilities: (organization as any)?.fiscal_responsibilities || null,
+                          businessLogoUrl: (organization as any)?.logo_url || undefined,
+                          branchName: branch?.name,
+                          branchAddress: branch?.address,
+                          branchPhone: branch?.phone,
+                          cashierName: currentUser?.name,
+                          totalPaid,
+                          changeAmount: change > 0 ? change : undefined,
+                        } as any;
+                        PrintService.printElectronicInvoice(payload);
+                      });
+                    }}
+                    variant="outline"
+                    className="flex-1 h-10 sm:h-11 text-sm sm:text-base dark:border-green-600 dark:hover:bg-green-900/20 border-green-600 hover:bg-green-50"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Factura Electrónica
+                  </Button>
+                )}
                 <Button
                   onClick={handleCloseReceipt}
                   variant="outline"
@@ -1650,6 +1853,23 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
                 </CardContent>
               </Card>
+              </div>
+            </div>
+
+            {/* Toggle Factura Electrónica */}
+            <div className="px-1 py-2">
+              <div className={`p-2 sm:p-3 rounded-lg flex items-center justify-between ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
+                <ElectronicInvoiceToggle
+                  checked={sendToFactus}
+                  onCheckedChange={setSendToFactus}
+                  disabled={eInvoiceAlwaysEnabled}
+                  showLabel={true}
+                  showTooltip={true}
+                  size="md"
+                />
+                {eInvoiceAlwaysEnabled && (
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">Global</span>
+                )}
               </div>
             </div>
 

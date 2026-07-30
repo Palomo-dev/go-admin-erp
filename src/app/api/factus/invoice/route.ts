@@ -6,45 +6,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase/config';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
 import factusService, { 
   FactusInvoiceRequest, 
   mapIdentificationType, 
   mapDocumentType, 
-  mapPaymentMethod 
+  mapPaymentMethod,
+  mapLegalOrganization,
+  mapTribute,
+  mapUnitMeasure,
+  mapStandardCode,
+  mapTaxCode,
 } from '@/lib/services/factusService';
-
-// Cache de token en memoria
-let tokenCache: { accessToken: string; expiresAt: Date } | null = null;
-
-function getFactusCredentials() {
-  const clientId = process.env.FACTUS_CLIENT_ID;
-  const clientSecret = process.env.FACTUS_CLIENT_SECRET;
-  const username = process.env.FACTUS_USERNAME;
-  const password = process.env.FACTUS_PASSWORD;
-  const environment = (process.env.FACTUS_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production';
-
-  if (!clientId || !clientSecret || !username || !password) {
-    return null;
-  }
-
-  return { clientId, clientSecret, username, password, environment };
-}
-
-async function getValidToken(): Promise<string | null> {
-  const credentials = getFactusCredentials();
-  if (!credentials) return null;
-
-  // Verificar cache
-  if (tokenCache && tokenCache.expiresAt > new Date()) {
-    return tokenCache.accessToken;
-  }
-
-  // Autenticar
-  const token = await factusService.authenticate(credentials);
-  tokenCache = { accessToken: token.accessToken, expiresAt: token.expiresAt };
-  return token.accessToken;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const credentials = getFactusCredentials();
+    const credentials = getCredentials();
     if (!credentials) {
       return NextResponse.json(
         { error: 'Credenciales de Factus no configuradas' },
@@ -74,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = createRouteHandlerClient({ cookies });
     const environment = credentials.environment;
 
     // Obtener datos de la factura
@@ -116,13 +91,23 @@ export async function POST(request: NextRequest) {
       .eq('organization_id', organizationId)
       .eq('document_type', invoice.document_type || 'invoice')
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (seqError || !sequence?.factus_numbering_range_id) {
       return NextResponse.json(
         { error: 'No hay rango de numeración configurado para Factus' },
         { status: 400 }
       );
+    }
+
+    // Auto-generar reference_code si no existe
+    let referenceCode = invoice.reference_code;
+    if (!referenceCode) {
+      referenceCode = `INV-${invoice.id.substring(0, 8)}`;
+      await supabase
+        .from('invoice_sales')
+        .update({ reference_code: referenceCode })
+        .eq('id', invoiceId);
     }
 
     // Crear job en electronic_invoicing_jobs
@@ -147,62 +132,121 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Resolver código numérico del municipio fiscal del cliente
-      let customerMunicipalityCode = 980; // Default: Bogotá
+      // Resolver código del municipio fiscal del cliente
+      let customerMunicipalityCode = '05001'; // Default: Medellín
       if (invoice.customer?.fiscal_municipality_id) {
         const { data: muni } = await supabase
           .from('municipalities')
           .select('code')
           .eq('id', invoice.customer.fiscal_municipality_id)
-          .single();
-        if (muni?.code) customerMunicipalityCode = parseInt(muni.code, 10);
+          .maybeSingle();
+        if (muni?.code) customerMunicipalityCode = muni.code;
       }
 
-      // Mapear datos a formato Factus
+      // Resolver código del municipio: priorizar sucursal, luego organización
+      let branchMunicipalityCode = '05001';
+      if (invoice.branch?.municipality_id) {
+        const { data: branchMuni } = await supabase
+          .from('municipalities')
+          .select('code')
+          .eq('id', invoice.branch.municipality_id)
+          .maybeSingle();
+        if (branchMuni?.code) branchMunicipalityCode = branchMuni.code;
+      } else if (invoice.organization?.municipality_id) {
+        const { data: orgMuni } = await supabase
+          .from('municipalities')
+          .select('code')
+          .eq('id', invoice.organization.municipality_id)
+          .maybeSingle();
+        if (orgMuni?.code) branchMunicipalityCode = orgMuni.code;
+      }
+
+      // Mapear datos a formato Factus V2
       const factusRequest: FactusInvoiceRequest = {
+        reference_code: referenceCode,
         document: mapDocumentType(invoice.document_type),
         numbering_range_id: sequence.factus_numbering_range_id,
-        reference_code: invoice.reference_code || `INV-${invoice.id.substring(0, 8)}`,
+        operation_type: '10',
         observation: invoice.notes || '',
-        payment_form: (invoice.payment_form as '1' | '2') || '1',
-        payment_method_code: invoice.payment_method_code || mapPaymentMethod(invoice.payment_method),
-        payment_due_date: invoice.due_date?.split('T')[0],
-        send_email: invoice.send_email || false,
+        send_email: invoice.send_email ?? true,
+        cash_rounding_amount: '0.00',
+        payment_details: [{
+          payment_form: invoice.payment_form || '1',
+          payment_method_code: invoice.payment_method_code || mapPaymentMethod(invoice.payment_method),
+          due_date: invoice.due_date?.split('T')[0],
+          amount: Number(invoice.total || 0).toFixed(2),
+        }],
         establishment: {
           name: invoice.branch?.name || invoice.organization?.name || '',
           address: invoice.branch?.address || invoice.organization?.address || '',
-          phone_number: invoice.branch?.phone || invoice.organization?.phone || '',
-          email: invoice.branch?.email || invoice.organization?.email || '',
-          municipality_id: invoice.branch?.municipality_id || 980,
+          phone_number: (invoice.branch?.phone || invoice.organization?.phone || '3000000000').trim() || '3000000000',
+          email: invoice.branch?.email || invoice.organization?.email || 'noemail@noemail.com',
+          municipality_code: branchMunicipalityCode,
         },
         customer: {
-          identification_document_id: mapIdentificationType(invoice.customer?.identification_type),
+          identification_document_code: mapIdentificationType(invoice.customer?.identification_type),
           identification: invoice.customer?.identification_number || '',
-          dv: invoice.customer?.dv,
+          dv: invoice.customer?.dv?.toString() || undefined,
           company: invoice.customer?.company_name || '',
           trade_name: invoice.customer?.trade_name || '',
           names: `${invoice.customer?.first_name || ''} ${invoice.customer?.last_name || ''}`.trim() || 'Cliente',
           address: invoice.customer?.address || '',
           email: invoice.customer?.email || '',
           phone: invoice.customer?.phone || '',
-          legal_organization_id: invoice.customer?.legal_organization_id || 2,
-          tribute_id: invoice.customer?.tribute_id || 21,
-          municipality_id: customerMunicipalityCode,
+          legal_organization_code: mapLegalOrganization(invoice.customer?.customer_type),
+          tribute_code: mapTribute(invoice.customer?.tribute_id),
+          country_code: 'CO',
+          municipality_code: customerMunicipalityCode,
         },
-        items: (items || []).map((item: any) => ({
-          code_reference: item.code_reference || item.product_id?.toString() || '001',
-          name: item.description || 'Producto',
-          quantity: Number(item.qty) || 1,
-          discount_rate: Number(item.discount_rate || 0),
-          price: Number(item.unit_price) || 0,
-          tax_rate: (Number(item.tax_rate) || 19).toFixed(2),
-          unit_measure_id: item.unit_measure_id || 70,
-          standard_code_id: item.standard_code_id || 1,
-          is_excluded: item.is_excluded || 0,
-          tribute_id: item.tribute_id || 1,
-          withholding_taxes: item.withholding_taxes || [],
-        })),
-        allowance_charges: invoice.allowance_charges || [],
+        items: (items || []).map((item: any, idx: number) => {
+          // Auto-mapear tax_code desde tax_rate si no existe
+          let itemTaxCode = item.tax_code;
+          if (!itemTaxCode && item.tax_rate !== null && item.tax_rate !== undefined) {
+            const rate = Number(item.tax_rate);
+            if (rate === 19) itemTaxCode = '01';
+            else if (rate === 5) itemTaxCode = '01';
+            else if (rate === 0) itemTaxCode = '01';
+            else itemTaxCode = '01';
+          }
+
+          // Auto-generar code_reference si no existe
+          let itemCodeRef = item.code_reference;
+          if (!itemCodeRef) {
+            itemCodeRef = item.product_id ? `PROD-${item.product_id}` : `ITEM-${idx + 1}`;
+          }
+
+          const itemDiscountRate = Number(item.discount_rate || 0);
+          const itemDiscountAmount = Number(item.discount_amount || 0);
+          const itemName = (item.description || 'Producto').substring(0, 250);
+
+          const itemData: any = {
+            code_reference: itemCodeRef,
+            name: itemName,
+            quantity: Number(item.qty || 1).toFixed(2),
+            price: Number(item.unit_price || 0).toFixed(2),
+            unit_measure_code: mapUnitMeasure(item.unit_measure_id),
+            standard_code: mapStandardCode(item.standard_code_id),
+            taxes: [{
+              code: mapTaxCode(itemTaxCode),
+              rate: Number(item.tax_rate || 0).toFixed(2),
+              is_excluded: item.is_excluded === 1,
+            }],
+            withholding_taxes: (item.withholding_taxes || []).map((wt: any) => ({
+              code: wt.code || '',
+              rate: Number(wt.rate || wt.withholding_tax_rate || 0).toFixed(2),
+            })),
+            note: item.note || '',
+          };
+
+          // Solo incluir descuentos si son mayores a 0
+          if (itemDiscountRate > 0 && itemDiscountAmount > 0) {
+            itemData.discount_rate = itemDiscountRate.toFixed(2);
+            itemData.discount_amount = itemDiscountAmount.toFixed(2);
+          }
+
+          return itemData;
+        }),
+        ...(invoice.allowance_charges && invoice.allowance_charges.length > 0 ? { allowance_charges: invoice.allowance_charges } : {}),
       };
 
       // Actualizar job con request
@@ -212,6 +256,7 @@ export async function POST(request: NextRequest) {
         .eq('id', job.id);
 
       // Enviar a Factus
+      console.log('[Factus] Enviando factura:', JSON.stringify(factusRequest, null, 2));
       const result = await factusService.createInvoice(
         environment as 'sandbox' | 'production',
         accessToken,
@@ -222,10 +267,9 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('electronic_invoicing_jobs')
         .update({
-          status: 'accepted',
+          status: result.data?.is_validated ? 'accepted' : 'sent',
           response_payload: result,
-          cufe: result.data?.bill?.cufe,
-          qr_code: result.data?.bill?.qr,
+          cufe: result.data?.cufe,
           processed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -235,10 +279,9 @@ export async function POST(request: NextRequest) {
       await supabase
         .from('invoice_sales')
         .update({
-          xml_uuid: result.data?.bill?.cufe,
-          qr_image: result.data?.bill?.qr_image,
-          validated_at: new Date().toISOString(),
-          status: 'validated',
+          xml_uuid: result.data?.cufe,
+          validated_at: result.data?.validated_at ? new Date().toISOString() : null,
+          status: result.data?.is_validated ? 'validated' : 'sent',
           updated_at: new Date().toISOString(),
         })
         .eq('id', invoiceId);
@@ -248,12 +291,13 @@ export async function POST(request: NextRequest) {
         .from('electronic_invoicing_events')
         .insert({
           job_id: job.id,
-          event_type: 'validated',
+          event_type: result.data?.is_validated ? 'validated' : 'sent',
           event_code: '200',
           event_message: result.message,
           metadata: {
-            number: result.data?.bill?.number,
-            cufe: result.data?.bill?.cufe,
+            number: result.data?.number,
+            cufe: result.data?.cufe,
+            is_validated: result.data?.is_validated,
           },
         });
 

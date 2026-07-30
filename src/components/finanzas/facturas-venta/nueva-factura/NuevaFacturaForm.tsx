@@ -19,6 +19,7 @@ import { Save, FileCheck, ArrowLeft, RefreshCw, Coins, User, Percent } from 'luc
 import { DatePicker } from '@/components/ui/date-picker';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
+import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 import { toLocalDateString, parseLocalDate } from '@/utils/Utils';
 
 // Tipo para un ítem de factura
@@ -103,6 +104,14 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [paymentMethodCode, setPaymentMethodCode] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [sendToFactus, setSendToFactus] = useState<boolean>(false);
+  const { alwaysEnabled: eInvoiceAlwaysEnabled } = useElectronicInvoicePreference();
+
+  // Si la preferencia global está activa, forzar sendToFactus = true
+  useEffect(() => {
+    if (eInvoiceAlwaysEnabled) {
+      setSendToFactus(true);
+    }
+  }, [eInvoiceAlwaysEnabled]);
 
   // Estados para moneda
   const [currency, setCurrency] = useState<string>('COP');
@@ -1007,13 +1016,19 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             />
           </div>
           <div className="lg:col-span-2 pt-2">
-            <ElectronicInvoiceToggle
-              checked={sendToFactus}
-              onCheckedChange={setSendToFactus}
-              showLabel={true}
-              showTooltip={true}
-              size="md"
-            />
+            <div className={`p-2 sm:p-3 rounded-lg flex items-center justify-between ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : ''}`}>
+              <ElectronicInvoiceToggle
+                checked={sendToFactus}
+                onCheckedChange={setSendToFactus}
+                disabled={eInvoiceAlwaysEnabled}
+                showLabel={true}
+                showTooltip={true}
+                size="md"
+              />
+              {eInvoiceAlwaysEnabled && (
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-2">Global</span>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,0 +1,11 @@
+Go Admin ERP — Términos de Licencia
+
+Copyright © 2025 GO Admin. Todos los derechos reservados.
+
+Al instalar este software aceptas:
+
+1. Usar la aplicación conforme a las políticas de tu organización.
+2. No redistribuir el instalador sin autorización.
+3. Que los datos de impresión se procesan localmente en tu equipo.
+
+Para soporte: soporte@goadmin.io

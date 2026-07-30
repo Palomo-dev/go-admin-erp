@@ -6,6 +6,7 @@ import {
   type MonochromeRaster,
   type SaleTicketPrintPayload as SharedSaleTicketPrintPayload,
   type ShipmentGuidePrintPayload as SharedShipmentGuidePrintPayload,
+  type ElectronicInvoicePrintPayload as SharedElectronicInvoicePrintPayload,
 } from '@printing';
 import { rasterizeLogo } from './logoRasterService';
 import { PrintService } from './printService';
@@ -687,5 +688,108 @@ export class PrintJobsService {
       total += result.enqueued;
     }
     return { enqueued: total };
+  }
+
+  /**
+   * Encola la impresión física de una factura electrónica validada por DIAN.
+   * Sale por la(s) impresora(s) asignada(s) a la estación 'cashier' (o 'all'),
+   * con CUFE, QR de validación y entorno DIAN.
+   */
+  static async enqueueElectronicInvoice(
+    branchId: number,
+    invoice: {
+      invoiceId: string;
+      invoiceNumber: string;
+      cufe: string;
+      qrData: string;
+      environment: 'production' | 'test';
+      validationDate?: string;
+      createdAt: string;
+      total: number;
+      subtotal?: number;
+      taxTotal?: number;
+      discountTotal?: number;
+      taxIncluded?: boolean;
+      taxLines?: Array<{ name: string; amount: number }> | null;
+      items: Array<{ productName: string; quantity: number; unitPrice: number; total: number; taxAmount?: number; discountAmount?: number; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      payments?: Array<{ method: string; methodName?: string; amount: number }>;
+      customerName?: string;
+      customerDocType?: string;
+      customerDocNumber?: string;
+      customerPhone?: string;
+      customerAddress?: string;
+      customerFiscalResponsibilities?: string[] | null;
+      businessName?: string;
+      businessNit?: string;
+      businessPhone?: string;
+      businessAddress?: string;
+      businessEmail?: string;
+      businessCity?: string;
+      businessFiscalResponsibilities?: string[] | null;
+      businessLogoUrl?: string;
+      branchName?: string;
+      branchAddress?: string;
+      branchPhone?: string;
+      cashierName?: string;
+      totalPaid?: number;
+      changeAmount?: number;
+      notes?: string;
+    }
+  ): Promise<{ enqueued: number }> {
+    const orgId = getOrganizationId();
+    const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
+
+    if (printers.length === 0) return { enqueued: 0 };
+
+    const header = await resolveBusinessHeader(invoice);
+    const logoRasters = await buildLogoRasters(header.businessLogoUrl, printers);
+
+    const payload: SharedElectronicInvoicePrintPayload = {
+      invoiceId: invoice.invoiceId,
+      invoiceNumber: invoice.invoiceNumber,
+      cufe: invoice.cufe,
+      qrData: invoice.qrData,
+      environment: invoice.environment,
+      validationDate: invoice.validationDate,
+      createdAt: invoice.createdAt,
+      items: invoice.items,
+      total: invoice.total,
+      subtotal: invoice.subtotal,
+      taxTotal: invoice.taxTotal,
+      discountTotal: invoice.discountTotal,
+      taxIncluded: invoice.taxIncluded,
+      taxLines: invoice.taxLines,
+      payments: invoice.payments,
+      customerName: invoice.customerName,
+      customerDocType: invoice.customerDocType,
+      customerDocNumber: invoice.customerDocNumber,
+      customerPhone: invoice.customerPhone,
+      customerAddress: invoice.customerAddress,
+      customerFiscalResponsibilities: invoice.customerFiscalResponsibilities,
+      ...header,
+      cashierName: invoice.cashierName,
+      totalPaid: invoice.totalPaid,
+      changeAmount: invoice.changeAmount,
+      notes: invoice.notes,
+    };
+
+    const rows = printers.map((printer) => ({
+      organization_id: orgId,
+      branch_id: printer.branch_id || branchId,
+      printer_id: printer.id,
+      station: 'cashier',
+      job_type: 'electronic_invoice' as const,
+      reference_id: invoice.invoiceId,
+      payload: {
+        ...payload,
+        businessLogoRaster: logoRasters.get(getPaperSpec(printer.paper_width).width) ?? null,
+      } as any,
+      status: 'pending' as const,
+    }));
+
+    const { error } = await supabase.from('print_jobs').insert(rows);
+    if (error) throw error;
+
+    return { enqueued: rows.length };
   }
 }

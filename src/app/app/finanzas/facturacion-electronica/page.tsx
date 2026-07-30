@@ -10,6 +10,7 @@ import {
   Zap,
   ChevronLeft,
   ExternalLink,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
@@ -198,7 +199,8 @@ export default function FacturacionElectronicaPage() {
  
   const handleDownload = async (job: ElectronicInvoicingJob, type: 'pdf' | 'xml') => {
     try {
-      const invoiceNumber = job.invoice?.number || job.cufe?.substring(0, 20);
+      const factusNumber = job.response_payload?.data?.number;
+      const invoiceNumber = factusNumber || job.invoice?.number;
       if (!invoiceNumber) {
         throw new Error('No hay número de factura disponible');
       }
@@ -279,6 +281,12 @@ export default function FacturacionElectronicaPage() {
             <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
             Actualizar
           </Button>
+          <Link href="/app/finanzas/facturacion-electronica/configuracion">
+            <Button variant="outline" size="sm" className="h-9">
+              <Settings className="h-4 w-4 mr-2" />
+              Configuración
+            </Button>
+          </Link>
           <a
             href="https://developers.factus.com.co"
             target="_blank"

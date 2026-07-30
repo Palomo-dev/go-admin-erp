@@ -1,0 +1,36 @@
+{
+  "name": "go-admin-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Go Admin Desktop — Aplicación de escritorio (Electron) para GO Admin ERP. Wrapper de la web + agente de impresión embebido.",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "sync:agent": "node scripts/sync-agent.js",
+    "dev": "npm run sync:agent && tsc -p . && electron .",
+    "dev:watch": "npm run sync:agent && tsc -p . --watch & electron .",
+    "build": "npm run sync:agent && tsc -p .",
+    "package": "npm run build && electron-builder --win",
+    "package:dir": "npm run build && electron-builder --win --dir"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "electron-updater": "^6.3.9",
+    "escpos": "^3.0.0-alpha.6",
+    "escpos-network": "^3.0.0-alpha.5",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "escpos-bluetooth": "^3.0.0-alpha.2",
+    "printer": "^0.4.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.8.3",
+    "@types/node": "^20.19.6",
+    "@types/ws": "^8.18.1"
+  },
+  "build": {
+    "extends": "./electron-builder.yml"
+  }
+}

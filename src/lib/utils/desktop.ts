@@ -52,9 +52,20 @@ export interface DesktopPrintResult {
 
 /** Estado del agente de impresión embebido. */
 export interface DesktopAgentStatus {
-  online: boolean;
-  pid: number | null;
-  error: string | null;
+  running: boolean;
+  email: string | null;
+  organizationName: string | null;
+  branchNames: string[];
+  lastHeartbeatAt: string | null;
+  jobsPrinted: number;
+  jobsFailed: number;
+}
+
+export interface DesktopUpdateState {
+  status: 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'none' | 'error';
+  version?: string;
+  percent?: number;
+  message?: string;
 }
 
 /**
@@ -63,21 +74,39 @@ export interface DesktopAgentStatus {
  * instalada: siempre hay que comprobar su existencia antes de invocarlos.
  */
 export interface GoAdminDesktopBridge {
+  // Agente
+  startAgent?: (
+    refreshToken: string,
+    orgId: number,
+    orgName: string,
+    branchIds: number[],
+    branchNames: string[],
+  ) => Promise<DesktopAgentStatus>;
+  stopAgent?: () => Promise<DesktopAgentStatus>;
+  status?: () => Promise<DesktopAgentStatus>;
+  logout?: () => Promise<boolean>;
+  setAgentName?: (name: string) => Promise<boolean>;
+
+  // Auto-arranque
+  getAutoStart?: () => Promise<boolean>;
+  setAutoStart?: (enabled: boolean) => Promise<boolean>;
+
+  // Impresoras
   listPrinters?: () => Promise<DesktopPrintersResponse>;
   discoverNetwork?: () => Promise<DesktopDiscoverResponse>;
   listUsbDevices?: () => Promise<DesktopUsbResponse>;
-  /** Imprimir directamente a una impresora via IPC (no requiere HTTP). */
   printRaw?: (printerId: string, payload: unknown) => Promise<DesktopPrintResult>;
-  /** Reimprimir un job existente por ID. */
   reprintJob?: (jobId: string) => Promise<DesktopPrintResult>;
-  /** Estado del agente de impresión embebido. */
-  agentStatus?: () => Promise<DesktopAgentStatus>;
+
+  // Versión y actualizaciones
   version?: () => Promise<string>;
-  checkForUpdates?: () => Promise<{ available: boolean; version?: string }>;
+  updateState?: () => Promise<DesktopUpdateState>;
+  checkForUpdates?: () => Promise<DesktopUpdateState>;
   installUpdate?: () => Promise<boolean>;
-  /** Habilitar/deshabilitar arranque automático con Windows. */
-  enableAutoStart?: () => Promise<boolean>;
-  disableAutoStart?: () => Promise<boolean>;
+
+  // Eventos
+  onAutoStarted?: (callback: () => void) => void;
+  onUpdateState?: (callback: (state: DesktopUpdateState) => void) => void;
 }
 
 /**

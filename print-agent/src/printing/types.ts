@@ -145,7 +145,72 @@ export interface SaleTicketPrintPayload {
 }
 
 /** Tipo de documento a imprimir. Coincide con `print_jobs.job_type`. */
-export type TicketKind = 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket' | 'shipment_guide';
+export type TicketKind = 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket' | 'shipment_guide' | 'electronic_invoice';
+
+/**
+ * Datos de una factura electrónica validada por DIAN para impresión.
+ * Contiene campos específicos como CUFE, QR, número de validación y entorno.
+ */
+export interface ElectronicInvoicePrintPayload {
+  /** Número de factura asignado por Factus/DIAN (ej: FE1234). */
+  invoiceNumber: string;
+  /** CUFE - Código Único de Factura Electrónica. */
+  cufe: string;
+  /** Datos del QR para validación en DIAN (URL o payload). */
+  qrData: string;
+  /** Fecha y hora de validación DIAN. */
+  validationDate?: string;
+  /** Entorno: producción o sandbox. */
+  environment: 'production' | 'sandbox';
+  /** Identificador de la factura en el sistema interno. */
+  internalInvoiceId?: string;
+
+  // Datos del negocio
+  businessName?: string;
+  businessNit?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  businessEmail?: string;
+  businessCity?: string;
+  businessFiscalResponsibilities?: string[] | null;
+  businessLogoUrl?: string;
+  businessLogoRaster?: MonochromeRaster | null;
+
+  // Datos del cliente
+  customerName?: string;
+  customerDocType?: string;
+  customerDocNumber?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  customerAddress?: string;
+  customerFiscalResponsibilities?: string[] | null;
+
+  // Items
+  items: SaleTicketItemPayload[];
+
+  // Totales
+  subtotal?: number;
+  taxTotal?: number;
+  taxLines?: SaleTicketTaxLine[] | null;
+  taxIncluded?: boolean;
+  discountTotal?: number;
+  total: number;
+
+  // Pago
+  payments?: SaleTicketPayment[];
+  totalPaid?: number;
+  changeAmount?: number;
+
+  // Metadatos
+  createdAt: string;
+  cashierName?: string;
+  branchName?: string;
+  branchAddress?: string;
+  branchPhone?: string;
+
+  // Notas
+  notes?: string;
+}
 
 export interface ShipmentGuideItemPayload {
   description: string;

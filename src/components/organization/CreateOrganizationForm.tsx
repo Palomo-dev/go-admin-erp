@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import LogoUploader from './LogoUploader';
-import LocationSelector from '../common/LocationSelector';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 
 interface OrganizationData {
@@ -22,11 +21,32 @@ interface OrganizationData {
   postal_code?: string;
   tax_id?: string;
   nit?: string;
+  dv?: string;
   website?: string;
   subdomain?: string;
   primary_color?: string;
   secondary_color?: string;
   logo_url?: string | null;
+}
+
+interface MunicipalityOption {
+  id: string;
+  name: string;
+  code: string;
+  state_name: string;
+}
+
+function calcularDV(nit: string): string {
+  const nitLimpio = nit.replace(/[^0-9]/g, '');
+  if (!nitLimpio) return '';
+  const pesos = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
+  const nitReverse = nitLimpio.split('').reverse().join('');
+  let suma = 0;
+  for (let i = 0; i < nitReverse.length; i++) {
+    suma += parseInt(nitReverse[i], 10) * (pesos[i] || pesos[pesos.length - 1]);
+  }
+  const residuo = suma % 11;
+  return (residuo === 0 || residuo === 1) ? residuo.toString() : (11 - residuo).toString();
 }
 
 interface CreateOrganizationFormProps {
@@ -54,12 +74,16 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     postalCode: '',
     taxId: '',
     nit: '', 
+    dv: '',
     website: '',
     subdomain: '', 
     primaryColor: '#3B82F6', 
     secondaryColor: '#F59E0B', 
     logoUrl: null as string | null,
   });
+  const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([]);
+  const [loadingMunicipalities, setLoadingMunicipalities] = useState(false);
+  const [dvManuallyEdited, setDvManuallyEdited] = useState(false);
   const [organizationTypes, setOrganizationTypes] = useState<Array<{ id: number; name: string }>>([]);
   const [countries, setCountries] = useState<Array<{ code: string; name: string }>>([]);
   const [plans, setPlans] = useState<Array<{ id: number; code: string; name: string; price_usd_month: string | null; trial_days: number }>>([]);
@@ -153,6 +177,36 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     
     return () => clearTimeout(timeoutId);
   }, [formData.subdomain]);
+
+  // Cargar municipios cuando cambia el país
+  useEffect(() => {
+    const fetchMunicipalities = async () => {
+      if (!formData.countryCode) {
+        setMunicipalities([]);
+        return;
+      }
+      setLoadingMunicipalities(true);
+      const { data } = await supabase
+        .from('municipalities')
+        .select('id, name, code, state_name')
+        .eq('country_code', formData.countryCode)
+        .order('name')
+        .limit(500);
+      if (data) setMunicipalities(data);
+      setLoadingMunicipalities(false);
+    };
+    fetchMunicipalities();
+  }, [formData.countryCode]);
+
+  const handleMunicipalityChange = (muniId: string) => {
+    const selected = municipalities.find(m => m.id === muniId);
+    setFormData(prev => ({
+      ...prev,
+      municipalityId: muniId,
+      city: selected?.name || prev.city,
+      state: selected?.state_name || prev.state,
+    }));
+  };
 
   useEffect(() => {
     fetchOrganizationTypes();
@@ -286,6 +340,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         postal_code: formData.postalCode,
         tax_id: formData.taxId,
         nit: formData.nit,
+        dv: formData.dv || undefined,
         website: formData.website,
         subdomain: formData.subdomain,
         primary_color: formData.primaryColor,
@@ -611,8 +666,70 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             )}
           </div>
           
-          {renderFormField('taxId', 'NIT/RUT', 'text', true)}
-          {renderFormField('phone', 'Teléfono', 'tel')}
+          <div className="col-span-6 sm:col-span-3">
+            <label htmlFor="taxId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              NIT/RUT <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                name="taxId"
+                id="taxId"
+                required
+                value={formData.taxId}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData(prev => {
+                    const next = { ...prev, taxId: value, nit: value };
+                    if (!dvManuallyEdited) {
+                      const dvCalculado = calcularDV(value);
+                      if (dvCalculado) next.dv = dvCalculado;
+                    }
+                    return next;
+                  });
+                  if (formErrors.taxId) {
+                    setFormErrors({ ...formErrors, taxId: '' });
+                  }
+                }}
+                className={`block w-full rounded-lg border ${formErrors.taxId ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
+                placeholder="Ej: 900123456"
+              />
+              {formErrors.taxId && (
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                  <ExclamationCircleIcon className="h-5 w-5 text-red-500" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+            {formErrors.taxId && (
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400" id="taxId-error">
+                {formErrors.taxId}
+              </p>
+            )}
+          </div>
+
+          <div className="col-span-6 sm:col-span-1">
+            <label htmlFor="dv" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              DV
+            </label>
+            <input
+              type="text"
+              name="dv"
+              id="dv"
+              maxLength={1}
+              value={formData.dv}
+              onChange={(e) => {
+                setDvManuallyEdited(true);
+                setFormData({ ...formData, dv: e.target.value });
+              }}
+              className="block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900"
+              placeholder="Auto"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              {dvManuallyEdited ? 'Editado manualmente' : 'Calculado desde el NIT'}
+            </p>
+          </div>
+
+          {renderFormField('phone', 'Teléfono', 'tel', false, 'col-span-6 sm:col-span-2')}
           
           {/* Color selector */}
           <div className="col-span-6">
@@ -768,28 +885,81 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           <div className="grid grid-cols-2 gap-6">
             {renderFormField('address', 'Dirección', 'text', false, 'col-span-2')}
             
-            {/* Location Selector: País, Estado/Departamento, Ciudad/Municipio */}
-            <LocationSelector
-              value={{
-                country: formData.country,
-                countryCode: formData.countryCode,
-                state: formData.state,
-                stateCode: formData.stateCode || '',
-                city: formData.city,
-                municipalityId: formData.municipalityId || '',
-              }}
-              onChange={(locData) => setFormData({
-                ...formData,
-                country: locData.country,
-                countryCode: locData.countryCode,
-                state: locData.state,
-                stateCode: locData.stateCode,
-                city: locData.city,
-                municipalityId: locData.municipalityId,
-              })}
-              errors={formErrors}
-              layout="grid"
-            />
+            {/* País */}
+            <div className="col-span-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                País
+              </label>
+              <select
+                value={formData.countryCode}
+                onChange={(e) => {
+                  const country = countries.find(c => c.code === e.target.value);
+                  setFormData({
+                    ...formData,
+                    countryCode: e.target.value,
+                    country: country?.name || '',
+                    state: '',
+                    stateCode: '',
+                    municipalityId: '',
+                    city: '',
+                  });
+                }}
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900"
+              >
+                <option value="">Seleccionar país...</option>
+                {countries.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Estado/Departamento */}
+            <div className="col-span-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Estado / Provincia / Departamento
+              </label>
+              <select
+                value={formData.stateCode}
+                onChange={(e) => {
+                  const state = municipalities.find(m => m.code?.substring(0, 5) === e.target.value);
+                  const stateName = state?.state_name || '';
+                  setFormData({
+                    ...formData,
+                    stateCode: e.target.value,
+                    state: stateName,
+                    municipalityId: '',
+                    city: '',
+                  });
+                }}
+                disabled={loadingMunicipalities}
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 disabled:opacity-50"
+              >
+                <option value="">Seleccionar...</option>
+                {Array.from(new Map(municipalities.map(m => [m.state_name, m])).values()).map((m) => (
+                  <option key={m.state_name} value={m.code?.substring(0, 5) || m.state_name}>{m.state_name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Ciudad/Municipio */}
+            <div className="col-span-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Ciudad / Municipio
+              </label>
+              <select
+                value={formData.municipalityId}
+                onChange={(e) => handleMunicipalityChange(e.target.value)}
+                disabled={loadingMunicipalities || !formData.stateCode}
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 disabled:opacity-50"
+              >
+                <option value="">Seleccionar...</option>
+                {municipalities
+                  .filter(m => !formData.stateCode || m.code?.substring(0, 5) === formData.stateCode)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.code})</option>
+                  ))}
+              </select>
+            </div>
             
             {renderFormField('postalCode', 'Código Postal', 'text', false, 'col-span-1')}
           </div>

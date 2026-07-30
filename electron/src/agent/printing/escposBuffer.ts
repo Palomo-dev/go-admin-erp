@@ -1,0 +1,83 @@
+/* AUTO-GENERADO por sync-agent.js — NO EDITAR */
+/**
+ * Generación de buffers ESC/POS desacoplada del transporte.
+ *
+ * El BufferAdapter implementa la misma interfaz que escpos.Network / escpos.USB
+ * (open, write, close), por lo que escpos.Printer puede usarlo sin saber que
+ * los bytes se acumulan en memoria en lugar de enviarse a un puerto físico.
+ *
+ * buildEscposBuffer genera el buffer completo sin abrir ninguna conexión.
+ * El mismo buffer puede enviarse luego por red, USB, Bluetooth o spooler de
+ * Windows (RAW), lo que permite reutilizar la lógica de maquetación para todos
+ * los transportes.
+ */
+
+import type { PrintJobPayload, PrintJobRow } from '../types';
+import type { PaperSpec } from './paper';
+import type { SaleTicketPrintPayload, KitchenTicketPrintPayload, ShipmentGuidePrintPayload } from './types';
+import { printSaleTicket, printKitchenTicket, printShipmentGuide } from './renderEscpos';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const escpos = require('escpos');
+
+/**
+ * Adapter in-memory que acumula los bytes ESC/POS en un Buffer.
+ * No abre ni cierra ningún recurso físico.
+ */
+export class BufferAdapter {
+  private chunks: Buffer[] = [];
+
+  open(cb?: (err?: Error | null) => void): void {
+    if (cb) cb(null);
+  }
+
+  write(data: Buffer | number[], cb?: (err?: Error | null) => void): void {
+    this.chunks.push(Buffer.isBuffer(data) ? data : Buffer.from(data));
+    if (cb) cb(null);
+  }
+
+  close(cb?: (err?: Error | null) => void): void {
+    if (cb) cb(null);
+  }
+
+  getBuffer(): Buffer {
+    return Buffer.concat(this.chunks);
+  }
+}
+
+/**
+ * Genera un Buffer con los comandos ESC/POS completos para un job,
+ * sin abrir ninguna conexión física.
+ */
+export async function buildEscposBuffer(
+  jobType: PrintJobRow['job_type'],
+  payload: PrintJobPayload,
+  paper: PaperSpec,
+): Promise<Buffer> {
+  const adapter = new BufferAdapter();
+  const printer = new escpos.Printer(adapter);
+
+  // CP858 = Latin-1 + Euro. Soporta Ñ, tildes, °, ¿, ¡, €.
+  printer.encode('CP858').setCharacterCodeTable(19);
+
+  if (jobType === 'sale_ticket' || jobType === 'pre_cuenta') {
+    printSaleTicket(printer, payload as SaleTicketPrintPayload, paper);
+  } else if (jobType === 'shipment_guide') {
+    printShipmentGuide(printer, payload as ShipmentGuidePrintPayload, paper);
+  } else {
+    printKitchenTicket(printer, payload as KitchenTicketPrintPayload, paper);
+  }
+
+  // qrimage usa QRCode.toDataURL que es asíncrono, pero printSaleTicket no
+  // pasa callback. Esperar un tick para que los bytes del QR lleguen al
+  // adapter antes de retornar el buffer.
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  // close() hace flush() del MutableBuffer interno del Printer al adapter.
+  // Sin esto, los bytes se quedan en el buffer interno y getBuffer() retorna vacío.
+  await new Promise<void>((resolve) => {
+    printer.close(() => resolve());
+  });
+
+  return adapter.getBuffer();
+}

@@ -941,19 +941,31 @@ export class POSService {
       });
       
       // PASO 4: Crear invoice_items
-      const invoiceItems = cart.items.map(item => ({
-        invoice_id: invoice.id,
-        invoice_type: 'sale', // Debe ser 'sale' no 'sales'
-        invoice_sales_id: invoice.id,
-        product_id: item.product_id,
-        description: item.product?.name || 'Producto',
-        qty: item.quantity || 0,
-        unit_price: item.unit_price || 0,
-        tax_rate: item.tax_rate || 0,
-        total_line: item.total || 0,
-        discount_amount: item.discount_amount || 0,
-        tax_included: taxIncluded
-      }));
+      const invoiceItems = cart.items.map(item => {
+        let description = item.product?.name || 'Producto';
+
+        // Agregar modificadores del item (sin mencionar la palabra "modificador")
+        if (item.modifiers && item.modifiers.length > 0) {
+          const modNames = item.modifiers.map((m: any) => m.name).filter(Boolean);
+          if (modNames.length > 0) {
+            description += ` (${modNames.join(', ')})`;
+          }
+        }
+
+        return {
+          invoice_id: invoice.id,
+          invoice_type: 'sale',
+          invoice_sales_id: invoice.id,
+          product_id: item.product_id,
+          description: description.substring(0, 255),
+          qty: item.quantity || 0,
+          unit_price: item.unit_price || 0,
+          tax_rate: item.tax_rate || 0,
+          total_line: item.total || 0,
+          discount_amount: item.discount_amount || 0,
+          tax_included: taxIncluded
+        };
+      });
       
       console.log('📋 Creando invoice_items con datos:', invoiceItems);
       
@@ -1303,17 +1315,30 @@ export class POSService {
           const productIds = cart.items.map(item => item.product_id).filter(id => id);
           const { data: productsData } = await supabase
             .from('products')
-            .select('id, name, description')
+            .select('id, name, description, parent_product_id, parent:products!parent_product_id(name)')
             .in('id', productIds);
             
           const productMap = new Map((productsData || []).map(p => [p.id, p]));
           
           const invoiceItems = cart.items.map((cartItem: any) => {
             const product = productMap.get(cartItem.product_id);
-            const description = product 
-              ? `${product.name}${product.description ? ' - ' + product.description : ''}`
+            let description = product 
+              ? product.name
               : `Producto ID: ${cartItem.product_id}`;
-              
+
+            // Si es un producto derivado, incluir el nombre del principal
+            if (product?.parent_product_id && (product as any).parent?.name) {
+              description = `${(product as any).parent.name} - ${description}`;
+            }
+
+            // Agregar modificadores del item (sin mencionar la palabra "modificador")
+            if (cartItem.modifiers && cartItem.modifiers.length > 0) {
+              const modNames = cartItem.modifiers.map((m: any) => m.name).filter(Boolean);
+              if (modNames.length > 0) {
+                description += ` (${modNames.join(', ')})`;
+              }
+            }
+
             return {
               invoice_id: invoiceData.id, // Campo correcto según schema
               invoice_sales_id: invoiceData.id, // Mantener para relación

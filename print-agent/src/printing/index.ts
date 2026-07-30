@@ -23,6 +23,7 @@ export type {
   KitchenTicketItemModifier,
   KitchenTicketItemPayload,
   KitchenTicketPrintPayload,
+  ElectronicInvoicePrintPayload,
   MonochromeRaster,
   SaleTicketDeliveryInfo,
   SaleTicketItemPayload,
@@ -35,15 +36,17 @@ export type {
   TicketKind,
 } from './types';
 
-export { buildSaleTicketHTML, buildKitchenTicketHTML, buildKitchenTicketsHTML, buildShipmentGuideHTML, buildShipmentGuidesHTML } from './renderHtml';
+export { buildSaleTicketHTML, buildKitchenTicketHTML, buildKitchenTicketsHTML, buildShipmentGuideHTML, buildShipmentGuidesHTML, buildElectronicInvoiceHTML } from './renderHtml';
 
 export {
   buildPlainTextSaleTicket,
   buildPlainTextTicket,
   buildPlainTextShipmentGuide,
+  buildPlainTextElectronicInvoice,
   printSaleTicket,
   printKitchenTicket,
   printShipmentGuide,
+  printElectronicInvoice,
 } from './renderEscpos';
 
 export { buildRasterImageCommand, isValidRaster, writeRasterImage } from './escposImage';

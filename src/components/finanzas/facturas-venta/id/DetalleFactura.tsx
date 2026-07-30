@@ -127,6 +127,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const [organizationData, setOrganizationData] = useState<OrganizationPDFData | null>(null);
   const [eInvoiceStatus, setEInvoiceStatus] = useState<EInvoiceStatus | null>(null);
   const [eInvoiceCufe, setEInvoiceCufe] = useState<string | null>(null);
+  const [eInvoiceFactusNumber, setEInvoiceFactusNumber] = useState<string | null>(null);
   const [creditoAplicado, setCreditoAplicado] = useState<number>(0);
 
   // Cargar datos de la organización al montar
@@ -198,6 +199,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       if (job) {
         setEInvoiceStatus(job.status);
         setEInvoiceCufe(job.cufe);
+        const factusNumber = (job as any).response_payload?.data?.number;
+        if (factusNumber) setEInvoiceFactusNumber(factusNumber);
       }
     } catch (error) {
       console.error('Error loading e-invoice status:', error);
@@ -772,6 +775,59 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs"
               onSuccess={loadEInvoiceStatus}
             />
+          )}
+          {eInvoiceStatus === 'accepted' && eInvoiceCufe && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const blob = await electronicInvoicingService.downloadPDF(eInvoiceFactusNumber || facturaActual.number);
+                    if (blob) {
+                      const url = URL.createObjectURL(blob);
+                      const a = window.document.createElement('a');
+                      a.href = url;
+                      a.download = `factura-${eInvoiceFactusNumber || facturaActual.number}.pdf`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }
+                  } catch (e) {
+                    console.error('Error descargando PDF:', e);
+                  }
+                }}
+                className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                title="Descargar PDF de DIAN"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span>PDF DIAN</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const xml = await electronicInvoicingService.downloadXML(eInvoiceFactusNumber || facturaActual.number);
+                    if (xml) {
+                      const blob = new Blob([xml], { type: 'application/xml' });
+                      const url = URL.createObjectURL(blob);
+                      const a = window.document.createElement('a');
+                      a.href = url;
+                      a.download = `factura-${eInvoiceFactusNumber || facturaActual.number}.xml`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }
+                  } catch (e) {
+                    console.error('Error descargando XML:', e);
+                  }
+                }}
+                className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                title="Descargar XML de DIAN"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>XML DIAN</span>
+              </Button>
+            </>
           )}
           <Button 
             variant="outline" 

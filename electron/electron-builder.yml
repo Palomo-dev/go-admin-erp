@@ -1,0 +1,42 @@
+appId: io.goadmin.desktop
+productName: Go Admin ERP
+copyright: Copyright © 2025 GO Admin
+artifactName: GoAdminERP-Setup.${ext}
+
+directories:
+  output: release
+  buildResources: build
+
+publish:
+  provider: github
+  owner: Palomo-dev
+  repo: go-admin-erp
+
+win:
+  target: nsis
+  icon: build/icon.ico
+  requestedExecutionLevel: requireAdministrator
+
+nsis:
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Go Admin ERP
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  installerHeader: build/installer-header.bmp
+  installerSidebar: build/installer-sidebar.bmp
+  uninstallDisplayName: Go Admin ERP
+  include: build/installer.nsh
+  license: build/license.txt
+  installerLanguages: es
+  language: 1034
+
+files:
+  - dist/**/*
+  - build/**/*
+  - package.json
+  - node_modules/**/*

@@ -20,6 +20,7 @@ interface FormData {
   organizationPostalCode?: string;
   organizationTaxId?: string;
   organizationNit?: string;
+  organizationDv?: string;
   organizationWebsite?: string;
   organizationSubdomain?: string;
   organizationPrimaryColor?: string;
@@ -44,6 +45,7 @@ interface OrganizationData {
   postal_code?: string;
   tax_id?: string;
   nit?: string;
+  dv?: string;
   website?: string;
   primary_color?: string;
   secondary_color?: string;
@@ -181,6 +183,7 @@ export default function OrganizationStep({
                       organizationPostalCode: data.postal_code,
                       organizationTaxId: data.tax_id,
                       organizationNit: data.nit,
+                      organizationDv: data.dv,
                       organizationWebsite: data.website,
                       organizationSubdomain: data.subdomain,
                       organizationPrimaryColor: data.primary_color,

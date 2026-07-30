@@ -6,7 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase/config';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = createRouteHandlerClient({ cookies });
 
     let query = supabase
       .from('electronic_invoicing_jobs')
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = createRouteHandlerClient({ cookies });
 
     if (action === 'retry') {
       // Marcar job para reintento
@@ -146,7 +147,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = createRouteHandlerClient({ cookies });
 
     const { data, error } = await supabase
       .from('electronic_invoicing_jobs')

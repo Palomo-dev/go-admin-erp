@@ -42,6 +42,8 @@ export interface ElectronicInvoicingJob {
   error_code?: string;
   error_message?: string;
   processed_at?: string;
+  request_payload?: any;
+  response_payload?: any;
   created_at: string;
   updated_at: string;
   invoice?: {

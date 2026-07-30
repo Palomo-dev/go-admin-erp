@@ -23,7 +23,7 @@ interface DownloadDesktopDialogProps {
  * publicada sin necesidad de actualizar esta constante.
  */
 const DOWNLOAD_URL: string | null =
-  'https://github.com/Palomo-dev/go-admin-desktop/releases/latest/download/GoAdminDesktop-Setup.exe';
+  'https://github.com/Palomo-dev/go-admin-erp/releases/download/v0.1.0/GoAdminERP-Setup.exe';
 
 const STEPS = [
   {

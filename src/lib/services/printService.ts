@@ -7,10 +7,12 @@ import { supabase } from '@/lib/supabase/config';
 import {
   buildSaleTicketHTML,
   buildKitchenTicketsHTML,
+  buildElectronicInvoiceHTML,
   getPaperSpec,
   type SaleTicketDeliveryInfo,
   type SaleTicketPrintPayload,
   type KitchenTicketPrintPayload,
+  type ElectronicInvoicePrintPayload,
 } from '@printing';
 
 /**
@@ -569,5 +571,16 @@ export class PrintService {
       this.downloadTicket(sale, saleItems, customer, payments, business, cashier, branch, taxLines, deliveryInfo);
       alert('La impresión directa no está disponible. El ticket se descargará como archivo HTML.');
     }
+  }
+
+  /**
+   * Imprimir factura electrónica validada por DIAN desde el navegador.
+   *
+   * Genera un documento HTML con CUFE, QR de validación y entorno DIAN,
+   * y lo abre en una ventana emergente con el diálogo de impresión.
+   */
+  static printElectronicInvoice(payload: ElectronicInvoicePrintPayload): void {
+    const html = buildElectronicInvoiceHTML(payload, BROWSER_PAPER);
+    this.openPrintWindow(html);
   }
 }

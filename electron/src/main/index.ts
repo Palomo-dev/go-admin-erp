@@ -8,7 +8,7 @@ import { tryAutoStart, stopAgent, markOffline } from './agentRunner';
 import { wasOpenedHidden } from './autostart';
 import { WEB_APP_URL } from './constants';
 import { initCrashReporter } from './crashReporter';
-import { initOfflineCache } from './offlineCache';
+import { initOfflineManager } from './offlineManager';
 
 let quitting = false;
 
@@ -45,7 +45,7 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     initCrashReporter();
-    initOfflineCache();
+    initOfflineManager();
     registerIpcHandlers();
 
     // Splash screen mientras carga

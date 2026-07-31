@@ -23,10 +23,10 @@ interface DashboardStatsProps {
 export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded" />
             </CardContent>
           </Card>
@@ -41,9 +41,9 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
   const totalShipments = stats.shipments.ready + stats.shipments.in_transit + stats.shipments.delivered + stats.shipments.failed;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Primera fila: KPIs principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {/* Viajes */}
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
           <CardHeader className="pb-2">
@@ -57,30 +57,30 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {totalTrips}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Programados</span>
+                <span className="text-gray-500 dark:text-gray-400">Programados</span>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                   {stats.trips.scheduled}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">En ruta</span>
+                <span className="text-gray-500 dark:text-gray-400">En ruta</span>
                 <Badge variant="outline" className="bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
                   {stats.trips.in_transit}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Completados</span>
+                <span className="text-gray-500 dark:text-gray-400">Completados</span>
                 <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
                   {stats.trips.completed}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Cancelados</span>
+                <span className="text-gray-500 dark:text-gray-400">Cancelados</span>
                 <Badge variant="outline" className="bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400">
                   {stats.trips.cancelled}
                 </Badge>
@@ -102,12 +102,12 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {stats.tickets.sold_today}
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1">
+                <span className="text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <DollarSign className="h-3 w-3" />
                   Ingresos
                 </span>
@@ -116,7 +116,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1">
+                <span className="text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <Users className="h-3 w-3" />
                   Ocupación
                 </span>
@@ -149,30 +149,30 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {totalShipments}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Listos</span>
+                <span className="text-gray-500 dark:text-gray-400">Listos</span>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                   {stats.shipments.ready}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">En tránsito</span>
+                <span className="text-gray-500 dark:text-gray-400">En tránsito</span>
                 <Badge variant="outline" className="bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
                   {stats.shipments.in_transit}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Entregados</span>
+                <span className="text-gray-500 dark:text-gray-400">Entregados</span>
                 <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
                   {stats.shipments.delivered}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Fallidos</span>
+                <span className="text-gray-500 dark:text-gray-400">Fallidos</span>
                 <Badge variant="outline" className="bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400">
                   {stats.shipments.failed}
                 </Badge>
@@ -194,12 +194,12 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {stats.incidents.open}
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1">
+                <span className="text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <AlertCircle className="h-3 w-3" />
                   Críticos
                 </span>
@@ -208,7 +208,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1">
+                <span className="text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <Clock className="h-3 w-3" />
                   SLA vencido
                 </span>

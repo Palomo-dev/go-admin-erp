@@ -287,7 +287,7 @@ export function ImportAddressesDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-blue-600" />
+            <Upload className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Importar Direcciones
           </DialogTitle>
           <DialogDescription>
@@ -295,8 +295,8 @@ export function ImportAddressesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button variant="outline" onClick={downloadTemplate}>
               <Download className="h-4 w-4 mr-2" />
               Descargar Plantilla
@@ -315,15 +315,15 @@ export function ImportAddressesDialog({
 
           {isProcessing && (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
               <span className="ml-2">Procesando archivo...</span>
             </div>
           )}
 
           {parsedAddresses.length > 0 && !isProcessing && (
             <>
-              <div className="flex items-center gap-4">
-                <Badge variant="default" className="bg-green-100 text-green-800">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   {validCount} válidas
                 </Badge>
@@ -352,18 +352,18 @@ export function ImportAddressesDialog({
                       <TableRow key={idx} className={!address.isValid ? 'bg-red-50 dark:bg-red-900/10' : ''}>
                         <TableCell>
                           {address.isValid ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
                           ) : (
-                            <X className="h-4 w-4 text-red-500" />
+                            <X className="h-4 w-4 text-red-500 dark:text-red-400" />
                           )}
                         </TableCell>
                         <TableCell className="font-medium">{address.customer_email}</TableCell>
                         <TableCell>{address.label}</TableCell>
-                        <TableCell className="max-w-xs truncate">{address.address_line1}</TableCell>
+                        <TableCell className="max-w-xs min-w-0 break-words">{address.address_line1}</TableCell>
                         <TableCell>{address.city}</TableCell>
                         <TableCell>
                           {address.errors.length > 0 && (
-                            <span className="text-xs text-red-500">{address.errors.join(', ')}</span>
+                            <span className="text-xs text-red-500 dark:text-red-400">{address.errors.join(', ')}</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -371,7 +371,7 @@ export function ImportAddressesDialog({
                   </TableBody>
                 </Table>
                 {parsedAddresses.length > 20 && (
-                  <div className="px-4 py-2 text-sm text-gray-500 border-t">
+                  <div className="px-4 py-2 text-sm text-gray-500 border-t dark:text-gray-400">
                     Mostrando 20 de {parsedAddresses.length} registros
                   </div>
                 )}
@@ -380,7 +380,7 @@ export function ImportAddressesDialog({
           )}
 
           {importResults && (
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200">
+            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
               <h4 className="font-medium text-blue-900 dark:text-blue-100">Resultado de la importación</h4>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                 {importResults.success} direcciones importadas correctamente

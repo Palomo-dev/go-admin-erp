@@ -21,42 +21,42 @@ export function TripsStats({ stats }: TripsStatsProps) {
       title: 'Programados',
       value: stats.scheduled,
       icon: <Clock className="h-5 w-5" />,
-      color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
+      color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300',
     },
     {
       title: 'En Abordaje',
       value: stats.boarding,
       icon: <UserCheck className="h-5 w-5" />,
-      color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30',
+      color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300',
     },
     {
       title: 'En Ruta',
       value: stats.in_transit,
       icon: <Bus className="h-5 w-5" />,
-      color: 'text-green-600 bg-green-100 dark:bg-green-900/30',
+      color: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-300',
     },
     {
       title: 'Completados',
       value: stats.completed,
       icon: <CheckCircle className="h-5 w-5" />,
-      color: 'text-gray-600 bg-gray-100 dark:bg-gray-800',
+      color: 'text-gray-600 bg-gray-100 dark:bg-gray-800 dark:text-gray-300',
     },
     {
       title: 'Cancelados',
       value: stats.cancelled,
       icon: <XCircle className="h-5 w-5" />,
-      color: 'text-red-600 bg-red-100 dark:bg-red-900/30',
+      color: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-300',
     },
     {
       title: 'Ocupación Prom.',
       value: `${stats.occupancy}%`,
       icon: <Users className="h-5 w-5" />,
-      color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30',
+      color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300',
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
       {statCards.map((stat) => (
         <Card key={stat.title} className="p-4">
           <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ export function TripsStats({ stats }: TripsStatsProps) {
               {stat.icon}
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {stat.value}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">

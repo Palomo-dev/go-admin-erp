@@ -335,14 +335,14 @@ export default function MisEnviosPage() {
   if (isLoading && !driverLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
       </div>
     );
   }
 
   if (!driver && !isAdmin) {
     return (
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-4 sm:space-y-6">
         <MisEnviosHeader />
         <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
           <p className="text-gray-500 dark:text-gray-400 mb-2">
@@ -361,7 +361,7 @@ export default function MisEnviosPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
+    <div className="container mx-auto px-4 py-6 space-y-4 sm:space-y-6">
       <MisEnviosHeader />
       <MisEnviosStats {...stats} />
       <MisEnviosFilters

@@ -12,14 +12,14 @@ interface TicketsHeaderProps {
 
 export function TicketsHeader({ onNew, onRefresh, onExport, isLoading }: TicketsHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Boletos</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Boletos</h1>
         <p className="text-gray-600 dark:text-gray-400">
           Gestión de venta y reserva de boletos de pasajeros
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {onExport && (
           <Button variant="outline" size="sm" onClick={onExport}>
             <Download className="h-4 w-4 mr-2" />

@@ -389,12 +389,12 @@ export default function TarifasPasajerosPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <DollarSign className="h-7 w-7 text-blue-600" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <DollarSign className="h-7 w-7 text-blue-600 dark:text-blue-300" />
             Tarifas de Pasajeros
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
@@ -402,7 +402,7 @@ export default function TarifasPasajerosPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setShowImportDialog(true)}>
             <Upload className="h-4 w-4 mr-2" />
             Importar
@@ -416,37 +416,37 @@ export default function TarifasPasajerosPage() {
 
       {/* Estadísticas */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Tag className="h-5 w-5 text-blue-600" />
+                <Tag className="h-5 w-5 text-blue-600 dark:text-blue-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
-                <p className="text-xs text-gray-500">Total tarifas</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total tarifas</p>
               </div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-                <p className="text-xs text-gray-500">Activas</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">{stats.active}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Activas</p>
               </div>
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <XCircle className="h-5 w-5 text-gray-500" />
+                <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-500">{stats.inactive}</p>
-                <p className="text-xs text-gray-500">Inactivas</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-500 dark:text-gray-400">{stats.inactive}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Inactivas</p>
               </div>
             </div>
           </Card>
@@ -464,9 +464,9 @@ export default function TarifasPasajerosPage() {
 
       {/* Filtros */}
       <Card className="p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar por nombre o código..."
               value={searchTerm}
@@ -523,24 +523,24 @@ export default function TarifasPasajerosPage() {
 
       {/* Lista de tarifas */}
       {isLoading ? (
-        <Card className="p-8">
+        <Card className="p-4 sm:p-8">
           <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
             <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando tarifas...</span>
           </div>
         </Card>
       ) : fares.length === 0 ? (
-        <Card className="p-8 text-center">
-          <DollarSign className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+        <Card className="p-4 sm:p-8 text-center">
+          <DollarSign className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No hay tarifas registradas
           </h3>
-          <p className="text-gray-500 mt-1">
+          <p className="text-gray-500 mt-1 dark:text-gray-400">
             {searchTerm || selectedType !== 'all' || selectedStatus !== 'all'
               ? 'No se encontraron tarifas con los filtros aplicados'
               : 'Comienza creando una nueva tarifa'}
           </p>
-          <Button onClick={handleNewFare} className="mt-4">
+          <Button onClick={handleNewFare} className="mt-4 w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Tarifa
           </Button>
@@ -557,7 +557,7 @@ export default function TarifasPasajerosPage() {
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-              <div className="grid gap-4">
+              <div className="grid gap-2 sm:gap-4">
                 {sortedFares.map((fare) => (
                   <SortableFareCard
                     key={fare.id}

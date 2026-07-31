@@ -199,6 +199,13 @@ export function NotasCreditoPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => router.push('/app/finanzas/facturas-venta')}
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Nota Crédito
+          </Button>
           <Button variant="outline" onClick={handleExport} className="dark:border-gray-700">
             <Download className="h-4 w-4 mr-2" />
             Exportar

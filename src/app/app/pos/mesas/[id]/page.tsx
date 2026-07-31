@@ -43,6 +43,7 @@ import { SplitBillDialog, type BillSplit } from '@/components/pos/mesas/id/Split
 import { SplitPaymentSelector } from '@/components/pos/mesas/id/SplitPaymentSelector';
 import { PedidosService } from '@/components/pos/mesas/id/pedidosService';
 import { MesasService } from '@/components/pos/mesas/mesasService';
+import { VentasService, type CashSession } from '@/components/pos/ventas';
 import { PrintService } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -89,9 +90,11 @@ export default function MesaDetallePage() {
   const [orgMembers, setOrgMembers] = useState<{ value: string; label: string; sublabel?: string }[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [showHistorial, setShowHistorial] = useState(false);
+  const [cashSession, setCashSession] = useState<CashSession | null>(null);
 
   useEffect(() => {
     cargarDatos();
+    loadCashSession();
   }, [tableId]);
 
   // Suscripción realtime para kitchen_ticket_items (actualizar estados de cocina)
@@ -160,6 +163,15 @@ export default function MesaDetallePage() {
     };
     cargarNombreMesa();
   }, [session, tableId]);
+
+  const loadCashSession = async () => {
+    try {
+      const session = await VentasService.getCurrentCashSession(branch_id ?? null);
+      setCashSession(session);
+    } catch (error) {
+      console.error('Error loading cash session:', error);
+    }
+  };
 
   const cargarDatos = async () => {
     setIsLoading(true);
@@ -927,6 +939,7 @@ export default function MesaDetallePage() {
     const result = await PedidosService.completarVentaMesa(session.sale_id, {
       payments: checkoutData.payments,
       total_paid: checkoutData.total_paid,
+      change: checkoutData.change,
       tip_amount: checkoutData.tip_amount,
       tip_server_id: checkoutData.tip_server_id,
       tax_included: checkoutData.tax_included,
@@ -1613,6 +1626,7 @@ export default function MesaDetallePage() {
             onOpenSplitBill={handleOpenSplitBill}
             onCancelSplit={handleCancelSplit}
             onCheckout={handleCheckout}
+            cashSessionActive={!!cashSession}
           />
         </div>
       </div>

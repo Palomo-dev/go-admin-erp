@@ -524,12 +524,12 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 dark:bg-red-900/30 dark:border-red-700">
         <div className="flex">
-          <XMarkIcon className="h-5 w-5 text-red-400" />
+          <XMarkIcon className="h-5 w-5 text-red-400 dark:text-red-500" />
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">{t('errorTitle')}</h3>
-            <div className="mt-2 text-sm text-red-700">
+            <h3 className="text-sm font-medium text-red-800 dark:text-red-100">{t('errorTitle')}</h3>
+            <div className="mt-2 text-sm text-red-700 dark:text-red-200">
               <p>{error}</p>
             </div>
           </div>
@@ -551,28 +551,28 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">{t('myPlan')}</h2>
-          <p className="text-sm text-gray-500">
+      <div className="bg-white shadow rounded-lg dark:bg-gray-800">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('myPlan')}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {t('manageSub')}
           </p>
         </div>
 
         {/* Plan Actual */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {subscription ? (
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 sm:gap-6">
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <StarIcon className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center dark:bg-blue-800/30">
+                    <StarIcon className="w-6 h-6 text-blue-600 dark:text-blue-300" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-50">
                     {currentPlan?.name}
                   </h3>
                   <div className="flex items-center space-x-2 mt-1">
@@ -603,11 +603,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                       
                       return (
                         <>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {formatPrice(currentAmount || 0)} / {isYearly ? t('perYear') : t('perMonth')}
                           </p>
                           {isYearly && (currentAmount ?? 0) > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">
                               {t('save2Months')}
                             </span>
                           )}
@@ -620,10 +620,10 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   <div className="mt-3 flex items-center space-x-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       subscription.status === 'active' 
-                        ? 'bg-green-100 text-green-800'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100'
                         : subscription.status === 'trialing'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100'
+                        : 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100'
                     }`}>
                       {subscription.status === 'active' && t('statusActive')}
                       {subscription.status === 'trialing' && t('statusTrialing')}
@@ -632,14 +632,14 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     </span>
 
                     {isTrialActive(subscription) && (
-                      <span className="text-sm text-yellow-600">
+                      <span className="text-sm text-yellow-600 dark:text-yellow-300">
                         {t('trialDaysRemaining', { days: getDaysRemaining(subscription.trial_end!) })}
                       </span>
                     )}
                   </div>
 
                   {/* Fechas */}
-                  <div className="mt-3 text-sm text-gray-500 space-y-1">
+                  <div className="mt-3 text-sm text-gray-500 space-y-1 dark:text-gray-400">
                     <div className="flex items-center">
                       <CalendarIcon className="w-4 h-4 mr-2" />
                       {t('currentPeriod')} {formatDate(subscription.current_period_start)} - {formatDate(subscription.current_period_end)}
@@ -652,14 +652,14 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setShowChangePlanModal(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                   >
                     <ArrowUpIcon className="w-4 h-4 mr-2" />
                     {t('changePlan')}
                   </button>
                   <button
                     onClick={() => setShowPlanComparison(!showPlanComparison)}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 dark:focus:ring-blue-400"
                   >
                     {t('comparePlans')}
                   </button>
@@ -672,7 +672,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   
                   return (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm text-gray-500">{t('billingCycle')}</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">{t('billingCycle')}</span>
                       <div className="flex rounded-md shadow-sm">
                         <button
                           onClick={() => handleBillingCycleChange('monthly')}
@@ -680,7 +680,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                           className={`px-3 py-1 text-xs font-medium rounded-l-md border ${
                             !isCurrentlyYearly
                               ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-900'
                           } ${changingBilling ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           {changingBilling ? t('changing') : t('monthly')}
@@ -691,7 +691,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                           className={`px-3 py-1 text-xs font-medium rounded-r-md border-t border-r border-b ${
                             isCurrentlyYearly
                               ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-900'
                           } ${changingBilling ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           {changingBilling ? t('changing') : t('yearly')}
@@ -702,12 +702,12 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 })()}
 
                 {/* Botones adicionales de gestión */}
-                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-200">
+                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                     {subscription?.stripe_customer_id && (
                       <EmailConfirmedGate>
                         <button
                           onClick={handleOpenBillingPortal}
-                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900"
                         >
                           <DocumentTextIcon className="w-4 h-4 mr-1" />
                           {t('billingPortal')}
@@ -717,7 +717,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     {subscription?.status === 'canceled' ? (
                       <button
                         onClick={() => setShowChangePlanModal(true)}
-                        className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100"
+                        className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 dark:border-green-600 dark:text-green-200 dark:bg-green-900/30 dark:hover:bg-green-800/30"
                       >
                         <ArrowPathIcon className="w-4 h-4 mr-1" />
                         {t('renewPlan')}
@@ -726,7 +726,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                       <button
                         onClick={handleReactivate}
                         disabled={reactivating}
-                        className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50"
+                        className="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50 dark:border-green-600 dark:text-green-200 dark:bg-green-900/30 dark:hover:bg-green-800/30"
                       >
                         <ArrowPathIcon className="w-4 h-4 mr-1" />
                         {reactivating ? t('reactivating') : t('reactivateSub')}
@@ -734,7 +734,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     ) : (
                       <button
                         onClick={() => setShowCancelModal(true)}
-                        className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100"
+                        className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 dark:border-red-600 dark:text-red-200 dark:bg-red-900/30 dark:hover:bg-red-800/30"
                       >
                         <NoSymbolIcon className="w-4 h-4 mr-1" />
                         {t('cancelSub')}
@@ -744,8 +744,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
                 {/* Aviso de suscripción cancelada */}
                 {subscription?.status === 'canceled' && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-800">
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md dark:bg-red-900/30 dark:border-red-700">
+                    <p className="text-sm text-red-800 dark:text-red-100">
                       {t('canceledWarning')}
                     </p>
                   </div>
@@ -753,8 +753,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
                 {/* Aviso de pago pendiente */}
                 {subscription?.status === 'past_due' && (
-                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
-                    <p className="text-sm text-orange-800">
+                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-md dark:bg-orange-900/30 dark:border-orange-700">
+                    <p className="text-sm text-orange-800 dark:text-orange-100">
                       {t('pastDueWarning')}
                     </p>
                   </div>
@@ -762,8 +762,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
                 {/* Aviso de cancelación pendiente */}
                 {subscription?.cancel_at_period_end && subscription?.status !== 'canceled' && (
-                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <p className="text-sm text-yellow-800">
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md dark:bg-yellow-900/30 dark:border-yellow-700">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-100">
                       {t('cancelPendingWarning')}
                     </p>
                   </div>
@@ -772,15 +772,15 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             </div>
           ) : (
             <div className="text-center py-8">
-              <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">{t('noSubscription')}</h3>
-              <p className="mt-1 text-sm text-gray-500">
+              <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-50">{t('noSubscription')}</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {t('usingFreePlan')}
               </p>
               <div className="mt-6">
                 <button
                   onClick={() => setShowChangePlanModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 >
                   {t('selectPlan')}
                 </button>
@@ -792,11 +792,11 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
       {/* Límites del Plan */}
       {currentPlan && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">{t('planLimits')}</h3>
+        <div className="bg-white shadow rounded-lg dark:bg-gray-800">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('planLimits')}</h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {(() => {
               // Obtener límites desde metadata.custom_config (Enterprise) o plan
               const customConfig = subscription?.metadata?.custom_config;
@@ -821,21 +821,21 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               const aiCreditsPercent = aiCreditsLimit ? Math.min((aiCreditsUsed / aiCreditsLimit) * 100, 100) : 0;
               
               return (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 sm:gap-6">
                   {/* Módulos */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-300">
                       {totalActiveModules}
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{maxModules || '∞'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{t('activeModulesLabel')}</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{t('activeModulesLabel')}</p>
+                    <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">
                       {t('coreAdditional', { core: coreModulesCount, additional: activePaidModules.length })}
                     </p>
                     {maxModules && (
-                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                         <div 
                           className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
                           style={{ width: `${modulesPercent}%` }}
@@ -846,20 +846,20 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   
                   {/* Sucursales */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">
                       {branchCount}
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{maxBranches || '∞'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{t('branchesLabel')}</p>
+                    <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{t('branchesLabel')}</p>
                     {activeAddons.extraBranches > 0 && (
-                      <p className="text-xs text-green-500 mt-0.5">
+                      <p className="text-xs text-green-500 mt-0.5 dark:text-green-400">
                         +{activeAddons.extraBranches} addon
                       </p>
                     )}
                     {maxBranches && (
-                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                         <div 
                           className="bg-green-600 h-2 rounded-full transition-all duration-300" 
                           style={{ width: `${branchesPercent}%` }}
@@ -869,7 +869,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     <button
                       type="button"
                       onClick={() => setShowBuyBranchesModal(true)}
-                      className="mt-2 inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700"
+                      className="mt-2 inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700 dark:text-green-300 dark:hover:text-green-200"
                     >
                       + Comprar más
                     </button>
@@ -877,20 +877,20 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   
                   {/* Usuarios */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-indigo-600">
+                    <div className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-300">
                       {memberCount}
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{maxUsers || '∞'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{t('usersLabel')}</p>
+                    <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{t('usersLabel')}</p>
                     {activeAddons.extraUsers > 0 && (
-                      <p className="text-xs text-indigo-500 mt-0.5">
+                      <p className="text-xs text-indigo-500 mt-0.5 dark:text-indigo-400">
                         +{activeAddons.extraUsers} addon
                       </p>
                     )}
                     {maxUsers && (
-                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                         <div 
                           className="bg-indigo-600 h-2 rounded-full transition-all duration-300" 
                           style={{ width: `${usersPercent}%` }}
@@ -900,7 +900,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     <button
                       type="button"
                       onClick={() => setShowBuyUsersModal(true)}
-                      className="mt-2 inline-flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                      className="mt-2 inline-flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200"
                     >
                       + Comprar más
                     </button>
@@ -908,28 +908,28 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   
                   {/* Almacenamiento */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
+                    <div className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-300">
                       {maxStorage ? `${maxStorage} GB` : '∞'}
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{t('storageLabel')}</p>
+                    <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{t('storageLabel')}</p>
                   </div>
                   
                   {/* Créditos IA */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-amber-600">
+                    <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-300">
                       {aiCreditsUsed.toLocaleString()}
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{aiCreditsLimit.toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{t('aiCreditsLabel')}</p>
+                    <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{t('aiCreditsLabel')}</p>
                     {aiCreditsPurchased > 0 && (
-                      <p className="text-xs text-amber-500 mt-0.5">
+                      <p className="text-xs text-amber-500 mt-0.5 dark:text-amber-400">
                         +{aiCreditsPurchased.toLocaleString()} comprados
                       </p>
                     )}
                     {aiCreditsLimit > 0 && (
-                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
                         <div 
                           className="bg-amber-600 h-2 rounded-full transition-all duration-300" 
                           style={{ width: `${aiCreditsPercent}%` }}
@@ -939,7 +939,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     <button
                       type="button"
                       onClick={() => setShowBuyAiCreditsModal(true)}
-                      className="mt-2 inline-flex items-center text-xs font-medium text-amber-600 hover:text-amber-700"
+                      className="mt-2 inline-flex items-center text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
                     >
                       + Comprar más
                     </button>
@@ -961,44 +961,44 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       )}
 
       {/* Módulos Activos */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">{t('activeModulesTitle')}</h3>
-          <p className="text-sm text-gray-500">
+      <div className="bg-white shadow rounded-lg dark:bg-gray-800">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('activeModulesTitle')}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {t('activeModulesDesc', { core: coreModulesCount, additional: activePaidModules.length })}
           </p>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Módulos Core - Siempre activos */}
           <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-              <StarIcon className="w-4 h-4 text-yellow-500 mr-2" />
+            <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center dark:text-gray-200">
+              <StarIcon className="w-4 h-4 text-yellow-500 mr-2 dark:text-yellow-400" />
               {t('coreModules')}
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
               {allModules.filter(m => m.is_core).map((module) => (
-                <div key={module.code} className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                <div key={module.code} className="border border-blue-200 bg-blue-50 rounded-lg p-4 dark:border-blue-700 dark:bg-blue-900/30">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
                         {(() => {
                           const Icon = getModuleIcon(module.code);
-                          return <Icon className="w-6 h-6 text-blue-600" />;
+                          return <Icon className="w-6 h-6 text-blue-600 dark:text-blue-300" />;
                         })()}
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-900">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50">
                           {module.name}
                         </h4>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2 dark:text-gray-400">
                           {module.description}
                         </p>
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-2 dark:bg-blue-800/30 dark:text-blue-100">
                           {t('coreLabel')}
                         </span>
                       </div>
                     </div>
-                    <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0 dark:text-green-400" />
                   </div>
                 </div>
               ))}
@@ -1008,34 +1008,34 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           {/* Módulos Adicionales Activos */}
           {activePaidModules.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                <ArrowUpIcon className="w-4 h-4 text-green-500 mr-2" />
+              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center dark:text-gray-200">
+                <ArrowUpIcon className="w-4 h-4 text-green-500 mr-2 dark:text-green-400" />
                 {t('additionalModules')}
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
                 {activePaidModules.map((orgModule) => (
-                  <div key={orgModule.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
+                  <div key={orgModule.id} className="border border-green-200 bg-green-50 rounded-lg p-4 dark:border-green-700 dark:bg-green-900/30">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-3">
                         <div className="flex-shrink-0">
                           {(() => {
                             const Icon = getModuleIcon(orgModule.module_code);
-                            return <Icon className="w-6 h-6 text-green-600" />;
+                            return <Icon className="w-6 h-6 text-green-600 dark:text-green-300" />;
                           })()}
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-gray-900">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50">
                             {orgModule.modules?.name || t('moduleNoName')}
                           </h4>
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2 dark:text-gray-400">
                             {orgModule.modules?.description || t('moduleNoDesc')}
                           </p>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2 dark:bg-green-800/30 dark:text-green-100">
                             {t('activeLabel')}
                           </span>
                         </div>
                       </div>
-                      <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
+                      <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0 dark:text-green-400" />
                     </div>
                   </div>
                 ))}
@@ -1047,38 +1047,38 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
       {/* Módulos Disponibles */}
       {availableModules.length > 0 && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">{t('availableModulesTitle')}</h3>
-            <p className="text-sm text-gray-500">
+        <div className="bg-white shadow rounded-lg dark:bg-gray-800">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('availableModulesTitle')}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t('availableModulesDesc')}
             </p>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
               {availableModules.map((module) => (
-                <div key={module.code} className="border border-gray-200 rounded-lg p-4 opacity-60">
+                <div key={module.code} className="border border-gray-200 rounded-lg p-4 opacity-60 dark:border-gray-700">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
                         {(() => {
                           const Icon = getModuleIcon(module.code);
-                          return <Icon className="w-6 h-6 text-gray-400" />;
+                          return <Icon className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
                         })()}
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-900">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-50">
                           {module.name}
                         </h4>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">
                           {module.description}
                         </p>
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mt-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 mt-2 dark:bg-gray-800 dark:text-gray-100">
                           {t('notAvailable')}
                         </span>
                       </div>
                     </div>
-                    <XMarkIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <XMarkIcon className="w-5 h-5 text-gray-400 flex-shrink-0 dark:text-gray-500" />
                   </div>
                 </div>
               ))}
@@ -1089,15 +1089,15 @@ export default function PlanTab({ orgId }: PlanTabProps) {
 
       {/* Comparación de Planes */}
       {showPlanComparison && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">{t('planComparisonTitle')}</h3>
-            <p className="text-sm text-gray-500">
+        <div className="bg-white shadow rounded-lg dark:bg-gray-800">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('planComparisonTitle')}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t('planComparisonDesc')}
             </p>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               {availablePlans.map((plan) => {
                 const isCurrentPlan = plan.code === currentPlan?.code;
                 const planPrice = plan.price_usd_month;
@@ -1107,7 +1107,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 
                 return (
                   <div key={plan.id} className={`border rounded-lg p-6 relative ${
-                    isCurrentPlan ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                    isCurrentPlan ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'
                   }`}>
                     {isCurrentPlan && (
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -1118,20 +1118,20 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     )}
                     
                     <div className="text-center">
-                      <h4 className="text-lg font-semibold text-gray-900">{plan.name}</h4>
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-50">{plan.name}</h4>
                       <div className="mt-2">
-                        <span className="text-3xl font-bold text-gray-900">
+                        <span className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50">
                           {formatPrice(plan.price_usd_month)}
                         </span>
-                        <span className="text-gray-500">{t('perMonthShort')}</span>
+                        <span className="text-gray-500 dark:text-gray-400">{t('perMonthShort')}</span>
                       </div>
                       {plan.price_usd_year && plan.price_usd_year !== plan.price_usd_month * 12 && (
                         <div className="mt-1">
-                          <span className="text-lg font-semibold text-green-600">
+                          <span className="text-lg font-semibold text-green-600 dark:text-green-300">
                             {formatPrice(plan.price_usd_year)}
                           </span>
-                          <span className="text-gray-500 text-sm">{t('perYearShort')}</span>
-                          <div className="text-xs text-green-600">
+                          <span className="text-gray-500 text-sm dark:text-gray-400">{t('perYearShort')}</span>
+                          <div className="text-xs text-green-600 dark:text-green-300">
                             {t('saveAmount', { amount: formatPrice((plan.price_usd_month * 12) - plan.price_usd_year) })}
                           </div>
                         </div>
@@ -1139,37 +1139,37 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     </div>
                     
                     <div className="mt-4">
-                      <h5 className="font-medium text-gray-900 mb-2">{t('features')}</h5>
-                      <ul className="space-y-1 text-sm text-gray-600">
+                      <h5 className="font-medium text-gray-900 mb-2 dark:text-gray-50">{t('features')}</h5>
+                      <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
                         <li className="flex items-center">
-                          <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                          <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 dark:text-green-400" />
                           {t('modulesCount', { count: plan.max_modules || '∞' })}
                         </li>
                         <li className="flex items-center">
-                          <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                          <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 dark:text-green-400" />
                           {t('branchesCount', { count: plan.max_branches || '∞' })}
                         </li>
                         {plan.features?.storage_gb && (
                           <li className="flex items-center">
-                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 dark:text-green-400" />
                             {t('storageGb', { count: plan.features.storage_gb })}
                           </li>
                         )}
                         {plan.features?.analytics && (
                           <li className="flex items-center">
-                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 dark:text-green-400" />
                             {t('advancedAnalytics')}
                           </li>
                         )}
                         {plan.features?.custom_reports && (
                           <li className="flex items-center">
-                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 dark:text-green-400" />
                             {t('customReports')}
                           </li>
                         )}
                         {plan.features?.support && (
                           <li className="flex items-center">
-                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 dark:text-green-400" />
                             {plan.features.support === 'community-only' && t('communitySupport')}
                             {plan.features.support === 'email' && t('emailSupport')}
                             {plan.features.support === 'priority' && t('prioritySupport')}
@@ -1177,7 +1177,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                         )}
                         {plan.trial_days > 0 && (
                           <li className="flex items-center">
-                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
+                            <CheckIcon className="w-4 h-4 text-green-500 mr-2 flex-shrink-0 dark:text-green-400" />
                             {t('trialDays', { days: plan.trial_days })}
                           </li>
                         )}
@@ -1186,7 +1186,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     
                     <div className="mt-6">
                       {isCurrentPlan ? (
-                        <div className="w-full text-center py-2 px-4 bg-blue-100 text-blue-800 rounded-md font-medium">
+                        <div className="w-full text-center py-2 px-4 bg-blue-100 text-blue-800 rounded-md font-medium dark:bg-blue-800/30 dark:text-blue-100">
                           {t('currentPlanLabel')}
                         </div>
                       ) : (

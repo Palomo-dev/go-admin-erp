@@ -177,7 +177,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Nota informativa */}
       <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
         <CardContent className="flex items-start gap-3 pt-6">
@@ -205,7 +205,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
         <CardContent>
           <div className="space-y-3">
             {formData.favicon_url ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <div className="relative group">
                   <img
                     src={formData.favicon_url}
@@ -221,7 +221,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   </button>
                 </div>
                 <div className="flex-1 space-y-1">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{formData.favicon_url}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 min-w-0 break-words">{formData.favicon_url}</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -285,7 +285,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           {/* Sugerencias IA */}
           {aiKeywords.length > 0 && (
             <div className="p-3 rounded-lg border border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-900/20 space-y-2">
@@ -298,7 +298,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   variant="ghost"
                   size="sm"
                   onClick={handleAddAllAIKeywords}
-                  className="h-6 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                  className="h-6 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-200"
                 >
                   {t('addAll')}
                 </Button>
@@ -336,7 +336,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             {formData.meta_keywords.map((keyword) => (
               <Badge key={keyword} variant="secondary" className="flex items-center gap-1">
                 {keyword}
-                <button onClick={() => handleRemoveKeyword(keyword)} className="ml-1 hover:text-red-500">
+                <button onClick={() => handleRemoveKeyword(keyword)} className="ml-1 hover:text-red-500 dark:hover:text-red-400">
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
@@ -374,7 +374,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             </Link>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           {/* Info de dominio actual */}
           <div className="space-y-3">
             {/* Subdominio */}
@@ -448,7 +448,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-2 dark:text-gray-300">
                 <Shield className="h-4 w-4" />

@@ -13,14 +13,14 @@ interface ShipmentsHeaderProps {
 
 export function ShipmentsHeader({ onNew, onRefresh, onExport, onImport, isLoading }: ShipmentsHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Envíos</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Envíos</h1>
         <p className="text-gray-600 dark:text-gray-400">
           Gestión de paquetes, encomiendas y mensajería
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {onImport && (
           <Button variant="outline" size="sm" onClick={onImport}>
             <Upload className="h-4 w-4 mr-2" />

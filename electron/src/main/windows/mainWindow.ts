@@ -1,8 +1,9 @@
-import { BrowserWindow, app, globalShortcut, nativeImage } from 'electron';
+import { BrowserWindow, app, globalShortcut, nativeImage, net } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { wasOpenedHidden } from '../autostart';
 import { APP_NAME, WEB_APP_URL } from '../constants';
+import { getCachedAppShell, hasCachedAppShell, saveAppShell } from '../offlineManager';
 
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
@@ -140,7 +141,8 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     mainWindow.webContents.session.setCertificateVerifyProc((_req, cb) => cb(0));
   }
 
-  mainWindow.loadURL(loadUrl);
+  // Intentar cargar online; si falla, usar app shell cacheado
+  loadWithOfflineFallback(loadUrl);
 
   mainWindow.once('ready-to-show', () => {
     if (!wasOpenedHidden()) {
@@ -148,23 +150,15 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     }
   });
 
-  // Solo mostrar offline si falla el frame principal (no sub-frames/imagenes)
-  mainWindow.webContents.on('did-fail-load', (_evt, errorCode, errorDescription, validatedURL, isMainFrame) => {
-    if (!isMainFrame) return;
-    console.error(`[mainWindow] Error cargando ${loadUrl}: ${errorDescription} (${errorCode})`);
-    const offlineHtml = `data:text/html;charset=utf-8,${encodeURIComponent(`
-      <!DOCTYPE html>
-      <html lang="es">
-      <head><meta charset="utf-8"><title>Sin conexión</title></head>
-      <body style="font-family:system-ui;padding:40px;text-align:center;background:#1a1a2e;color:#eee">
-        <h1>Sin conexión</h1>
-        <p>No se pudo cargar GO Admin (${errorDescription}).</p>
-        <p style="color:#888">URL: ${loadUrl}</p>
-        <button onclick="location.href='${loadUrl}'" style="padding:12px 24px;font-size:16px;cursor:pointer;border:none;border-radius:8px;background:#3b82f6;color:white">Reintentar</button>
-      </body>
-      </html>
-    `)}`;
-    mainWindow?.loadURL(offlineHtml);
+  // Cachear el HTML del app shell cuando carga exitosamente
+  mainWindow.webContents.on('did-finish-load', async () => {
+    if (!app.isPackaged) return; // Solo en producción
+    try {
+      const html = await mainWindow?.webContents.executeJavaScript('document.documentElement.outerHTML');
+      if (html && html.length > 1000) {
+        await saveAppShell(html);
+      }
+    } catch {}
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -200,5 +194,96 @@ export function showMainWindow(): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
     mainWindow.focus();
+  }
+}
+
+// ── Carga con fallback offline ──
+function loadWithOfflineFallback(url: string): void {
+  if (!mainWindow) return;
+
+  // Verificar conexión primero
+  const online = net.online;
+
+  if (online) {
+    // Intentar cargar online
+    mainWindow.loadURL(url);
+
+    // Si falla la carga del frame principal, usar cache
+    mainWindow.webContents.once('did-fail-load', (_evt, errorCode, _errorDesc, _validatedURL, isMainFrame) => {
+      if (!isMainFrame) return;
+      console.error(`[mainWindow] Error cargando online (code ${errorCode}), intentando cache offline...`);
+      loadCachedShell(url);
+    });
+  } else {
+    // Sin conexión: cargar cache directamente
+    loadCachedShell(url);
+  }
+}
+
+function loadCachedShell(originalUrl: string): void {
+  if (!mainWindow) return;
+
+  const cached = getCachedAppShell();
+  if (cached) {
+    console.log('[mainWindow] Cargando app shell desde cache offline');
+    // Cargar el HTML cacheado via data URL
+    const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(cached)}`;
+    mainWindow.loadURL(dataUrl);
+
+    // Inyectar script de reintentar conexión periódicamente
+    mainWindow.webContents.once('did-finish-load', () => {
+      mainWindow?.webContents.executeJavaScript(`
+        (function() {
+          var retryInterval = setInterval(function() {
+            if (navigator.onLine) {
+              clearInterval(retryInterval);
+              location.href = '${originalUrl}';
+            }
+          }, 5000);
+        })();
+      `).catch(() => {});
+    });
+  } else {
+    // No hay cache: mostrar página de error con reintentar
+    const offlineHtml = `data:text/html;charset=utf-8,${encodeURIComponent(`
+      <!DOCTYPE html>
+      <html lang="es">
+      <head><meta charset="utf-8"><title>Sin conexión</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#1a1a2e;color:#eee;gap:24px}
+        .logo{font-size:28px;font-weight:bold;color:#3b82f6}
+        .icon{font-size:64px}
+        h1{font-size:22px;font-weight:600}
+        p{color:#888;font-size:14px;max-width:400px;text-align:center}
+        button{padding:12px 32px;font-size:16px;cursor:pointer;border:none;border-radius:8px;background:#3b82f6;color:white;transition:background 0.2s}
+        button:hover{background:#2563eb}
+        .hint{font-size:12px;color:#555}
+      </style></head>
+      <body>
+        <div class="logo">Go Admin Desktop</div>
+        <div class="icon">📡</div>
+        <h1>Sin conexión a internet</h1>
+        <p>No se pudo cargar la aplicación y no hay contenido cacheado disponible. Conéctate a internet e intenta de nuevo.</p>
+        <button onclick="location.href='${originalUrl}'">Reintentar</button>
+        <p class="hint">La app se recargará automáticamente cuando vuelva la conexión.</p>
+      </body>
+      </html>
+    `)}`;
+    mainWindow.loadURL(offlineHtml);
+
+    // Auto-reintentar cuando vuelva la conexión
+    mainWindow.webContents.once('did-finish-load', () => {
+      mainWindow?.webContents.executeJavaScript(`
+        (function() {
+          var retryInterval = setInterval(function() {
+            if (navigator.onLine) {
+              clearInterval(retryInterval);
+              location.href = '${originalUrl}';
+            }
+          }, 5000);
+        })();
+      `).catch(() => {});
+    });
   }
 }

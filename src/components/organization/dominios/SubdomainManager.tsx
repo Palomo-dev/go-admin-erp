@@ -239,7 +239,7 @@ export function SubdomainManager({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -266,7 +266,7 @@ export function SubdomainManager({
         </Alert>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div>
           <Label htmlFor="subdomain" className="text-gray-700 dark:text-gray-300">
             {t('subdomainLabel')}
@@ -281,8 +281,8 @@ export function SubdomainManager({
                   placeholder="miempresa"
                   className={cn(
                     "rounded-r-none dark:bg-gray-700 dark:border-gray-600 dark:text-white",
-                    status === 'taken' && "border-red-500 focus:border-red-500",
-                    status === 'available' && "border-green-500 focus:border-green-500"
+                    status === 'taken' && "border-red-500 focus:border-red-500 dark:border-red-400 dark:focus:border-red-400",
+                    status === 'available' && "border-green-500 focus:border-green-500 dark:border-green-400 dark:focus:border-green-400"
                   )}
                   disabled={isSaving}
                 />

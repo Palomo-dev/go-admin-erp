@@ -92,6 +92,26 @@ export interface PosCategoriesDisplayConfig {
 
 const POS_CATEGORIES_DISPLAY_KEY = 'pos_categories_display';
 
+export interface PosRequireCashSessionConfig {
+  require_cash_session: boolean;
+}
+
+const POS_REQUIRE_CASH_SESSION_KEY = 'pos_require_cash_session';
+
+export const defaultRequireCashSessionConfig: PosRequireCashSessionConfig = {
+  require_cash_session: true,
+};
+
+export interface PosBlindCashCountConfig {
+  blind_cash_count: boolean;
+}
+
+const POS_BLIND_CASH_COUNT_KEY = 'pos_blind_cash_count';
+
+export const defaultBlindCashCountConfig: PosBlindCashCountConfig = {
+  blind_cash_count: false,
+};
+
 export const defaultCategoriesDisplayConfig: PosCategoriesDisplayConfig = {
   mode: 'searchselect',
   orderBy: 'display_order',
@@ -299,5 +319,83 @@ export class ConfiguracionService {
 
     if (error) throw error;
     return data || [];
+  }
+
+  // Obtener configuración de requerir caja abierta
+  static async getRequireCashSessionConfig(): Promise<PosRequireCashSessionConfig> {
+    const orgId = getOrganizationId();
+
+    const { data, error } = await supabase
+      .from('organization_settings')
+      .select('settings')
+      .eq('organization_id', orgId)
+      .eq('key', POS_REQUIRE_CASH_SESSION_KEY)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error obteniendo configuración de requerir caja:', error);
+      return defaultRequireCashSessionConfig;
+    }
+
+    return { ...defaultRequireCashSessionConfig, ...(data?.settings || {}) };
+  }
+
+  // Guardar configuración de requerir caja abierta
+  static async saveRequireCashSessionConfig(config: Partial<PosRequireCashSessionConfig>): Promise<void> {
+    const orgId = getOrganizationId();
+    const current = await this.getRequireCashSessionConfig();
+    const merged = { ...current, ...config };
+
+    const { error } = await supabase
+      .from('organization_settings')
+      .upsert({
+        organization_id: orgId,
+        key: POS_REQUIRE_CASH_SESSION_KEY,
+        settings: merged,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'organization_id,key',
+      });
+
+    if (error) throw error;
+  }
+
+  // Obtener configuración de arqueo ciego
+  static async getBlindCashCountConfig(): Promise<PosBlindCashCountConfig> {
+    const orgId = getOrganizationId();
+
+    const { data, error } = await supabase
+      .from('organization_settings')
+      .select('settings')
+      .eq('organization_id', orgId)
+      .eq('key', POS_BLIND_CASH_COUNT_KEY)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error obteniendo configuración de arqueo ciego:', error);
+      return defaultBlindCashCountConfig;
+    }
+
+    return { ...defaultBlindCashCountConfig, ...(data?.settings || {}) };
+  }
+
+  // Guardar configuración de arqueo ciego
+  static async saveBlindCashCountConfig(config: Partial<PosBlindCashCountConfig>): Promise<void> {
+    const orgId = getOrganizationId();
+    const current = await this.getBlindCashCountConfig();
+    const merged = { ...current, ...config };
+
+    const { error } = await supabase
+      .from('organization_settings')
+      .upsert({
+        organization_id: orgId,
+        key: POS_BLIND_CASH_COUNT_KEY,
+        settings: merged,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'organization_id,key',
+      });
+
+    if (error) throw error;
   }
 }

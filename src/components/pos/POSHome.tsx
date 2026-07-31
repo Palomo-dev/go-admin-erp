@@ -49,7 +49,7 @@ export function POSHome() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    if (organization?.id && branchFilter !== null) {
+    if (organization?.id) {
       loadData();
     }
 
@@ -62,7 +62,7 @@ export function POSHome() {
     try {
       const [summary, session] = await Promise.all([
         VentasService.getDailySummary(),
-        VentasService.getCurrentCashSession(branchFilter!)
+        VentasService.getCurrentCashSession(branchFilter)
       ]);
       setDailySummary(summary);
       setCashSession(session);

@@ -280,12 +280,12 @@ export function TicketDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Ticket className="h-5 w-5 text-blue-600" />
+            <Ticket className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {ticket ? 'Editar Boleto' : 'Nuevo Boleto'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Viaje */}
           <div className="space-y-2">
             <Label htmlFor="trip">Viaje *</Label>
@@ -306,7 +306,7 @@ export function TicketDialog({
               </SelectContent>
             </Select>
             {selectedTrip && (
-              <div className="text-xs text-gray-500 space-y-1 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              <div className="text-xs text-gray-500 space-y-1 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg dark:text-gray-400">
                 <p>
                   <strong>Asientos:</strong> {tripDetails?.available_seats ?? selectedTrip.available_seats ?? 'N/A'} disponibles
                   {tripDetails?.total_seats && ` de ${tripDetails.total_seats}`}
@@ -352,7 +352,7 @@ export function TicketDialog({
                       className="w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
                     >
                       <p className="font-medium">{c.name}</p>
-                      <p className="text-xs text-gray-500">{c.email} · {c.document_number}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{c.email} · {c.document_number}</p>
                     </button>
                   ))}
                 </div>
@@ -363,7 +363,7 @@ export function TicketDialog({
           {/* Datos del Pasajero */}
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Datos del Pasajero</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="passenger_name">Nombre Completo *</Label>
                 <Input
@@ -430,14 +430,14 @@ export function TicketDialog({
             </h4>
             
             {loadingTripInfo ? (
-              <div className="flex items-center justify-center py-4 text-gray-500">
+              <div className="flex items-center justify-center py-4 text-gray-500 dark:text-gray-400">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Cargando información del viaje...
               </div>
             ) : (
               <>
                 {/* Paradas (origen/destino) */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
                   <div className="space-y-2">
                     <Label htmlFor="boarding">Origen</Label>
                     <Select
@@ -504,7 +504,7 @@ export function TicketDialog({
                     <Bus className="h-4 w-4" />
                     Asiento
                     {tripDetails?.vehicles && (
-                      <span className="text-xs text-gray-500 font-normal">
+                      <span className="text-xs text-gray-500 font-normal dark:text-gray-400">
                         ({tripDetails.vehicles.vehicle_type} - {tripDetails.vehicles.plate})
                       </span>
                     )}
@@ -532,9 +532,9 @@ export function TicketDialog({
                               className={cn(
                                 "w-10 h-10 rounded-lg font-medium text-sm transition-all",
                                 "border-2 flex items-center justify-center",
-                                isSelected && "bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300",
-                                isAvailable && !isSelected && "bg-green-100 text-green-800 border-green-300 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700",
-                                !isAvailable && !isSelected && "bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500"
+                                isSelected && "bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 dark:border-blue-200 dark:ring-blue-600",
+                                isAvailable && !isSelected && "bg-green-100 text-green-800 border-green-300 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-700/30",
+                                !isAvailable && !isSelected && "bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500 dark:border-gray-600"
                               )}
                               title={isAvailable ? `Asiento ${seat.seat_label} - Disponible` : `Asiento ${seat.seat_label} - ${seat.status}`}
                             >
@@ -543,17 +543,17 @@ export function TicketDialog({
                           );
                         })}
                       </div>
-                      <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center justify-center gap-2 sm:gap-4 mt-3 text-xs text-gray-600 dark:text-gray-400">
                         <span className="flex items-center gap-1">
                           <span className="w-3 h-3 rounded bg-green-100 border border-green-300 dark:bg-green-900/30 dark:border-green-700"></span>
                           Disponible
                         </span>
                         <span className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded bg-blue-600 border border-blue-700"></span>
+                          <span className="w-3 h-3 rounded bg-blue-600 border border-blue-700 dark:border-blue-200"></span>
                           Seleccionado
                         </span>
                         <span className="flex items-center gap-1">
-                          <span className="w-3 h-3 rounded bg-gray-200 border border-gray-300 dark:bg-gray-700"></span>
+                          <span className="w-3 h-3 rounded bg-gray-200 border border-gray-300 dark:bg-gray-700 dark:border-gray-600"></span>
                           Ocupado
                         </span>
                       </div>
@@ -581,7 +581,7 @@ export function TicketDialog({
           {/* Precios */}
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Precio y Pago</h4>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fare">Tarifa</Label>
                 <Input

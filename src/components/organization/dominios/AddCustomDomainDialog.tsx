@@ -195,7 +195,7 @@ export function AddCustomDomainDialog({
           )}
 
           {step === 'input' ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <Label htmlFor="domain" className="dark:text-gray-200">
                   {t('domainLabel')}
@@ -226,7 +226,7 @@ export function AddCustomDomainDialog({
               </Alert>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <Alert className="dark:bg-yellow-900/20 dark:border-yellow-800">
                 <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                 <AlertDescription className="text-sm dark:text-gray-300">
@@ -239,7 +239,7 @@ export function AddCustomDomainDialog({
                   {t('configureDnsRecords')} <strong>{domain}</strong>:
                 </h4>
                 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {dnsRecords.map((record, idx) => (
                     <div 
                       key={idx}
@@ -254,7 +254,7 @@ export function AddCustomDomainDialog({
                         </span>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-4">
                         <div>
                           <Label className="text-xs text-gray-500 dark:text-gray-400">{t('nameHost')}</Label>
                           <div className="flex items-center gap-2 mt-1">
@@ -268,7 +268,7 @@ export function AddCustomDomainDialog({
                               className="h-8 w-8 p-0"
                             >
                               {copiedField === `name-${idx}` ? (
-                                <Check className="h-4 w-4 text-green-600" />
+                                <Check className="h-4 w-4 text-green-600 dark:text-green-300" />
                               ) : (
                                 <Copy className="h-4 w-4" />
                               )}
@@ -279,7 +279,7 @@ export function AddCustomDomainDialog({
                         <div>
                           <Label className="text-xs text-gray-500 dark:text-gray-400">{t('valueTarget')}</Label>
                           <div className="flex items-center gap-2 mt-1">
-                            <code className="flex-1 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-600 truncate dark:text-gray-200">
+                            <code className="flex-1 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-600 min-w-0 break-words dark:text-gray-200">
                               {record.value}
                             </code>
                             <Button
@@ -289,7 +289,7 @@ export function AddCustomDomainDialog({
                               className="h-8 w-8 p-0"
                             >
                               {copiedField === `value-${idx}` ? (
-                                <Check className="h-4 w-4 text-green-600" />
+                                <Check className="h-4 w-4 text-green-600 dark:text-green-300" />
                               ) : (
                                 <Copy className="h-4 w-4" />
                               )}

@@ -130,7 +130,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 sm:space-y-6 py-4">
           {/* Resultado de importación */}
           {importResult && (
             <Alert className={
@@ -138,7 +138,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                 ? 'dark:bg-green-900/20 dark:border-green-800 border-green-300 bg-green-50'
                 : 'dark:bg-yellow-900/20 dark:border-yellow-800 border-yellow-300 bg-yellow-50'
             }>
-              <CheckCircle2 className={`h-4 w-4 ${importResult.failed === 0 ? 'text-green-600' : 'text-yellow-600'}`} />
+              <CheckCircle2 className={`h-4 w-4 ${importResult.failed === 0 ? 'text-green-600 dark:text-green-300' : 'text-yellow-600 dark:text-yellow-300'}`} />
               <AlertDescription className="dark:text-gray-300">
                 <strong>{t('importComplete')}</strong>
                 <br />
@@ -169,7 +169,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               <div className="space-y-2">
                 <Label className="dark:text-gray-200">{t('csvFile')}</Label>
                 <div 
-                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 sm:p-6 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Input
@@ -202,7 +202,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                     </div>
                   ) : (
                     <>
-                      <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                      <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2 dark:text-gray-500" />
                       <p className="text-gray-600 dark:text-gray-400">
                         {t('clickToSelect')}
                       </p>
@@ -262,7 +262,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                             </td>
                             <td className="px-3 py-2 text-center">
                               {domain.valid ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-600 inline" />
+                                <CheckCircle2 className="h-4 w-4 text-green-600 inline dark:text-green-300" />
                               ) : (
                                 <span className="text-xs text-red-600 dark:text-red-400">{domain.error}</span>
                               )}

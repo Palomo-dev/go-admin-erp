@@ -47,10 +47,10 @@ const INCIDENT_TYPES = [
 ];
 
 const SEVERITY_CONFIG = {
-  low: { label: 'Baja', color: 'bg-blue-100 text-blue-800' },
-  medium: { label: 'Media', color: 'bg-yellow-100 text-yellow-800' },
-  high: { label: 'Alta', color: 'bg-orange-100 text-orange-800' },
-  critical: { label: 'Crítica', color: 'bg-red-100 text-red-800' },
+  low: { label: 'Baja', color: 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100' },
+  medium: { label: 'Media', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100' },
+  high: { label: 'Alta', color: 'bg-orange-100 text-orange-800 dark:bg-orange-800/30 dark:text-orange-100' },
+  critical: { label: 'Crítica', color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100' },
 };
 
 export function IncidentDialog({ open, onOpenChange, onSubmit }: IncidentDialogProps) {
@@ -89,11 +89,11 @@ export function IncidentDialog({ open, onOpenChange, onSubmit }: IncidentDialogP
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-300" />
             Reportar Incidente
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label>Tipo de Incidente</Label>
             <Select

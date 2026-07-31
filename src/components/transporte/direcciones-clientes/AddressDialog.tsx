@@ -261,7 +261,7 @@ export function AddressDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-blue-600" />
+            <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {isEditing ? 'Editar Dirección' : 'Nueva Dirección'}
           </DialogTitle>
           <DialogDescription>
@@ -269,7 +269,7 @@ export function AddressDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Cliente - Selector estilo POS */}
           <div className="space-y-2">
             <Label>Cliente *</Label>
@@ -288,7 +288,7 @@ export function AddressDialog({
                         {selectedCustomer.email && (
                           <div className="flex items-center gap-1.5 text-xs dark:text-gray-300 text-gray-600">
                             <Mail className="h-3 w-3" />
-                            <span className="truncate">{selectedCustomer.email}</span>
+                            <span className="min-w-0 break-words">{selectedCustomer.email}</span>
                           </div>
                         )}
                         {selectedCustomer.phone && (
@@ -318,13 +318,13 @@ export function AddressDialog({
               <div className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-full dark:bg-gray-700 bg-gray-200">
-                    <User className="h-5 w-5 text-gray-500" />
+                    <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                   </div>
                   <div>
                     <p className="font-medium dark:text-white text-gray-900">
                       {selectedCustomer.first_name} {selectedCustomer.last_name}
                     </p>
-                    <p className="text-xs text-gray-500">Cliente no editable</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Cliente no editable</p>
                   </div>
                 </div>
               </div>
@@ -353,7 +353,7 @@ export function AddressDialog({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-96 p-0 dark:bg-gray-900 dark:border-gray-800" align="start">
-                  <div className="p-4 space-y-4">
+                  <div className="p-4 space-y-3 sm:space-y-4">
                     <div className="space-y-2">
                       <h4 className="font-semibold dark:text-white text-gray-900">Buscar Cliente</h4>
                       <div className="relative">
@@ -374,7 +374,7 @@ export function AddressDialog({
                       <div className="space-y-2 pr-4">
                         {isSearching ? (
                           <div className="flex items-center justify-center py-6">
-                            <Loader2 className="h-5 w-5 animate-spin text-blue-500 mr-2" />
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-500 mr-2 dark:text-blue-400" />
                             <span className="text-sm dark:text-gray-400">Buscando...</span>
                           </div>
                         ) : customers.length === 0 && customerSearch.length >= 2 ? (
@@ -398,12 +398,12 @@ export function AddressDialog({
                                 <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
+                                <p className="font-medium text-sm dark:text-white text-gray-900 min-w-0 break-words">
                                   {customer.first_name} {customer.last_name}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {customer.email && (
-                                    <span className="text-xs dark:text-gray-400 text-gray-600 truncate max-w-[150px]">
+                                    <span className="text-xs dark:text-gray-400 text-gray-600 min-w-0 break-words max-w-[150px]">
                                       {customer.email}
                                     </span>
                                   )}
@@ -426,7 +426,7 @@ export function AddressDialog({
           </div>
 
           {/* Etiqueta y Default */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="label">Etiqueta *</Label>
               <Input
@@ -444,7 +444,7 @@ export function AddressDialog({
                   checked={formData.is_default}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked })}
                 />
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   {formData.is_default ? 'Sí' : 'No'}
                 </span>
               </div>
@@ -452,7 +452,7 @@ export function AddressDialog({
           </div>
 
           {/* Destinatario */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="recipient_name">Nombre del destinatario</Label>
               <Input
@@ -477,7 +477,7 @@ export function AddressDialog({
           <div className="space-y-2">
             <Label>Buscar dirección con Google</Label>
             <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <Input
                 value={placeSearch}
                 onChange={(e) => setPlaceSearch(e.target.value)}
@@ -485,7 +485,7 @@ export function AddressDialog({
                 className="pl-10"
               />
               {isSearchingPlaces && (
-                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
               )}
             </div>
             {placeSuggestions.length > 0 && (
@@ -497,8 +497,8 @@ export function AddressDialog({
                     onClick={() => handleSelectPlace(place.place_id, place.description)}
                     className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
-                    <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                    <span className="truncate">{place.description}</span>
+                    <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0 dark:text-gray-500" />
+                    <span className="min-w-0 break-words">{place.description}</span>
                   </button>
                 ))}
               </div>
@@ -545,7 +545,7 @@ export function AddressDialog({
           </div>
 
           {/* Ciudad y Departamento */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">Ciudad *</Label>
               <Input
@@ -568,7 +568,7 @@ export function AddressDialog({
           </div>
 
           {/* Código postal y País */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="postal_code">Código postal</Label>
               <Input
@@ -590,7 +590,7 @@ export function AddressDialog({
           </div>
 
           {/* Geolocalización */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="latitude">Latitud</Label>
               <Input

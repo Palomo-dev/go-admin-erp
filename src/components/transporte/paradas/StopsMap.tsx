@@ -15,12 +15,12 @@ interface StopsMapProps {
 }
 
 const stopTypeConfig: Record<string, { label: string; color: string; markerColor: string }> = {
-  terminal: { label: 'Terminal', color: 'bg-blue-100 text-blue-600', markerColor: '#2563EB' },
-  station: { label: 'Estación', color: 'bg-purple-100 text-purple-600', markerColor: '#9333EA' },
-  warehouse: { label: 'Bodega', color: 'bg-amber-100 text-amber-600', markerColor: '#D97706' },
-  stop: { label: 'Parada', color: 'bg-green-100 text-green-600', markerColor: '#16A34A' },
-  branch: { label: 'Sucursal', color: 'bg-indigo-100 text-indigo-600', markerColor: '#4F46E5' },
-  customer: { label: 'Cliente', color: 'bg-pink-100 text-pink-600', markerColor: '#DB2777' },
+  terminal: { label: 'Terminal', color: 'bg-blue-100 text-blue-600 dark:bg-blue-800/30 dark:text-blue-300', markerColor: '#2563EB' },
+  station: { label: 'Estación', color: 'bg-purple-100 text-purple-600 dark:bg-purple-800/30 dark:text-purple-300', markerColor: '#9333EA' },
+  warehouse: { label: 'Bodega', color: 'bg-amber-100 text-amber-600 dark:bg-amber-800/30 dark:text-amber-300', markerColor: '#D97706' },
+  stop: { label: 'Parada', color: 'bg-green-100 text-green-600 dark:bg-green-800/30 dark:text-green-300', markerColor: '#16A34A' },
+  branch: { label: 'Sucursal', color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800/30 dark:text-indigo-300', markerColor: '#4F46E5' },
+  customer: { label: 'Cliente', color: 'bg-pink-100 text-pink-600 dark:bg-pink-800/30 dark:text-pink-300', markerColor: '#DB2777' },
 };
 
 declare global {
@@ -245,7 +245,7 @@ export function StopsMap({
     return (
       <Card className="h-[500px]">
         <CardContent className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
         </CardContent>
       </Card>
     );
@@ -259,7 +259,7 @@ export function StopsMap({
   const stopsWithoutCoords = stops.filter(s => !s.latitude || !s.longitude);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <Card className="overflow-hidden">
         <div 
           ref={mapRef} 
@@ -272,7 +272,7 @@ export function StopsMap({
         <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5 dark:text-yellow-300" />
               <div>
                 <p className="font-medium text-yellow-800 dark:text-yellow-200">
                   {stopsWithoutCoords.length} parada(s) sin coordenadas
@@ -303,7 +303,7 @@ export function StopsMap({
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex flex-wrap gap-2 sm:gap-4 text-sm text-gray-600 dark:text-gray-400">
         <span className="font-medium">Leyenda:</span>
         {Object.entries(stopTypeConfig).map(([key, config]) => (
           <div key={key} className="flex items-center gap-1">

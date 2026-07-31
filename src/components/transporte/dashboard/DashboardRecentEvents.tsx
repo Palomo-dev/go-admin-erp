@@ -57,12 +57,12 @@ export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEven
       <Card className="h-full">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-blue-600" />
+            <Activity className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Últimos Eventos
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-48">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
         </CardContent>
       </Card>
     );
@@ -73,7 +73,7 @@ export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEven
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-blue-600" />
+            <Activity className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Últimos Eventos
           </CardTitle>
           <Link href="/app/transporte/tracking">
@@ -86,7 +86,7 @@ export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEven
       </CardHeader>
       <CardContent className="pt-0">
         {events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-500">
+          <div className="flex flex-col items-center justify-center h-48 text-gray-500 dark:text-gray-400">
             <Activity className="h-10 w-10 mb-2 opacity-50" />
             <p className="text-sm">No hay eventos recientes</p>
           </div>
@@ -113,18 +113,18 @@ export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEven
                         <Badge className={`text-xs ${config.color}`}>
                           {config.label}
                         </Badge>
-                        <span className="text-xs text-gray-500 capitalize">
+                        <span className="text-xs text-gray-500 capitalize dark:text-gray-400">
                           {event.reference_type === 'trip' ? 'Viaje' : 'Envío'}
                         </span>
                       </div>
                       {event.description && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                        <p className="text-sm text-gray-700 dark:text-gray-300 min-w-0 break-words">
                           {event.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
                         {event.location_text && (
-                          <span className="flex items-center gap-1 truncate">
+                          <span className="flex items-center gap-1 min-w-0 break-words">
                             <MapPin className="h-3 w-3 flex-shrink-0" />
                             {event.location_text}
                           </span>

@@ -103,11 +103,11 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
         {/* Cliente */}
         {customer && (
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <User className="h-4 w-4 text-gray-400" />
+            <User className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <span>{customer.full_name}</span>
             {customer.phone && (
               <>
-                <span className="text-gray-300">•</span>
+                <span className="text-gray-300 dark:text-gray-600">•</span>
                 <a
                   href={`tel:${customer.phone}`}
                   className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
@@ -122,11 +122,11 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
         {/* Dirección de entrega */}
         <div className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
+          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 dark:text-gray-500" />
           <div>
             <p>{shipment.delivery_address}</p>
             {(shipment.delivery_city || shipment.delivery_department) && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-400 dark:text-gray-500">
                 {[shipment.delivery_city, shipment.delivery_department].filter(Boolean).join(', ')}
               </p>
             )}
@@ -136,7 +136,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
         {/* Contacto e instrucciones */}
         {(shipment.delivery_contact_name || shipment.delivery_contact_phone) && (
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Phone className="h-4 w-4 text-gray-400" />
+            <Phone className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <span>
               {shipment.delivery_contact_name}
               {shipment.delivery_contact_phone && (

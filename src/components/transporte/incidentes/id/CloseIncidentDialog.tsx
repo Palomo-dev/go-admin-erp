@@ -66,7 +66,7 @@ export function CloseIncidentDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-gray-600" />
+            <XCircle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             Cerrar Incidente
           </DialogTitle>
           <DialogDescription>
@@ -74,7 +74,7 @@ export function CloseIncidentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-4">
           {/* Resumen de resolución */}
           <div className="space-y-2">
             <Label htmlFor="resolution_summary">Resumen de resolución</Label>
@@ -119,7 +119,7 @@ export function CloseIncidentDialog({
               onCheckedChange={(checked) => setNotify(checked as boolean)}
             />
             <Label htmlFor="notify" className="flex items-center gap-2 cursor-pointer">
-              <Bell className="h-4 w-4 text-gray-500" />
+              <Bell className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Notificar al responsable asignado
             </Label>
           </div>

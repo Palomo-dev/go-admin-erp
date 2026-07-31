@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Download, Printer } from 'lucide-react';
+import { FileText, Printer, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
+import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSessionReport } from './types';
 import { toast } from 'sonner';
 
@@ -14,409 +15,309 @@ interface ReportGeneratorProps {
   disabled?: boolean;
 }
 
+const METHOD_LABELS: Record<string, string> = {
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  credit_card: 'Tarjeta Crédito',
+  debit_card: 'Tarjeta Débito',
+  transfer: 'Transferencia',
+  nequi: 'Nequi',
+  daviplata: 'Daviplata',
+  pse: 'PSE',
+  credit: 'Crédito',
+  other: 'Otros',
+};
+
 export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   const [loading, setLoading] = useState(false);
+  const { showExpected } = useBlindCloseMode();
 
-  const generatePDF = async () => {
+  const generateReport = async (format: 'letter' | 'pos') => {
     setLoading(true);
     try {
-      // Generar los datos del reporte
       const reportData = await CajasService.generateSessionReport(sessionId);
-      
-      // Crear el contenido HTML para el PDF
-      const htmlContent = generateHTMLReport(reportData);
-      
-      // Crear y abrir el PDF en una nueva ventana para impresión/descarga
+      const htmlContent = format === 'pos'
+        ? generatePOSReport(reportData)
+        : generateLetterReport(reportData);
+
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
         printWindow.focus();
-        
-        // Intentar imprimir automáticamente
         setTimeout(() => {
           printWindow.print();
         }, 500);
       }
-      
-      toast.success('Reporte generado exitosamente');
+
+      toast.success(format === 'pos' ? 'Reporte POS generado' : 'Reporte generado exitosamente');
     } catch (error: any) {
       console.error('Error generating report:', error);
-      toast.error('Error al generar reporte', {
-        description: error.message
-      });
+      toast.error('Error al generar reporte', { description: error.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const generateHTMLReport = (report: CashSessionReport): string => {
+  const generateLetterReport = (report: CashSessionReport): string => {
     const { session, movements, summary, sales_summary } = report;
-    
+    const cashierName = (session as any).opened_by_name || 'Usuario';
+    const branchName = (session as any).branch_name || `#${session.branch_id}`;
+    const blindMode = !showExpected;
+
     const formatDate = (dateString: string) => {
       const date = new Date(dateString);
       return date.toLocaleString('es-CO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
       });
     };
 
     const ingressMovements = movements.filter(m => m.type === 'in');
     const egressMovements = movements.filter(m => m.type === 'out');
 
+    const incomeMethods = summary.income_by_method || {};
+    const expenseMethods = summary.expense_by_method || {};
+
     return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Reporte de Caja - ${session.id}</title>
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            line-height: 1.4;
-            font-size: 12px;
-          }
-          .header { 
-            text-align: center; 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 15px; 
-            margin-bottom: 20px;
-          }
-          .header h1 { 
-            color: #2563eb; 
-            margin: 0;
-            font-size: 24px;
-          }
-          .header h2 { 
-            margin: 5px 0; 
-            color: #666;
-            font-size: 16px;
-            font-weight: normal;
-          }
-          .section { 
-            margin-bottom: 25px; 
-            page-break-inside: avoid;
-          }
-          .section-title { 
-            background: #f3f4f6; 
-            padding: 8px 12px; 
-            border-left: 4px solid #2563eb;
-            font-weight: bold;
-            font-size: 14px;
-            color: #374151;
-          }
-          .info-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 15px; 
-            margin: 15px 0;
-          }
-          .info-item { 
-            padding: 8px 0; 
-          }
-          .info-label { 
-            font-weight: bold; 
-            color: #374151;
-          }
-          .info-value { 
-            color: #1f2937;
-            margin-top: 2px;
-          }
-          .summary-grid { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 15px; 
-            margin: 15px 0;
-          }
-          .summary-item { 
-            border: 1px solid #d1d5db; 
-            border-radius: 6px; 
-            padding: 12px; 
-            text-align: center;
-          }
-          .summary-item.positive { 
-            background: #f0fdf4; 
-            border-color: #16a34a;
-          }
-          .summary-item.negative { 
-            background: #fef2f2; 
-            border-color: #dc2626;
-          }
-          .summary-item.neutral { 
-            background: #f8fafc; 
-            border-color: #64748b;
-          }
-          .summary-item.primary { 
-            background: #eff6ff; 
-            border-color: #2563eb;
-          }
-          .summary-label { 
-            font-size: 11px; 
-            color: #6b7280; 
-            text-transform: uppercase; 
-            font-weight: 600;
-          }
-          .summary-amount { 
-            font-size: 16px; 
-            font-weight: bold; 
-            margin-top: 4px;
-          }
-          .movements-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 10px;
-          }
-          .movements-table th, 
-          .movements-table td { 
-            border: 1px solid #d1d5db; 
-            padding: 8px; 
-            text-align: left;
-          }
-          .movements-table th { 
-            background: #f9fafb; 
-            font-weight: bold; 
-            color: #374151;
-            font-size: 11px;
-            text-transform: uppercase;
-          }
-          .movements-table td { 
-            font-size: 11px;
-          }
-          .amount-positive { 
-            color: #16a34a; 
-            font-weight: bold;
-          }
-          .amount-negative { 
-            color: #dc2626; 
-            font-weight: bold;
-          }
-          .total-row { 
-            background: #f3f4f6 !important; 
-            font-weight: bold;
-            font-size: 12px;
-          }
-          .footer { 
-            margin-top: 30px; 
-            padding-top: 15px; 
-            border-top: 1px solid #d1d5db; 
-            text-align: center; 
-            font-size: 10px; 
-            color: #6b7280;
-          }
-          .signature-section { 
-            margin-top: 40px; 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 50px;
-          }
-          .signature-box { 
-            text-align: center; 
-            border-top: 1px solid #374151; 
-            padding-top: 10px;
-          }
-          @media print {
-            body { margin: 10px; }
-            .header { page-break-after: avoid; }
-            .section { page-break-inside: avoid; }
-          }
-        </style>
-      </head>
-      <body>
-        <!-- Encabezado -->
-        <div class="header">
-          <h1>REPORTE DE CAJA</h1>
-          <h2>Sesión #${session.id}</h2>
-          <p>Fecha de generación: ${formatDate(new Date().toISOString())}</p>
-        </div>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Reporte de Caja #${session.id}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; padding: 30px; color: #000; font-size: 12px; line-height: 1.5; }
+  .header { text-align: center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 20px; }
+  .header h1 { font-size: 22px; letter-spacing: 2px; }
+  .header .subtitle { font-size: 13px; margin-top: 4px; }
+  .header .meta { font-size: 10px; margin-top: 6px; color: #555; }
+  .section { margin-bottom: 20px; page-break-inside: avoid; }
+  .section-title { font-weight: bold; font-size: 13px; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 10px; letter-spacing: 1px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+  .info-item { display: flex; justify-content: space-between; border-bottom: 1px dotted #ccc; padding: 4px 0; }
+  .info-label { font-weight: bold; }
+  .table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .table th, .table td { border: 1px solid #000; padding: 6px 8px; text-align: left; font-size: 11px; }
+  .table th { background: #eee; font-weight: bold; text-transform: uppercase; font-size: 10px; }
+  .table .total-row { border-top: 2px solid #000; font-weight: bold; background: #f5f5f5; }
+  .amount-right { text-align: right; font-family: monospace; }
+  .methods-list { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .methods-list td { border: 1px solid #000; padding: 6px 8px; font-size: 11px; }
+  .methods-list .method-label { font-weight: bold; }
+  .methods-list .method-amount { text-align: right; font-family: monospace; }
+  .grand-total { margin-top: 15px; border: 2px solid #000; padding: 10px; text-align: center; }
+  .grand-total .label { font-size: 11px; text-transform: uppercase; font-weight: bold; }
+  .grand-total .amount { font-size: 20px; font-weight: bold; margin-top: 4px; }
+  .signature-section { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; }
+  .signature-box { text-align: center; }
+  .signature-box .line { border-top: 1px solid #000; padding-top: 8px; font-size: 10px; }
+  .footer { margin-top: 30px; border-top: 1px solid #000; padding-top: 10px; text-align: center; font-size: 9px; color: #555; }
+  @media print { body { padding: 15px; } .section { page-break-inside: avoid; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>REPORTE DE ARQUEO DE CAJA</h1>
+    <div class="subtitle">Sucursal: ${branchName} &mdash; Sesion #${session.id}</div>
+    <div class="meta">Generado: ${formatDate(new Date().toISOString())}</div>
+  </div>
 
-        <!-- Información de la sesión -->
-        <div class="section">
-          <div class="section-title">INFORMACIÓN DE LA SESIÓN</div>
-          <div class="info-grid">
-            <div class="info-item">
-              <div class="info-label">Estado:</div>
-              <div class="info-value">${session.status === 'open' ? 'Abierta' : 'Cerrada'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Sucursal:</div>
-              <div class="info-value">ID: ${session.branch_id}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Fecha de Apertura:</div>
-              <div class="info-value">${formatDate(session.opened_at)}</div>
-            </div>
-            ${session.closed_at ? `
-            <div class="info-item">
-              <div class="info-label">Fecha de Cierre:</div>
-              <div class="info-value">${formatDate(session.closed_at)}</div>
-            </div>
-            ` : ''}
-          </div>
-          ${session.notes ? `
-          <div class="info-item">
-            <div class="info-label">Observaciones:</div>
-            <div class="info-value">${session.notes}</div>
-          </div>
-          ` : ''}
-        </div>
+  <div class="section">
+    <div class="section-title">INFORMACION DE LA SESION</div>
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">Cajero:</span><span>${cashierName}</span></div>
+      <div class="info-item"><span class="info-label">Estado:</span><span>${session.status === 'open' ? 'ABIERTA' : 'CERRADA'}</span></div>
+      <div class="info-item"><span class="info-label">Apertura:</span><span>${formatDate(session.opened_at)}</span></div>
+      <div class="info-item"><span class="info-label">Cierre:</span><span>${session.closed_at ? formatDate(session.closed_at) : '---'}</span></div>
+      <div class="info-item"><span class="info-label">Sucursal:</span><span>${branchName}</span></div>
+      <div class="info-item"><span class="info-label">Sesion ID:</span><span>#${session.id}</span></div>
+    </div>
+    ${session.notes ? `<div style="margin-top: 8px;"><strong>Observaciones:</strong> ${session.notes}</div>` : ''}
+  </div>
 
-        <!-- Resumen de caja -->
-        <div class="section">
-          <div class="section-title">RESUMEN FINANCIERO</div>
-          <div class="summary-grid">
-            <div class="summary-item primary">
-              <div class="summary-label">Monto Inicial</div>
-              <div class="summary-amount">${formatCurrency(summary.initial_amount)}</div>
-            </div>
-            <div class="summary-item positive">
-              <div class="summary-label">Ventas Efectivo</div>
-              <div class="summary-amount">${formatCurrency(summary.sales_cash)}</div>
-            </div>
-            <div class="summary-item positive">
-              <div class="summary-label">Ingresos</div>
-              <div class="summary-amount">${formatCurrency(summary.cash_in)}</div>
-            </div>
-            <div class="summary-item negative">
-              <div class="summary-label">Egresos</div>
-              <div class="summary-amount">${formatCurrency(summary.cash_out)}</div>
-            </div>
-          </div>
-          <div style="margin-top: 20px;">
-            <div class="summary-item primary" style="max-width: 300px; margin: 0 auto;">
-              <div class="summary-label">Total Esperado</div>
-              <div class="summary-amount" style="font-size: 20px;">${formatCurrency(summary.expected_amount)}</div>
-            </div>
-          </div>
-          ${session.status === 'closed' && summary.counted_amount !== undefined ? `
-          <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 600px; margin-left: auto; margin-right: auto;">
-            <div class="summary-item neutral">
-              <div class="summary-label">Monto Contado</div>
-              <div class="summary-amount">${formatCurrency(summary.counted_amount)}</div>
-            </div>
-            <div class="summary-item ${summary.difference === 0 ? 'neutral' : summary.difference! > 0 ? 'positive' : 'negative'}">
-              <div class="summary-label">Diferencia</div>
-              <div class="summary-amount">${summary.difference! >= 0 ? '+' : ''}${formatCurrency(summary.difference || 0)}</div>
-            </div>
-          </div>
-          ` : ''}
-        </div>
+  <div class="section">
+    <div class="section-title">RESUMEN FINANCIERO</div>
+    <table class="table">
+      <tr><td>Monto Inicial</td><td class="amount-right">${formatCurrency(summary.initial_amount)}</td></tr>
+      <tr><td>Ventas en Efectivo (neto de vuelto)</td><td class="amount-right">${formatCurrency(summary.sales_cash)}</td></tr>
+      <tr><td>Ingresos Manuales</td><td class="amount-right">${formatCurrency(summary.cash_in)}</td></tr>
+      <tr><td>Egresos Manuales</td><td class="amount-right">-${formatCurrency(summary.cash_out)}</td></tr>
+      ${summary.change_total > 0 ? `<tr><td>Vuelto Entregado</td><td class="amount-right">-${formatCurrency(summary.change_total)}</td></tr>` : ''}
+      ${summary.returns_total > 0 ? `<tr><td>Devoluciones</td><td class="amount-right">-${formatCurrency(summary.returns_total)}</td></tr>` : ''}
+      <tr class="total-row"><td>EFECTIVO ESPERADO EN CAJA</td><td class="amount-right">${blindMode ? '***' : formatCurrency(summary.expected_amount)}</td></tr>
+    </table>
+    ${session.status === 'closed' && summary.counted_amount !== undefined && !blindMode ? `
+    <table class="table" style="margin-top: 8px;">
+      <tr><td>Monto Contado</td><td class="amount-right">${formatCurrency(summary.counted_amount)}</td></tr>
+      <tr class="total-row"><td>DIFERENCIA</td><td class="amount-right">${summary.difference! >= 0 ? '+' : ''}${formatCurrency(summary.difference || 0)}</td></tr>
+    </table>
+    ` : ''}
+  </div>
 
-        <!-- Resumen de ventas -->
-        <div class="section">
-          <div class="section-title">RESUMEN DE VENTAS</div>
-          <div class="summary-grid">
-            <div class="summary-item neutral">
-              <div class="summary-label">Total Ventas</div>
-              <div class="summary-amount">${formatCurrency(sales_summary.total_sales)}</div>
-            </div>
-            <div class="summary-item positive">
-              <div class="summary-label">Efectivo</div>
-              <div class="summary-amount">${formatCurrency(sales_summary.cash_sales)}</div>
-            </div>
-            <div class="summary-item neutral">
-              <div class="summary-label">Tarjetas</div>
-              <div class="summary-amount">${formatCurrency(sales_summary.card_sales)}</div>
-            </div>
-            <div class="summary-item neutral">
-              <div class="summary-label">Otros</div>
-              <div class="summary-amount">${formatCurrency(sales_summary.other_sales)}</div>
-            </div>
-          </div>
-        </div>
+  <div class="section">
+    <div class="section-title">PAGOS POR METODO</div>
+    <table class="methods-list">
+      <tr style="background: #eee;"><td class="method-label">METODO</td><td class="method-amount">INGRESOS</td><td class="method-amount">EGRESOS</td></tr>
+      ${Object.keys({...incomeMethods, ...expenseMethods}).map(method => `
+        <tr>
+          <td class="method-label">${METHOD_LABELS[method] || method}</td>
+          <td class="method-amount">${incomeMethods[method] ? formatCurrency(incomeMethods[method]) : '-'}</td>
+          <td class="method-amount">${expenseMethods[method] ? '-' + formatCurrency(expenseMethods[method]) : '-'}</td>
+        </tr>
+      `).join('')}
+    </table>
+  </div>
 
-        ${movements.length > 0 ? `
-        <!-- Movimientos de caja -->
-        <div class="section">
-          <div class="section-title">MOVIMIENTOS DE CAJA</div>
-          
-          ${ingressMovements.length > 0 ? `
-          <h4 style="color: #16a34a; margin: 15px 0 10px 0;">INGRESOS</h4>
-          <table class="movements-table">
-            <thead>
-              <tr>
-                <th>Fecha y Hora</th>
-                <th>Concepto</th>
-                <th>Monto</th>
-                <th>Observaciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${ingressMovements.map(movement => `
-                <tr>
-                  <td>${formatDate(movement.created_at)}</td>
-                  <td>${movement.concept}</td>
-                  <td class="amount-positive">${formatCurrency(movement.amount)}</td>
-                  <td>${movement.notes || '-'}</td>
-                </tr>
-              `).join('')}
-              <tr class="total-row">
-                <td colspan="2">TOTAL INGRESOS</td>
-                <td class="amount-positive">${formatCurrency(summary.cash_in)}</td>
-                <td></td>
-              </tr>
-            </tbody>
-          </table>
-          ` : ''}
+  <div class="section">
+    <div class="section-title">RESUMEN DE VENTAS</div>
+    <table class="table">
+      <tr><td>Total Ventas (todos los metodos)</td><td class="amount-right">${formatCurrency(sales_summary.total_sales)}</td></tr>
+      <tr><td>Ventas en Efectivo</td><td class="amount-right">${formatCurrency(sales_summary.cash_sales)}</td></tr>
+      <tr><td>Ventas con Tarjeta</td><td class="amount-right">${formatCurrency(sales_summary.card_sales)}</td></tr>
+      <tr><td>Otros Metodos</td><td class="amount-right">${formatCurrency(sales_summary.other_sales)}</td></tr>
+    </table>
+  </div>
 
-          ${egressMovements.length > 0 ? `
-          <h4 style="color: #dc2626; margin: 15px 0 10px 0;">EGRESOS</h4>
-          <table class="movements-table">
-            <thead>
-              <tr>
-                <th>Fecha y Hora</th>
-                <th>Concepto</th>
-                <th>Monto</th>
-                <th>Observaciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${egressMovements.map(movement => `
-                <tr>
-                  <td>${formatDate(movement.created_at)}</td>
-                  <td>${movement.concept}</td>
-                  <td class="amount-negative">${formatCurrency(movement.amount)}</td>
-                  <td>${movement.notes || '-'}</td>
-                </tr>
-              `).join('')}
-              <tr class="total-row">
-                <td colspan="2">TOTAL EGRESOS</td>
-                <td class="amount-negative">${formatCurrency(summary.cash_out)}</td>
-                <td></td>
-              </tr>
-            </tbody>
-          </table>
-          ` : ''}
-        </div>
-        ` : ''}
+  ${movements.length > 0 ? `
+  <div class="section">
+    <div class="section-title">MOVIMIENTOS DE CAJA</div>
+    ${ingressMovements.length > 0 ? `
+    <table class="table">
+      <thead><tr><th>Fecha/Hora</th><th>Concepto</th><th class="amount-right">Ingreso</th><th>Notas</th></tr></thead>
+      <tbody>
+        ${ingressMovements.map(m => `<tr><td>${formatDate(m.created_at)}</td><td>${m.concept}</td><td class="amount-right">${formatCurrency(m.amount)}</td><td>${m.notes || '-'}</td></tr>`).join('')}
+        <tr class="total-row"><td colspan="2">TOTAL INGRESOS</td><td class="amount-right">${formatCurrency(summary.cash_in)}</td><td></td></tr>
+      </tbody>
+    </table>
+    ` : ''}
+    ${egressMovements.length > 0 ? `
+    <table class="table" style="margin-top: 12px;">
+      <thead><tr><th>Fecha/Hora</th><th>Concepto</th><th class="amount-right">Egreso</th><th>Notas</th></tr></thead>
+      <tbody>
+        ${egressMovements.map(m => `<tr><td>${formatDate(m.created_at)}</td><td>${m.concept}</td><td class="amount-right">-${formatCurrency(m.amount)}</td><td>${m.notes || '-'}</td></tr>`).join('')}
+        <tr class="total-row"><td colspan="2">TOTAL EGRESOS</td><td class="amount-right">-${formatCurrency(summary.cash_out)}</td><td></td></tr>
+      </tbody>
+    </table>
+    ` : ''}
+  </div>
+  ` : ''}
 
-        <!-- Firmas -->
-        <div class="signature-section">
-          <div class="signature-box">
-            <div>Elaborado por</div>
-            <div style="margin-top: 30px; font-size: 10px;">
-              Usuario ID: ${session.opened_by}
-            </div>
-          </div>
-          <div class="signature-box">
-            <div>Revisado por</div>
-            <div style="margin-top: 30px; font-size: 10px;">
-              Supervisor
-            </div>
-          </div>
-        </div>
+  <div class="grand-total">
+    <div class="label">EFECTIVO ESPERADO EN CAJA</div>
+    <div class="amount">${blindMode ? '***' : formatCurrency(summary.expected_amount)}</div>
+  </div>
 
-        <!-- Pie de página -->
-        <div class="footer">
-          <p>Reporte generado automáticamente por GO Admin ERP</p>
-          <p>Fecha: ${formatDate(new Date().toISOString())}</p>
-        </div>
-      </body>
-      </html>
-    `;
+  <div class="signature-section">
+    <div class="signature-box"><div class="line">Cajero: ${cashierName}</div></div>
+    <div class="signature-box"><div class="line">Supervisor</div></div>
+  </div>
+
+  <div class="footer">
+    <p>GO Admin ERP - Reporte generado automaticamente</p>
+    <p>${formatDate(new Date().toISOString())}</p>
+  </div>
+</body>
+</html>`;
+  };
+
+  const generatePOSReport = (report: CashSessionReport): string => {
+    const { session, summary, sales_summary } = report;
+    const cashierName = (session as any).opened_by_name || 'Usuario';
+    const branchName = (session as any).branch_name || `#${session.branch_id}`;
+    const blindMode = !showExpected;
+
+    const formatDate = (dateString: string) => {
+      const date = new Date(dateString);
+      return date.toLocaleString('es-CO', {
+        day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
+    };
+
+    const incomeMethods = summary.income_by_method || {};
+    const expenseMethods = summary.expense_by_method || {};
+
+    const line = (label: string, value: string) => `<tr><td>${label}</td><td style="text-align:right;">${value}</td></tr>`;
+    const divider = '<tr><td colspan="2" style="border-top: 1px dashed #000; padding: 0;"></td></tr>';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Caja #${session.id}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; width: 80mm; margin: 0 auto; color: #000; font-size: 11px; line-height: 1.4; }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .large { font-size: 14px; }
+  .small { font-size: 9px; }
+  hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 1px 0; vertical-align: top; }
+  .total-box { border: 2px solid #000; padding: 6px; margin: 6px 0; text-align: center; }
+  .total-box .label { font-size: 10px; }
+  .total-box .amount { font-size: 16px; font-weight: bold; }
+  @media print { body { width: 80mm; margin: 0; } }
+</style>
+</head>
+<body>
+  <div class="center bold large">REPORTE DE CAJA</div>
+  <div class="center small">${branchName} - Sesion #${session.id}</div>
+  <hr>
+  <table>
+    ${line('Cajero:', cashierName)}
+    ${line('Sucursal:', branchName)}
+    ${line('Apertura:', formatDate(session.opened_at))}
+    ${session.closed_at ? line('Cierre:', formatDate(session.closed_at)) : ''}
+    ${line('Estado:', session.status === 'open' ? 'ABIERTA' : 'CERRADA')}
+  </table>
+  <hr>
+  <div class="center bold">RESUMEN FINANCIERO</div>
+  <table>
+    ${line('Monto Inicial', formatCurrency(summary.initial_amount))}
+    ${line('Ventas Efectivo', formatCurrency(summary.sales_cash))}
+    ${line('Ingresos', formatCurrency(summary.cash_in))}
+    ${line('Egresos', '-' + formatCurrency(summary.cash_out))}
+    ${summary.change_total > 0 ? line('Vuelto', '-' + formatCurrency(summary.change_total)) : ''}
+    ${summary.returns_total > 0 ? line('Devoluciones', '-' + formatCurrency(summary.returns_total)) : ''}
+    ${divider}
+    ${line('ESPERADO', blindMode ? '***' : formatCurrency(summary.expected_amount))}
+  </table>
+  ${session.status === 'closed' && summary.counted_amount !== undefined && !blindMode ? `
+  <table>
+    ${line('Contado', formatCurrency(summary.counted_amount))}
+    ${line('Diferencia', (summary.difference! >= 0 ? '+' : '') + formatCurrency(summary.difference || 0))}
+  </table>
+  ` : ''}
+  <hr>
+  <div class="center bold">PAGOS POR METODO</div>
+  <table>
+    ${Object.keys({...incomeMethods, ...expenseMethods}).map(method => `
+      ${line(METHOD_LABELS[method] || method, formatCurrency(incomeMethods[method] || 0))}
+    `).join('')}
+  </table>
+  <hr>
+  <div class="center bold">VENTAS</div>
+  <table>
+    ${line('Total', formatCurrency(sales_summary.total_sales))}
+    ${line('Efectivo', formatCurrency(sales_summary.cash_sales))}
+    ${line('Tarjeta', formatCurrency(sales_summary.card_sales))}
+    ${line('Otros', formatCurrency(sales_summary.other_sales))}
+  </table>
+  <hr>
+  <div class="total-box">
+    <div class="label">EFECTIVO ESPERADO</div>
+    <div class="amount">${blindMode ? '***' : formatCurrency(summary.expected_amount)}</div>
+  </div>
+  <hr>
+  <div class="center small">
+    Cajero: ${cashierName}<br>
+    GO Admin ERP<br>
+    ${formatDate(new Date().toISOString())}
+  </div>
+</body>
+</html>`;
   };
 
   return (
@@ -430,13 +331,12 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
       
       <CardContent className="space-y-4">
         <p className="text-sm dark:text-gray-400 text-gray-600">
-          Genera un reporte completo de la sesión de caja con todos los movimientos, 
-          resúmenes financieros y detalles para archivo o auditoría.
+          Genera un reporte de la sesión de caja. Formato profesional blanco y negro.
         </p>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Button
-            onClick={generatePDF}
+            onClick={() => generateReport('letter')}
             disabled={disabled || loading}
             className="bg-blue-600 hover:bg-blue-700"
           >
@@ -448,26 +348,25 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
             ) : (
               <>
                 <Printer className="h-4 w-4 mr-2" />
-                Imprimir Reporte
+                Reporte Hoja Carta
               </>
             )}
           </Button>
           
           <Button
-            onClick={generatePDF}
+            onClick={() => generateReport('pos')}
             disabled={disabled || loading}
             variant="outline"
             className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
-            <Download className="h-4 w-4 mr-2" />
-            Descargar PDF
+            <Receipt className="h-4 w-4 mr-2" />
+            Reporte POS 80mm
           </Button>
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>💡 Consejo:</strong> Se recomienda generar el reporte al cerrar cada sesión 
-            de caja para mantener un archivo completo de las operaciones.
+            <strong>Consejo:</strong> Use formato hoja para archivo/auditoria, y POS 80mm para impresora termica.
           </p>
         </div>
       </CardContent>

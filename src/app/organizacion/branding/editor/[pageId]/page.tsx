@@ -418,7 +418,7 @@ export default function PageEditorPage() {
       />
 
       {/* Main Content: Sidebar + Preview */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Left Sidebar */}
         <EditorSidebar
           sections={currentPage.sections}

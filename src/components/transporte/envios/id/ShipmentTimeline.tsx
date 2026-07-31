@@ -58,21 +58,21 @@ interface ShipmentTimelineProps {
 }
 
 const EVENT_TYPES = [
-  { value: 'created', label: 'Creado', icon: Package, color: 'bg-gray-100 text-gray-800' },
-  { value: 'assigned', label: 'Conductor asignado', icon: Package, color: 'bg-cyan-100 text-cyan-800' },
-  { value: 'ready', label: 'Listo para despacho', icon: Package, color: 'bg-blue-100 text-blue-800' },
-  { value: 'picked', label: 'Recogido', icon: Package, color: 'bg-indigo-100 text-indigo-800' },
-  { value: 'dispatched', label: 'Despachado', icon: Truck, color: 'bg-purple-100 text-purple-800' },
-  { value: 'in_transit', label: 'En tránsito', icon: Truck, color: 'bg-purple-100 text-purple-800' },
-  { value: 'out_for_delivery', label: 'En reparto', icon: MapPin, color: 'bg-orange-100 text-orange-800' },
-  { value: 'delivered', label: 'Entregado', icon: CheckCircle, color: 'bg-green-100 text-green-800' },
-  { value: 'failed_delivery', label: 'Entrega fallida', icon: XCircle, color: 'bg-red-100 text-red-800' },
-  { value: 'returned', label: 'Devuelto', icon: RotateCcw, color: 'bg-orange-100 text-orange-800' },
-  { value: 'cancelled', label: 'Cancelado', icon: XCircle, color: 'bg-gray-100 text-gray-500' },
-  { value: 'pod_registered', label: 'POD registrado', icon: FileCheck, color: 'bg-green-100 text-green-800' },
-  { value: 'cod_collected', label: 'COD cobrado', icon: DollarSign, color: 'bg-emerald-100 text-emerald-800' },
-  { value: 'incident', label: 'Incidente', icon: AlertTriangle, color: 'bg-red-100 text-red-800' },
-  { value: 'note', label: 'Nota', icon: Clock, color: 'bg-gray-100 text-gray-700' },
+  { value: 'created', label: 'Creado', icon: Package, color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100' },
+  { value: 'assigned', label: 'Conductor asignado', icon: Package, color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-800/30 dark:text-cyan-100' },
+  { value: 'ready', label: 'Listo para despacho', icon: Package, color: 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100' },
+  { value: 'picked', label: 'Recogido', icon: Package, color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800/30 dark:text-indigo-100' },
+  { value: 'dispatched', label: 'Despachado', icon: Truck, color: 'bg-purple-100 text-purple-800 dark:bg-purple-800/30 dark:text-purple-100' },
+  { value: 'in_transit', label: 'En tránsito', icon: Truck, color: 'bg-purple-100 text-purple-800 dark:bg-purple-800/30 dark:text-purple-100' },
+  { value: 'out_for_delivery', label: 'En reparto', icon: MapPin, color: 'bg-orange-100 text-orange-800 dark:bg-orange-800/30 dark:text-orange-100' },
+  { value: 'delivered', label: 'Entregado', icon: CheckCircle, color: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' },
+  { value: 'failed_delivery', label: 'Entrega fallida', icon: XCircle, color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100' },
+  { value: 'returned', label: 'Devuelto', icon: RotateCcw, color: 'bg-orange-100 text-orange-800 dark:bg-orange-800/30 dark:text-orange-100' },
+  { value: 'cancelled', label: 'Cancelado', icon: XCircle, color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
+  { value: 'pod_registered', label: 'POD registrado', icon: FileCheck, color: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' },
+  { value: 'cod_collected', label: 'COD cobrado', icon: DollarSign, color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-800/30 dark:text-emerald-100' },
+  { value: 'incident', label: 'Incidente', icon: AlertTriangle, color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100' },
+  { value: 'note', label: 'Nota', icon: Clock, color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200' },
 ];
 
 const ACTOR_LABELS: Record<string, string> = {
@@ -192,12 +192,12 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
         </div>
       ) : events.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">No hay eventos registrados</p>
+        <p className="text-gray-500 text-center py-4 dark:text-gray-400">No hay eventos registrados</p>
       ) : (
-        <div className="relative pl-6 space-y-4">
+        <div className="relative pl-6 space-y-3 sm:space-y-4">
           <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
           {events.map((event, index) => {
             const config = getEventConfig(event.event_type);
@@ -207,7 +207,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
             return (
               <div key={event.id || index} className="relative">
                 <div className={`absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center ${isLast ? 'bg-blue-500' : 'bg-gray-400'}`}>
-                  {isLast && <div className="w-2 h-2 rounded-full bg-white" />}
+                  {isLast && <div className="w-2 h-2 rounded-full bg-white dark:bg-gray-800" />}
                 </div>
                 <div className="pb-2">
                   <div className="flex items-center gap-2 mb-1">
@@ -215,7 +215,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                       <Icon className="h-3 w-3 mr-1" />
                       {config.label}
                     </Badge>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {format(new Date(event.event_time), "d MMM yyyy, HH:mm", { locale: es })}
                     </span>
                   </div>
@@ -230,13 +230,13 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                     </p>
                   )}
                   {event.location_text && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1 dark:text-gray-400">
                       <MapPin className="h-3 w-3" />
                       {event.location_text}
                     </p>
                   )}
                   {event.transport_stops && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1 dark:text-gray-400">
                       <MapPin className="h-3 w-3" />
                       {event.transport_stops.name} - {event.transport_stops.city}
                     </p>
@@ -253,7 +253,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
           <DialogHeader>
             <DialogTitle>Agregar Evento</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <Label>Tipo de Evento</Label>
               <Select

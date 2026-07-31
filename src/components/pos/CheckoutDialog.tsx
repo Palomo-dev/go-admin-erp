@@ -27,6 +27,8 @@ import { validateCompositeStock } from '@/lib/services/compositeStockValidation'
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
+import { CajasService } from '@/components/pos/cajas/CajasService';
+import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -155,6 +157,27 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // Cargar métodos de pago, moneda e impuestos
   useEffect(() => {
     if (open) {
+      // Validar si se requiere caja abierta
+      const validateCashSession = async () => {
+        try {
+          const config = await ConfiguracionService.getRequireCashSessionConfig();
+          if (config.require_cash_session) {
+            const activeSession = await CajasService.getActiveSession();
+            if (!activeSession) {
+              toast.error('No hay caja abierta', {
+                description: 'Debe abrir una caja antes de realizar ventas. Vaya a POS → Cajas.',
+                duration: 5000,
+              });
+              onOpenChange(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('Error validando caja abierta:', err);
+        }
+      };
+      validateCashSession();
+
       loadPaymentData();
       loadTaxData();
       loadServers();

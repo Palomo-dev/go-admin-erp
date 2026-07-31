@@ -49,7 +49,7 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
   const enabledCount = Object.values(formData).filter(Boolean).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
@@ -61,7 +61,7 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-4">
             {FEATURES.map((feature) => {
               const Icon = feature.icon;
               const isEnabled = formData[feature.key as keyof typeof formData];

@@ -19,7 +19,8 @@ import {
   Receipt,
   Calculator,
   Download,
-  Printer
+  Printer,
+  EyeOff
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { formatCurrency, formatDate, cn } from '@/utils/Utils';
 import { CajasService } from '../CajasService';
 import { CierreCajaDialog } from '../CierreCajaDialog';
+import { useBlindCloseMode } from '../useBlindCloseMode';
 import type { CashSession, CashMovement, CashCount, CashSummary } from '../types';
 import { toast } from 'sonner';
 
@@ -57,6 +59,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('resumen');
   const [showCierreDialog, setShowCierreDialog] = useState(false);
+  const { showExpected } = useBlindCloseMode();
 
   useEffect(() => {
     if (organization?.id && sessionUuid) {
@@ -128,95 +131,88 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="container mx-auto max-w-7xl">
-          <div className="flex justify-center items-center h-64">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-3 text-lg dark:text-gray-300">Cargando sesión de caja...</span>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-3 text-lg dark:text-gray-300">Cargando sesión de caja...</span>
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="container mx-auto max-w-7xl">
-          <Card className="dark:bg-gray-800">
-            <CardContent className="p-6 text-center">
-              <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-              <h2 className="text-lg font-semibold mb-2 dark:text-white">Sesión no encontrada</h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-4">La sesión de caja solicitada no existe.</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
+        <Card className="dark:bg-gray-800 max-w-md w-full">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+            <h2 className="text-lg font-semibold mb-2 dark:text-white">Sesión no encontrada</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">La sesión de caja solicitada no existe.</p>
+            <Button variant="outline" asChild>
               <Link href="/app/pos/cajas">
-                <Button variant="outline">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver a Cajas
-                </Button>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver a Cajas
               </Link>
-            </CardContent>
-          </Card>
-        </div>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-      <div className="container mx-auto max-w-7xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 space-y-4">
+      {/* Header compacto */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild>
             <Link href="/app/pos/cajas">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+              <ArrowLeft className="h-5 w-5" />
             </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold dark:text-white">Sesión #{session.id}</h1>
-                <Badge className={cn(
-                  session.status === 'open'
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                )}>
-                  {session.status === 'open' ? 'Abierta' : 'Cerrada'}
-                </Badge>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Abierta: {formatDateTime(session.opened_at)}
-                {session.closed_at && ` | Cerrada: ${formatDateTime(session.closed_at)}`}
-              </p>
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold dark:text-white">Sesión #{session.id}</h1>
+              <Badge className={cn(
+                session.status === 'open'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+              )}>
+                {session.status === 'open' ? 'Abierta' : 'Cerrada'}
+              </Badge>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={loadSessionData}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualizar
-            </Button>
-            {session.status === 'open' && (
-              <>
-                <Link href={`/app/pos/cajas/${sessionUuid}/arqueos/nuevo`}>
-                  <Button variant="outline" size="sm">
-                    <Calculator className="h-4 w-4 mr-2" />
-                    Arqueo
-                  </Button>
-                </Link>
-                <Link href={`/app/pos/cajas/${sessionUuid}/movimientos/nuevo`}>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Movimiento
-                  </Button>
-                </Link>
-                <Button size="sm" onClick={() => setShowCierreDialog(true)}>
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Cerrar Caja
-                </Button>
-              </>
-            )}
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Abierta: {formatDateTime(session.opened_at)}
+              {session.closed_at && ` | Cerrada: ${formatDateTime(session.closed_at)}`}
+            </p>
           </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={loadSessionData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar
+          </Button>
+          {session.status === 'open' && (
+            <>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/app/pos/cajas/${sessionUuid}/arqueos/nuevo`}>
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Arqueo
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/app/pos/cajas/${sessionUuid}/movimientos/nuevo`}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Movimiento
+                </Link>
+              </Button>
+              <Button size="sm" onClick={() => setShowCierreDialog(true)}>
+                <XCircle className="h-4 w-4 mr-2" />
+                Cerrar Caja
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
 
         {/* Resumen Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -252,50 +248,74 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
             </CardContent>
           </Card>
 
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+          {showExpected ? (
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Monto Esperado</p>
+                    <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                      {formatCurrency(summary?.expected_amount || 0)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                    <Calculator className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="dark:bg-gray-800 dark:border-gray-700 bg-purple-50 dark:bg-purple-900/20">
+              <CardContent className="p-4 flex items-center gap-3">
+                <EyeOff className="h-6 w-6 text-purple-600 dark:text-purple-400 shrink-0" />
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Monto Esperado</p>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                    {formatCurrency(summary?.expected_amount || 0)}
-                  </p>
+                  <p className="text-sm text-purple-700 dark:text-purple-400">Cierre Ciego</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-500">No visible para cajeros</p>
                 </div>
-                <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                  <Calculator className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+          {showExpected ? (
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Diferencia</p>
+                    <p className={cn(
+                      "text-2xl font-bold",
+                      (summary?.difference || 0) >= 0 
+                        ? "text-green-600 dark:text-green-400" 
+                        : "text-red-600 dark:text-red-400"
+                    )}>
+                      {formatCurrency(summary?.difference || 0)}
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "p-3 rounded-full",
+                    (summary?.difference || 0) >= 0 
+                      ? "bg-green-100 dark:bg-green-900/30" 
+                      : "bg-red-100 dark:bg-red-900/30"
+                  )}>
+                    {(summary?.difference || 0) >= 0 
+                      ? <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                      : <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                    }
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardContent className="p-4 flex items-center gap-3">
+                <EyeOff className="h-6 w-6 text-gray-400 dark:text-gray-500 shrink-0" />
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Diferencia</p>
-                  <p className={cn(
-                    "text-2xl font-bold",
-                    (summary?.difference || 0) >= 0 
-                      ? "text-green-600 dark:text-green-400" 
-                      : "text-red-600 dark:text-red-400"
-                  )}>
-                    {formatCurrency(summary?.difference || 0)}
-                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Visible solo para administradores</p>
                 </div>
-                <div className={cn(
-                  "p-3 rounded-full",
-                  (summary?.difference || 0) >= 0 
-                    ? "bg-green-100 dark:bg-green-900/30" 
-                    : "bg-red-100 dark:bg-red-900/30"
-                )}>
-                  {(summary?.difference || 0) >= 0 
-                    ? <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-                    : <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-                  }
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Tabs */}
@@ -310,20 +330,65 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
           {/* Tab Resumen */}
           <TabsContent value="resumen" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Info de sesión */}
+              <Card className="dark:bg-gray-800 dark:border-gray-700">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm dark:text-white">Información de la Sesión</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Cajero</span>
+                    <span className="font-medium dark:text-white">{(session as any).opened_by_name || 'Usuario'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Sucursal</span>
+                    <span className="font-medium dark:text-white">{(session as any).branch_name || `#${session.branch_id}`}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Apertura</span>
+                    <span className="dark:text-white">{formatDateTime(session.opened_at)}</span>
+                  </div>
+                  {session.closed_at && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">Cierre</span>
+                      <span className="dark:text-white">{formatDateTime(session.closed_at)}</span>
+                    </div>
+                  )}
+                  {session.notes && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 dark:text-gray-400">Notas</span>
+                      <span className="dark:text-white text-right max-w-[60%]">{session.notes}</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Desglose de Caja */}
               <Card className="dark:bg-gray-800 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-lg dark:text-white">Desglose de Caja</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm dark:text-white">Desglose de Caja</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between py-2 border-b dark:border-gray-700">
                     <span className="text-gray-600 dark:text-gray-400">Monto Inicial</span>
                     <span className="font-medium dark:text-white">{formatCurrency(summary?.initial_amount || 0)}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-b dark:border-gray-700">
-                    <span className="text-gray-600 dark:text-gray-400">+ Ventas en Efectivo</span>
-                    <span className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(summary?.sales_cash || 0)}</span>
-                  </div>
+                  {/* Ventas por cada método de pago */}
+                  {summary?.income_by_method && Object.keys(summary.income_by_method).length > 0 ? (
+                    Object.entries(summary.income_by_method).map(([method, amount]) => (
+                      <div key={method} className="flex justify-between py-2 border-b dark:border-gray-700">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          + Ventas en {method === 'cash' ? 'Efectivo' : method === 'card' ? 'Tarjeta' : method === 'transfer' ? 'Transferencia' : method === 'credit' ? 'Crédito' : method}
+                        </span>
+                        <span className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(amount)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400">+ Ventas en Efectivo</span>
+                      <span className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(summary?.sales_cash || 0)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-2 border-b dark:border-gray-700">
                     <span className="text-gray-600 dark:text-gray-400">+ Ingresos</span>
                     <span className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(summary?.cash_in || 0)}</span>
@@ -332,12 +397,31 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                     <span className="text-gray-600 dark:text-gray-400">- Egresos</span>
                     <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(summary?.cash_out || 0)}</span>
                   </div>
+                  {summary && summary.change_total > 0 && (
+                    <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400">- Vuelto Entregado</span>
+                      <span className="font-medium text-orange-600 dark:text-orange-400">-{formatCurrency(summary.change_total)}</span>
+                    </div>
+                  )}
+                  {summary && summary.returns_total > 0 && (
+                    <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400">- Devoluciones</span>
+                      <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(summary.returns_total)}</span>
+                    </div>
+                  )}
                   <Separator />
-                  <div className="flex justify-between py-2">
-                    <span className="font-semibold dark:text-white">= Monto Esperado</span>
-                    <span className="font-bold text-lg text-blue-600 dark:text-blue-400">{formatCurrency(summary?.expected_amount || 0)}</span>
-                  </div>
-                  {session.status === 'closed' && summary?.counted_amount !== undefined && (
+                  {showExpected ? (
+                    <div className="flex justify-between py-2">
+                      <span className="font-semibold dark:text-white">= Monto Esperado</span>
+                      <span className="font-bold text-lg text-blue-600 dark:text-blue-400">{formatCurrency(summary?.expected_amount || 0)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 py-2">
+                      <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      <span className="text-sm text-purple-700 dark:text-purple-400">Cierre ciego: monto esperado no visible</span>
+                    </div>
+                  )}
+                  {session.status === 'closed' && summary?.counted_amount !== undefined && showExpected && (
                     <>
                       <div className="flex justify-between py-2 border-t dark:border-gray-700">
                         <span className="text-gray-600 dark:text-gray-400">Monto Contado</span>
@@ -359,8 +443,8 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
 
               {/* Pagos por Método */}
               <Card className="dark:bg-gray-800 dark:border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-lg dark:text-white">Pagos por Método</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm dark:text-white">Pagos por Método</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {Object.keys(paymentsByMethod).length === 0 ? (
@@ -410,12 +494,12 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg dark:text-white">Movimientos de Caja</CardTitle>
                 {session.status === 'open' && (
-                  <Link href={`/app/pos/cajas/${sessionUuid}/movimientos/nuevo`}>
-                    <Button size="sm">
+                  <Button size="sm" asChild>
+                    <Link href={`/app/pos/cajas/${sessionUuid}/movimientos/nuevo`}>
                       <Plus className="h-4 w-4 mr-2" />
                       Nuevo Movimiento
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 )}
               </CardHeader>
               <CardContent>
@@ -468,12 +552,12 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg dark:text-white">Arqueos de Caja</CardTitle>
                 {session.status === 'open' && (
-                  <Link href={`/app/pos/cajas/${sessionUuid}/arqueos/nuevo`}>
-                    <Button size="sm">
+                  <Button size="sm" asChild>
+                    <Link href={`/app/pos/cajas/${sessionUuid}/arqueos/nuevo`}>
                       <Plus className="h-4 w-4 mr-2" />
                       Nuevo Arqueo
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 )}
               </CardHeader>
               <CardContent>
@@ -486,8 +570,8 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead className="text-right">Contado</TableHead>
-                        <TableHead className="text-right">Esperado</TableHead>
-                        <TableHead className="text-right">Diferencia</TableHead>
+                        {showExpected && <TableHead className="text-right">Esperado</TableHead>}
+                        {showExpected && <TableHead className="text-right">Diferencia</TableHead>}
                         <TableHead>Notas</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -499,15 +583,19 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                           <TableCell className="text-right font-medium dark:text-white">
                             {formatCurrency(count.counted_amount)}
                           </TableCell>
-                          <TableCell className="text-right text-gray-500 dark:text-gray-400">
-                            {formatCurrency(count.expected_amount || 0)}
-                          </TableCell>
-                          <TableCell className={cn(
-                            "text-right font-semibold",
-                            (count.difference || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                          )}>
-                            {formatCurrency(count.difference || 0)}
-                          </TableCell>
+                          {showExpected && (
+                            <TableCell className="text-right text-gray-500 dark:text-gray-400">
+                              {formatCurrency(count.expected_amount || 0)}
+                            </TableCell>
+                          )}
+                          {showExpected && (
+                            <TableCell className={cn(
+                              "text-right font-semibold",
+                              (count.difference || 0) >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                            )}>
+                              {formatCurrency(count.difference || 0)}
+                            </TableCell>
+                          )}
                           <TableCell className="text-gray-500 dark:text-gray-400">{count.notes || '-'}</TableCell>
                         </TableRow>
                       ))}
@@ -562,11 +650,11 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                             {formatCurrency(sale.total)}
                           </TableCell>
                           <TableCell>
-                            <Link href={`/app/pos/ventas/${sale.id}`}>
-                              <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/app/pos/ventas/${sale.id}`}>
                                 <Receipt className="h-4 w-4" />
-                              </Button>
-                            </Link>
+                              </Link>
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -579,6 +667,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
         </Tabs>
 
         {/* Dialogs */}
+        
         {session.status === 'open' && (
           <CierreCajaDialog
             session={session}
@@ -587,7 +676,6 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
             onSessionClosed={handleSessionClosed}
           />
         )}
-      </div>
     </div>
   );
 }

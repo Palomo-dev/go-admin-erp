@@ -128,7 +128,7 @@ export function DriverDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label htmlFor="employment_id">Empleado *</Label>
             <Select
@@ -148,11 +148,11 @@ export function DriverDialog({
               </SelectContent>
             </Select>
             {errors.employment_id && (
-              <p className="text-sm text-red-500">{errors.employment_id.message}</p>
+              <p className="text-sm text-red-500 dark:text-red-400">{errors.employment_id.message}</p>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="license_number">Número de Licencia *</Label>
               <Input
@@ -161,7 +161,7 @@ export function DriverDialog({
                 placeholder="123456789"
               />
               {errors.license_number && (
-                <p className="text-sm text-red-500">{errors.license_number.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.license_number.message}</p>
               )}
             </div>
 
@@ -186,12 +186,12 @@ export function DriverDialog({
                 </SelectContent>
               </Select>
               {errors.license_category && (
-                <p className="text-sm text-red-500">{errors.license_category.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.license_category.message}</p>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="license_expiry">Vencimiento Licencia *</Label>
               <Input
@@ -200,7 +200,7 @@ export function DriverDialog({
                 {...register('license_expiry')}
               />
               {errors.license_expiry && (
-                <p className="text-sm text-red-500">{errors.license_expiry.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.license_expiry.message}</p>
               )}
             </div>
 
@@ -221,7 +221,7 @@ export function DriverDialog({
               {...register('certifications')}
               placeholder="Matpel, Primeros Auxilios, Defensivo..."
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Separa las certificaciones con comas
             </p>
           </div>

@@ -50,7 +50,7 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Título y Subtítulo */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
@@ -62,7 +62,7 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
             {t('textsDesc')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label className="dark:text-gray-300">{t('mainTitle')}</Label>
             <Input
@@ -96,10 +96,10 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
             {t('mediaDesc')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label className="dark:text-gray-300">{t('bgImage')}</Label>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Input
                 value={formData.hero_image_url}
                 onChange={(e) => setFormData({ ...formData, hero_image_url: e.target.value })}
@@ -166,8 +166,8 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
             {t('ctaDesc')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label className="dark:text-gray-300">{t('ctaBtnText')}</Label>
               <Input
@@ -206,7 +206,7 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
           >
             <div className="absolute inset-0 bg-black/40" />
             <div className="relative z-10 text-center text-white px-4">
-              <h1 className="text-3xl font-bold mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">
                 {formData.hero_title || t('previewTitleFallback')}
               </h1>
               <p className="text-lg mb-4 opacity-90">

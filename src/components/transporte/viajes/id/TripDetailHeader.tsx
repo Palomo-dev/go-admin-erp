@@ -56,8 +56,8 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
   const status = STATUS_CONFIG[trip.status] || STATUS_CONFIG.scheduled;
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
         <Button
           variant="ghost"
           size="sm"
@@ -67,8 +67,8 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           Volver
         </Button>
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               {trip.trip_code}
             </h1>
             <Badge className={`${status.color} flex items-center gap-1`}>
@@ -76,19 +76,19 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
               {status.label}
             </Badge>
           </div>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-gray-600 dark:text-gray-400 break-words">
             {trip.transport_routes?.name} •{' '}
             {format(new Date(trip.trip_date), "EEEE d 'de' MMMM yyyy", { locale: es })}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {trip.status === 'scheduled' && (
           <Button
             variant="outline"
             onClick={() => onStatusChange('boarding')}
-            className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
+            className="text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:text-yellow-300 dark:border-yellow-300 dark:hover:bg-yellow-900/30"
           >
             <UserCheck className="h-4 w-4 mr-2" />
             Iniciar Abordaje
@@ -98,7 +98,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           <Button
             variant="outline"
             onClick={() => onStatusChange('in_transit')}
-            className="text-green-600 border-green-600 hover:bg-green-50"
+            className="text-green-600 border-green-600 hover:bg-green-50 dark:text-green-300 dark:border-green-300 dark:hover:bg-green-900/30"
           >
             <Play className="h-4 w-4 mr-2" />
             Iniciar Viaje
@@ -108,7 +108,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           <Button
             variant="outline"
             onClick={() => onStatusChange('completed')}
-            className="text-gray-600 border-gray-600 hover:bg-gray-50"
+            className="text-gray-600 border-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-300 dark:hover:bg-gray-900"
           >
             <Square className="h-4 w-4 mr-2" />
             Completar Viaje
@@ -118,7 +118,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           <Button
             variant="outline"
             onClick={() => onStatusChange('cancelled')}
-            className="text-red-600 border-red-600 hover:bg-red-50"
+            className="text-red-600 border-red-600 hover:bg-red-50 dark:text-red-300 dark:border-red-300 dark:hover:bg-red-900/30"
           >
             <AlertTriangle className="h-4 w-4 mr-2" />
             Cancelar

@@ -86,10 +86,10 @@ export function VehiclesList({
 }: VehiclesListProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded" />
             </CardContent>
           </Card>
@@ -102,7 +102,7 @@ export function VehiclesList({
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <Truck className="h-12 w-12 text-gray-400 mb-4" />
+          <Truck className="h-12 w-12 text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No hay vehículos
           </h3>
@@ -115,7 +115,7 @@ export function VehiclesList({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
       {vehicles.map((vehicle) => {
         const Icon = vehicleTypeIcons[vehicle.vehicle_type] || Car;
         const status = statusConfig[vehicle.status] || statusConfig.inactive;
@@ -190,7 +190,7 @@ export function VehiclesList({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => onDelete(vehicle)}
-                      className="text-red-600"
+                      className="text-red-600 dark:text-red-300"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar
@@ -207,7 +207,7 @@ export function VehiclesList({
                   {status.label}
                 </Badge>
                 {(hasWarnings || hasExpired) && (
-                  <Badge variant={hasExpired ? 'destructive' : 'outline'} className={hasWarnings && !hasExpired ? 'border-yellow-500 text-yellow-600' : ''}>
+                  <Badge variant={hasExpired ? 'destructive' : 'outline'} className={hasWarnings && !hasExpired ? 'border-yellow-500 text-yellow-600 dark:border-yellow-400 dark:text-yellow-300' : ''}>
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     {hasExpired ? 'Docs vencidos' : 'Docs por vencer'}
                   </Badge>
@@ -236,7 +236,7 @@ export function VehiclesList({
                   <p>Carga máx: {vehicle.capacity_kg} kg</p>
                 )}
                 {vehicle.soat_expiry && (
-                  <p className={`flex items-center gap-2 ${soatStatus === 'expired' ? 'text-red-600' : soatStatus === 'warning' ? 'text-yellow-600' : ''}`}>
+                  <p className={`flex items-center gap-2 ${soatStatus === 'expired' ? 'text-red-600 dark:text-red-300' : soatStatus === 'warning' ? 'text-yellow-600 dark:text-yellow-300' : ''}`}>
                     <Calendar className="h-3 w-3" />
                     SOAT: {format(new Date(vehicle.soat_expiry), 'dd/MM/yyyy')}
                   </p>

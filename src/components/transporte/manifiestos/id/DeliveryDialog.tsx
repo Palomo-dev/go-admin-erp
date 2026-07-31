@@ -94,7 +94,7 @@ export function DeliveryDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-300" />
             Confirmar Entrega
           </DialogTitle>
         </DialogHeader>
@@ -102,18 +102,18 @@ export function DeliveryDialog({
         {shipment && (
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
             <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-gray-500" />
+              <Package className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               <span className="font-medium">{shipment.shipment_number}</span>
             </div>
             {shipment.delivery_contact_name && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
                 Destinatario esperado: {shipment.delivery_contact_name}
               </p>
             )}
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label htmlFor="recipient_name">Nombre de quien recibe *</Label>
             <Input

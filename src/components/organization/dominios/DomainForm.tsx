@@ -130,7 +130,7 @@ export function DomainForm({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 py-4">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -191,7 +191,7 @@ export function DomainForm({
           </div>
 
           {/* Opciones */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="isPrimary" className="dark:text-gray-200">

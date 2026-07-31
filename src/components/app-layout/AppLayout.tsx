@@ -103,6 +103,7 @@ import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotif
 import { ModuleProvider, useModuleContext } from '@/lib/context/ModuleContext';
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
+import { OfflineIndicator } from './OfflineIndicator';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
 import { getModuleCodeByHref } from '@/lib/config/modulePages';
@@ -1215,6 +1216,8 @@ export const AppLayout = ({
       <BranchProvider>
       {/* Barra de progreso de navegación - feedback visual inmediato */}
       <NavigationProgress />
+      {/* Indicador offline para app de escritorio */}
+      <OfflineIndicator />
       
       <div className="flex h-dynamic-screen overflow-hidden">
       {/* Overlay oscuro para móvil cuando el sidebar está abierto */}

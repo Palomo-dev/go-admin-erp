@@ -36,7 +36,7 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
     <Card className={isResolved ? 'border-green-200 dark:border-green-800' : ''}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CheckCircle className={`h-5 w-5 ${isResolved ? 'text-green-600' : 'text-gray-400'}`} />
+          <CheckCircle className={`h-5 w-5 ${isResolved ? 'text-green-600 dark:text-green-300' : 'text-gray-400 dark:text-gray-500'}`} />
           Resolución del Incidente
           {incident.status === 'closed' && (
             <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
@@ -50,9 +50,9 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 sm:space-y-6">
         {/* Fechas de resolución */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
           {incident.acknowledged_at && (
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -89,7 +89,7 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {incident.resolution_summary && (
           <div className="space-y-2">
             <h4 className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
-              <FileText className="h-4 w-4 text-gray-500" />
+              <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Resumen de Resolución
             </h4>
             <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
@@ -102,7 +102,7 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {incident.root_cause && (
           <div className="space-y-2">
             <h4 className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <AlertTriangle className="h-4 w-4 text-orange-500 dark:text-orange-400" />
               Causa Raíz
             </h4>
             <p className="text-gray-700 dark:text-gray-300 bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
@@ -115,7 +115,7 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {incident.corrective_actions && (
           <div className="space-y-2">
             <h4 className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
               Acciones Correctivas
             </h4>
             <p className="text-gray-700 dark:text-gray-300 bg-green-50 dark:bg-green-900/20 rounded-lg p-4">

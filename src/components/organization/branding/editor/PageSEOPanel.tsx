@@ -28,12 +28,12 @@ export default function PageSEOPanel({
   const [showImagePicker, setShowImagePicker] = useState(false);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Meta Title */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className="text-xs text-gray-500 dark:text-gray-400">{t('metaTitle')}</Label>
-          <span className={`text-[10px] ${titleLength > 60 ? 'text-red-500' : 'text-gray-400'}`}>
+          <span className={`text-[10px] ${titleLength > 60 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
             {titleLength}/60
           </span>
         </div>
@@ -50,7 +50,7 @@ export default function PageSEOPanel({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className="text-xs text-gray-500 dark:text-gray-400">{t('metaDescription')}</Label>
-          <span className={`text-[10px] ${descLength > 160 ? 'text-red-500' : 'text-gray-400'}`}>
+          <span className={`text-[10px] ${descLength > 160 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
             {descLength}/160
           </span>
         </div>
@@ -106,7 +106,7 @@ export default function PageSEOPanel({
       {/* Mini Google Preview */}
       <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-[10px] space-y-0.5">
         <p className="text-gray-400 dark:text-gray-500 mb-1">{t('googlePreview')}</p>
-        <p className="text-blue-600 dark:text-blue-400 truncate">
+        <p className="text-blue-600 dark:text-blue-400 min-w-0 break-words">
           {metaTitle || t('pageTitle')}
         </p>
         <p className="text-gray-500 dark:text-gray-400 line-clamp-2">

@@ -97,12 +97,12 @@ export function AddEventDialog({ open, onOpenChange, onSubmit }: AddEventDialogP
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-blue-600" />
+            <Plus className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Agregar Entrada a Bitácora
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-4">
           {/* Tipo de evento */}
           <div className="space-y-2">
             <Label htmlFor="event_type">Tipo de evento</Label>

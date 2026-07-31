@@ -32,14 +32,65 @@ export async function POST(request: NextRequest) {
 
     const supabase = createSupabaseClient();
 
-    const { data: invoice, error: invoiceError } = await supabase
+    // Obtener la nota crédito (registrada en invoice_sales con document_type='credit_note')
+    const { data: creditNote, error: creditNoteError } = await supabase
       .from('invoice_sales')
       .select('*')
       .eq('id', invoiceId)
       .single();
 
-    if (invoiceError || !invoice) {
-      return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 });
+    if (creditNoteError || !creditNote) {
+      return NextResponse.json({ error: 'Nota de crédito no encontrada' }, { status: 404 });
+    }
+
+    // Obtener la factura original usando related_invoice_id
+    const originalInvoiceId = creditNote.related_invoice_id;
+    if (!originalInvoiceId) {
+      return NextResponse.json(
+        { error: 'La nota de crédito no tiene factura original relacionada' },
+        { status: 400 }
+      );
+    }
+
+    const { data: originalInvoice, error: originalInvoiceError } = await supabase
+      .from('invoice_sales')
+      .select('*')
+      .eq('id', originalInvoiceId)
+      .single();
+
+    if (originalInvoiceError || !originalInvoice) {
+      return NextResponse.json({ error: 'Factura original no encontrada' }, { status: 404 });
+    }
+
+    // Validar que la factura original tenga CUFE (fue aceptada por DIAN)
+    if (!originalInvoice.xml_uuid) {
+      return NextResponse.json(
+        { error: 'La factura original no fue enviada a DIAN (sin CUFE). No se puede crear la nota crédito electrónica.' },
+        { status: 400 }
+      );
+    }
+
+    // Si no se pasan items en el body, obtenerlos de la nota crédito
+    let creditNoteItems = items;
+    if (!creditNoteItems || creditNoteItems.length === 0) {
+      const { data: noteItems, error: noteItemsError } = await supabase
+        .from('invoice_items')
+        .select('qty, unit_price, tax_rate, tax_code, description, total_line, discount_amount')
+        .eq('invoice_sales_id', invoiceId);
+
+      if (noteItemsError) {
+        return NextResponse.json({ error: 'Error obteniendo items de la nota crédito' }, { status: 500 });
+      }
+
+      creditNoteItems = (noteItems || []).map((item: any) => ({
+        code_reference: item.code_reference || 1,
+        name: item.description || 'Nota crédito',
+        quantity: Math.abs(Number(item.qty) || 0),
+        discount_rate: 0,
+        price: Math.abs(Number(item.unit_price) || 0),
+        tax_rate: Number(item.tax_rate) || 0,
+        withholding_taxes: [],
+      }));
     }
 
     const { data: job, error: jobError } = await supabase
@@ -66,15 +117,15 @@ export async function POST(request: NextRequest) {
         {
           reference_code: `NC-${invoiceId.substring(0, 8)}`,
           billing_reference: {
-            number: invoice.number,
-            cufe: invoice.xml_uuid || '',
-            uuid: invoice.xml_uuid || '',
+            number: originalInvoice.number,
+            cufe: originalInvoice.xml_uuid,
+            uuid: originalInvoice.xml_uuid,
           },
           credit_note_reason: reason,
-          payment_method_code: invoice.payment_method_code || mapPaymentMethod(invoice.payment_method),
-          observation: body.observation || '',
+          payment_method_code: originalInvoice.payment_method_code || mapPaymentMethod(originalInvoice.payment_method),
+          observation: body.observation || creditNote.description || '',
           send_email: body.send_email ?? true,
-          items: items || [],
+          items: creditNoteItems,
         }
       );
 
@@ -87,6 +138,18 @@ export async function POST(request: NextRequest) {
           processed_at: new Date().toISOString(),
         })
         .eq('id', job.id);
+
+      // Actualizar la nota crédito con el CUFE y número asignado por Factus/DIAN
+      if (result.data?.cufe) {
+        await supabase
+          .from('invoice_sales')
+          .update({
+            xml_uuid: result.data.cufe,
+            einvoice_number: result.data.number || null,
+            einvoice_qr: (result.data as any)?.qr_data || null,
+          })
+          .eq('id', invoiceId);
+      }
 
       await supabase
         .from('electronic_invoicing_events')

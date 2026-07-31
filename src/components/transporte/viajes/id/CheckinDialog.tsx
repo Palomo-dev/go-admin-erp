@@ -126,8 +126,8 @@ export function CheckinDialog({
   };
 
   const STATUS_COLORS: Record<string, string> = {
-    reserved: 'bg-blue-100 text-blue-800',
-    confirmed: 'bg-green-100 text-green-800',
+    reserved: 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100',
+    confirmed: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100',
   };
 
   return (
@@ -135,7 +135,7 @@ export function CheckinDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <QrCode className="h-5 w-5 text-blue-600" />
+            <QrCode className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Check-in de Pasajero
           </DialogTitle>
         </DialogHeader>
@@ -152,7 +152,7 @@ export function CheckinDialog({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="code" className="space-y-4 mt-4">
+          <TabsContent value="code" className="space-y-3 sm:space-y-4 mt-4">
             <div className="space-y-2">
               <Label htmlFor="checkin_code">Código de Check-in o Boleto</Label>
               <div className="flex gap-2">
@@ -189,8 +189,8 @@ export function CheckinDialog({
             )}
 
             {success && (
-              <Alert className="border-green-500 bg-green-50 dark:bg-green-900/20">
-                <CheckCircle className="h-4 w-4 text-green-600" />
+              <Alert className="border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-400">
+                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-300" />
                 <AlertDescription className="text-green-700 dark:text-green-400">
                   ¡Pasajero abordado exitosamente!
                 </AlertDescription>
@@ -201,12 +201,12 @@ export function CheckinDialog({
               <div className="border rounded-lg p-4 space-y-3 bg-gray-50 dark:bg-gray-800">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-gray-500" />
+                    <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                     <span className="font-medium">
                       {foundTicket.passenger_name || foundTicket.customers?.full_name || 'Pasajero'}
                     </span>
                   </div>
-                  <Badge className={STATUS_COLORS[foundTicket.status] || 'bg-gray-100'}>
+                  <Badge className={STATUS_COLORS[foundTicket.status] || 'bg-gray-100 dark:bg-gray-800'}>
                     {foundTicket.status === 'reserved' ? 'Reservado' : 'Confirmado'}
                   </Badge>
                 </div>
@@ -223,16 +223,16 @@ export function CheckinDialog({
                   </div>
                 )}
 
-                <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center gap-2 sm:gap-4 text-sm text-gray-600 dark:text-gray-400">
                   {foundTicket.boarding_stop && (
                     <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4 text-green-500" />
+                      <MapPin className="h-4 w-4 text-green-500 dark:text-green-400" />
                       <span>{foundTicket.boarding_stop.name}</span>
                     </div>
                   )}
                   {foundTicket.alighting_stop && (
                     <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4 text-red-500" />
+                      <MapPin className="h-4 w-4 text-red-500 dark:text-red-400" />
                       <span>{foundTicket.alighting_stop.name}</span>
                     </div>
                   )}
@@ -255,12 +255,12 @@ export function CheckinDialog({
           </TabsContent>
 
           <TabsContent value="qr" className="mt-4">
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
-              <QrCode className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 sm:p-8 text-center">
+              <QrCode className="h-16 w-16 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
               <p className="text-gray-600 dark:text-gray-400 mb-2">
                 Escanea el código QR del boleto
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Funcionalidad de cámara próximamente disponible.
                 <br />
                 Por ahora, usa el código manualmente.

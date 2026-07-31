@@ -148,7 +148,7 @@ export default function EditorSidebar({
   };
 
   return (
-    <div className="w-[320px] min-w-[320px] bg-white dark:bg-gray-900 text-gray-800 dark:text-white flex flex-col h-full border-r border-gray-200 dark:border-gray-700">
+    <div className="flex-1 md:flex-none md:w-[320px] md:min-w-[320px] bg-white dark:bg-gray-900 text-gray-800 dark:text-white flex flex-col h-full min-h-0 overflow-hidden border-r border-gray-200 dark:border-gray-700">
       {/* Sidebar Header */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700/50">
         <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -313,8 +313,8 @@ function SectionListItem({
         <GripVertical className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         <IconComponent className="h-4 w-4 text-blue-600 dark:text-gray-400 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate text-gray-800 dark:text-white">{label}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{variantLabel}</p>
+          <p className="text-sm font-medium min-w-0 break-words text-gray-800 dark:text-white">{label}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 min-w-0 break-words">{variantLabel}</p>
         </div>
         {isActive ? (
           <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
@@ -573,13 +573,13 @@ function SectionListItem({
                   e.stopPropagation();
                   onToggleVisibility(!section.is_visible);
                 }}
-                className="p-1 rounded hover:bg-white/10 transition-colors"
+                className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
                 title={section.is_visible ? t('hideSection') : t('showSection')}
               >
                 {section.is_visible ? (
-                  <Eye className="h-3.5 w-3.5 text-gray-400" />
+                  <Eye className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                 ) : (
-                  <EyeOff className="h-3.5 w-3.5 text-gray-500" />
+                  <EyeOff className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
                 )}
               </button>
             </div>
@@ -591,7 +591,7 @@ function SectionListItem({
               className="p-1 rounded hover:bg-red-900/30 transition-colors"
               title={t('deleteSection')}
             >
-              <Trash2 className="h-3.5 w-3.5 text-red-400" />
+              <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500" />
             </button>
           </div>
         </div>
@@ -825,20 +825,20 @@ function TestimonialItemsEditor({
                 className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
                 onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
               >
-                <MessageSquareQuote className="h-3 w-3 text-gray-400 shrink-0" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <MessageSquareQuote className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
+                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
                   {t.name || tr('noName')}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemove(t.id); }}
-                  className="p-0.5 hover:text-red-500 text-gray-400"
+                  className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
                 >
                   <X className="h-3 w-3" />
                 </button>
                 {expandedId === t.id ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400" />
+                  <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                 ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400" />
+                  <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                 )}
               </div>
               {expandedId === t.id && (
@@ -872,7 +872,7 @@ function TestimonialItemsEditor({
                           className={cn(
                             'h-3.5 w-3.5',
                             star <= (t.rating || 0)
-                              ? 'text-yellow-400 fill-yellow-400'
+                              ? 'text-yellow-400 fill-yellow-400 dark:text-yellow-500 dark:fill-yellow-500'
                               : 'text-gray-300 dark:text-gray-600'
                           )}
                         />
@@ -951,20 +951,20 @@ function FAQItemsEditor({
                 className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
                 onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
               >
-                <HelpCircle className="h-3 w-3 text-gray-400 shrink-0" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <HelpCircle className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
+                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
                   {f.question || t('noQuestion')}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemove(f.id); }}
-                  className="p-0.5 hover:text-red-500 text-gray-400"
+                  className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
                 >
                   <X className="h-3 w-3" />
                 </button>
                 {expandedId === f.id ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400" />
+                  <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                 ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400" />
+                  <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                 )}
               </div>
               {expandedId === f.id && (
@@ -1069,32 +1069,32 @@ function HeroSlidesEditor({
                 className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
                 onClick={() => setExpandedId(expandedId === slide.id ? null : slide.id)}
               >
-                <Image className="h-3 w-3 text-gray-400 shrink-0" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <Image className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
+                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
                   {slide.title || `Slide ${idx + 1}`}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemove(slide.id); }}
-                  className="p-0.5 hover:text-red-500 text-gray-400"
+                  className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
                 >
                   <X className="h-3 w-3" />
                 </button>
                 {expandedId === slide.id ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400" />
+                  <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                 ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400" />
+                  <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                 )}
               </div>
               {expandedId === slide.id && (
                 <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
-                  <Label className="text-[10px] text-gray-400 mt-1.5 block">Título</Label>
+                  <Label className="text-[10px] text-gray-400 mt-1.5 block dark:text-gray-500">Título</Label>
                   <Input
                     value={slide.title || ''}
                     onChange={(e) => handleUpdate(slide.id, { title: e.target.value })}
                     placeholder="Título del slide"
                     className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
                   />
-                  <Label className="text-[10px] text-gray-400 block">Subtítulo</Label>
+                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">Subtítulo</Label>
                   <Textarea
                     value={slide.subtitle || ''}
                     onChange={(e) => handleUpdate(slide.id, { subtitle: e.target.value })}
@@ -1102,24 +1102,24 @@ function HeroSlidesEditor({
                     rows={2}
                     className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
                   />
-                  <Label className="text-[10px] text-gray-400 block">Imagen escritorio</Label>
+                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">Imagen escritorio</Label>
                   <ImageFieldPicker
                     value={slide.image_url || ''}
                     onChange={(url) => handleUpdate(slide.id, { image_url: url })}
                   />
-                  <Label className="text-[10px] text-gray-400 block">Imagen móvil</Label>
+                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">Imagen móvil</Label>
                   <ImageFieldPicker
                     value={slide.image_url_mobile || ''}
                     onChange={(url) => handleUpdate(slide.id, { image_url_mobile: url })}
                   />
-                  <Label className="text-[10px] text-gray-400 block">Texto del botón</Label>
+                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">Texto del botón</Label>
                   <Input
                     value={slide.cta_text || ''}
                     onChange={(e) => handleUpdate(slide.id, { cta_text: e.target.value })}
                     placeholder="Ver más"
                     className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
                   />
-                  <Label className="text-[10px] text-gray-400 block">URL del botón</Label>
+                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">URL del botón</Label>
                   <Input
                     value={slide.cta_url || ''}
                     onChange={(e) => handleUpdate(slide.id, { cta_url: e.target.value })}
@@ -1207,7 +1207,7 @@ function CategorySelectorEditor({
   if (loading) {
     return (
       <div className="pt-2 border-t border-gray-200 dark:border-gray-700/50">
-        <p className="text-[10px] text-gray-400 text-center py-2">Cargando categorías...</p>
+        <p className="text-[10px] text-gray-400 text-center py-2 dark:text-gray-500">Cargando categorías...</p>
       </div>
     );
   }
@@ -1232,7 +1232,7 @@ function CategorySelectorEditor({
                 dragIdx === idx && 'opacity-50'
               )}
             >
-              <GripVertical className="h-3 w-3 text-gray-400 shrink-0" />
+              <GripVertical className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
               {cat.image_url ? (
                 <img src={cat.image_url} alt={cat.name} className="w-6 h-6 rounded object-cover shrink-0" />
               ) : (
@@ -1240,11 +1240,11 @@ function CategorySelectorEditor({
                   <span className="text-[10px]">🏷️</span>
                 </div>
               )}
-              <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate">{cat.name}</span>
-              <span className="text-[9px] text-gray-400 shrink-0">#{idx + 1}</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 min-w-0 break-words">{cat.name}</span>
+              <span className="text-[9px] text-gray-400 shrink-0 dark:text-gray-500">#{idx + 1}</span>
               <button
                 onClick={() => handleToggle(cat.id, false)}
-                className="p-0.5 text-red-400 hover:text-red-600 shrink-0"
+                className="p-0.5 text-red-400 hover:text-red-600 shrink-0 dark:text-red-500 dark:hover:text-red-300"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -1273,7 +1273,7 @@ function CategorySelectorEditor({
                     <span className="text-[9px]">🏷️</span>
                   </div>
                 )}
-                <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{cat.name}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400 min-w-0 break-words">{cat.name}</span>
               </label>
             ))}
           </div>
@@ -1281,10 +1281,10 @@ function CategorySelectorEditor({
       )}
 
       {categories.length === 0 && (
-        <p className="text-[10px] text-gray-400 text-center py-2">No hay categorías creadas</p>
+        <p className="text-[10px] text-gray-400 text-center py-2 dark:text-gray-500">No hay categorías creadas</p>
       )}
 
-      <p className="text-[9px] text-gray-400">
+      <p className="text-[9px] text-gray-400 dark:text-gray-500">
         {selectedIds.length === 0
           ? 'Sin selección: se muestran todas las categorías'
           : 'Arrastra para reordenar. Solo se mostrarán las seleccionadas.'}
@@ -1380,7 +1380,7 @@ function BrandsItemsEditor({
                 className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
                 onClick={() => setExpandedId(expandedId === brand.id ? null : brand.id)}
               >
-                <GripVertical className="h-3 w-3 text-gray-400 shrink-0 cursor-grab" />
+                <GripVertical className="h-3 w-3 text-gray-400 shrink-0 cursor-grab dark:text-gray-500" />
                 {brand.logo_url ? (
                   <img src={brand.logo_url} alt={brand.name} className="h-6 w-10 object-contain shrink-0 rounded" />
                 ) : (
@@ -1388,19 +1388,19 @@ function BrandsItemsEditor({
                     <span className="text-[9px]">🏢</span>
                   </div>
                 )}
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
                   {brand.name || 'Sin nombre'}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemove(brand.id); }}
-                  className="p-0.5 hover:text-red-500 text-gray-400"
+                  className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
                 >
                   <X className="h-3 w-3" />
                 </button>
                 {expandedId === brand.id ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400" />
+                  <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                 ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400" />
+                  <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                 )}
               </div>
               {expandedId === brand.id && (
@@ -1480,12 +1480,12 @@ function SectionSpacingEditor({
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 w-full text-left"
       >
-        <Layout className="h-3 w-3 text-gray-400" />
+        <Layout className="h-3 w-3 text-gray-400 dark:text-gray-500" />
         <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-1">Espaciado</span>
         {isOpen ? (
-          <ChevronUp className="h-3 w-3 text-gray-400" />
+          <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
         ) : (
-          <ChevronDown className="h-3 w-3 text-gray-400" />
+          <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
         )}
       </button>
 
@@ -1493,7 +1493,7 @@ function SectionSpacingEditor({
         <div className="space-y-2 mt-2">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[9px] text-gray-400 block mb-0.5">Padding arriba</label>
+              <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Padding arriba</label>
               <Select value={paddingTop} onValueChange={(v) => onChange('padding_top', v)}>
                 <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1504,7 +1504,7 @@ function SectionSpacingEditor({
               </Select>
             </div>
             <div>
-              <label className="text-[9px] text-gray-400 block mb-0.5">Padding abajo</label>
+              <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Padding abajo</label>
               <Select value={paddingBottom} onValueChange={(v) => onChange('padding_bottom', v)}>
                 <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1517,7 +1517,7 @@ function SectionSpacingEditor({
           </div>
 
           <div>
-            <label className="text-[9px] text-gray-400 block mb-0.5">Padding horizontal</label>
+            <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Padding horizontal</label>
             <Select value={paddingX} onValueChange={(v) => onChange('padding_x', v)}>
               <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -1530,7 +1530,7 @@ function SectionSpacingEditor({
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[9px] text-gray-400 block mb-0.5">Margen arriba</label>
+              <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Margen arriba</label>
               <Select value={marginTop} onValueChange={(v) => onChange('margin_top', v)}>
                 <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1541,7 +1541,7 @@ function SectionSpacingEditor({
               </Select>
             </div>
             <div>
-              <label className="text-[9px] text-gray-400 block mb-0.5">Margen abajo</label>
+              <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Margen abajo</label>
               <Select value={marginBottom} onValueChange={(v) => onChange('margin_bottom', v)}>
                 <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
                 <SelectContent>

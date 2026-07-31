@@ -126,7 +126,7 @@ export default function AddSectionDialog({
           <>
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -163,18 +163,18 @@ export default function AddSectionDialog({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 min-w-0 break-words">
                         {def.description}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-400 shrink-0">
+                    <span className="text-xs text-gray-400 shrink-0 dark:text-gray-500">
                       {def.variants.length} {def.variants.length > 1 ? t('variantsPlural') : t('variantsSingular')}
                     </span>
                   </button>
                 );
               })}
               {filtered.length === 0 && (
-                <p className="text-center text-sm text-gray-500 py-8">
+                <p className="text-center text-sm text-gray-500 py-8 dark:text-gray-400">
                   {t('noSectionsFound')}
                 </p>
               )}
@@ -185,7 +185,7 @@ export default function AddSectionDialog({
           <div className="space-y-2 mt-2">
             <button
               onClick={() => setSelectedType(null)}
-              className="text-sm text-blue-600 hover:underline mb-2"
+              className="text-sm text-blue-600 hover:underline mb-2 dark:text-blue-300"
             >
               {t('backToTypes')}
             </button>
@@ -196,12 +196,12 @@ export default function AddSectionDialog({
                   onClick={() => handleSelectVariant(variant.id)}
                   className={cn(
                     'p-4 rounded-lg border-2 text-left transition-all',
-                    'hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+                    'hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:border-blue-400',
                     'border-gray-200 dark:border-gray-700'
                   )}
                 >
                   <p className="text-sm font-medium dark:text-white">{variant.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-gray-500 mt-0.5 dark:text-gray-400">
                     {selectedType.type}/{variant.id}
                   </p>
                 </button>

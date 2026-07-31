@@ -370,9 +370,9 @@ export default function ModulesMarketplacePage() {
   
   if (showInitialLoader) {
     return (
-      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold dark:text-white">{t('modules.title')}</h1>
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className="space-y-3 sm:space-y-4">
+          <h1 className="text-2xl sm:text-3xl font-bold dark:text-white">{t('modules.title')}</h1>
           <p className="text-gray-600 dark:text-gray-400">{t('modules.description')}</p>
         </div>
         <ModulesSkeleton />
@@ -405,7 +405,7 @@ export default function ModulesMarketplacePage() {
   const totalActiveCount = coreCount + additionalActiveCount;
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -455,14 +455,14 @@ export default function ModulesMarketplacePage() {
       )}
 
       {/* Core Modules */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div className="flex items-center gap-2">
           <Crown className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
-          <h2 className="text-2xl font-semibold dark:text-white">{t('modules.coreModules')}</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold dark:text-white">{t('modules.coreModules')}</h2>
           <Badge variant="secondary" className="dark:bg-gray-800 dark:text-gray-300">{t('modules.includedInAllPlans')}</Badge>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 items-start">
           {coreModules.map((module) => {
             const Icon = moduleIcons[module.code] || Package;
             const isActive = getModuleStatus(module.code);
@@ -505,14 +505,14 @@ export default function ModulesMarketplacePage() {
       <Separator className="dark:bg-gray-800" />
 
       {/* Paid Modules */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-purple-500 dark:text-purple-400" />
-          <h2 className="text-2xl font-semibold dark:text-white">{t('modules.specializedModules')}</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold dark:text-white">{t('modules.specializedModules')}</h2>
           <Badge variant="secondary" className="dark:bg-gray-800 dark:text-gray-300">{t('modules.accordingToPlan')}</Badge>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 items-start">
           {paidModules.map((module) => {
             const Icon = moduleIcons[module.code] || Package;
             const isActive = getModuleStatus(module.code);
@@ -616,7 +616,7 @@ export default function ModulesMarketplacePage() {
                                     {page.name}
                                   </span>
                                   {isPageLoading && (
-                                    <Loader2 className="h-3 w-3 animate-spin text-blue-500 flex-shrink-0" />
+                                    <Loader2 className="h-3 w-3 animate-spin text-blue-500 flex-shrink-0 dark:text-blue-400" />
                                   )}
                                 </div>
                                 <Switch

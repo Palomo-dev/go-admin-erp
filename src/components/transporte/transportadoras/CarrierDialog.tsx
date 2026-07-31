@@ -140,8 +140,8 @@ export function CarrierDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="code">Código *</Label>
               <Input
@@ -150,7 +150,7 @@ export function CarrierDialog({
                 placeholder="TRANS-001"
               />
               {errors.code && (
-                <p className="text-sm text-red-500">{errors.code.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.code.message}</p>
               )}
             </div>
 
@@ -162,7 +162,7 @@ export function CarrierDialog({
                 placeholder="Transportes ABC"
               />
               {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.name.message}</p>
               )}
             </div>
 
@@ -235,7 +235,7 @@ export function CarrierDialog({
                 type="email"
               />
               {errors.contact_email && (
-                <p className="text-sm text-red-500">{errors.contact_email.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.contact_email.message}</p>
               )}
             </div>
 
@@ -275,7 +275,7 @@ export function CarrierDialog({
               {...register('tracking_url_template')}
               placeholder="https://tracking.ejemplo.com/guia/{tracking_number}"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Usa {'{tracking_number}'} como placeholder para el número de guía
             </p>
           </div>

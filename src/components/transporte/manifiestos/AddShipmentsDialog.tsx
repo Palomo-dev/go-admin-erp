@@ -88,15 +88,15 @@ export function AddShipmentsDialog({
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-600" />
+            <Package className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Agregar Envíos al Manifiesto
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Búsqueda */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar por número, tracking, ciudad..."
               value={searchTerm}
@@ -126,7 +126,7 @@ export function AddShipmentsDialog({
           {/* Lista de envíos */}
           <ScrollArea className="h-[300px] border rounded-lg">
             {filteredShipments.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-4 sm:p-8 text-center text-gray-500 dark:text-gray-400">
                 <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No hay envíos disponibles</p>
               </div>
@@ -145,7 +145,7 @@ export function AddShipmentsDialog({
                       onCheckedChange={() => toggleSelection(shipment.id)}
                     />
                     <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-                      <Package className="h-4 w-4 text-gray-500" />
+                      <Package className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export function AddShipmentsDialog({
                         )}
                       </div>
                       {shipment.delivery_address && (
-                        <p className="text-sm text-gray-500 truncate flex items-center gap-1">
+                        <p className="text-sm text-gray-500 min-w-0 break-words flex items-center gap-1 dark:text-gray-400">
                           <MapPin className="h-3 w-3" />
                           {shipment.delivery_address}
                           {shipment.delivery_city && `, ${shipment.delivery_city}`}

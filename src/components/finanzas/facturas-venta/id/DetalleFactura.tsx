@@ -840,17 +840,20 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             <span>Duplicar</span>
           </Button>
           
+          {/* Botón Nota Crédito: visible siempre excepto si está anulada */}
+          {facturaActual.status !== 'void' && facturaActual.status !== 'voided' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-blue-500 text-blue-500 hover:text-blue-600 hover:border-blue-600 dark:border-blue-400 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:border-blue-300 h-8 px-2 sm:px-3 text-xs"
+              onClick={() => setDialogNotaCreditoOpen(true)}
+            >
+              <FileOutput className="h-3.5 w-3.5 sm:mr-1" />
+              <span>Nota Crédito</span>
+            </Button>
+          )}
           {facturaActual.status !== 'paid' && facturaActual.status !== 'void' && facturaActual.status !== 'voided' && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-blue-500 text-blue-500 hover:text-blue-600 hover:border-blue-600 dark:border-blue-400 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:border-blue-300 h-8 px-2 sm:px-3 text-xs"
-                onClick={() => setDialogNotaCreditoOpen(true)}
-              >
-                <FileOutput className="h-3.5 w-3.5 sm:mr-1" />
-                <span>Nota Crédito</span>
-              </Button>
               <Button 
                 onClick={() => {
                   console.log("Abriendo diálogo de pago", facturaActual);

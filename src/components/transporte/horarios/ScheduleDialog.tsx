@@ -157,7 +157,7 @@ export function ScheduleDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
+            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {isEditing ? 'Editar Horario' : 'Nuevo Horario'}
           </DialogTitle>
           <DialogDescription>
@@ -165,9 +165,9 @@ export function ScheduleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Ruta y Nombre */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Ruta *</Label>
               <Select
@@ -198,7 +198,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Recurrencia */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <Label>Tipo de recurrencia *</Label>
             <Select
               value={formData.recurrence_type}
@@ -223,7 +223,7 @@ export function ScheduleDialog({
                     key={day.value}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                       formData.days_of_week?.includes(day.value)
-                        ? 'bg-blue-100 border-blue-500 dark:bg-blue-900/30'
+                        ? 'bg-blue-100 border-blue-500 dark:bg-blue-900/30 dark:border-blue-400'
                         : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
@@ -239,7 +239,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Horarios */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="departure_time">Hora de salida *</Label>
               <Input
@@ -262,7 +262,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Vehículo y Conductor */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Vehículo por defecto</Label>
               <Select
@@ -308,7 +308,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Cupos y Tarifa */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="seats">Cupos disponibles</Label>
               <Input
@@ -340,7 +340,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Vigencia */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="valid_from">Válido desde *</Label>
               <Input
@@ -366,7 +366,7 @@ export function ScheduleDialog({
           <div className="flex items-center justify-between border-t pt-4">
             <div>
               <Label>Estado del horario</Label>
-              <p className="text-sm text-gray-500">Los horarios inactivos no generan viajes</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Los horarios inactivos no generan viajes</p>
             </div>
             <Switch
               checked={formData.is_active}

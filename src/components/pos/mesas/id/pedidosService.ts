@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { POSService } from '@/lib/services/posService';
 import { stockMovementService } from '@/lib/services/stockMovementService';
+import { getPaymentMethodLabels } from '@/lib/services/paymentMethodHelper';
 import {
   calculateItemTaxes,
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -862,6 +863,7 @@ export class PedidosService {
     data: {
       payments: { method: string; amount: number }[];
       total_paid: number;
+      change?: number;
       tip_amount?: number;
       tip_server_id?: string;
       tax_included?: boolean;
@@ -923,8 +925,12 @@ export class PedidosService {
       const currentUser = await supabase.auth.getUser();
       const userId = currentUser.data.user?.id;
 
+      const changeAmount = data.change || 0;
+      let changeAssigned = false;
       for (const payment of data.payments) {
         if (payment.amount > 0) {
+          const isCashChange = !changeAssigned && changeAmount > 0 && payment.method === 'cash';
+          if (isCashChange) changeAssigned = true;
           const { error: paymentError } = await supabase
             .from('payments')
             .insert({
@@ -938,6 +944,7 @@ export class PedidosService {
               status: 'completed',
               created_by: userId || null,
               payment_date: now,
+              change_amount: isCashChange ? changeAmount : 0,
             });
 
           if (paymentError) {
@@ -1083,9 +1090,8 @@ export class PedidosService {
         }
       }
 
-      // 6. Registrar movimiento de caja si hay sesión activa y pago en efectivo
-      const cashPayments = data.payments.filter(p => p.method === 'cash' || p.method === 'efectivo');
-      if (cashPayments.length > 0) {
+      // 6. Registrar movimiento de caja si hay sesión activa (todos los métodos de pago)
+      if (data.payments.length > 0) {
         try {
           const { data: activeSession } = await supabase
             .from('cash_sessions')
@@ -1098,19 +1104,25 @@ export class PedidosService {
             .maybeSingle();
 
           if (activeSession) {
-            const totalCash = cashPayments.reduce((sum, p) => sum + p.amount, 0);
-            await supabase
-              .from('cash_movements')
-              .insert({
-                organization_id: saleData.organization_id,
-                branch_id: saleData.branch_id,
-                cash_session_id: activeSession.id,
-                type: 'in',
-                concept: `Venta Mesa #${saleId.slice(0, 8)}`,
-                amount: totalCash,
-                user_id: userId || saleData.user_id,
-                notes: `Pago en efectivo - Venta desde mesa`,
-              });
+            const methodLabels = await getPaymentMethodLabels();
+
+            for (const payment of data.payments) {
+              if (payment.amount > 0) {
+                const methodLabel = methodLabels[payment.method] || payment.method;
+                await supabase
+                  .from('cash_movements')
+                  .insert({
+                    organization_id: saleData.organization_id,
+                    branch_id: saleData.branch_id,
+                    cash_session_id: activeSession.id,
+                    type: 'in',
+                    concept: `Venta Mesa #${saleId.slice(0, 8)} - ${methodLabel}`,
+                    amount: payment.amount,
+                    user_id: userId || saleData.user_id,
+                    notes: `Pago ${methodLabel.toLowerCase()} - Venta desde mesa`,
+                  });
+              }
+            }
           }
         } catch (cashError) {
           console.error('Error registrando movimiento de caja:', cashError);

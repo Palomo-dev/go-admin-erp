@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useRef } from 'react';
 import {
   Dialog,
@@ -26,7 +26,7 @@ export function ImportFaresDialog({
   onImport,
   isLoading = false,
 }: ImportFaresDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<Array<Record<string, string>>>([]);
   const [result, setResult] = useState<{ success: number; errors: string[] } | null>(null);
@@ -145,7 +145,7 @@ export function ImportFaresDialog({
 
           {/* Selector de archivo */}
           <div
-            className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors ${themeClass("", "border-gray-700")}`}
+            className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}
             onClick={() => fileInputRef.current?.click()}
           >
             <input
@@ -156,7 +156,7 @@ export function ImportFaresDialog({
               className="hidden"
             />
             <Upload className="h-10 w-10 mx-auto text-gray-400 mb-4" />
-            <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
+            <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               {file ? file.name : 'Haz clic para seleccionar un archivo CSV'}
             </p>
           </div>
@@ -164,13 +164,13 @@ export function ImportFaresDialog({
           {/* Vista previa */}
           {previewData.length > 0 && (
             <div className="space-y-2">
-              <p className={`text-sm font-medium text-gray-700 flex items-center gap-2 ${themeClass("", "text-gray-300")}`}>
+              <p className={`text-sm font-medium text-gray-700 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                 <FileText className="h-4 w-4" />
                 Vista previa (primeras 5 filas):
               </p>
               <div className="overflow-x-auto">
-                <table className={`w-full text-xs border border-gray-200 ${themeClass("", "border-gray-700")}`}>
-                  <thead className={`bg-gray-50 ${themeClass("", "bg-gray-800")}`}>
+                <table className={`w-full text-xs border border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
+                  <thead className={`bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
                     <tr>
                       {Object.keys(previewData[0]).slice(0, 5).map((header) => (
                         <th key={header} className="p-2 text-left border-b">
@@ -181,7 +181,7 @@ export function ImportFaresDialog({
                   </thead>
                   <tbody>
                     {previewData.map((row, idx) => (
-                      <tr key={idx} className={`border-b border-gray-100 ${themeClass("", "border-gray-800")}`}>
+                      <tr key={idx} className={`border-b border-gray-100 ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
                         {Object.values(row).slice(0, 5).map((value, vIdx) => (
                           <td key={vIdx} className="p-2 truncate max-w-[150px]">
                             {value}
@@ -199,9 +199,9 @@ export function ImportFaresDialog({
           {result && (
             <div className="space-y-2">
               {result.success > 0 && (
-                <Alert className={`bg-green-50 border-green-200 ${themeClass("", "bg-green-900/20")}`}>
+                <Alert className={`bg-green-50 border-green-200 ${resolvedTheme === 'dark' ? "bg-green-900/20" : ""}`}>
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <AlertDescription className={`text-green-700 ${themeClass("", "text-green-400")}`}>
+                  <AlertDescription className={`text-green-700 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
                     {result.success} tarifa(s) importada(s) correctamente
                   </AlertDescription>
                 </Alert>

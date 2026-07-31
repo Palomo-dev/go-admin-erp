@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -85,14 +85,14 @@ export function VehiclesList({
   onAssignDriver,
   onViewHistory
 }: VehiclesListProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-6">
-              <div className={`h-40 bg-gray-200 rounded ${themeClass("", "bg-gray-700")}`} />
+              <div className={`h-40 bg-gray-200 rounded ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
             </CardContent>
           </Card>
         ))}
@@ -105,10 +105,10 @@ export function VehiclesList({
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Truck className="h-12 w-12 text-gray-400 mb-4" />
-          <h3 className={`text-lg font-medium text-gray-900 mb-2 ${themeClass("", "text-white")}`}>
+          <h3 className={`text-lg font-medium text-gray-900 mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
             No hay vehículos
           </h3>
-          <p className={`text-gray-600 text-center ${themeClass("", "text-gray-400")}`}>
+          <p className={`text-gray-600 text-center ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             Agrega tu primer vehículo para comenzar a gestionar tu flota.
           </p>
         </CardContent>
@@ -135,14 +135,14 @@ export function VehiclesList({
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-blue-100 text-blue-600 ${themeClass("", "bg-blue-900/30 text-blue-400")}`}>
+                  <div className={`p-2 rounded-lg bg-blue-100 text-blue-600 ${resolvedTheme === 'dark' ? "bg-blue-900/30 text-blue-400" : ""}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className={`font-bold text-lg text-gray-900 ${themeClass("", "text-white")}`}>
+                    <h3 className={`font-bold text-lg text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                       {vehicle.plate_number}
                     </h3>
-                    <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
+                    <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                       {vehicle.brand} {vehicle.model} {vehicle.year}
                     </p>
                   </div>
@@ -216,7 +216,7 @@ export function VehiclesList({
                 )}
               </div>
 
-              <div className={`space-y-1 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <div className={`space-y-1 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 {vehicle.transport_carriers && (
                   <p className="flex items-center gap-2">
                     <Truck className="h-3 w-3" />

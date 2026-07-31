@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -39,7 +39,7 @@ interface Carrier {
 }
 
 export default function TransportePage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const { toast } = useToast();
   const { organization, branches } = useOrganization();
   
@@ -141,7 +141,7 @@ export default function TransportePage() {
   const branchList: Branch[] = branches?.map(b => ({ id: b.id, name: b.name })) || [];
 
   return (
-    <div className={`p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+    <div className={`p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
       {/* Header */}
       <DashboardHeader />
       

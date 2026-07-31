@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
@@ -20,7 +20,7 @@ interface BranchAssignment {
 }
 
 export default function SucursalesPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [orgData, setOrgData] = useState<any>(null);
   const [userRole, setUserRole] = useState<number | null>(null);
   const [userBranches, setUserBranches] = useState<BranchAssignment[]>([]);
@@ -135,10 +135,10 @@ export default function SucursalesPage() {
 
   if (loading) {
     return (
-      <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+      <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
         <div>
-          <h1 className={`text-2xl font-semibold text-gray-900 ${themeClass("", "text-gray-100")}`}>{t('branches.title')}</h1>
-          <p className={`mt-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('branches.description')}</p>
+          <h1 className={`text-2xl font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{t('branches.title')}</h1>
+          <p className={`mt-2 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('branches.description')}</p>
         </div>
         <BranchesSkeleton />
       </div>
@@ -184,22 +184,22 @@ export default function SucursalesPage() {
   }
 
   return (
-    <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+    <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
       <div className="flex justify-between items-center">
         <div className="min-w-0">
-          <h1 className={`text-2xl font-semibold text-gray-900 ${themeClass("", "text-gray-100")}`}>{t('branches.title')}</h1>
-          <p className={`mt-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('branches.description')}</p>
+          <h1 className={`text-2xl font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{t('branches.title')}</h1>
+          <p className={`mt-2 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('branches.description')}</p>
         </div>
       </div>
       
       {userBranches.length > 0 && (
         <div>
-          <h2 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-gray-100")}`}>{t('branches.yourBranches')}</h2>
+          <h2 className={`text-lg font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{t('branches.yourBranches')}</h2>
           <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {userBranches.map((branch) => (
-              <div key={branch.branch_id} className={`bg-white overflow-hidden shadow rounded-lg border ${themeClass("", "bg-gray-800 border-gray-700")}`}>
+              <div key={branch.branch_id} className={`bg-white overflow-hidden shadow rounded-lg border ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
                 <div className="px-4 py-5 sm:p-6">
-                  <h3 className={`text-lg font-medium text-gray-900 truncate ${themeClass("", "text-gray-100")}`}>{branch.branch_name || t('branches.branchFallback', { id: branch.branch_id })}</h3>
+                  <h3 className={`text-lg font-medium text-gray-900 truncate ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{branch.branch_name || t('branches.branchFallback', { id: branch.branch_id })}</h3>
                 </div>
               </div>
             ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Bus } from 'lucide-react';
 import {
@@ -22,7 +22,7 @@ export function TransportHeader({
   dateRange,
   onDateRangeChange,
 }: TransportHeaderProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long',
     year: 'numeric',
@@ -34,14 +34,14 @@ export function TransportHeader({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2 bg-blue-100 rounded-lg ${themeClass("", "bg-blue-900/30")}`}>
-            <Bus className={`h-6 w-6 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+          <div className={`p-2 bg-blue-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
+            <Bus className={`h-6 w-6 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
           </div>
           <div>
-            <h1 className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>
+            <h1 className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               Panel de Control Transporte
             </h1>
-            <p className={`text-sm text-gray-500 capitalize ${themeClass("", "text-gray-400")}`}>
+            <p className={`text-sm text-gray-500 capitalize ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               {today}
             </p>
           </div>

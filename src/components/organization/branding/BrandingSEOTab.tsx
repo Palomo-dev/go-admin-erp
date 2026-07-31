@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ interface BrandingSEOTabProps {
 }
 
 export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSaving }: BrandingSEOTabProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const t = useTranslations('branding.seo');
   const tc = useTranslations('branding.common');
   const { organization } = useOrganization();
@@ -181,12 +181,12 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
   return (
     <div className="space-y-6">
       {/* Nota informativa */}
-      <Card className={`border-blue-200 bg-blue-50 ${themeClass("", "border-blue-800 bg-blue-900/20")}`}>
+      <Card className={`border-blue-200 bg-blue-50 ${resolvedTheme === 'dark' ? "border-blue-800 bg-blue-900/20" : ""}`}>
         <CardContent className="flex items-start gap-3 pt-6">
-          <Info className={`h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5 ${themeClass("", "text-blue-400")}`} />
+          <Info className={`h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
           <div>
-            <h4 className={`font-medium text-blue-800 ${themeClass("", "text-blue-300")}`}>{t('perPageTitle')}</h4>
-            <p className={`text-sm text-blue-700 mt-1 ${themeClass("", "text-blue-400")}`}>
+            <h4 className={`font-medium text-blue-800 ${resolvedTheme === 'dark' ? "text-blue-300" : ""}`}>{t('perPageTitle')}</h4>
+            <p className={`text-sm text-blue-700 mt-1 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
               {t('perPageDesc')}
             </p>
           </div>
@@ -194,13 +194,13 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
       </Card>
 
       {/* Favicon */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
+          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
             <Image className="h-5 w-5" />
             {t('faviconTitle')}
           </CardTitle>
-          <CardDescription className={themeClass("", "text-gray-400")}>
+          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
             {t('faviconDesc')}
           </CardDescription>
         </CardHeader>
@@ -212,7 +212,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   <img
                     src={formData.favicon_url}
                     alt="Favicon"
-                    className={`h-16 w-16 object-contain rounded-lg border p-1 cursor-pointer ${themeClass("", "border-gray-600")}`}
+                    className={`h-16 w-16 object-contain rounded-lg border p-1 cursor-pointer ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}
                     onClick={() => setShowFaviconPicker(true)}
                   />
                   <button
@@ -223,12 +223,12 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   </button>
                 </div>
                 <div className="flex-1 space-y-1">
-                  <p className={`text-xs text-gray-500 truncate ${themeClass("", "text-gray-400")}`}>{formData.favicon_url}</p>
+                  <p className={`text-xs text-gray-500 truncate ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{formData.favicon_url}</p>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowFaviconPicker(true)}
-                    className={themeClass("", "border-gray-600 text-gray-300")}
+                    className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300" : ""}
                   >
                     <ImagePlus className="h-3 w-3 mr-1" /> {t('changeFavicon')}
                   </Button>
@@ -238,7 +238,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               <Button
                 variant="outline"
                 onClick={() => setShowFaviconPicker(true)}
-                className={`w-full h-24 border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500 bg-transparent ${themeClass("", "border-gray-600 text-gray-500 hover:border-blue-500 hover:text-blue-400")}`}
+                className={`w-full h-24 border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500 bg-transparent ${resolvedTheme === 'dark' ? "border-gray-600 text-gray-500 hover:border-blue-500 hover:text-blue-400" : ""}`}
               >
                 <div className="flex flex-col items-center gap-2">
                   <ImagePlus className="h-6 w-6" />
@@ -259,15 +259,15 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
       </Card>
 
       {/* Keywords globales */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
+              <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 <Search className="h-5 w-5" />
                 {t('keywordsTitle')}
               </CardTitle>
-              <CardDescription className={`mt-1 ${themeClass("", "text-gray-400")}`}>
+              <CardDescription className={`mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 {t('keywordsDesc')}
               </CardDescription>
             </div>
@@ -276,7 +276,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               size="sm"
               onClick={handleGenerateAIKeywords}
               disabled={isLoadingAI}
-              className={`border-purple-300 text-purple-600 hover:bg-purple-50 ${themeClass("", "border-purple-700 text-purple-400 hover:bg-purple-900/20")}`}
+              className={`border-purple-300 text-purple-600 hover:bg-purple-50 ${resolvedTheme === 'dark' ? "border-purple-700 text-purple-400 hover:bg-purple-900/20" : ""}`}
             >
               {isLoadingAI ? (
                 <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -290,9 +290,9 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
         <CardContent className="space-y-4">
           {/* Sugerencias IA */}
           {aiKeywords.length > 0 && (
-            <div className={`p-3 rounded-lg border border-purple-200 bg-purple-50 space-y-2 ${themeClass("", "border-purple-800 bg-purple-900/20")}`}>
+            <div className={`p-3 rounded-lg border border-purple-200 bg-purple-50 space-y-2 ${resolvedTheme === 'dark' ? "border-purple-800 bg-purple-900/20" : ""}`}>
               <div className="flex items-center justify-between">
-                <p className={`text-xs font-medium text-purple-700 flex items-center gap-1.5 ${themeClass("", "text-purple-300")}`}>
+                <p className={`text-xs font-medium text-purple-700 flex items-center gap-1.5 ${resolvedTheme === 'dark' ? "text-purple-300" : ""}`}>
                   <Sparkles className="h-3.5 w-3.5" />
                   {t('aiSuggestions', { count: aiKeywords.length })}
                 </p>
@@ -300,7 +300,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   variant="ghost"
                   size="sm"
                   onClick={handleAddAllAIKeywords}
-                  className={`h-6 text-xs text-purple-600 hover:text-purple-700 ${themeClass("", "text-purple-400")}`}
+                  className={`h-6 text-xs text-purple-600 hover:text-purple-700 ${resolvedTheme === 'dark' ? "text-purple-400" : ""}`}
                 >
                   {t('addAll')}
                 </Button>
@@ -310,7 +310,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   <button
                     key={kw}
                     onClick={() => handleAddAIKeyword(kw)}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors cursor-pointer ${themeClass("", "bg-purple-800/50 text-purple-300 hover:bg-purple-800")}`}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors cursor-pointer ${resolvedTheme === 'dark' ? "bg-purple-800/50 text-purple-300 hover:bg-purple-800" : ""}`}
                   >
                     + {kw}
                   </button>
@@ -325,10 +325,10 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
               value={newKeyword}
               onChange={(e) => setNewKeyword(e.target.value)}
               placeholder={t('addKeywordPlaceholder')}
-              className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+              className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddKeyword())}
             />
-            <Button variant="outline" onClick={handleAddKeyword} className={themeClass("", "border-gray-600")}>
+            <Button variant="outline" onClick={handleAddKeyword} className={resolvedTheme === 'dark' ? "border-gray-600" : ""}>
               {t('add')}
             </Button>
           </div>
@@ -345,8 +345,8 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             ))}
             {formData.meta_keywords.length === 0 && !aiKeywords.length && (
               <div className="text-center w-full py-4">
-                <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('noKeywords')}</p>
-                <p className={`text-xs text-gray-400 mt-1 ${themeClass("", "text-gray-500")}`}>
+                <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('noKeywords')}</p>
+                <p className={`text-xs text-gray-400 mt-1 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
                   {t('noKeywordsHint')}
                 </p>
               </div>
@@ -356,20 +356,20 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
       </Card>
 
       {/* Dominio del Sitio */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
+              <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 <Link2 className="h-5 w-5" />
                 {t('domainTitle')}
               </CardTitle>
-              <CardDescription className={`mt-1 ${themeClass("", "text-gray-400")}`}>
+              <CardDescription className={`mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 {t('domainDesc')}
               </CardDescription>
             </div>
             <Link href="/app/organizacion/dominios">
-              <Button variant="outline" size="sm" className={themeClass("", "border-gray-600 text-gray-300")}>
+              <Button variant="outline" size="sm" className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300" : ""}>
                 <Globe className="h-4 w-4 mr-1.5" />
                 {t('manageDomains')}
               </Button>
@@ -380,40 +380,40 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
           {/* Info de dominio actual */}
           <div className="space-y-3">
             {/* Subdominio */}
-            <div className={`flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200 ${themeClass("", "bg-blue-900/20 border-blue-800")}`}>
-              <Globe className={`h-4 w-4 text-blue-600 shrink-0 ${themeClass("", "text-blue-400")}`} />
+            <div className={`flex items-center gap-3 p-3 rounded-lg bg-blue-50 border border-blue-200 ${resolvedTheme === 'dark' ? "bg-blue-900/20 border-blue-800" : ""}`}>
+              <Globe className={`h-4 w-4 text-blue-600 shrink-0 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-medium text-blue-700 ${themeClass("", "text-blue-300")}`}>{t('subdomainLabel')}</p>
+                <p className={`text-xs font-medium text-blue-700 ${resolvedTheme === 'dark' ? "text-blue-300" : ""}`}>{t('subdomainLabel')}</p>
                 {subdomain ? (
                   <a
                     href={`https://${subdomain}.goadmin.io`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`text-sm font-mono text-blue-600 hover:underline flex items-center gap-1 ${themeClass("", "text-blue-400")}`}
+                    className={`text-sm font-mono text-blue-600 hover:underline flex items-center gap-1 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}
                   >
                     {subdomain}.goadmin.io
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 ) : (
-                  <p className={`text-sm text-gray-400 ${themeClass("", "text-gray-500")}`}>{t('notConfigured')}</p>
+                  <p className={`text-sm text-gray-400 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('notConfigured')}</p>
                 )}
               </div>
-              <Badge variant="secondary" className={`bg-green-100 text-green-700 text-xs ${themeClass("", "bg-green-900/30 text-green-400")}`}>
+              <Badge variant="secondary" className={`bg-green-100 text-green-700 text-xs ${resolvedTheme === 'dark' ? "bg-green-900/30 text-green-400" : ""}`}>
                 {t('active')}
               </Badge>
             </div>
 
             {/* Dominio personalizado */}
             {customDomain ? (
-              <div className={`flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 ${themeClass("", "bg-gray-700/50 border-gray-600")}`}>
-                <Globe className={`h-4 w-4 text-gray-500 shrink-0 ${themeClass("", "text-gray-400")}`} />
+              <div className={`flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-700/50 border-gray-600" : ""}`}>
+                <Globe className={`h-4 w-4 text-gray-500 shrink-0 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`} />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-medium text-gray-600 ${themeClass("", "text-gray-300")}`}>{t('customDomainLabel')}</p>
+                  <p className={`text-xs font-medium text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>{t('customDomainLabel')}</p>
                   <a
                     href={`https://${customDomain}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`text-sm font-mono text-gray-800 hover:underline flex items-center gap-1 ${themeClass("", "text-gray-200")}`}
+                    className={`text-sm font-mono text-gray-800 hover:underline flex items-center gap-1 ${resolvedTheme === 'dark' ? "text-gray-200" : ""}`}
                   >
                     {customDomain}
                     <ExternalLink className="h-3 w-3" />
@@ -421,14 +421,14 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                 </div>
               </div>
             ) : (
-              <div className={`flex items-center gap-3 p-3 rounded-lg border border-dashed border-gray-300 ${themeClass("", "border-gray-600")}`}>
-                <Globe className={`h-4 w-4 text-gray-400 shrink-0 ${themeClass("", "text-gray-500")}`} />
+              <div className={`flex items-center gap-3 p-3 rounded-lg border border-dashed border-gray-300 ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}>
+                <Globe className={`h-4 w-4 text-gray-400 shrink-0 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`} />
                 <div className="flex-1">
-                  <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('noCustomDomain')}</p>
-                  <p className={`text-xs text-gray-400 ${themeClass("", "text-gray-500")}`}>{t('noCustomDomainHint')}</p>
+                  <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('noCustomDomain')}</p>
+                  <p className={`text-xs text-gray-400 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('noCustomDomainHint')}</p>
                 </div>
                 <Link href="/app/organizacion/dominios">
-                  <Button variant="ghost" size="sm" className={`text-xs text-blue-600 ${themeClass("", "text-blue-400")}`}>
+                  <Button variant="ghost" size="sm" className={`text-xs text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
                     {t('configure')}
                   </Button>
                 </Link>
@@ -437,22 +437,22 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
           </div>
 
           {/* URL Canónica */}
-          <div className={`space-y-2 pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700")}`}>
-            <Label className={themeClass("", "text-gray-300")}>{t('canonicalUrl')}</Label>
+          <div className={`space-y-2 pt-2 border-t border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
+            <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('canonicalUrl')}</Label>
             <Input
               value={formData.canonical_url}
               onChange={(e) => setFormData({ ...formData, canonical_url: e.target.value })}
               placeholder="https://tu-sitio.com"
-              className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+              className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
             />
-            <p className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+            <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               {t('canonicalUrlHint')}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className={`flex items-center gap-2 ${themeClass("", "text-gray-300")}`}>
+              <Label className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                 <Shield className="h-4 w-4" />
                 {t('googleVerification')}
               </Label>
@@ -460,11 +460,11 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                 value={formData.google_site_verification}
                 onChange={(e) => setFormData({ ...formData, google_site_verification: e.target.value })}
                 placeholder={t('googlePlaceholder')}
-                className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+                className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
               />
             </div>
             <div className="space-y-2">
-              <Label className={`flex items-center gap-2 ${themeClass("", "text-gray-300")}`}>
+              <Label className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                 <Shield className="h-4 w-4" />
                 {t('bingVerification')}
               </Label>
@@ -472,7 +472,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                 value={formData.bing_site_verification}
                 onChange={(e) => setFormData({ ...formData, bing_site_verification: e.target.value })}
                 placeholder={t('bingPlaceholder')}
-                className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+                className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
               />
             </div>
           </div>

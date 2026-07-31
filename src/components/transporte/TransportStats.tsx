@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   Bus, 
@@ -21,14 +21,14 @@ interface TransportStatsProps {
 }
 
 export function TransportStats({ stats, isLoading }: TransportStatsProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-6">
-              <div className={`h-20 bg-gray-200 rounded ${themeClass("", "bg-gray-700")}`} />
+              <div className={`h-20 bg-gray-200 rounded ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
             </CardContent>
           </Card>
         ))}
@@ -99,14 +99,14 @@ export function TransportStats({ stats, isLoading }: TransportStatsProps) {
               <div className={`p-2 rounded-lg ${colorClasses[card.color]}`}>
                 <card.icon className="h-5 w-5" />
               </div>
-              <h3 className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
+              <h3 className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 {card.title}
               </h3>
             </div>
             <div className="space-y-2">
               {card.items.map((item) => (
                 <div key={item.label} className="flex items-center justify-between text-sm">
-                  <span className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>{item.label}</span>
+                  <span className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{item.label}</span>
                   <span className={`font-medium ${item.color}`}>
                     {item.value}
                   </span>

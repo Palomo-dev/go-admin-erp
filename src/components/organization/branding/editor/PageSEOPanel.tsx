@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ export default function PageSEOPanel({
   ogImageUrl,
   onUpdate,
 }: PageSEOPanelProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const t = useTranslations('branding.editor.pageSEO');
   const titleLength = metaTitle.length;
   const descLength = metaDescription.length;
@@ -34,7 +34,7 @@ export default function PageSEOPanel({
       {/* Meta Title */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('metaTitle')}</Label>
+          <Label className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('metaTitle')}</Label>
           <span className={`text-[10px] ${titleLength > 60 ? 'text-red-500' : 'text-gray-400'}`}>
             {titleLength}/60
           </span>
@@ -43,7 +43,7 @@ export default function PageSEOPanel({
           value={metaTitle}
           onChange={(e) => onUpdate({ meta_title: e.target.value })}
           placeholder={t('metaTitlePlaceholder')}
-          className={`h-8 text-xs ${themeClass("", "bg-gray-700 border-gray-600 text-white")}`}
+          className={`h-8 text-xs ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}`}
           maxLength={70}
         />
       </div>
@@ -51,7 +51,7 @@ export default function PageSEOPanel({
       {/* Meta Description */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('metaDescription')}</Label>
+          <Label className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('metaDescription')}</Label>
           <span className={`text-[10px] ${descLength > 160 ? 'text-red-500' : 'text-gray-400'}`}>
             {descLength}/160
           </span>
@@ -61,20 +61,20 @@ export default function PageSEOPanel({
           onChange={(e) => onUpdate({ meta_description: e.target.value })}
           placeholder={t('metaDescriptionPlaceholder')}
           rows={2}
-          className={`text-xs resize-none ${themeClass("", "bg-gray-700 border-gray-600 text-white")}`}
+          className={`text-xs resize-none ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}`}
           maxLength={200}
         />
       </div>
 
       {/* OG Image */}
       <div className="space-y-1.5">
-        <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('ogImage')}</Label>
+        <Label className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('ogImage')}</Label>
         {ogImageUrl ? (
           <div className="relative group">
             <img
               src={ogImageUrl}
               alt="OG Preview"
-              className={`w-full h-20 object-cover rounded border cursor-pointer ${themeClass("", "border-gray-600")}`}
+              className={`w-full h-20 object-cover rounded border cursor-pointer ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}
               onClick={() => setShowImagePicker(true)}
             />
             <button
@@ -89,7 +89,7 @@ export default function PageSEOPanel({
             variant="outline"
             size="sm"
             onClick={() => setShowImagePicker(true)}
-            className={`w-full h-20 border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500 bg-transparent ${themeClass("", "border-gray-600 text-gray-500 hover:border-blue-500 hover:text-blue-400")}`}
+            className={`w-full h-20 border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500 bg-transparent ${resolvedTheme === 'dark' ? "border-gray-600 text-gray-500 hover:border-blue-500 hover:text-blue-400" : ""}`}
           >
             <div className="flex flex-col items-center gap-1">
               <ImagePlus className="h-5 w-5" />
@@ -106,12 +106,12 @@ export default function PageSEOPanel({
       />
 
       {/* Mini Google Preview */}
-      <div className={`p-2 bg-gray-50 rounded text-[10px] space-y-0.5 ${themeClass("", "bg-gray-700/50")}`}>
-        <p className={`text-gray-400 mb-1 ${themeClass("", "text-gray-500")}`}>{t('googlePreview')}</p>
-        <p className={`text-blue-600 truncate ${themeClass("", "text-blue-400")}`}>
+      <div className={`p-2 bg-gray-50 rounded text-[10px] space-y-0.5 ${resolvedTheme === 'dark' ? "bg-gray-700/50" : ""}`}>
+        <p className={`text-gray-400 mb-1 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('googlePreview')}</p>
+        <p className={`text-blue-600 truncate ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
           {metaTitle || t('pageTitle')}
         </p>
-        <p className={`text-gray-500 line-clamp-2 ${themeClass("", "text-gray-400")}`}>
+        <p className={`text-gray-500 line-clamp-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
           {metaDescription || t('pageDescription')}
         </p>
       </div>

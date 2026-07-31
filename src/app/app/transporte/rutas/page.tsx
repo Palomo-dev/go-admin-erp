@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function RutasPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -162,7 +162,7 @@ export default function RutasPage() {
   };
 
   return (
-    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
       <RoutesHeader
         onRefresh={loadData}
         onNewRoute={handleNewRoute}

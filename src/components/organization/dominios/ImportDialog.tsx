@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useRef } from 'react';
 import { Upload, FileText, AlertTriangle, CheckCircle2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ interface ParsedDomain {
 }
 
 export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const t = useTranslations('org.domains.importDialog');
   const [file, setFile] = useState<File | null>(null);
   const [parsedDomains, setParsedDomains] = useState<ParsedDomain[]>([]);
@@ -115,17 +115,17 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className={`sm:max-w-[550px] max-h-[90vh] overflow-y-auto ${themeClass("", "bg-gray-800 border-gray-700")}`}>
+      <DialogContent className={`sm:max-w-[550px] max-h-[90vh] overflow-y-auto ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg bg-blue-100 ${themeClass("", "bg-blue-900/30")}`}>
-              <Upload className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+            <div className={`p-2 rounded-lg bg-blue-100 ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
+              <Upload className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
             </div>
             <div>
-              <DialogTitle className={themeClass("", "text-white")}>
+              <DialogTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>
                 {t('title')}
               </DialogTitle>
-              <DialogDescription className={themeClass("", "text-gray-400")}>
+              <DialogDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
                 {t('description')}
               </DialogDescription>
             </div>
@@ -141,7 +141,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                 : 'dark:bg-yellow-900/20 dark:border-yellow-800 border-yellow-300 bg-yellow-50'
             }>
               <CheckCircle2 className={`h-4 w-4 ${importResult.failed === 0 ? 'text-green-600' : 'text-yellow-600'}`} />
-              <AlertDescription className={themeClass("", "text-gray-300")}>
+              <AlertDescription className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>
                 <strong>{t('importComplete')}</strong>
                 <br />
                 ✓ {t('domainsImported', { count: importResult.success })}
@@ -152,7 +152,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                   </>
                 )}
                 {importResult.errors.length > 0 && (
-                  <ul className={`mt-2 text-sm text-red-600 ${themeClass("", "text-red-400")}`}>
+                  <ul className={`mt-2 text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
                     {importResult.errors.slice(0, 3).map((err, i) => (
                       <li key={i}>• {err}</li>
                     ))}
@@ -169,9 +169,9 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
           {!importResult && (
             <>
               <div className="space-y-2">
-                <Label className={themeClass("", "text-gray-200")}>{t('csvFile')}</Label>
+                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('csvFile')}</Label>
                 <div 
-                  className={`border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors ${themeClass("", "border-gray-600 hover:border-blue-500")}`}
+                  className={`border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors ${resolvedTheme === 'dark' ? "border-gray-600 hover:border-blue-500" : ""}`}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Input
@@ -183,10 +183,10 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                   />
                   {file ? (
                     <div className="flex items-center justify-center gap-2">
-                      <FileText className={`h-8 w-8 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+                      <FileText className={`h-8 w-8 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
                       <div>
-                        <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>{file.name}</p>
-                        <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
+                        <p className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{file.name}</p>
+                        <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                           {(file.size / 1024).toFixed(1)} KB
                         </p>
                       </div>
@@ -205,10 +205,10 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                   ) : (
                     <>
                       <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                      <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                      <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                         {t('clickToSelect')}
                       </p>
-                      <p className={`text-xs text-gray-500 mt-1 ${themeClass("", "text-gray-500")}`}>
+                      <p className={`text-xs text-gray-500 mt-1 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
                         {t('dragDrop')}
                       </p>
                     </>
@@ -217,11 +217,11 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               </div>
 
               {/* Formato esperado */}
-              <Alert className={themeClass("", "bg-gray-900 border-gray-700")}>
-                <AlertTriangle className={`h-4 w-4 text-gray-500 ${themeClass("", "text-gray-400")}`} />
-                <AlertDescription className={`text-sm ${themeClass("", "text-gray-300")}`}>
+              <Alert className={resolvedTheme === 'dark' ? "bg-gray-900 border-gray-700" : ""}>
+                <AlertTriangle className={`h-4 w-4 text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`} />
+                <AlertDescription className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                   <strong>{t('expectedFormat')}</strong>
-                  <code className={`block mt-2 p-2 bg-gray-100 rounded text-xs ${themeClass("", "bg-gray-800")}`}>
+                  <code className={`block mt-2 p-2 bg-gray-100 rounded text-xs ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
                     host,domain_type<br />
                     www.ejemplo.com,custom_domain<br />
                     app.miempresa.goadmin.io,subdomain
@@ -233,40 +233,40 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               {parsedDomains.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className={themeClass("", "text-gray-200")}>{t('preview')}</Label>
+                    <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('preview')}</Label>
                     <div className="flex gap-2">
-                      <Badge className={`bg-green-100 text-green-700 ${themeClass("", "bg-green-900/30 text-green-400")}`}>
+                      <Badge className={`bg-green-100 text-green-700 ${resolvedTheme === 'dark' ? "bg-green-900/30 text-green-400" : ""}`}>
                         {validCount} {t('valid')}
                       </Badge>
                       {invalidCount > 0 && (
-                        <Badge className={`bg-red-100 text-red-700 ${themeClass("", "bg-red-900/30 text-red-400")}`}>
+                        <Badge className={`bg-red-100 text-red-700 ${resolvedTheme === 'dark' ? "bg-red-900/30 text-red-400" : ""}`}>
                           {invalidCount} {t('invalid')}
                         </Badge>
                       )}
                     </div>
                   </div>
                   
-                  <div className={`max-h-48 overflow-y-auto border border-gray-200 rounded-lg ${themeClass("", "border-gray-700")}`}>
+                  <div className={`max-h-48 overflow-y-auto border border-gray-200 rounded-lg ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
                     <table className="w-full text-sm">
-                      <thead className={`bg-gray-50 sticky top-0 ${themeClass("", "bg-gray-900")}`}>
+                      <thead className={`bg-gray-50 sticky top-0 ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
                         <tr>
-                          <th className={`px-3 py-2 text-left text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('domainCol')}</th>
-                          <th className={`px-3 py-2 text-left text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('typeCol')}</th>
-                          <th className={`px-3 py-2 text-center text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('statusCol')}</th>
+                          <th className={`px-3 py-2 text-left text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('domainCol')}</th>
+                          <th className={`px-3 py-2 text-left text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('typeCol')}</th>
+                          <th className={`px-3 py-2 text-center text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('statusCol')}</th>
                         </tr>
                       </thead>
-                      <tbody className={`divide-y divide-gray-200 ${themeClass("", "divide-gray-700")}`}>
+                      <tbody className={`divide-y divide-gray-200 ${resolvedTheme === 'dark' ? "divide-gray-700" : ""}`}>
                         {parsedDomains.slice(0, 10).map((domain, idx) => (
                           <tr key={idx} className={!domain.valid ? 'bg-red-50 dark:bg-red-900/10' : ''}>
-                            <td className={`px-3 py-2 text-gray-900 ${themeClass("", "text-white")}`}>{domain.host}</td>
-                            <td className={`px-3 py-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                            <td className={`px-3 py-2 text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{domain.host}</td>
+                            <td className={`px-3 py-2 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                               {domain.domain_type === 'subdomain' ? t('subdomainType') : t('customType')}
                             </td>
                             <td className="px-3 py-2 text-center">
                               {domain.valid ? (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 inline" />
                               ) : (
-                                <span className={`text-xs text-red-600 ${themeClass("", "text-red-400")}`}>{domain.error}</span>
+                                <span className={`text-xs text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>{domain.error}</span>
                               )}
                             </td>
                           </tr>
@@ -274,7 +274,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                       </tbody>
                     </table>
                     {parsedDomains.length > 10 && (
-                      <p className={`px-3 py-2 text-xs text-gray-500 text-center bg-gray-50 ${themeClass("", "text-gray-400 bg-gray-900")}`}>
+                      <p className={`px-3 py-2 text-xs text-gray-500 text-center bg-gray-50 ${resolvedTheme === 'dark' ? "text-gray-400 bg-gray-900" : ""}`}>
                         {t('andMoreDomains', { count: parsedDomains.length - 10 })}
                       </p>
                     )}
@@ -289,7 +289,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
           <Button
             variant="outline"
             onClick={handleClose}
-            className={themeClass("", "border-gray-600 text-gray-300 hover:bg-gray-700")}
+            className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
           >
             {importResult ? t('close') : t('cancel')}
           </Button>

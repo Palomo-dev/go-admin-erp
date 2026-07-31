@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +42,7 @@ export function RouteStopsList({
   onDeleteStop,
   onReorder,
 }: RouteStopsListProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const handleDragStart = (index: number) => {
@@ -105,7 +105,7 @@ export function RouteStopsList({
       </CardHeader>
       <CardContent>
         {stops.length === 0 ? (
-          <div className={`text-center py-8 text-gray-500 ${themeClass("", "text-gray-400")}`}>
+          <div className={`text-center py-8 text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             <MapPin className="h-10 w-10 mx-auto mb-3 opacity-50" />
             <p>No hay paradas definidas</p>
             <p className="text-sm">Agrega paradas para definir el recorrido</p>
@@ -127,12 +127,12 @@ export function RouteStopsList({
                   <GripVertical className="h-5 w-5 text-gray-400" />
                 </div>
 
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-semibold text-sm ${themeClass("", "bg-blue-900/30")}`}>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-semibold text-sm ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
                   {stop.stop_order}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className={`font-medium text-gray-900 truncate ${themeClass("", "text-white")}`}>
+                  <p className={`font-medium text-gray-900 truncate ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                     {stop.transport_stops?.name}
                   </p>
                   <p className="text-sm text-gray-500 truncate">

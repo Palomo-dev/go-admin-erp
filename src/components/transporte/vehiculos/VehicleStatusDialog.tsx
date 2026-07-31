@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import {
   Dialog,
   DialogContent,
@@ -59,7 +59,7 @@ export function VehicleStatusDialog({
   onStatusChange,
   isUpdating,
 }: VehicleStatusDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   if (!vehicle) return null;
 
   const handleStatusChange = async (status: string) => {
@@ -103,7 +103,7 @@ export function VehicleStatusDialog({
                         </span>
                       )}
                     </p>
-                    <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
+                    <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                       {option.description}
                     </p>
                   </div>

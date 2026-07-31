@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { PageHeader } from '@/components/pos/comandas/PageHeader';
@@ -16,7 +16,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { playNotificationBeep } from '@/lib/utils/sound';
 
 export default function ComandasPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const { toast } = useToast();
   const { organization } = useOrganization();
   
@@ -293,7 +293,7 @@ export default function ComandasPage() {
   }, [zoneFilter, statusFilter, stationFilter, pageSize]);
 
   return (
-    <div className={`min-h-screen bg-gray-50 ${themeClass("", "bg-gray-900")}`}>
+    <div className={`min-h-screen bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
       {/* Header */}
       <PageHeader
         onRefresh={loadTickets}
@@ -303,7 +303,7 @@ export default function ComandasPage() {
       />
 
       {/* Filtros */}
-      <div className={`bg-white border-b border-gray-200 ${themeClass("", "bg-gray-800 border-gray-700")}`}>
+      <div className={`bg-white border-b border-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
         <div className="px-6">
           <FilterBar
             zoneFilter={zoneFilter}

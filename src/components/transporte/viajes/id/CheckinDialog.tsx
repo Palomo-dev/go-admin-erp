@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import {
   Dialog,
@@ -40,7 +40,7 @@ export function CheckinDialog({
   tripId,
   onSuccess,
 }: CheckinDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<'code' | 'qr'>('code');
   const [code, setCode] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -191,16 +191,16 @@ export function CheckinDialog({
             )}
 
             {success && (
-              <Alert className={`border-green-500 bg-green-50 ${themeClass("", "bg-green-900/20")}`}>
+              <Alert className={`border-green-500 bg-green-50 ${resolvedTheme === 'dark' ? "bg-green-900/20" : ""}`}>
                 <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className={`text-green-700 ${themeClass("", "text-green-400")}`}>
+                <AlertDescription className={`text-green-700 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
                   ¡Pasajero abordado exitosamente!
                 </AlertDescription>
               </Alert>
             )}
 
             {foundTicket && !success && (
-              <div className={`border rounded-lg p-4 space-y-3 bg-gray-50 ${themeClass("", "bg-gray-800")}`}>
+              <div className={`border rounded-lg p-4 space-y-3 bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <User className="h-5 w-5 text-gray-500" />
@@ -214,18 +214,18 @@ export function CheckinDialog({
                 </div>
 
                 {foundTicket.seat_number && (
-                  <div className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                  <div className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     <span className="font-medium">Asiento:</span> {foundTicket.seat_number}
                   </div>
                 )}
 
                 {foundTicket.passenger_doc && (
-                  <div className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                  <div className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     <span className="font-medium">Documento:</span> {foundTicket.passenger_doc}
                   </div>
                 )}
 
-                <div className={`flex items-center gap-4 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                <div className={`flex items-center gap-4 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                   {foundTicket.boarding_stop && (
                     <div className="flex items-center gap-1">
                       <MapPin className="h-4 w-4 text-green-500" />
@@ -257,9 +257,9 @@ export function CheckinDialog({
           </TabsContent>
 
           <TabsContent value="qr" className="mt-4">
-            <div className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center ${themeClass("", "border-gray-600")}`}>
+            <div className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}>
               <QrCode className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-              <p className={`text-gray-600 mb-2 ${themeClass("", "text-gray-400")}`}>
+              <p className={`text-gray-600 mb-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Escanea el código QR del boleto
               </p>
               <p className="text-sm text-gray-500">

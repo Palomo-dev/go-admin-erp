@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import React, { useState } from 'react';
 import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Circle, Hash, Printer, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -81,7 +81,7 @@ const getItemStatusInfo = (status: string | undefined) => {
 };
 
 export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onReprint, stationFilter = 'all' }: TicketCardProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const [isReprinting, setIsReprinting] = useState(false);
 
@@ -150,11 +150,11 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
   return (
     <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${cardUrgencyBorder[timeUrgency]}`}>
       {/* Header */}
-      <div className={`bg-gradient-to-r from-blue-50 to-blue-100 p-4 border-b border-blue-200 ${themeClass("", "from-blue-900/20 to-blue-800/20 border-blue-800")}`}>
+      <div className={`bg-gradient-to-r from-blue-50 to-blue-100 p-4 border-b border-blue-200 ${resolvedTheme === 'dark' ? "from-blue-900/20 to-blue-800/20 border-blue-800" : ""}`}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className={`text-lg font-bold text-gray-900 ${themeClass("", "text-gray-100")}`}>
+              <h3 className={`text-lg font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>
                 {tableName}
               </h3>
               {zoneName && (
@@ -163,7 +163,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                 </Badge>
               )}
             </div>
-            <div className={`flex items-center gap-3 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+            <div className={`flex items-center gap-3 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               <div className={`flex items-center gap-1 ${timeUrgencyClasses[timeUrgency]}`}>
                 <Clock className="h-4 w-4" />
                 <span>{timeElapsed} min</span>
@@ -187,7 +187,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
               <Button
                 variant="outline"
                 size="icon"
-                className={`h-7 w-7 bg-white/70 ${themeClass("", "bg-gray-900/40")}`}
+                className={`h-7 w-7 bg-white/70 ${resolvedTheme === 'dark' ? "bg-gray-900/40" : ""}`}
                 title="Reimprimir comanda"
                 onClick={handleReprint}
                 disabled={isReprinting}
@@ -264,7 +264,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                       <ChefHat className="h-3 w-3 text-white" />
                     </div>
                   ) : (
-                    <div className={`h-5 w-5 rounded-full border-2 border-gray-300 ${themeClass("", "border-gray-600")}`} />
+                    <div className={`h-5 w-5 rounded-full border-2 border-gray-300 ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`} />
                   )}
                 </div>
                 
@@ -281,7 +281,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                   {variantData && Object.keys(variantData).length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap mb-1">
                       {Object.entries(variantData).filter(([, v]) => !!v).map(([attr, value]) => (
-                        <Badge key={attr} variant="outline" className={`text-[0.65rem] px-1.5 py-0 border-indigo-300 text-indigo-700 ${themeClass("", "border-indigo-700 text-indigo-300")}`}>
+                        <Badge key={attr} variant="outline" className={`text-[0.65rem] px-1.5 py-0 border-indigo-300 text-indigo-700 ${resolvedTheme === 'dark' ? "border-indigo-700 text-indigo-300" : ""}`}>
                           {attr}: {value}
                         </Badge>
                       ))}
@@ -291,7 +291,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                   {itemModifiers.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap mb-1">
                       {itemModifiers.map((mod: any, idx: number) => (
-                        <Badge key={idx} variant="outline" className={`text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 ${themeClass("", "border-amber-700 text-amber-300")}`}>
+                        <Badge key={idx} variant="outline" className={`text-[0.65rem] px-1.5 py-0 border-amber-300 text-amber-700 ${resolvedTheme === 'dark' ? "border-amber-700 text-amber-300" : ""}`}>
                           {mod.name}
                         </Badge>
                       ))}
@@ -306,19 +306,19 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                       {itemStatusInfo.label}
                     </Badge>
                     {product?.categories?.name && (
-                      <span className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+                      <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                         {product.categories.name}
                       </span>
                     )}
                     {ticket.source === 'pos' && (
-                      <Badge variant="outline" className={`text-xs bg-purple-50 text-purple-700 ${themeClass("", "bg-purple-900/30 text-purple-300")}`}>
+                      <Badge variant="outline" className={`text-xs bg-purple-50 text-purple-700 ${resolvedTheme === 'dark' ? "bg-purple-900/30 text-purple-300" : ""}`}>
                         POS
                       </Badge>
                     )}
                   </div>
                   
                   {item.notes && (
-                    <p className={`mt-2 text-sm text-gray-600 italic ${themeClass("", "text-gray-400")}`}>
+                    <p className={`mt-2 text-sm text-gray-600 italic ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                       📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}
                     </p>
                   )}
@@ -331,7 +331,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
 
       {/* Footer */}
       {nextStatus && (
-        <div className={`p-4 bg-gray-50 border-t border-gray-200 ${themeClass("", "bg-gray-800/30 border-gray-700")}`}>
+        <div className={`p-4 bg-gray-50 border-t border-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-800/30 border-gray-700" : ""}`}>
           <Button
             onClick={() => onStatusChange(ticket.id, nextStatus)}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"

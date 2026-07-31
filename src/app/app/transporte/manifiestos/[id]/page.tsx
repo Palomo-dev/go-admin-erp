@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -92,7 +92,7 @@ const SHIPMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> =
 };
 
 export default function ManifestDetailPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const params = useParams();
   const manifestId = params.id as string;
@@ -368,7 +368,7 @@ export default function ManifestDetailPage() {
         <Card className="p-8">
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className={`ml-3 text-gray-600 ${themeClass("", "text-gray-400")}`}>Cargando manifiesto...</span>
+            <span className={`ml-3 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Cargando manifiesto...</span>
           </div>
         </Card>
       </div>
@@ -380,7 +380,7 @@ export default function ManifestDetailPage() {
       <div className="p-6">
         <Card className="p-8 text-center">
           <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-white")}`}>Manifiesto no encontrado</h3>
+          <h3 className={`text-lg font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>Manifiesto no encontrado</h3>
           <Button onClick={() => router.push('/app/transporte/manifiestos')} className="mt-4">
             Volver a manifiestos
           </Button>
@@ -404,7 +404,7 @@ export default function ManifestDetailPage() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>
+              <h1 className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 {manifest.manifest_number}
               </h1>
               <Badge className={statusConfig.color}>
@@ -414,7 +414,7 @@ export default function ManifestDetailPage() {
                 </span>
               </Badge>
             </div>
-            <p className={`text-gray-600 flex items-center gap-2 mt-1 ${themeClass("", "text-gray-400")}`}>
+            <p className={`text-gray-600 flex items-center gap-2 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               <Calendar className="h-4 w-4" />
               {format(new Date(manifest.manifest_date), "EEEE, dd MMMM yyyy", { locale: es })}
             </p>
@@ -473,7 +473,7 @@ export default function ManifestDetailPage() {
         <div className="space-y-6">
           {/* Información general */}
           <Card className="p-4">
-            <h3 className={`font-semibold text-gray-900 mb-4 ${themeClass("", "text-white")}`}>Información General</h3>
+            <h3 className={`font-semibold text-gray-900 mb-4 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>Información General</h3>
             <div className="space-y-3">
               {manifest.vehicles && (
                 <div className="flex items-center gap-3">
@@ -521,21 +521,21 @@ export default function ManifestDetailPage() {
 
           {/* Estadísticas */}
           <Card className="p-4">
-            <h3 className={`font-semibold text-gray-900 mb-4 ${themeClass("", "text-white")}`}>Estadísticas</h3>
+            <h3 className={`font-semibold text-gray-900 mb-4 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>Estadísticas</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className={`text-center p-3 bg-gray-50 rounded-lg ${themeClass("", "bg-gray-800")}`}>
-                <p className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>{manifest.total_shipments}</p>
+              <div className={`text-center p-3 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+                <p className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{manifest.total_shipments}</p>
                 <p className="text-xs text-gray-500">Total Envíos</p>
               </div>
-              <div className={`text-center p-3 bg-green-50 rounded-lg ${themeClass("", "bg-green-900/20")}`}>
+              <div className={`text-center p-3 bg-green-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-green-900/20" : ""}`}>
                 <p className="text-2xl font-bold text-green-600">{manifest.delivered_count}</p>
                 <p className="text-xs text-gray-500">Entregados</p>
               </div>
-              <div className={`text-center p-3 bg-red-50 rounded-lg ${themeClass("", "bg-red-900/20")}`}>
+              <div className={`text-center p-3 bg-red-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-red-900/20" : ""}`}>
                 <p className="text-2xl font-bold text-red-600">{manifest.failed_count}</p>
                 <p className="text-xs text-gray-500">Fallidos</p>
               </div>
-              <div className={`text-center p-3 bg-yellow-50 rounded-lg ${themeClass("", "bg-yellow-900/20")}`}>
+              <div className={`text-center p-3 bg-yellow-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-yellow-900/20" : ""}`}>
                 <p className="text-2xl font-bold text-yellow-600">{manifest.pending_count}</p>
                 <p className="text-xs text-gray-500">Pendientes</p>
               </div>
@@ -547,7 +547,7 @@ export default function ManifestDetailPage() {
                 <span>Progreso</span>
                 <span>{progressPercent}%</span>
               </div>
-              <div className={`h-3 bg-gray-200 rounded-full overflow-hidden ${themeClass("", "bg-gray-700")}`}>
+              <div className={`h-3 bg-gray-200 rounded-full overflow-hidden ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`}>
                 <div
                   className="h-full bg-green-500 transition-all duration-300"
                   style={{ width: `${progressPercent}%` }}
@@ -572,8 +572,8 @@ export default function ManifestDetailPage() {
           {/* Notas */}
           {manifest.notes && (
             <Card className="p-4">
-              <h3 className={`font-semibold text-gray-900 mb-2 ${themeClass("", "text-white")}`}>Notas</h3>
-              <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>{manifest.notes}</p>
+              <h3 className={`font-semibold text-gray-900 mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>Notas</h3>
+              <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{manifest.notes}</p>
             </Card>
           )}
         </div>
@@ -582,7 +582,7 @@ export default function ManifestDetailPage() {
         <div className="lg:col-span-2">
           <Card className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-semibold text-gray-900 flex items-center gap-2 ${themeClass("", "text-white")}`}>
+              <h3 className={`font-semibold text-gray-900 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 <Package className="h-5 w-5" />
                 Envíos del Manifiesto ({manifest.manifest_shipments?.length || 0})
               </h3>
@@ -648,7 +648,7 @@ export default function ManifestDetailPage() {
                             {/* Info del envío */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
+                                <span className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                                   {ms.shipments?.shipment_number || 'Sin número'}
                                 </span>
                                 <Badge className={shipmentStatusConfig.color}>
@@ -668,7 +668,7 @@ export default function ManifestDetailPage() {
                                     ms.shipments!.delivery_address + 
                                     (ms.shipments!.delivery_city ? `, ${ms.shipments!.delivery_city}` : '')
                                   )}
-                                  className={`flex items-start gap-1.5 mt-2 text-sm text-gray-600 hover:text-blue-600 text-left ${themeClass("", "text-gray-400 hover:text-blue-400")}`}
+                                  className={`flex items-start gap-1.5 mt-2 text-sm text-gray-600 hover:text-blue-600 text-left ${resolvedTheme === 'dark' ? "text-gray-400 hover:text-blue-400" : ""}`}
                                 >
                                   <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                   <span className="line-clamp-2">
@@ -712,7 +712,7 @@ export default function ManifestDetailPage() {
                                   </Badge>
                                 )}
                                 {ms.shipments?.cod_amount && Number(ms.shipments.cod_amount) > 0 && (
-                                  <Badge className={`bg-yellow-100 text-yellow-800 text-xs ${themeClass("", "bg-yellow-900/30 text-yellow-400")}`}>
+                                  <Badge className={`bg-yellow-100 text-yellow-800 text-xs ${resolvedTheme === 'dark' ? "bg-yellow-900/30 text-yellow-400" : ""}`}>
                                     <DollarSign className="h-3 w-3 mr-1" />
                                     COD: ${Number(ms.shipments.cod_amount).toLocaleString()}
                                   </Badge>
@@ -721,14 +721,14 @@ export default function ManifestDetailPage() {
 
                               {/* Notas del conductor */}
                               {ms.driver_notes && (
-                                <div className={`mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600 ${themeClass("", "bg-gray-800 text-gray-400")}`}>
+                                <div className={`mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600 ${resolvedTheme === 'dark' ? "bg-gray-800 text-gray-400" : ""}`}>
                                   <strong>Notas:</strong> {ms.driver_notes}
                                 </div>
                               )}
 
                               {/* Motivo de fallo */}
                               {ms.status === 'failed' && ms.failure_reason && (
-                                <div className={`mt-2 p-2 bg-red-50 rounded text-sm text-red-700 flex items-start gap-2 ${themeClass("", "bg-red-900/20 text-red-400")}`}>
+                                <div className={`mt-2 p-2 bg-red-50 rounded text-sm text-red-700 flex items-start gap-2 ${resolvedTheme === 'dark' ? "bg-red-900/20 text-red-400" : ""}`}>
                                   <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                   <span><strong>Motivo:</strong> {ms.failure_reason}</span>
                                 </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import React from 'react';
 import { RefreshCw, ChefHat, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,18 +13,18 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ onRefresh, isLoading, soundEnabled, onToggleSound }: PageHeaderProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   return (
-    <div className={`bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm ${themeClass("", "bg-gray-800 border-gray-700")}`}>
+    <div className={`bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <ChefHat className="h-8 w-8 text-blue-600" />
             <div>
-              <h1 className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-gray-100")}`}>
+              <h1 className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>
                 Comandas de Cocina
               </h1>
-              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
+              <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Monitor en tiempo real
               </p>
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,7 +49,7 @@ export function AddressDialog({
   organizationId,
   onSave,
 }: AddressDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const isEditing = !!address;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -276,25 +276,25 @@ export function AddressDialog({
           <div className="space-y-2">
             <Label>Cliente *</Label>
             {selectedCustomer && !isEditing ? (
-              <div className={`p-3 rounded-lg border bg-blue-50 border-blue-200 ${themeClass("", "bg-blue-900/20 border-blue-500/30")}`}>
+              <div className={`p-3 rounded-lg border bg-blue-50 border-blue-200 ${resolvedTheme === 'dark' ? "bg-blue-900/20 border-blue-500/30" : ""}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className={`p-2 rounded-full bg-blue-100 shrink-0 ${themeClass("", "bg-blue-500/20")}`}>
-                      <User className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+                    <div className={`p-2 rounded-full bg-blue-100 shrink-0 ${resolvedTheme === 'dark' ? "bg-blue-500/20" : ""}`}>
+                      <User className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
+                      <p className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                         {selectedCustomer.first_name} {selectedCustomer.last_name}
                       </p>
                       <div className="mt-1 space-y-0.5">
                         {selectedCustomer.email && (
-                          <div className={`flex items-center gap-1.5 text-xs text-gray-600 ${themeClass("", "text-gray-300")}`}>
+                          <div className={`flex items-center gap-1.5 text-xs text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                             <Mail className="h-3 w-3" />
                             <span className="truncate">{selectedCustomer.email}</span>
                           </div>
                         )}
                         {selectedCustomer.phone && (
-                          <div className={`flex items-center gap-1.5 text-xs text-gray-600 ${themeClass("", "text-gray-300")}`}>
+                          <div className={`flex items-center gap-1.5 text-xs text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                             <Phone className="h-3 w-3" />
                             <span>{selectedCustomer.phone}</span>
                           </div>
@@ -310,20 +310,20 @@ export function AddressDialog({
                       setSelectedCustomer(null);
                       setFormData({ ...formData, customer_id: '' });
                     }}
-                    className={`h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 ${themeClass("", "hover:bg-red-500/20 hover:text-red-400")}`}
+                    className={`h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 ${resolvedTheme === 'dark' ? "hover:bg-red-500/20 hover:text-red-400" : ""}`}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ) : isEditing && selectedCustomer ? (
-              <div className={`p-3 rounded-lg border bg-gray-50 ${themeClass("", "bg-gray-800 border-gray-700")}`}>
+              <div className={`p-3 rounded-lg border bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full bg-gray-200 ${themeClass("", "bg-gray-700")}`}>
+                  <div className={`p-2 rounded-full bg-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`}>
                     <User className="h-5 w-5 text-gray-500" />
                   </div>
                   <div>
-                    <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+                    <p className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                       {selectedCustomer.first_name} {selectedCustomer.last_name}
                     </p>
                     <p className="text-xs text-gray-500">Cliente no editable</p>
@@ -336,81 +336,81 @@ export function AddressDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    className={`w-full justify-start text-left h-auto p-3 border-gray-300 hover:bg-blue-50 hover:border-blue-300 transition-all ${themeClass("", "border-gray-700 hover:bg-gray-800/50 hover:border-blue-500/50")}`}
+                    className={`w-full justify-start text-left h-auto p-3 border-gray-300 hover:bg-blue-50 hover:border-blue-300 transition-all ${resolvedTheme === 'dark' ? "border-gray-700 hover:bg-gray-800/50 hover:border-blue-500/50" : ""}`}
                   >
                     <div className="flex items-center gap-3 min-w-0 w-full">
-                      <div className={`p-2 rounded-full bg-blue-100 shrink-0 ${themeClass("", "bg-blue-500/20")}`}>
-                        <User className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+                      <div className={`p-2 rounded-full bg-blue-100 shrink-0 ${resolvedTheme === 'dark' ? "bg-blue-500/20" : ""}`}>
+                        <User className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+                        <p className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                           Seleccionar cliente
                         </p>
-                        <p className={`text-xs text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                        <p className={`text-xs text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                           Buscar por nombre, email o teléfono
                         </p>
                       </div>
-                      <SearchIcon className={`h-4 w-4 text-gray-500 shrink-0 ${themeClass("", "text-gray-400")}`} />
+                      <SearchIcon className={`h-4 w-4 text-gray-500 shrink-0 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`} />
                     </div>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className={`w-96 p-0 ${themeClass("", "bg-gray-900 border-gray-800")}`} align="start">
+                <PopoverContent className={`w-96 p-0 ${resolvedTheme === 'dark' ? "bg-gray-900 border-gray-800" : ""}`} align="start">
                   <div className="p-4 space-y-4">
                     <div className="space-y-2">
-                      <h4 className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>Buscar Cliente</h4>
+                      <h4 className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>Buscar Cliente</h4>
                       <div className="relative">
-                        <SearchIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 ${themeClass("", "text-gray-400")}`} />
+                        <SearchIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`} />
                         <Input
                           placeholder="Nombre, email o teléfono..."
                           value={customerSearch}
                           onChange={(e) => setCustomerSearch(e.target.value)}
-                          className={`pl-10 ${themeClass("", "bg-gray-800 border-gray-700")}`}
+                          className={`pl-10 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}
                           autoFocus
                         />
                       </div>
                     </div>
 
-                    <Separator className={themeClass("", "bg-gray-800")} />
+                    <Separator className={resolvedTheme === 'dark' ? "bg-gray-800" : ""} />
 
                     <ScrollArea className="h-48">
                       <div className="space-y-2 pr-4">
                         {isSearching ? (
                           <div className="flex items-center justify-center py-6">
                             <Loader2 className="h-5 w-5 animate-spin text-blue-500 mr-2" />
-                            <span className={`text-sm ${themeClass("", "text-gray-400")}`}>Buscando...</span>
+                            <span className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Buscando...</span>
                           </div>
                         ) : customers.length === 0 && customerSearch.length >= 2 ? (
                           <div className="flex flex-col items-center justify-center py-6 text-center">
-                            <User className={`h-10 w-10 text-gray-400 mb-2 ${themeClass("", "text-gray-600")}`} />
-                            <p className={`text-sm ${themeClass("", "text-gray-400")}`}>No se encontraron clientes</p>
+                            <User className={`h-10 w-10 text-gray-400 mb-2 ${resolvedTheme === 'dark' ? "text-gray-600" : ""}`} />
+                            <p className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>No se encontraron clientes</p>
                           </div>
                         ) : customers.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-6 text-center">
-                            <SearchIcon className={`h-10 w-10 text-gray-400 mb-2 ${themeClass("", "text-gray-600")}`} />
-                            <p className={`text-sm ${themeClass("", "text-gray-400")}`}>Escribe para buscar clientes</p>
+                            <SearchIcon className={`h-10 w-10 text-gray-400 mb-2 ${resolvedTheme === 'dark' ? "text-gray-600" : ""}`} />
+                            <p className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Escribe para buscar clientes</p>
                           </div>
                         ) : (
                           customers.map((customer) => (
                             <div
                               key={customer.id}
-                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-50 border border-transparent hover:border-blue-200 ${themeClass("", "hover:bg-gray-800 hover:border-blue-500/30")}`}
+                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-50 border border-transparent hover:border-blue-200 ${resolvedTheme === 'dark' ? "hover:bg-gray-800 hover:border-blue-500/30" : ""}`}
                               onClick={() => handleSelectCustomer(customer)}
                             >
-                              <div className={`p-1.5 rounded-full bg-blue-100 ${themeClass("", "bg-blue-500/20")}`}>
-                                <User className={`h-4 w-4 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+                              <div className={`p-1.5 rounded-full bg-blue-100 ${resolvedTheme === 'dark' ? "bg-blue-500/20" : ""}`}>
+                                <User className={`h-4 w-4 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`font-medium text-sm text-gray-900 truncate ${themeClass("", "text-white")}`}>
+                                <p className={`font-medium text-sm text-gray-900 truncate ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                                   {customer.first_name} {customer.last_name}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {customer.email && (
-                                    <span className={`text-xs text-gray-600 truncate max-w-[150px] ${themeClass("", "text-gray-400")}`}>
+                                    <span className={`text-xs text-gray-600 truncate max-w-[150px] ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                                       {customer.email}
                                     </span>
                                   )}
                                   {customer.phone && (
-                                    <span className={`text-xs text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                                    <span className={`text-xs text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                                       {customer.phone}
                                     </span>
                                   )}
@@ -491,13 +491,13 @@ export function AddressDialog({
               )}
             </div>
             {placeSuggestions.length > 0 && (
-              <div className={`border rounded-md bg-white shadow-lg max-h-48 overflow-y-auto ${themeClass("", "bg-gray-800")}`}>
+              <div className={`border rounded-md bg-white shadow-lg max-h-48 overflow-y-auto ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
                 {placeSuggestions.map((place) => (
                   <button
                     key={place.place_id}
                     type="button"
                     onClick={() => handleSelectPlace(place.place_id, place.description)}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 ${themeClass("", "hover:bg-gray-700")}`}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 ${resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}`}
                   >
                     <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
                     <span className="truncate">{place.description}</span>

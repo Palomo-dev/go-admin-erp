@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -65,7 +65,7 @@ export function IncidentDialog({
   onSave,
   isLoading = false,
 }: IncidentDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState<Partial<CreateIncidentData>>(initialFormData);
   const [activeTab, setActiveTab] = useState('general');
 
@@ -305,7 +305,7 @@ export function IncidentDialog({
 
             {/* Tab Ubicación */}
             <TabsContent value="ubicacion" className="space-y-4">
-              <div className={`flex items-center gap-2 text-sm text-gray-600 mb-4 ${themeClass("", "text-gray-400")}`}>
+              <div className={`flex items-center gap-2 text-sm text-gray-600 mb-4 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 <MapPin className="h-4 w-4" />
                 Ubicación del incidente
               </div>
@@ -348,7 +348,7 @@ export function IncidentDialog({
 
             {/* Tab Costos */}
             <TabsContent value="costos" className="space-y-4">
-              <div className={`flex items-center gap-2 text-sm text-gray-600 mb-4 ${themeClass("", "text-gray-400")}`}>
+              <div className={`flex items-center gap-2 text-sm text-gray-600 mb-4 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 <DollarSign className="h-4 w-4" />
                 Costos asociados al incidente
               </div>
@@ -398,7 +398,7 @@ export function IncidentDialog({
 
             {/* Tab Notas */}
             <TabsContent value="notas" className="space-y-4">
-              <div className={`flex items-center gap-2 text-sm text-gray-600 mb-4 ${themeClass("", "text-gray-400")}`}>
+              <div className={`flex items-center gap-2 text-sm text-gray-600 mb-4 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 <FileText className="h-4 w-4" />
                 Notas y observaciones
               </div>
@@ -416,7 +416,7 @@ export function IncidentDialog({
             </TabsContent>
           </Tabs>
 
-          <div className={`flex justify-end gap-3 pt-4 border-t ${themeClass("", "border-gray-700")}`}>
+          <div className={`flex justify-end gap-3 pt-4 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>

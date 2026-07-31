@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
@@ -16,7 +16,7 @@ const PlanTab = dynamic(() => import('../../../../components/organization/PlanTa
 });
 
 export default function PlanPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const searchParams = useSearchParams();
   const [orgData, setOrgData] = useState<any>(null);
   const [userRole, setUserRole] = useState<number | null>(null);
@@ -117,10 +117,10 @@ export default function PlanPage() {
 
   if (loading) {
     return (
-      <div className={`p-4 sm:p-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+      <div className={`p-4 sm:p-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
         <div className="mb-6">
-          <h1 className={`text-2xl font-semibold text-gray-900 ${themeClass("", "text-gray-100")}`}>{t('plan.title')}</h1>
-          <p className={`mt-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('plan.description')}</p>
+          <h1 className={`text-2xl font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{t('plan.title')}</h1>
+          <p className={`mt-2 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('plan.description')}</p>
         </div>
         <PlanSkeleton />
       </div>
@@ -166,7 +166,7 @@ export default function PlanPage() {
   }
 
   return (
-    <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+    <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
         {/* Mensaje de éxito */}
         {successMessage && (
           <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
@@ -199,20 +199,20 @@ export default function PlanPage() {
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0">
-            <h1 className={`text-2xl font-semibold text-gray-900 ${themeClass("", "text-gray-100")}`}>{t('plan.title')}</h1>
-            <p className={`mt-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('plan.description')}</p>
+            <h1 className={`text-2xl font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{t('plan.title')}</h1>
+            <p className={`mt-2 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('plan.description')}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
               href="/app/plan/billing"
-              className={`inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${themeClass("", "bg-gray-800 text-gray-200 border-gray-600")}`}
+              className={`inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-800 text-gray-200 border-gray-600" : ""}`}
             >
               <DocumentTextIcon className="h-4 w-4 mr-2" />
               Facturación
             </Link>
             <Link
               href="/app/plan/historial"
-              className={`inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${themeClass("", "bg-gray-800 text-gray-200 border-gray-600")}`}
+              className={`inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-800 text-gray-200 border-gray-600" : ""}`}
             >
               <ClockIcon className="h-4 w-4 mr-2" />
               Historial

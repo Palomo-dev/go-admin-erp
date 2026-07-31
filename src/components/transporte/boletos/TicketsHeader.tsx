@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Plus, RefreshCw, Download } from 'lucide-react';
 
@@ -12,12 +12,12 @@ interface TicketsHeaderProps {
 }
 
 export function TicketsHeader({ onNew, onRefresh, onExport, isLoading }: TicketsHeaderProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>Boletos</h1>
-        <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
+        <h1 className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>Boletos</h1>
+        <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
           Gestión de venta y reserva de boletos de pasajeros
         </p>
       </div>

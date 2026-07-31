@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export function IncidentAttachments({
   onAddAttachment,
   onRemoveAttachment,
 }: IncidentAttachmentsProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [attachmentToDelete, setAttachmentToDelete] = useState<Attachment | null>(null);
@@ -135,7 +135,7 @@ export function IncidentAttachments({
         </CardHeader>
         <CardContent>
           {attachments.length === 0 ? (
-            <div className={`text-center py-8 text-gray-500 border-2 border-dashed rounded-lg ${themeClass("", "text-gray-400")}`}>
+            <div className={`text-center py-8 text-gray-500 border-2 border-dashed rounded-lg ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               <Paperclip className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No hay archivos adjuntos</p>
               <p className="text-sm mt-1">Arrastra archivos aquí o haz clic en &quot;Subir archivo&quot;</p>
@@ -145,11 +145,11 @@ export function IncidentAttachments({
               {attachments.map((attachment, index) => (
                 <div
                   key={index}
-                  className={`border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors ${themeClass("", "bg-gray-800/50 hover:bg-gray-800")}`}
+                  className={`border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors ${resolvedTheme === 'dark' ? "bg-gray-800/50 hover:bg-gray-800" : ""}`}
                 >
                   {/* Preview para imágenes */}
                   {isImage(attachment.type) && (
-                    <div className={`mb-3 rounded overflow-hidden bg-white ${themeClass("", "bg-gray-900")}`}>
+                    <div className={`mb-3 rounded overflow-hidden bg-white ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
                       <img
                         src={attachment.url}
                         alt={attachment.name}
@@ -166,10 +166,10 @@ export function IncidentAttachments({
                   )}
 
                   {/* Info del archivo */}
-                  <p className={`text-sm font-medium text-gray-900 truncate mb-2 ${themeClass("", "text-white")}`}>
+                  <p className={`text-sm font-medium text-gray-900 truncate mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                     {attachment.name}
                   </p>
-                  <p className={`text-xs text-gray-500 mb-3 ${themeClass("", "text-gray-400")}`}>
+                  <p className={`text-xs text-gray-500 mb-3 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {attachment.type}
                   </p>
 
@@ -191,7 +191,7 @@ export function IncidentAttachments({
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`text-red-600 hover:text-red-700 hover:bg-red-50 ${themeClass("", "hover:bg-red-900/20")}`}
+                      className={`text-red-600 hover:text-red-700 hover:bg-red-50 ${resolvedTheme === 'dark' ? "hover:bg-red-900/20" : ""}`}
                       onClick={() => setAttachmentToDelete(attachment)}
                     >
                       <Trash2 className="h-3 w-3" />

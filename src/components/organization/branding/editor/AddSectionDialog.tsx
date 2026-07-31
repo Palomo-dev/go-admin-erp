@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import {
   Dialog,
@@ -76,7 +76,7 @@ export default function AddSectionDialog({
   onAdd,
   existingSectionTypes,
 }: AddSectionDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const t = useTranslations('branding.editor.addSection');
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<SectionTypeDefinition | null>(null);
@@ -153,19 +153,19 @@ export default function AddSectionDialog({
                       'border border-transparent hover:border-gray-200 dark:hover:border-gray-700'
                     )}
                   >
-                    <div className={`p-2 rounded-lg bg-blue-50 shrink-0 ${themeClass("", "bg-blue-900/20")}`}>
-                      <IconComponent className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+                    <div className={`p-2 rounded-lg bg-blue-50 shrink-0 ${resolvedTheme === 'dark' ? "bg-blue-900/20" : ""}`}>
+                      <IconComponent className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`text-sm font-medium ${themeClass("", "text-white")}`}>{def.label}</p>
+                        <p className={`text-sm font-medium ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{def.label}</p>
                         {alreadyExists && (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                             {t('alreadyExists')}
                           </Badge>
                         )}
                       </div>
-                      <p className={`text-xs text-gray-500 truncate ${themeClass("", "text-gray-400")}`}>
+                      <p className={`text-xs text-gray-500 truncate ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                         {def.description}
                       </p>
                     </div>
@@ -202,7 +202,7 @@ export default function AddSectionDialog({
                     'border-gray-200 dark:border-gray-700'
                   )}
                 >
-                  <p className={`text-sm font-medium ${themeClass("", "text-white")}`}>{variant.label}</p>
+                  <p className={`text-sm font-medium ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{variant.label}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {selectedType.type}/{variant.id}
                   </p>

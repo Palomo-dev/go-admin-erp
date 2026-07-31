@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import {
   Dialog,
@@ -31,7 +31,7 @@ export function VoidLabelDialog({
   onConfirm,
   isLoading = false,
 }: VoidLabelDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [reason, setReason] = useState('');
 
   const handleConfirm = async () => {
@@ -55,13 +55,13 @@ export function VoidLabelDialog({
 
         {label && (
           <div className="space-y-4">
-            <div className={`p-3 bg-red-50 rounded-lg flex items-start gap-3 ${themeClass("", "bg-red-900/20")}`}>
+            <div className={`p-3 bg-red-50 rounded-lg flex items-start gap-3 ${resolvedTheme === 'dark' ? "bg-red-900/20" : ""}`}>
               <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
               <div className="text-sm">
-                <p className={`font-medium text-red-800 ${themeClass("", "text-red-300")}`}>
+                <p className={`font-medium text-red-800 ${resolvedTheme === 'dark' ? "text-red-300" : ""}`}>
                   Etiqueta: {label.label_number}
                 </p>
-                <p className={`text-red-600 ${themeClass("", "text-red-400")}`}>
+                <p className={`text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
                   Envío: {label.shipments?.shipment_number || 'N/A'}
                 </p>
               </div>

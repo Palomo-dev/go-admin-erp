@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +40,7 @@ export function RouteDialog({
   organizationId,
   onSave,
 }: RouteDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const isEditing = !!route;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stops, setStops] = useState<TransportStop[]>([]);
@@ -300,7 +300,7 @@ export function RouteDialog({
           </div>
 
           {/* Calcular Ruta con Google Maps */}
-          <div className={`p-4 border rounded-lg bg-gray-50 space-y-3 ${themeClass("", "bg-gray-800")}`}>
+          <div className={`p-4 border rounded-lg bg-gray-50 space-y-3 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-base font-medium">Calcular Ruta</Label>
@@ -322,14 +322,14 @@ export function RouteDialog({
             </div>
             
             {routeError && (
-              <div className={`flex items-center gap-2 text-sm text-red-600 ${themeClass("", "text-red-400")}`}>
+              <div className={`flex items-center gap-2 text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
                 <AlertCircle className="h-4 w-4" />
                 {routeError}
               </div>
             )}
             
             {routeCalculated && (
-              <div className={`flex items-center gap-2 text-sm text-green-600 ${themeClass("", "text-green-400")}`}>
+              <div className={`flex items-center gap-2 text-sm text-green-600 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
                 <CheckCircle2 className="h-4 w-4" />
                 Ruta calculada correctamente
               </div>

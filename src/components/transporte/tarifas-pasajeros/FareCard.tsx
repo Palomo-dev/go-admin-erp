@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -74,7 +74,7 @@ const FARE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: Rea
 const DAY_NAMES = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }: FareCardProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const typeConfig = FARE_TYPE_CONFIG[fare.fare_type] || FARE_TYPE_CONFIG.regular;
   
   const hasDiscount = (fare.discount_percent && fare.discount_percent > 0) || 
@@ -93,7 +93,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className={`font-semibold text-gray-900 truncate ${themeClass("", "text-white")}`}>
+            <h3 className={`font-semibold text-gray-900 truncate ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               {fare.fare_name}
             </h3>
             <Badge className={typeConfig.color}>
@@ -109,7 +109,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
               <Badge variant="destructive">Vencida</Badge>
             )}
             {isNotStarted && (
-              <Badge className={`bg-yellow-100 text-yellow-800 ${themeClass("", "bg-yellow-900/30 text-yellow-400")}`}>
+              <Badge className={`bg-yellow-100 text-yellow-800 ${resolvedTheme === 'dark' ? "bg-yellow-900/30 text-yellow-400" : ""}`}>
                 Próxima
               </Badge>
             )}
@@ -117,14 +117,14 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
 
           {/* Código */}
           {fare.fare_code && (
-            <p className={`text-sm text-gray-500 mt-1 ${themeClass("", "text-gray-400")}`}>
+            <p className={`text-sm text-gray-500 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               Código: {fare.fare_code}
             </p>
           )}
 
           {/* Ruta */}
           {fare.transport_routes && (
-            <div className={`flex items-center gap-1 mt-2 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+            <div className={`flex items-center gap-1 mt-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               <Route className="h-4 w-4" />
               <span>{fare.transport_routes.name}</span>
               {fare.transport_routes.code && (
@@ -135,7 +135,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
 
           {/* Tramo */}
           {(fare.from_stop || fare.to_stop) && (
-            <div className={`flex items-center gap-1 mt-1 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+            <div className={`flex items-center gap-1 mt-1 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               <MapPin className="h-4 w-4" />
               <span>
                 {fare.from_stop?.name || 'Cualquier origen'}
@@ -158,13 +158,13 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
                     ${fare.amount.toLocaleString()}
                   </span>
                   {fare.discount_percent && fare.discount_percent > 0 && (
-                    <Badge className={`bg-green-100 text-green-800 ${themeClass("", "bg-green-900/30 text-green-400")}`}>
+                    <Badge className={`bg-green-100 text-green-800 ${resolvedTheme === 'dark' ? "bg-green-900/30 text-green-400" : ""}`}>
                       -{fare.discount_percent}%
                     </Badge>
                   )}
                 </div>
               ) : (
-                <span className={`text-lg font-bold text-gray-900 ${themeClass("", "text-white")}`}>
+                <span className={`text-lg font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                   ${fare.amount.toLocaleString()}
                 </span>
               )}

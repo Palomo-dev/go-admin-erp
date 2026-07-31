@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,7 +29,7 @@ export function ComandasPagination({
   onPageChange,
   onPageSizeChange,
 }: ComandasPaginationProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
@@ -37,7 +37,7 @@ export function ComandasPagination({
     <div className="flex items-center justify-between gap-4 flex-wrap">
       {/* Items per page */}
       <div className="flex items-center gap-2">
-        <span className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+        <span className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
           Mostrar
         </span>
         <Select
@@ -55,13 +55,13 @@ export function ComandasPagination({
             <SelectItem value="32">32</SelectItem>
           </SelectContent>
         </Select>
-        <span className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+        <span className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
           por página
         </span>
       </div>
 
       {/* Info */}
-      <div className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+      <div className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
         {totalItems > 0 ? (
           <>
             Mostrando <span className="font-medium">{startItem}</span> a{' '}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +61,7 @@ export function IncidentHeader({
   onChangeStatus,
   onClose,
 }: IncidentHeaderProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
 
   const getStatusIcon = (status: string) => {
@@ -184,7 +184,7 @@ export function IncidentHeader({
             <div className="space-y-3 flex-1">
               {/* Título y badges */}
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>
+                <h1 className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                   {incident.title}
                 </h1>
                 <Badge className={getSeverityColor(incident.severity)}>
@@ -200,13 +200,13 @@ export function IncidentHeader({
               </div>
 
               {/* Tipo de incidente */}
-              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
+              <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 <span className="font-medium">Tipo:</span> {incidentType?.label || incident.incident_type}
               </p>
 
               {/* Descripción */}
               {incident.description && (
-                <p className={`text-gray-700 ${themeClass("", "text-gray-300")}`}>{incident.description}</p>
+                <p className={`text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>{incident.description}</p>
               )}
 
               {/* Metadatos */}
@@ -215,8 +215,8 @@ export function IncidentHeader({
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-gray-400" />
                   <div>
-                    <span className={`text-gray-500 ${themeClass("", "text-gray-400")}`}>Ocurrió:</span>
-                    <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+                    <span className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Ocurrió:</span>
+                    <p className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                       {format(new Date(incident.occurred_at), 'dd/MM/yyyy HH:mm', { locale: es })}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -229,8 +229,8 @@ export function IncidentHeader({
                 <div className="flex items-center gap-2 text-sm">
                   <User className="h-4 w-4 text-gray-400" />
                   <div>
-                    <span className={`text-gray-500 ${themeClass("", "text-gray-400")}`}>Responsable:</span>
-                    <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+                    <span className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Responsable:</span>
+                    <p className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                       {incident.assigned_user?.full_name || 'Sin asignar'}
                     </p>
                     {incident.assigned_user?.email && (
@@ -244,8 +244,8 @@ export function IncidentHeader({
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-gray-400" />
                     <div>
-                      <span className={`text-gray-500 ${themeClass("", "text-gray-400")}`}>Ubicación:</span>
-                      <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+                      <span className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Ubicación:</span>
+                      <p className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                         {incident.location_description}
                       </p>
                     </div>
@@ -257,7 +257,7 @@ export function IncidentHeader({
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-gray-400" />
                     <div>
-                      <span className={`text-gray-500 ${themeClass("", "text-gray-400")}`}>SLA:</span>
+                      <span className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>SLA:</span>
                       <p className={`font-medium ${incident.sla_breached ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
                         {incident.sla_hours} horas
                       </p>
@@ -269,7 +269,7 @@ export function IncidentHeader({
 
             {/* Referencia (Trip/Shipment) */}
             <div className="md:w-64 shrink-0">
-              <Card className={`bg-gray-50 ${themeClass("", "bg-gray-800/50")}`}>
+              <Card className={`bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-800/50" : ""}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     {incident.reference_type === 'trip' ? (
@@ -277,7 +277,7 @@ export function IncidentHeader({
                     ) : (
                       <Package className="h-5 w-5 text-blue-600" />
                     )}
-                    <span className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+                    <span className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                       {incident.reference_type === 'trip' ? 'Viaje' : 'Envío'}
                     </span>
                   </div>
@@ -286,7 +286,7 @@ export function IncidentHeader({
                     <div className="space-y-2 text-sm">
                       <p className="font-mono text-blue-600">{relatedTrip.trip_code}</p>
                       {relatedTrip.origin && relatedTrip.destination && (
-                        <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                        <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                           {relatedTrip.origin} → {relatedTrip.destination}
                         </p>
                       )}

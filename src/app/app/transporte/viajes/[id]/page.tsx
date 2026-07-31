@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -59,7 +59,7 @@ interface Incident {
 }
 
 export default function TripDetailPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const params = useParams();
   const tripId = params.id as string;
   const { toast } = useToast();
@@ -292,7 +292,7 @@ export default function TripDetailPage() {
     return (
       <div className="p-6 flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className={`ml-3 text-gray-600 ${themeClass("", "text-gray-400")}`}>Cargando viaje...</span>
+        <span className={`ml-3 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Cargando viaje...</span>
       </div>
     );
   }
@@ -301,10 +301,10 @@ export default function TripDetailPage() {
     return (
       <div className="p-6 text-center">
         <AlertTriangle className="h-12 w-12 mx-auto text-yellow-500 mb-4" />
-        <h2 className={`text-xl font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
+        <h2 className={`text-xl font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
           Viaje no encontrado
         </h2>
-        <p className={`text-gray-600 mt-2 ${themeClass("", "text-gray-400")}`}>
+        <p className={`text-gray-600 mt-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
           El viaje que buscas no existe o ha sido eliminado.
         </p>
       </div>

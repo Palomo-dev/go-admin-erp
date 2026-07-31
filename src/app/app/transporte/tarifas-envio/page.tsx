@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -69,7 +69,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function TarifasEnvioPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
@@ -349,11 +349,11 @@ export default function TarifasEnvioPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="min-w-0">
-          <h1 className={`text-2xl font-bold text-gray-900 flex items-center gap-2 ${themeClass("", "text-white")}`}>
+          <h1 className={`text-2xl font-bold text-gray-900 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
             <Truck className="h-7 w-7 text-blue-600" />
             Tarifas de Envío
           </h1>
-          <p className={`text-gray-500 mt-1 ${themeClass("", "text-gray-400")}`}>
+          <p className={`text-gray-500 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             Gestiona las tarifas de shipping por carrier, servicio y zona
           </p>
         </div>
@@ -379,7 +379,7 @@ export default function TarifasEnvioPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-blue-100 rounded-lg ${themeClass("", "bg-blue-900/30")}`}>
+              <div className={`p-2 bg-blue-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
                 <DollarSign className="h-5 w-5 text-blue-600" />
               </div>
               <div>
@@ -390,7 +390,7 @@ export default function TarifasEnvioPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-green-100 rounded-lg ${themeClass("", "bg-green-900/30")}`}>
+              <div className={`p-2 bg-green-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-green-900/30" : ""}`}>
                 <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
               <div>
@@ -401,7 +401,7 @@ export default function TarifasEnvioPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-gray-100 rounded-lg ${themeClass("", "bg-gray-800")}`}>
+              <div className={`p-2 bg-gray-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
                 <XCircle className="h-5 w-5 text-gray-500" />
               </div>
               <div>
@@ -412,7 +412,7 @@ export default function TarifasEnvioPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-purple-100 rounded-lg ${themeClass("", "bg-purple-900/30")}`}>
+              <div className={`p-2 bg-purple-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-purple-900/30" : ""}`}>
                 <Truck className="h-5 w-5 text-purple-600" />
               </div>
               <div>
@@ -488,13 +488,13 @@ export default function TarifasEnvioPage() {
         <Card className="p-4 sm:p-8">
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className={`ml-3 text-gray-600 ${themeClass("", "text-gray-400")}`}>Cargando tarifas...</span>
+            <span className={`ml-3 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Cargando tarifas...</span>
           </div>
         </Card>
       ) : rates.length === 0 ? (
         <Card className="p-8 text-center">
           <Truck className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+          <h3 className={`text-lg font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
             No hay tarifas registradas
           </h3>
           <p className="text-gray-500 mt-1">

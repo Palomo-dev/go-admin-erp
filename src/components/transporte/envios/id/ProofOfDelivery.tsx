@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,7 +75,7 @@ const LOCATION_TYPES = [
 ];
 
 export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: ProofOfDeliveryProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [showDialog, setShowDialog] = useState(false);
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,7 +117,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
   if (pod) {
     return (
       <Card className="p-4">
-        <h3 className={`font-semibold text-gray-900 mb-4 flex items-center gap-2 ${themeClass("", "text-white")}`}>
+        <h3 className={`font-semibold text-gray-900 mb-4 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
           <FileCheck className="h-4 w-4 text-green-600" />
           Prueba de Entrega
           <Badge className="bg-green-100 text-green-800">Registrada</Badge>
@@ -202,7 +202,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
           {pod.notes && (
             <div className="border-t pt-4">
               <p className="text-sm text-gray-500">Notas:</p>
-              <p className={`text-gray-700 ${themeClass("", "text-gray-300")}`}>{pod.notes}</p>
+              <p className={`text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>{pod.notes}</p>
             </div>
           )}
         </div>
@@ -213,7 +213,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`font-semibold text-gray-900 flex items-center gap-2 ${themeClass("", "text-white")}`}>
+        <h3 className={`font-semibold text-gray-900 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
           <FileCheck className="h-4 w-4" />
           Prueba de Entrega
         </h3>

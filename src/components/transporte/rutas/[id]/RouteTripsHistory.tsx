@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,7 @@ interface RouteTripsHistoryProps {
 }
 
 export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -83,7 +83,7 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
       </CardHeader>
       <CardContent>
         {trips.length === 0 ? (
-          <div className={`text-center py-6 text-gray-500 ${themeClass("", "text-gray-400")}`}>
+          <div className={`text-center py-6 text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p>No hay viajes registrados</p>
           </div>
@@ -98,7 +98,7 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
                 >
                   <div className="flex items-center gap-4">
                     <div className="text-sm">
-                      <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+                      <p className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                         {new Date(trip.trip_date).toLocaleDateString('es-CO', {
                           weekday: 'short',
                           day: 'numeric',

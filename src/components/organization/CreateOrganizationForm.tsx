@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid';
@@ -58,7 +58,7 @@ interface CreateOrganizationFormProps {
 }
 
 export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEmail = '', isSignupMode = false }: CreateOrganizationFormProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState({
     name: '',
     legalName: '', 
@@ -438,10 +438,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         )}
       </div>
       <div className="flex justify-center mt-2">
-        <span className={`text-sm font-medium mx-4 text-center text-gray-700 ${themeClass("", "text-gray-300")}`}>Información Básica</span>
-        <span className={`text-sm font-medium mx-4 text-center text-gray-700 ${themeClass("", "text-gray-300")}`}>Detalles Adicionales</span>
+        <span className={`text-sm font-medium mx-4 text-center text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>Información Básica</span>
+        <span className={`text-sm font-medium mx-4 text-center text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>Detalles Adicionales</span>
         {totalSteps === 3 && (
-          <span className={`text-sm font-medium mx-4 text-center text-gray-700 ${themeClass("", "text-gray-300")}`}>Plan</span>
+          <span className={`text-sm font-medium mx-4 text-center text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>Plan</span>
         )}
       </div>
     </div>
@@ -458,7 +458,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     
     return (
       <div className={colSpan}>
-        <label htmlFor={id} className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+        <label htmlFor={id} className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative">
@@ -483,7 +483,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           )}
         </div>
         {formErrors[id] && (
-          <p className={`mt-2 text-sm text-red-600 ${themeClass("", "text-red-400")}`} id={`${id}-error`}>
+          <p className={`mt-2 text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`} id={`${id}-error`}>
             {formErrors[id]}
           </p>
         )}
@@ -579,8 +579,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
   const renderStep1 = () => (
     <div className="space-y-6">
-      <div className={`bg-white px-6 py-8 shadow-md sm:rounded-lg ${themeClass("", "bg-gray-800")}`}>
-        <h3 className={`text-lg font-semibold leading-6 text-gray-900 mb-6 ${themeClass("", "text-gray-100")}`}>Información Básica</h3>
+      <div className={`bg-white px-6 py-8 shadow-md sm:rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+        <h3 className={`text-lg font-semibold leading-6 text-gray-900 mb-6 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>Información Básica</h3>
         
         <div className="mb-8 flex justify-center">
           <LogoUploader
@@ -595,7 +595,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           {renderFormField('legalName', 'Nombre Legal', 'text', true, 'col-span-6')}
           
           <div className="col-span-6">
-            <label htmlFor="typeId" className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+            <label htmlFor="typeId" className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               Tipo de Organización <span className="text-red-500">*</span>
             </label>
             <select
@@ -619,7 +619,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               ))}
             </select>
             {formErrors.typeId && (
-              <p className={`mt-2 text-sm text-red-600 ${themeClass("", "text-red-400")}`} id="typeId-error">
+              <p className={`mt-2 text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`} id="typeId-error">
                 {formErrors.typeId}
               </p>
             )}
@@ -627,7 +627,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           {/* Always show email field, but if defaultEmail is provided, show it as disabled/readonly */}
           <div className="col-span-6 sm:col-span-4">
-            <label htmlFor="email" className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+            <label htmlFor="email" className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               Correo Electrónico <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -657,19 +657,19 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               )}
             </div>
             {formErrors.email && (
-              <p className={`mt-2 text-sm text-red-600 ${themeClass("", "text-red-400")}`} id="email-error">
+              <p className={`mt-2 text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`} id="email-error">
                 {formErrors.email}
               </p>
             )}
             {!!defaultEmail && (
-              <p className={`mt-1 text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+              <p className={`mt-1 text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Usando el correo electrónico de tu cuenta
               </p>
             )}
           </div>
           
           <div className="col-span-6 sm:col-span-3">
-            <label htmlFor="taxId" className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+            <label htmlFor="taxId" className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               NIT/RUT <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -703,14 +703,14 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               )}
             </div>
             {formErrors.taxId && (
-              <p className={`mt-2 text-sm text-red-600 ${themeClass("", "text-red-400")}`} id="taxId-error">
+              <p className={`mt-2 text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`} id="taxId-error">
                 {formErrors.taxId}
               </p>
             )}
           </div>
 
           <div className="col-span-6 sm:col-span-1">
-            <label htmlFor="dv" className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+            <label htmlFor="dv" className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               DV
             </label>
             <input
@@ -723,7 +723,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 setDvManuallyEdited(true);
                 setFormData({ ...formData, dv: e.target.value });
               }}
-              className={`block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm ${themeClass("", "border-gray-600 bg-white text-gray-900")}`}
+              className={`block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm ${resolvedTheme === 'dark' ? "border-gray-600 bg-white text-gray-900" : ""}`}
               placeholder="Auto"
             />
             <p className="mt-1 text-xs text-gray-400">
@@ -735,7 +735,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           {/* Color selector */}
           <div className="col-span-6">
-            <label htmlFor="primaryColor" className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+            <label htmlFor="primaryColor" className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               Color Primario
             </label>
             <div className="mt-2">
@@ -791,10 +791,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   className="w-6 h-6 rounded-full mr-2" 
                   style={{ backgroundColor: formData.primaryColor }}
                 />
-                <span className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>{formData.primaryColor}</span>
+                <span className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{formData.primaryColor}</span>
               </div>
               
-              <p className={`mt-1 text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+              <p className={`mt-1 text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Este color se usará en la interfaz de tu organización
               </p>
             </div>
@@ -802,7 +802,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           {/* Secondary color selector */}
           <div className="col-span-6">
-            <label htmlFor="secondaryColor" className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+            <label htmlFor="secondaryColor" className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               Color Secundario
             </label>
             <div className="mt-2">
@@ -849,10 +849,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   className="w-6 h-6 rounded-full mr-2" 
                   style={{ backgroundColor: formData.secondaryColor }}
                 />
-                <span className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>{formData.secondaryColor}</span>
+                <span className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{formData.secondaryColor}</span>
               </div>
               
-              <p className={`mt-1 text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+              <p className={`mt-1 text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Este color se usará en la interfaz de tu organización
               </p>
             </div>
@@ -864,13 +864,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
   const renderStep2 = () => (
     <div className="space-y-6">
-      <div className={`bg-white px-6 py-8 shadow-md sm:rounded-lg ${themeClass("", "bg-gray-800")}`}>
-        <h3 className={`text-lg font-semibold leading-6 text-gray-900 mb-6 ${themeClass("", "text-gray-100")}`}>Detalles Adicionales</h3>
+      <div className={`bg-white px-6 py-8 shadow-md sm:rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+        <h3 className={`text-lg font-semibold leading-6 text-gray-900 mb-6 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>Detalles Adicionales</h3>
         
         <div className="space-y-6">
           {/* Descripción */}
           <div>
-            <label htmlFor="description" className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+            <label htmlFor="description" className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               Descripción
             </label>
             <textarea
@@ -879,7 +879,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className={`block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 sm:text-sm ${themeClass("", "border-gray-600 bg-white text-gray-900")}`}
+              className={`block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 sm:text-sm ${resolvedTheme === 'dark' ? "border-gray-600 bg-white text-gray-900" : ""}`}
             />
           </div>
 
@@ -889,7 +889,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             
             {/* País */}
             <div className="col-span-1">
-              <label className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+              <label className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                 País
               </label>
               <select
@@ -906,7 +906,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     city: '',
                   });
                 }}
-                className={`block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm ${themeClass("", "border-gray-600 bg-white text-gray-900")}`}
+                className={`block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm ${resolvedTheme === 'dark' ? "border-gray-600 bg-white text-gray-900" : ""}`}
               >
                 <option value="">Seleccionar país...</option>
                 {countries.map((c) => (
@@ -917,7 +917,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
             {/* Estado/Departamento */}
             <div className="col-span-1">
-              <label className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+              <label className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                 Estado / Provincia / Departamento
               </label>
               <select
@@ -934,7 +934,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   });
                 }}
                 disabled={loadingMunicipalities}
-                className={`block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm disabled:opacity-50 ${themeClass("", "border-gray-600 bg-white text-gray-900")}`}
+                className={`block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm disabled:opacity-50 ${resolvedTheme === 'dark' ? "border-gray-600 bg-white text-gray-900" : ""}`}
               >
                 <option value="">Seleccionar...</option>
                 {Array.from(new Map(municipalities.map(m => [m.state_name, m])).values()).map((m) => (
@@ -945,14 +945,14 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
             {/* Ciudad/Municipio */}
             <div className="col-span-1">
-              <label className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+              <label className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                 Ciudad / Municipio
               </label>
               <select
                 value={formData.municipalityId}
                 onChange={(e) => handleMunicipalityChange(e.target.value)}
                 disabled={loadingMunicipalities || !formData.stateCode}
-                className={`block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm disabled:opacity-50 ${themeClass("", "border-gray-600 bg-white text-gray-900")}`}
+                className={`block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm disabled:opacity-50 ${resolvedTheme === 'dark' ? "border-gray-600 bg-white text-gray-900" : ""}`}
               >
                 <option value="">Seleccionar...</option>
                 {municipalities
@@ -968,7 +968,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           {/* Subdominio con preview y validación */}
           <div className="col-span-2">
-            <label htmlFor="subdomain" className={`block text-sm font-medium text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+            <label htmlFor="subdomain" className={`block text-sm font-medium text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               Subdominio de tu sitio web
             </label>
             <div className="mt-1 flex rounded-lg shadow-sm">
@@ -991,7 +991,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'
                 }`}
               />
-              <span className={`inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm ${themeClass("", "border-gray-600 bg-gray-700 text-gray-400")}`}>
+              <span className={`inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm ${resolvedTheme === 'dark' ? "border-gray-600 bg-gray-700 text-gray-400" : ""}`}>
                 .goadmin.io
               </span>
             </div>
@@ -999,7 +999,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             {/* Estado de disponibilidad */}
             <div className="mt-2 flex items-center">
               {subdomainStatus === 'checking' && (
-                <div className={`flex items-center text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
+                <div className={`flex items-center text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                   <svg className="animate-spin h-4 w-4 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -1008,7 +1008,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 </div>
               )}
               {subdomainStatus === 'available' && formData.subdomain && (
-                <div className={`flex items-center text-sm text-green-600 ${themeClass("", "text-green-400")}`}>
+                <div className={`flex items-center text-sm text-green-600 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -1016,7 +1016,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 </div>
               )}
               {subdomainStatus === 'taken' && (
-                <div className={`flex items-center text-sm text-red-600 ${themeClass("", "text-red-400")}`}>
+                <div className={`flex items-center text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
                   <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -1025,7 +1025,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               )}
             </div>
             
-            <p className={`mt-1 text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+            <p className={`mt-1 text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               Este será el enlace de tu sitio web público. Solo letras y números, sin espacios ni caracteres especiales.
               {subdomainManuallyEdited && (
                 <button 
@@ -1034,7 +1034,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     setSubdomainManuallyEdited(false);
                     setFormData(prev => ({ ...prev, subdomain: generateSubdomain(prev.name) }));
                   }}
-                  className={`ml-2 text-blue-600 hover:text-blue-800 underline ${themeClass("", "text-blue-400 hover:text-blue-300")}`}
+                  className={`ml-2 text-blue-600 hover:text-blue-800 underline ${resolvedTheme === 'dark' ? "text-blue-400 hover:text-blue-300" : ""}`}
                 >
                   Restaurar sugerencia
                 </button>
@@ -1050,8 +1050,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
 
   const renderStep3 = () => (
     <div className="space-y-6">
-      <div className={`bg-white px-6 py-8 shadow-md sm:rounded-lg ${themeClass("", "bg-gray-800")}`}>
-        <h3 className={`text-lg font-semibold leading-6 text-gray-900 mb-6 ${themeClass("", "text-gray-100")}`}>Selecciona tu Plan</h3>
+      <div className={`bg-white px-6 py-8 shadow-md sm:rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+        <h3 className={`text-lg font-semibold leading-6 text-gray-900 mb-6 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>Selecciona tu Plan</h3>
 
         <div className="grid grid-cols-1 gap-4">
           {plans.map((plan) => (
@@ -1069,19 +1069,19 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className={`text-base font-semibold text-gray-900 ${themeClass("", "text-gray-100")}`}>{plan.name}</h4>
+                  <h4 className={`text-base font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{plan.name}</h4>
                   {plan.trial_days > 0 && (
-                    <p className={`text-xs text-blue-600 mt-1 ${themeClass("", "text-blue-400")}`}>
+                    <p className={`text-xs text-blue-600 mt-1 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
                       Incluye {plan.trial_days} días de prueba
                     </p>
                   )}
                 </div>
                 <div className="text-right">
-                  <span className={`text-xl font-bold text-gray-900 ${themeClass("", "text-gray-100")}`}>
+                  <span className={`text-xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>
                     {plan.price_usd_month ? `$${plan.price_usd_month}` : 'Personalizado'}
                   </span>
                   {plan.price_usd_month && (
-                    <span className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>/mes</span>
+                    <span className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>/mes</span>
                   )}
                 </div>
               </div>
@@ -1090,7 +1090,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         </div>
 
         {formErrors.plan && (
-          <p className={`mt-3 text-sm text-red-600 ${themeClass("", "text-red-400")}`}>{formErrors.plan}</p>
+          <p className={`mt-3 text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>{formErrors.plan}</p>
         )}
       </div>
     </div>
@@ -1105,13 +1105,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
       {step === 3 && !isSignupMode && renderStep3()}
 
       {error && (
-        <div className={`rounded-md bg-red-50 p-4 ${themeClass("", "bg-red-900/20")}`}>
+        <div className={`rounded-md bg-red-50 p-4 ${resolvedTheme === 'dark' ? "bg-red-900/20" : ""}`}>
           <div className="flex">
             <div className="flex-shrink-0">
               <ExclamationCircleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
             </div>
             <div className="ml-3">
-              <h3 className={`text-sm font-medium text-red-800 ${themeClass("", "text-red-300")}`}>{error}</h3>
+              <h3 className={`text-sm font-medium text-red-800 ${resolvedTheme === 'dark' ? "text-red-300" : ""}`}>{error}</h3>
             </div>
           </div>
         </div>
@@ -1121,7 +1121,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         <button
           type="button"
           onClick={step === 1 ? onCancel : prevStep}
-          className={`rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${themeClass("", "border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700")}`}
+          className={`rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${resolvedTheme === 'dark' ? "border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700" : ""}`}
         >
           {step === 1 ? 'Cancelar' : 'Atrás'}
         </button>

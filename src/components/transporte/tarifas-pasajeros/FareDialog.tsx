@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -62,7 +62,7 @@ export function FareDialog({
   onSave,
   isLoading = false,
 }: FareDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState<Partial<CreateFareData>>({
     fare_name: '',
     fare_code: '',
@@ -373,8 +373,8 @@ export function FareDialog({
 
             {/* Precio final calculado */}
             {formData.amount && formData.amount > 0 && (
-              <div className={`p-4 bg-green-50 rounded-lg ${themeClass("", "bg-green-900/20")}`}>
-                <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>Precio final:</p>
+              <div className={`p-4 bg-green-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-green-900/20" : ""}`}>
+                <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Precio final:</p>
                 <p className="text-2xl font-bold text-green-600">
                   ${(formData.amount - (formData.discount_amount || (formData.amount * (formData.discount_percent || 0)) / 100)).toLocaleString()} {formData.currency}
                 </p>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -34,7 +34,7 @@ interface Customer {
 }
 
 export default function DireccionesClientesPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const { toast } = useToast();
   const { organization } = useOrganization();
 
@@ -221,7 +221,7 @@ export default function DireccionesClientesPage() {
   }, [addresses, searchTerm, selectedCustomerId]);
 
   return (
-    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
       <AddressesHeader
         onRefresh={loadData}
         onNewAddress={handleNewAddress}

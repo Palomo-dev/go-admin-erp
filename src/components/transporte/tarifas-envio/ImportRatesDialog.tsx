@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useRef } from 'react';
 import {
   Dialog,
@@ -53,7 +53,7 @@ export function ImportRatesDialog({
   onImport,
   isLoading = false,
 }: ImportRatesDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
   const [fileName, setFileName] = useState<string>('');
@@ -184,13 +184,13 @@ export function ImportRatesDialog({
 
         <div className="space-y-4">
           {/* Descargar plantilla */}
-          <Card className={`p-4 bg-blue-50 border-blue-200 ${themeClass("", "bg-blue-900/20 border-blue-800")}`}>
+          <Card className={`p-4 bg-blue-50 border-blue-200 ${resolvedTheme === 'dark' ? "bg-blue-900/20 border-blue-800" : ""}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FileSpreadsheet className="h-8 w-8 text-blue-600" />
                 <div>
                   <p className="font-medium">Plantilla CSV</p>
-                  <p className={`text-xs text-gray-600 ${themeClass("", "text-gray-400")}`}>
+                  <p className={`text-xs text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     Descarga la plantilla con el formato correcto
                   </p>
                 </div>
@@ -214,10 +214,10 @@ export function ImportRatesDialog({
             />
             <label
               htmlFor="csv-upload"
-              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${themeClass("", "hover:bg-gray-800")}`}
+              className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
             >
               <Upload className="h-8 w-8 text-gray-400 mb-2" />
-              <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 {fileName || 'Haz clic o arrastra un archivo CSV'}
               </p>
             </label>
@@ -232,7 +232,7 @@ export function ImportRatesDialog({
               </div>
               <div className="max-h-48 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className={`bg-gray-50 ${themeClass("", "bg-gray-800")}`}>
+                  <thead className={`bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
                     <tr>
                       <th className="px-2 py-1 text-left">Nombre</th>
                       <th className="px-2 py-1 text-left">Código</th>
@@ -243,7 +243,7 @@ export function ImportRatesDialog({
                   </thead>
                   <tbody>
                     {parsedData.slice(0, 10).map((row, index) => (
-                      <tr key={index} className={`border-t ${themeClass("", "border-gray-700")}`}>
+                      <tr key={index} className={`border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
                         <td className="px-2 py-1">{row.rate_name}</td>
                         <td className="px-2 py-1">{row.rate_code || '-'}</td>
                         <td className="px-2 py-1">{row.origin_city || '-'}</td>
@@ -291,7 +291,7 @@ export function ImportRatesDialog({
           )}
 
           {/* Acciones */}
-          <div className={`flex justify-end gap-3 pt-4 border-t ${themeClass("", "border-gray-700")}`}>
+          <div className={`flex justify-end gap-3 pt-4 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
             <Button variant="outline" onClick={handleClose}>
               Cerrar
             </Button>

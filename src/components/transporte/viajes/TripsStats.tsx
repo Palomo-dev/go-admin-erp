@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Card } from '@/components/ui/card';
 import { Clock, UserCheck, Bus, CheckCircle, XCircle, Users } from 'lucide-react';
 
@@ -17,7 +17,7 @@ interface TripsStatsProps {
 }
 
 export function TripsStats({ stats }: TripsStatsProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const statCards = [
     {
       title: 'Programados',
@@ -66,10 +66,10 @@ export function TripsStats({ stats }: TripsStatsProps) {
               {stat.icon}
             </div>
             <div>
-              <p className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>
+              <p className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 {stat.value}
               </p>
-              <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 {stat.title}
               </p>
             </div>

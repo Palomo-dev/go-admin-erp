@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -78,7 +78,7 @@ export function ShipmentItem({
   onViewDetails,
   onNavigate,
 }: ShipmentItemProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notes, setNotes] = useState(manifestShipment.driver_notes || '');
 
@@ -128,7 +128,7 @@ export function ShipmentItem({
           {/* Información principal */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
+              <span className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 {shipment?.shipment_number || 'Sin número'}
               </span>
               <Badge className={statusConfig.color}>
@@ -148,7 +148,7 @@ export function ShipmentItem({
             {shipment?.delivery_address && (
               <button
                 onClick={handleNavigate}
-                className={`flex items-start gap-1.5 mt-2 text-sm text-gray-600 hover:text-blue-600 text-left ${themeClass("", "text-gray-400 hover:text-blue-400")}`}
+                className={`flex items-start gap-1.5 mt-2 text-sm text-gray-600 hover:text-blue-600 text-left ${resolvedTheme === 'dark' ? "text-gray-400 hover:text-blue-400" : ""}`}
               >
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span className="line-clamp-2">
@@ -192,7 +192,7 @@ export function ShipmentItem({
                 </Badge>
               )}
               {shipment?.cod_amount && Number(shipment.cod_amount) > 0 && (
-                <Badge className={`bg-yellow-100 text-yellow-800 text-xs ${themeClass("", "bg-yellow-900/30 text-yellow-400")}`}>
+                <Badge className={`bg-yellow-100 text-yellow-800 text-xs ${resolvedTheme === 'dark' ? "bg-yellow-900/30 text-yellow-400" : ""}`}>
                   COD: ${Number(shipment.cod_amount).toLocaleString()}
                 </Badge>
               )}
@@ -200,7 +200,7 @@ export function ShipmentItem({
 
             {/* Notas */}
             {(manifestShipment.driver_notes || isEditingNotes) && (
-              <div className={`mt-3 pt-3 border-t border-gray-100 ${themeClass("", "border-gray-800")}`}>
+              <div className={`mt-3 pt-3 border-t border-gray-100 ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
                 {isEditingNotes ? (
                   <div className="flex gap-2">
                     <Input
@@ -227,7 +227,7 @@ export function ShipmentItem({
 
             {/* Motivo de fallo */}
             {manifestShipment.status === 'failed' && manifestShipment.failure_reason && (
-              <div className={`mt-2 p-2 bg-red-50 rounded text-sm text-red-700 ${themeClass("", "bg-red-900/20 text-red-400")}`}>
+              <div className={`mt-2 p-2 bg-red-50 rounded text-sm text-red-700 ${resolvedTheme === 'dark' ? "bg-red-900/20 text-red-400" : ""}`}>
                 <strong>Motivo:</strong> {manifestShipment.failure_reason}
               </div>
             )}

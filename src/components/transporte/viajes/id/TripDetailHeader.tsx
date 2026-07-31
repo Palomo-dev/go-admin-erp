@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +53,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHeaderProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const status = STATUS_CONFIG[trip.status] || STATUS_CONFIG.scheduled;
 
@@ -70,7 +70,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
         </Button>
         <div>
           <div className="flex items-center gap-3">
-            <h1 className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>
+            <h1 className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               {trip.trip_code}
             </h1>
             <Badge className={`${status.color} flex items-center gap-1`}>
@@ -78,7 +78,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
               {status.label}
             </Badge>
           </div>
-          <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
+          <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             {trip.transport_routes?.name} •{' '}
             {format(new Date(trip.trip_date), "EEEE d 'de' MMMM yyyy", { locale: es })}
           </p>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +61,7 @@ interface ShipmentCardProps {
 }
 
 export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid, onReportIncident, onDeliveryWithPhoto }: ShipmentCardProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [showIncidentDialog, setShowIncidentDialog] = useState(false);
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const status = (shipment.status || 'pending') as string;
@@ -84,15 +84,15 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
               <StatusIcon className="h-5 w-5" />
             </div>
             <div>
-              <p className={`font-bold text-gray-900 ${themeClass("", "text-gray-100")}`}>
+              <p className={`font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>
                 {shipment.shipment_number}
               </p>
               {shipment.tracking_number && (
-                <p className={`text-xs text-blue-600 ${themeClass("", "text-blue-400")}`}>
+                <p className={`text-xs text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
                   Tracking: {shipment.tracking_number}
                 </p>
               )}
-              <p className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+              <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 {new Date(shipment.created_at).toLocaleDateString()}
               </p>
             </div>
@@ -104,7 +104,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
         {/* Cliente */}
         {customer && (
-          <div className={`flex items-center gap-2 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+          <div className={`flex items-center gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             <User className="h-4 w-4 text-gray-400" />
             <span>{customer.full_name}</span>
             {customer.phone && (
@@ -112,7 +112,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
                 <span className="text-gray-300">•</span>
                 <a
                   href={`tel:${customer.phone}`}
-                  className={`inline-flex items-center gap-1 text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}
+                  className={`inline-flex items-center gap-1 text-blue-600 hover:underline ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}
                 >
                   <Phone className="h-3 w-3" />
                   <span>{customer.phone}</span>
@@ -123,7 +123,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
         )}
 
         {/* Dirección de entrega */}
-        <div className={`flex items-start gap-2 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+        <div className={`flex items-start gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
           <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
           <div>
             <p>{shipment.delivery_address}</p>
@@ -137,14 +137,14 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
         {/* Contacto e instrucciones */}
         {(shipment.delivery_contact_name || shipment.delivery_contact_phone) && (
-          <div className={`flex items-center gap-2 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+          <div className={`flex items-center gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             <Phone className="h-4 w-4 text-gray-400" />
             <span>
               {shipment.delivery_contact_name}
               {shipment.delivery_contact_phone && (
                 <a
                   href={`tel:${shipment.delivery_contact_phone}`}
-                  className={`text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}
+                  className={`text-blue-600 hover:underline ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}
                 >
                   {` - ${shipment.delivery_contact_phone}`}
                 </a>
@@ -154,7 +154,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
         )}
 
         {shipment.delivery_instructions && (
-          <div className={`bg-blue-50 rounded-lg p-3 text-sm text-blue-700 ${themeClass("", "bg-blue-900/20 text-blue-300")}`}>
+          <div className={`bg-blue-50 rounded-lg p-3 text-sm text-blue-700 ${resolvedTheme === 'dark' ? "bg-blue-900/20 text-blue-300" : ""}`}>
             <p className="font-medium text-xs mb-1">Instrucciones:</p>
             <p>{shipment.delivery_instructions}</p>
           </div>
@@ -162,15 +162,15 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
         {/* Items */}
         {items && items.length > 0 && (
-          <div className={`border-t border-gray-100 pt-3 ${themeClass("", "border-gray-800")}`}>
-            <p className={`text-xs font-medium text-gray-500 mb-2 ${themeClass("", "text-gray-400")}`}>
+          <div className={`border-t border-gray-100 pt-3 ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
+            <p className={`text-xs font-medium text-gray-500 mb-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               Productos ({items.length})
             </p>
             <div className="space-y-1">
               {items.map((item) => (
                 <div key={item.id} className="flex justify-between text-sm">
-                  <span className={`text-gray-700 ${themeClass("", "text-gray-300")}`}>{item.description}</span>
-                  <span className={`text-gray-500 ${themeClass("", "text-gray-400")}`}>x{item.qty}</span>
+                  <span className={`text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>{item.description}</span>
+                  <span className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>x{item.qty}</span>
                 </div>
               ))}
             </div>
@@ -179,21 +179,21 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
         {/* Badge de estado de pago */}
         {shipment.payment_status && (
-          <div className={`flex items-center gap-2 border-t border-gray-100 pt-3 ${themeClass("", "border-gray-800")}`}>
+          <div className={`flex items-center gap-2 border-t border-gray-100 pt-3 ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
             {shipment.payment_status === 'paid' && (
-              <Badge className={`bg-green-100 text-green-800 ${themeClass("", "bg-green-900/30 text-green-400")}`}>
+              <Badge className={`bg-green-100 text-green-800 ${resolvedTheme === 'dark' ? "bg-green-900/30 text-green-400" : ""}`}>
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Pagado
               </Badge>
             )}
             {shipment.payment_status === 'pending' && (
-              <Badge className={`bg-yellow-100 text-yellow-800 ${themeClass("", "bg-yellow-900/30 text-yellow-400")}`}>
+              <Badge className={`bg-yellow-100 text-yellow-800 ${resolvedTheme === 'dark' ? "bg-yellow-900/30 text-yellow-400" : ""}`}>
                 <Clock className="h-3 w-3 mr-1" />
                 Pago pendiente
               </Badge>
             )}
             {shipment.payment_status === 'cod' && (
-              <Badge className={`bg-blue-100 text-blue-800 ${themeClass("", "bg-blue-900/30 text-blue-400")}`}>
+              <Badge className={`bg-blue-100 text-blue-800 ${resolvedTheme === 'dark' ? "bg-blue-900/30 text-blue-400" : ""}`}>
                 <DollarSign className="h-3 w-3 mr-1" />
                 Contra entrega
               </Badge>
@@ -203,14 +203,14 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
         {/* COD y costo */}
         {(shipment.cod_amount > 0 || shipment.shipping_fee > 0) && (
-          <div className={`flex justify-between items-center border-t border-gray-100 pt-3 text-sm ${themeClass("", "border-gray-800")}`}>
+          <div className={`flex justify-between items-center border-t border-gray-100 pt-3 text-sm ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
             {shipment.cod_amount > 0 && (
-              <span className={`text-orange-600 font-medium ${themeClass("", "text-orange-400")}`}>
+              <span className={`text-orange-600 font-medium ${resolvedTheme === 'dark' ? "text-orange-400" : ""}`}>
                 COD: {formatCurrency(shipment.cod_amount, shipment.currency)}
               </span>
             )}
             {shipment.shipping_fee > 0 && (
-              <span className={`text-gray-500 ${themeClass("", "text-gray-400")}`}>
+              <span className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Envío: {formatCurrency(shipment.shipping_fee, shipment.currency)}
               </span>
             )}
@@ -218,7 +218,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
         )}
 
         {/* Acciones */}
-        <div className={`flex flex-wrap gap-2 border-t border-gray-100 pt-3 ${themeClass("", "border-gray-800")}`}>
+        <div className={`flex flex-wrap gap-2 border-t border-gray-100 pt-3 ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
           {/* Botón marcar pagado: cuando hay pago pendiente y el envío está activo o entregado */}
           {shipment.payment_status === 'pending' && onMarkPaid && !isCancelled && (status === 'out_for_delivery' || status === 'delivered') && (
             <Button
@@ -283,7 +283,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
               size="sm"
               variant="outline"
               onClick={() => setShowIncidentDialog(true)}
-              className={`border-red-300 text-red-600 ${themeClass("", "border-red-800 text-red-400")}`}
+              className={`border-red-300 text-red-600 ${resolvedTheme === 'dark' ? "border-red-800 text-red-400" : ""}`}
               disabled={isUpdating}
             >
               <AlertTriangle className="h-4 w-4 mr-1" />
@@ -294,7 +294,7 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
         {/* Fecha de entrega */}
         {isDelivered && shipment.delivered_at && (
-          <div className={`flex items-center gap-2 text-sm text-green-600 border-t border-gray-100 pt-3 ${themeClass("", "text-green-400 border-gray-800")}`}>
+          <div className={`flex items-center gap-2 text-sm text-green-600 border-t border-gray-100 pt-3 ${resolvedTheme === 'dark' ? "text-green-400 border-gray-800" : ""}`}>
             <CheckCircle className="h-4 w-4" />
             <span>Entregado el {new Date(shipment.delivered_at).toLocaleString()}</span>
           </div>

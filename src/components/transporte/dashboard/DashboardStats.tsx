@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -22,14 +22,14 @@ interface DashboardStatsProps {
 }
 
 export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-6">
-              <div className={`h-24 bg-gray-200 rounded ${themeClass("", "bg-gray-700")}`} />
+              <div className={`h-24 bg-gray-200 rounded ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
             </CardContent>
           </Card>
         ))}
@@ -50,40 +50,40 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className={`text-sm font-medium text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <CardTitle className={`text-sm font-medium text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Viajes
               </CardTitle>
-              <div className={`p-2 bg-blue-100 rounded-lg ${themeClass("", "bg-blue-900/30")}`}>
-                <Bus className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+              <div className={`p-2 bg-blue-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
+                <Bus className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold text-gray-900 mb-2 ${themeClass("", "text-white")}`}>
+            <div className={`text-2xl font-bold text-gray-900 mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               {totalTrips}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">Programados</span>
-                <Badge variant="outline" className={`bg-blue-50 text-blue-700 ${themeClass("", "bg-blue-900/20 text-blue-400")}`}>
+                <Badge variant="outline" className={`bg-blue-50 text-blue-700 ${resolvedTheme === 'dark' ? "bg-blue-900/20 text-blue-400" : ""}`}>
                   {stats.trips.scheduled}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">En ruta</span>
-                <Badge variant="outline" className={`bg-yellow-50 text-yellow-700 ${themeClass("", "bg-yellow-900/20 text-yellow-400")}`}>
+                <Badge variant="outline" className={`bg-yellow-50 text-yellow-700 ${resolvedTheme === 'dark' ? "bg-yellow-900/20 text-yellow-400" : ""}`}>
                   {stats.trips.in_transit}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">Completados</span>
-                <Badge variant="outline" className={`bg-green-50 text-green-700 ${themeClass("", "bg-green-900/20 text-green-400")}`}>
+                <Badge variant="outline" className={`bg-green-50 text-green-700 ${resolvedTheme === 'dark' ? "bg-green-900/20 text-green-400" : ""}`}>
                   {stats.trips.completed}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">Cancelados</span>
-                <Badge variant="outline" className={`bg-red-50 text-red-700 ${themeClass("", "bg-red-900/20 text-red-400")}`}>
+                <Badge variant="outline" className={`bg-red-50 text-red-700 ${resolvedTheme === 'dark' ? "bg-red-900/20 text-red-400" : ""}`}>
                   {stats.trips.cancelled}
                 </Badge>
               </div>
@@ -95,16 +95,16 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className={`text-sm font-medium text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <CardTitle className={`text-sm font-medium text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Boletos
               </CardTitle>
-              <div className={`p-2 bg-green-100 rounded-lg ${themeClass("", "bg-green-900/30")}`}>
-                <Ticket className={`h-5 w-5 text-green-600 ${themeClass("", "text-green-400")}`} />
+              <div className={`p-2 bg-green-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-green-900/30" : ""}`}>
+                <Ticket className={`h-5 w-5 text-green-600 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`} />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold text-gray-900 mb-2 ${themeClass("", "text-white")}`}>
+            <div className={`text-2xl font-bold text-gray-900 mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               {stats.tickets.sold_today}
             </div>
             <div className="space-y-2 text-xs">
@@ -113,7 +113,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
                   <DollarSign className="h-3 w-3" />
                   Ingresos
                 </span>
-                <span className={`font-medium text-green-600 ${themeClass("", "text-green-400")}`}>
+                <span className={`font-medium text-green-600 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
                   {formatCurrency(stats.tickets.revenue_today)}
                 </span>
               </div>
@@ -123,13 +123,13 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
                   Ocupación
                 </span>
                 <div className="flex items-center gap-1">
-                  <div className={`w-16 h-2 bg-gray-200 rounded-full overflow-hidden ${themeClass("", "bg-gray-700")}`}>
+                  <div className={`w-16 h-2 bg-gray-200 rounded-full overflow-hidden ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`}>
                     <div 
                       className="h-full bg-green-500 rounded-full transition-all"
                       style={{ width: `${stats.tickets.occupancy_avg}%` }}
                     />
                   </div>
-                  <span className={`font-medium text-gray-700 ${themeClass("", "text-gray-300")}`}>
+                  <span className={`font-medium text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                     {stats.tickets.occupancy_avg}%
                   </span>
                 </div>
@@ -142,40 +142,40 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-purple-500">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className={`text-sm font-medium text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <CardTitle className={`text-sm font-medium text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Envíos
               </CardTitle>
-              <div className={`p-2 bg-purple-100 rounded-lg ${themeClass("", "bg-purple-900/30")}`}>
-                <Package className={`h-5 w-5 text-purple-600 ${themeClass("", "text-purple-400")}`} />
+              <div className={`p-2 bg-purple-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-purple-900/30" : ""}`}>
+                <Package className={`h-5 w-5 text-purple-600 ${resolvedTheme === 'dark' ? "text-purple-400" : ""}`} />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold text-gray-900 mb-2 ${themeClass("", "text-white")}`}>
+            <div className={`text-2xl font-bold text-gray-900 mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               {totalShipments}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">Listos</span>
-                <Badge variant="outline" className={`bg-blue-50 text-blue-700 ${themeClass("", "bg-blue-900/20 text-blue-400")}`}>
+                <Badge variant="outline" className={`bg-blue-50 text-blue-700 ${resolvedTheme === 'dark' ? "bg-blue-900/20 text-blue-400" : ""}`}>
                   {stats.shipments.ready}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">En tránsito</span>
-                <Badge variant="outline" className={`bg-yellow-50 text-yellow-700 ${themeClass("", "bg-yellow-900/20 text-yellow-400")}`}>
+                <Badge variant="outline" className={`bg-yellow-50 text-yellow-700 ${resolvedTheme === 'dark' ? "bg-yellow-900/20 text-yellow-400" : ""}`}>
                   {stats.shipments.in_transit}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">Entregados</span>
-                <Badge variant="outline" className={`bg-green-50 text-green-700 ${themeClass("", "bg-green-900/20 text-green-400")}`}>
+                <Badge variant="outline" className={`bg-green-50 text-green-700 ${resolvedTheme === 'dark' ? "bg-green-900/20 text-green-400" : ""}`}>
                   {stats.shipments.delivered}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">Fallidos</span>
-                <Badge variant="outline" className={`bg-red-50 text-red-700 ${themeClass("", "bg-red-900/20 text-red-400")}`}>
+                <Badge variant="outline" className={`bg-red-50 text-red-700 ${resolvedTheme === 'dark' ? "bg-red-900/20 text-red-400" : ""}`}>
                   {stats.shipments.failed}
                 </Badge>
               </div>
@@ -187,16 +187,16 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-red-500">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className={`text-sm font-medium text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <CardTitle className={`text-sm font-medium text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 Incidentes
               </CardTitle>
-              <div className={`p-2 bg-red-100 rounded-lg ${themeClass("", "bg-red-900/30")}`}>
-                <AlertTriangle className={`h-5 w-5 text-red-600 ${themeClass("", "text-red-400")}`} />
+              <div className={`p-2 bg-red-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-red-900/30" : ""}`}>
+                <AlertTriangle className={`h-5 w-5 text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`} />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold text-gray-900 mb-2 ${themeClass("", "text-white")}`}>
+            <div className={`text-2xl font-bold text-gray-900 mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               {stats.incidents.open}
             </div>
             <div className="space-y-2 text-xs">
@@ -214,7 +214,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
                   <Clock className="h-3 w-3" />
                   SLA vencido
                 </span>
-                <Badge variant="outline" className={`bg-orange-50 text-orange-700 ${themeClass("", "bg-orange-900/20 text-orange-400")}`}>
+                <Badge variant="outline" className={`bg-orange-50 text-orange-700 ${resolvedTheme === 'dark' ? "bg-orange-900/20 text-orange-400" : ""}`}>
                   {stats.incidents.sla_breached}
                 </Badge>
               </div>

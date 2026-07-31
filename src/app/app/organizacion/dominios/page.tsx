@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
@@ -40,7 +40,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useSession } from '@/lib/hooks/useSession';
 
 export default function DominiosPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const { organization } = useOrganization();
   const { session } = useSession();
   const organizationId = organization?.id;
@@ -320,26 +320,26 @@ export default function DominiosPage() {
   };
 
   return (
-    <div className={`h-screen flex flex-col bg-gray-50 ${themeClass("", "bg-gray-900")}`}>
+    <div className={`h-screen flex flex-col bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
       {/* Header */}
-      <div className={`bg-white border-b border-gray-200 sticky top-0 z-10 ${themeClass("", "bg-gray-900 border-gray-800")}`}>
+      <div className={`bg-white border-b border-gray-200 sticky top-0 z-10 ${resolvedTheme === 'dark' ? "bg-gray-900 border-gray-800" : ""}`}>
         <div className="px-4 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link
                 href="/app/organizacion"
-                className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${themeClass("", "hover:bg-gray-800")}`}
+                className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
               >
-                <ArrowLeft className={`h-5 w-5 text-gray-500 ${themeClass("", "text-gray-400")}`} />
+                <ArrowLeft className={`h-5 w-5 text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`} />
               </Link>
-              <div className={`p-2 rounded-lg bg-blue-100 ${themeClass("", "bg-blue-900/30")}`}>
-                <Globe className={`h-6 w-6 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+              <div className={`p-2 rounded-lg bg-blue-100 ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
+                <Globe className={`h-6 w-6 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
               </div>
               <div>
-                <h1 className={`text-xl sm:text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>
+                <h1 className={`text-xl sm:text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                   {t('title')}
                 </h1>
-                <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
+                <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                   {t('description')}
                 </p>
               </div>
@@ -350,7 +350,7 @@ export default function DominiosPage() {
                 size="sm"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className={`border-gray-300 ${themeClass("", "border-gray-700")}`}
+                className={`border-gray-300 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}
               >
                 <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
                 {t('refresh')}
@@ -359,7 +359,7 @@ export default function DominiosPage() {
                 size="sm"
                 onClick={() => setAddCustomDomainOpen(true)}
                 variant="outline"
-                className={`border-blue-600 text-blue-600 hover:bg-blue-50 ${themeClass("", "border-blue-500 text-blue-400 hover:bg-blue-900/20")}`}
+                className={`border-blue-600 text-blue-600 hover:bg-blue-50 ${resolvedTheme === 'dark' ? "border-blue-500 text-blue-400 hover:bg-blue-900/20" : ""}`}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 {t('addExisting')}
@@ -414,11 +414,11 @@ export default function DominiosPage() {
             {/* Sección de Dominios Personalizados */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className={`text-lg font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
+                <h2 className={`text-lg font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                   {t('customDomains')}
                 </h2>
                 {domains.length > 0 && (
-                  <span className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
+                  <span className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('domainCount', { count: domains.length })}
                   </span>
                 )}
@@ -426,12 +426,12 @@ export default function DominiosPage() {
 
               {/* Lista de dominios personalizados */}
               {domains.length === 0 ? (
-                <div className={`text-center py-12 bg-white rounded-xl border border-gray-200 ${themeClass("", "bg-gray-800 border-gray-700")}`}>
+                <div className={`text-center py-12 bg-white rounded-xl border border-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
                   <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className={`text-lg font-medium text-gray-900 mb-2 ${themeClass("", "text-white")}`}>
+                  <h3 className={`text-lg font-medium text-gray-900 mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                     {t('noCustomDomains')}
                   </h3>
-                  <p className={`text-gray-500 mb-4 ${themeClass("", "text-gray-400")}`}>
+                  <p className={`text-gray-500 mb-4 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('noCustomDomainsDesc')}
                   </p>
                   <Button 
@@ -525,15 +525,15 @@ export default function DominiosPage() {
 
       {/* Dialog de Confirmación de Eliminación */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className={themeClass("", "bg-gray-800 border-gray-700")}>
+        <AlertDialogContent className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
           <AlertDialogHeader>
-            <AlertDialogTitle className={themeClass("", "text-gray-100")}>{t('deleteDomainTitle')}</AlertDialogTitle>
-            <AlertDialogDescription className={themeClass("", "text-gray-400")}>
+            <AlertDialogTitle className={resolvedTheme === 'dark' ? "text-gray-100" : ""}>{t('deleteDomainTitle')}</AlertDialogTitle>
+            <AlertDialogDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
               {t('deleteDomainDesc', { host: domainToDelete?.host || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className={themeClass("", "border-gray-600 text-gray-300 hover:bg-gray-700")}>
+            <AlertDialogCancel className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}>
               {t('cancel')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">

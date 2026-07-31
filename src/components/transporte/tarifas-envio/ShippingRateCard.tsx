@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -64,7 +64,7 @@ export function ShippingRateCard({
   onDelete,
   onToggleActive,
 }: ShippingRateCardProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -85,7 +85,7 @@ export function ShippingRateCard({
               <Truck className={`h-5 w-5 ${rate.is_active ? 'text-blue-600' : 'text-gray-500'}`} />
             </div>
             <div>
-              <h3 className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
+              <h3 className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 {rate.rate_name}
               </h3>
               {rate.rate_code && (
@@ -117,7 +117,7 @@ export function ShippingRateCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => onDelete(rate)}
-                  className={`text-red-600 ${themeClass("", "text-red-400")}`}
+                  className={`text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Eliminar
@@ -162,7 +162,7 @@ export function ShippingRateCard({
 
         {/* Origen/Destino */}
         {(rate.origin_city || rate.destination_city || rate.origin_zone || rate.destination_zone) && (
-          <div className={`flex items-center gap-2 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+          <div className={`flex items-center gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             <MapPin className="h-4 w-4 text-blue-500" />
             <span>
               {rate.origin_city || rate.origin_zone || 'Cualquier origen'}
@@ -174,24 +174,24 @@ export function ShippingRateCard({
 
         {/* Precios */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className={`bg-gray-50 rounded-lg p-2 ${themeClass("", "bg-gray-800/50")}`}>
+          <div className={`bg-gray-50 rounded-lg p-2 ${resolvedTheme === 'dark' ? "bg-gray-800/50" : ""}`}>
             <p className="text-xs text-gray-500">Base</p>
             <p className="font-semibold text-blue-600">{formatCurrency(rate.base_rate || 0)}</p>
           </div>
           {rate.rate_per_kg > 0 && (
-            <div className={`bg-gray-50 rounded-lg p-2 ${themeClass("", "bg-gray-800/50")}`}>
+            <div className={`bg-gray-50 rounded-lg p-2 ${resolvedTheme === 'dark' ? "bg-gray-800/50" : ""}`}>
               <p className="text-xs text-gray-500">Por kg</p>
               <p className="font-semibold">{formatCurrency(rate.rate_per_kg)}</p>
             </div>
           )}
           {rate.rate_per_m3 > 0 && (
-            <div className={`bg-gray-50 rounded-lg p-2 ${themeClass("", "bg-gray-800/50")}`}>
+            <div className={`bg-gray-50 rounded-lg p-2 ${resolvedTheme === 'dark' ? "bg-gray-800/50" : ""}`}>
               <p className="text-xs text-gray-500">Por m³</p>
               <p className="font-semibold">{formatCurrency(rate.rate_per_m3)}</p>
             </div>
           )}
           {rate.min_charge > 0 && (
-            <div className={`bg-gray-50 rounded-lg p-2 ${themeClass("", "bg-gray-800/50")}`}>
+            <div className={`bg-gray-50 rounded-lg p-2 ${resolvedTheme === 'dark' ? "bg-gray-800/50" : ""}`}>
               <p className="text-xs text-gray-500">Mínimo</p>
               <p className="font-semibold">{formatCurrency(rate.min_charge)}</p>
             </div>
@@ -202,13 +202,13 @@ export function ShippingRateCard({
         {(rate.fuel_surcharge_percent > 0 || rate.insurance_percent > 0) && (
           <div className="flex items-center gap-4 text-sm">
             {rate.fuel_surcharge_percent > 0 && (
-              <span className={`flex items-center gap-1 text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <span className={`flex items-center gap-1 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 <Percent className="h-3 w-3" />
                 Combustible: {rate.fuel_surcharge_percent}%
               </span>
             )}
             {rate.insurance_percent > 0 && (
-              <span className={`flex items-center gap-1 text-gray-600 ${themeClass("", "text-gray-400")}`}>
+              <span className={`flex items-center gap-1 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 <Package className="h-3 w-3" />
                 Seguro: {rate.insurance_percent}%
               </span>
@@ -218,7 +218,7 @@ export function ShippingRateCard({
 
         {/* Rango de peso */}
         {(rate.min_weight_kg || rate.max_weight_kg) && (
-          <div className={`flex items-center gap-2 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+          <div className={`flex items-center gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             <Scale className="h-4 w-4" />
             <span>
               Peso: {rate.min_weight_kg || 0} - {rate.max_weight_kg || '∞'} kg
@@ -228,7 +228,7 @@ export function ShippingRateCard({
 
         {/* Vigencia */}
         {(rate.valid_from || rate.valid_until) && (
-          <div className={`flex items-center gap-2 text-xs text-gray-500 pt-2 border-t ${themeClass("", "border-gray-700")}`}>
+          <div className={`flex items-center gap-2 text-xs text-gray-500 pt-2 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
             <Calendar className="h-3 w-3" />
             <span>
               {rate.valid_from && `Desde: ${format(new Date(rate.valid_from), 'dd MMM yyyy', { locale: es })}`}

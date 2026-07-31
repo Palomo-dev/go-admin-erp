@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,7 +70,7 @@ export function RegisterEventDialog({
   onSearchReferences,
   stops,
 }: RegisterEventDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,7 +162,7 @@ export function RegisterEventDialog({
                   {searchResults.map((ref) => (
                     <button
                       key={`${ref.type}-${ref.id}`}
-                      className={`w-full p-3 text-left hover:bg-gray-50 flex items-center gap-3 ${themeClass("", "hover:bg-gray-800")}`}
+                      className={`w-full p-3 text-left hover:bg-gray-50 flex items-center gap-3 ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
                       onClick={() => setSelectedReference(ref)}
                     >
                       {ref.type === 'trip' ? (
@@ -180,7 +180,7 @@ export function RegisterEventDialog({
               )}
             </div>
           ) : (
-            <div className={`p-3 border rounded-lg bg-gray-50 ${themeClass("", "bg-gray-900")}`}>
+            <div className={`p-3 border rounded-lg bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {selectedReference.type === 'trip' ? (

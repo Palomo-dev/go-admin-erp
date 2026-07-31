@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
@@ -118,7 +118,7 @@ export function ShipmentsList({
   onPageChange,
   onPageSizeChange,
 }: ShipmentsListProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const [showSelectMenu, setShowSelectMenu] = useState(false);
@@ -168,7 +168,7 @@ export function ShipmentsList({
       <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className={`ml-3 text-gray-600 ${themeClass("", "text-gray-400")}`}>Cargando envíos...</span>
+          <span className={`ml-3 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Cargando envíos...</span>
         </div>
       </Card>
     );
@@ -179,8 +179,8 @@ export function ShipmentsList({
       <Card className="p-4 sm:p-8">
         <div className="text-center">
           <Package className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-white")}`}>No hay envíos</h3>
-          <p className={`text-gray-600 mt-1 ${themeClass("", "text-gray-400")}`}>
+          <h3 className={`text-lg font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>No hay envíos</h3>
+          <p className={`text-gray-600 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             No se encontraron envíos con los filtros aplicados.
           </p>
         </div>
@@ -191,9 +191,9 @@ export function ShipmentsList({
   return (
     <>
       {selected.size > 0 && (
-        <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-blue-50 px-4 py-2 mb-3 ${themeClass("", "bg-blue-950/30")}`}>
+        <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-blue-50 px-4 py-2 mb-3 ${resolvedTheme === 'dark' ? "bg-blue-950/30" : ""}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`text-sm font-medium text-blue-700 ${themeClass("", "text-blue-300")}`}>
+            <span className={`text-sm font-medium text-blue-700 ${resolvedTheme === 'dark' ? "text-blue-300" : ""}`}>
               {selected.size} envío{selected.size > 1 ? 's' : ''} seleccionado{selected.size > 1 ? 's' : ''}
             </span>
             {onBulkAssignDriver && (
@@ -269,7 +269,7 @@ export function ShipmentsList({
                 />
                 <DropdownMenu open={showSelectMenu} onOpenChange={setShowSelectMenu}>
                   <DropdownMenuTrigger asChild>
-                    <button className={`ml-0.5 text-gray-400 hover:text-gray-600 ${themeClass("", "hover:text-gray-300")}`}>
+                    <button className={`ml-0.5 text-gray-400 hover:text-gray-600 ${resolvedTheme === 'dark' ? "hover:text-gray-300" : ""}`}>
                       <ChevronDown className="h-3 w-3" />
                     </button>
                   </DropdownMenuTrigger>
@@ -312,7 +312,7 @@ export function ShipmentsList({
             return (
               <TableRow
                 key={shipment.id}
-                className={`cursor-pointer hover:bg-gray-50 ${themeClass("", "hover:bg-gray-800")}`}
+                className={`cursor-pointer hover:bg-gray-50 ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
                 onClick={() => router.push(`/app/transporte/envios/${shipment.id}`)}
               >
                 <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
@@ -324,7 +324,7 @@ export function ShipmentsList({
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-gray-400" />
-                    <span className={`text-blue-600 ${themeClass("", "text-blue-400")}`}>{shipment.tracking_number}</span>
+                    <span className={`text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>{shipment.tracking_number}</span>
                   </div>
                   {shipment.shipment_number && (
                     <p className="text-xs text-gray-500 mt-0.5">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -35,7 +35,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RouteDetailPage() {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -273,7 +273,7 @@ export default function RouteDetailPage() {
 
   if (isLoading) {
     return (
-      <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+      <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
         <Skeleton className="h-20 w-full" />
         <div className="grid gap-4 md:grid-cols-4">
           {[...Array(4)].map((_, i) => (
@@ -290,7 +290,7 @@ export default function RouteDetailPage() {
   }
 
   return (
-    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
+    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
       <RouteDetailHeader
         route={route}
         onRefresh={loadData}

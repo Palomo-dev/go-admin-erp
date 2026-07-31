@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -58,7 +58,7 @@ export function ReportIncidentDialog({
   organizationId,
   onSuccess,
 }: ReportIncidentDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     incident_type: '',
@@ -201,8 +201,8 @@ export function ReportIncidentDialog({
           </div>
 
           {formData.severity === 'critical' && (
-            <div className={`p-3 bg-red-50 border border-red-200 rounded-lg ${themeClass("", "bg-red-900/20 border-red-800")}`}>
-              <p className={`text-sm text-red-700 flex items-center gap-2 ${themeClass("", "text-red-400")}`}>
+            <div className={`p-3 bg-red-50 border border-red-200 rounded-lg ${resolvedTheme === 'dark' ? "bg-red-900/20 border-red-800" : ""}`}>
+              <p className={`text-sm text-red-700 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
                 <AlertTriangle className="h-4 w-4" />
                 Los incidentes críticos serán notificados inmediatamente al equipo de operaciones.
               </p>

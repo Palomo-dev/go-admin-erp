@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Copy, Check, AlertTriangle, Info } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export function DNSInstructions({
   onVerify,
   isVerifying = false,
 }: DNSInstructionsProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const t = useTranslations('org.domains.dns');
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -48,7 +48,7 @@ export function DNSInstructions({
       variant="ghost"
       size="sm"
       onClick={() => copyToClipboard(text, field)}
-      className={`h-8 px-2 ${themeClass("", "hover:bg-gray-700")}`}
+      className={`h-8 px-2 ${resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}`}
     >
       {copiedField === field ? (
         <Check className="h-4 w-4 text-green-500" />
@@ -60,22 +60,22 @@ export function DNSInstructions({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`sm:max-w-[600px] max-h-[90vh] overflow-y-auto ${themeClass("", "bg-gray-800 border-gray-700")}`}>
+      <DialogContent className={`sm:max-w-[600px] max-h-[90vh] overflow-y-auto ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
         <DialogHeader>
-          <DialogTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
-            <Info className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+          <DialogTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+            <Info className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
             {t('title')}
           </DialogTitle>
-          <DialogDescription className={themeClass("", "text-gray-400")}>
+          <DialogDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
             {t('description')}{' '}
-            <span className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>{domain.host}</span>
+            <span className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{domain.host}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Estado actual */}
-          <div className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${themeClass("", "bg-gray-900")}`}>
-            <span className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('currentStatus')}</span>
+          <div className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+            <span className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('currentStatus')}</span>
             <Badge 
               className={
                 domain.status === 'verified' 
@@ -91,13 +91,13 @@ export function DNSInstructions({
 
           {/* Tipo de verificación */}
           <div className="space-y-3">
-            <h4 className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+            <h4 className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               {t('verificationMethod')} {domain.verification_type || 'TXT'}
             </h4>
             
-            <Alert className={themeClass("", "bg-blue-900/20 border-blue-800")}>
-              <AlertTriangle className={`h-4 w-4 text-blue-600 ${themeClass("", "text-blue-400")}`} />
-              <AlertDescription className={`text-sm ${themeClass("", "text-gray-300")}`}>
+            <Alert className={resolvedTheme === 'dark' ? "bg-blue-900/20 border-blue-800" : ""}>
+              <AlertTriangle className={`h-4 w-4 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
+              <AlertDescription className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                 {t('addRecord')} <strong>{domain.verification_type || 'TXT'}</strong> {t('inDnsConfig')}
               </AlertDescription>
             </Alert>
@@ -105,16 +105,16 @@ export function DNSInstructions({
 
           {/* Registro DNS */}
           <div className="space-y-4">
-            <div className={`p-4 bg-gray-50 rounded-lg space-y-4 ${themeClass("", "bg-gray-900")}`}>
+            <div className={`p-4 bg-gray-50 rounded-lg space-y-4 ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
               {/* Host/Name */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium text-gray-500 uppercase ${themeClass("", "text-gray-400")}`}>
+                  <span className={`text-xs font-medium text-gray-500 uppercase ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('hostName')}
                   </span>
                   <CopyButton text={domain.verification_record || ''} field="record" />
                 </div>
-                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 break-all ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
+                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 break-all ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700 text-white" : ""}`}>
                   {domain.verification_record || '_go-admin-challenge.' + domain.host}
                 </code>
               </div>
@@ -122,11 +122,11 @@ export function DNSInstructions({
               {/* Type */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium text-gray-500 uppercase ${themeClass("", "text-gray-400")}`}>
+                  <span className={`text-xs font-medium text-gray-500 uppercase ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('type')}
                   </span>
                 </div>
-                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
+                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700 text-white" : ""}`}>
                   {domain.verification_type || 'TXT'}
                 </code>
               </div>
@@ -134,12 +134,12 @@ export function DNSInstructions({
               {/* Value */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium text-gray-500 uppercase ${themeClass("", "text-gray-400")}`}>
+                  <span className={`text-xs font-medium text-gray-500 uppercase ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('value')}
                   </span>
                   <CopyButton text={domain.verification_value || domain.verification_token || ''} field="value" />
                 </div>
-                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 break-all ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
+                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 break-all ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700 text-white" : ""}`}>
                   {domain.verification_value || domain.verification_token || t('notAvailable')}
                 </code>
               </div>
@@ -147,11 +147,11 @@ export function DNSInstructions({
               {/* TTL */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium text-gray-500 uppercase ${themeClass("", "text-gray-400")}`}>
+                  <span className={`text-xs font-medium text-gray-500 uppercase ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('ttl')}
                   </span>
                 </div>
-                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
+                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700 text-white" : ""}`}>
                   {t('ttlValue')}
                 </code>
               </div>
@@ -160,45 +160,45 @@ export function DNSInstructions({
 
           {/* Configuración CNAME para el dominio */}
           <div className="space-y-3">
-            <h4 className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+            <h4 className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
               {t('cnameConfig')}
             </h4>
-            <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+            <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               {t('cnameDesc')}
             </p>
             
-            <div className={`p-4 bg-gray-50 rounded-lg space-y-4 ${themeClass("", "bg-gray-900")}`}>
+            <div className={`p-4 bg-gray-50 rounded-lg space-y-4 ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium text-gray-500 uppercase ${themeClass("", "text-gray-400")}`}>
+                  <span className={`text-xs font-medium text-gray-500 uppercase ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('hostName')}
                   </span>
                   <CopyButton text={domain.host.split('.')[0] === 'www' ? 'www' : '@'} field="cname-host" />
                 </div>
-                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
+                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700 text-white" : ""}`}>
                   {domain.host.startsWith('www.') ? 'www' : '@'}
                 </code>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium text-gray-500 uppercase ${themeClass("", "text-gray-400")}`}>
+                  <span className={`text-xs font-medium text-gray-500 uppercase ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('type')}
                   </span>
                 </div>
-                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
+                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700 text-white" : ""}`}>
                   CNAME
                 </code>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium text-gray-500 uppercase ${themeClass("", "text-gray-400")}`}>
+                  <span className={`text-xs font-medium text-gray-500 uppercase ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     {t('valueTarget')}
                   </span>
                   <CopyButton text="cname.vercel-dns.com" field="cname-value" />
                 </div>
-                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
+                <code className={`block w-full p-2 bg-white border border-gray-200 rounded text-sm font-mono text-gray-900 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700 text-white" : ""}`}>
                   cname.vercel-dns.com
                 </code>
               </div>
@@ -206,7 +206,7 @@ export function DNSInstructions({
           </div>
 
           {/* Intentos de verificación */}
-          <div className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+          <div className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             {t('verificationAttempts')} <strong>{domain.verification_attempts}</strong>
             {domain.last_verification_at && (
               <span className="ml-2">
@@ -216,15 +216,15 @@ export function DNSInstructions({
           </div>
 
           {/* Notas */}
-          <Alert className={themeClass("", "bg-gray-900 border-gray-700")}>
-            <Info className={`h-4 w-4 text-gray-500 ${themeClass("", "text-gray-400")}`} />
-            <AlertDescription className={`text-sm ${themeClass("", "text-gray-300")}`}>
+          <Alert className={resolvedTheme === 'dark' ? "bg-gray-900 border-gray-700" : ""}>
+            <Info className={`h-4 w-4 text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`} />
+            <AlertDescription className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               <strong>{t('noteTitle')}</strong> {t('noteDesc')}{' '}
               <a 
                 href="https://www.whatsmydns.net" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className={`text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}
+                className={`text-blue-600 hover:underline ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}
               >
                 whatsmydns.net
               </a>
@@ -232,11 +232,11 @@ export function DNSInstructions({
           </Alert>
         </div>
 
-        <div className={`flex justify-end gap-3 pt-4 border-t ${themeClass("", "border-gray-700")}`}>
+        <div className={`flex justify-end gap-3 pt-4 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className={themeClass("", "border-gray-600 text-gray-300 hover:bg-gray-700")}
+            className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
           >
             {t('close')}
           </Button>

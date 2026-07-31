@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -28,7 +28,7 @@ const FEATURES = [
 ];
 
 export default function BrandingFeaturesTab({ settings, onSave, isSaving, activeModules = [] }: BrandingFeaturesTabProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const t = useTranslations('branding.features');
   const tc = useTranslations('branding.common');
   const [formData, setFormData] = useState({
@@ -52,13 +52,13 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
 
   return (
     <div className="space-y-6">
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
+          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
             <Zap className="h-5 w-5" />
             {t('title')}
           </CardTitle>
-          <CardDescription className={themeClass("", "text-gray-400")}>
+          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
             {t('desc', { enabled: enabledCount, total: FEATURES.length })}
           </CardDescription>
         </CardHeader>
@@ -84,14 +84,14 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label className={`font-medium ${themeClass("", "text-white")}`}>{t(feature.labelKey)}</Label>
+                        <Label className={`font-medium ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{t(feature.labelKey)}</Label>
                         {!hasModule && (
                           <Badge variant="outline" className="text-xs">
                             {t('moduleRequired')}
                           </Badge>
                         )}
                       </div>
-                      <p className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{t(feature.descKey)}</p>
+                      <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t(feature.descKey)}</p>
                     </div>
                   </div>
                   <Switch
@@ -107,12 +107,12 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
       </Card>
 
       {/* Advertencia */}
-      <Card className={`border-yellow-200 bg-yellow-50 ${themeClass("", "border-yellow-800 bg-yellow-900/20")}`}>
+      <Card className={`border-yellow-200 bg-yellow-50 ${resolvedTheme === 'dark' ? "border-yellow-800 bg-yellow-900/20" : ""}`}>
         <CardContent className="flex items-start gap-3 pt-6">
-          <AlertTriangle className={`h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5 ${themeClass("", "text-yellow-400")}`} />
+          <AlertTriangle className={`h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5 ${resolvedTheme === 'dark' ? "text-yellow-400" : ""}`} />
           <div>
-            <h4 className={`font-medium text-yellow-800 ${themeClass("", "text-yellow-300")}`}>{t('warningTitle')}</h4>
-            <p className={`text-sm text-yellow-700 mt-1 ${themeClass("", "text-yellow-400")}`}>
+            <h4 className={`font-medium text-yellow-800 ${resolvedTheme === 'dark' ? "text-yellow-300" : ""}`}>{t('warningTitle')}</h4>
+            <p className={`text-sm text-yellow-700 mt-1 ${resolvedTheme === 'dark' ? "text-yellow-400" : ""}`}>
               {t('warningText')}
             </p>
           </div>
@@ -120,9 +120,9 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
       </Card>
 
       {/* Resumen */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
-          <CardTitle className={themeClass("", "text-white")}>{t('summaryTitle')}</CardTitle>
+          <CardTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>{t('summaryTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -139,7 +139,7 @@ export default function BrandingFeaturesTab({ settings, onSave, isSaving, active
               );
             })}
             {enabledCount === 0 && (
-              <p className={`text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('noFeatures')}</p>
+              <p className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('noFeatures')}</p>
             )}
           </div>
         </CardContent>

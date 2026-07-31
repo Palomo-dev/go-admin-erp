@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import {
   Dialog,
@@ -64,7 +64,7 @@ export function DeliveryDialog({
   onConfirm,
   isLoading = false,
 }: DeliveryDialogProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState({
     recipient_name: '',
     recipient_doc_type: '',
@@ -102,7 +102,7 @@ export function DeliveryDialog({
         </DialogHeader>
 
         {shipment && (
-          <div className={`bg-gray-50 rounded-lg p-3 mb-4 ${themeClass("", "bg-gray-800")}`}>
+          <div className={`bg-gray-50 rounded-lg p-3 mb-4 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-gray-500" />
               <span className="font-medium">{shipment.shipment_number}</span>

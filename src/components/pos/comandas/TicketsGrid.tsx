@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import React from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,7 @@ const COLUMNS: { key: ColumnKey; status: KitchenTicket['status']; label: string;
 const DELIVERED_VISIBLE_LIMIT = 12;
 
 export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange, onReprint, stationFilter }: TicketsGridProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const columnsData: Record<ColumnKey, KitchenTicket[]> = {
     new: tickets.new,
     in_progress: tickets.in_progress,
@@ -61,7 +61,7 @@ export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange, onRep
 
           return (
             <div key={column.key} className="flex flex-col min-w-0">
-              <h2 className={`text-sm font-semibold text-gray-900 flex items-center gap-2 mb-2 ${themeClass("", "text-gray-100")}`}>
+              <h2 className={`text-sm font-semibold text-gray-900 flex items-center gap-2 mb-2 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>
                 <Badge className={column.badgeClass}>{columnTickets.length}</Badge>
                 {column.label}
               </h2>
@@ -98,7 +98,7 @@ export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange, onRep
                     {provided.placeholder}
 
                     {column.key === 'delivered' && columnTickets.length > DELIVERED_VISIBLE_LIMIT && (
-                      <p className={`text-xs text-gray-500 text-center py-2 ${themeClass("", "text-gray-400")}`}>
+                      <p className={`text-xs text-gray-500 text-center py-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                         Mostrando los últimos {DELIVERED_VISIBLE_LIMIT} de {columnTickets.length}
                       </p>
                     )}

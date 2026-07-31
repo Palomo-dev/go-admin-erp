@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -53,7 +53,7 @@ const referenceTypeIcons: Record<string, React.ElementType> = {
 };
 
 export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEventsProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   if (isLoading) {
     return (
       <Card className="h-full">
@@ -105,10 +105,10 @@ export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEven
                 return (
                   <div
                     key={event.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors ${themeClass("", "bg-gray-800/50 hover:bg-gray-800")}`}
+                    className={`flex items-start gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors ${resolvedTheme === 'dark' ? "bg-gray-800/50 hover:bg-gray-800" : ""}`}
                   >
-                    <div className={`p-2 bg-white rounded-lg shadow-sm ${themeClass("", "bg-gray-700")}`}>
-                      <Icon className={`h-4 w-4 text-gray-600 ${themeClass("", "text-gray-400")}`} />
+                    <div className={`p-2 bg-white rounded-lg shadow-sm ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`}>
+                      <Icon className={`h-4 w-4 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -120,7 +120,7 @@ export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEven
                         </span>
                       </div>
                       {event.description && (
-                        <p className={`text-sm text-gray-700 truncate ${themeClass("", "text-gray-300")}`}>
+                        <p className={`text-sm text-gray-700 truncate ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                           {event.description}
                         </p>
                       )}

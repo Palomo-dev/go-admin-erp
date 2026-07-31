@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Card } from '@/components/ui/card';
 import { Package, CheckCircle, Truck, XCircle, Clock, DollarSign, AlertCircle, RotateCcw, ClipboardList, Scale, CalendarDays, UserX, TrendingUp } from 'lucide-react';
 
@@ -25,7 +25,7 @@ interface ShipmentsStatsProps {
 }
 
 export function ShipmentsStats({ stats }: ShipmentsStatsProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const fmtCOP = (v: number) => new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
@@ -90,9 +90,9 @@ export function ShipmentsStats({ stats }: ShipmentsStatsProps) {
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${stat.color}`}>{stat.icon}</div>
               <div className="min-w-0">
-                <p className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>{stat.value}</p>
-                <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>{stat.title}</p>
-                {stat.sub && <p className={`text-xs text-gray-400 mt-0.5 ${themeClass("", "text-gray-500")}`}>{stat.sub}</p>}
+                <p className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{stat.value}</p>
+                <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{stat.title}</p>
+                {stat.sub && <p className={`text-xs text-gray-400 mt-0.5 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{stat.sub}</p>}
               </div>
             </div>
           </Card>
@@ -105,8 +105,8 @@ export function ShipmentsStats({ stats }: ShipmentsStatsProps) {
             <div className="flex items-center gap-2">
               <span className={stat.color}>{stat.icon}</span>
               <div>
-                <p className={`text-lg font-bold text-gray-900 ${themeClass("", "text-white")}`}>{stat.value}</p>
-                <p className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{stat.title}</p>
+                <p className={`text-lg font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{stat.value}</p>
+                <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{stat.title}</p>
               </div>
             </div>
           </Card>
@@ -118,7 +118,7 @@ export function ShipmentsStats({ stats }: ShipmentsStatsProps) {
           <Card key={stat.label} className="p-3 flex items-center gap-2">
             <span className="text-gray-400">{stat.icon}</span>
             <div>
-              <p className={`text-sm font-semibold text-gray-700 ${themeClass("", "text-gray-300")}`}>{stat.value}</p>
+              <p className={`text-sm font-semibold text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>{stat.value}</p>
               <p className="text-xs text-gray-400">{stat.label}</p>
             </div>
           </Card>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,7 @@ interface BrandingPagesTabProps {
 }
 
 export default function BrandingPagesTab({ organizationId, typeId }: BrandingPagesTabProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const t = useTranslations('branding.pages');
   const [pages, setPages] = useState<WebsitePage[]>([]);
@@ -140,15 +140,15 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
+              <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 <LayoutGrid className="h-5 w-5" />
                 {t('title')}
               </CardTitle>
-              <CardDescription className={themeClass("", "text-gray-400")}>
+              <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
                 {t('description')}
               </CardDescription>
             </div>
@@ -165,11 +165,11 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
         <CardContent>
           {pages.length === 0 ? (
             <div className="text-center py-8">
-              <LayoutGrid className={`h-12 w-12 text-gray-300 mx-auto mb-3 ${themeClass("", "text-gray-600")}`} />
-              <p className={`text-gray-500 mb-2 ${themeClass("", "text-gray-400")}`}>
+              <LayoutGrid className={`h-12 w-12 text-gray-300 mx-auto mb-3 ${resolvedTheme === 'dark' ? "text-gray-600" : ""}`} />
+              <p className={`text-gray-500 mb-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                 {t('noPages')}
               </p>
-              <p className={`text-sm text-gray-400 mb-4 ${themeClass("", "text-gray-500")}`}>
+              <p className={`text-sm text-gray-400 mb-4 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
                 {t('noPagesHint')}
               </p>
               <Button
@@ -177,7 +177,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
                 disabled={isSeeding}
                 size="sm"
                 variant="outline"
-                className={`border-blue-300 text-blue-600 hover:bg-blue-50 ${themeClass("", "border-blue-700 text-blue-400 hover:bg-blue-900/20")}`}
+                className={`border-blue-300 text-blue-600 hover:bg-blue-50 ${resolvedTheme === 'dark' ? "border-blue-700 text-blue-400 hover:bg-blue-900/20" : ""}`}
               >
                 {isSeeding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingBag className="h-4 w-4 mr-2" />}
                 Generar páginas por defecto
@@ -188,13 +188,13 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
               {pages.map((page) => (
                 <div
                   key={page.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors group ${themeClass("", "border-gray-700 hover:border-blue-700")}`}
+                  className={`flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors group ${resolvedTheme === 'dark' ? "border-gray-700 hover:border-blue-700" : ""}`}
                 >
-                  <GripVertical className={`h-4 w-4 text-gray-300 shrink-0 ${themeClass("", "text-gray-600")}`} />
+                  <GripVertical className={`h-4 w-4 text-gray-300 shrink-0 ${resolvedTheme === 'dark' ? "text-gray-600" : ""}`} />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className={`font-medium text-sm truncate ${themeClass("", "text-white")}`}>
+                      <p className={`font-medium text-sm truncate ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                         {page.title}
                       </p>
                       <Badge
@@ -204,12 +204,12 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
                         {page.is_published ? t('published') : t('draft')}
                       </Badge>
                       {page.show_in_header && (
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${themeClass("", "border-gray-600")}`}>
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}>
                           {t('header')}
                         </Badge>
                       )}
                     </div>
-                    <p className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+                    <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                       /{page.slug}
                     </p>
                   </div>

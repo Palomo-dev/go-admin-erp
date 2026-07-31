@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -49,7 +49,7 @@ export function LabelCard({
   onRegenerate,
   onVoid,
 }: LabelCardProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const getStatusBadge = () => {
     if (label.is_void) {
       return (
@@ -61,7 +61,7 @@ export function LabelCard({
     }
     if (label.is_printed) {
       return (
-        <Badge className={`bg-green-100 text-green-800 flex items-center gap-1 ${themeClass("", "bg-green-900/30 text-green-400")}`}>
+        <Badge className={`bg-green-100 text-green-800 flex items-center gap-1 ${resolvedTheme === 'dark' ? "bg-green-900/30 text-green-400" : ""}`}>
           <CheckCircle className="h-3 w-3" />
           Impresa ({label.print_count})
         </Badge>
@@ -95,13 +95,13 @@ export function LabelCard({
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <p className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
+              <p className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                 {label.label_number}
               </p>
               {getTypeBadge()}
               {getStatusBadge()}
             </div>
-            <p className={`text-sm text-gray-500 mt-1 ${themeClass("", "text-gray-400")}`}>
+            <p className={`text-sm text-gray-500 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               Formato: {label.format?.toUpperCase()} • {label.width_mm}x{label.height_mm}mm
             </p>
           </div>
@@ -151,7 +151,7 @@ export function LabelCard({
 
       {/* Info del envío */}
       {label.shipments && (
-        <div className={`mt-4 pt-3 border-t border-gray-100 ${themeClass("", "border-gray-800")}`}>
+        <div className={`mt-4 pt-3 border-t border-gray-100 ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
           <div className="flex items-center gap-2 text-sm">
             <Package className="h-4 w-4 text-gray-400" />
             <span className="font-medium">{label.shipments.shipment_number}</span>
@@ -172,7 +172,7 @@ export function LabelCard({
       {label.transport_carriers && (
         <div className="mt-3 flex items-center gap-2 text-sm">
           <Truck className="h-4 w-4 text-gray-400" />
-          <span className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
+          <span className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
             {label.transport_carriers.name}
           </span>
           {label.carrier_tracking && (
@@ -184,7 +184,7 @@ export function LabelCard({
       )}
 
       {/* Footer con fecha y acciones rápidas */}
-      <div className={`mt-4 pt-3 border-t border-gray-100 flex items-center justify-between ${themeClass("", "border-gray-800")}`}>
+      <div className={`mt-4 pt-3 border-t border-gray-100 flex items-center justify-between ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
         <p className="text-xs text-gray-400">
           Creada: {format(new Date(label.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
         </p>
@@ -212,7 +212,7 @@ export function LabelCard({
 
       {/* Razón de anulación */}
       {label.is_void && label.void_reason && (
-        <div className={`mt-3 p-2 bg-red-50 rounded text-sm text-red-600 ${themeClass("", "bg-red-900/20 text-red-400")}`}>
+        <div className={`mt-3 p-2 bg-red-50 rounded text-sm text-red-600 ${resolvedTheme === 'dark' ? "bg-red-900/20 text-red-400" : ""}`}>
           Razón: {label.void_reason}
         </div>
       )}

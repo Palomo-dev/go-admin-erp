@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -82,7 +82,7 @@ const EVENT_LABELS: Record<string, string> = {
 };
 
 export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   if (isLoading) {
     return (
       <Card className="p-8 flex items-center justify-center">
@@ -96,7 +96,7 @@ export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
     return (
       <Card className="p-8 text-center">
         <Clock className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-        <h3 className={`text-lg font-semibold text-gray-900 ${themeClass("", "text-white")}`}>Sin eventos</h3>
+        <h3 className={`text-lg font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>Sin eventos</h3>
         <p className="text-gray-500 mt-2">No hay eventos que coincidan con los filtros aplicados</p>
       </Card>
     );
@@ -151,7 +151,7 @@ export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
 
                 {/* Route Info */}
                 {event.reference_data?.origin && event.reference_data?.destination && (
-                  <p className={`text-sm text-gray-600 mb-1 ${themeClass("", "text-gray-400")}`}>
+                  <p className={`text-sm text-gray-600 mb-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
                     <MapPin className="h-3 w-3 inline mr-1" />
                     {event.reference_data.origin} → {event.reference_data.destination}
                   </p>
@@ -159,7 +159,7 @@ export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
 
                 {/* Description */}
                 {event.description && (
-                  <p className={`text-sm text-gray-700 mb-1 ${themeClass("", "text-gray-300")}`}>
+                  <p className={`text-sm text-gray-700 mb-1 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
                     {event.description}
                   </p>
                 )}
@@ -182,7 +182,7 @@ export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
 
               {/* Time */}
               <div className="text-right shrink-0">
-                <p className={`text-sm font-medium text-gray-900 ${themeClass("", "text-white")}`}>
+                <p className={`text-sm font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
                   {format(new Date(event.event_time), 'HH:mm', { locale: es })}
                 </p>
                 <p className="text-xs text-gray-500">

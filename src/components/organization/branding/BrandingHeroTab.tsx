@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,7 @@ interface BrandingHeroTabProps {
 }
 
 export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSaving }: BrandingHeroTabProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const t = useTranslations('branding.hero');
   const tc = useTranslations('branding.common');
   const [formData, setFormData] = useState({
@@ -54,59 +54,59 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
   return (
     <div className="space-y-6">
       {/* Título y Subtítulo */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
+          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
             <Type className="h-5 w-5" />
             {t('textsTitle')}
           </CardTitle>
-          <CardDescription className={themeClass("", "text-gray-400")}>
+          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
             {t('textsDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className={themeClass("", "text-gray-300")}>{t('mainTitle')}</Label>
+            <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('mainTitle')}</Label>
             <Input
               value={formData.hero_title}
               onChange={(e) => setFormData({ ...formData, hero_title: e.target.value })}
               placeholder={t('mainTitlePlaceholder')}
-              className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+              className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
             />
           </div>
           <div className="space-y-2">
-            <Label className={themeClass("", "text-gray-300")}>{t('subtitle')}</Label>
+            <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('subtitle')}</Label>
             <Textarea
               value={formData.hero_subtitle}
               onChange={(e) => setFormData({ ...formData, hero_subtitle: e.target.value })}
               placeholder={t('subtitlePlaceholder')}
               rows={3}
-              className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+              className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Imagen/Video */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
+          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
             <Image className="h-5 w-5" />
             {t('mediaTitle')}
           </CardTitle>
-          <CardDescription className={themeClass("", "text-gray-400")}>
+          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
             {t('mediaDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className={themeClass("", "text-gray-300")}>{t('bgImage')}</Label>
+            <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('bgImage')}</Label>
             <div className="flex items-center gap-4">
               <Input
                 value={formData.hero_image_url}
                 onChange={(e) => setFormData({ ...formData, hero_image_url: e.target.value })}
                 placeholder="https://ejemplo.com/imagen.jpg"
-                className={`flex-1 ${themeClass("", "bg-gray-700 border-gray-600 text-white")}`}
+                className={`flex-1 ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}`}
               />
               <div className="relative">
                 <input
@@ -116,7 +116,7 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
                   className="absolute inset-0 opacity-0 cursor-pointer"
                   disabled={isUploading}
                 />
-                <Button variant="outline" disabled={isUploading} className={themeClass("", "border-gray-600")}>
+                <Button variant="outline" disabled={isUploading} className={resolvedTheme === 'dark' ? "border-gray-600" : ""}>
                   {isUploading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -140,7 +140,7 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
           </div>
 
           <div className="space-y-2">
-            <Label className={`flex items-center gap-2 ${themeClass("", "text-gray-300")}`}>
+            <Label className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
               <Video className="h-4 w-4" />
               {t('videoLabel')}
             </Label>
@@ -148,9 +148,9 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
               value={formData.hero_video_url}
               onChange={(e) => setFormData({ ...formData, hero_video_url: e.target.value })}
               placeholder="https://youtube.com/watch?v=... o https://vimeo.com/..."
-              className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+              className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
             />
-            <p className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
+            <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
               {t('videoHint')}
             </p>
           </div>
@@ -158,34 +158,34 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
       </Card>
 
       {/* CTA */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
+          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
             <Link className="h-5 w-5" />
             {t('ctaTitle')}
           </CardTitle>
-          <CardDescription className={themeClass("", "text-gray-400")}>
+          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
             {t('ctaDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className={themeClass("", "text-gray-300")}>{t('ctaBtnText')}</Label>
+              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('ctaBtnText')}</Label>
               <Input
                 value={formData.hero_cta_text}
                 onChange={(e) => setFormData({ ...formData, hero_cta_text: e.target.value })}
                 placeholder={t('ctaBtnPlaceholder')}
-                className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+                className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
               />
             </div>
             <div className="space-y-2">
-              <Label className={themeClass("", "text-gray-300")}>{t('ctaBtnUrl')}</Label>
+              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('ctaBtnUrl')}</Label>
               <Input
                 value={formData.hero_cta_url}
                 onChange={(e) => setFormData({ ...formData, hero_cta_url: e.target.value })}
                 placeholder="/contacto o https://..."
-                className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
+                className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}
               />
             </div>
           </div>
@@ -193,9 +193,9 @@ export default function BrandingHeroTab({ settings, onSave, onUploadImage, isSav
       </Card>
 
       {/* Preview */}
-      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
+      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
         <CardHeader>
-          <CardTitle className={themeClass("", "text-white")}>{tc('saveChanges').split(' ')[0]}</CardTitle>
+          <CardTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>{tc('saveChanges').split(' ')[0]}</CardTitle>
         </CardHeader>
         <CardContent>
           <div 

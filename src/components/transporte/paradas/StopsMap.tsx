@@ -1,6 +1,6 @@
 'use client';
 
-import { useThemeClasses } from '@/lib/theme';
+import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +38,7 @@ export function StopsMap({
   onStopClick,
   onEditStop 
 }: StopsMapProps) {
-  const { themeClass } = useThemeClasses();
+  const { resolvedTheme } = useTheme();
   const mapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
@@ -271,15 +271,15 @@ export function StopsMap({
       </Card>
 
       {stopsWithoutCoords.length > 0 && (
-        <Card className={`border-yellow-200 bg-yellow-50 ${themeClass("", "bg-yellow-900/20 border-yellow-800")}`}>
+        <Card className={`border-yellow-200 bg-yellow-50 ${resolvedTheme === 'dark' ? "bg-yellow-900/20 border-yellow-800" : ""}`}>
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className={`font-medium text-yellow-800 ${themeClass("", "text-yellow-200")}`}>
+                <p className={`font-medium text-yellow-800 ${resolvedTheme === 'dark' ? "text-yellow-200" : ""}`}>
                   {stopsWithoutCoords.length} parada(s) sin coordenadas
                 </p>
-                <p className={`text-sm text-yellow-700 mt-1 ${themeClass("", "text-yellow-300")}`}>
+                <p className={`text-sm text-yellow-700 mt-1 ${resolvedTheme === 'dark' ? "text-yellow-300" : ""}`}>
                   Las siguientes paradas no aparecen en el mapa porque no tienen coordenadas:
                 </p>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -287,7 +287,7 @@ export function StopsMap({
                     <Badge 
                       key={stop.id} 
                       variant="outline" 
-                      className={`cursor-pointer hover:bg-yellow-100 ${themeClass("", "hover:bg-yellow-800")}`}
+                      className={`cursor-pointer hover:bg-yellow-100 ${resolvedTheme === 'dark' ? "hover:bg-yellow-800" : ""}`}
                       onClick={() => onEditStop?.(stop)}
                     >
                       {stop.name}
@@ -305,7 +305,7 @@ export function StopsMap({
         </Card>
       )}
 
-      <div className={`flex flex-wrap gap-4 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
+      <div className={`flex flex-wrap gap-4 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
         <span className="font-medium">Leyenda:</span>
         {Object.entries(stopTypeConfig).map(([key, config]) => (
           <div key={key} className="flex items-center gap-1">

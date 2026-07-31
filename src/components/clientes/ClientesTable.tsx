@@ -185,7 +185,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       />
                     </td>
                     <td className="px-3 sm:px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-3 min-w-[120px] sm:min-w-0">
+                      <div className="flex flex-wrap items-center gap-3 min-w-0">
                         {/* Avatar del cliente */}
                         <div className="flex-shrink-0">
                           {customer.avatar_url ? (
@@ -227,7 +227,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                           )}
                           {/* Mostrar contacto en móvil */}
                           <div className="sm:hidden flex flex-col mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {customer.email && <span className="truncate">{customer.email}</span>}
+                            {customer.email && <span className="break-words min-w-0">{customer.email}</span>}
                             {customer.phone && <span>{customer.phone}</span>}
                           </div>
                           <div className="flex flex-wrap gap-1 mt-1">
@@ -247,7 +247,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                     <td className="px-3 sm:px-4 py-3 hidden sm:table-cell">
                       <div className="flex flex-col">
                         {customer.email && (
-                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px]">
+                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
                             {customer.email}
                           </span>
                         )}
@@ -310,7 +310,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3">
-                      <div className="flex flex-col min-w-[100px]">
+                      <div className="flex flex-col min-w-0">
                         <span className={`text-xs sm:text-sm font-semibold ${getARStatusClass(customer.ar_status, customer.days_overdue)}`}>
                           {formatCurrency(Number(customer.balance || 0))}
                         </span>

@@ -5,9 +5,11 @@ import {
   buildSaleTicketHTML,
   buildKitchenTicketHTML,
   buildShipmentGuideHTML,
+  buildElectronicInvoiceHTML,
   buildPlainTextSaleTicket,
   buildPlainTextTicket,
   buildPlainTextShipmentGuide,
+  buildPlainTextElectronicInvoice,
   getPaperSpec,
   type PaperSpec,
 } from '@printing';
@@ -16,11 +18,12 @@ import {
   buildSamplePreCuenta,
   buildSampleKitchenTicket,
   buildSampleShipmentGuide,
+  buildSampleElectronicInvoice,
   type PreviewBusiness,
 } from './sampleData';
 
 /** Documento a previsualizar. Coincide con `print_jobs.job_type`. */
-export type DocumentKind = 'sale_ticket' | 'pre_cuenta' | 'kitchen_ticket' | 'shipment_guide';
+export type DocumentKind = 'sale_ticket' | 'pre_cuenta' | 'kitchen_ticket' | 'shipment_guide' | 'electronic_invoice';
 
 /**
  * Camino de impresion:
@@ -94,6 +97,17 @@ export function usePrintPreview(
       return {
         paper,
         html,
+        text,
+        overflow: findOverflow(text, paper.charsPerLine),
+      };
+    }
+
+    if (kind === 'electronic_invoice') {
+      const payload = buildSampleElectronicInvoice(business);
+      const text = buildPlainTextElectronicInvoice(payload, paper);
+      return {
+        paper,
+        html: path === 'html' ? buildElectronicInvoiceHTML(payload, paper) : null,
         text,
         overflow: findOverflow(text, paper.charsPerLine),
       };

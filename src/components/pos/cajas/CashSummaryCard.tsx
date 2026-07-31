@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Wallet, RotateCcw, Coins, UserCircle, Store, Globe, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
+import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSession, CashSummary } from './types';
 
 interface CashSummaryCardProps {
@@ -17,6 +18,7 @@ interface CashSummaryCardProps {
 export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProps) {
   const [summary, setSummary] = useState<CashSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const { showExpected } = useBlindCloseMode();
 
   useEffect(() => {
     loadSummary();
@@ -101,6 +103,32 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
           )}
         </div>
 
+        {/* Info de cajero y sucursal */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+            <UserCircle className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs dark:text-gray-400 text-gray-500">Cajero</p>
+              <p className="text-sm font-medium dark:text-white text-gray-900 truncate">
+                {session.opened_by_name || 'Usuario'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+            {session.branch_id ? (
+              <Store className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            ) : (
+              <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="text-xs dark:text-gray-400 text-gray-500">Sucursal</p>
+              <p className="text-sm font-medium dark:text-white text-gray-900 truncate">
+                {session.branch_name || (session.branch_id ? `#${session.branch_id}` : 'Todas las sucursales')}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <Separator className="dark:bg-gray-700 bg-gray-200" />
 
         {summary && (
@@ -158,24 +186,101 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   </p>
                 </div>
               </div>
+
+              {/* Vuelto entregado */}
+              {summary.change_total > 0 && (
+                <div className="flex items-center space-x-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                  <div className="flex-shrink-0 p-2 bg-orange-100 dark:bg-orange-800 rounded-full">
+                    <Coins className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm dark:text-gray-300 text-gray-600">Vuelto</p>
+                    <p className="font-bold text-orange-600 dark:text-orange-400">
+                      -{formatCurrency(summary.change_total)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Devoluciones */}
+              {summary.returns_total > 0 && (
+                <div className="flex items-center space-x-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  <div className="flex-shrink-0 p-2 bg-red-100 dark:bg-red-800 rounded-full">
+                    <RotateCcw className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm dark:text-gray-300 text-gray-600">Devoluciones</p>
+                    <p className="font-bold text-red-600 dark:text-red-400">
+                      -{formatCurrency(summary.returns_total)}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Desglose por método de pago */}
+            {summary.income_by_method && Object.keys(summary.income_by_method).length > 0 && (
+              <>
+                <Separator className="dark:bg-gray-700 bg-gray-200" />
+                <div>
+                  <p className="text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
+                    Pagos por método:
+                  </p>
+                  <div className="space-y-1.5">
+                    {Object.entries(summary.income_by_method).map(([method, amount]) => {
+                      const labels: Record<string, string> = {
+                        cash: 'Efectivo',
+                        card: 'Tarjeta',
+                        credit_card: 'Tarjeta Crédito',
+                        debit_card: 'Tarjeta Débito',
+                        transfer: 'Transferencia',
+                        nequi: 'Nequi',
+                        daviplata: 'Daviplata',
+                        pse: 'PSE',
+                        credit: 'Crédito',
+                        other: 'Otros',
+                      };
+                      return (
+                        <div key={method} className="flex justify-between items-center text-sm">
+                          <span className="dark:text-gray-400 text-gray-600">
+                            {labels[method] || method}
+                          </span>
+                          <span className="font-medium dark:text-white text-gray-900">
+                            {formatCurrency(amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator className="dark:bg-gray-700 bg-gray-200" />
 
             {/* Total esperado */}
-            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
-                  Total Esperado:
-                </span>
-                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(summary.expected_amount)}
-                </span>
+            {showExpected ? (
+              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
+                    Total Esperado:
+                  </span>
+                  <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                    {formatCurrency(summary.expected_amount)}
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
+                <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                <p className="text-sm text-purple-700 dark:text-purple-400">
+                  Cierre ciego activo. Los montos esperados y diferencias son visibles solo para administradores.
+                </p>
+              </div>
+            )}
 
             {/* Si la caja está cerrada, mostrar información del arqueo */}
-            {session.status === 'closed' && summary.counted_amount !== undefined && (
+            {session.status === 'closed' && summary.counted_amount !== undefined && showExpected && (
               <>
                 <Separator className="dark:bg-gray-700 bg-gray-200" />
                 

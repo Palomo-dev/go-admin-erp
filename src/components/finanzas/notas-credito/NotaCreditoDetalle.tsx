@@ -87,6 +87,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
   const [eInvoiceEvents, setEInvoiceEvents] = useState<EInvoiceEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isSendingDian, setIsSendingDian] = useState(false);
   const [organizationTaxes, setOrganizationTaxes] = useState<{ id: string; name: string; rate: number; is_default?: boolean }[]>([]);
 
   const loadData = useCallback(async () => {
@@ -167,6 +168,33 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     }
   };
 
+  const handleSendToDian = async () => {
+    if (!nota) return;
+    const orgId = getOrganizationId();
+    if (!orgId) {
+      toast({ title: 'Error', description: 'No se pudo determinar la organización', variant: 'destructive' });
+      return;
+    }
+    setIsSendingDian(true);
+    try {
+      const reason = nota.notes || 'Nota de crédito';
+      const result = await notasCreditoService.sendToFactus(nota.id, Number(orgId), reason);
+      if (result.success) {
+        toast({
+          title: 'Nota de crédito enviada a DIAN',
+          description: `CUFE: ${result.data?.cufe?.substring(0, 16) || ''}...`,
+        });
+        loadData();
+      } else {
+        toast({ title: 'Error', description: result.error, variant: 'destructive' });
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Error al enviar a DIAN', variant: 'destructive' });
+    } finally {
+      setIsSendingDian(false);
+    }
+  };
+
   const handleDownloadPDF = () => {
     toast({ title: 'Descarga', description: 'Generando PDF...' });
     // Aquí iría la lógica de descarga de PDF
@@ -225,9 +253,26 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
             <Download className="h-4 w-4 mr-2" />
             Descargar PDF
           </Button>
+          {/* Botón Enviar a DIAN: visible cuando no hay job o el job falló */}
+          {nota.status !== 'void' && nota.status !== 'accepted' && (!eInvoiceJob || eInvoiceJob.status === 'failed' || eInvoiceJob.status === 'rejected') && (
+            <Button
+              variant="default"
+              onClick={handleSendToDian}
+              disabled={isSendingDian}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isSendingDian ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileCheck className="h-4 w-4 mr-2" />
+              )}
+              Enviar a DIAN
+            </Button>
+          )}
+          {/* Botón Reintentar: visible cuando hay job que falló */}
           {eInvoiceJob && (eInvoiceJob.status === 'rejected' || eInvoiceJob.status === 'failed') && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleRetryDian}
               disabled={isRetrying}
               className="dark:border-gray-700"

@@ -18,6 +18,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
+import { notasCreditoService } from '@/lib/services/notasCreditoService';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Table, 
@@ -355,6 +356,41 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
           description: `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(monto)} exitosamente`,
         });
 
+        // Enviar automáticamente a DIAN si la factura original fue aceptada
+        try {
+          const dianStatus = await notasCreditoService.checkOriginalInvoiceDianStatus(factura.id);
+          if (dianStatus.accepted) {
+            toast({
+              title: 'Enviando a DIAN',
+              description: 'La factura original fue aceptada por DIAN. Enviando nota de crédito...',
+            });
+            const factusResult = await notasCreditoService.sendToFactus(
+              notaCreditoId,
+              Number(organizationId),
+              motivo
+            );
+            if (factusResult.success) {
+              toast({
+                title: 'Nota de crédito enviada a DIAN',
+                description: `CUFE: ${factusResult.data?.cufe?.substring(0, 16) || ''}...`,
+              });
+            } else {
+              toast({
+                title: 'Envío a DIAN pendiente',
+                description: `La nota de crédito se creó pero no se pudo enviar a DIAN: ${factusResult.error}. Puede reintentar desde el detalle.`,
+                variant: 'destructive',
+              });
+            }
+          }
+        } catch (dianError: any) {
+          console.error('Error en envío automático a DIAN:', dianError);
+          toast({
+            title: 'Envío a DIAN pendiente',
+            description: 'La nota de crédito se creó pero el envío a DIAN falló. Puede reintentar desde el detalle.',
+            variant: 'destructive',
+          });
+        }
+
         onOpenChange(false);
         if (onSuccess) onSuccess();
         return;
@@ -493,6 +529,41 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
         title: "Nota de crédito generada",
         description: `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(subtotal + taxTotal)} exitosamente`,
       });
+
+      // Enviar automáticamente a DIAN si la factura original fue aceptada
+      try {
+        const dianStatus = await notasCreditoService.checkOriginalInvoiceDianStatus(factura.id);
+        if (dianStatus.accepted) {
+          toast({
+            title: 'Enviando a DIAN',
+            description: 'La factura original fue aceptada por DIAN. Enviando nota de crédito...',
+          });
+          const factusResult = await notasCreditoService.sendToFactus(
+            notaCreditoId,
+            Number(organizationId),
+            motivo
+          );
+          if (factusResult.success) {
+            toast({
+              title: 'Nota de crédito enviada a DIAN',
+              description: `CUFE: ${factusResult.data?.cufe?.substring(0, 16) || ''}...`,
+            });
+          } else {
+            toast({
+              title: 'Envío a DIAN pendiente',
+              description: `La nota de crédito se creó pero no se pudo enviar a DIAN: ${factusResult.error}. Puede reintentar desde el detalle.`,
+              variant: 'destructive',
+            });
+          }
+        }
+      } catch (dianError: any) {
+        console.error('Error en envío automático a DIAN:', dianError);
+        toast({
+          title: 'Envío a DIAN pendiente',
+          description: 'La nota de crédito se creó pero el envío a DIAN falló. Puede reintentar desde el detalle.',
+          variant: 'destructive',
+        });
+      }
 
       // Cerrar el diálogo y llamar a onSuccess si está definido
       onOpenChange(false);

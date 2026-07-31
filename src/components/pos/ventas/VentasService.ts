@@ -457,26 +457,48 @@ export class VentasService {
     return summary;
   }
 
-  // Sesión de caja actual
-  static async getCurrentCashSession(branchId: number): Promise<CashSession | null> {
+  // Sesión de caja actual (de la sucursal o global)
+  static async getCurrentCashSession(branchId: number | null): Promise<CashSession | null> {
     const organizationId = getOrganizationId();
 
-    const { data, error } = await supabase
+    // Si no hay sucursal específica, buscar directamente sesión global
+    if (branchId !== null) {
+      // 1. Buscar caja de la sucursal
+      const { data, error } = await supabase
+        .from('cash_sessions')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('branch_id', branchId)
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching cash session:', error);
+        return null;
+      }
+
+      if (data) return data;
+    }
+
+    // 2. Buscar caja global (branch_id null)
+    const { data: globalSession, error: globalError } = await supabase
       .from('cash_sessions')
       .select('*')
       .eq('organization_id', organizationId)
-      .eq('branch_id', branchId)
+      .is('branch_id', null)
       .eq('status', 'open')
       .order('opened_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching cash session:', error);
+    if (globalError) {
+      console.error('Error fetching global cash session:', globalError);
       return null;
     }
 
-    return data;
+    return globalSession;
   }
 
   // Abrir caja

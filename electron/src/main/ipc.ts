@@ -44,11 +44,15 @@ export function registerIpcHandlers(): void {
   // ── Auto-arranque ──
   ipcMain.handle('autostart:get', () => isAutoStartEnabled());
   ipcMain.handle('autostart:set', (_e, enabled: boolean) => {
-    setAutoStart(enabled);
-    if (!app.isPackaged) {
+    try {
+      setAutoStart(enabled);
+      // Devolver el valor solicitado directamente.
+      // isAutoStartEnabled() puede no reflejar el cambio inmediatamente en Windows.
       return enabled;
+    } catch (err) {
+      console.error('[ipc] Error al cambiar auto-start:', err);
+      return isAutoStartEnabled();
     }
-    return isAutoStartEnabled();
   });
 
   // ── Impresoras (via discovery server local del agente) ──

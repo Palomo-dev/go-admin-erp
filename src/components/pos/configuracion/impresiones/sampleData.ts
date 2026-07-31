@@ -1,4 +1,4 @@
-import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload } from '@printing';
+import type { ElectronicInvoicePrintPayload, KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload } from '@printing';
 
 /**
  * Datos de ejemplo para la previsualizacion de impresiones.
@@ -193,6 +193,57 @@ export function buildSampleKitchenTicket(business?: PreviewBusiness): KitchenTic
       },
       { productName: 'Papas a la francesa', quantity: 2, notes: 'Bien doradas' },
     ],
+  };
+}
+
+export function buildSampleElectronicInvoice(business?: PreviewBusiness): ElectronicInvoicePrintPayload {
+  const resolved = resolveBusiness(business);
+  return {
+    invoiceNumber: 'FE12345',
+    cufe: '18d5e0a7b9c3f1e2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2',
+    qrData: 'https://catalogo-vpfe-hab.dian.gov.co/document/searchqr?documentkey=18d5e0a7b9c3f1e2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2',
+    validationDate: new Date().toISOString(),
+    environment: 'production',
+    internalInvoiceId: 'inv-abc-123',
+
+    businessName: resolved.businessName,
+    businessNit: resolved.businessNit,
+    businessPhone: resolved.businessPhone,
+    businessAddress: resolved.businessAddress,
+    businessCity: resolved.businessCity,
+    businessEmail: resolved.businessEmail,
+    businessFiscalResponsibilities: resolved.businessFiscalResponsibilities,
+    businessLogoUrl: resolved.businessLogoUrl,
+
+    customerName: 'Maria Fernanda Rodriguez Gomez',
+    customerDocType: 'CC',
+    customerDocNumber: '1020304050',
+    customerPhone: '3201234567',
+    customerAddress: 'Carrera 15 #85-40 Apto 502',
+    customerFiscalResponsibilities: ['R-99-PN'],
+
+    items: ITEMS,
+    subtotal: SUBTOTAL,
+    taxTotal: TAX_LINES.reduce((sum, t) => sum + t.amount, 0),
+    taxLines: TAX_LINES,
+    taxIncluded: true,
+    discountTotal: 2000,
+    total: TOTAL,
+
+    payments: [
+      { method: 'cash', methodName: 'Efectivo', amount: 110000 },
+      { method: 'card', methodName: 'Tarjeta', amount: 49920 },
+    ],
+    totalPaid: 159920,
+    changeAmount: 2000,
+
+    createdAt: new Date().toISOString(),
+    cashierName: 'Carlos Perez',
+    branchName: resolved.branchName,
+    branchAddress: resolved.branchAddress,
+    branchPhone: resolved.branchPhone,
+
+    notes: 'Gracias por su compra. Conserve este documento para validacion en DIAN.',
   };
 }
 

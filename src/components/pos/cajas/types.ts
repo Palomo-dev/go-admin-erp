@@ -3,7 +3,7 @@ export interface CashSession {
   id: number;
   uuid: string;
   organization_id: number;
-  branch_id: number;
+  branch_id: number | null; // null = caja global (todas las sucursales)
   opened_by: string;
   opened_at: string;
   initial_amount: number;
@@ -86,6 +86,10 @@ export interface CashSummary {
   expected_amount: number;
   counted_amount?: number;
   difference?: number;
+  /** Vuelto/cambio total entregado en efectivo durante la sesión */
+  change_total: number;
+  /** Total de devoluciones procesadas durante la sesión */
+  returns_total: number;
   /** @deprecated usar income_by_method / expense_by_method */
   payments_by_method?: Record<string, number>;
   income_by_method?: Record<string, number>;
@@ -118,6 +122,7 @@ export interface SessionPaymentDetail {
 export interface OpenCashSessionData {
   initial_amount: number;
   notes?: string;
+  scope?: 'branch' | 'global'; // 'branch' = esta sucursal, 'global' = todas las sucursales
 }
 
 export interface CloseCashSessionData {

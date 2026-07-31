@@ -27,9 +27,10 @@ interface CartViewProps {
   onHold: (cart: Cart, reason?: string) => void;
   onSendComanda?: (cart: Cart) => Promise<void>;
   className?: string;
+  cashSessionActive?: boolean;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true }: CartViewProps) {
   const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
@@ -827,13 +828,18 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
                     <Button
                       onClick={() => onCheckout(cart)}
-                      disabled={isOnHold || isOnHoldWithDebt}
+                      disabled={isOnHold || isOnHoldWithDebt || !cashSessionActive}
                       className="w-full h-10 sm:h-11 lg:h-10 dark:bg-blue-600 dark:hover:bg-blue-700 bg-blue-600 hover:bg-blue-700 text-sm sm:text-base font-semibold shadow-lg"
                     >
                       <CreditCard className="h-4 w-4 sm:mr-2" />
                       <span className="hidden xs:inline">Cobrar</span>
                       <span className="inline xs:hidden">$</span>
                     </Button>
+                    {!cashSessionActive && (
+                      <p className="text-xs text-red-600 dark:text-red-400 text-center mt-1">
+                        Debe abrir una caja antes de cobrar
+                      </p>
+                    )}
                   </>
                 )}
               </div>

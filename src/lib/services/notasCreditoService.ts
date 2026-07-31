@@ -395,6 +395,68 @@ class NotasCreditoService {
 
     return { success: true };
   }
+
+  /**
+   * Enviar nota de crédito a Factus/DIAN
+   */
+  async sendToFactus(
+    invoiceId: string,
+    organizationId: number,
+    reason: string,
+    items?: any[]
+  ): Promise<{ success: boolean; error?: string; data?: any }> {
+    try {
+      const response = await fetch('/api/factus/credit-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId,
+          invoiceId,
+          reason,
+          items,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: result.error || 'Error al enviar a DIAN' };
+      }
+
+      return { success: true, data: result.data };
+    } catch (error: any) {
+      console.error('Error sending credit note to Factus:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Verificar si la factura original fue aceptada por DIAN
+   */
+  async checkOriginalInvoiceDianStatus(invoiceId: string): Promise<{ accepted: boolean; cufe?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('electronic_invoicing_jobs')
+        .select('status, cufe')
+        .eq('invoice_id', invoiceId)
+        .eq('document_type', 'invoice')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) {
+        return { accepted: false };
+      }
+
+      return {
+        accepted: data.status === 'accepted',
+        cufe: data.cufe || undefined,
+      };
+    } catch (error) {
+      console.error('Error checking original invoice DIAN status:', error);
+      return { accepted: false };
+    }
+  }
 }
 
 export const notasCreditoService = new NotasCreditoService();

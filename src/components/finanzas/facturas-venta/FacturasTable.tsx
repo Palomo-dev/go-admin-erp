@@ -485,7 +485,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
             <TableHead className="min-w-[100px] text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Saldo</TableHead>
             <TableHead className="min-w-[120px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Método</TableHead>
             <TableHead className="min-w-[100px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Estado</TableHead>
-            <TableHead className="min-w-[90px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">FE</TableHead>
+            <TableHead className="min-w-[90px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Fact. Elect.</TableHead>
             <TableHead className="w-16 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300"></TableHead>
           </TableRow>
         </TableHeader>

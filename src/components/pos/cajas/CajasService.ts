@@ -26,32 +26,57 @@ export class CajasService {
   }
 
   /**
-   * Obtiene la sesión de caja activa para la sucursal actual
+   * Obtiene la sesión de caja activa para la sucursal actual.
+   * Busca primero una caja de la sucursal, si no hay, busca una caja global (branch_id = null).
+   * No filtra por usuario: la caja es de la sucursal, todos los usuarios la comparten.
    */
   static async getActiveSession(): Promise<CashSession | null> {
     try {
-      if (!this.branchId) {
+      if (!this.organizationId) {
         return null;
       }
-      const { data, error } = await supabase
+
+      // 1. Buscar caja abierta de la sucursal actual
+      if (this.branchId) {
+        const { data: branchSession, error: branchError } = await supabase
+          .from('cash_sessions')
+          .select('*')
+          .eq('organization_id', this.organizationId)
+          .eq('branch_id', this.branchId)
+          .eq('status', 'open')
+          .order('opened_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (branchError && branchError.code !== 'PGRST116') {
+          throw branchError;
+        }
+
+        if (branchSession) {
+          return this.enrichSession(branchSession);
+        }
+      }
+
+      // 2. Buscar caja global (branch_id = null)
+      const { data: globalSession, error: globalError } = await supabase
         .from('cash_sessions')
         .select('*')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', this.branchId)
+        .is('branch_id', null)
         .eq('status', 'open')
         .order('opened_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No hay sesión activa
-          return null;
-        }
-        throw error;
+      if (globalError && globalError.code !== 'PGRST116') {
+        throw globalError;
       }
 
-      return data;
+      if (globalSession) {
+        return this.enrichSession(globalSession);
+      }
+
+      return null;
     } catch (error) {
       console.error('Error getting active session:', error);
       throw error;
@@ -59,7 +84,204 @@ export class CajasService {
   }
 
   /**
+   * Enriquece una sesión con nombres de cajero y sucursal
+   */
+  private static async enrichSession(session: any): Promise<CashSession> {
+    // Obtener nombre del cajero
+    if (session?.opened_by) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', session.opened_by)
+        .single();
+      if (profileData) {
+        session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
+      }
+    }
+
+    // Obtener nombre de la sucursal
+    if (session?.branch_id) {
+      const { data: branchData } = await supabase
+        .from('branches')
+        .select('name')
+        .eq('id', session.branch_id)
+        .single();
+      if (branchData) {
+        session.branch_name = branchData.name;
+      }
+    } else {
+      session.branch_name = 'Todas las sucursales';
+    }
+
+    return session;
+  }
+
+  /**
+   * Cuenta cuántas cajas abiertas hay en la organización (todas las sucursales)
+   */
+  static async getOpenSessionsCount(): Promise<number> {
+    try {
+      const { count, error } = await supabase
+        .from('cash_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', this.organizationId)
+        .eq('status', 'open');
+
+      if (error) throw error;
+      return count || 0;
+    } catch (error) {
+      console.error('Error counting open sessions:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Obtiene todas las sesiones de caja abiertas en la organización
+   */
+  static async getActiveSessions(): Promise<CashSession[]> {
+    try {
+      if (!this.organizationId) {
+        return [];
+      }
+      const { data, error } = await supabase
+        .from('cash_sessions')
+        .select('*')
+        .eq('organization_id', this.organizationId)
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Obtener nombres de cajeros y sucursales
+      const sessions = (data || []) as any[];
+      const userIds = sessions.map(s => s.opened_by).filter(Boolean);
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', userIds);
+
+        const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
+        for (const session of sessions) {
+          const profile = profileMap.get(session.opened_by);
+          session.opened_by_name = profile
+            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Usuario'
+            : 'Usuario';
+        }
+      }
+
+      // Obtener nombres de sucursales (las que tienen branch_id)
+      const branchIds = [...new Set(sessions.map(s => s.branch_id).filter(Boolean))];
+      if (branchIds.length > 0) {
+        const { data: branchesData } = await supabase
+          .from('branches')
+          .select('id, name')
+          .in('id', branchIds);
+        const branchMap = new Map((branchesData || []).map(b => [b.id, b.name]));
+        for (const session of sessions) {
+          if (session.branch_id) {
+            session.branch_name = branchMap.get(session.branch_id) || `#${session.branch_id}`;
+          } else {
+            session.branch_name = 'Todas las sucursales';
+          }
+        }
+      } else {
+        // Todas son globales
+        for (const session of sessions) {
+          session.branch_name = 'Todas las sucursales';
+        }
+      }
+
+      return sessions;
+    } catch (error) {
+      console.error('Error getting active sessions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene el historial de sesiones con paginación
+   */
+  static async getSessionHistoryPaginated(
+    page: number = 1,
+    pageSize: number = 10,
+    filters?: { status?: 'open' | 'closed' | 'all'; branchId?: number }
+  ): Promise<{ data: CashSession[]; total: number }> {
+    try {
+      const branchId = filters?.branchId ?? this.branchId;
+
+      let query = supabase
+        .from('cash_sessions')
+        .select('*', { count: 'exact' })
+        .eq('organization_id', this.organizationId);
+
+      // Si hay branchId, filtrar por esa sucursal Y las globales (branch_id null)
+      if (branchId) {
+        query = query.or(`branch_id.eq.${branchId},branch_id.is.null`);
+      }
+
+      if (filters?.status && filters.status !== 'all') {
+        query = query.eq('status', filters.status);
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, count, error } = await query
+        .order('opened_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      // Obtener nombres de cajeros y sucursales
+      const sessions = (data || []) as any[];
+      const userIds = sessions.map(s => s.opened_by).filter(Boolean);
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', userIds);
+
+        const profileMap = new Map((profilesData || []).map(p => [p.id, p]));
+        for (const session of sessions) {
+          const profile = profileMap.get(session.opened_by);
+          session.opened_by_name = profile
+            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Usuario'
+            : 'Usuario';
+        }
+      }
+
+      // Obtener nombres de sucursales
+      const branchIds = [...new Set(sessions.map(s => s.branch_id).filter(Boolean))];
+      if (branchIds.length > 0) {
+        const { data: branchesData } = await supabase
+          .from('branches')
+          .select('id, name')
+          .in('id', branchIds);
+        const branchMap = new Map((branchesData || []).map(b => [b.id, b.name]));
+        for (const session of sessions) {
+          if (session.branch_id) {
+            session.branch_name = branchMap.get(session.branch_id) || `#${session.branch_id}`;
+          } else {
+            session.branch_name = 'Todas las sucursales';
+          }
+        }
+      } else {
+        for (const session of sessions) {
+          session.branch_name = 'Todas las sucursales';
+        }
+      }
+
+      return { data: sessions, total: count || 0 };
+    } catch (error) {
+      console.error('Error getting paginated session history:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Abre una nueva sesión de caja
+   * scope: 'branch' (default) = caja de la sucursal actual, 'global' = caja para todas las sucursales
    */
   static async openSession(data: OpenCashSessionData): Promise<CashSession> {
     try {
@@ -67,21 +289,40 @@ export class CajasService {
       if (!userId) {
         throw new Error('Usuario no autenticado');
       }
-      if (!this.branchId) {
-        throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+
+      const scope = data.scope || 'branch';
+      const targetBranchId = scope === 'global' ? null : this.branchId;
+
+      if (scope === 'branch' && !this.branchId) {
+        throw new Error('No se pudo obtener la sucursal. Seleccione una sucursal.');
       }
 
-      // Verificar que no hay sesión abierta
-      const activeSession = await this.getActiveSession();
-      if (activeSession) {
-        throw new Error('Ya existe una sesión de caja abierta');
+      // Verificar que no haya ya una caja abierta para el mismo alcance
+      let checkQuery = supabase
+        .from('cash_sessions')
+        .select('id')
+        .eq('organization_id', this.organizationId)
+        .eq('status', 'open');
+
+      if (scope === 'global') {
+        checkQuery = checkQuery.is('branch_id', null);
+      } else {
+        checkQuery = checkQuery.eq('branch_id', this.branchId);
+      }
+
+      const { data: existingSession } = await checkQuery.maybeSingle();
+
+      if (existingSession) {
+        throw new Error(scope === 'global'
+          ? 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.'
+          : 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.');
       }
 
       const { data: session, error } = await supabase
         .from('cash_sessions')
         .insert({
           organization_id: this.organizationId,
-          branch_id: this.branchId,
+          branch_id: targetBranchId,
           opened_by: userId,
           initial_amount: data.initial_amount,
           notes: data.notes || 'Apertura de caja',
@@ -211,25 +452,51 @@ export class CajasService {
       const movements = await this.getSessionMovements(sessionId);
 
       // Calcular pagos en efectivo del período (ventas vs compras a proveedores)
-      const { data: cashPayments, error: paymentsError } = await supabase
+      let cashPaymentsQuery = supabase
         .from('payments')
-        .select('amount, source')
+        .select('amount, source, change_amount')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', session.branch_id)
         .eq('method', 'cash')
         .eq('status', 'completed')
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString());
+      if (session.branch_id) {
+        cashPaymentsQuery = cashPaymentsQuery.eq('branch_id', session.branch_id);
+      }
+      const { data: cashPayments, error: paymentsError } = await cashPaymentsQuery;
 
       if (paymentsError) throw paymentsError;
 
       const PURCHASE_SOURCES = ['invoice_purchase', 'account_payable'];
+      // Sumar vuelto total entregado en ventas (no en compras)
+      const changeTotal = (cashPayments || [])
+        .filter(p => !PURCHASE_SOURCES.includes(p.source))
+        .reduce((sum, payment) => sum + Number(payment.change_amount || 0), 0);
+      // salesCash = efectivo recibido - vuelto entregado
       const salesCash = (cashPayments || [])
         .filter(p => !PURCHASE_SOURCES.includes(p.source))
-        .reduce((sum, payment) => sum + Number(payment.amount), 0);
+        .reduce((sum, payment) => sum + Number(payment.amount), 0) - changeTotal;
       const purchasesCash = (cashPayments || [])
         .filter(p => PURCHASE_SOURCES.includes(p.source))
         .reduce((sum, payment) => sum + Number(payment.amount), 0);
+
+      // Consultar devoluciones procesadas en el período
+      let returnsQuery = supabase
+        .from('returns')
+        .select('total_refund')
+        .eq('organization_id', this.organizationId)
+        .eq('status', 'processed')
+        .gte('created_at', session.opened_at)
+        .lte('created_at', session.closed_at || new Date().toISOString());
+      if (session.branch_id) {
+        returnsQuery = returnsQuery.eq('branch_id', session.branch_id);
+      }
+      const { data: returnsData, error: returnsError } = await returnsQuery;
+
+      if (returnsError) {
+        console.warn('Error consultando devoluciones:', returnsError);
+      }
+      const returnsTotal = (returnsData || []).reduce((sum, r) => sum + Number(r.total_refund), 0);
 
       // Calcular movimientos manuales de caja
       const cashIn = movements
@@ -240,17 +507,20 @@ export class CajasService {
         .filter(m => m.type === 'out')
         .reduce((sum, m) => sum + Number(m.amount), 0);
 
-      const expectedAmount = Number(session.initial_amount) + salesCash + cashIn - cashOut - purchasesCash;
+      const expectedAmount = Number(session.initial_amount) + salesCash + cashIn - cashOut - purchasesCash - returnsTotal;
 
       // Obtener pagos agrupados por metodo, separando ingresos (ventas) de egresos (compras)
-      const { data: allPayments, error: allPaymentsError } = await supabase
+      let allPaymentsQuery = supabase
         .from('payments')
         .select('method, amount, source')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', session.branch_id)
         .eq('status', 'completed')
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString());
+      if (session.branch_id) {
+        allPaymentsQuery = allPaymentsQuery.eq('branch_id', session.branch_id);
+      }
+      const { data: allPayments, error: allPaymentsError } = await allPaymentsQuery;
 
       if (allPaymentsError) throw allPaymentsError;
 
@@ -275,6 +545,8 @@ export class CajasService {
         expected_amount: expectedAmount,
         counted_amount: session.final_amount ? Number(session.final_amount) : undefined,
         difference: session.difference ? Number(session.difference) : undefined,
+        change_total: changeTotal,
+        returns_total: returnsTotal,
         payments_by_method: incomeByMethod,
         income_by_method: incomeByMethod,
         expense_by_method: expenseByMethod,
@@ -318,7 +590,33 @@ export class CajasService {
 
       if (error) throw error;
 
-      return data;
+      const session = data as any;
+
+      // Obtener nombre del cajero
+      if (session?.opened_by) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', session.opened_by)
+          .single();
+        if (profileData) {
+          session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
+        }
+      }
+
+      // Obtener nombre de la sucursal
+      if (session?.branch_id) {
+        const { data: branchData } = await supabase
+          .from('branches')
+          .select('name')
+          .eq('id', session.branch_id)
+          .single();
+        if (branchData) {
+          session.branch_name = branchData.name;
+        }
+      }
+
+      return session;
     } catch (error) {
       console.error('Error getting session by UUID:', error);
       throw error;
@@ -370,19 +668,62 @@ export class CajasService {
    */
   static async generateSessionReport(sessionId: number): Promise<CashSessionReport> {
     try {
-      const session = await this.getSessionById(sessionId);
+      // Obtener sesión con nombre del cajero
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('cash_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      const session = sessionData as any;
+      // Obtener nombre del cajero desde profiles (no hay FK directa)
+      if (session?.opened_by) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', session.opened_by)
+          .single();
+
+        if (profileData) {
+          session.opened_by_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Usuario';
+        } else {
+          session.opened_by_name = 'Usuario';
+        }
+      }
+
+      // Obtener nombre de la sucursal
+      if (session?.branch_id) {
+        const { data: branchData } = await supabase
+          .from('branches')
+          .select('name')
+          .eq('id', session.branch_id)
+          .single();
+        if (branchData) {
+          session.branch_name = branchData.name;
+        } else {
+          session.branch_name = `#${session.branch_id}`;
+        }
+      } else {
+        session.branch_name = 'Todas las sucursales';
+      }
+
       const movements = await this.getSessionMovements(sessionId);
       const summary = await this.getCashSummary(sessionId);
 
-      // Obtener resumen de ventas
-      const { data: salesData, error: salesError } = await supabase
+      // Obtener resumen de ventas con change_amount
+      let salesQuery = supabase
         .from('payments')
-        .select('amount, method')
+        .select('amount, method, change_amount')
         .eq('organization_id', this.organizationId)
-        .eq('branch_id', session.branch_id)
         .eq('status', 'completed')
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString());
+      if (session.branch_id) {
+        salesQuery = salesQuery.eq('branch_id', session.branch_id);
+      }
+      const { data: salesData, error: salesError } = await salesQuery;
 
       if (salesError) throw salesError;
 

@@ -76,9 +76,17 @@ export function DesktopAgentPanel() {
 
   const handleToggleAutoStart = async (enabled: boolean) => {
     const bridge = getDesktopBridge();
-    if (!bridge?.setAutoStart) return;
-    const result = await bridge.setAutoStart(enabled);
-    setAutoStart(result);
+    if (!bridge?.setAutoStart) {
+      console.error('[DesktopAgentPanel] Bridge no disponible o setAutoStart no existe');
+      return;
+    }
+    try {
+      const result = await bridge.setAutoStart(enabled);
+      setAutoStart(result === true);
+    } catch (err) {
+      console.error('[DesktopAgentPanel] Error al cambiar auto-start:', err);
+      setAutoStart(false);
+    }
   };
 
   const handleToggleBranch = (branchId: number, checked: boolean) => {

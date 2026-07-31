@@ -15,14 +15,14 @@ publish:
 win:
   target: nsis
   icon: build/icon.ico
-  requestedExecutionLevel: requireAdministrator
+  requestedExecutionLevel: asInvoker
 
 nsis:
   oneClick: false
-  perMachine: true
+  perMachine: false
   allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
-  createStartMenuShortcut: true
+  createDesktopShortcut: false
+  createStartMenuShortcut: false
   shortcutName: Go Admin ERP
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico

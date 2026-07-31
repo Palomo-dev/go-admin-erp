@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calculator, Lock, CreditCard, Banknote, Wallet, Smartphone, ArrowUpCircle, ArrowDownCircle, ShoppingCart, UtensilsCrossed, FileText, Receipt } from 'lucide-react';
+import { Calculator, Lock, CreditCard, Banknote, Wallet, Smartphone, ArrowUpCircle, ArrowDownCircle, ShoppingCart, UtensilsCrossed, FileText, Receipt, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
+import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSession, CashSummary, CloseCashSessionData, SessionPaymentDetail } from './types';
 import { toast } from 'sonner';
 
@@ -62,6 +63,9 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
     final_amount: 0,
     notes: ''
   });
+  // Estado para conteo por método de pago
+  const [methodCounts, setMethodCounts] = useState<Record<string, number>>({});
+  const { showExpected: showExpectedBlind, isBlindMode, isOrgAdmin } = useBlindCloseMode();
 
   // Cargar resumen cuando se abre el modal
   useEffect(() => {
@@ -79,7 +83,20 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
       ]);
       setSummary(cashSummary);
       setMovements(sessionMovements);
-      // Pre-llenar con el monto esperado
+      // Pre-llenar conteo por método con los valores esperados del sistema
+      const initialCounts: Record<string, number> = {};
+      // Efectivo: usar expected_amount del sistema
+      initialCounts['cash'] = cashSummary.expected_amount;
+  		// Otros métodos: usar income_by_method
+      if (cashSummary.income_by_method) {
+        for (const [method, amount] of Object.entries(cashSummary.income_by_method)) {
+          if (method !== 'cash') {
+            initialCounts[method] = amount;
+          }
+        }
+      }
+      setMethodCounts(initialCounts);
+      // Pre-llenar con el monto esperado en efectivo
       setFormData(prev => ({
         ...prev,
         final_amount: cashSummary.expected_amount
@@ -110,6 +127,53 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
     return diff > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
   };
 
+  const handleMethodCountChange = (method: string, value: number) => {
+    setMethodCounts(prev => ({
+      ...prev,
+      [method]: value
+    }));
+    // Si es efectivo, actualizar final_amount también
+    if (method === 'cash') {
+      setFormData(prev => ({
+        ...prev,
+        final_amount: value
+      }));
+    }
+  };
+
+  const getMethodExpected = (method: string): number => {
+    if (!summary) return 0;
+    if (method === 'cash') return summary.expected_amount;
+    return summary.income_by_method?.[method] || 0;
+  };
+
+  const getMethodDifference = (method: string): number => {
+    const counted = methodCounts[method] || 0;
+    const expected = getMethodExpected(method);
+    return counted - expected;
+  };
+
+  const getTotalCounted = (): number => {
+    return Object.values(methodCounts).reduce((sum, val) => sum + (val || 0), 0);
+  };
+
+  const getTotalExpected = (): number => {
+    if (!summary) return 0;
+    let total = summary.expected_amount;
+    if (summary.income_by_method) {
+      for (const [method, amount] of Object.entries(summary.income_by_method)) {
+        if (method !== 'cash') {
+          total += amount;
+        }
+      }
+    }
+    return total;
+  };
+
+  const getTotalDifference = (): number => {
+    return getTotalCounted() - getTotalExpected();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -122,7 +186,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
     try {
       const closedSession = await CajasService.closeSession(formData);
       toast.success('Caja cerrada exitosamente', {
-        description: `Diferencia: ${formatCurrency(Math.abs(getDifference()))}`
+        description: showExpectedBlind ? `Diferencia total: ${formatCurrency(Math.abs(getTotalDifference()))}` : 'Caja cerrada'
       });
       
       onSessionClosed(closedSession);
@@ -197,6 +261,22 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                       {summary ? formatCurrency(summary.cash_out) : '-'}
                     </p>
                   </div>
+                  {summary && summary.change_total > 0 && (
+                    <div>
+                      <span className="dark:text-gray-400 text-gray-600">Vuelto entregado:</span>
+                      <p className="font-medium text-orange-600">
+                        -{formatCurrency(summary.change_total)}
+                      </p>
+                    </div>
+                  )}
+                  {summary && summary.returns_total > 0 && (
+                    <div>
+                      <span className="dark:text-gray-400 text-gray-600">Devoluciones:</span>
+                      <p className="font-medium text-red-600">
+                        -{formatCurrency(summary.returns_total)}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 
                 <Separator className="dark:bg-gray-600 bg-gray-300" />
@@ -255,6 +335,14 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     {summary ? formatCurrency(summary.expected_amount) : '-'}
                   </span>
                 </div>
+                {!showExpectedBlind && (
+                  <div className="mt-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
+                    <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                    <p className="text-xs text-purple-700 dark:text-purple-400">
+                      Cierre ciego activo. No puedes ver los montos esperados ni las diferencias.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -302,44 +390,114 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
               </Card>
             )}
 
-            {/* Arqueo */}
+            {/* Arqueo por método de pago */}
             <Card className="dark:bg-gray-700 dark:border-gray-600 bg-gray-50 border-gray-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm dark:text-gray-200 text-gray-700">
-                  Arqueo de Caja
+                  Arqueo por Método de Pago
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Monto contado */}
-                <div className="space-y-2">
-                  <Label htmlFor="final_amount" className="dark:text-gray-200 text-gray-700">
-                    Monto Contado *
-                  </Label>
-                  <Input
-                    id="final_amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.final_amount}
-                    onChange={(e) => handleInputChange('final_amount', parseFloat(e.target.value) || 0)}
-                    className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
-                    required
-                  />
+                {/* Tabla de conteo por método */}
+                <div className="space-y-3">
+                  {/* Efectivo siempre presente */}
+                  {['cash', ...Object.keys(summary?.income_by_method || {}).filter(m => m !== 'cash')].map((method) => {
+                    const expected = getMethodExpected(method);
+                    const counted = methodCounts[method] || 0;
+                    const diff = counted - expected;
+                    return (
+                      <div key={method} className="space-y-2 p-3 rounded-lg dark:bg-gray-600/50 bg-white border dark:border-gray-600 border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2 text-sm font-medium dark:text-white text-gray-900">
+                            {METHOD_ICONS[method] || <Wallet className="h-4 w-4" />}
+                            {METHOD_LABELS[method] || method}
+                          </span>
+                          {showExpectedBlind && (
+                            <span className="text-xs dark:text-gray-400 text-gray-500">
+                              Esperado: <span className="font-medium">{formatCurrency(expected)}</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 items-center">
+                          <div>
+                            <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
+                              Contado real
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={counted}
+                              onChange={(e) => handleMethodCountChange(method, parseFloat(e.target.value) || 0)}
+                              className="dark:bg-gray-700 dark:border-gray-500 dark:text-white bg-white border-gray-300 h-8 text-sm"
+                            />
+                          </div>
+                          <div className="text-right">
+                            {showExpectedBlind ? (
+                              <>
+                                <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
+                                  Diferencia
+                                </Label>
+                                <span className={`text-sm font-bold ${
+                                  diff === 0
+                                    ? 'text-gray-600 dark:text-gray-400'
+                                    : diff > 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-red-600 dark:text-red-400'
+                                }`}>
+                                  {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                                </span>
+                              </>
+                            ) : (
+                              <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
+                                &nbsp;
+                              </Label>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* Diferencia */}
-                <div className="p-3 bg-gray-100 dark:bg-gray-600 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium dark:text-gray-200 text-gray-700">
-                      Diferencia:
-                    </span>
-                    <span className={`text-lg font-bold ${getDifferenceColor()}`}>
-                      {formatCurrency(getDifference())}
-                    </span>
+                <Separator className="dark:bg-gray-600 bg-gray-300" />
+
+                {/* Totales */}
+                <div className="space-y-2">
+                  {showExpectedBlind && (
+                    <div className="flex justify-between text-sm">
+                      <span className="dark:text-gray-300 text-gray-700">Total esperado (todos los métodos):</span>
+                      <span className="font-medium dark:text-white">{formatCurrency(getTotalExpected())}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="dark:text-gray-300 text-gray-700">Total contado (todos los métodos):</span>
+                    <span className="font-medium dark:text-white">{formatCurrency(getTotalCounted())}</span>
                   </div>
-                  {getDifference() !== 0 && (
-                    <p className="text-xs mt-1 dark:text-gray-400 text-gray-500">
-                      {getDifference() > 0 ? 'Sobrante' : 'Faltante'} de efectivo
+                  {showExpectedBlind ? (
+                    <div className="flex justify-between items-center p-3 rounded-lg dark:bg-gray-600/50 bg-gray-100">
+                      <span className="font-semibold dark:text-white text-gray-900">Diferencia total:</span>
+                      <span className={`text-lg font-bold ${
+                        getTotalDifference() === 0
+                          ? 'text-gray-600 dark:text-gray-400'
+                          : getTotalDifference() > 0
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {getTotalDifference() >= 0 ? '+' : ''}{formatCurrency(getTotalDifference())}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
+                      <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                      <p className="text-xs text-purple-700 dark:text-purple-400">
+                        Cierre ciego: las diferencias son visibles solo para administradores.
+                      </p>
+                    </div>
+                  )}
+                  {showExpectedBlind && getTotalDifference() !== 0 && (
+                    <p className="text-xs dark:text-gray-400 text-gray-500">
+                      {getTotalDifference() > 0 ? 'Sobrante' : 'Faltante'} en el arqueo total
                     </p>
                   )}
                 </div>
@@ -362,11 +520,11 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
             </Card>
 
             {/* Advertencia si hay diferencia */}
-            {Math.abs(getDifference()) > 0 && (
+            {showExpectedBlind && Math.abs(getTotalDifference()) > 0 && (
               <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>⚠️ Atención:</strong> Hay una diferencia de {formatCurrency(Math.abs(getDifference()))} 
-                  {getDifference() > 0 ? ' (sobrante)' : ' (faltante)'} en el arqueo.
+                  <strong>⚠️ Atención:</strong> Hay una diferencia total de {formatCurrency(Math.abs(getTotalDifference()))} 
+                  {getTotalDifference() > 0 ? ' (sobrante)' : ' (faltante)'} en el arqueo.
                 </p>
               </div>
             )}

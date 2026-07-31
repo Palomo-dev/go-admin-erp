@@ -4,6 +4,7 @@ import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/
 import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { stockMovementService } from '@/lib/services/stockMovementService';
+import { getPaymentMethodLabels } from '@/lib/services/paymentMethodHelper';
 import {
   Product,
   Customer,
@@ -1263,6 +1264,8 @@ export class POSService {
       const currentUser = await supabase.auth.getUser();
       const userId = currentUser.data.user?.id;
       
+      const changeAmount = checkoutData.change || 0;
+      let changeAssigned = false;
       for (const payment of payments) {
         if (payment.amount > 0) {
           const paymentData: any = {
@@ -1271,8 +1274,12 @@ export class POSService {
             amount: payment.amount,
             method: payment.method,
             currency: baseCurrency.code,
-            status: 'completed'
+            status: 'completed',
+            change_amount: (!changeAssigned && changeAmount > 0 && payment.method === 'cash') ? changeAmount : 0,
           };
+          if (!changeAssigned && changeAmount > 0 && payment.method === 'cash') {
+            changeAssigned = true;
+          }
           
           // Asociar con la factura si existe, sino con la venta
           if (invoiceData && !invoiceError) {
@@ -1418,6 +1425,47 @@ export class POSService {
           // No lanzamos error para que no falle todo el checkout
         } else {
           console.log('Tip created successfully:', checkoutData.tip_amount);
+        }
+      }
+
+      // Registrar movimientos de caja para todos los métodos de pago
+      if (payments.length > 0) {
+        try {
+          const branchId = getCurrentBranchId();
+          const { data: activeSession } = await supabase
+            .from('cash_sessions')
+            .select('id')
+            .eq('organization_id', cart.organization_id)
+            .eq('branch_id', branchId)
+            .eq('status', 'open')
+            .order('opened_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (activeSession) {
+            const methodLabels = await getPaymentMethodLabels();
+            const currentUserId = (await supabase.auth.getUser()).data.user?.id;
+
+            for (const payment of payments) {
+              if (payment.amount > 0) {
+                const methodLabel = methodLabels[payment.method] || payment.method;
+                await supabase
+                  .from('cash_movements')
+                  .insert({
+                    organization_id: cart.organization_id,
+                    branch_id: branchId,
+                    cash_session_id: activeSession.id,
+                    type: 'in',
+                    concept: `Venta POS #${saleData.id.slice(0, 8)} - ${methodLabel}`,
+                    amount: payment.amount,
+                    user_id: currentUserId || undefined,
+                    notes: `Pago ${methodLabel.toLowerCase()} - Venta desde POS`,
+                  });
+              }
+            }
+          }
+        } catch (cashError) {
+          console.error('Error registrando movimiento de caja:', cashError);
         }
       }
 

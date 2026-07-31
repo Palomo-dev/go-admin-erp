@@ -40,7 +40,7 @@ export default function POSPage() {
 
   // Cargar datos iniciales
   useEffect(() => {
-    if (organization?.id && branchFilter !== null) {
+    if (organization?.id) {
       initializePOS();
       loadDashboardData();
     }
@@ -550,6 +550,7 @@ export default function POSPage() {
                   onCheckout={handleCheckout}
                   onHold={handleHoldCart}
                   onSendComanda={handleSendComanda}
+                  cashSessionActive={!!cashSession}
                 />
               </div>
             )}

@@ -38,6 +38,7 @@ interface MesaActionsSidebarProps {
   onOpenSplitBill: () => void;
   onCancelSplit: () => void;
   onCheckout: () => void;
+  cashSessionActive?: boolean;
 }
 
 type PrintBadge = { type: 'success' | 'error'; message: string } | null;
@@ -63,6 +64,7 @@ export function MesaActionsSidebar({
   onOpenSplitBill,
   onCancelSplit,
   onCheckout,
+  cashSessionActive = true,
 }: MesaActionsSidebarProps) {
   const [comandaBadge, setComandaBadge] = useState<PrintBadge>(null);
   const [preCuentaBadge, setPreCuentaBadge] = useState<PrintBadge>(null);
@@ -288,7 +290,7 @@ export function MesaActionsSidebar({
 
             <Button
               onClick={onCheckout}
-              disabled={!itemsCount || (!!billSplits && unassignedItemsCount > 0)}
+              disabled={!itemsCount || (!!billSplits && unassignedItemsCount > 0) || !cashSessionActive}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold text-base py-6 disabled:opacity-50"
               size="lg"
             >
@@ -299,6 +301,11 @@ export function MesaActionsSidebar({
                   : 'Procesar Pagos Divididos'
                 : 'Procesar Pago'}
             </Button>
+            {!cashSessionActive && (
+              <p className="text-xs text-red-600 dark:text-red-400 text-center mt-1">
+                Debe abrir una caja antes de procesar el pago
+              </p>
+            )}
           </div>
         </div>
       </Card>

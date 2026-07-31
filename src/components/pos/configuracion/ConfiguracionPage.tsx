@@ -25,6 +25,7 @@ import {
   Search,
   Printer,
   Monitor,
+  Wallet,
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/utils/Utils';
 import { SearchSelect } from '@/components/ui/search-select';
@@ -37,6 +38,10 @@ import {
   ConfigStats,
   PosCategoriesDisplayConfig,
   defaultCategoriesDisplayConfig,
+  PosRequireCashSessionConfig,
+  defaultRequireCashSessionConfig,
+  PosBlindCashCountConfig,
+  defaultBlindCashCountConfig,
 } from './configuracionService';
 import { PrintersSection } from './printers/PrintersSection';
 import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
@@ -56,6 +61,10 @@ export function ConfiguracionPage() {
   const [serviceCharges, setServiceCharges] = useState<ServiceCharge[]>([]);
   const [categoriesDisplay, setCategoriesDisplay] = useState<PosCategoriesDisplayConfig>(defaultCategoriesDisplayConfig);
   const [savingCategoriesDisplay, setSavingCategoriesDisplay] = useState(false);
+  const [requireCashSession, setRequireCashSession] = useState<PosRequireCashSessionConfig>(defaultRequireCashSessionConfig);
+  const [savingRequireCash, setSavingRequireCash] = useState(false);
+  const [blindCashCount, setBlindCashCount] = useState<PosBlindCashCountConfig>(defaultBlindCashCountConfig);
+  const [savingBlindCash, setSavingBlindCash] = useState(false);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
 
   const loadData = useCallback(async (showRefresh = false) => {
@@ -66,13 +75,15 @@ export function ConfiguracionPage() {
     }
 
     try {
-      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData] = await Promise.all([
+      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData, requireCashData, blindCashData] = await Promise.all([
         ConfiguracionService.getConfigStats(),
         ConfiguracionService.getPaymentMethods(),
         ConfiguracionService.getTaxes(),
         ConfiguracionService.getServiceCharges(),
         ConfiguracionService.getCategoriesDisplayConfig(),
         ConfiguracionService.getBranches(),
+        ConfiguracionService.getRequireCashSessionConfig(),
+        ConfiguracionService.getBlindCashCountConfig(),
       ]);
 
       setStats(statsData);
@@ -81,6 +92,8 @@ export function ConfiguracionPage() {
       setServiceCharges(chargesData);
       setCategoriesDisplay(categoriesDisplayData);
       setBranches(branchesData);
+      setRequireCashSession(requireCashData);
+      setBlindCashCount(blindCashData);
     } catch (error) {
       console.error('Error cargando configuración:', error);
       toast({
@@ -143,6 +156,44 @@ export function ConfiguracionPage() {
       });
     } finally {
       setSavingCategoriesDisplay(false);
+    }
+  };
+
+  const handleToggleBlindCashCount = async (value: boolean) => {
+    const previous = blindCashCount;
+    setBlindCashCount({ blind_cash_count: value });
+    setSavingBlindCash(true);
+    try {
+      await ConfiguracionService.saveBlindCashCountConfig({ blind_cash_count: value });
+      toast({ title: 'Actualizado', description: value ? 'Arqueo ciego activado' : 'Arqueo ciego desactivado' });
+    } catch (error) {
+      setBlindCashCount(previous);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la configuración',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingBlindCash(false);
+    }
+  };
+
+  const handleToggleRequireCashSession = async (value: boolean) => {
+    const previous = requireCashSession;
+    setRequireCashSession({ require_cash_session: value });
+    setSavingRequireCash(true);
+    try {
+      await ConfiguracionService.saveRequireCashSessionConfig({ require_cash_session: value });
+      toast({ title: 'Actualizado', description: value ? 'Se requiere caja abierta para vender' : 'Venta sin caja abierta permitida' });
+    } catch (error) {
+      setRequireCashSession(previous);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la configuración',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingRequireCash(false);
     }
   };
 
@@ -367,6 +418,70 @@ export function ConfiguracionPage() {
                 </div>
               </div>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Requerir caja abierta para vender */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-orange-600" />
+            Requerir Caja Abierta
+          </CardTitle>
+          <CardDescription className="text-gray-500 dark:text-gray-400">
+            Obliga a tener una caja abierta para poder realizar ventas en POS y Mesas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">
+                Bloquear ventas sin caja abierta
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {requireCashSession.require_cash_session
+                  ? 'Las ventas están bloqueadas hasta abrir caja'
+                  : 'Las ventas están permitidas sin caja abierta'}
+              </p>
+            </div>
+            <Switch
+              checked={requireCashSession.require_cash_session}
+              onCheckedChange={handleToggleRequireCashSession}
+              disabled={savingRequireCash}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Arqueo Ciego */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Calculator className="h-5 w-5 text-purple-600" />
+            Cierre Ciego
+          </CardTitle>
+          <CardDescription className="text-gray-500 dark:text-gray-400">
+            Oculta los montos esperados y diferencias al cajero durante el cierre. Solo los administradores pueden ver esta informacion
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">
+                Activar cierre ciego
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {blindCashCount.blind_cash_count
+                  ? 'El cajero no ve los montos esperados ni las diferencias'
+                  : 'El cajero puede ver los montos esperados y diferencias'}
+              </p>
+            </div>
+            <Switch
+              checked={blindCashCount.blind_cash_count}
+              onCheckedChange={handleToggleBlindCashCount}
+              disabled={savingBlindCash}
+            />
           </div>
         </CardContent>
       </Card>

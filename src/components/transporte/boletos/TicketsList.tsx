@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,12 +81,13 @@ export function TicketsList({
   onDuplicate,
   onResendQR,
 }: TicketsListProps) {
+  const { themeClass } = useThemeClasses();
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando boletos...</span>
+          <span className={`ml-3 text-gray-600 ${themeClass("", "text-gray-400")}`}>Cargando boletos...</span>
         </div>
       </Card>
     );
@@ -93,11 +95,11 @@ export function TicketsList({
 
   if (tickets.length === 0) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="text-center">
           <Ticket className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay boletos</h3>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <h3 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-white")}`}>No hay boletos</h3>
+          <p className={`text-gray-600 mt-1 ${themeClass("", "text-gray-400")}`}>
             No se encontraron boletos con los filtros aplicados.
           </p>
         </div>
@@ -127,11 +129,11 @@ export function TicketsList({
             const payment = PAYMENT_CONFIG[ticket.payment_status] || PAYMENT_CONFIG.pending;
 
             return (
-              <TableRow key={ticket.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+              <TableRow key={ticket.id} className={`cursor-pointer hover:bg-gray-50 ${themeClass("", "hover:bg-gray-800")}`}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     <QrCode className="h-4 w-4 text-gray-400" />
-                    <span className="text-blue-600 dark:text-blue-400">{ticket.ticket_number}</span>
+                    <span className={`text-blue-600 ${themeClass("", "text-blue-400")}`}>{ticket.ticket_number}</span>
                   </div>
                 </TableCell>
                 <TableCell>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect } from 'react';
 import { ArrowRight, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export function RedirectDialog({
   onSubmit,
   isLoading = false,
 }: RedirectDialogProps) {
+  const { themeClass } = useThemeClasses();
   const t = useTranslations('org.domains.redirectDialog');
   const [redirectToDomainId, setRedirectToDomainId] = useState<string>('none');
   const [statusCode, setStatusCode] = useState<string>('301');
@@ -67,17 +69,17 @@ export function RedirectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] dark:bg-gray-800 dark:border-gray-700">
+      <DialogContent className={`sm:max-w-[450px] ${themeClass("", "bg-gray-800 border-gray-700")}`}>
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <ArrowRight className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className={`p-2 rounded-lg bg-blue-100 ${themeClass("", "bg-blue-900/30")}`}>
+              <ArrowRight className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
             </div>
             <div>
-              <DialogTitle className="dark:text-white">
+              <DialogTitle className={themeClass("", "text-white")}>
                 {t('title')}
               </DialogTitle>
-              <DialogDescription className="dark:text-gray-400">
+              <DialogDescription className={themeClass("", "text-gray-400")}>
                 {t('description', { host: domain.host })}
               </DialogDescription>
             </div>
@@ -87,22 +89,22 @@ export function RedirectDialog({
         <div className="space-y-6 py-4">
           {/* Dominio destino */}
           <div className="space-y-2">
-            <Label htmlFor="redirectTo" className="dark:text-gray-200">
+            <Label htmlFor="redirectTo" className={themeClass("", "text-gray-200")}>
               {t('redirectTo')}
             </Label>
             <Select value={redirectToDomainId} onValueChange={setRedirectToDomainId}>
-              <SelectTrigger id="redirectTo" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+              <SelectTrigger id="redirectTo" className={themeClass("", "bg-gray-700 border-gray-600 text-white")}>
                 <SelectValue placeholder={t('selectDomain')} />
               </SelectTrigger>
-              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                <SelectItem value="none" className="dark:text-white dark:focus:bg-gray-700">
+              <SelectContent className={themeClass("", "bg-gray-800 border-gray-700")}>
+                <SelectItem value="none" className={themeClass("", "text-white focus:bg-gray-700")}>
                   {t('noRedirect')}
                 </SelectItem>
                 {filteredDomains.map((d) => (
                   <SelectItem 
                     key={d.id} 
                     value={d.id}
-                    className="dark:text-white dark:focus:bg-gray-700"
+                    className={themeClass("", "text-white focus:bg-gray-700")}
                   >
                     {d.host} {d.is_primary && t('primary')}
                   </SelectItem>
@@ -110,7 +112,7 @@ export function RedirectDialog({
               </SelectContent>
             </Select>
             {filteredDomains.length === 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
                 {t('noVerifiedDomains')}
               </p>
             )}
@@ -119,24 +121,24 @@ export function RedirectDialog({
           {/* Código de estado */}
           {redirectToDomainId !== 'none' && (
             <div className="space-y-2">
-              <Label htmlFor="statusCode" className="dark:text-gray-200">
+              <Label htmlFor="statusCode" className={themeClass("", "text-gray-200")}>
                 {t('httpStatusCode')}
               </Label>
               <Select value={statusCode} onValueChange={setStatusCode}>
-                <SelectTrigger id="statusCode" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                <SelectTrigger id="statusCode" className={themeClass("", "bg-gray-700 border-gray-600 text-white")}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                  <SelectItem value="301" className="dark:text-white dark:focus:bg-gray-700">
+                <SelectContent className={themeClass("", "bg-gray-800 border-gray-700")}>
+                  <SelectItem value="301" className={themeClass("", "text-white focus:bg-gray-700")}>
                     {t('permanent301')}
                   </SelectItem>
-                  <SelectItem value="302" className="dark:text-white dark:focus:bg-gray-700">
+                  <SelectItem value="302" className={themeClass("", "text-white focus:bg-gray-700")}>
                     {t('temporary302')}
                   </SelectItem>
-                  <SelectItem value="307" className="dark:text-white dark:focus:bg-gray-700">
+                  <SelectItem value="307" className={themeClass("", "text-white focus:bg-gray-700")}>
                     {t('temporary307')}
                   </SelectItem>
-                  <SelectItem value="308" className="dark:text-white dark:focus:bg-gray-700">
+                  <SelectItem value="308" className={themeClass("", "text-white focus:bg-gray-700")}>
                     {t('permanent308')}
                   </SelectItem>
                 </SelectContent>
@@ -146,9 +148,9 @@ export function RedirectDialog({
 
           {/* Info */}
           {redirectToDomainId !== 'none' && (
-            <Alert className="dark:bg-blue-900/20 dark:border-blue-800">
-              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <AlertDescription className="text-sm dark:text-gray-300">
+            <Alert className={themeClass("", "bg-blue-900/20 border-blue-800")}>
+              <Info className={`h-4 w-4 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+              <AlertDescription className={`text-sm ${themeClass("", "text-gray-300")}`}>
                 <strong>{t('info301')}</strong>
                 <br />
                 <strong>{t('info302')}</strong>
@@ -161,7 +163,7 @@ export function RedirectDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            className={themeClass("", "border-gray-600 text-gray-300 hover:bg-gray-700")}
           >
             {t('cancel')}
           </Button>

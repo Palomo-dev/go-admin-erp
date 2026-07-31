@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState } from 'react';
 import {
   Dialog,
@@ -25,6 +26,7 @@ export function TrackingPreviewDialog({
   onOpenChange,
   carrier,
 }: TrackingPreviewDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [trackingNumber, setTrackingNumber] = useState('TEST123456');
   const [copied, setCopied] = useState(false);
 
@@ -65,7 +67,7 @@ export function TrackingPreviewDialog({
               id="template"
               value={carrier.tracking_url_template || ''}
               readOnly
-              className="bg-gray-50 dark:bg-gray-800 font-mono text-sm"
+              className={`bg-gray-50 font-mono text-sm ${themeClass("", "bg-gray-800")}`}
             />
             <p className="text-xs text-gray-500">
               La variable {'{tracking_number}'} será reemplazada por el número de guía
@@ -88,7 +90,7 @@ export function TrackingPreviewDialog({
               <Input
                 value={previewUrl}
                 readOnly
-                className="bg-gray-50 dark:bg-gray-800 font-mono text-sm flex-1"
+                className={`bg-gray-50 font-mono text-sm flex-1 ${themeClass("", "bg-gray-800")}`}
               />
               <Button
                 variant="outline"
@@ -106,12 +108,12 @@ export function TrackingPreviewDialog({
           </div>
 
           {carrier.api_provider && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+            <div className={`p-3 bg-blue-50 rounded-lg ${themeClass("", "bg-blue-900/20")}`}>
+              <p className={`text-sm text-blue-700 ${themeClass("", "text-blue-300")}`}>
                 <strong>Proveedor API:</strong> {carrier.api_provider}
               </p>
               {carrier.metadata && (
-                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                <p className={`text-sm text-blue-600 mt-1 ${themeClass("", "text-blue-400")}`}>
                   Credenciales configuradas
                 </p>
               )}

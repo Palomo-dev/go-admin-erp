@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -75,12 +76,13 @@ export function ManifestHeader({
   onCompleteManifest,
   onGenerateRouteSheet,
 }: ManifestHeaderProps) {
+  const { themeClass } = useThemeClasses();
   const statusConfig = STATUS_CONFIG[manifest.status] || STATUS_CONFIG.draft;
   const canStart = manifest.status === 'confirmed';
   const canComplete = manifest.status === 'in_progress';
 
   return (
-    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+    <div className={`bg-white border-b border-gray-200 ${themeClass("", "bg-gray-900 border-gray-800")}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {/* Navegación */}
         <div className="flex items-center gap-2 mb-4">
@@ -96,7 +98,7 @@ export function ManifestHeader({
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>
                 {manifest.manifest_number}
               </h1>
               <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
@@ -106,7 +108,7 @@ export function ManifestHeader({
             </div>
 
             {/* Metadatos */}
-            <div className="flex items-center gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
+            <div className={`flex items-center gap-4 mt-3 text-sm text-gray-500 flex-wrap ${themeClass("", "text-gray-400")}`}>
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
                 {format(new Date(manifest.manifest_date), "d 'de' MMMM, yyyy", { locale: es })}

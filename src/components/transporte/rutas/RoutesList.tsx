@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ export function RoutesList({
   onToggleStatus,
   onViewSchedules,
 }: RoutesListProps) {
+  const { themeClass } = useThemeClasses();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -123,7 +125,7 @@ export function RoutesList({
             <SelectItem value="mixed">Mixto</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-sm text-gray-500 dark:text-gray-400 self-center">
+        <span className={`text-sm text-gray-500 self-center ${themeClass("", "text-gray-400")}`}>
           {filteredRoutes.length} rutas
         </span>
       </div>
@@ -132,10 +134,10 @@ export function RoutesList({
         <Card>
           <CardContent className="py-12 text-center">
             <Route className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-white")}`}>
               No hay rutas
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className={`text-gray-500 mt-1 ${themeClass("", "text-gray-400")}`}>
               {searchTerm || typeFilter !== 'all' ? 'No se encontraron resultados' : 'Crea la primera ruta de transporte'}
             </p>
           </CardContent>
@@ -204,14 +206,14 @@ export function RoutesList({
 
                   <div className="space-y-3">
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">{route.name}</p>
+                      <p className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>{route.name}</p>
                       <p className="text-sm text-gray-500">{route.code}</p>
                     </div>
 
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-green-500" />
-                        <span className="text-gray-600 dark:text-gray-300">
+                        <span className={`text-gray-600 ${themeClass("", "text-gray-300")}`}>
                           {route.origin_stop?.name || 'Sin origen'} → {route.destination_stop?.name || 'Sin destino'}
                         </span>
                       </div>

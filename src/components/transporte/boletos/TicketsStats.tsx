@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Card } from '@/components/ui/card';
 import { Ticket, CheckCircle, UserCheck, XCircle, UserX, DollarSign } from 'lucide-react';
 
@@ -16,6 +17,7 @@ interface TicketsStatsProps {
 }
 
 export function TicketsStats({ stats }: TicketsStatsProps) {
+  const { themeClass } = useThemeClasses();
   const statCards = [
     {
       title: 'Total Hoy',
@@ -66,8 +68,8 @@ export function TicketsStats({ stats }: TicketsStatsProps) {
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${stat.color}`}>{stat.icon}</div>
             <div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{stat.title}</p>
+              <p className={`text-xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>{stat.value}</p>
+              <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>{stat.title}</p>
             </div>
           </div>
         </Card>

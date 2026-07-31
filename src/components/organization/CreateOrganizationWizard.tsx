@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import CreateOrganizationForm from './CreateOrganizationForm';
@@ -79,6 +80,7 @@ const DEFAULT_WIZARD_DATA: WizardData = {
 };
 
 export default function CreateOrganizationWizard({ onSuccess, onCancel }: CreateOrganizationWizardProps) {
+  const { themeClass } = useThemeClasses();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -325,7 +327,7 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
                 >
                   {index + 1}
                 </div>
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1.5 text-center">
+                <span className={`text-xs font-medium text-gray-500 mt-1.5 text-center ${themeClass("", "text-gray-400")}`}>
                   {label}
                 </span>
               </div>
@@ -338,7 +340,7 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-700 dark:text-red-300">
+        <div className={`rounded-md bg-red-50 p-4 text-sm text-red-700 ${themeClass("", "bg-red-900/20 text-red-300")}`}>
           {error}
         </div>
       )}

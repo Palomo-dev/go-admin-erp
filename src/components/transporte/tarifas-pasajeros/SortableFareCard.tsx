@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
@@ -21,6 +22,7 @@ export function SortableFareCard({
   onDelete,
   onToggleActive,
 }: SortableFareCardProps) {
+  const { themeClass } = useThemeClasses();
   const {
     attributes,
     listeners,
@@ -42,7 +44,7 @@ export function SortableFareCard({
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing z-10 bg-gray-50 dark:bg-gray-800 rounded-l-lg border-r border-gray-200 dark:border-gray-700 opacity-60 group-hover:opacity-100 transition-opacity"
+        className={`absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing z-10 bg-gray-50 rounded-l-lg border-r border-gray-200 opacity-60 group-hover:opacity-100 transition-opacity ${themeClass("", "bg-gray-800 border-gray-700")}`}
       >
         <GripVertical className="h-5 w-5 text-gray-400" />
       </div>

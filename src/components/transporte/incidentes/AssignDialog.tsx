@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState } from 'react';
 import {
   Dialog,
@@ -38,6 +39,7 @@ export function AssignDialog({
   onAssign,
   isLoading = false,
 }: AssignDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [selectedEmployee, setSelectedEmployee] = useState<string>(
     currentAssignee?.toString() || ''
   );
@@ -58,7 +60,7 @@ export function AssignDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
             Asignar responsable para: <strong>{incidentTitle}</strong>
           </p>
 

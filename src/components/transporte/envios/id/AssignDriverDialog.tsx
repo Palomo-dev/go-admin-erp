@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
@@ -45,6 +46,7 @@ export function AssignDriverDialog({
   onAssign,
   onUnassign,
 }: AssignDriverDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
@@ -104,13 +106,13 @@ export function AssignDriverDialog({
         </DialogHeader>
 
         {currentDriverId && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div className={`flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-200 ${themeClass("", "bg-blue-900/20 border-blue-800")}`}>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-medium">
                 {getInitials(currentDriverName || '')}
               </div>
               <div>
-                <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                <p className={`text-sm font-medium text-blue-700 ${themeClass("", "text-blue-300")}`}>
                   Conductor actual: {currentDriverName}
                 </p>
               </div>
@@ -121,7 +123,7 @@ export function AssignDriverDialog({
               size="sm"
               onClick={handleUnassign}
               disabled={assigning}
-              className="text-red-600 border-red-300 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20"
+              className={`text-red-600 border-red-300 hover:bg-red-50 ${themeClass("", "border-red-700 hover:bg-red-900/20")}`}
             >
               <UserMinus className="h-4 w-4 mr-1" />
               Desasignar
@@ -171,18 +173,18 @@ export function AssignDriverDialog({
                         className="w-10 h-10 rounded-full object-cover shrink-0"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-white text-sm font-medium shrink-0">
+                      <div className={`w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white text-sm font-medium shrink-0 ${themeClass("", "bg-gray-600")}`}>
                         {getInitials(driver.name)}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className={`text-sm font-medium text-gray-900 truncate ${themeClass("", "text-white")}`}>
                         {driver.name}
                         {isCurrent && (
-                          <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">(actual)</span>
+                          <span className={`ml-2 text-xs text-blue-600 ${themeClass("", "text-blue-400")}`}>(actual)</span>
                         )}
                       </p>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                      <div className={`flex items-center gap-3 text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
                         {driver.phone && (
                           <span className="flex items-center gap-1">
                             <Phone className="h-3 w-3" />

@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 
 export function DashboardQuickActions() {
+  const { themeClass } = useThemeClasses();
   const primaryActions = [
     {
       label: 'Nuevo Viaje',
@@ -103,8 +105,8 @@ export function DashboardQuickActions() {
         </div>
         
         {/* Separador con título */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+        <div className={`border-t border-gray-200 pt-4 ${themeClass("", "border-gray-700")}`}>
+          <p className={`text-sm font-medium text-gray-700 mb-3 ${themeClass("", "text-gray-300")}`}>
             Catálogos
           </p>
           <div className="flex flex-wrap gap-2">
@@ -124,8 +126,8 @@ export function DashboardQuickActions() {
         </div>
 
         {/* Operaciones */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+        <div className={`border-t border-gray-200 pt-4 ${themeClass("", "border-gray-700")}`}>
+          <p className={`text-sm font-medium text-gray-700 mb-3 ${themeClass("", "text-gray-300")}`}>
             Operaciones
           </p>
           <div className="flex flex-wrap gap-2">

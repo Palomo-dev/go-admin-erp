@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -62,6 +63,7 @@ export function MisEnviosFilters({
   onDateFromChange,
   onDateToChange,
 }: MisEnviosFiltersProps) {
+  const { themeClass } = useThemeClasses();
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row gap-3">
@@ -90,7 +92,7 @@ export function MisEnviosFilters({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-        <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+        <div className={`flex items-center gap-1.5 text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
           <Calendar className="h-4 w-4" />
           <span className="font-medium">Fecha:</span>
         </div>
@@ -112,7 +114,7 @@ export function MisEnviosFilters({
       {dateFilter === 'custom' && (
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Desde:</label>
+            <label className={`text-xs text-gray-500 font-medium ${themeClass("", "text-gray-400")}`}>Desde:</label>
             <Input
               type="date"
               value={dateFrom}
@@ -121,7 +123,7 @@ export function MisEnviosFilters({
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500 dark:text-gray-400 font-medium">Hasta:</label>
+            <label className={`text-xs text-gray-500 font-medium ${themeClass("", "text-gray-400")}`}>Hasta:</label>
             <Input
               type="date"
               value={dateTo}

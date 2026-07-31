@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -76,6 +77,7 @@ export function ManifestCard({
   onDelete,
   onChangeStatus,
 }: ManifestCardProps) {
+  const { themeClass } = useThemeClasses();
   const statusConfig = STATUS_CONFIG[manifest.status] || STATUS_CONFIG.draft;
 
   const progressPercent = manifest.total_shipments > 0
@@ -87,12 +89,12 @@ export function ManifestCard({
       <div className="flex items-start justify-between gap-4">
         {/* Icono y número */}
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-            <ClipboardList className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div className={`p-2 rounded-lg bg-blue-100 ${themeClass("", "bg-blue-900/30")}`}>
+            <ClipboardList className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-semibold text-gray-900 dark:text-white">
+              <p className={`font-semibold text-gray-900 ${themeClass("", "text-white")}`}>
                 {manifest.manifest_number}
               </p>
               <Badge className={statusConfig.color}>
@@ -102,10 +104,10 @@ export function ManifestCard({
                 </span>
               </Badge>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <div className={`flex items-center gap-2 text-sm text-gray-500 mt-1 ${themeClass("", "text-gray-400")}`}>
               <Calendar className="h-3 w-3" />
               {format(new Date(manifest.manifest_date), "dd MMM yyyy", { locale: es })}
-              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className={`text-gray-300 ${themeClass("", "text-gray-600")}`}>•</span>
               <Badge variant="outline" className="text-xs">
                 {manifest.manifest_type === 'delivery' ? 'Entrega' :
                  manifest.manifest_type === 'pickup' ? 'Recogida' : 'Transferencia'}
@@ -173,7 +175,7 @@ export function ManifestCard({
         {manifest.vehicles && (
           <div className="flex items-center gap-2 text-sm">
             <Truck className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-600 dark:text-gray-400">
+            <span className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
               {manifest.vehicles.plate}
               {manifest.vehicles.vehicle_type && ` (${manifest.vehicles.vehicle_type})`}
             </span>
@@ -182,7 +184,7 @@ export function ManifestCard({
         {manifest.transport_carriers && (
           <div className="flex items-center gap-2 text-sm">
             <Package className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-600 dark:text-gray-400">
+            <span className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
               {manifest.transport_carriers.name}
             </span>
           </div>
@@ -190,10 +192,10 @@ export function ManifestCard({
       </div>
 
       {/* Estadísticas */}
-      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+      <div className={`mt-4 pt-3 border-t border-gray-100 ${themeClass("", "border-gray-800")}`}>
         <div className="grid grid-cols-4 gap-2 text-center">
           <div>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">
+            <p className={`text-lg font-bold text-gray-900 ${themeClass("", "text-white")}`}>
               {manifest.total_shipments}
             </p>
             <p className="text-xs text-gray-500">Envíos</p>
@@ -225,7 +227,7 @@ export function ManifestCard({
               <span>Progreso</span>
               <span>{progressPercent}%</span>
             </div>
-            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className={`h-2 bg-gray-200 rounded-full overflow-hidden ${themeClass("", "bg-gray-700")}`}>
               <div
                 className="h-full bg-green-500 transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -236,7 +238,7 @@ export function ManifestCard({
       </div>
 
       {/* Footer con peso y paquetes */}
-      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-sm text-gray-500">
+      <div className={`mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500 ${themeClass("", "border-gray-800")}`}>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1">
             <Weight className="h-3 w-3" />

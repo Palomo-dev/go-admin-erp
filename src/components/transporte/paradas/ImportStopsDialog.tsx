@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useRef } from 'react';
 import {
   Dialog,
@@ -54,6 +55,7 @@ export function ImportStopsDialog({
   onOpenChange,
   onImport,
 }: ImportStopsDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedRow[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
@@ -244,12 +246,12 @@ export function ImportStopsDialog({
               </div>
 
               {parseErrors.length > 0 && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <p className="text-sm font-medium text-red-700 dark:text-red-300 mb-1 flex items-center gap-1">
+                <div className={`p-3 bg-red-50 rounded-lg ${themeClass("", "bg-red-900/20")}`}>
+                  <p className={`text-sm font-medium text-red-700 mb-1 flex items-center gap-1 ${themeClass("", "text-red-300")}`}>
                     <AlertTriangle className="h-4 w-4" />
                     Errores de validación
                   </p>
-                  <ul className="text-sm text-red-600 dark:text-red-400 list-disc list-inside max-h-24 overflow-auto">
+                  <ul className={`text-sm text-red-600 list-disc list-inside max-h-24 overflow-auto ${themeClass("", "text-red-400")}`}>
                     {parseErrors.map((error, i) => (
                       <li key={i}>{error}</li>
                     ))}
@@ -258,8 +260,8 @@ export function ImportStopsDialog({
               )}
 
               {parsedData.length > 0 && (
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-1">
+                <div className={`p-3 bg-green-50 rounded-lg ${themeClass("", "bg-green-900/20")}`}>
+                  <p className={`text-sm text-green-700 flex items-center gap-1 ${themeClass("", "text-green-300")}`}>
                     <CheckCircle2 className="h-4 w-4" />
                     {parsedData.length} parada(s) lista(s) para importar
                   </p>
@@ -269,7 +271,7 @@ export function ImportStopsDialog({
               {parsedData.length > 0 && (
                 <div className="max-h-48 overflow-auto border rounded-lg">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                    <thead className={`bg-gray-50 sticky top-0 ${themeClass("", "bg-gray-800")}`}>
                       <tr>
                         <th className="px-3 py-2 text-left">Código</th>
                         <th className="px-3 py-2 text-left">Nombre</th>
@@ -305,25 +307,25 @@ export function ImportStopsDialog({
           ) : (
             <div className="space-y-4">
               {importResult.success > 0 && (
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center gap-3">
+                <div className={`p-4 bg-green-50 rounded-lg flex items-center gap-3 ${themeClass("", "bg-green-900/20")}`}>
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
                   <div>
-                    <p className="font-medium text-green-700 dark:text-green-300">
+                    <p className={`font-medium text-green-700 ${themeClass("", "text-green-300")}`}>
                       Importación completada
                     </p>
-                    <p className="text-sm text-green-600 dark:text-green-400">
+                    <p className={`text-sm text-green-600 ${themeClass("", "text-green-400")}`}>
                       {importResult.success} parada(s) importada(s) correctamente
                     </p>
                   </div>
                 </div>
               )}
               {importResult.errors.length > 0 && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <p className="font-medium text-red-700 dark:text-red-300 flex items-center gap-2 mb-2">
+                <div className={`p-4 bg-red-50 rounded-lg ${themeClass("", "bg-red-900/20")}`}>
+                  <p className={`font-medium text-red-700 flex items-center gap-2 mb-2 ${themeClass("", "text-red-300")}`}>
                     <XCircle className="h-5 w-5" />
                     Errores durante la importación
                   </p>
-                  <ul className="text-sm text-red-600 dark:text-red-400 list-disc list-inside max-h-32 overflow-auto">
+                  <ul className={`text-sm text-red-600 list-disc list-inside max-h-32 overflow-auto ${themeClass("", "text-red-400")}`}>
                     {importResult.errors.map((error, i) => (
                       <li key={i}>{error}</li>
                     ))}

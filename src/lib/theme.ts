@@ -14,17 +14,9 @@ export function useThemeClasses() {
    * Devuelve las clases correspondientes al tema activo.
    * En light devuelve `lightClasses`, en dark devuelve `darkClasses`.
    */
-  const tc = (lightClasses: string, darkClasses: string): string => {
+  const themeClass = (lightClasses: string, darkClasses: string): string => {
     return isDark ? darkClasses : lightClasses;
   };
 
-  return { isDark, tc, resolvedTheme };
-}
-
-/**
- * Función pura (no hook) para obtener la clase de tema dado un tema resuelto.
- * Útil cuando ya se tiene `resolvedTheme` disponible.
- */
-export function themeClass(theme: string | undefined, lightClasses: string, darkClasses: string): string {
-  return theme === 'dark' ? darkClasses : lightClasses;
+  return { isDark, themeClass, resolvedTheme };
 }

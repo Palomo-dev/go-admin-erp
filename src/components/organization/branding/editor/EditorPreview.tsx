@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState } from 'react';
 import { Loader2, Globe, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/Utils';
@@ -19,6 +20,7 @@ const DEVICE_WIDTHS: Record<DevicePreview, string> = {
 };
 
 export default function EditorPreview({ previewUrl, devicePreview, refreshKey }: EditorPreviewProps) {
+  const { themeClass } = useThemeClasses();
   const t = useTranslations('branding.editor.preview');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -27,15 +29,15 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
 
   if (!previewUrl) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <div className={`flex-1 flex items-center justify-center bg-gray-100 ${themeClass("", "bg-gray-900")}`}>
         <div className="text-center space-y-3 max-w-sm">
-          <div className="mx-auto w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+          <div className={`mx-auto w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center ${themeClass("", "bg-gray-800")}`}>
             <Globe className="h-8 w-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+          <h3 className={`text-lg font-semibold text-gray-700 ${themeClass("", "text-gray-300")}`}>
             {t('noPreviewTitle')}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
             {t('noPreviewDesc')}
           </p>
         </div>
@@ -44,15 +46,15 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-200 dark:bg-gray-800 overflow-hidden">
+    <div className={`flex-1 flex flex-col bg-gray-200 overflow-hidden ${themeClass("", "bg-gray-800")}`}>
       {/* URL Bar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700">
+      <div className={`flex items-center gap-2 px-4 py-2 bg-gray-100 border-b border-gray-300 ${themeClass("", "bg-gray-900 border-gray-700")}`}>
         <div className="flex gap-1.5">
           <div className="w-3 h-3 rounded-full bg-red-400" />
           <div className="w-3 h-3 rounded-full bg-yellow-400" />
           <div className="w-3 h-3 rounded-full bg-green-400" />
         </div>
-        <div className="flex-1 flex items-center gap-2 px-3 py-1 bg-white dark:bg-gray-800 rounded-md text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+        <div className={`flex-1 flex items-center gap-2 px-3 py-1 bg-white rounded-md text-xs text-gray-500 border border-gray-200 ${themeClass("", "bg-gray-800 text-gray-400 border-gray-700")}`}>
           <Globe className="h-3 w-3" />
           <span className="truncate">{previewUrl}</span>
         </div>

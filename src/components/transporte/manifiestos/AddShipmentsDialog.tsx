@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -39,6 +40,7 @@ export function AddShipmentsDialog({
   onAdd,
   isLoading = false,
 }: AddShipmentsDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -112,7 +114,7 @@ export function AddShipmentsDialog({
                 checked={selectedIds.size === filteredShipments.length && filteredShipments.length > 0}
                 onCheckedChange={toggleAll}
               />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
                 {selectedIds.size > 0
                   ? `${selectedIds.size} seleccionado(s)`
                   : 'Seleccionar todos'}
@@ -131,7 +133,7 @@ export function AddShipmentsDialog({
                 <p>No hay envíos disponibles</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              <div className={`divide-y divide-gray-200 ${themeClass("", "divide-gray-700")}`}>
                 {filteredShipments.map((shipment) => (
                   <div
                     key={shipment.id}
@@ -144,12 +146,12 @@ export function AddShipmentsDialog({
                       checked={selectedIds.has(shipment.id)}
                       onCheckedChange={() => toggleSelection(shipment.id)}
                     />
-                    <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+                    <div className={`p-2 rounded-lg bg-gray-100 ${themeClass("", "bg-gray-800")}`}>
                       <Package className="h-4 w-4 text-gray-500" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900 dark:text-white">
+                        <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
                           {shipment.shipment_number}
                         </p>
                         {shipment.tracking_number && (

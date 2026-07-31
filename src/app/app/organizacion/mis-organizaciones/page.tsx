@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import dynamic from 'next/dynamic';
@@ -12,6 +13,7 @@ const ManageOrganizationsTab = dynamic(() => import('../../../../components/orga
 });
 
 export default function MisOrganizacionesPage() {
+  const { themeClass } = useThemeClasses();
   const [userRole, setUserRole] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,10 +91,10 @@ export default function MisOrganizacionesPage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{t('myOrgs.title')}</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">{t('myOrgs.description')}</p>
+          <h1 className={`text-2xl font-semibold text-gray-900 ${themeClass("", "text-gray-100")}`}>{t('myOrgs.title')}</h1>
+          <p className={`mt-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('myOrgs.description')}</p>
         </div>
         <OrganizationListSkeleton />
       </div>
@@ -101,7 +103,7 @@ export default function MisOrganizacionesPage() {
 
   if (error) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="bg-red-50 border-l-4 border-red-500 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -120,7 +122,7 @@ export default function MisOrganizacionesPage() {
 
   if (!isOrgAdmin) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -138,11 +140,11 @@ export default function MisOrganizacionesPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{t('myOrgs.title')}</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">{t('myOrgs.description')}</p>
+        <div className="min-w-0">
+          <h1 className={`text-2xl font-semibold text-gray-900 ${themeClass("", "text-gray-100")}`}>{t('myOrgs.title')}</h1>
+          <p className={`mt-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>{t('myOrgs.description')}</p>
         </div>
       </div>
       

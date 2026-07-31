@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -88,6 +89,7 @@ export function ShipmentDialog({
   onSearchCustomer,
   organizationId,
 }: ShipmentDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [items, setItems] = useState<ShipmentItem[]>([]);
   const [shippingRates, setShippingRates] = useState<ShippingRateWithCarrier[]>([]);
@@ -440,21 +442,21 @@ export function ShipmentDialog({
                 )}
               </div>
               {showRateSelector && shippingRates.length > 0 && (
-                <div className="absolute z-50 mt-1 w-72 max-h-60 overflow-y-auto rounded-lg border bg-white dark:bg-gray-900 shadow-lg">
+                <div className={`absolute z-50 mt-1 w-72 max-h-60 overflow-y-auto rounded-lg border bg-white shadow-lg ${themeClass("", "bg-gray-900")}`}>
                   {shippingRates.map((rate) => (
                     <button
                       key={rate.id}
                       type="button"
-                      className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0"
+                      className={`w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-0 ${themeClass("", "hover:bg-gray-800 border-gray-800")}`}
                       onClick={() => {
                         setFormData((p) => ({ ...p, freight_cost: rate.base_rate || rate.min_charge || 0 }));
                         setShowRateSelector(false);
                       }}
                     >
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{rate.rate_name}</div>
+                      <div className={`text-sm font-medium text-gray-900 ${themeClass("", "text-gray-100")}`}>{rate.rate_name}</div>
                       <div className="text-xs text-gray-500 flex items-center gap-2">
                         {rate.transport_carriers && <span>{rate.transport_carriers.name}</span>}
-                        <span className="font-semibold text-green-600 dark:text-green-400">
+                        <span className={`font-semibold text-green-600 ${themeClass("", "text-green-400")}`}>
                           ${rate.base_rate || rate.min_charge || 0}
                         </span>
                         {rate.calculation_method === 'weight' && rate.rate_per_kg && (
@@ -480,7 +482,7 @@ export function ShipmentDialog({
                 type="number"
                 value={formData.total_cost}
                 readOnly
-                className="bg-gray-50 dark:bg-gray-800"
+                className={`bg-gray-50 ${themeClass("", "bg-gray-800")}`}
               />
             </div>
             <div className="space-y-2">

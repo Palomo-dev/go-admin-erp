@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useRef } from 'react';
 import {
   Dialog,
@@ -26,6 +27,7 @@ export function ImportLabelsDialog({
   onImport,
   isLoading = false,
 }: ImportLabelsDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<{ success: number; errors: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,7 +87,7 @@ export function ImportLabelsDialog({
         <div className="space-y-4">
           {/* Área de drop/selección */}
           <div
-            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
+            className={`border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer ${themeClass("", "border-gray-700")}`}
             onClick={() => fileInputRef.current?.click()}
           >
             <input
@@ -108,7 +110,7 @@ export function ImportLabelsDialog({
             ) : (
               <>
                 <Upload className="h-10 w-10 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
                   Haga clic para seleccionar un archivo CSV
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
@@ -133,9 +135,9 @@ export function ImportLabelsDialog({
           {result && (
             <div className="space-y-2">
               {result.success > 0 && (
-                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
+                <Alert className={`bg-green-50 border-green-200 ${themeClass("", "bg-green-900/20")}`}>
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-800 dark:text-green-300">
+                  <AlertDescription className={`text-green-800 ${themeClass("", "text-green-300")}`}>
                     {result.success} etiqueta(s) importada(s) correctamente
                   </AlertDescription>
                 </Alert>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useCallback } from 'react';
 import { Ticket, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
@@ -21,6 +22,7 @@ interface CouponInputProps {
 }
 
 export default function CouponInput({ onCouponValidated, initialCode = '' }: CouponInputProps) {
+  const { themeClass } = useThemeClasses();
   const [couponInput, setCouponInput] = useState(initialCode);
   const [validatedCoupon, setValidatedCoupon] = useState<ValidatedCoupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -63,8 +65,8 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
   };
 
   return (
-    <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50">
-      <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 sm:mb-3 flex items-center gap-1.5">
+    <div className={`mt-4 border border-gray-200 rounded-lg p-3 sm:p-4 bg-gray-50 ${themeClass("", "border-gray-700 bg-gray-800/50")}`}>
+      <p className={`text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3 flex items-center gap-1.5 ${themeClass("", "text-gray-300")}`}>
         <Ticket className="h-3.5 w-3.5" />
         ¿Tienes un código de descuento?
       </p>
@@ -85,7 +87,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
               }
             }}
             placeholder="Ingresa tu código"
-            className="w-full sm:flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase text-gray-900 dark:text-gray-100"
+            className={`w-full sm:flex-1 rounded-md border border-gray-300 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase text-gray-900 ${themeClass("", "border-gray-600 bg-gray-900 text-gray-100")}`}
             disabled={couponLoading}
           />
           <button
@@ -106,10 +108,10 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
           <div className="flex items-center gap-2 min-w-0">
             <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-green-900 dark:text-green-300 truncate">
+              <p className={`text-xs sm:text-sm font-medium text-green-900 truncate ${themeClass("", "text-green-300")}`}>
                 {validatedCoupon.code} — {validatedCoupon.name}
               </p>
-              <p className="text-[11px] sm:text-xs text-green-700 dark:text-green-400">
+              <p className={`text-[11px] sm:text-xs text-green-700 ${themeClass("", "text-green-400")}`}>
                 {validatedCoupon.discountDescription} {validatedCoupon.durationDescription}
               </p>
             </div>
@@ -117,7 +119,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
           <button
             type="button"
             onClick={handleRemoveCoupon}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className={`flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors ${themeClass("", "hover:text-gray-300")}`}
           >
             <XCircle className="h-4 w-4" />
           </button>

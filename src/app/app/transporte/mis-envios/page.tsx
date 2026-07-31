@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -18,6 +19,7 @@ import {
 import type { DateFilterPreset } from './components/MisEnviosFilters';
 
 export default function MisEnviosPage() {
+  const { themeClass } = useThemeClasses();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const [shipments, setShipments] = useState<DeliveryShipment[]>([]);
@@ -345,10 +347,10 @@ export default function MisEnviosPage() {
       <div className="container mx-auto px-4 py-6 space-y-6">
         <MisEnviosHeader />
         <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-2">
+          <p className={`text-gray-500 mb-2 ${themeClass("", "text-gray-400")}`}>
             No tienes credenciales de conductor activas
           </p>
-          <p className="text-sm text-gray-400 dark:text-gray-500">
+          <p className={`text-sm text-gray-400 ${themeClass("", "text-gray-500")}`}>
             Contacta al administrador para que te asigne el rol de conductor
           </p>
         </div>

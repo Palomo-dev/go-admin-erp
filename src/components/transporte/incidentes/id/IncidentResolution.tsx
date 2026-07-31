@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ interface IncidentResolutionProps {
 }
 
 export function IncidentResolution({ incident }: IncidentResolutionProps) {
+  const { themeClass } = useThemeClasses();
   const isResolved = incident.status === 'resolved' || incident.status === 'closed';
   const hasResolutionData = incident.resolution_summary || incident.root_cause || incident.corrective_actions;
 
@@ -20,7 +22,7 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
     return (
       <Card className="border-dashed">
         <CardContent className="py-8">
-          <div className="text-center text-gray-500 dark:text-gray-400">
+          <div className={`text-center text-gray-500 ${themeClass("", "text-gray-400")}`}>
             <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="font-medium">Incidente pendiente de resolución</p>
             <p className="text-sm mt-1">
@@ -39,12 +41,12 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
           <CheckCircle className={`h-5 w-5 ${isResolved ? 'text-green-600' : 'text-gray-400'}`} />
           Resolución del Incidente
           {incident.status === 'closed' && (
-            <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+            <Badge className={`bg-gray-100 text-gray-800 ${themeClass("", "bg-gray-700 text-gray-300")}`}>
               Cerrado
             </Badge>
           )}
           {incident.status === 'resolved' && (
-            <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+            <Badge className={`bg-green-100 text-green-800 ${themeClass("", "bg-green-900 text-green-300")}`}>
               Resuelto
             </Badge>
           )}
@@ -54,31 +56,31 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {/* Fechas de resolución */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {incident.acknowledged_at && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <div className={`bg-blue-50 rounded-lg p-3 ${themeClass("", "bg-blue-900/20")}`}>
+              <p className={`text-xs text-gray-500 uppercase tracking-wide ${themeClass("", "text-gray-400")}`}>
                 Reconocido
               </p>
-              <p className="font-medium text-gray-900 dark:text-white">
+              <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
                 {format(new Date(incident.acknowledged_at), 'dd/MM/yyyy HH:mm', { locale: es })}
               </p>
             </div>
           )}
           {incident.resolved_at && (
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <div className={`bg-green-50 rounded-lg p-3 ${themeClass("", "bg-green-900/20")}`}>
+              <p className={`text-xs text-gray-500 uppercase tracking-wide ${themeClass("", "text-gray-400")}`}>
                 Resuelto
               </p>
-              <p className="font-medium text-gray-900 dark:text-white">
+              <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
                 {format(new Date(incident.resolved_at), 'dd/MM/yyyy HH:mm', { locale: es })}
               </p>
             </div>
           )}
           {incident.closed_at && (
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <div className={`bg-gray-50 rounded-lg p-3 ${themeClass("", "bg-gray-800/50")}`}>
+              <p className={`text-xs text-gray-500 uppercase tracking-wide ${themeClass("", "text-gray-400")}`}>
                 Cerrado
               </p>
-              <p className="font-medium text-gray-900 dark:text-white">
+              <p className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
                 {format(new Date(incident.closed_at), 'dd/MM/yyyy HH:mm', { locale: es })}
               </p>
             </div>
@@ -88,11 +90,11 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {/* Resumen de resolución */}
         {incident.resolution_summary && (
           <div className="space-y-2">
-            <h4 className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
+            <h4 className={`flex items-center gap-2 font-medium text-gray-900 ${themeClass("", "text-white")}`}>
               <FileText className="h-4 w-4 text-gray-500" />
               Resumen de Resolución
             </h4>
-            <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+            <p className={`text-gray-700 bg-gray-50 rounded-lg p-4 ${themeClass("", "text-gray-300 bg-gray-800/50")}`}>
               {incident.resolution_summary}
             </p>
           </div>
@@ -101,11 +103,11 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {/* Causa raíz */}
         {incident.root_cause && (
           <div className="space-y-2">
-            <h4 className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
+            <h4 className={`flex items-center gap-2 font-medium text-gray-900 ${themeClass("", "text-white")}`}>
               <AlertTriangle className="h-4 w-4 text-orange-500" />
               Causa Raíz
             </h4>
-            <p className="text-gray-700 dark:text-gray-300 bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
+            <p className={`text-gray-700 bg-orange-50 rounded-lg p-4 ${themeClass("", "text-gray-300 bg-orange-900/20")}`}>
               {incident.root_cause}
             </p>
           </div>
@@ -114,11 +116,11 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {/* Acciones correctivas */}
         {incident.corrective_actions && (
           <div className="space-y-2">
-            <h4 className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
+            <h4 className={`flex items-center gap-2 font-medium text-gray-900 ${themeClass("", "text-white")}`}>
               <CheckCircle className="h-4 w-4 text-green-500" />
               Acciones Correctivas
             </h4>
-            <p className="text-gray-700 dark:text-gray-300 bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+            <p className={`text-gray-700 bg-green-50 rounded-lg p-4 ${themeClass("", "text-gray-300 bg-green-900/20")}`}>
               {incident.corrective_actions}
             </p>
           </div>
@@ -127,8 +129,8 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {/* Notas */}
         {incident.notes && (
           <div className="space-y-2">
-            <h4 className="font-medium text-gray-900 dark:text-white">Notas</h4>
-            <pre className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 whitespace-pre-wrap font-sans">
+            <h4 className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>Notas</h4>
+            <pre className={`text-sm text-gray-700 bg-gray-50 rounded-lg p-4 whitespace-pre-wrap font-sans ${themeClass("", "text-gray-300 bg-gray-800/50")}`}>
               {incident.notes}
             </pre>
           </div>

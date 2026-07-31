@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ export function ImportRoutesDialog({
   organizationId,
   onImportComplete,
 }: ImportRoutesDialogProps) {
+  const { themeClass } = useThemeClasses();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [parsedRoutes, setParsedRoutes] = useState<ParsedRoute[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -377,9 +379,9 @@ export function ImportRoutesDialog({
           )}
 
           {importResults && (
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200">
-              <h4 className="font-medium text-blue-900 dark:text-blue-100">Resultado de la importación</h4>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+            <div className={`p-4 rounded-lg bg-blue-50 border border-blue-200 ${themeClass("", "bg-blue-900/20")}`}>
+              <h4 className={`font-medium text-blue-900 ${themeClass("", "text-blue-100")}`}>Resultado de la importación</h4>
+              <p className={`text-sm text-blue-700 mt-1 ${themeClass("", "text-blue-300")}`}>
                 {importResults.success} rutas importadas correctamente
                 {importResults.failed > 0 && `, ${importResults.failed} fallidas`}
               </p>

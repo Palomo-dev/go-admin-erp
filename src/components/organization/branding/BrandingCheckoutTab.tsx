@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -49,6 +50,7 @@ const DEFAULT_CONFIG: CheckoutConfig = {
 };
 
 export default function BrandingCheckoutTab() {
+  const { themeClass } = useThemeClasses();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { toast } = useToast();
@@ -147,13 +149,13 @@ export default function BrandingCheckoutTab() {
   return (
     <div className="space-y-6">
       {/* Modo de checkout */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 dark:text-white">
+          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
             <ShoppingCart className="h-5 w-5" />
             Modo de checkout
           </CardTitle>
-          <CardDescription className="dark:text-gray-400">
+          <CardDescription className={themeClass("", "text-gray-400")}>
             Elige cómo se muestra el proceso de pago a tus clientes.
           </CardDescription>
         </CardHeader>
@@ -181,7 +183,7 @@ export default function BrandingCheckoutTab() {
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'steps' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
                 </div>
               </div>
-              <p className="font-medium dark:text-white">3 pasos</p>
+              <p className={`font-medium ${themeClass("", "text-white")}`}>3 pasos</p>
               <p className="text-xs text-muted-foreground mt-1">Carrito → Datos → Pago. Guía paso a paso tradicional.</p>
             </button>
 
@@ -203,7 +205,7 @@ export default function BrandingCheckoutTab() {
                   Todo en 1
                 </div>
               </div>
-              <p className="font-medium dark:text-white">1 página</p>
+              <p className={`font-medium ${themeClass("", "text-white")}`}>1 página</p>
               <p className="text-xs text-muted-foreground mt-1">Todo visible en una sola vista. Menos fricción, más conversiones.</p>
             </button>
           </div>
@@ -211,19 +213,19 @@ export default function BrandingCheckoutTab() {
       </Card>
 
       {/* Tipos de entrega */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 dark:text-white">
+          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
             <ShoppingCart className="h-5 w-5" />
             Tipos de entrega disponibles
           </CardTitle>
-          <CardDescription className="dark:text-gray-400">
+          <CardDescription className={themeClass("", "text-gray-400")}>
             Selecciona qué opciones de entrega verán tus clientes en el checkout de la página web.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-600">
+            <div className={`flex items-center justify-between p-4 border rounded-lg ${themeClass("", "border-gray-600")}`}>
               <div className="flex items-center gap-3">
                 <Store className="h-5 w-5 text-green-600" />
                 <div>
@@ -237,7 +239,7 @@ export default function BrandingCheckoutTab() {
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-600">
+            <div className={`flex items-center justify-between p-4 border rounded-lg ${themeClass("", "border-gray-600")}`}>
               <div className="flex items-center gap-3">
                 <Bike className="h-5 w-5 text-blue-600" />
                 <div>
@@ -251,7 +253,7 @@ export default function BrandingCheckoutTab() {
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-600">
+            <div className={`flex items-center justify-between p-4 border rounded-lg ${themeClass("", "border-gray-600")}`}>
               <div className="flex items-center gap-3">
                 <Truck className="h-5 w-5 text-purple-600" />
                 <div>
@@ -275,13 +277,13 @@ export default function BrandingCheckoutTab() {
       </Card>
 
       {/* Configuración de envío por defecto */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 dark:text-white">
+          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
             <Truck className="h-5 w-5" />
             Envío por defecto (tarifa plana)
           </CardTitle>
-          <CardDescription className="dark:text-gray-400">
+          <CardDescription className={themeClass("", "text-gray-400")}>
             Configuración de fallback cuando no hay tarifas dinámicas configuradas. Las tarifas individuales
             con &quot;Visible en web&quot; tienen prioridad sobre estos valores.
           </CardDescription>
@@ -309,7 +311,7 @@ export default function BrandingCheckoutTab() {
                 value={config.shipping_flat_rate_title}
                 onChange={(e) => setConfig({ ...config, shipping_flat_rate_title: e.target.value })}
                 placeholder="Ej: Envío estándar"
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
               />
             </div>
             <div className="space-y-2">
@@ -318,7 +320,7 @@ export default function BrandingCheckoutTab() {
                 value={config.shipping_flat_rate_description}
                 onChange={(e) => setConfig({ ...config, shipping_flat_rate_description: e.target.value })}
                 placeholder="Ej: Entrega en 3-5 días hábiles"
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
               />
             </div>
           </div>
@@ -330,7 +332,7 @@ export default function BrandingCheckoutTab() {
                 type="number"
                 value={config.shipping_flat_rate}
                 onChange={(e) => setConfig({ ...config, shipping_flat_rate: Number(e.target.value) })}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
               />
               <p className="text-xs text-muted-foreground">Se usa cuando no hay tarifas dinámicas</p>
             </div>
@@ -340,7 +342,7 @@ export default function BrandingCheckoutTab() {
                 type="number"
                 value={config.free_shipping_threshold}
                 onChange={(e) => setConfig({ ...config, free_shipping_threshold: Number(e.target.value) })}
-                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className={themeClass("", "bg-gray-700 border-gray-600 text-white")}
               />
               <p className="text-xs text-muted-foreground">0 = sin envío gratis automático</p>
             </div>
@@ -369,13 +371,13 @@ export default function BrandingCheckoutTab() {
       </Card>
 
       {/* Indicadores de confianza */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 dark:text-white">
+          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
             <ShieldCheck className="h-5 w-5" />
             Indicadores de confianza
           </CardTitle>
-          <CardDescription className="dark:text-gray-400">
+          <CardDescription className={themeClass("", "text-gray-400")}>
             Badges de seguridad y confianza visibles en el checkout.
           </CardDescription>
         </CardHeader>
@@ -396,7 +398,7 @@ export default function BrandingCheckoutTab() {
           </div>
 
           {config.checkout_show_trust_badges && (
-            <div className="space-y-3 pt-2 border-t dark:border-gray-700">
+            <div className={`space-y-3 pt-2 border-t ${themeClass("", "border-gray-700")}`}>
               {config.checkout_trust_badges.map((badge, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <Input
@@ -406,7 +408,7 @@ export default function BrandingCheckoutTab() {
                       badges[idx] = { ...badges[idx], icon: e.target.value };
                       setConfig({ ...config, checkout_trust_badges: badges });
                     }}
-                    className="w-16 text-center dark:bg-gray-700 dark:border-gray-600"
+                    className={`w-16 text-center ${themeClass("", "bg-gray-700 border-gray-600")}`}
                     placeholder="🔒"
                   />
                   <Input
@@ -416,7 +418,7 @@ export default function BrandingCheckoutTab() {
                       badges[idx] = { ...badges[idx], text: e.target.value };
                       setConfig({ ...config, checkout_trust_badges: badges });
                     }}
-                    className="flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className={`flex-1 ${themeClass("", "bg-gray-700 border-gray-600 text-white")}`}
                     placeholder="Texto del badge"
                   />
                   <Button
@@ -460,7 +462,7 @@ export default function BrandingCheckoutTab() {
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2 border-t dark:border-gray-700">
+          <div className={`flex items-center justify-between pt-2 border-t ${themeClass("", "border-gray-700")}`}>
             <div>
               <Label>Mostrar logos de medios de pago</Label>
               <p className="text-xs text-muted-foreground">Logos de Visa, Mastercard, etc. en el checkout</p>

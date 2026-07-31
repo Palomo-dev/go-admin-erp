@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ interface IncidentCostsProps {
 }
 
 export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
+  const { themeClass } = useThemeClasses();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [estimatedCost, setEstimatedCost] = useState(incident.estimated_cost || 0);
@@ -101,17 +103,17 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Costo Estimado */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Costo Estimado</p>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className={`bg-blue-50 rounded-lg p-4 ${themeClass("", "bg-blue-900/20")}`}>
+              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>Costo Estimado</p>
+              <p className={`text-2xl font-bold text-blue-600 ${themeClass("", "text-blue-400")}`}>
                 {formatCurrency(incident.estimated_cost || 0)}
               </p>
             </div>
 
             {/* Costo Real */}
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Costo Real</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className={`bg-green-50 rounded-lg p-4 ${themeClass("", "bg-green-900/20")}`}>
+              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>Costo Real</p>
+              <p className={`text-2xl font-bold text-green-600 ${themeClass("", "text-green-400")}`}>
                 {formatCurrency(incident.actual_cost || 0)}
               </p>
             </div>
@@ -124,7 +126,7 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
                   ? 'bg-green-50 dark:bg-green-900/20'
                   : 'bg-gray-50 dark:bg-gray-800/50'
             }`}>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Diferencia</p>
+              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>Diferencia</p>
               <p className={`text-2xl font-bold ${
                 difference > 0 
                   ? 'text-red-600 dark:text-red-400' 

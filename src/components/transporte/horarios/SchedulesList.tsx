@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +60,7 @@ export function SchedulesList({
   onToggleStatus,
   onGenerateTrips,
 }: SchedulesListProps) {
+  const { themeClass } = useThemeClasses();
   const [searchTerm, setSearchTerm] = useState('');
   const [routeFilter, setRouteFilter] = useState<string>('all');
 
@@ -125,7 +127,7 @@ export function SchedulesList({
             ))}
           </SelectContent>
         </Select>
-        <span className="text-sm text-gray-500 dark:text-gray-400 self-center">
+        <span className={`text-sm text-gray-500 self-center ${themeClass("", "text-gray-400")}`}>
           {filteredSchedules.length} horarios
         </span>
       </div>
@@ -134,10 +136,10 @@ export function SchedulesList({
         <Card>
           <CardContent className="py-12 text-center">
             <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-white")}`}>
               No hay horarios
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className={`text-gray-500 mt-1 ${themeClass("", "text-gray-400")}`}>
               {searchTerm || routeFilter !== 'all' ? 'No se encontraron resultados' : 'Crea el primer horario de ruta'}
             </p>
           </CardContent>
@@ -195,7 +197,7 @@ export function SchedulesList({
 
                 <div className="space-y-3">
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <p className={`font-semibold text-gray-900 flex items-center gap-2 ${themeClass("", "text-white")}`}>
                       <Clock className="h-4 w-4 text-blue-600" />
                       {schedule.departure_time}
                       {schedule.arrival_time && (
@@ -210,14 +212,14 @@ export function SchedulesList({
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
                       <Route className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-600 dark:text-gray-300">
+                      <span className={`text-gray-600 ${themeClass("", "text-gray-300")}`}>
                         {schedule.transport_routes?.name || 'Sin ruta'}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-600 dark:text-gray-300">
+                      <span className={`text-gray-600 ${themeClass("", "text-gray-300")}`}>
                         {getRecurrenceLabel(schedule)}
                       </span>
                     </div>
@@ -225,7 +227,7 @@ export function SchedulesList({
                     {schedule.vehicles && (
                       <div className="flex items-center gap-2">
                         <Bus className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-300">
+                        <span className={`text-gray-600 ${themeClass("", "text-gray-300")}`}>
                           {schedule.vehicles.plate_number}
                         </span>
                       </div>
@@ -234,7 +236,7 @@ export function SchedulesList({
                     {schedule.available_seats && (
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-300">
+                        <span className={`text-gray-600 ${themeClass("", "text-gray-300")}`}>
                           {schedule.available_seats} cupos
                         </span>
                       </div>

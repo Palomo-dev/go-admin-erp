@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,9 +41,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIncidentsProps) {
+  const { themeClass } = useThemeClasses();
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
@@ -52,8 +54,8 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
 
   return (
     <Card>
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+      <div className={`p-4 border-b border-gray-200 flex justify-between items-center ${themeClass("", "border-gray-700")}`}>
+        <h3 className={`text-lg font-semibold text-gray-900 flex items-center gap-2 ${themeClass("", "text-white")}`}>
           <AlertTriangle className="h-5 w-5" />
           Incidentes
           {incidents.length > 0 && (
@@ -71,12 +73,12 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
       {incidents.length === 0 ? (
         <div className="p-8 text-center">
           <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
             No hay incidentes reportados para este viaje
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+        <div className={`divide-y divide-gray-200 ${themeClass("", "divide-gray-700")}`}>
           {incidents.map((incident) => {
             const severity = SEVERITY_CONFIG[incident.severity] || SEVERITY_CONFIG.low;
             const status = STATUS_CONFIG[incident.status] || STATUS_CONFIG.open;
@@ -89,11 +91,11 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
                       <Badge className={severity.color}>{severity.label}</Badge>
                       <Badge className={status.color}>{status.label}</Badge>
                     </div>
-                    <h4 className="font-medium text-gray-900 dark:text-white">
+                    <h4 className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
                       {incident.title}
                     </h4>
                     {incident.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <p className={`text-sm text-gray-600 mt-1 ${themeClass("", "text-gray-400")}`}>
                         {incident.description}
                       </p>
                     )}

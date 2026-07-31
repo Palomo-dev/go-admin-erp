@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -31,6 +32,7 @@ export function AssignDriverDialog({
   onAssignDriver,
   isUpdating,
 }: AssignDriverDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
 
@@ -92,10 +94,10 @@ export function AssignDriverDialog({
           </div>
 
           {vehicle.current_driver_id && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between">
+            <div className={`p-3 bg-blue-50 rounded-lg flex items-center justify-between ${themeClass("", "bg-blue-900/20")}`}>
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-blue-700 dark:text-blue-300">
+                <span className={`text-sm text-blue-700 ${themeClass("", "text-blue-300")}`}>
                   Conductor actual asignado
                 </span>
               </div>
@@ -137,7 +139,7 @@ export function AssignDriverDialog({
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <div className={`h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center ${themeClass("", "bg-gray-800")}`}>
                           <User className="h-5 w-5 text-gray-600" />
                         </div>
                         <div>

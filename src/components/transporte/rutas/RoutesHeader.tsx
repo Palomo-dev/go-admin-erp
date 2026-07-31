@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Route, Plus, RefreshCw, Upload } from 'lucide-react';
@@ -17,6 +18,7 @@ export function RoutesHeader({
   onImport,
   isLoading 
 }: RoutesHeaderProps) {
+  const { themeClass } = useThemeClasses();
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div className="flex items-center gap-3">
@@ -26,13 +28,13 @@ export function RoutesHeader({
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+          <h1 className={`text-2xl font-bold text-gray-900 flex items-center gap-3 ${themeClass("", "text-white")}`}>
+            <div className={`p-2 bg-blue-100 rounded-xl ${themeClass("", "bg-blue-900/30")}`}>
               <Route className="h-6 w-6 text-blue-600" />
             </div>
             Rutas de Transporte
           </h1>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className={`text-gray-500 ${themeClass("", "text-gray-400")}`}>
             Transporte / Rutas
           </p>
         </div>

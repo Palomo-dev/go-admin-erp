@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -34,6 +35,7 @@ export function CloseIncidentDialog({
   incident,
   onClose,
 }: CloseIncidentDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resolutionSummary, setResolutionSummary] = useState(incident.resolution_summary || '');
   const [rootCause, setRootCause] = useState(incident.root_cause || '');
@@ -125,7 +127,7 @@ export function CloseIncidentDialog({
           </div>
 
           {incident.assigned_user && notify && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 ml-6">
+            <p className={`text-sm text-gray-500 ml-6 ${themeClass("", "text-gray-400")}`}>
               Se notificará a: {incident.assigned_user.full_name}
               {incident.assigned_user.email && ` (${incident.assigned_user.email})`}
             </p>

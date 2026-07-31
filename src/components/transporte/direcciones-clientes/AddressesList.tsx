@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,6 +44,7 @@ export function AddressesList({
   onSetDefault,
   onValidateCoords,
 }: AddressesListProps) {
+  const { themeClass } = useThemeClasses();
 
   if (isLoading) {
     return (
@@ -60,7 +62,7 @@ export function AddressesList({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
           {addresses.length} direcciones
         </span>
       </div>
@@ -69,10 +71,10 @@ export function AddressesList({
         <Card>
           <CardContent className="py-12 text-center">
             <MapPin className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-white")}`}>
               No hay direcciones
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className={`text-gray-500 mt-1 ${themeClass("", "text-gray-400")}`}>
               Agrega la primera dirección de cliente
             </p>
           </CardContent>
@@ -133,14 +135,14 @@ export function AddressesList({
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2">
                     <User className="h-4 w-4 text-gray-400 mt-0.5" />
-                    <span className="font-medium text-gray-900 dark:text-white">
+                    <span className={`font-medium text-gray-900 ${themeClass("", "text-white")}`}>
                       {address.customers?.first_name} {address.customers?.last_name}
                     </span>
                   </div>
                   
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
-                    <div className="text-gray-600 dark:text-gray-300">
+                    <div className={`text-gray-600 ${themeClass("", "text-gray-300")}`}>
                       <p>{address.address_line1}</p>
                       {address.address_line2 && <p>{address.address_line2}</p>}
                       <p>{address.city}{address.department ? `, ${address.department}` : ''}</p>
@@ -150,7 +152,7 @@ export function AddressesList({
                   {address.recipient_phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-600 dark:text-gray-300">
+                      <span className={`text-gray-600 ${themeClass("", "text-gray-300")}`}>
                         {address.recipient_phone}
                       </span>
                     </div>
@@ -159,7 +161,7 @@ export function AddressesList({
                   {(address.latitude && address.longitude) && (
                     <div className="flex items-center gap-2 pt-2 border-t">
                       <Navigation className="h-4 w-4 text-green-500" />
-                      <span className="text-xs text-green-600 dark:text-green-400">
+                      <span className={`text-xs text-green-600 ${themeClass("", "text-green-400")}`}>
                         Geolocalización válida
                       </span>
                     </div>

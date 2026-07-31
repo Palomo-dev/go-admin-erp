@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ImagePickerDialog from '@/components/common/ImagePickerDialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -128,6 +129,7 @@ export default function EditorSidebar({
   pageSEOContent,
   organizationId,
 }: EditorSidebarProps) {
+  const { themeClass } = useThemeClasses();
   const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -148,10 +150,10 @@ export default function EditorSidebar({
   };
 
   return (
-    <div className="w-[320px] min-w-[320px] bg-white dark:bg-gray-900 text-gray-800 dark:text-white flex flex-col h-full border-r border-gray-200 dark:border-gray-700">
+    <div className={`w-[320px] min-w-[320px] bg-white text-gray-800 flex flex-col h-full border-r border-gray-200 ${themeClass("", "bg-gray-900 text-white border-gray-700")}`}>
       {/* Sidebar Header */}
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700/50">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+      <div className={`p-3 border-b border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
+        <h2 className={`text-sm font-semibold text-gray-500 uppercase tracking-wider ${themeClass("", "text-gray-300")}`}>
           {t('sections')}
         </h2>
       </div>
@@ -159,7 +161,7 @@ export default function EditorSidebar({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Configuración del Tema (Global Settings) */}
-        <div className="border-b border-gray-200 dark:border-gray-700/50">
+        <div className={`border-b border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
           <button
             onClick={onToggleGlobalSettings}
             className={cn(
@@ -167,12 +169,12 @@ export default function EditorSidebar({
               showGlobalSettings && 'bg-gray-100 dark:bg-white/5'
             )}
           >
-            <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">{t('themeConfig')}</span>
+            <Settings className={`h-4 w-4 text-gray-500 ${themeClass("", "text-gray-400")}`} />
+            <span className={`flex-1 text-left font-medium text-gray-700 ${themeClass("", "text-gray-200")}`}>{t('themeConfig')}</span>
             {showGlobalSettings ? (
-              <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <ChevronDown className={`h-4 w-4 text-gray-400 ${themeClass("", "text-gray-500")}`} />
             ) : (
-              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <ChevronRight className={`h-4 w-4 text-gray-400 ${themeClass("", "text-gray-500")}`} />
             )}
           </button>
           {showGlobalSettings && (
@@ -183,7 +185,7 @@ export default function EditorSidebar({
         </div>
 
         {/* SEO de la Página */}
-        <div className="border-b border-gray-200 dark:border-gray-700/50">
+        <div className={`border-b border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
           <button
             onClick={onTogglePageSEO}
             className={cn(
@@ -191,12 +193,12 @@ export default function EditorSidebar({
               showPageSEO && 'bg-gray-100 dark:bg-white/5'
             )}
           >
-            <Search className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">{t('pageSEO')}</span>
+            <Search className={`h-4 w-4 text-gray-500 ${themeClass("", "text-gray-400")}`} />
+            <span className={`flex-1 text-left font-medium text-gray-700 ${themeClass("", "text-gray-200")}`}>{t('pageSEO')}</span>
             {showPageSEO ? (
-              <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <ChevronDown className={`h-4 w-4 text-gray-400 ${themeClass("", "text-gray-500")}`} />
             ) : (
-              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <ChevronRight className={`h-4 w-4 text-gray-400 ${themeClass("", "text-gray-500")}`} />
             )}
           </button>
           {showPageSEO && (
@@ -235,12 +237,12 @@ export default function EditorSidebar({
       </div>
 
       {/* Add Section Button */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700/50">
+      <div className={`p-3 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
         <Button
           onClick={onAddSection}
           variant="outline"
           size="sm"
-          className="w-full border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white hover:border-blue-400 dark:hover:border-gray-400 bg-transparent hover:bg-blue-50 dark:hover:bg-white/5"
+          className={`w-full border-dashed border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-400 bg-transparent hover:bg-blue-50 ${themeClass("", "border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 hover:bg-white/5")}`}
         >
           <Plus className="h-4 w-4 mr-2" />
           {t('addSection')}
@@ -295,7 +297,7 @@ function SectionListItem({
 
   return (
     <div
-      className="border-b border-gray-200 dark:border-gray-700/50"
+      className={`border-b border-gray-200 ${themeClass("", "border-gray-700/50")}`}
       draggable
       onDragStart={onDragStart}
       onDragOver={onDragOver}
@@ -310,31 +312,31 @@ function SectionListItem({
           !section.is_visible && 'opacity-50'
         )}
       >
-        <GripVertical className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-        <IconComponent className="h-4 w-4 text-blue-600 dark:text-gray-400 shrink-0" />
+        <GripVertical className={`h-3.5 w-3.5 text-gray-300 cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${themeClass("", "text-gray-600")}`} />
+        <IconComponent className={`h-4 w-4 text-blue-600 shrink-0 ${themeClass("", "text-gray-400")}`} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate text-gray-800 dark:text-white">{label}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{variantLabel}</p>
+          <p className={`text-sm font-medium truncate text-gray-800 ${themeClass("", "text-white")}`}>{label}</p>
+          <p className={`text-xs text-gray-400 truncate ${themeClass("", "text-gray-500")}`}>{variantLabel}</p>
         </div>
         {isActive ? (
-          <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
+          <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 ${themeClass("", "text-gray-500")}`} />
         ) : (
-          <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
+          <ChevronRight className={`h-4 w-4 text-gray-400 shrink-0 ${themeClass("", "text-gray-500")}`} />
         )}
       </div>
 
       {/* Section Content Editor (expanded) */}
       {isActive && (
-        <div className="px-3 pb-3 space-y-3 bg-gray-50 dark:bg-white/5">
+        <div className={`px-3 pb-3 space-y-3 bg-gray-50 ${themeClass("", "bg-white/5")}`}>
           {/* Variant Selector */}
           {definition && definition.variants.length > 1 && (
             <div className="space-y-1.5">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">{t('variant')}</Label>
+              <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('variant')}</Label>
               <Select
                 value={section.section_variant}
                 onValueChange={onUpdateVariant}
               >
-                <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
+                <SelectTrigger className={`h-8 text-xs bg-white border-gray-300 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -351,7 +353,7 @@ function SectionListItem({
           {/* Content Fields */}
           {definition?.contentFields.map((field) => (
             <div key={field.key} className="space-y-1.5">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">{field.label}</Label>
+              <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{field.label}</Label>
               {field.type === 'text' && (
                 <Input
                   value={(section.content?.[field.key] as string) || ''}
@@ -362,7 +364,7 @@ function SectionListItem({
                     })
                   }
                   placeholder={field.placeholder}
-                  className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className={`h-8 text-xs bg-white border-gray-300 text-gray-800 placeholder:text-gray-400 ${themeClass("", "bg-white/5 border-gray-600 text-white placeholder:text-gray-500")}`}
                 />
               )}
               {field.type === 'textarea' && (
@@ -376,7 +378,7 @@ function SectionListItem({
                   }
                   placeholder={field.placeholder}
                   rows={2}
-                  className="text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none"
+                  className={`text-xs bg-white border-gray-300 text-gray-800 placeholder:text-gray-400 resize-none ${themeClass("", "bg-white/5 border-gray-600 text-white placeholder:text-gray-500")}`}
                 />
               )}
               {field.type === 'url' && (
@@ -390,7 +392,7 @@ function SectionListItem({
                     })
                   }
                   placeholder={field.placeholder || 'https://...'}
-                  className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className={`h-8 text-xs bg-white border-gray-300 text-gray-800 placeholder:text-gray-400 ${themeClass("", "bg-white/5 border-gray-600 text-white placeholder:text-gray-500")}`}
                 />
               )}
               {field.type === 'image' && (
@@ -428,7 +430,7 @@ function SectionListItem({
                     })
                   }
                   placeholder={field.placeholder}
-                  className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className={`h-8 text-xs bg-white border-gray-300 text-gray-800 placeholder:text-gray-400 ${themeClass("", "bg-white/5 border-gray-600 text-white placeholder:text-gray-500")}`}
                 />
               )}
               {field.type === 'select' && field.options && (
@@ -441,7 +443,7 @@ function SectionListItem({
                     })
                   }
                 >
-                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
+                  <SelectTrigger className={`h-8 text-xs bg-white border-gray-300 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -468,7 +470,7 @@ function SectionListItem({
                     step={field.step ?? 1}
                     className="flex-1"
                   />
-                  <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[40px] text-right">
+                  <span className={`text-xs text-gray-500 min-w-[40px] text-right ${themeClass("", "text-gray-400")}`}>
                     {Number(section.content?.[field.key] ?? field.defaultValue ?? 0)}{field.suffix || ''}
                   </span>
                 </div>
@@ -478,8 +480,8 @@ function SectionListItem({
 
           {/* Hero Booking Switch */}
           {section.section_type === 'hero' && (
-            <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">{t('bookingWidget')}</Label>
+            <div className={`flex items-center justify-between pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
+              <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('bookingWidget')}</Label>
               <Switch
                 checked={section.content?.show_booking_widget === true}
                 onCheckedChange={(checked) =>
@@ -566,7 +568,7 @@ function SectionListItem({
           />
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
+          <div className={`flex items-center justify-between pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
@@ -653,7 +655,7 @@ function ImageFieldPicker({ value, onChange }: { value: string; onChange: (url: 
   return (
     <>
       {value ? (
-        <div className="relative group rounded-md overflow-hidden border border-gray-300 dark:border-gray-600">
+        <div className={`relative group rounded-md overflow-hidden border border-gray-300 ${themeClass("", "border-gray-600")}`}>
           <img
             src={value}
             alt={t('imageAlt')}
@@ -670,7 +672,7 @@ function ImageFieldPicker({ value, onChange }: { value: string; onChange: (url: 
       ) : (
         <button
           onClick={() => setShowPicker(true)}
-          className="w-full h-16 flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-blue-400 hover:text-blue-500 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors bg-white dark:bg-white/5"
+          className={`w-full h-16 flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-gray-300 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors bg-white ${themeClass("", "border-gray-600 text-gray-500 hover:border-blue-500 hover:text-blue-400 bg-white/5")}`}
         >
           <ImagePlus className="h-4 w-4" />
           <span className="text-[10px]">{t('selectImage')}</span>
@@ -708,14 +710,14 @@ function GalleryItemsEditor({
   };
 
   return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+    <div className={`space-y-2 pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
+        <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
           {t('imagesLabel', { count: items.length })}
         </Label>
         <button
           onClick={() => setShowPicker(true)}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+          className={`flex items-center gap-1 text-[10px] text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}
         >
           <Plus className="h-3 w-3" /> {t('add')}
         </button>
@@ -726,7 +728,7 @@ function GalleryItemsEditor({
           {items.map((img) => (
             <div
               key={img.id}
-              className="relative group rounded overflow-hidden border border-gray-200 dark:border-gray-700"
+              className={`relative group rounded overflow-hidden border border-gray-200 ${themeClass("", "border-gray-700")}`}
             >
               <img
                 src={img.url}
@@ -743,7 +745,7 @@ function GalleryItemsEditor({
           ))}
         </div>
       ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
+        <p className={`text-[10px] text-gray-400 text-center py-2 ${themeClass("", "text-gray-500")}`}>
           {t('noImages')}
         </p>
       )}
@@ -801,14 +803,14 @@ function TestimonialItemsEditor({
   };
 
   return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+    <div className={`space-y-2 pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
+        <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
           {tr('testimonialsLabel', { count: items.length })}
         </Label>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+          className={`flex items-center gap-1 text-[10px] text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}
         >
           <Plus className="h-3 w-3" /> {tr('add')}
         </button>
@@ -819,14 +821,14 @@ function TestimonialItemsEditor({
           {items.map((t, idx) => (
             <div
               key={t.id || `testimonial-${idx}`}
-              className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden"
+              className={`rounded border border-gray-200 bg-white overflow-hidden ${themeClass("", "border-gray-700 bg-white/5")}`}
             >
               <div
-                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
+                className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 ${themeClass("", "hover:bg-white/5")}`}
                 onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
               >
                 <MessageSquareQuote className="h-3 w-3 text-gray-400 shrink-0" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className={`text-[11px] flex-1 truncate text-gray-700 ${themeClass("", "text-gray-300")}`}>
                   {t.name || tr('noName')}
                 </span>
                 <button
@@ -842,25 +844,25 @@ function TestimonialItemsEditor({
                 )}
               </div>
               {expandedId === t.id && (
-                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
+                <div className={`px-2 pb-2 space-y-1.5 border-t border-gray-100 ${themeClass("", "border-gray-700/50")}`}>
                   <Input
                     value={t.name}
                     onChange={(e) => handleUpdate(t.id, { name: e.target.value })}
                     placeholder={tr('namePlaceholder')}
-                    className="h-7 text-[11px] mt-1.5 bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                    className={`h-7 text-[11px] mt-1.5 bg-white border-gray-200 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                   <Input
                     value={t.company || ''}
                     onChange={(e) => handleUpdate(t.id, { company: e.target.value })}
                     placeholder={tr('companyPlaceholder')}
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                    className={`h-7 text-[11px] bg-white border-gray-200 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                   <Textarea
                     value={t.content}
                     onChange={(e) => handleUpdate(t.id, { content: e.target.value })}
                     placeholder={tr('testimonialPlaceholder')}
                     rows={2}
-                    className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
+                    className={`text-[11px] bg-white border-gray-200 text-gray-800 resize-none ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                   <div className="flex items-center gap-0.5">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -885,7 +887,7 @@ function TestimonialItemsEditor({
           ))}
         </div>
       ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
+        <p className={`text-[10px] text-gray-400 text-center py-2 ${themeClass("", "text-gray-500")}`}>
           {tr('noTestimonials')}
         </p>
       )}
@@ -927,14 +929,14 @@ function FAQItemsEditor({
   };
 
   return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+    <div className={`space-y-2 pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
+        <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
           {t('faqLabel', { count: items.length })}
         </Label>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+          className={`flex items-center gap-1 text-[10px] text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}
         >
           <Plus className="h-3 w-3" /> {t('add')}
         </button>
@@ -945,14 +947,14 @@ function FAQItemsEditor({
           {items.map((f) => (
             <div
               key={f.id}
-              className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden"
+              className={`rounded border border-gray-200 bg-white overflow-hidden ${themeClass("", "border-gray-700 bg-white/5")}`}
             >
               <div
-                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
+                className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 ${themeClass("", "hover:bg-white/5")}`}
                 onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
               >
                 <HelpCircle className="h-3 w-3 text-gray-400 shrink-0" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className={`text-[11px] flex-1 truncate text-gray-700 ${themeClass("", "text-gray-300")}`}>
                   {f.question || t('noQuestion')}
                 </span>
                 <button
@@ -968,19 +970,19 @@ function FAQItemsEditor({
                 )}
               </div>
               {expandedId === f.id && (
-                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
+                <div className={`px-2 pb-2 space-y-1.5 border-t border-gray-100 ${themeClass("", "border-gray-700/50")}`}>
                   <Input
                     value={f.question}
                     onChange={(e) => handleUpdate(f.id, { question: e.target.value })}
                     placeholder={t('questionPlaceholder')}
-                    className="h-7 text-[11px] mt-1.5 bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                    className={`h-7 text-[11px] mt-1.5 bg-white border-gray-200 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                   <Textarea
                     value={f.answer}
                     onChange={(e) => handleUpdate(f.id, { answer: e.target.value })}
                     placeholder={t('answerPlaceholder')}
                     rows={2}
-                    className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
+                    className={`text-[11px] bg-white border-gray-200 text-gray-800 resize-none ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                 </div>
               )}
@@ -988,7 +990,7 @@ function FAQItemsEditor({
           ))}
         </div>
       ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
+        <p className={`text-[10px] text-gray-400 text-center py-2 ${themeClass("", "text-gray-500")}`}>
           {t('noQuestions')}
         </p>
       )}
@@ -1045,14 +1047,14 @@ function HeroSlidesEditor({
   };
 
   return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+    <div className={`space-y-2 pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
+        <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
           Slides ({items.length})
         </Label>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+          className={`flex items-center gap-1 text-[10px] text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}
         >
           <Plus className="h-3 w-3" /> Agregar
         </button>
@@ -1063,14 +1065,14 @@ function HeroSlidesEditor({
           {items.map((slide, idx) => (
             <div
               key={slide.id}
-              className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden"
+              className={`rounded border border-gray-200 bg-white overflow-hidden ${themeClass("", "border-gray-700 bg-white/5")}`}
             >
               <div
-                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
+                className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 ${themeClass("", "hover:bg-white/5")}`}
                 onClick={() => setExpandedId(expandedId === slide.id ? null : slide.id)}
               >
                 <Image className="h-3 w-3 text-gray-400 shrink-0" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className={`text-[11px] flex-1 truncate text-gray-700 ${themeClass("", "text-gray-300")}`}>
                   {slide.title || `Slide ${idx + 1}`}
                 </span>
                 <button
@@ -1086,13 +1088,13 @@ function HeroSlidesEditor({
                 )}
               </div>
               {expandedId === slide.id && (
-                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
+                <div className={`px-2 pb-2 space-y-1.5 border-t border-gray-100 ${themeClass("", "border-gray-700/50")}`}>
                   <Label className="text-[10px] text-gray-400 mt-1.5 block">Título</Label>
                   <Input
                     value={slide.title || ''}
                     onChange={(e) => handleUpdate(slide.id, { title: e.target.value })}
                     placeholder="Título del slide"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                    className={`h-7 text-[11px] bg-white border-gray-200 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                   <Label className="text-[10px] text-gray-400 block">Subtítulo</Label>
                   <Textarea
@@ -1100,7 +1102,7 @@ function HeroSlidesEditor({
                     onChange={(e) => handleUpdate(slide.id, { subtitle: e.target.value })}
                     placeholder="Descripción del slide"
                     rows={2}
-                    className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
+                    className={`text-[11px] bg-white border-gray-200 text-gray-800 resize-none ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                   <Label className="text-[10px] text-gray-400 block">Imagen escritorio</Label>
                   <ImageFieldPicker
@@ -1117,14 +1119,14 @@ function HeroSlidesEditor({
                     value={slide.cta_text || ''}
                     onChange={(e) => handleUpdate(slide.id, { cta_text: e.target.value })}
                     placeholder="Ver más"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                    className={`h-7 text-[11px] bg-white border-gray-200 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                   <Label className="text-[10px] text-gray-400 block">URL del botón</Label>
                   <Input
                     value={slide.cta_url || ''}
                     onChange={(e) => handleUpdate(slide.id, { cta_url: e.target.value })}
                     placeholder="/productos"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                    className={`h-7 text-[11px] bg-white border-gray-200 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                 </div>
               )}
@@ -1132,7 +1134,7 @@ function HeroSlidesEditor({
           ))}
         </div>
       ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
+        <p className={`text-[10px] text-gray-400 text-center py-2 ${themeClass("", "text-gray-500")}`}>
           Sin slides. Agrega al menos uno.
         </p>
       )}
@@ -1206,15 +1208,15 @@ function CategorySelectorEditor({
 
   if (loading) {
     return (
-      <div className="pt-2 border-t border-gray-200 dark:border-gray-700/50">
+      <div className={`pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
         <p className="text-[10px] text-gray-400 text-center py-2">Cargando categorías...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-      <Label className="text-xs text-gray-500 dark:text-gray-400">
+    <div className={`space-y-2 pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
+      <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
         Categorías seleccionadas ({selectedIds.length})
       </Label>
 
@@ -1236,11 +1238,11 @@ function CategorySelectorEditor({
               {cat.image_url ? (
                 <img src={cat.image_url} alt={cat.name} className="w-6 h-6 rounded object-cover shrink-0" />
               ) : (
-                <div className="w-6 h-6 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                <div className={`w-6 h-6 rounded bg-gray-200 flex items-center justify-center shrink-0 ${themeClass("", "bg-gray-700")}`}>
                   <span className="text-[10px]">🏷️</span>
                 </div>
               )}
-              <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate">{cat.name}</span>
+              <span className={`text-xs text-gray-700 flex-1 truncate ${themeClass("", "text-gray-300")}`}>{cat.name}</span>
               <span className="text-[9px] text-gray-400 shrink-0">#{idx + 1}</span>
               <button
                 onClick={() => handleToggle(cat.id, false)}
@@ -1255,12 +1257,12 @@ function CategorySelectorEditor({
 
       {unselectedCats.length > 0 && (
         <div className="space-y-1 mt-2">
-          <span className="text-[10px] text-gray-500 dark:text-gray-500">Disponibles</span>
-          <div className="max-h-40 overflow-y-auto space-y-1 rounded border border-gray-200 dark:border-gray-700 p-1">
+          <span className={`text-[10px] text-gray-500 ${themeClass("", "text-gray-500")}`}>Disponibles</span>
+          <div className={`max-h-40 overflow-y-auto space-y-1 rounded border border-gray-200 p-1 ${themeClass("", "border-gray-700")}`}>
             {unselectedCats.map((cat) => (
               <label
                 key={cat.id}
-                className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
+                className={`flex items-center gap-2 p-1 rounded hover:bg-gray-100 cursor-pointer ${themeClass("", "hover:bg-white/5")}`}
               >
                 <Checkbox
                   checked={false}
@@ -1269,11 +1271,11 @@ function CategorySelectorEditor({
                 {cat.image_url ? (
                   <img src={cat.image_url} alt={cat.name} className="w-5 h-5 rounded object-cover shrink-0" />
                 ) : (
-                  <div className="w-5 h-5 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                  <div className={`w-5 h-5 rounded bg-gray-200 flex items-center justify-center shrink-0 ${themeClass("", "bg-gray-700")}`}>
                     <span className="text-[9px]">🏷️</span>
                   </div>
                 )}
-                <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{cat.name}</span>
+                <span className={`text-xs text-gray-600 truncate ${themeClass("", "text-gray-400")}`}>{cat.name}</span>
               </label>
             ))}
           </div>
@@ -1349,14 +1351,14 @@ function BrandsItemsEditor({
   const handleDragEnd = () => setDragIdx(null);
 
   return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+    <div className={`space-y-2 pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
+        <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
           Marcas ({items.length})
         </Label>
         <button
           onClick={() => setShowPicker(true)}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+          className={`flex items-center gap-1 text-[10px] text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}
         >
           <Plus className="h-3 w-3" /> Agregar
         </button>
@@ -1377,18 +1379,18 @@ function BrandsItemsEditor({
               )}
             >
               <div
-                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
+                className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 ${themeClass("", "hover:bg-white/5")}`}
                 onClick={() => setExpandedId(expandedId === brand.id ? null : brand.id)}
               >
                 <GripVertical className="h-3 w-3 text-gray-400 shrink-0 cursor-grab" />
                 {brand.logo_url ? (
                   <img src={brand.logo_url} alt={brand.name} className="h-6 w-10 object-contain shrink-0 rounded" />
                 ) : (
-                  <div className="h-6 w-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center shrink-0">
+                  <div className={`h-6 w-10 bg-gray-200 rounded flex items-center justify-center shrink-0 ${themeClass("", "bg-gray-700")}`}>
                     <span className="text-[9px]">🏢</span>
                   </div>
                 )}
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className={`text-[11px] flex-1 truncate text-gray-700 ${themeClass("", "text-gray-300")}`}>
                   {brand.name || 'Sin nombre'}
                 </span>
                 <button
@@ -1404,7 +1406,7 @@ function BrandsItemsEditor({
                 )}
               </div>
               {expandedId === brand.id && (
-                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
+                <div className={`px-2 pb-2 space-y-1.5 border-t border-gray-100 ${themeClass("", "border-gray-700/50")}`}>
                   <div className="mt-1.5">
                     <ImageFieldPicker
                       value={brand.logo_url || ''}
@@ -1415,13 +1417,13 @@ function BrandsItemsEditor({
                     value={brand.name}
                     onChange={(e) => handleUpdate(brand.id, { name: e.target.value })}
                     placeholder="Nombre de la marca"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                    className={`h-7 text-[11px] bg-white border-gray-200 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                   <Input
                     value={brand.url || ''}
                     onChange={(e) => handleUpdate(brand.id, { url: e.target.value })}
                     placeholder="URL (opcional) ej: https://marca.com"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
+                    className={`h-7 text-[11px] bg-white border-gray-200 text-gray-800 ${themeClass("", "bg-white/5 border-gray-600 text-white")}`}
                   />
                 </div>
               )}
@@ -1429,7 +1431,7 @@ function BrandsItemsEditor({
           ))}
         </div>
       ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
+        <p className={`text-[10px] text-gray-400 text-center py-2 ${themeClass("", "text-gray-500")}`}>
           Sin marcas. Agrega logos de tus marcas asociadas.
         </p>
       )}
@@ -1475,13 +1477,13 @@ function SectionSpacingEditor({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="pt-2 border-t border-gray-200 dark:border-gray-700/50">
+    <div className={`pt-2 border-t border-gray-200 ${themeClass("", "border-gray-700/50")}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 w-full text-left"
       >
         <Layout className="h-3 w-3 text-gray-400" />
-        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-1">Espaciado</span>
+        <span className={`text-[11px] text-gray-500 flex-1 ${themeClass("", "text-gray-400")}`}>Espaciado</span>
         {isOpen ? (
           <ChevronUp className="h-3 w-3 text-gray-400" />
         ) : (

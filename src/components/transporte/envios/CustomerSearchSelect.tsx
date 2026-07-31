@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import * as React from 'react';
 import { Search, Loader2, X, MapPin, Phone, Mail, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -53,6 +54,7 @@ export function CustomerSearchSelect({
   placeholder = 'Buscar cliente...',
   disabled = false,
 }: CustomerSearchSelectProps) {
+  const { themeClass } = useThemeClasses();
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [results, setResults] = React.useState<CustomerSearchResult[]>([]);
@@ -126,7 +128,7 @@ export function CustomerSearchSelect({
   return (
     <div ref={containerRef} className="relative">
       {selectedName ? (
-        <div className="flex items-center justify-between rounded-lg border bg-blue-50 dark:bg-blue-950/30 px-3 py-2">
+        <div className={`flex items-center justify-between rounded-lg border bg-blue-50 px-3 py-2 ${themeClass("", "bg-blue-950/30")}`}>
           <div className="flex items-center gap-2 min-w-0">
             <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white text-xs font-medium', getAvatarColor(selectedName))}>
               {getInitials(selectedName)}
@@ -176,7 +178,7 @@ export function CustomerSearchSelect({
       )}
 
       {open && !selectedName && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border bg-white dark:bg-gray-900 shadow-lg">
+        <div className={`absolute z-50 mt-1 w-full rounded-lg border bg-white shadow-lg ${themeClass("", "bg-gray-900")}`}>
           {loading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
@@ -190,7 +192,7 @@ export function CustomerSearchSelect({
                     key={c.id}
                     type="button"
                     onClick={() => handleSelect(c)}
-                    className="flex w-full items-start gap-3 p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className={`flex w-full items-start gap-3 p-3 text-left hover:bg-gray-50 transition-colors ${themeClass("", "hover:bg-gray-800")}`}
                   >
                     <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white text-xs font-medium', getAvatarColor(c.full_name))}>
                       {getInitials(c.full_name)}

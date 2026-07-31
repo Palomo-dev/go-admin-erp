@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -40,6 +41,7 @@ import {
 } from '@/components/transporte/manifiestos';
 
 export default function ManifiestosPage() {
+  const { themeClass } = useThemeClasses();
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -251,12 +253,12 @@ export default function ManifiestosPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <div className="min-w-0">
+          <h1 className={`text-2xl font-bold text-gray-900 flex items-center gap-2 ${themeClass("", "text-white")}`}>
             <ClipboardList className="h-6 w-6 text-blue-600" />
             Manifiestos de Despacho
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
             Agrupe envíos para ruteo y entrega en bloque
           </p>
         </div>
@@ -286,7 +288,7 @@ export default function ManifiestosPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+            <div className={`p-2 rounded-lg bg-blue-100 ${themeClass("", "bg-blue-900/30")}`}>
               <BarChart3 className="h-5 w-5 text-blue-600" />
             </div>
             <div>
@@ -297,7 +299,7 @@ export default function ManifiestosPage() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+            <div className={`p-2 rounded-lg bg-gray-100 ${themeClass("", "bg-gray-800")}`}>
               <Clock className="h-5 w-5 text-gray-600" />
             </div>
             <div>
@@ -308,7 +310,7 @@ export default function ManifiestosPage() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+            <div className={`p-2 rounded-lg bg-yellow-100 ${themeClass("", "bg-yellow-900/30")}`}>
               <Truck className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
@@ -319,7 +321,7 @@ export default function ManifiestosPage() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+            <div className={`p-2 rounded-lg bg-green-100 ${themeClass("", "bg-green-900/30")}`}>
               <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
@@ -330,7 +332,7 @@ export default function ManifiestosPage() {
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+            <div className={`p-2 rounded-lg bg-purple-100 ${themeClass("", "bg-purple-900/30")}`}>
               <Package className="h-5 w-5 text-purple-600" />
             </div>
             <div>
@@ -369,17 +371,17 @@ export default function ManifiestosPage() {
 
       {/* Lista de manifiestos */}
       {isLoading ? (
-        <Card className="p-8">
+        <Card className="p-4 sm:p-8">
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando manifiestos...</span>
+            <span className={`ml-3 text-gray-600 ${themeClass("", "text-gray-400")}`}>Cargando manifiestos...</span>
           </div>
         </Card>
       ) : manifests.length === 0 ? (
         <Card className="p-8 text-center">
           <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay manifiestos</h3>
-          <p className="text-gray-600 dark:text-gray-400 mt-1 mb-4">
+          <h3 className={`text-lg font-medium text-gray-900 ${themeClass("", "text-white")}`}>No hay manifiestos</h3>
+          <p className={`text-gray-600 mt-1 mb-4 ${themeClass("", "text-gray-400")}`}>
             Cree un nuevo manifiesto para agrupar envíos
           </p>
           <Button

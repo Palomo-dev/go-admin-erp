@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ export default function BrandingPublishTab({
   onResetToTemplate,
   isPublishing 
 }: BrandingPublishTabProps) {
+  const { themeClass } = useThemeClasses();
   const t = useTranslations('branding.publish');
   const [copied, setCopied] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(settings.template_id);
@@ -75,19 +77,19 @@ export default function BrandingPublishTab({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {settings.is_published ? (
-                <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
-                  <Globe className="h-6 w-6 text-green-600 dark:text-green-400" />
+                <div className={`p-3 rounded-full bg-green-100 ${themeClass("", "bg-green-900/30")}`}>
+                  <Globe className={`h-6 w-6 text-green-600 ${themeClass("", "text-green-400")}`} />
                 </div>
               ) : (
-                <div className="p-3 rounded-full bg-gray-100 dark:bg-gray-700">
-                  <GlobeLock className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                <div className={`p-3 rounded-full bg-gray-100 ${themeClass("", "bg-gray-700")}`}>
+                  <GlobeLock className={`h-6 w-6 text-gray-500 ${themeClass("", "text-gray-400")}`} />
                 </div>
               )}
               <div>
-                <CardTitle className="dark:text-white">
+                <CardTitle className={themeClass("", "text-white")}>
                   {settings.is_published ? t('sitePublished') : t('siteUnpublished')}
                 </CardTitle>
-                <CardDescription className="dark:text-gray-400">
+                <CardDescription className={themeClass("", "text-gray-400")}>
                   {settings.is_published 
                     ? t('sitePublishedDesc')
                     : t('siteUnpublishedDesc')}
@@ -101,9 +103,9 @@ export default function BrandingPublishTab({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* URL del sitio */}
-          <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-sm font-mono dark:text-gray-300">{siteUrl}</span>
+          <div className={`flex items-center gap-2 p-3 bg-gray-50 rounded-lg ${themeClass("", "bg-gray-700/50")}`}>
+            <Globe className={`h-4 w-4 text-gray-500 ${themeClass("", "text-gray-400")}`} />
+            <span className={`flex-1 text-sm font-mono ${themeClass("", "text-gray-300")}`}>{siteUrl}</span>
             {subdomain && (
               <>
                 <Button variant="ghost" size="sm" onClick={handleCopyUrl}>
@@ -121,7 +123,7 @@ export default function BrandingPublishTab({
           </div>
 
           {settings.published_at && (
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className={`flex items-center gap-2 text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
               <Calendar className="h-4 w-4" />
               {t('publishedAt')} {new Date(settings.published_at).toLocaleDateString(undefined, {
                 year: 'numeric',
@@ -138,14 +140,14 @@ export default function BrandingPublishTab({
             {settings.is_published ? (
               <>
                 {subdomain ? (
-                  <Button variant="outline" asChild className="dark:border-gray-600">
+                  <Button variant="outline" asChild className={themeClass("", "border-gray-600")}>
                     <a href={siteUrl} target="_blank" rel="noopener noreferrer">
                       <Eye className="h-4 w-4 mr-2" />
                       {t('viewSite')}
                     </a>
                   </Button>
                 ) : (
-                  <Button variant="outline" disabled className="dark:border-gray-600">
+                  <Button variant="outline" disabled className={themeClass("", "border-gray-600")}>
                     <Eye className="h-4 w-4 mr-2" />
                     {t('viewSite')}
                   </Button>
@@ -182,10 +184,10 @@ export default function BrandingPublishTab({
       </Card>
 
       {/* Lista de verificación */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
         <CardHeader>
-          <CardTitle className="dark:text-white">{t('checklistTitle')}</CardTitle>
-          <CardDescription className="dark:text-gray-400">
+          <CardTitle className={themeClass("", "text-white")}>{t('checklistTitle')}</CardTitle>
+          <CardDescription className={themeClass("", "text-gray-400")}>
             {t('checklistDesc', { passed: passedChecks, total: checks.length })}
           </CardDescription>
         </CardHeader>
@@ -201,9 +203,9 @@ export default function BrandingPublishTab({
                 }`}
               >
                 {check.passed ? (
-                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <CheckCircle className={`h-5 w-5 text-green-600 ${themeClass("", "text-green-400")}`} />
                 ) : (
-                  <XCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+                  <XCircle className={`h-5 w-5 text-red-500 ${themeClass("", "text-red-400")}`} />
                 )}
                 <span className={check.passed ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}>
                   {check.label}
@@ -213,9 +215,9 @@ export default function BrandingPublishTab({
           </div>
 
           {!allChecksPassed && (
-            <Alert className="mt-4 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
-              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-              <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+            <Alert className={`mt-4 border-yellow-200 bg-yellow-50 ${themeClass("", "border-yellow-800 bg-yellow-900/20")}`}>
+              <AlertTriangle className={`h-4 w-4 text-yellow-600 ${themeClass("", "text-yellow-400")}`} />
+              <AlertDescription className={`text-yellow-700 ${themeClass("", "text-yellow-400")}`}>
                 {t('checklistWarning')}
               </AlertDescription>
             </Alert>
@@ -224,13 +226,13 @@ export default function BrandingPublishTab({
       </Card>
 
       {/* Restablecer a plantilla */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 dark:text-white">
+          <CardTitle className={`flex items-center gap-2 ${themeClass("", "text-white")}`}>
             <RotateCcw className="h-5 w-5" />
             {t('resetTitle')}
           </CardTitle>
-          <CardDescription className="dark:text-gray-400">
+          <CardDescription className={themeClass("", "text-gray-400")}>
             {t('resetDesc')}
           </CardDescription>
         </CardHeader>
@@ -246,15 +248,15 @@ export default function BrandingPublishTab({
                     : 'border-gray-200 dark:border-gray-700'
                 }`}
               >
-                <h4 className="font-medium text-sm dark:text-white">{template.name}</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{template.description}</p>
+                <h4 className={`font-medium text-sm ${themeClass("", "text-white")}`}>{template.name}</h4>
+                <p className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{template.description}</p>
               </div>
             ))}
           </div>
 
-          <Alert className="mb-4 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20">
-            <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-            <AlertDescription className="text-orange-700 dark:text-orange-400">
+          <Alert className={`mb-4 border-orange-200 bg-orange-50 ${themeClass("", "border-orange-800 bg-orange-900/20")}`}>
+            <AlertTriangle className={`h-4 w-4 text-orange-600 ${themeClass("", "text-orange-400")}`} />
+            <AlertDescription className={`text-orange-700 ${themeClass("", "text-orange-400")}`}>
               {t('resetWarning')}
             </AlertDescription>
           </Alert>
@@ -263,7 +265,7 @@ export default function BrandingPublishTab({
             variant="outline" 
             onClick={handleReset}
             disabled={isResetting}
-            className="dark:border-gray-600"
+            className={themeClass("", "border-gray-600")}
           >
             {isResetting ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -276,29 +278,29 @@ export default function BrandingPublishTab({
       </Card>
 
       {/* Información */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className={themeClass("", "bg-gray-800 border-gray-700")}>
         <CardHeader>
-          <CardTitle className="dark:text-white">{t('infoTitle')}</CardTitle>
+          <CardTitle className={themeClass("", "text-white")}>{t('infoTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{organizationName}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t('organization')}</p>
+            <div className={`p-4 bg-gray-50 rounded-lg ${themeClass("", "bg-gray-700/50")}`}>
+              <p className={`text-2xl font-bold text-blue-600 ${themeClass("", "text-blue-400")}`}>{organizationName}</p>
+              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('organization')}</p>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 capitalize">{settings.template_id}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t('template')}</p>
+            <div className={`p-4 bg-gray-50 rounded-lg ${themeClass("", "bg-gray-700/50")}`}>
+              <p className={`text-2xl font-bold text-blue-600 capitalize ${themeClass("", "text-blue-400")}`}>{settings.template_id}</p>
+              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('template')}</p>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 capitalize">{settings.theme_mode}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t('mode')}</p>
+            <div className={`p-4 bg-gray-50 rounded-lg ${themeClass("", "bg-gray-700/50")}`}>
+              <p className={`text-2xl font-bold text-blue-600 capitalize ${themeClass("", "text-blue-400")}`}>{settings.theme_mode}</p>
+              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('mode')}</p>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className={`p-4 bg-gray-50 rounded-lg ${themeClass("", "bg-gray-700/50")}`}>
+              <p className={`text-2xl font-bold text-blue-600 ${themeClass("", "text-blue-400")}`}>
                 {new Date(settings.updated_at).toLocaleDateString()}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t('lastUpdate')}</p>
+              <p className={`text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('lastUpdate')}</p>
             </div>
           </div>
         </CardContent>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function TransportadorasPage() {
+  const { themeClass } = useThemeClasses();
   const { toast } = useToast();
   const { organization } = useOrganization();
   
@@ -263,7 +265,7 @@ export default function TransportadorasPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
       <CarriersHeader
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}

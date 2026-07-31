@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Search, Filter, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ export function DomainFilters({
   totalDomains,
   filteredCount,
 }: DomainFiltersProps) {
+  const { themeClass } = useThemeClasses();
   const t = useTranslations('org.domains.filters');
   const hasFilters = searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || activeFilter !== 'all';
 
@@ -59,7 +61,7 @@ export function DomainFilters({
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
+            className={`pl-10 ${themeClass("", "bg-gray-800 border-gray-700 text-white placeholder-gray-400")}`}
           />
         </div>
 
@@ -67,38 +69,38 @@ export function DomainFilters({
         <div className="flex flex-wrap gap-2">
           {/* Estado */}
           <Select value={statusFilter} onValueChange={(v) => onStatusChange(v as DomainStatus | 'all')}>
-            <SelectTrigger className="w-[140px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+            <SelectTrigger className={`w-[140px] ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
-            <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('allStatuses')}</SelectItem>
-              <SelectItem value="verified" className="dark:text-white dark:focus:bg-gray-700">{t('verified')}</SelectItem>
-              <SelectItem value="pending" className="dark:text-white dark:focus:bg-gray-700">{t('pending')}</SelectItem>
-              <SelectItem value="failed" className="dark:text-white dark:focus:bg-gray-700">{t('failed')}</SelectItem>
+            <SelectContent className={themeClass("", "bg-gray-800 border-gray-700")}>
+              <SelectItem value="all" className={themeClass("", "text-white focus:bg-gray-700")}>{t('allStatuses')}</SelectItem>
+              <SelectItem value="verified" className={themeClass("", "text-white focus:bg-gray-700")}>{t('verified')}</SelectItem>
+              <SelectItem value="pending" className={themeClass("", "text-white focus:bg-gray-700")}>{t('pending')}</SelectItem>
+              <SelectItem value="failed" className={themeClass("", "text-white focus:bg-gray-700")}>{t('failed')}</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Tipo */}
           <Select value={typeFilter} onValueChange={(v) => onTypeChange(v as DomainType | 'all')}>
-            <SelectTrigger className="w-[160px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+            <SelectTrigger className={`w-[160px] ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
-            <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('allTypes')}</SelectItem>
-              <SelectItem value="subdomain" className="dark:text-white dark:focus:bg-gray-700">{t('subdomain')}</SelectItem>
-              <SelectItem value="custom_domain" className="dark:text-white dark:focus:bg-gray-700">{t('custom')}</SelectItem>
+            <SelectContent className={themeClass("", "bg-gray-800 border-gray-700")}>
+              <SelectItem value="all" className={themeClass("", "text-white focus:bg-gray-700")}>{t('allTypes')}</SelectItem>
+              <SelectItem value="subdomain" className={themeClass("", "text-white focus:bg-gray-700")}>{t('subdomain')}</SelectItem>
+              <SelectItem value="custom_domain" className={themeClass("", "text-white focus:bg-gray-700")}>{t('custom')}</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Activo/Inactivo */}
           <Select value={activeFilter} onValueChange={(v) => onActiveChange(v as 'all' | 'active' | 'inactive')}>
-            <SelectTrigger className="w-[130px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+            <SelectTrigger className={`w-[130px] ${themeClass("", "bg-gray-800 border-gray-700 text-white")}`}>
               <SelectValue placeholder="Actividad" />
             </SelectTrigger>
-            <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-              <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('all')}</SelectItem>
-              <SelectItem value="active" className="dark:text-white dark:focus:bg-gray-700">{t('active')}</SelectItem>
-              <SelectItem value="inactive" className="dark:text-white dark:focus:bg-gray-700">{t('inactive')}</SelectItem>
+            <SelectContent className={themeClass("", "bg-gray-800 border-gray-700")}>
+              <SelectItem value="all" className={themeClass("", "text-white focus:bg-gray-700")}>{t('all')}</SelectItem>
+              <SelectItem value="active" className={themeClass("", "text-white focus:bg-gray-700")}>{t('active')}</SelectItem>
+              <SelectItem value="inactive" className={themeClass("", "text-white focus:bg-gray-700")}>{t('inactive')}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -108,7 +110,7 @@ export function DomainFilters({
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className={`text-gray-500 hover:text-gray-700 ${themeClass("", "text-gray-400 hover:text-gray-200")}`}
             >
               <X className="h-4 w-4 mr-1" />
               {t('clearFilters')}
@@ -118,14 +120,14 @@ export function DomainFilters({
       </div>
 
       {/* Contador */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+      <div className={`flex items-center gap-2 text-sm text-gray-500 ${themeClass("", "text-gray-400")}`}>
         <Filter className="h-4 w-4" />
         <span>
-          {t('showing')} <strong className="text-gray-900 dark:text-white">{filteredCount}</strong> {t('of')}{' '}
-          <strong className="text-gray-900 dark:text-white">{totalDomains}</strong> {totalDomains !== 1 ? t('domainPlural') : t('domain')}
+          {t('showing')} <strong className={`text-gray-900 ${themeClass("", "text-white")}`}>{filteredCount}</strong> {t('of')}{' '}
+          <strong className={`text-gray-900 ${themeClass("", "text-white")}`}>{totalDomains}</strong> {totalDomains !== 1 ? t('domainPlural') : t('domain')}
         </span>
         {hasFilters && (
-          <Badge variant="secondary" className="ml-2 dark:bg-gray-700 dark:text-gray-300">
+          <Badge variant="secondary" className={`ml-2 ${themeClass("", "bg-gray-700 text-gray-300")}`}>
             {t('activeFilters')}
           </Badge>
         )}

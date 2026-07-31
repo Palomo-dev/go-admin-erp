@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState } from 'react';
 import {
   Dialog,
@@ -57,6 +58,7 @@ export function SimulatorDialog({
   carriers,
   onSimulate,
 }: SimulatorDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [params, setParams] = useState<SimulateShippingParams>({
     weight_kg: 1,
     length_cm: undefined,
@@ -309,7 +311,7 @@ export function SimulatorDialog({
                       </div>
                     </div>
 
-                    <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1 border-t dark:border-gray-700 pt-2 mt-2">
+                    <div className={`text-xs text-gray-600 space-y-1 border-t pt-2 mt-2 ${themeClass("", "text-gray-400 border-gray-700")}`}>
                       <div className="flex justify-between">
                         <span>Base:</span>
                         <span>{formatCurrency(result.base_cost, result.rate.currency)}</span>

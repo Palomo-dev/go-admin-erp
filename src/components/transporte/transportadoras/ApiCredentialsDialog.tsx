@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -41,6 +42,7 @@ export function ApiCredentialsDialog({
   onSave,
   isSaving,
 }: ApiCredentialsDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [credentials, setCredentials] = useState<ApiCredentials>({
     api_key: '',
     api_secret: '',
@@ -95,9 +97,9 @@ export function ApiCredentialsDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-start gap-2">
+          <div className={`p-3 bg-yellow-50 rounded-lg flex items-start gap-2 ${themeClass("", "bg-yellow-900/20")}`}>
             <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+            <p className={`text-sm text-yellow-700 ${themeClass("", "text-yellow-300")}`}>
               Las credenciales sensibles se almacenan de forma segura. Solo ingresa nuevos valores si deseas actualizarlas.
             </p>
           </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ const STATUS_REASONS: Record<string, string> = {
 };
 
 export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsPanelProps) {
+  const { themeClass } = useThemeClasses();
   if (isLoading) {
     return (
       <Card className="p-4">
@@ -45,7 +47,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <h3 className={`font-semibold text-gray-900 flex items-center gap-2 ${themeClass("", "text-white")}`}>
           <AlertTriangle className="h-4 w-4 text-orange-500" />
           Diagnóstico: Items Detenidos ({items.length})
         </h3>
@@ -57,7 +59,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
       {items.length === 0 ? (
         <div className="text-center py-6">
           <Clock className="h-10 w-10 mx-auto text-green-500 mb-2" />
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
             No hay viajes ni envíos detenidos
           </p>
           <p className="text-sm text-gray-500">Todo está en movimiento</p>
@@ -67,7 +69,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
           {items.map((item) => (
             <div
               key={`${item.type}-${item.id}`}
-              className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+              className={`p-3 border rounded-lg hover:bg-gray-50 ${themeClass("", "hover:bg-gray-800")}`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
@@ -103,7 +105,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
                   </Badge>
                 </div>
 
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
                   <strong>Razón probable:</strong> {STATUS_REASONS[item.status] || 'Estado no activo'}
                 </p>
 

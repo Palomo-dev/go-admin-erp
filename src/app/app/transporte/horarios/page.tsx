@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -41,6 +42,7 @@ interface Driver {
 }
 
 export default function HorariosPage() {
+  const { themeClass } = useThemeClasses();
   const searchParams = useSearchParams();
   const routeParam = searchParams.get('route');
   const { toast } = useToast();
@@ -198,7 +200,7 @@ export default function HorariosPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${themeClass("", "bg-gray-900")}`}>
       <SchedulesHeader
         onRefresh={loadData}
         onNewSchedule={handleNewSchedule}

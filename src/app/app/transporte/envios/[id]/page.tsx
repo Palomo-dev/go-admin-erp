@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -55,6 +56,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 export default function ShipmentDetailPage() {
+  const { themeClass } = useThemeClasses();
   const params = useParams();
   const router = useRouter();
   const shipmentId = params.id as string;
@@ -370,7 +372,7 @@ export default function ShipmentDetailPage() {
     return (
       <div className="p-6 flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando envío...</span>
+        <span className={`ml-3 text-gray-600 ${themeClass("", "text-gray-400")}`}>Cargando envío...</span>
       </div>
     );
   }
@@ -379,7 +381,7 @@ export default function ShipmentDetailPage() {
     return (
       <div className="p-6 text-center">
         <Package className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Envío no encontrado</h2>
+        <h2 className={`text-xl font-semibold text-gray-900 ${themeClass("", "text-white")}`}>Envío no encontrado</h2>
       </div>
     );
   }
@@ -404,11 +406,11 @@ export default function ShipmentDetailPage() {
           </Button>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className={`text-2xl font-bold text-gray-900 ${themeClass("", "text-white")}`}>
                 {shipment.tracking_number}
               </h1>
               {shipment.shipment_number && (
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+                <span className={`text-sm font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded ${themeClass("", "text-gray-400 bg-gray-800")}`}>
                   {shipment.shipment_number}
                 </span>
               )}
@@ -421,7 +423,7 @@ export default function ShipmentDetailPage() {
                 {paymentStatus.label}
               </Badge>
             </div>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className={`text-gray-600 ${themeClass("", "text-gray-400")}`}>
               Creado el {format(new Date(shipment.created_at), "d 'de' MMMM yyyy, HH:mm", { locale: es })}
             </p>
           </div>
@@ -514,13 +516,13 @@ export default function ShipmentDetailPage() {
           {/* Remitente y Destinatario */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="p-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <h3 className={`font-semibold text-gray-900 mb-3 flex items-center gap-2 ${themeClass("", "text-white")}`}>
                 <User className="h-4 w-4" />
                 Remitente
               </h3>
               <div className="flex items-start gap-3">
                 {orgInfo?.logo_url ? (
-                  <img src={orgInfo.logo_url} alt={orgInfo.name} className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0" />
+                  <img src={orgInfo.logo_url} alt={orgInfo.name} className={`w-12 h-12 rounded-full object-cover border border-gray-200 shrink-0 ${themeClass("", "border-gray-700")}`} />
                 ) : (
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-sm shrink-0" style={{ backgroundColor: getAvatarColor(orgInfo?.name || shipment.sender_name || '') }}>
                     {getInitials(orgInfo?.name || shipment.sender_name || '')}
@@ -529,19 +531,19 @@ export default function ShipmentDetailPage() {
                 <div className="min-w-0 flex-1 space-y-1.5 text-sm">
                   <p className="font-medium truncate">{orgInfo?.name || shipment.sender_name}</p>
                   {orgInfo?.phone && (
-                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <p className={`flex items-center gap-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>
                       <Phone className="h-4 w-4 shrink-0" />
                       {orgInfo.phone}
                     </p>
                   )}
                   {orgInfo?.email && (
-                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <p className={`flex items-center gap-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                       <span className="truncate">{orgInfo.email}</span>
                     </p>
                   )}
                   {shipment.origin_stop && (
-                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <p className={`flex items-center gap-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>
                       <MapPin className="h-4 w-4 shrink-0" />
                       {shipment.origin_stop.name} - {shipment.origin_stop.city}
                     </p>
@@ -551,7 +553,7 @@ export default function ShipmentDetailPage() {
             </Card>
 
             <Card className="p-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <h3 className={`font-semibold text-gray-900 mb-3 flex items-center gap-2 ${themeClass("", "text-white")}`}>
                 <User className="h-4 w-4" />
                 Destinatario
               </h3>
@@ -562,19 +564,19 @@ export default function ShipmentDetailPage() {
                 <div className="min-w-0 flex-1 space-y-1.5 text-sm">
                   <p className="font-medium truncate">{shipment.receiver_name}</p>
                   {shipment.receiver_phone && (
-                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <p className={`flex items-center gap-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>
                       <Phone className="h-4 w-4 shrink-0" />
                       {shipment.receiver_phone}
                     </p>
                   )}
                   {shipment.customer?.email && (
-                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <p className={`flex items-center gap-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                       <span className="truncate">{shipment.customer.email}</span>
                     </p>
                   )}
                   {shipment.destination_stop && (
-                    <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <p className={`flex items-center gap-2 text-gray-600 ${themeClass("", "text-gray-400")}`}>
                       <MapPin className="h-4 w-4 shrink-0" />
                       {shipment.destination_stop.name} - {shipment.destination_stop.city}
                     </p>
@@ -587,7 +589,7 @@ export default function ShipmentDetailPage() {
           {/* Información de Entrega */}
           {(shipment.delivery_address || shipment.delivery_city || shipment.delivery_contact_name || shipment.delivery_instructions) && (
             <Card className="p-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <h3 className={`font-semibold text-gray-900 mb-3 flex items-center gap-2 ${themeClass("", "text-white")}`}>
                 <MapPin className="h-4 w-4" />
                 Información de Entrega
               </h3>
@@ -622,7 +624,7 @@ export default function ShipmentDetailPage() {
                   </div>
                 )}
                 {shipment.delivery_instructions && (
-                  <div className="md:col-span-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
+                  <div className={`md:col-span-2 bg-blue-50 rounded-lg p-3 text-sm text-blue-700 ${themeClass("", "bg-blue-900/20 text-blue-300")}`}>
                     <p className="font-medium text-xs mb-1">Instrucciones:</p>
                     <p>{shipment.delivery_instructions}</p>
                   </div>
@@ -636,7 +638,7 @@ export default function ShipmentDetailPage() {
                         {driverInfo.avatar_url ? (
                           <img src={driverInfo.avatar_url} alt={driverInfo.name} className="w-6 h-6 rounded-full object-cover" />
                         ) : null}
-                        <p className="font-medium text-blue-600 dark:text-blue-400">{driverInfo.name}</p>
+                        <p className={`font-medium text-blue-600 ${themeClass("", "text-blue-400")}`}>{driverInfo.name}</p>
                       </div>
                       {driverInfo.phone && (
                         <p className="text-gray-500 text-xs flex items-center gap-1 mt-0.5">
@@ -659,7 +661,7 @@ export default function ShipmentDetailPage() {
 
           {/* Detalles del Paquete */}
           <Card className="p-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h3 className={`font-semibold text-gray-900 mb-4 flex items-center gap-2 ${themeClass("", "text-white")}`}>
               <Package className="h-4 w-4" />
               Detalles del Paquete
             </h3>
@@ -769,7 +771,7 @@ export default function ShipmentDetailPage() {
         {/* Panel Lateral */}
         <div className="space-y-4">
           <Card className="p-4">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <h3 className={`font-semibold text-gray-900 mb-4 flex items-center gap-2 ${themeClass("", "text-white")}`}>
               <DollarSign className="h-4 w-4" />
               Costos
             </h3>
@@ -799,26 +801,26 @@ export default function ShipmentDetailPage() {
 
           {shipment.notes && (
             <Card className="p-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Notas</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{shipment.notes}</p>
+              <h3 className={`font-semibold text-gray-900 mb-2 ${themeClass("", "text-white")}`}>Notas</h3>
+              <p className={`text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>{shipment.notes}</p>
             </Card>
           )}
 
           {shipment.status === 'delivered' && pod && (
-            <Card className="p-4 border-green-200 bg-green-50 dark:bg-green-900/20">
-              <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+            <Card className={`p-4 border-green-200 bg-green-50 ${themeClass("", "bg-green-900/20")}`}>
+              <div className={`flex items-center gap-2 text-green-700 ${themeClass("", "text-green-400")}`}>
                 <CheckCircle className="h-5 w-5" />
                 <span className="font-medium">Entregado exitosamente</span>
               </div>
-              <p className="text-sm text-green-600 dark:text-green-500 mt-1">
+              <p className={`text-sm text-green-600 mt-1 ${themeClass("", "text-green-500")}`}>
                 Recibió: {pod.recipient_name}
               </p>
             </Card>
           )}
 
           {shipment.status === 'returned' && (
-            <Card className="p-4 border-orange-200 bg-orange-50 dark:bg-orange-900/20">
-              <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
+            <Card className={`p-4 border-orange-200 bg-orange-50 ${themeClass("", "bg-orange-900/20")}`}>
+              <div className={`flex items-center gap-2 text-orange-700 ${themeClass("", "text-orange-400")}`}>
                 <RotateCcw className="h-5 w-5" />
                 <span className="font-medium">Envío devuelto</span>
               </div>

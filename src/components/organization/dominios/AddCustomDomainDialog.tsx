@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState } from 'react';
 import { Globe, Check, Copy, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ export function AddCustomDomainDialog({
   organizationId,
   onDomainAdded,
 }: AddCustomDomainDialogProps) {
+  const { themeClass } = useThemeClasses();
   const t = useTranslations('org.domains.addCustom');
   const [domain, setDomain] = useState('');
   const [step, setStep] = useState<'input' | 'dns'>('input');
@@ -166,17 +168,17 @@ export function AddCustomDomainDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] dark:bg-gray-800 dark:border-gray-700">
+      <DialogContent className={`sm:max-w-[600px] ${themeClass("", "bg-gray-800 border-gray-700")}`}>
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className={`p-2 rounded-lg bg-blue-100 ${themeClass("", "bg-blue-900/30")}`}>
+              <Globe className={`h-5 w-5 text-blue-600 ${themeClass("", "text-blue-400")}`} />
             </div>
             <div>
-              <DialogTitle className="dark:text-white">
+              <DialogTitle className={themeClass("", "text-white")}>
                 {step === 'input' ? t('title') : t('configureDns')}
               </DialogTitle>
-              <DialogDescription className="dark:text-gray-400">
+              <DialogDescription className={themeClass("", "text-gray-400")}>
                 {step === 'input' 
                   ? t('connectDomain') 
                   : t('configureDnsDesc')
@@ -197,7 +199,7 @@ export function AddCustomDomainDialog({
           {step === 'input' ? (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="domain" className="dark:text-gray-200">
+                <Label htmlFor="domain" className={themeClass("", "text-gray-200")}>
                   {t('domainLabel')}
                 </Label>
                 <Input
@@ -205,17 +207,17 @@ export function AddCustomDomainDialog({
                   value={domain}
                   onChange={(e) => setDomain(e.target.value.toLowerCase())}
                   placeholder={t('domainPlaceholder')}
-                  className="mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className={`mt-1 ${themeClass("", "bg-gray-700 border-gray-600 text-white")}`}
                   disabled={isSubmitting}
                 />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className={`mt-1 text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
                   {t('domainHint')}
                 </p>
               </div>
 
-              <Alert className="dark:bg-blue-900/20 dark:border-blue-800">
-                <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <AlertDescription className="text-sm dark:text-gray-300">
+              <Alert className={themeClass("", "bg-blue-900/20 border-blue-800")}>
+                <Globe className={`h-4 w-4 text-blue-600 ${themeClass("", "text-blue-400")}`} />
+                <AlertDescription className={`text-sm ${themeClass("", "text-gray-300")}`}>
                   <strong>{t('requirements')}</strong>
                   <ul className="mt-2 space-y-1 list-disc list-inside">
                     <li>{t('req1')}</li>
@@ -227,15 +229,15 @@ export function AddCustomDomainDialog({
             </div>
           ) : (
             <div className="space-y-6">
-              <Alert className="dark:bg-yellow-900/20 dark:border-yellow-800">
-                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                <AlertDescription className="text-sm dark:text-gray-300">
+              <Alert className={themeClass("", "bg-yellow-900/20 border-yellow-800")}>
+                <AlertTriangle className={`h-4 w-4 text-yellow-600 ${themeClass("", "text-yellow-400")}`} />
+                <AlertDescription className={`text-sm ${themeClass("", "text-gray-300")}`}>
                   <strong>{t('dnsImportant')}</strong> {t('dnsDelay')}
                 </AlertDescription>
               </Alert>
 
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                <h4 className={`font-medium text-gray-900 mb-3 ${themeClass("", "text-white")}`}>
                   {t('configureDnsRecords')} <strong>{domain}</strong>:
                 </h4>
                 
@@ -243,22 +245,22 @@ export function AddCustomDomainDialog({
                   {dnsRecords.map((record, idx) => (
                     <div 
                       key={idx}
-                      className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
+                      className={`bg-gray-50 rounded-lg p-4 border border-gray-200 ${themeClass("", "bg-gray-700/50 border-gray-600")}`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
+                        <span className={`font-mono text-sm font-bold text-blue-600 ${themeClass("", "text-blue-400")}`}>
                           {record.type}
                         </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>
                           {record.description}
                         </span>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-xs text-gray-500 dark:text-gray-400">{t('nameHost')}</Label>
+                          <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('nameHost')}</Label>
                           <div className="flex items-center gap-2 mt-1">
-                            <code className="flex-1 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-600 dark:text-gray-200">
+                            <code className={`flex-1 bg-white px-2 py-1 rounded text-sm border border-gray-200 ${themeClass("", "bg-gray-800 border-gray-600 text-gray-200")}`}>
                               {record.name}
                             </code>
                             <Button
@@ -277,9 +279,9 @@ export function AddCustomDomainDialog({
                         </div>
                         
                         <div>
-                          <Label className="text-xs text-gray-500 dark:text-gray-400">{t('valueTarget')}</Label>
+                          <Label className={`text-xs text-gray-500 ${themeClass("", "text-gray-400")}`}>{t('valueTarget')}</Label>
                           <div className="flex items-center gap-2 mt-1">
-                            <code className="flex-1 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-600 truncate dark:text-gray-200">
+                            <code className={`flex-1 bg-white px-2 py-1 rounded text-sm border border-gray-200 truncate ${themeClass("", "bg-gray-800 border-gray-600 text-gray-200")}`}>
                               {record.value}
                             </code>
                             <Button
@@ -302,17 +304,17 @@ export function AddCustomDomainDialog({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className={`flex items-center gap-2 text-sm text-gray-600 ${themeClass("", "text-gray-400")}`}>
                 <ExternalLink className="h-4 w-4" />
                 <span>
                   {t('needHelp')} 
-                  <a href="https://support.google.com/domains/answer/9211383" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline ml-1">
+                  <a href="https://support.google.com/domains/answer/9211383" target="_blank" rel="noopener noreferrer" className={`text-blue-600 hover:underline ml-1 ${themeClass("", "text-blue-400")}`}>
                     Google Domains
                   </a>,{' '}
-                  <a href="https://www.godaddy.com/help/add-a-cname-record-19236" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  <a href="https://www.godaddy.com/help/add-a-cname-record-19236" target="_blank" rel="noopener noreferrer" className={`text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}>
                     GoDaddy
                   </a>,{' '}
-                  <a href="https://www.namecheap.com/support/knowledgebase/article.aspx/319/2237/how-can-i-set-up-a-cname-record-for-my-domain/" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  <a href="https://www.namecheap.com/support/knowledgebase/article.aspx/319/2237/how-can-i-set-up-a-cname-record-for-my-domain/" target="_blank" rel="noopener noreferrer" className={`text-blue-600 hover:underline ${themeClass("", "text-blue-400")}`}>
                     Namecheap
                   </a>
                 </span>
@@ -327,7 +329,7 @@ export function AddCustomDomainDialog({
               <Button
                 variant="outline"
                 onClick={handleClose}
-                className="dark:border-gray-600 dark:text-gray-300"
+                className={themeClass("", "border-gray-600 text-gray-300")}
               >
                 {t('cancel')}
               </Button>
@@ -351,7 +353,7 @@ export function AddCustomDomainDialog({
               <Button
                 variant="outline"
                 onClick={() => setStep('input')}
-                className="dark:border-gray-600 dark:text-gray-300"
+                className={themeClass("", "border-gray-600 text-gray-300")}
               >
                 {t('back')}
               </Button>

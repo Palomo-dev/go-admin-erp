@@ -1,5 +1,6 @@
 'use client';
 
+import { useThemeClasses } from '@/lib/theme';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ interface DeliveryPhotoDialogProps {
 }
 
 export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecipientName }: DeliveryPhotoDialogProps) {
+  const { themeClass } = useThemeClasses();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [notes, setNotes] = useState('');
@@ -258,7 +260,7 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecip
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-colors"
+                    className={`w-full h-40 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors ${themeClass("", "border-gray-600 text-gray-400")}`}
                   >
                     <ImageIcon className="h-8 w-8" />
                     <span className="text-sm font-medium">Seleccionar imagen</span>
@@ -270,7 +272,7 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecip
                 {captureMode === 'camera' && (
                   <div className="space-y-2">
                     {cameraError ? (
-                      <div className="w-full h-40 border-2 border-red-300 dark:border-red-800 rounded-lg flex flex-col items-center justify-center gap-2 text-red-500 p-4 text-center">
+                      <div className={`w-full h-40 border-2 border-red-300 rounded-lg flex flex-col items-center justify-center gap-2 text-red-500 p-4 text-center ${themeClass("", "border-red-800")}`}>
                         <Camera className="h-8 w-8" />
                         <span className="text-sm font-medium">Error: {cameraError}</span>
                         <Button size="sm" variant="outline" onClick={startCamera} className="mt-1">

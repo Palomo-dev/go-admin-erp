@@ -57,7 +57,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
 
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4">
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
         <Button
           variant="ghost"
           size="sm"
@@ -67,7 +67,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           Volver
         </Button>
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               {trip.trip_code}
             </h1>
@@ -76,14 +76,14 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
               {status.label}
             </Badge>
           </div>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-gray-600 dark:text-gray-400 break-words">
             {trip.transport_routes?.name} •{' '}
             {format(new Date(trip.trip_date), "EEEE d 'de' MMMM yyyy", { locale: es })}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {trip.status === 'scheduled' && (
           <Button
             variant="outline"

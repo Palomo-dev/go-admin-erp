@@ -105,7 +105,7 @@ export default function ManageOrganizationsTab() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-2">
         <h2 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('title')}</h2>
         <button
           onClick={() => setShowCreateForm(true)}

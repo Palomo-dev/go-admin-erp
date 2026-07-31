@@ -19,7 +19,7 @@ export function TicketsHeader({ onNew, onRefresh, onExport, isLoading }: Tickets
           Gestión de venta y reserva de boletos de pasajeros
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {onExport && (
           <Button variant="outline" size="sm" onClick={onExport}>
             <Download className="h-4 w-4 mr-2" />

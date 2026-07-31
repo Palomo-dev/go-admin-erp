@@ -299,9 +299,9 @@ export default function OrganizationList({ showActions = false, onDelete, filter
     ].filter(Boolean).length;
     
     return (
-      <div className="mb-6 bg-white border rounded-lg shadow-sm overflow-hidden dark:bg-gray-800">
+      <div className="mb-6 bg-white border rounded-lg shadow-sm overflow-hidden dark:bg-gray-800 dark:border-gray-700">
         {/* Encabezado de filtros */}
-        <div className="bg-gradient-to-r from-blue-50 to-white p-4 border-b flex justify-between items-center">
+        <div className="bg-gradient-to-r from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-800 p-4 border-b dark:border-gray-700 flex justify-between items-center">
           <div className="flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2 dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />

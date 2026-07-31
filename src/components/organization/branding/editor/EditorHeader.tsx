@@ -57,9 +57,9 @@ export default function EditorHeader({
   ];
 
   return (
-    <div className="h-14 bg-blue-600 text-white flex items-center justify-between px-4 border-b border-blue-700 shrink-0 dark:border-blue-200">
+    <div className="min-h-14 h-auto bg-blue-600 text-white flex flex-wrap items-center justify-between px-4 border-b border-blue-700 shrink-0 dark:border-blue-200">
       {/* Left: Back + Page name */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/app/organizacion/branding"
           className="p-1.5 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
@@ -70,7 +70,7 @@ export default function EditorHeader({
         <div className="flex items-center gap-2">
           <span className="text-sm text-blue-200 dark:text-blue-700">{t('editing')}</span>
           <Select value={currentPageId} onValueChange={onPageChange}>
-            <SelectTrigger className="h-8 w-[180px] bg-white/10 border-white/20 text-white text-sm dark:bg-gray-800/10 dark:border-gray-700/20">
+            <SelectTrigger className="h-8 w-full sm:w-[180px] bg-white/10 border-white/20 text-white text-sm dark:bg-gray-800/10 dark:border-gray-700/20">
               <SelectValue placeholder={t('selectPage')} />
             </SelectTrigger>
             <SelectContent>
@@ -107,7 +107,7 @@ export default function EditorHeader({
       </div>
 
       {/* Right: Preview + Save */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {previewUrl && (
           <a
             href={previewUrl}

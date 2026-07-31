@@ -95,7 +95,7 @@ export function ManifestHeader({
         {/* Título y acciones */}
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {manifest.manifest_number}
               </h1>
@@ -133,7 +133,7 @@ export function ManifestHeader({
           </div>
 
           {/* Acciones */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {canStart && (
               <Button onClick={onStartRoute} disabled={isLoading} className="bg-green-600 hover:bg-green-700">
                 {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}

@@ -63,7 +63,7 @@ export function AddressesHeader({
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -86,14 +86,14 @@ export function AddressesHeader({
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por dirección, ciudad..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
+            className="pl-10 placeholder:text-xs sm:placeholder:text-sm"
           />
         </div>
         

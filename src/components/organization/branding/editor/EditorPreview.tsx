@@ -44,7 +44,7 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-200 dark:bg-gray-800 overflow-hidden">
+    <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-gray-200 dark:bg-gray-800 overflow-hidden">
       {/* URL Bar */}
       <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700">
         <div className="flex gap-1.5">

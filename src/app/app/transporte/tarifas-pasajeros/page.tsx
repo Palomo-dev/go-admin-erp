@@ -402,7 +402,7 @@ export default function TarifasPasajerosPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setShowImportDialog(true)}>
             <Upload className="h-4 w-4 mr-2" />
             Importar
@@ -464,7 +464,7 @@ export default function TarifasPasajerosPage() {
 
       {/* Filtros */}
       <Card className="p-4">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
@@ -540,7 +540,7 @@ export default function TarifasPasajerosPage() {
               ? 'No se encontraron tarifas con los filtros aplicados'
               : 'Comienza creando una nueva tarifa'}
           </p>
-          <Button onClick={handleNewFare} className="mt-4">
+          <Button onClick={handleNewFare} className="mt-4 w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Tarifa
           </Button>

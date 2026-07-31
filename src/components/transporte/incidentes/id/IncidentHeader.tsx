@@ -119,7 +119,7 @@ export function IncidentHeader({
   return (
     <div className="space-y-3 sm:space-y-4">
       {/* Navegación */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           variant="ghost"
           size="sm"
@@ -130,7 +130,7 @@ export function IncidentHeader({
           Volver a Incidentes
         </Button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={onEdit} className="gap-2">
             <Edit className="h-4 w-4" />
             Editar

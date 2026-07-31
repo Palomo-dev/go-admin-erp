@@ -77,19 +77,19 @@ export function ShipmentsFilters({
 }: ShipmentsFiltersProps) {
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por tracking, remitente, destinatario..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
+            className="pl-10 placeholder:text-xs sm:placeholder:text-sm"
           />
         </div>
 
         <Select value={statusFilter} onValueChange={onStatusChange}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -102,7 +102,7 @@ export function ShipmentsFilters({
         </Select>
 
         <Select value={paymentFilter} onValueChange={onPaymentChange}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Pago" />
           </SelectTrigger>
           <SelectContent>
@@ -115,7 +115,7 @@ export function ShipmentsFilters({
         </Select>
 
         <Select value={tripFilter} onValueChange={onTripChange}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Viaje" />
           </SelectTrigger>
           <SelectContent>
@@ -130,7 +130,7 @@ export function ShipmentsFilters({
 
         {onDriverChange && (
           <Select value={driverFilter || 'all'} onValueChange={onDriverChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Conductor" />
             </SelectTrigger>
             <SelectContent>
@@ -165,7 +165,7 @@ export function ShipmentsFilters({
                 type="date"
                 value={dateFrom || ''}
                 onChange={(e) => onDateFromChange(e.target.value)}
-                className="w-[160px]"
+                className="w-full sm:w-[160px]"
               />
             </div>
           )}
@@ -179,7 +179,7 @@ export function ShipmentsFilters({
                 type="date"
                 value={dateTo || ''}
                 onChange={(e) => onDateToChange(e.target.value)}
-                className="w-[160px]"
+                className="w-full sm:w-[160px]"
               />
             </div>
           )}

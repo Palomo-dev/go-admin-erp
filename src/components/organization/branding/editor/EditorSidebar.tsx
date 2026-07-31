@@ -148,7 +148,7 @@ export default function EditorSidebar({
   };
 
   return (
-    <div className="w-[320px] min-w-[320px] bg-white dark:bg-gray-900 text-gray-800 dark:text-white flex flex-col h-full border-r border-gray-200 dark:border-gray-700">
+    <div className="flex-1 md:flex-none md:w-[320px] md:min-w-[320px] bg-white dark:bg-gray-900 text-gray-800 dark:text-white flex flex-col h-full min-h-0 overflow-hidden border-r border-gray-200 dark:border-gray-700">
       {/* Sidebar Header */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700/50">
         <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">

@@ -20,7 +20,7 @@ export function ShipmentsHeader({ onNew, onRefresh, onExport, onImport, isLoadin
           Gestión de paquetes, encomiendas y mensajería
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {onImport && (
           <Button variant="outline" size="sm" onClick={onImport}>
             <Upload className="h-4 w-4 mr-2" />

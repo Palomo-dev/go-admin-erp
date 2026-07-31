@@ -457,7 +457,7 @@ export default function IncidentesPage() {
 
       {/* Filtros */}
       <Card className="p-4">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
@@ -534,7 +534,7 @@ export default function IncidentesPage() {
               ? 'No se encontraron incidentes con los filtros aplicados'
               : 'Comienza registrando un nuevo incidente'}
           </p>
-          <Button onClick={handleNewIncident} className="mt-4">
+          <Button onClick={handleNewIncident} className="mt-4 w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Incidente
           </Button>

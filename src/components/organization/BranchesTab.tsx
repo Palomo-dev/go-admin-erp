@@ -274,7 +274,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">{t('title')}</h2>
           <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{branches.length} {branches.length === 1 ? t('branchSingular') : t('branchPlural')} {t('registered')}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Selector de vista */}
           <div className="flex items-center bg-gray-100 rounded-lg p-1 dark:bg-gray-800">
             <button
@@ -329,7 +329,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
           )}
 
           <button
-            className="btn btn-primary flex items-center gap-2 px-5 py-2 text-base font-semibold rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors dark:focus:ring-blue-500"
+            className="flex items-center gap-2 px-5 py-2 text-base font-semibold rounded-lg shadow bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors dark:focus:ring-blue-500"
             onClick={handleCreate}
             aria-label={t('newBranchAria')}
           >

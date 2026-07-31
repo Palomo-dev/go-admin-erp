@@ -96,22 +96,22 @@ export function TripsFilters({
 }: TripsFiltersProps) {
   return (
     <div className="space-y-3 sm:space-y-4">
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
         {/* Búsqueda */}
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por código, ruta..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
+            className="pl-10 placeholder:text-xs sm:placeholder:text-sm"
           />
         </div>
 
         {/* Fecha */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="min-w-[180px] justify-start">
+            <Button variant="outline" className="w-full sm:w-[180px] justify-start">
               <CalendarIcon className="h-4 w-4 mr-2" />
               {dateFilter ? format(dateFilter, 'dd/MM/yyyy', { locale: es }) : 'Seleccionar fecha'}
             </Button>
@@ -128,7 +128,7 @@ export function TripsFilters({
 
         {/* Estado */}
         <Select value={statusFilter} onValueChange={onStatusChange}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
@@ -142,7 +142,7 @@ export function TripsFilters({
 
         {/* Ruta */}
         <Select value={routeFilter} onValueChange={onRouteChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Ruta" />
           </SelectTrigger>
           <SelectContent>
@@ -156,10 +156,10 @@ export function TripsFilters({
         </Select>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
         {/* Vehículo */}
         <Select value={vehicleFilter} onValueChange={onVehicleChange}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Vehículo" />
           </SelectTrigger>
           <SelectContent>
@@ -174,7 +174,7 @@ export function TripsFilters({
 
         {/* Conductor */}
         <Select value={driverFilter} onValueChange={onDriverChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Conductor" />
           </SelectTrigger>
           <SelectContent>
@@ -190,7 +190,7 @@ export function TripsFilters({
         {/* Sucursal */}
         {branches.length > 0 && (
           <Select value={branchFilter} onValueChange={onBranchChange}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Sucursal" />
             </SelectTrigger>
             <SelectContent>

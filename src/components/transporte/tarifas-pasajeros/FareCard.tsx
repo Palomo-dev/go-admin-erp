@@ -91,7 +91,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+            <h3 className="font-semibold text-gray-900 dark:text-white min-w-0 break-words">
               {fare.fare_name}
             </h3>
             <Badge className={typeConfig.color}>

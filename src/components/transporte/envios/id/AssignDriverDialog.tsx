@@ -176,7 +176,7 @@ export function AssignDriverDialog({
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white min-w-0 break-words">
                         {driver.name}
                         {isCurrent && (
                           <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">(actual)</span>

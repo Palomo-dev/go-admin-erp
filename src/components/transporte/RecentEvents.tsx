@@ -103,7 +103,7 @@ export function RecentEvents({ events, isLoading }: RecentEventsProps) {
                       </span>
                     </div>
                     {event.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 min-w-0 break-words">
                         {event.description}
                       </p>
                     )}

@@ -107,7 +107,7 @@ export function FailureDialog({
               <span className="font-medium">{shipment.shipment_number}</span>
             </div>
             {shipment.delivery_address && (
-              <p className="text-sm text-gray-500 mt-1 truncate dark:text-gray-400">
+              <p className="text-sm text-gray-500 mt-1 min-w-0 break-words dark:text-gray-400">
                 {shipment.delivery_address}
               </p>
             )}

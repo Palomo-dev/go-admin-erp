@@ -197,7 +197,7 @@ export default function SucursalesPage() {
             {userBranches.map((branch) => (
               <div key={branch.branch_id} className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
                 <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 truncate">{branch.branch_name || t('branches.branchFallback', { id: branch.branch_id })}</h3>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 min-w-0 break-words">{branch.branch_name || t('branches.branchFallback', { id: branch.branch_id })}</h3>
                 </div>
               </div>
             ))}

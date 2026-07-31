@@ -163,7 +163,7 @@ export default function AddSectionDialog({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 min-w-0 break-words">
                         {def.description}
                       </p>
                     </div>

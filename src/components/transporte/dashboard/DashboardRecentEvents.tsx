@@ -118,13 +118,13 @@ export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEven
                         </span>
                       </div>
                       {event.description && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                        <p className="text-sm text-gray-700 dark:text-gray-300 min-w-0 break-words">
                           {event.description}
                         </p>
                       )}
                       <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
                         {event.location_text && (
-                          <span className="flex items-center gap-1 truncate">
+                          <span className="flex items-center gap-1 min-w-0 break-words">
                             <MapPin className="h-3 w-3 flex-shrink-0" />
                             {event.location_text}
                           </span>

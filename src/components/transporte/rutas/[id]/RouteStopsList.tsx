@@ -130,10 +130,10 @@ export function RouteStopsList({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 dark:text-white truncate">
+                  <p className="font-medium text-gray-900 dark:text-white min-w-0 break-words">
                     {stop.transport_stops?.name}
                   </p>
-                  <p className="text-sm text-gray-500 truncate dark:text-gray-400">
+                  <p className="text-sm text-gray-500 min-w-0 break-words dark:text-gray-400">
                     {stop.transport_stops?.city}
                     {stop.transport_stops?.address && ` • ${stop.transport_stops.address}`}
                   </p>

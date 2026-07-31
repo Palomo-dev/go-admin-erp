@@ -288,7 +288,7 @@ export function AddressDialog({
                         {selectedCustomer.email && (
                           <div className="flex items-center gap-1.5 text-xs dark:text-gray-300 text-gray-600">
                             <Mail className="h-3 w-3" />
-                            <span className="truncate">{selectedCustomer.email}</span>
+                            <span className="min-w-0 break-words">{selectedCustomer.email}</span>
                           </div>
                         )}
                         {selectedCustomer.phone && (
@@ -398,12 +398,12 @@ export function AddressDialog({
                                 <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
+                                <p className="font-medium text-sm dark:text-white text-gray-900 min-w-0 break-words">
                                   {customer.first_name} {customer.last_name}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {customer.email && (
-                                    <span className="text-xs dark:text-gray-400 text-gray-600 truncate max-w-[150px]">
+                                    <span className="text-xs dark:text-gray-400 text-gray-600 min-w-0 break-words max-w-[150px]">
                                       {customer.email}
                                     </span>
                                   )}
@@ -498,7 +498,7 @@ export function AddressDialog({
                     className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
                     <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0 dark:text-gray-500" />
-                    <span className="truncate">{place.description}</span>
+                    <span className="min-w-0 break-words">{place.description}</span>
                   </button>
                 ))}
               </div>

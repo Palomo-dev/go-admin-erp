@@ -466,7 +466,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <p className="text-sm font-medium text-blue-600 truncate dark:text-blue-300">{org.name}</p>
+                          <p className="text-sm font-medium text-blue-600 min-w-0 break-words dark:text-blue-300">{org.name}</p>
                           {org.is_current && (
                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">
                               {t('current')}

@@ -148,7 +148,7 @@ export function DomainCard({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate max-w-[180px] sm:max-w-none">
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white min-w-0 break-words max-w-[180px] sm:max-w-none">
                 {domain.host}
               </h3>
               {domain.is_primary && (

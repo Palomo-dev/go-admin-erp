@@ -116,7 +116,7 @@ export function IncidentCard({
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+              <h3 className="font-semibold text-gray-900 dark:text-white min-w-0 break-words">
                 {incident.title}
               </h3>
               <p className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
@@ -222,7 +222,7 @@ export function IncidentCard({
         {incident.location_description && (
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <MapPin className="h-4 w-4 text-green-500 dark:text-green-400" />
-            <span className="truncate">{incident.location_description}</span>
+            <span className="min-w-0 break-words">{incident.location_description}</span>
           </div>
         )}
 

@@ -54,7 +54,7 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
         </div>
         <div className="flex-1 flex items-center gap-2 px-3 py-1 bg-white dark:bg-gray-800 rounded-md text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
           <Globe className="h-3 w-3" />
-          <span className="truncate">{previewUrl}</span>
+          <span className="min-w-0 break-words">{previewUrl}</span>
         </div>
       </div>
 

@@ -527,7 +527,7 @@ export default function ShipmentDetailPage() {
                   </div>
                 )}
                 <div className="min-w-0 flex-1 space-y-1.5 text-sm">
-                  <p className="font-medium truncate">{orgInfo?.name || shipment.sender_name}</p>
+                  <p className="font-medium min-w-0 break-words">{orgInfo?.name || shipment.sender_name}</p>
                   {orgInfo?.phone && (
                     <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <Phone className="h-4 w-4 shrink-0" />
@@ -537,7 +537,7 @@ export default function ShipmentDetailPage() {
                   {orgInfo?.email && (
                     <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                      <span className="truncate">{orgInfo.email}</span>
+                      <span className="min-w-0 break-words">{orgInfo.email}</span>
                     </p>
                   )}
                   {shipment.origin_stop && (
@@ -560,7 +560,7 @@ export default function ShipmentDetailPage() {
                   {getInitials(shipment.receiver_name || '')}
                 </div>
                 <div className="min-w-0 flex-1 space-y-1.5 text-sm">
-                  <p className="font-medium truncate">{shipment.receiver_name}</p>
+                  <p className="font-medium min-w-0 break-words">{shipment.receiver_name}</p>
                   {shipment.receiver_phone && (
                     <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <Phone className="h-4 w-4 shrink-0" />
@@ -570,7 +570,7 @@ export default function ShipmentDetailPage() {
                   {shipment.customer?.email && (
                     <p className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                      <span className="truncate">{shipment.customer.email}</span>
+                      <span className="min-w-0 break-words">{shipment.customer.email}</span>
                     </p>
                   )}
                   {shipment.destination_stop && (

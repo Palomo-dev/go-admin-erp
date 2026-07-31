@@ -106,7 +106,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
           <div className="flex items-center gap-2 min-w-0">
             <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 dark:text-green-300" />
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-green-900 dark:text-green-300 truncate">
+              <p className="text-xs sm:text-sm font-medium text-green-900 dark:text-green-300 min-w-0 break-words">
                 {validatedCoupon.code} — {validatedCoupon.name}
               </p>
               <p className="text-[11px] sm:text-xs text-green-700 dark:text-green-400">

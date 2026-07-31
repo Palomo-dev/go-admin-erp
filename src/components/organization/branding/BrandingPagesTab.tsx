@@ -192,7 +192,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm dark:text-white truncate">
+                      <p className="font-medium text-sm dark:text-white min-w-0 break-words">
                         {page.title}
                       </p>
                       <Badge

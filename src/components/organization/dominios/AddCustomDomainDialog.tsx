@@ -279,7 +279,7 @@ export function AddCustomDomainDialog({
                         <div>
                           <Label className="text-xs text-gray-500 dark:text-gray-400">{t('valueTarget')}</Label>
                           <div className="flex items-center gap-2 mt-1">
-                            <code className="flex-1 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-600 truncate dark:text-gray-200">
+                            <code className="flex-1 bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm border border-gray-200 dark:border-gray-600 min-w-0 break-words dark:text-gray-200">
                               {record.value}
                             </code>
                             <Button

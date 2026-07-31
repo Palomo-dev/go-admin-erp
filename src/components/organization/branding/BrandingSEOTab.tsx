@@ -221,7 +221,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   </button>
                 </div>
                 <div className="flex-1 space-y-1">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{formData.favicon_url}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 min-w-0 break-words">{formData.favicon_url}</p>
                   <Button
                     variant="outline"
                     size="sm"

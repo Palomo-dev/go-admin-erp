@@ -159,7 +159,7 @@ export function AddShipmentsDialog({
                         )}
                       </div>
                       {shipment.delivery_address && (
-                        <p className="text-sm text-gray-500 truncate flex items-center gap-1 dark:text-gray-400">
+                        <p className="text-sm text-gray-500 min-w-0 break-words flex items-center gap-1 dark:text-gray-400">
                           <MapPin className="h-3 w-3" />
                           {shipment.delivery_address}
                           {shipment.delivery_city && `, ${shipment.delivery_city}`}

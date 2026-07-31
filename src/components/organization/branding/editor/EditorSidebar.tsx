@@ -313,8 +313,8 @@ function SectionListItem({
         <GripVertical className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         <IconComponent className="h-4 w-4 text-blue-600 dark:text-gray-400 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate text-gray-800 dark:text-white">{label}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{variantLabel}</p>
+          <p className="text-sm font-medium min-w-0 break-words text-gray-800 dark:text-white">{label}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 min-w-0 break-words">{variantLabel}</p>
         </div>
         {isActive ? (
           <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
@@ -826,7 +826,7 @@ function TestimonialItemsEditor({
                 onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
               >
                 <MessageSquareQuote className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
                   {t.name || tr('noName')}
                 </span>
                 <button
@@ -952,7 +952,7 @@ function FAQItemsEditor({
                 onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
               >
                 <HelpCircle className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
                   {f.question || t('noQuestion')}
                 </span>
                 <button
@@ -1070,7 +1070,7 @@ function HeroSlidesEditor({
                 onClick={() => setExpandedId(expandedId === slide.id ? null : slide.id)}
               >
                 <Image className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
                   {slide.title || `Slide ${idx + 1}`}
                 </span>
                 <button
@@ -1240,7 +1240,7 @@ function CategorySelectorEditor({
                   <span className="text-[10px]">🏷️</span>
                 </div>
               )}
-              <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate">{cat.name}</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 min-w-0 break-words">{cat.name}</span>
               <span className="text-[9px] text-gray-400 shrink-0 dark:text-gray-500">#{idx + 1}</span>
               <button
                 onClick={() => handleToggle(cat.id, false)}
@@ -1273,7 +1273,7 @@ function CategorySelectorEditor({
                     <span className="text-[9px]">🏷️</span>
                   </div>
                 )}
-                <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{cat.name}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400 min-w-0 break-words">{cat.name}</span>
               </label>
             ))}
           </div>
@@ -1388,7 +1388,7 @@ function BrandsItemsEditor({
                     <span className="text-[9px]">🏢</span>
                   </div>
                 )}
-                <span className="text-[11px] flex-1 truncate text-gray-700 dark:text-gray-300">
+                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
                   {brand.name || 'Sin nombre'}
                 </span>
                 <button

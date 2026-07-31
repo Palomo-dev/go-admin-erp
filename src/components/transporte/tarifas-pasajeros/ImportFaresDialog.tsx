@@ -181,7 +181,7 @@ export function ImportFaresDialog({
                     {previewData.map((row, idx) => (
                       <tr key={idx} className="border-b border-gray-100 dark:border-gray-800">
                         {Object.values(row).slice(0, 5).map((value, vIdx) => (
-                          <td key={vIdx} className="p-2 truncate max-w-[150px]">
+                          <td key={vIdx} className="p-2 min-w-0 break-words max-w-[150px]">
                             {value}
                           </td>
                         ))}

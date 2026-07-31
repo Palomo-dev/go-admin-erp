@@ -498,7 +498,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <div className="font-medium">{branch.city || 'N/A'}</div>
-                        <div className="text-gray-500 truncate max-w-[200px] dark:text-gray-400">{branch.address || t('noAddress')}</div>
+                        <div className="text-gray-500 min-w-0 break-words max-w-[200px] dark:text-gray-400">{branch.address || t('noAddress')}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">

@@ -359,7 +359,7 @@ export function ImportAddressesDialog({
                         </TableCell>
                         <TableCell className="font-medium">{address.customer_email}</TableCell>
                         <TableCell>{address.label}</TableCell>
-                        <TableCell className="max-w-xs truncate">{address.address_line1}</TableCell>
+                        <TableCell className="max-w-xs min-w-0 break-words">{address.address_line1}</TableCell>
                         <TableCell>{address.city}</TableCell>
                         <TableCell>
                           {address.errors.length > 0 && (

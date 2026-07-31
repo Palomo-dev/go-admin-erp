@@ -76,11 +76,11 @@ export function TripInfo({ trip }: TripInfoProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm text-gray-500 dark:text-gray-400">{card.title}</p>
-              <p className="font-semibold text-gray-900 dark:text-white truncate">
+              <p className="font-semibold text-gray-900 dark:text-white min-w-0 break-words">
                 {card.value}
               </p>
               {card.subtitle && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-gray-500 dark:text-gray-400 min-w-0 break-words">
                   {card.subtitle}
                 </p>
               )}

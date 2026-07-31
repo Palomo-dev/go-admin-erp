@@ -164,7 +164,7 @@ export function IncidentAttachments({
                   )}
 
                   {/* Info del archivo */}
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate mb-2">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white min-w-0 break-words mb-2">
                     {attachment.name}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">

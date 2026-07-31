@@ -106,7 +106,7 @@ export default function PageSEOPanel({
       {/* Mini Google Preview */}
       <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-[10px] space-y-0.5">
         <p className="text-gray-400 dark:text-gray-500 mb-1">{t('googlePreview')}</p>
-        <p className="text-blue-600 dark:text-blue-400 truncate">
+        <p className="text-blue-600 dark:text-blue-400 min-w-0 break-words">
           {metaTitle || t('pageTitle')}
         </p>
         <p className="text-gray-500 dark:text-gray-400 line-clamp-2">

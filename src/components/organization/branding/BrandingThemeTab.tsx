@@ -111,7 +111,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                     <div className="w-2 h-2 rounded-full bg-yellow-400" />
                     <div className="w-2 h-2 rounded-full bg-green-400" />
                   </div>
-                  <div className="flex-1 px-2 py-0.5 bg-white dark:bg-gray-800 rounded text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate">
+                  <div className="flex-1 px-2 py-0.5 bg-white dark:bg-gray-800 rounded text-[10px] text-gray-500 dark:text-gray-400 font-mono min-w-0 break-words">
                     {siteUrl}
                   </div>
                 </div>

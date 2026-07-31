@@ -130,7 +130,7 @@ export function GenerateTripsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Info del horario */}
           <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
             <div className="flex items-center justify-between">
@@ -143,7 +143,7 @@ export function GenerateTripsDialog({
           </div>
 
           {/* Rango de fechas */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="start_date">Fecha inicio</Label>
               <Input

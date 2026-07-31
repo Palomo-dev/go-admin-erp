@@ -93,7 +93,7 @@ export function AddShipmentsDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Búsqueda */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
@@ -126,7 +126,7 @@ export function AddShipmentsDialog({
           {/* Lista de envíos */}
           <ScrollArea className="h-[300px] border rounded-lg">
             {filteredShipments.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+              <div className="p-4 sm:p-8 text-center text-gray-500 dark:text-gray-400">
                 <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No hay envíos disponibles</p>
               </div>

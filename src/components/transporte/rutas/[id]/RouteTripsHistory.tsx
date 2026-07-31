@@ -94,7 +94,7 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
                   key={trip.id}
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4">
                     <div className="text-sm">
                       <p className="font-medium text-gray-900 dark:text-white">
                         {new Date(trip.trip_date).toLocaleDateString('es-CO', {

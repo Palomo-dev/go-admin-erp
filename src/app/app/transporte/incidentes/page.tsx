@@ -364,11 +364,11 @@ export default function IncidentesPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <AlertTriangle className="h-7 w-7 text-orange-600 dark:text-orange-300" />
             Gestión de Incidentes
           </h1>
@@ -385,14 +385,14 @@ export default function IncidentesPage() {
 
       {/* Estadísticas */}
       {!isLoading && (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 sm:gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
               </div>
             </div>
@@ -403,7 +403,7 @@ export default function IncidentesPage() {
                 <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">{stats.open}</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-300">{stats.open}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Abiertos</p>
               </div>
             </div>
@@ -414,7 +414,7 @@ export default function IncidentesPage() {
                 <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-300">{stats.inProgress}</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-300">{stats.inProgress}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">En proceso</p>
               </div>
             </div>
@@ -425,7 +425,7 @@ export default function IncidentesPage() {
                 <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-300">{stats.resolved}</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">{stats.resolved}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Resueltos</p>
               </div>
             </div>
@@ -436,7 +436,7 @@ export default function IncidentesPage() {
                 <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-500 dark:text-gray-400">{stats.closed}</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-500 dark:text-gray-400">{stats.closed}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Cerrados</p>
               </div>
             </div>
@@ -447,7 +447,7 @@ export default function IncidentesPage() {
                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-300">{stats.slaBreached}</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-300">{stats.slaBreached}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">SLA Incumplido</p>
               </div>
             </div>
@@ -457,7 +457,7 @@ export default function IncidentesPage() {
 
       {/* Filtros */}
       <Card className="p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
@@ -517,14 +517,14 @@ export default function IncidentesPage() {
 
       {/* Lista de incidentes */}
       {isLoading ? (
-        <Card className="p-8">
+        <Card className="p-4 sm:p-8">
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-orange-600 dark:text-orange-300" />
             <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando incidentes...</span>
           </div>
         </Card>
       ) : incidents.length === 0 ? (
-        <Card className="p-8 text-center">
+        <Card className="p-4 sm:p-8 text-center">
           <AlertTriangle className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No hay incidentes registrados
@@ -540,7 +540,7 @@ export default function IncidentesPage() {
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {incidents.map((incident) => (
             <IncidentCard
               key={incident.id}

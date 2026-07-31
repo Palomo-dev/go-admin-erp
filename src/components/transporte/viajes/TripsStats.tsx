@@ -56,7 +56,7 @@ export function TripsStats({ stats }: TripsStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
       {statCards.map((stat) => (
         <Card key={stat.title} className="p-4">
           <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ export function TripsStats({ stats }: TripsStatsProps) {
               {stat.icon}
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {stat.value}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">

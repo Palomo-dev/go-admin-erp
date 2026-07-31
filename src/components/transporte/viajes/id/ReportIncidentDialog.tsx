@@ -114,8 +114,8 @@ export function ReportIncidentDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="incident_type">Tipo de Incidente *</Label>
               <Select

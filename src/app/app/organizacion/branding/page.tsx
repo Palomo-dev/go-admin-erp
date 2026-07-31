@@ -231,7 +231,7 @@ export default function BrandingPage() {
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-3">
               <Link
                 href="/app/organizacion/informacion"
@@ -281,13 +281,13 @@ export default function BrandingPage() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <Skeleton key={i} className="h-10 w-28" />
               ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-48 rounded-xl" />
               ))}
@@ -373,7 +373,7 @@ export default function BrandingPage() {
             </Tabs>
           </div>
         ) : (
-          <div className="p-6 text-center">
+          <div className="p-4 sm:p-6 text-center">
             <p className="text-gray-500 dark:text-gray-400">
               {t('errorLoadingConfigEmpty')}
             </p>

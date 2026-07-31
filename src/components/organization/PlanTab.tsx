@@ -551,7 +551,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="bg-white shadow rounded-lg dark:bg-gray-800">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -562,9 +562,9 @@ export default function PlanTab({ orgId }: PlanTabProps) {
         </div>
 
         {/* Plan Actual */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {subscription ? (
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 sm:gap-6">
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center dark:bg-blue-800/30">
@@ -572,7 +572,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-50">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-50">
                     {currentPlan?.name}
                   </h3>
                   <div className="flex items-center space-x-2 mt-1">
@@ -796,7 +796,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('planLimits')}</h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {(() => {
               // Obtener límites desde metadata.custom_config (Enterprise) o plan
               const customConfig = subscription?.metadata?.custom_config;
@@ -821,10 +821,10 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               const aiCreditsPercent = aiCreditsLimit ? Math.min((aiCreditsUsed / aiCreditsLimit) * 100, 100) : 0;
               
               return (
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 sm:gap-6">
                   {/* Módulos */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-300">
+                    <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-300">
                       {totalActiveModules}
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{maxModules || '∞'}
@@ -846,7 +846,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   
                   {/* Sucursales */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-300">
+                    <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">
                       {branchCount}
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{maxBranches || '∞'}
@@ -877,7 +877,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   
                   {/* Usuarios */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">
+                    <div className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-300">
                       {memberCount}
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{maxUsers || '∞'}
@@ -908,7 +908,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   
                   {/* Almacenamiento */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-300">
+                    <div className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-300">
                       {maxStorage ? `${maxStorage} GB` : '∞'}
                     </div>
                     <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{t('storageLabel')}</p>
@@ -916,7 +916,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                   
                   {/* Créditos IA */}
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-amber-600 dark:text-amber-300">
+                    <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-300">
                       {aiCreditsUsed.toLocaleString()}
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         /{aiCreditsLimit.toLocaleString()}
@@ -968,14 +968,14 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             {t('activeModulesDesc', { core: coreModulesCount, additional: activePaidModules.length })}
           </p>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Módulos Core - Siempre activos */}
           <div className="mb-6">
             <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center dark:text-gray-200">
               <StarIcon className="w-4 h-4 text-yellow-500 mr-2 dark:text-yellow-400" />
               {t('coreModules')}
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
               {allModules.filter(m => m.is_core).map((module) => (
                 <div key={module.code} className="border border-blue-200 bg-blue-50 rounded-lg p-4 dark:border-blue-700 dark:bg-blue-900/30">
                   <div className="flex items-start justify-between">
@@ -1012,7 +1012,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                 <ArrowUpIcon className="w-4 h-4 text-green-500 mr-2 dark:text-green-400" />
                 {t('additionalModules')}
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
                 {activePaidModules.map((orgModule) => (
                   <div key={orgModule.id} className="border border-green-200 bg-green-50 rounded-lg p-4 dark:border-green-700 dark:bg-green-900/30">
                     <div className="flex items-start justify-between">
@@ -1054,8 +1054,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               {t('availableModulesDesc')}
             </p>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
               {availableModules.map((module) => (
                 <div key={module.code} className="border border-gray-200 rounded-lg p-4 opacity-60 dark:border-gray-700">
                   <div className="flex items-start justify-between">
@@ -1096,8 +1096,8 @@ export default function PlanTab({ orgId }: PlanTabProps) {
               {t('planComparisonDesc')}
             </p>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               {availablePlans.map((plan) => {
                 const isCurrentPlan = plan.code === currentPlan?.code;
                 const planPrice = plan.price_usd_month;
@@ -1120,7 +1120,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
                     <div className="text-center">
                       <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-50">{plan.name}</h4>
                       <div className="mt-2">
-                        <span className="text-3xl font-bold text-gray-900 dark:text-gray-50">
+                        <span className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50">
                           {formatPrice(plan.price_usd_month)}
                         </span>
                         <span className="text-gray-500 dark:text-gray-400">{t('perMonthShort')}</span>

@@ -87,7 +87,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
 
   return (
     <Card className={`p-4 transition-all hover:shadow-md ${!fare.is_active ? 'opacity-60' : ''}`}>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-2 sm:gap-4">
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 flex-wrap">

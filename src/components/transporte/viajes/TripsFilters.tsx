@@ -95,7 +95,7 @@ export function TripsFilters({
   hasFilters,
 }: TripsFiltersProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-wrap gap-3">
         {/* Búsqueda */}
         <div className="relative flex-1 min-w-[200px]">

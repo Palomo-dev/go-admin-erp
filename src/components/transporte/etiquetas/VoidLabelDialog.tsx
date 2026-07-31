@@ -52,7 +52,7 @@ export function VoidLabelDialog({
         </DialogHeader>
 
         {label && (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 dark:text-red-300" />
               <div className="text-sm">

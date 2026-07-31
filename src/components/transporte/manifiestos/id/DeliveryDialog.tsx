@@ -113,7 +113,7 @@ export function DeliveryDialog({
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label htmlFor="recipient_name">Nombre de quien recibe *</Label>
             <Input

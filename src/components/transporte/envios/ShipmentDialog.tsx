@@ -262,7 +262,7 @@ export function ShipmentDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Remitente */}
           <div className="border rounded-lg p-4">
             <h4 className="font-medium mb-3 flex items-center gap-2">
@@ -280,7 +280,7 @@ export function ShipmentDialog({
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Nombre *</Label>
                 <Input
@@ -317,7 +317,7 @@ export function ShipmentDialog({
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Nombre *</Label>
                 <Input
@@ -338,7 +338,7 @@ export function ShipmentDialog({
           </div>
 
           {/* Origen y Destino */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Origen</Label>
               <Select
@@ -380,7 +380,7 @@ export function ShipmentDialog({
           </div>
 
           {/* Paquete */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Tipo de Paquete</Label>
               <Select
@@ -417,7 +417,7 @@ export function ShipmentDialog({
           </div>
 
           {/* Costos */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Flete</Label>
               <div className="flex gap-1">
@@ -502,7 +502,7 @@ export function ShipmentDialog({
           </div>
 
           {/* Tipo de Entrega y Opciones */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Tipo de Entrega</Label>
               <Select
@@ -519,7 +519,7 @@ export function ShipmentDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-4 pt-6">
+            <div className="space-y-3 sm:space-y-4 pt-6">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="fragile"

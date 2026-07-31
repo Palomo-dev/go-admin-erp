@@ -152,7 +152,7 @@ export function CheckinDialog({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="code" className="space-y-4 mt-4">
+          <TabsContent value="code" className="space-y-3 sm:space-y-4 mt-4">
             <div className="space-y-2">
               <Label htmlFor="checkin_code">Código de Check-in o Boleto</Label>
               <div className="flex gap-2">
@@ -223,7 +223,7 @@ export function CheckinDialog({
                   </div>
                 )}
 
-                <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center gap-2 sm:gap-4 text-sm text-gray-600 dark:text-gray-400">
                   {foundTicket.boarding_stop && (
                     <div className="flex items-center gap-1">
                       <MapPin className="h-4 w-4 text-green-500 dark:text-green-400" />
@@ -255,7 +255,7 @@ export function CheckinDialog({
           </TabsContent>
 
           <TabsContent value="qr" className="mt-4">
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 sm:p-8 text-center">
               <QrCode className="h-16 w-16 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
               <p className="text-gray-600 dark:text-gray-400 mb-2">
                 Escanea el código QR del boleto

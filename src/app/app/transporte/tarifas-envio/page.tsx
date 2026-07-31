@@ -343,11 +343,11 @@ export default function TarifasEnvioPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Truck className="h-7 w-7 text-blue-600 dark:text-blue-300" />
             Tarifas de Envío
           </h1>
@@ -374,14 +374,14 @@ export default function TarifasEnvioPage() {
 
       {/* Estadísticas */}
       {!isLoading && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">{stats.total}</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-300">{stats.total}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Total tarifas</p>
               </div>
             </div>
@@ -392,7 +392,7 @@ export default function TarifasEnvioPage() {
                 <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-300">{stats.active}</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">{stats.active}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Activas</p>
               </div>
             </div>
@@ -403,7 +403,7 @@ export default function TarifasEnvioPage() {
                 <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-500 dark:text-gray-400">{stats.inactive}</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-500 dark:text-gray-400">{stats.inactive}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Inactivas</p>
               </div>
             </div>
@@ -414,7 +414,7 @@ export default function TarifasEnvioPage() {
                 <Truck className="h-5 w-5 text-purple-600 dark:text-purple-300" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-300">{carriers.length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-300">{carriers.length}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Transportadores</p>
               </div>
             </div>
@@ -424,7 +424,7 @@ export default function TarifasEnvioPage() {
 
       {/* Filtros */}
       <Card className="p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
@@ -483,14 +483,14 @@ export default function TarifasEnvioPage() {
 
       {/* Lista de tarifas */}
       {isLoading ? (
-        <Card className="p-8">
+        <Card className="p-4 sm:p-8">
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
             <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando tarifas...</span>
           </div>
         </Card>
       ) : rates.length === 0 ? (
-        <Card className="p-8 text-center">
+        <Card className="p-4 sm:p-8 text-center">
           <Truck className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No hay tarifas registradas
@@ -506,7 +506,7 @@ export default function TarifasEnvioPage() {
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {rates.map((rate) => (
             <ShippingRateCard
               key={rate.id}

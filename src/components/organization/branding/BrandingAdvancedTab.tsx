@@ -31,7 +31,7 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Advertencia */}
       <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
         <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
@@ -51,7 +51,7 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
             {t('analyticsDesc')}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label className="dark:text-gray-300">{t('measurementId')}</Label>
             <Input
@@ -178,7 +178,7 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
           <CardTitle className="dark:text-white">{t('summaryTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className={`text-2xl font-bold ${formData.analytics_id ? 'text-green-600 dark:text-green-300' : 'text-gray-400 dark:text-gray-500'}`}>
                 {formData.analytics_id ? '✓' : '○'}

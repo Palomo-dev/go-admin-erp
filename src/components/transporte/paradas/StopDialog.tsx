@@ -234,8 +234,8 @@ export function StopDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="code">Código *</Label>
               <Input
@@ -369,7 +369,7 @@ export function StopDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">Ciudad</Label>
               <Input id="city" {...register('city')} placeholder="Bogotá" />
@@ -386,7 +386,7 @@ export function StopDialog({
 
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Coordenadas (opcional)</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="latitude">Latitud</Label>
                 <Input
@@ -412,7 +412,7 @@ export function StopDialog({
 
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Contacto</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="contact_name">Nombre de Contacto</Label>
                 <Input id="contact_name" {...register('contact_name')} placeholder="Juan Pérez" />

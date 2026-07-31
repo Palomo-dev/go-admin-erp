@@ -391,7 +391,7 @@ export default function IncidentDetailPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header con info principal */}
       <IncidentHeader
         incident={incident}
@@ -403,9 +403,9 @@ export default function IncidentDetailPage() {
       />
 
       {/* Grid de contenido */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Columna principal */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Timeline de eventos */}
           <IncidentTimeline
             events={events}
@@ -418,7 +418,7 @@ export default function IncidentDetailPage() {
         </div>
 
         {/* Columna lateral */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Costos */}
           <IncidentCosts incident={incident} onUpdateCosts={handleUpdateCosts} />
 

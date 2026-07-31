@@ -56,8 +56,8 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
   const status = STATUS_CONFIG[trip.status] || STATUS_CONFIG.scheduled;
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         <Button
           variant="ghost"
           size="sm"
@@ -68,7 +68,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
         </Button>
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               {trip.trip_code}
             </h1>
             <Badge className={`${status.color} flex items-center gap-1`}>

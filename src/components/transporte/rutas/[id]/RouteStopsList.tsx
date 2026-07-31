@@ -139,7 +139,7 @@ export function RouteStopsList({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-2 sm:gap-4 text-sm text-gray-500 dark:text-gray-400">
                   {stop.estimated_arrival_minutes !== undefined && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />

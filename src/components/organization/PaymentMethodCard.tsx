@@ -157,7 +157,7 @@ export default function PaymentMethodCard({
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('title')}</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">{t('description')}</p>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="text-center py-6">
             <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
             <h4 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-50">{t('noPaymentMethod')}</h4>
@@ -200,7 +200,7 @@ export default function PaymentMethodCard({
         </button>
       </div>
       
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {error && (
           <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
             <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
@@ -223,7 +223,7 @@ export default function PaymentMethodCard({
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {paymentMethods.map((pm) => (
               <div 
                 key={pm.id} 

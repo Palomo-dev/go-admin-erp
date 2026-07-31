@@ -85,7 +85,7 @@ export function LabelCard({
 
   return (
     <Card className={`p-4 ${label.is_void ? 'opacity-60' : ''}`}>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-2 sm:gap-4">
         {/* Icono y número */}
         <div className="flex items-start gap-3">
           <div className={`p-2 rounded-lg ${label.is_void ? 'bg-gray-100 dark:bg-gray-800' : 'bg-blue-100 dark:bg-blue-900/30'}`}>

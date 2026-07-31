@@ -91,7 +91,7 @@ export function DriverHistoryDialog({
             </p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">{completedTrips}</p>
+            <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-300">{completedTrips}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">viajes completados</p>
           </div>
         </div>
@@ -169,23 +169,23 @@ export function DriverHistoryDialog({
           </TabsContent>
 
           <TabsContent value="stats" className="flex-1 overflow-auto mt-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-300">{totalTrips}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-300">{totalTrips}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total viajes</p>
               </div>
               <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
-                <p className="text-3xl font-bold text-green-600 dark:text-green-300">{completedTrips}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-300">{completedTrips}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Completados</p>
               </div>
               <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
-                <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-300">
+                <p className="text-2xl sm:text-3xl font-bold text-yellow-600 dark:text-yellow-300">
                   {trips.filter(t => t.status === 'in_transit' || t.status === 'boarding').length}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">En curso</p>
               </div>
               <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
-                <p className="text-3xl font-bold text-red-600 dark:text-red-300">
+                <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-300">
                   {trips.filter(t => t.status === 'cancelled').length}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Cancelados</p>

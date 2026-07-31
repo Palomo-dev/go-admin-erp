@@ -57,7 +57,7 @@ export function AssignDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Asignar responsable para: <strong>{incidentTitle}</strong>
           </p>

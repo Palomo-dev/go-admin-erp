@@ -162,7 +162,7 @@ export function TripDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-2 sm:gap-4 py-4">
           {/* Ruta */}
           <div className="grid gap-2">
             <Label htmlFor="route">Ruta *</Label>
@@ -184,7 +184,7 @@ export function TripDialog({
           </div>
 
           {/* Fecha y horarios */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="grid gap-2">
               <Label htmlFor="trip_date">Fecha *</Label>
               <Input
@@ -215,7 +215,7 @@ export function TripDialog({
           </div>
 
           {/* Vehículo y Conductor */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="grid gap-2">
               <Label htmlFor="vehicle">Vehículo</Label>
               <Select
@@ -280,7 +280,7 @@ export function TripDialog({
           )}
 
           {/* Capacidad y Tarifa */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="grid gap-2">
               <Label htmlFor="total_seats">Total Asientos</Label>
               <Input

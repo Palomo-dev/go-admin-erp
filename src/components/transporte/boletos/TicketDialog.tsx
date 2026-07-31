@@ -285,7 +285,7 @@ export function TicketDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Viaje */}
           <div className="space-y-2">
             <Label htmlFor="trip">Viaje *</Label>
@@ -363,7 +363,7 @@ export function TicketDialog({
           {/* Datos del Pasajero */}
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Datos del Pasajero</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="col-span-2 space-y-2">
                 <Label htmlFor="passenger_name">Nombre Completo *</Label>
                 <Input
@@ -437,7 +437,7 @@ export function TicketDialog({
             ) : (
               <>
                 {/* Paradas (origen/destino) */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
                   <div className="space-y-2">
                     <Label htmlFor="boarding">Origen</Label>
                     <Select
@@ -543,7 +543,7 @@ export function TicketDialog({
                           );
                         })}
                       </div>
-                      <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center justify-center gap-2 sm:gap-4 mt-3 text-xs text-gray-600 dark:text-gray-400">
                         <span className="flex items-center gap-1">
                           <span className="w-3 h-3 rounded bg-green-100 border border-green-300 dark:bg-green-900/30 dark:border-green-700"></span>
                           Disponible
@@ -581,7 +581,7 @@ export function TicketDialog({
           {/* Precios */}
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Precio y Pago</h4>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fare">Tarifa</Label>
                 <Input

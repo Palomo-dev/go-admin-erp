@@ -37,7 +37,7 @@ export default function GlobalSettingsPanel({
   const cartMode: string = (settings as any).cart_button_mode || 'dynamic';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Colores */}
       <div>
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('colors')}</Label>

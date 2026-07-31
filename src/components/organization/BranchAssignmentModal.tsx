@@ -186,8 +186,8 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md dark:bg-gray-800">
-        <div className="p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-1 dark:text-gray-50">{t('title')}</h3>
+        <div className="p-4 sm:p-6">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 dark:text-gray-50">{t('title')}</h3>
           <p className="text-sm text-gray-600 mb-6 dark:text-gray-300">
             {memberName}
           </p>

@@ -96,7 +96,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Preview del sitio — ocupa solo la mitad del ancho */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="p-4">
@@ -195,7 +195,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
               {presets.length} {presets.length === 1 ? t('themesSingular') : t('themesPlural')}
             </span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
             {presets.map((preset) => {
               const bgColor = preset.theme_mode === 'dark' ? preset.colors.secondary : '#FFFFFF';
               const textColor = preset.theme_mode === 'dark' ? '#FFFFFF' : '#1F2937';
@@ -285,7 +285,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           <RadioGroup
             value={formData.theme_mode}
             onValueChange={(value) => setFormData({ ...formData, theme_mode: value as 'light' | 'dark' })}
-            className="flex gap-4"
+            className="flex gap-2 sm:gap-4"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="light" id="light" />
@@ -318,7 +318,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label className="dark:text-gray-300">{t('colorPrimary')}</Label>
               <div className="flex items-center gap-2">
@@ -413,7 +413,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label className="dark:text-gray-300">{t('fontHeading')}</Label>
               <Select
@@ -431,7 +431,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-2xl mt-2 dark:text-white" style={{ fontFamily: formData.font_heading }}>
+              <p className="text-xl sm:text-2xl mt-2 dark:text-white" style={{ fontFamily: formData.font_heading }}>
                 {t('sampleHeading')}
               </p>
             </div>
@@ -469,7 +469,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="dark:text-gray-300">Altura del logo</Label>

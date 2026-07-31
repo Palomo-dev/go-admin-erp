@@ -136,7 +136,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
@@ -261,7 +261,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
               {t('createDesc')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-3 sm:space-y-4 py-2">
             <div className="space-y-2">
               <Label>{t('titleLabel')}</Label>
               <Input

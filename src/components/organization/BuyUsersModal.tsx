@@ -125,7 +125,7 @@ export default function BuyUsersModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-4 sm:p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800">
                 <Dialog.Title
                   as="h3"
                   className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2 dark:text-gray-50"
@@ -155,7 +155,7 @@ export default function BuyUsersModal({
                 {/* Paquetes predefinidos */}
                 <div className="mt-6">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3 dark:text-gray-200">Paquetes</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
                     {USER_PACKAGES.map((pkg) => {
                       const monthlyPrice = (pkg.quantity * unitPrice) / 100;
                       return (

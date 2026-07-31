@@ -86,12 +86,12 @@ export function RoutesList({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex gap-4">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex gap-2 sm:gap-4">
           <Skeleton className="h-10 w-full max-w-sm" />
           <Skeleton className="h-10 w-40" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-52" />
           ))}
@@ -101,8 +101,8 @@ export function RoutesList({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
@@ -141,7 +141,7 @@ export function RoutesList({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredRoutes.map((route) => {
             const typeConfig = getRouteTypeConfig(route.route_type);
             const TypeIcon = typeConfig.icon;
@@ -216,7 +216,7 @@ export function RoutesList({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 sm:gap-4">
                         {route.estimated_distance_km && (
                           <span className="text-gray-500 dark:text-gray-400">
                             {route.estimated_distance_km.toFixed(1)} km

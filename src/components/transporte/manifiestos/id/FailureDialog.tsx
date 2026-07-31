@@ -114,7 +114,7 @@ export function FailureDialog({
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label>Motivo del fallo *</Label>
             <Select

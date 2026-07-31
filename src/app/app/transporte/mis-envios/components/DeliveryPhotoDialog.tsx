@@ -177,7 +177,7 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecip
             Confirmar Entrega
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label>Nombre de quien recibe *</Label>
             <Input

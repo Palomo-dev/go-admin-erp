@@ -199,7 +199,7 @@ export function ImportDriversDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {!importResult ? (
             <>
               <div className="flex items-center gap-2">
@@ -279,7 +279,7 @@ export function ImportDriversDialog({
               )}
             </>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {importResult.success > 0 && (
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center gap-3">
                   <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-300" />

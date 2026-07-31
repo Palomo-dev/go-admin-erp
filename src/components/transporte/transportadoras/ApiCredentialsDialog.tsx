@@ -94,7 +94,7 @@ export function ApiCredentialsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 dark:text-yellow-300" />
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
@@ -102,7 +102,7 @@ export function ApiCredentialsDialog({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="api_key">API Key</Label>
               <Input

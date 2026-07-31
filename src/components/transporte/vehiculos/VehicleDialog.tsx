@@ -174,8 +174,8 @@ export function VehicleDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="plate_number">Placa *</Label>
               <Input
@@ -259,7 +259,7 @@ export function VehicleDialog({
 
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Capacidad</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="capacity_kg">Carga máx. (kg)</Label>
                 <Input id="capacity_kg" type="number" {...register('capacity_kg')} placeholder="1000" />
@@ -277,7 +277,7 @@ export function VehicleDialog({
 
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Documentos</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="soat_expiry">Vencimiento SOAT</Label>
                 <Input id="soat_expiry" type="date" {...register('soat_expiry')} />
@@ -299,7 +299,7 @@ export function VehicleDialog({
 
           <div className="border-t pt-4">
             <h4 className="font-medium mb-3">Asignación</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="carrier_id">Transportadora</Label>
                 <Select

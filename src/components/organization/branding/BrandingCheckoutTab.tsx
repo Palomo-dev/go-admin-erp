@@ -145,7 +145,7 @@ export default function BrandingCheckoutTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Modo de checkout */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
@@ -158,7 +158,7 @@ export default function BrandingCheckoutTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
             <button
               type="button"
               onClick={() => {
@@ -221,8 +221,8 @@ export default function BrandingCheckoutTab() {
             Selecciona qué opciones de entrega verán tus clientes en el checkout de la página web.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <CardContent className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
             <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-600">
               <div className="flex items-center gap-3">
                 <Store className="h-5 w-5 text-green-600 dark:text-green-300" />
@@ -286,7 +286,7 @@ export default function BrandingCheckoutTab() {
             con &quot;Visible en web&quot; tienen prioridad sobre estos valores.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <Label>Habilitar envío</Label>
@@ -302,7 +302,7 @@ export default function BrandingCheckoutTab() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Título visible en checkout</Label>
               <Input
@@ -323,7 +323,7 @@ export default function BrandingCheckoutTab() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Tarifa plana de envío ($)</Label>
               <Input
@@ -379,7 +379,7 @@ export default function BrandingCheckoutTab() {
             Badges de seguridad y confianza visibles en el checkout.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <Label>Mostrar badges de confianza</Label>

@@ -84,7 +84,7 @@ export function RedirectDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 sm:space-y-6 py-4">
           {/* Dominio destino */}
           <div className="space-y-2">
             <Label htmlFor="redirectTo" className="dark:text-gray-200">

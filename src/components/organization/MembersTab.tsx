@@ -398,7 +398,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
         
         {/* Contenido de filtros */}
         <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
             {/* Filtro por nombre */}
             <div className="relative">
               <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('nameLabel')}</label>
@@ -558,7 +558,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Sección de filtros */}
       {renderFilters()}
       

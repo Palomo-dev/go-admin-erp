@@ -165,9 +165,9 @@ export function ScheduleDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Ruta y Nombre */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Ruta *</Label>
               <Select
@@ -198,7 +198,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Recurrencia */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <Label>Tipo de recurrencia *</Label>
             <Select
               value={formData.recurrence_type}
@@ -239,7 +239,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Horarios */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="departure_time">Hora de salida *</Label>
               <Input
@@ -262,7 +262,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Vehículo y Conductor */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Vehículo por defecto</Label>
               <Select
@@ -308,7 +308,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Cupos y Tarifa */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="seats">Cupos disponibles</Label>
               <Input
@@ -340,7 +340,7 @@ export function ScheduleDialog({
           </div>
 
           {/* Vigencia */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="valid_from">Válido desde *</Label>
               <Input

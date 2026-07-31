@@ -576,7 +576,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   };
 
   const renderStep1 = () => (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
         <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Información Básica</h3>
         
@@ -588,7 +588,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           />
         </div>
         
-        <div className="grid grid-cols-6 gap-6">
+        <div className="grid grid-cols-6 gap-4 sm:gap-6">
           {renderFormField('name', 'Nombre de la Organización', 'text', true, 'col-span-6')}
           {renderFormField('legalName', 'Nombre Legal', 'text', true, 'col-span-6')}
           
@@ -861,11 +861,11 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   );
 
   const renderStep2 = () => (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
         <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Detalles Adicionales</h3>
         
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Descripción */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -882,7 +882,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           </div>
 
           {/* Dirección */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
             {renderFormField('address', 'Dirección', 'text', false, 'col-span-2')}
             
             {/* País */}
@@ -1047,11 +1047,11 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   );
 
   const renderStep3 = () => (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="bg-white dark:bg-gray-800 px-6 py-8 shadow-md sm:rounded-lg">
         <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-6">Selecciona tu Plan</h3>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2 sm:gap-4">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -1075,7 +1075,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   )}
                 </div>
                 <div className="text-right">
-                  <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
                     {plan.price_usd_month ? `$${plan.price_usd_month}` : 'Personalizado'}
                   </span>
                   {plan.price_usd_month && (
@@ -1095,7 +1095,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto">
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
       {renderStepIndicator()}
       
       {step === 1 && renderStep1()}

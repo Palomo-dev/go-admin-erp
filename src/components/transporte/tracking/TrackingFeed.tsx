@@ -83,7 +83,7 @@ const EVENT_LABELS: Record<string, string> = {
 export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
   if (isLoading) {
     return (
-      <Card className="p-8 flex items-center justify-center">
+      <Card className="p-4 sm:p-8 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
         <span className="ml-3 text-gray-600 dark:text-gray-300">Cargando eventos...</span>
       </Card>
@@ -92,7 +92,7 @@ export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
 
   if (events.length === 0) {
     return (
-      <Card className="p-8 text-center">
+      <Card className="p-4 sm:p-8 text-center">
         <Clock className="h-12 w-12 mx-auto text-gray-300 mb-4 dark:text-gray-600" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Sin eventos</h3>
         <p className="text-gray-500 mt-2 dark:text-gray-400">No hay eventos que coincidan con los filtros aplicados</p>
@@ -109,7 +109,7 @@ export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
 
         return (
           <Card key={event.id} className="p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-2 sm:gap-4">
               {/* Icon */}
               <div className={`p-2 rounded-lg shrink-0 ${colorClass}`}>
                 <Icon className="h-5 w-5" />

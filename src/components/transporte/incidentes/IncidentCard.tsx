@@ -228,7 +228,7 @@ export function IncidentCard({
 
         {/* Costos */}
         {(incident.estimated_cost > 0 || incident.actual_cost > 0) && (
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2 sm:gap-4 text-sm">
             {incident.estimated_cost > 0 && (
               <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                 <DollarSign className="h-3 w-3" />

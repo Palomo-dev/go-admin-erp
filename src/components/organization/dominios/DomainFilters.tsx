@@ -50,7 +50,7 @@ export function DomainFilters({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Búsqueda */}
         <div className="relative flex-1">

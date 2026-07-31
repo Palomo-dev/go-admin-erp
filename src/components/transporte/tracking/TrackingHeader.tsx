@@ -25,20 +25,20 @@ export function TrackingHeader({ stats, isLoading }: TrackingHeaderProps) {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
           <Activity className="h-6 w-6 text-blue-600 dark:text-blue-300" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Centro de Tracking</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Centro de Tracking</h1>
           <p className="text-gray-600 dark:text-gray-400">
             Monitoreo unificado de viajes y envíos en tiempo real
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         {statCards.map((stat) => (
           <Card key={stat.label} className="p-4">
             <div className="flex items-center gap-3">
@@ -46,7 +46,7 @@ export function TrackingHeader({ stats, isLoading }: TrackingHeaderProps) {
                 <stat.icon className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   {isLoading ? '-' : stat.value}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>

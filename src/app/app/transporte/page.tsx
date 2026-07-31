@@ -158,7 +158,7 @@ export default function TransportePage() {
       <DashboardStats stats={stats} isLoading={isLoading} />
       
       {/* Quick Actions y Recent Events */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
           <DashboardQuickActions />
         </div>

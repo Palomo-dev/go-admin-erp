@@ -70,7 +70,7 @@ export function DNSInstructions({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 sm:space-y-6 py-4">
           {/* Estado actual */}
           <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
             <span className="text-sm text-gray-600 dark:text-gray-400">{t('currentStatus')}</span>
@@ -102,8 +102,8 @@ export function DNSInstructions({
           </div>
 
           {/* Registro DNS */}
-          <div className="space-y-4">
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-4">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-3 sm:space-y-4">
               {/* Host/Name */}
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -165,7 +165,7 @@ export function DNSInstructions({
               {t('cnameDesc')}
             </p>
             
-            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-4">
+            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-3 sm:space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">

@@ -183,9 +183,9 @@ export function RouteDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Nombre y Código */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nombre *</Label>
               <Input
@@ -209,7 +209,7 @@ export function RouteDialog({
           </div>
 
           {/* Tipo y Transportadora */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Tipo de ruta *</Label>
               <Select
@@ -252,7 +252,7 @@ export function RouteDialog({
           </div>
 
           {/* Origen y Destino */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Parada de origen</Label>
               <Select
@@ -335,7 +335,7 @@ export function RouteDialog({
           </div>
 
           {/* Distancia y Duración */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="distance">Distancia estimada (km)</Label>
               <Input
@@ -366,7 +366,7 @@ export function RouteDialog({
           </div>
 
           {/* Tarifas */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="base_fare">Tarifa base pasajero</Label>
               <Input

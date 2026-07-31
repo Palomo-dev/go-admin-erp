@@ -117,7 +117,7 @@ export function IncidentHeader({
   const canReopen = incident.status === 'closed';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Navegación */}
       <div className="flex items-center justify-between">
         <Button
@@ -178,11 +178,11 @@ export function IncidentHeader({
       {/* Información principal */}
       <Card className="border-l-4 border-l-blue-600">
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 sm:gap-4">
             <div className="space-y-3 flex-1">
               {/* Título y badges */}
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   {incident.title}
                 </h1>
                 <Badge className={getSeverityColor(incident.severity)}>
@@ -208,7 +208,7 @@ export function IncidentHeader({
               )}
 
               {/* Metadatos */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 pt-4">
                 {/* Fecha ocurrencia */}
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />

@@ -108,7 +108,7 @@ export function RouteStopDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label>Parada *</Label>
             <Select
@@ -129,7 +129,7 @@ export function RouteStopDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="order">Orden</Label>
               <Input
@@ -152,7 +152,7 @@ export function RouteStopDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="arrival">Llegada desde origen (min)</Label>
               <Input
@@ -186,7 +186,7 @@ export function RouteStopDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 pt-2 border-t">
             <div className="flex items-center justify-between">
               <Label>Permite abordaje</Label>
               <Switch

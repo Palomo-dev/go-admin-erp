@@ -633,7 +633,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         
         {/* Contenido de filtros */}
         <div className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             {/* Filtro por email */}
             <div className="relative">
               <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('emailLabel')}</label>
@@ -722,7 +722,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* Sección de filtros */}
       {renderFilters()}
       
@@ -799,7 +799,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           )}
           
           <EmailConfirmedWarning message="Debes confirmar tu correo electrónico para invitar nuevos usuarios." />
-          <form onSubmit={handleSendInvitation} className="space-y-4 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+          <form onSubmit={handleSendInvitation} className="space-y-3 sm:space-y-4 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t('emailField')}

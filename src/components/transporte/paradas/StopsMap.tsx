@@ -259,7 +259,7 @@ export function StopsMap({
   const stopsWithoutCoords = stops.filter(s => !s.latitude || !s.longitude);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <Card className="overflow-hidden">
         <div 
           ref={mapRef} 
@@ -303,7 +303,7 @@ export function StopsMap({
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex flex-wrap gap-2 sm:gap-4 text-sm text-gray-600 dark:text-gray-400">
         <span className="font-medium">Leyenda:</span>
         {Object.entries(stopTypeConfig).map(([key, config]) => (
           <div key={key} className="flex items-center gap-1">

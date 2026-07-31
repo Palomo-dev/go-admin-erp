@@ -121,8 +121,8 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
           <Badge className="bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">Registrada</Badge>
         </h3>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Entregado el</p>
               <p className="font-medium">
@@ -238,7 +238,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
               Registrar Prueba de Entrega
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <div className="space-y-3 sm:space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="space-y-2">
               <Label>Nombre de quien recibe *</Label>
               <Input
@@ -248,7 +248,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Tipo de documento</Label>
                 <Select
@@ -275,7 +275,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Relación con destinatario</Label>
                 <Select

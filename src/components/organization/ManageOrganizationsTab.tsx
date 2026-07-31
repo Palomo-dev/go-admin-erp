@@ -104,7 +104,7 @@ export default function ManageOrganizationsTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('title')}</h2>
         <button

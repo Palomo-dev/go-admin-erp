@@ -269,7 +269,7 @@ export function AddressDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Cliente - Selector estilo POS */}
           <div className="space-y-2">
             <Label>Cliente *</Label>
@@ -353,7 +353,7 @@ export function AddressDialog({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-96 p-0 dark:bg-gray-900 dark:border-gray-800" align="start">
-                  <div className="p-4 space-y-4">
+                  <div className="p-4 space-y-3 sm:space-y-4">
                     <div className="space-y-2">
                       <h4 className="font-semibold dark:text-white text-gray-900">Buscar Cliente</h4>
                       <div className="relative">
@@ -426,7 +426,7 @@ export function AddressDialog({
           </div>
 
           {/* Etiqueta y Default */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="label">Etiqueta *</Label>
               <Input
@@ -452,7 +452,7 @@ export function AddressDialog({
           </div>
 
           {/* Destinatario */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="recipient_name">Nombre del destinatario</Label>
               <Input
@@ -545,7 +545,7 @@ export function AddressDialog({
           </div>
 
           {/* Ciudad y Departamento */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">Ciudad *</Label>
               <Input
@@ -568,7 +568,7 @@ export function AddressDialog({
           </div>
 
           {/* Código postal y País */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="postal_code">Código postal</Label>
               <Input
@@ -590,7 +590,7 @@ export function AddressDialog({
           </div>
 
           {/* Geolocalización */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="latitude">Latitud</Label>
               <Input

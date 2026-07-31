@@ -82,13 +82,13 @@ export function ShipmentsStats({ stats }: ShipmentsStatsProps) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {highlightCards.map((stat) => (
           <Card key={stat.title} className="p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${stat.color}`}>{stat.icon}</div>
               <div className="min-w-0">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">{stat.title}</p>
                 {stat.sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{stat.sub}</p>}
               </div>

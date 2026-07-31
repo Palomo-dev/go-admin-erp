@@ -288,7 +288,7 @@ export default function TripDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+      <div className="p-4 sm:p-6 flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
         <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando viaje...</span>
       </div>
@@ -297,9 +297,9 @@ export default function TripDetailPage() {
 
   if (!trip) {
     return (
-      <div className="p-6 text-center">
+      <div className="p-4 sm:p-6 text-center">
         <AlertTriangle className="h-12 w-12 mx-auto text-yellow-500 mb-4 dark:text-yellow-400" />
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
           Viaje no encontrado
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -310,7 +310,7 @@ export default function TripDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <TripDetailHeader
         trip={trip}
         onEdit={() => setShowEditDialog(true)}

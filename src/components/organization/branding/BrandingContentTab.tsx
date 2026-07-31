@@ -60,7 +60,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Nota informativa */}
       <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
         <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
@@ -88,7 +88,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
                 {t('socialDesc')}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4">
               {SOCIAL_PLATFORMS.map((platform) => {
                 const Icon = platform.icon;
                 return (
@@ -129,7 +129,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
                 {DAY_KEYS.map((dayKey) => {
                   const hours = (businessHours as any)[dayKey] || { open: '09:00', close: '18:00', closed: false };
                   return (
-                    <div key={dayKey} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                    <div key={dayKey} className="flex items-center gap-2 sm:gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                       <div className="w-24">
                         <span className="font-medium dark:text-white">{t(dayKey)}</span>
                       </div>
@@ -185,7 +185,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
                 {t('footerDesc')}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="dark:text-gray-300">Mostrar "Powered by GO Admin"</Label>

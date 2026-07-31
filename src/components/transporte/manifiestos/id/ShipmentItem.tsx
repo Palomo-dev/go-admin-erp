@@ -157,7 +157,7 @@ export function ShipmentItem({
             )}
 
             {/* Contacto */}
-            <div className="flex items-center gap-4 mt-2 text-sm">
+            <div className="flex items-center gap-2 sm:gap-4 mt-2 text-sm">
               {shipment?.delivery_contact_name && (
                 <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                   <User className="h-3 w-3" />

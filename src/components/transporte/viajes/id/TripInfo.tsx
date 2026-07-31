@@ -67,7 +67,7 @@ export function TripInfo({ trip }: TripInfoProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
       {infoCards.map((card) => (
         <Card key={card.title} className="p-4">
           <div className="flex items-start gap-3">

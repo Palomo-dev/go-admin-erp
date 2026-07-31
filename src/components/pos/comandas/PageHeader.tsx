@@ -19,7 +19,7 @@ export function PageHeader({ onRefresh, isLoading, soundEnabled, onToggleSound }
           <div className="flex items-center gap-3">
             <ChefHat className="h-8 w-8 text-blue-600 dark:text-blue-300" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Comandas de Cocina
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">

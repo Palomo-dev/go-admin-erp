@@ -23,10 +23,10 @@ interface DashboardStatsProps {
 export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded" />
             </CardContent>
           </Card>
@@ -41,9 +41,9 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
   const totalShipments = stats.shipments.ready + stats.shipments.in_transit + stats.shipments.delivered + stats.shipments.failed;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Primera fila: KPIs principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {/* Viajes */}
         <Card className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
           <CardHeader className="pb-2">
@@ -57,7 +57,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {totalTrips}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -102,7 +102,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {stats.tickets.sold_today}
             </div>
             <div className="space-y-2 text-xs">
@@ -149,7 +149,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {totalShipments}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -194,7 +194,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {stats.incidents.open}
             </div>
             <div className="space-y-2 text-xs">

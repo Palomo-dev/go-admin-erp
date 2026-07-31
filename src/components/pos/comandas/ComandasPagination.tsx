@@ -32,7 +32,7 @@ export function ComandasPagination({
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap">
       {/* Items per page */}
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-600 dark:text-gray-400">

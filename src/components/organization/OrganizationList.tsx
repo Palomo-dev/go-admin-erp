@@ -335,7 +335,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
         
         {/* Contenido de filtros */}
         <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             {/* Filtro por nombre */}
             <div className="relative">
               <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('nameLabel')}</label>

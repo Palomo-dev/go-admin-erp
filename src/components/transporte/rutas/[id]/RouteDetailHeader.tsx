@@ -38,7 +38,7 @@ export function RouteDetailHeader({
   const TypeIcon = typeConfig.icon;
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 sm:gap-4">
       <div className="flex items-center gap-3">
         <Link href="/app/transporte/rutas">
           <Button variant="ghost" size="icon">
@@ -50,7 +50,7 @@ export function RouteDetailHeader({
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
               <Route className="h-6 w-6 text-blue-600 dark:text-blue-300" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               {route.name}
             </h1>
             <Badge className={typeConfig.color}>

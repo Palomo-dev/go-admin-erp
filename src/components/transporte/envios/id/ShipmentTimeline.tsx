@@ -197,7 +197,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
       ) : events.length === 0 ? (
         <p className="text-gray-500 text-center py-4 dark:text-gray-400">No hay eventos registrados</p>
       ) : (
-        <div className="relative pl-6 space-y-4">
+        <div className="relative pl-6 space-y-3 sm:space-y-4">
           <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
           {events.map((event, index) => {
             const config = getEventConfig(event.event_type);
@@ -253,7 +253,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
           <DialogHeader>
             <DialogTitle>Agregar Evento</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <Label>Tipo de Evento</Label>
               <Select

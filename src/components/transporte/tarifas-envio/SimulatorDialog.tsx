@@ -108,9 +108,9 @@ export function SimulatorDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Formulario */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <h4 className="font-medium flex items-center gap-2">
               <Package className="h-4 w-4" />
               Datos del envío
@@ -255,7 +255,7 @@ export function SimulatorDialog({
           </div>
 
           {/* Resultados */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <h4 className="font-medium flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               Resultados ({results.length})
@@ -266,7 +266,7 @@ export function SimulatorDialog({
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
               </div>
             ) : results.length === 0 ? (
-              <Card className="p-6 text-center">
+              <Card className="p-4 sm:p-6 text-center">
                 {hasSearched ? (
                   <>
                     <Info className="h-8 w-8 mx-auto text-gray-400 mb-2 dark:text-gray-500" />

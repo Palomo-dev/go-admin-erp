@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 // Skeleton para páginas con lista de cards (organizaciones, invitaciones)
 export function OrganizationListSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {[1, 2, 3].map((i) => (
         <Card key={i}>
           <CardHeader className="pb-2">
@@ -33,14 +33,14 @@ export function OrganizationListSkeleton() {
 // Skeleton para información de organización (formulario)
 export function OrganizationInfoSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card>
         <CardHeader>
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-4 w-64 mt-2" />
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="space-y-2">
                 <Skeleton className="h-4 w-24" />
@@ -58,7 +58,7 @@ export function OrganizationInfoSkeleton() {
 // Skeleton para miembros (tabla)
 export function MembersSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-10 w-32" />
@@ -91,12 +91,12 @@ export function MembersSkeleton() {
 // Skeleton para sucursales (grid de cards)
 export function BranchesSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-10 w-40" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <Card key={i}>
             <CardHeader className="pb-2">
@@ -124,7 +124,7 @@ export function BranchesSkeleton() {
 // Skeleton para módulos (marketplace)
 export function ModulesSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Plan Status */}
       <Card>
         <CardHeader>
@@ -144,13 +144,13 @@ export function ModulesSkeleton() {
       </Card>
 
       {/* Módulos grid */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5" />
           <Skeleton className="h-7 w-40" />
           <Skeleton className="h-6 w-32" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i}>
               <CardHeader>
@@ -180,7 +180,7 @@ export function ModulesSkeleton() {
 // Skeleton para plan/suscripción
 export function PlanSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Current Plan */}
       <Card>
         <CardHeader>
@@ -193,7 +193,7 @@ export function PlanSkeleton() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="text-center space-y-2">
                 <Skeleton className="h-8 w-12 mx-auto" />
@@ -205,7 +205,7 @@ export function PlanSkeleton() {
       </Card>
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
         {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardHeader>
@@ -231,7 +231,7 @@ export function PlanSkeleton() {
 // Skeleton para invitaciones
 export function InvitationsSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-10 w-40" />
@@ -273,8 +273,8 @@ export function PaymentMethodSkeleton() {
         </div>
         <Skeleton className="h-8 w-36" />
       </div>
-      <div className="p-6">
-        <div className="space-y-4">
+      <div className="p-4 sm:p-6">
+        <div className="space-y-3 sm:space-y-4">
           {[1, 2].map((i) => (
             <div key={i} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-4">
@@ -302,11 +302,11 @@ export function OrganizationPageSkeleton({
   description?: string;
 }) {
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           {title ? (
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">{title}</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-50">{title}</h1>
           ) : (
             <Skeleton className="h-8 w-64" />
           )}

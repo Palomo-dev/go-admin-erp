@@ -82,7 +82,7 @@ export function TicketsList({
 }: TicketsListProps) {
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
           <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando boletos...</span>
@@ -93,7 +93,7 @@ export function TicketsList({
 
   if (tickets.length === 0) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="text-center">
           <Ticket className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay boletos</h3>

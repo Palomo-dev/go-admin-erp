@@ -362,8 +362,8 @@ export default function ManifestDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <Card className="p-8">
+      <div className="p-4 sm:p-6">
+        <Card className="p-4 sm:p-8">
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
             <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando manifiesto...</span>
@@ -375,8 +375,8 @@ export default function ManifestDetailPage() {
 
   if (!manifest) {
     return (
-      <div className="p-6">
-        <Card className="p-8 text-center">
+      <div className="p-4 sm:p-6">
+        <Card className="p-4 sm:p-8 text-center">
           <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">Manifiesto no encontrado</h3>
           <Button onClick={() => router.push('/app/transporte/manifiestos')} className="mt-4">
@@ -393,16 +393,16 @@ export default function ManifestDetailPage() {
     : 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push('/app/transporte/manifiestos')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {manifest.manifest_number}
               </h1>
               <Badge className={statusConfig.color}>
@@ -466,9 +466,9 @@ export default function ManifestDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Panel izquierdo - Info del manifiesto */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Información general */}
           <Card className="p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Información General</h3>
@@ -520,21 +520,21 @@ export default function ManifestDetailPage() {
           {/* Estadísticas */}
           <Card className="p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Estadísticas</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{manifest.total_shipments}</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{manifest.total_shipments}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Total Envíos</p>
               </div>
               <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-green-600 dark:text-green-300">{manifest.delivered_count}</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">{manifest.delivered_count}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Entregados</p>
               </div>
               <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-red-600 dark:text-red-300">{manifest.failed_count}</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-300">{manifest.failed_count}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Fallidos</p>
               </div>
               <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-300">{manifest.pending_count}</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-300">{manifest.pending_count}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Pendientes</p>
               </div>
             </div>
@@ -555,7 +555,7 @@ export default function ManifestDetailPage() {
 
             <Separator className="my-4" />
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <Weight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <span>{manifest.total_weight_kg || 0} kg</span>
@@ -593,7 +593,7 @@ export default function ManifestDetailPage() {
             </div>
 
             {!manifest.manifest_shipments || manifest.manifest_shipments.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+              <div className="p-4 sm:p-8 text-center text-gray-500 dark:text-gray-400">
                 <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No hay envíos en este manifiesto</p>
                 {manifest.status === 'draft' && (
@@ -677,7 +677,7 @@ export default function ManifestDetailPage() {
                               )}
 
                               {/* Contacto */}
-                              <div className="flex items-center gap-4 mt-2 text-sm">
+                              <div className="flex items-center gap-2 sm:gap-4 mt-2 text-sm">
                                 {ms.shipments?.delivery_contact_name && (
                                   <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                                     <User className="h-3 w-3" />

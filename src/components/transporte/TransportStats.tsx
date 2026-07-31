@@ -22,10 +22,10 @@ interface TransportStatsProps {
 export function TransportStats({ stats, isLoading }: TransportStatsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded" />
             </CardContent>
           </Card>
@@ -89,7 +89,7 @@ export function TransportStats({ stats, isLoading }: TransportStatsProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
       {statCards.map((card) => (
         <Card key={card.title} className="hover:shadow-md transition-shadow">
           <CardContent className="p-4">

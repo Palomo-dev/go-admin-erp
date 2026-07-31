@@ -64,17 +64,17 @@ export function VehicleHistoryDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 gap-4 py-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 py-4">
           <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">{totalTrips}</p>
+            <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-300">{totalTrips}</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">Total Viajes</p>
           </div>
           <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <p className="text-2xl font-bold text-green-600 dark:text-green-300">{completedTrips}</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">{completedTrips}</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">Completados</p>
           </div>
           <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-            <p className="text-2xl font-bold text-purple-600 dark:text-purple-300">
+            <p className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-300">
               {totalTrips > 0 ? Math.round((completedTrips / totalTrips) * 100) : 0}%
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">Tasa Éxito</p>

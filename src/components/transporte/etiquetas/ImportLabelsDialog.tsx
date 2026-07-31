@@ -82,10 +82,10 @@ export function ImportLabelsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Área de drop/selección */}
           <div
-            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer dark:hover:border-blue-400"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 sm:p-6 text-center hover:border-blue-500 transition-colors cursor-pointer dark:hover:border-blue-400"
             onClick={() => fileInputRef.current?.click()}
           >
             <input

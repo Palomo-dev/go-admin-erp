@@ -134,7 +134,7 @@ export function ImportFaresDialog({
           <DialogTitle>Importar Tarifas</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Botón de plantilla */}
           <Button variant="outline" onClick={downloadTemplate} className="w-full">
             <Download className="h-4 w-4 mr-2" />
@@ -143,7 +143,7 @@ export function ImportFaresDialog({
 
           {/* Selector de archivo */}
           <div
-            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors dark:hover:border-blue-400"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 sm:p-8 text-center cursor-pointer hover:border-blue-500 transition-colors dark:hover:border-blue-400"
             onClick={() => fileInputRef.current?.click()}
           >
             <input

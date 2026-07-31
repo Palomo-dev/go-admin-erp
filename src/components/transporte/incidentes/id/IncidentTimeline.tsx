@@ -125,7 +125,7 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
             {/* Línea vertical */}
             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
 
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {events.map((event, index) => {
                 const config = getEventConfig(event.event_type);
                 
@@ -156,7 +156,7 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
                         </p>
                       )}
 
-                      <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="flex flex-wrap gap-2 sm:gap-4 text-xs text-gray-500 dark:text-gray-400">
                         {event.actor_type && (
                           <span className="flex items-center gap-1">
                             <User className="h-3 w-3" />

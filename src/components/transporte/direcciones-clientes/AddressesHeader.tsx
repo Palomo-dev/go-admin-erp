@@ -42,8 +42,8 @@ export function AddressesHeader({
   customers,
 }: AddressesHeaderProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 sm:gap-4">
         <div className="flex items-center gap-3">
           <Link href="/app/transporte">
             <Button variant="ghost" size="icon">
@@ -51,7 +51,7 @@ export function AddressesHeader({
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
                 <MapPin className="h-6 w-6 text-blue-600 dark:text-blue-300" />
               </div>
@@ -86,7 +86,7 @@ export function AddressesHeader({
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input

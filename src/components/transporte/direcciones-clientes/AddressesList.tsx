@@ -46,9 +46,9 @@ export function AddressesList({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <Skeleton className="h-10 w-full max-w-sm" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-48" />
           ))}
@@ -58,7 +58,7 @@ export function AddressesList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-500 dark:text-gray-400">
           {addresses.length} direcciones
@@ -78,7 +78,7 @@ export function AddressesList({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {addresses.map((address) => (
             <Card key={address.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">

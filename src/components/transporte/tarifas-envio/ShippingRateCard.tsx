@@ -126,7 +126,7 @@ export function ShippingRateCard({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4">
         {/* Badges de estado */}
         <div className="flex flex-wrap gap-2">
           {rate.transport_carriers && (
@@ -198,7 +198,7 @@ export function ShippingRateCard({
 
         {/* Recargos */}
         {(rate.fuel_surcharge_percent > 0 || rate.insurance_percent > 0) && (
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2 sm:gap-4 text-sm">
             {rate.fuel_surcharge_percent > 0 && (
               <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                 <Percent className="h-3 w-3" />

@@ -44,10 +44,10 @@ const stopTypeConfig: Record<string, { icon: React.ComponentType<{ className?: s
 export function StopsList({ stops, isLoading, onEdit, onDelete, onDuplicate, onShowOnMap }: StopsListProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded" />
             </CardContent>
           </Card>
@@ -73,7 +73,7 @@ export function StopsList({ stops, isLoading, onEdit, onDelete, onDuplicate, onS
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
       {stops.map((stop) => {
         const config = stopTypeConfig[stop.stop_type] || stopTypeConfig.stop;
         const Icon = config.icon;

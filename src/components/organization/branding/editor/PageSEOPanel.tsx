@@ -28,7 +28,7 @@ export default function PageSEOPanel({
   const [showImagePicker, setShowImagePicker] = useState(false);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Meta Title */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">

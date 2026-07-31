@@ -93,7 +93,7 @@ export function IncidentDialog({ open, onOpenChange, onSubmit }: IncidentDialogP
             Reportar Incidente
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label>Tipo de Incidente</Label>
             <Select

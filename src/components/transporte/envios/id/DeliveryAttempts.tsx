@@ -170,7 +170,7 @@ export function DeliveryAttempts({ attempts, isLoading, canRegister, onRegisterA
           <DialogHeader>
             <DialogTitle>Registrar Intento de Entrega</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
               <Label>Resultado del Intento</Label>
               <Select

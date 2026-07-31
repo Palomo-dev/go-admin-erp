@@ -128,7 +128,7 @@ export function DriverDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <Label htmlFor="employment_id">Empleado *</Label>
             <Select
@@ -152,7 +152,7 @@ export function DriverDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="license_number">Número de Licencia *</Label>
               <Input
@@ -191,7 +191,7 @@ export function DriverDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="license_expiry">Vencimiento Licencia *</Label>
               <Input

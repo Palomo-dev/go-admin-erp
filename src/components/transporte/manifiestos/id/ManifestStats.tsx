@@ -59,13 +59,13 @@ export function ManifestStats({ manifest }: ManifestStatsProps) {
     <Card>
       <CardContent className="p-4">
         {/* Estadísticas principales */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4">
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
               <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full ${stat.bg} mb-2`}>
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
             </div>
           ))}
@@ -94,7 +94,7 @@ export function ManifestStats({ manifest }: ManifestStatsProps) {
         </div>
 
         {/* Totales adicionales */}
-        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Weight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <div>

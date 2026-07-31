@@ -130,7 +130,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 sm:space-y-6 py-4">
           {/* Resultado de importación */}
           {importResult && (
             <Alert className={
@@ -169,7 +169,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               <div className="space-y-2">
                 <Label className="dark:text-gray-200">{t('csvFile')}</Label>
                 <div 
-                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 sm:p-6 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Input

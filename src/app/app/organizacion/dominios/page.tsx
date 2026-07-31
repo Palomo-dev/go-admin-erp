@@ -322,7 +322,7 @@ export default function DominiosPage() {
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-3">
               <Link
                 href="/app/organizacion"
@@ -378,9 +378,9 @@ export default function DominiosPage() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {isLoading ? (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Skeleton de estadísticas */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <Skeleton key={i} className="h-20 rounded-xl" />
               ))}
@@ -388,14 +388,14 @@ export default function DominiosPage() {
             {/* Skeleton de filtros */}
             <Skeleton className="h-10 w-full" />
             {/* Skeleton de dominios */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Skeleton key={i} className="h-48 rounded-xl" />
               ))}
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Subdominio del Sistema */}
             <SubdomainManager
               organizationId={organizationId || 0}
@@ -410,7 +410,7 @@ export default function DominiosPage() {
             />
 
             {/* Sección de Dominios Personalizados */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {t('customDomains')}
@@ -441,7 +441,7 @@ export default function DominiosPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
                   {domains.map((domain) => (
                     <DomainCard
                       key={domain.id}

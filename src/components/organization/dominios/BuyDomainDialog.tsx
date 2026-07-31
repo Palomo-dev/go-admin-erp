@@ -295,7 +295,7 @@ function BuyDomainForm({
           )}
         </DialogHeader>
 
-        <div className="py-4 space-y-4">
+        <div className="py-4 space-y-3 sm:space-y-4">
           {error && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
@@ -367,7 +367,7 @@ function BuyDomainForm({
                     </div>
                     {domainResult.available && domainResult.price && (
                       <div className="text-right">
-                        <span className="text-2xl font-bold dark:text-white">${domainResult.price.toFixed(2)}</span>
+                        <span className="text-xl sm:text-2xl font-bold dark:text-white">${domainResult.price.toFixed(2)}</span>
                         <span className="text-sm text-gray-500 ml-1 dark:text-gray-400">{t('perYear')}</span>
                       </div>
                     )}
@@ -379,7 +379,7 @@ function BuyDomainForm({
 
           {/* PASO 2: Contacto */}
           {step === 'contact' && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div>
                 <Label className="dark:text-gray-200">{t('firstName')}</Label>
                 <Input value={contactInfo.firstName} onChange={(e) => setContactInfo({...contactInfo, firstName: e.target.value})}
@@ -430,11 +430,11 @@ function BuyDomainForm({
 
           {/* PASO 3: Pago */}
           {step === 'payment' && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <div className="flex justify-between items-center mb-4">
                   <span className="font-medium dark:text-white">{domainResult?.domain}</span>
-                  <span className="text-xl font-bold dark:text-white">${domainResult?.price?.toFixed(2)} USD</span>
+                  <span className="text-lg sm:text-xl font-bold dark:text-white">${domainResult?.price?.toFixed(2)} USD</span>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t('registration')}</p>
               </div>

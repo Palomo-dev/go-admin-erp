@@ -368,7 +368,7 @@ export default function ShipmentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+      <div className="p-4 sm:p-6 flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
         <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando envío...</span>
       </div>
@@ -377,9 +377,9 @@ export default function ShipmentDetailPage() {
 
   if (!shipment) {
     return (
-      <div className="p-6 text-center">
+      <div className="p-4 sm:p-6 text-center">
         <Package className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Envío no encontrado</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Envío no encontrado</h2>
       </div>
     );
   }
@@ -394,17 +394,17 @@ export default function ShipmentDetailPage() {
   const paymentStatus = paymentStatusConfig[shipment.payment_status as keyof typeof paymentStatusConfig] || paymentStatusConfig.pending;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Button variant="ghost" size="sm" onClick={() => router.push('/app/transporte/envios')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
           </Button>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {shipment.tracking_number}
               </h1>
               {shipment.shipment_number && (
@@ -508,11 +508,11 @@ export default function ShipmentDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Info Principal */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* Remitente y Destinatario */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             <Card className="p-4">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -591,7 +591,7 @@ export default function ShipmentDetailPage() {
                 <MapPin className="h-4 w-4" />
                 Información de Entrega
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 text-sm">
                 {shipment.delivery_address && (
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 text-gray-400 mt-0.5 dark:text-gray-500" />
@@ -663,7 +663,7 @@ export default function ShipmentDetailPage() {
               <Package className="h-4 w-4" />
               Detalles del Paquete
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Tipo</p>
                 <p className="font-medium">{shipment.package_type || 'Paquete'}</p>
@@ -767,7 +767,7 @@ export default function ShipmentDetailPage() {
         </div>
 
         {/* Panel Lateral */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <Card className="p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <DollarSign className="h-4 w-4" />

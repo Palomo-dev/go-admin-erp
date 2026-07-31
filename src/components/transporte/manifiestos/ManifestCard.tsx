@@ -84,7 +84,7 @@ export function ManifestCard({
 
   return (
     <Card className="p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-2 sm:gap-4">
         {/* Icono y número */}
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -237,7 +237,7 @@ export function ManifestCard({
 
       {/* Footer con peso y paquetes */}
       <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <span className="flex items-center gap-1">
             <Weight className="h-3 w-3" />
             {manifest.total_weight_kg || 0} kg

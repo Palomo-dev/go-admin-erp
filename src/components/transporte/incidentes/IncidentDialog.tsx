@@ -115,7 +115,7 @@ export function IncidentDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">General</TabsTrigger>
@@ -125,7 +125,7 @@ export function IncidentDialog({
             </TabsList>
 
             {/* Tab General */}
-            <TabsContent value="general" className="space-y-4">
+            <TabsContent value="general" className="space-y-3 sm:space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Título del incidente *</Label>
                 <Input
@@ -137,7 +137,7 @@ export function IncidentDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
                 <div className="space-y-2">
                   <Label>Tipo de referencia *</Label>
                   <Select
@@ -187,7 +187,7 @@ export function IncidentDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
                 <div className="space-y-2">
                   <Label>Tipo de incidente *</Label>
                   <Select
@@ -226,7 +226,7 @@ export function IncidentDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
                 <div className="space-y-2">
                   <Label>Estado</Label>
                   <Select
@@ -266,7 +266,7 @@ export function IncidentDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="occurred_at">Fecha y hora del incidente</Label>
                   <Input
@@ -302,7 +302,7 @@ export function IncidentDialog({
             </TabsContent>
 
             {/* Tab Ubicación */}
-            <TabsContent value="ubicacion" className="space-y-4">
+            <TabsContent value="ubicacion" className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
                 <MapPin className="h-4 w-4" />
                 Ubicación del incidente
@@ -318,7 +318,7 @@ export function IncidentDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="latitude">Latitud</Label>
                   <Input
@@ -345,7 +345,7 @@ export function IncidentDialog({
             </TabsContent>
 
             {/* Tab Costos */}
-            <TabsContent value="costos" className="space-y-4">
+            <TabsContent value="costos" className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
                 <DollarSign className="h-4 w-4" />
                 Costos asociados al incidente
@@ -368,7 +368,7 @@ export function IncidentDialog({
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="estimated_cost">Costo estimado</Label>
                   <Input
@@ -395,7 +395,7 @@ export function IncidentDialog({
             </TabsContent>
 
             {/* Tab Notas */}
-            <TabsContent value="notas" className="space-y-4">
+            <TabsContent value="notas" className="space-y-3 sm:space-y-4">
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
                 <FileText className="h-4 w-4" />
                 Notas y observaciones

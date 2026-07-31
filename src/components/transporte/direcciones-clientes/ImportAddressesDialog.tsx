@@ -295,8 +295,8 @@ export function ImportAddressesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button variant="outline" onClick={downloadTemplate}>
               <Download className="h-4 w-4 mr-2" />
               Descargar Plantilla
@@ -322,7 +322,7 @@ export function ImportAddressesDialog({
 
           {parsedAddresses.length > 0 && !isProcessing && (
             <>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   {validCount} válidas

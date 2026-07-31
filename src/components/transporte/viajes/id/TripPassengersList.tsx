@@ -105,7 +105,7 @@ export function TripPassengersList({
 
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
           <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando pasajeros...</span>
@@ -117,8 +117,8 @@ export function TripPassengersList({
   return (
     <Card>
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <Users className="h-5 w-5" />
               Pasajeros
@@ -152,7 +152,7 @@ export function TripPassengersList({
       </div>
 
       {filteredTickets.length === 0 ? (
-        <div className="p-8 text-center">
+        <div className="p-4 sm:p-8 text-center">
           <Users className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <p className="text-gray-600 dark:text-gray-400">
             {tickets.length === 0

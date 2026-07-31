@@ -50,7 +50,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
       {/* Información del envío */}
       {label.shipments && (
         <>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 text-sm">
             {/* Remitente (origen) */}
             <div>
               <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1 dark:text-gray-400">

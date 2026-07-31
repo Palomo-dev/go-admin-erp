@@ -42,7 +42,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIncidentsProps) {
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
         </div>
@@ -69,7 +69,7 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
       </div>
 
       {incidents.length === 0 ? (
-        <div className="p-8 text-center">
+        <div className="p-4 sm:p-8 text-center">
           <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4 dark:text-green-400" />
           <p className="text-gray-600 dark:text-gray-400">
             No hay incidentes reportados para este viaje
@@ -97,7 +97,7 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
                         {incident.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-2 sm:gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {format(new Date(incident.occurred_at), "d MMM yyyy, HH:mm", { locale: es })}

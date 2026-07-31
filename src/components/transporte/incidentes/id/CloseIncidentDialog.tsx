@@ -74,7 +74,7 @@ export function CloseIncidentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-4">
           {/* Resumen de resolución */}
           <div className="space-y-2">
             <Label htmlFor="resolution_summary">Resumen de resolución</Label>

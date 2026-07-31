@@ -138,7 +138,7 @@ export function RegisterEventDialog({
         <DialogHeader>
           <DialogTitle>Registrar Evento Manual</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+        <div className="space-y-3 sm:space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Search Reference */}
           {!selectedReference ? (
             <div className="space-y-3">

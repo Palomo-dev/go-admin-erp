@@ -102,7 +102,7 @@ export function AddEventDialog({ open, onOpenChange, onSubmit }: AddEventDialogP
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-4">
           {/* Tipo de evento */}
           <div className="space-y-2">
             <Label htmlFor="event_type">Tipo de evento</Label>

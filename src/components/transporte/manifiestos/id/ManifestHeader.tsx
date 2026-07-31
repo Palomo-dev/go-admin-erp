@@ -96,7 +96,7 @@ export function ManifestHeader({
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {manifest.manifest_number}
               </h1>
               <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
@@ -106,7 +106,7 @@ export function ManifestHeader({
             </div>
 
             {/* Metadatos */}
-            <div className="flex items-center gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
                 {format(new Date(manifest.manifest_date), "d 'de' MMMM, yyyy", { locale: es })}

@@ -328,7 +328,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
           <DialogHeader>
             <DialogTitle>Agregar Item</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {onSearchProduct && (
               <div className="space-y-2">
                 <Label>Buscar Producto del Inventario</Label>
@@ -379,7 +379,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                 placeholder="Descripción del producto"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>SKU</Label>
                 <Input
@@ -397,7 +397,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Valor Unitario</Label>
                 <Input

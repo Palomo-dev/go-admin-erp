@@ -148,8 +148,8 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs sm:text-sm table-fixed sm:table-auto">
+          <div className="overflow-x-auto relative">
+            <table className="w-full text-xs sm:text-sm table-auto">
               <thead className="bg-gray-50 dark:bg-gray-900/50 text-left">
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="px-3 sm:px-4 py-3 w-12">
@@ -160,15 +160,15 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       className={isSomeSelected ? "data-[state=checked]:bg-blue-600" : ""}
                     />
                   </th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm break-words min-w-0">Cliente</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Cliente</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden sm:table-cell">Contacto</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden md:table-cell">Documento</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden xl:table-cell">Municipio</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden lg:table-cell">Etiquetas</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm w-20 sm:w-auto break-words min-w-0">Cuentas por Cobrar</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Cuentas por Cobrar</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden md:table-cell">Ventas</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden lg:table-cell">Última compra</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm text-right w-24 sm:w-auto break-words min-w-0">Acciones</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

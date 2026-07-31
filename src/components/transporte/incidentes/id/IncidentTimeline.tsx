@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -80,7 +79,6 @@ const EVENT_TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string; 
 };
 
 export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTimelineProps) {
-  const { resolvedTheme } = useTheme();
   const getEventConfig = (eventType: string) => {
     return EVENT_TYPE_CONFIG[eventType] || EVENT_TYPE_CONFIG.default;
   };
@@ -117,7 +115,7 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <div className={`text-center py-8 text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>No hay eventos registrados</p>
             <p className="text-sm mt-1">Agrega el primer evento a la bitácora</p>
@@ -125,7 +123,7 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
         ) : (
           <div className="relative">
             {/* Línea vertical */}
-            <div className={`absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
+            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
 
             <div className="space-y-6">
               {events.map((event, index) => {
@@ -141,10 +139,10 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
                     </div>
 
                     {/* Contenido */}
-                    <div className={`bg-gray-50 rounded-lg p-4 ${resolvedTheme === 'dark' ? "bg-gray-800/50" : ""}`}>
+                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <Badge variant="outline">{config.label}</Badge>
-                        <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {format(new Date(event.event_time), 'dd/MM/yyyy HH:mm', { locale: es })}
                         </span>
                         <span className="text-xs text-gray-400">
@@ -153,12 +151,12 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
                       </div>
 
                       {event.description && (
-                        <p className={`text-gray-700 mb-2 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+                        <p className="text-gray-700 dark:text-gray-300 mb-2">
                           {event.description}
                         </p>
                       )}
 
-                      <div className={`flex flex-wrap gap-4 text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                      <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
                         {event.actor_type && (
                           <span className="flex items-center gap-1">
                             <User className="h-3 w-3" />
@@ -178,9 +176,9 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
 
                       {/* Payload adicional */}
                       {event.payload && Object.keys(event.payload).length > 0 && (
-                        <div className={`mt-3 p-2 bg-gray-100 rounded text-xs font-mono ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`}>
+                        <div className="mt-3 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">
                           <details>
-                            <summary className={`cursor-pointer text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                            <summary className="cursor-pointer text-gray-600 dark:text-gray-400">
                               Ver datos adicionales
                             </summary>
                             <pre className="mt-2 overflow-x-auto">

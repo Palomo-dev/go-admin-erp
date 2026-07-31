@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +37,6 @@ export function DriversHeader({
   onRefresh,
   isLoading,
 }: DriversHeaderProps) {
-  const { resolvedTheme } = useTheme();
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -49,13 +47,13 @@ export function DriversHeader({
             </Button>
           </Link>
           <div>
-            <h1 className={`text-2xl font-bold text-gray-900 flex items-center gap-3 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
-              <div className={`p-2 bg-blue-100 rounded-xl ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
                 <User className="h-6 w-6 text-blue-600" />
               </div>
               Conductores
             </h1>
-            <p className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+            <p className="text-gray-500 dark:text-gray-400">
               Transporte / Conductores
             </p>
           </div>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import {
   Dialog,
@@ -29,7 +28,6 @@ export function ResolveDialog({
   onResolve,
   isLoading = false,
 }: ResolveDialogProps) {
-  const { resolvedTheme } = useTheme();
   const [resolutionSummary, setResolutionSummary] = useState('');
   const [rootCause, setRootCause] = useState('');
   const [correctiveActions, setCorrectiveActions] = useState('');
@@ -53,7 +51,7 @@ export function ResolveDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Documentar resolución de: <strong>{incidentTitle}</strong>
           </p>
 

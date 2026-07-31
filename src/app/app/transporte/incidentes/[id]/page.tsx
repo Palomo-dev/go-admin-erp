@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -24,7 +23,6 @@ import {
 } from '@/lib/services/incidentsService';
 
 export default function IncidentDetailPage() {
-  const { resolvedTheme } = useTheme();
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -376,7 +374,7 @@ export default function IncidentDetailPage() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Cargando incidente...</p>
+          <p className="text-gray-500 dark:text-gray-400">Cargando incidente...</p>
         </div>
       </div>
     );
@@ -386,7 +384,7 @@ export default function IncidentDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Incidente no encontrado</p>
+          <p className="text-gray-500 dark:text-gray-400">Incidente no encontrado</p>
         </div>
       </div>
     );

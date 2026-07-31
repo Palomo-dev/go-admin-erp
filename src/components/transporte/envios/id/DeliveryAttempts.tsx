@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,7 +62,6 @@ const STATUS_CONFIG = {
 };
 
 export function DeliveryAttempts({ attempts, isLoading, canRegister, onRegisterAttempt }: DeliveryAttemptsProps) {
-  const { resolvedTheme } = useTheme();
   const [showDialog, setShowDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -98,7 +96,7 @@ export function DeliveryAttempts({ attempts, isLoading, canRegister, onRegisterA
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`font-semibold text-gray-900 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+        <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Truck className="h-4 w-4" />
           Intentos de Entrega ({attempts.length})
         </h3>

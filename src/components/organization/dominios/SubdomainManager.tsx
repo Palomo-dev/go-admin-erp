@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { Globe, Check, X, Loader2, AlertTriangle, Pencil, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,6 @@ export function SubdomainManager({
   currentSubdomain,
   onSubdomainChange,
 }: SubdomainManagerProps) {
-  const { resolvedTheme } = useTheme();
   const t = useTranslations('org.domains.subdomainMgr');
   const [isEditing, setIsEditing] = useState(false);
   const [subdomain, setSubdomain] = useState(currentSubdomain || '');
@@ -209,28 +207,28 @@ export function SubdomainManager({
     switch (status) {
       case 'checking':
         return (
-          <div className={`flex items-center gap-2 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
+          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm">{t('checking')}</span>
           </div>
         );
       case 'available':
         return (
-          <div className={`flex items-center gap-2 text-green-600 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
+          <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
             <Check className="h-4 w-4" />
             <span className="text-sm">{t('available')}</span>
           </div>
         );
       case 'taken':
         return (
-          <div className={`flex items-center gap-2 text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
             <X className="h-4 w-4" />
             <span className="text-sm">{t('taken')}</span>
           </div>
         );
       case 'invalid':
         return (
-          <div className={`flex items-center gap-2 text-yellow-600 ${resolvedTheme === 'dark' ? "text-yellow-400" : ""}`}>
+          <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
             <AlertTriangle className="h-4 w-4" />
             <span className="text-sm">{t('minChars')}</span>
           </div>
@@ -241,22 +239,22 @@ export function SubdomainManager({
   };
 
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 p-6 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg bg-blue-100 ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
-            <Globe className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
+          <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+            <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h3 className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+            <h3 className="font-semibold text-gray-900 dark:text-white">
               {t('title')}
             </h3>
-            <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {t('description')}
             </p>
           </div>
         </div>
-        <Badge className={`bg-green-100 text-green-700 ${resolvedTheme === 'dark' ? "bg-green-900/30 text-green-400" : ""}`}>
+        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
           {t('free')}
         </Badge>
       </div>
@@ -270,7 +268,7 @@ export function SubdomainManager({
 
       <div className="space-y-4">
         <div>
-          <Label htmlFor="subdomain" className={`text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+          <Label htmlFor="subdomain" className="text-gray-700 dark:text-gray-300">
             {t('subdomainLabel')}
           </Label>
           <div className="mt-1 flex items-center gap-2">
@@ -288,16 +286,16 @@ export function SubdomainManager({
                   )}
                   disabled={isSaving}
                 />
-                <div className={`px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md text-gray-500 text-sm ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-gray-400" : ""}`}>
+                <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-md text-gray-500 dark:text-gray-400 text-sm">
                   .goadmin.io
                 </div>
               </div>
             ) : (
               <div className="flex-1 flex items-center">
-                <div className={`px-3 py-2 bg-gray-50 border border-gray-300 rounded-l-md text-gray-900 font-medium ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}`}>
+                <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-l-md text-gray-900 dark:text-white font-medium">
                   {currentSubdomain || t('notConfigured')}
                 </div>
-                <div className={`px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-md text-gray-500 text-sm ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-gray-400" : ""}`}>
+                <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-md text-gray-500 dark:text-gray-400 text-sm">
                   .goadmin.io
                 </div>
               </div>
@@ -308,7 +306,7 @@ export function SubdomainManager({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300" : ""}
+                className="dark:border-gray-600 dark:text-gray-300"
               >
                 <Pencil className="h-4 w-4 mr-1" />
                 {t('edit')}
@@ -325,7 +323,7 @@ export function SubdomainManager({
                   size="sm"
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300" : ""}
+                  className="dark:border-gray-600 dark:text-gray-300"
                 >
                   {t('cancel')}
                 </Button>
@@ -353,15 +351,15 @@ export function SubdomainManager({
         </div>
 
         {currentSubdomain && (
-          <div className={`pt-4 border-t border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-            <p className={`text-sm text-gray-500 mb-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
               {t('siteAvailableAt')}
             </p>
             <a
               href={`https://${currentSubdomain}.goadmin.io`}
               target="_blank"
               rel="noopener noreferrer"
-              className={`text-blue-600 hover:underline font-medium ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}
+              className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
             >
               https://{currentSubdomain}.goadmin.io
             </a>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import {
   Dialog,
@@ -59,7 +58,6 @@ export function FailureDialog({
   onConfirm,
   isLoading = false,
 }: FailureDialogProps) {
-  const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState({
     failure_reason_code: '',
     failure_reason_text: '',
@@ -103,7 +101,7 @@ export function FailureDialog({
         </DialogHeader>
 
         {shipment && (
-          <div className={`bg-gray-50 rounded-lg p-3 mb-4 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-gray-500" />
               <span className="font-medium">{shipment.shipment_number}</span>

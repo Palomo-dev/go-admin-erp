@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,6 @@ import {
 } from 'lucide-react';
 
 export function QuickActions() {
-  const { resolvedTheme } = useTheme();
   const actions = [
     {
       label: 'Nuevo Viaje',
@@ -73,8 +71,8 @@ export function QuickActions() {
           ))}
         </div>
         
-        <div className={`border-t border-gray-200 pt-4 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-          <p className={`text-sm text-gray-600 mb-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
             Catálogos
           </p>
           <div className="flex flex-wrap gap-2">

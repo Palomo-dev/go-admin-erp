@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +31,6 @@ export default function GlobalSettingsPanel({
   pages,
   onTogglePageHeader,
 }: GlobalSettingsPanelProps) {
-  const { resolvedTheme } = useTheme();
   const t = useTranslations('branding.editor.globalSettings');
   const [newButtonText, setNewButtonText] = useState('');
   const cartTexts: string[] = (settings as any).cart_button_texts || ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento'];
@@ -42,10 +40,10 @@ export default function GlobalSettingsPanel({
     <div className="space-y-4">
       {/* Colores */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('colors')}</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('colors')}</Label>
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
-            <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('primary')}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('primary')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -53,13 +51,13 @@ export default function GlobalSettingsPanel({
                 onChange={(e) => onUpdate({ primary_color: e.target.value })}
                 className="h-7 w-7 rounded cursor-pointer border-0 p-0"
               />
-              <span className={`text-[10px] text-gray-400 font-mono ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">
                 {settings.primary_color || '#3B82F6'}
               </span>
             </div>
           </div>
           <div className="space-y-1">
-            <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('secondary')}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('secondary')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -67,13 +65,13 @@ export default function GlobalSettingsPanel({
                 onChange={(e) => onUpdate({ secondary_color: e.target.value })}
                 className="h-7 w-7 rounded cursor-pointer border-0 p-0"
               />
-              <span className={`text-[10px] text-gray-400 font-mono ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">
                 {settings.secondary_color || '#6366F1'}
               </span>
             </div>
           </div>
           <div className="space-y-1">
-            <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('accent')}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('accent')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -81,13 +79,13 @@ export default function GlobalSettingsPanel({
                 onChange={(e) => onUpdate({ accent_color: e.target.value })}
                 className="h-7 w-7 rounded cursor-pointer border-0 p-0"
               />
-              <span className={`text-[10px] text-gray-400 font-mono ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">
                 {settings.accent_color || '#F59E0B'}
               </span>
             </div>
           </div>
           <div className="space-y-1">
-            <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('background')}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('background')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="color"
@@ -95,7 +93,7 @@ export default function GlobalSettingsPanel({
                 onChange={(e) => onUpdate({ background_color: e.target.value })}
                 className="h-7 w-7 rounded cursor-pointer border-0 p-0"
               />
-              <span className={`text-[10px] text-gray-400 font-mono ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">
                 {settings.background_color || '#FFFFFF'}
               </span>
             </div>
@@ -105,15 +103,15 @@ export default function GlobalSettingsPanel({
 
       {/* Tipografía */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('typography')}</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('typography')}</Label>
         <div className="space-y-2">
           <div className="space-y-1">
-            <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('headings')}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('headings')}</span>
             <Select
               value={settings.font_heading || 'Inter'}
               onValueChange={(val) => onUpdate({ font_heading: val })}
             >
-              <SelectTrigger className={`h-7 text-xs bg-white border-gray-300 text-gray-800 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}>
+              <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -126,12 +124,12 @@ export default function GlobalSettingsPanel({
             </Select>
           </div>
           <div className="space-y-1">
-            <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>{t('body')}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">{t('body')}</span>
             <Select
               value={settings.font_body || 'Inter'}
               onValueChange={(val) => onUpdate({ font_body: val })}
             >
-              <SelectTrigger className={`h-7 text-xs bg-white border-gray-300 text-gray-800 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}>
+              <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -148,7 +146,7 @@ export default function GlobalSettingsPanel({
 
       {/* Modo tema */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('themeMode')}</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('themeMode')}</Label>
         <div className="flex gap-2">
           <button
             onClick={() => onUpdate({ theme_mode: 'light' })}
@@ -177,12 +175,12 @@ export default function GlobalSettingsPanel({
 
       {/* Header Style */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('headerStyle')}</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('headerStyle')}</Label>
         <Select
           value={(settings as any).header_style || 'default'}
           onValueChange={(val) => onUpdate({ ...settings, header_style: val } as any)}
         >
-          <SelectTrigger className={`h-7 text-xs bg-white border-gray-300 text-gray-800 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}>
+          <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -196,28 +194,28 @@ export default function GlobalSettingsPanel({
 
       {/* Header CTA */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('headerButton')}</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('headerButton')}</Label>
         <div className="space-y-2">
           <Input
             value={settings.hero_cta_text || ''}
             onChange={(e) => onUpdate({ hero_cta_text: e.target.value })}
             placeholder={t('buttonText')}
-            className={`h-7 text-xs bg-white border-gray-300 text-gray-800 placeholder:text-gray-400 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white placeholder:text-gray-500" : ""}`}
+            className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
           <Input
             value={settings.hero_cta_url || ''}
             onChange={(e) => onUpdate({ hero_cta_url: e.target.value })}
             placeholder={t('buttonUrl')}
-            className={`h-7 text-xs bg-white border-gray-300 text-gray-800 placeholder:text-gray-400 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white placeholder:text-gray-500" : ""}`}
+            className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>
       </div>
 
       {/* Botón Comprar Ahora */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>🛒 Botón &quot;Comprar ahora&quot;</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">🛒 Botón &quot;Comprar ahora&quot;</Label>
         <div className="flex items-center justify-between">
-          <span className={`text-[10px] text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Mostrar en tarjetas de productos</span>
+          <span className="text-[10px] text-gray-600 dark:text-gray-400">Mostrar en tarjetas de productos</span>
           <Switch
             checked={(settings as any).show_buy_now_button ?? true}
             onCheckedChange={(checked) => onUpdate({ ...settings, show_buy_now_button: checked } as any)}
@@ -227,15 +225,15 @@ export default function GlobalSettingsPanel({
 
       {/* Texto del botón del carrito */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>🛒 Texto botón del carrito</Label>
-        <div className={`space-y-3 rounded-md border p-2 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">🛒 Texto botón del carrito</Label>
+        <div className="space-y-3 rounded-md border dark:border-gray-700 p-2">
           <div className="space-y-1">
-            <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>Modo</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">Modo</span>
             <Select
               value={cartMode}
               onValueChange={(val) => onUpdate({ ...settings, cart_button_mode: val } as any)}
             >
-              <SelectTrigger className={`h-7 text-xs bg-white border-gray-300 text-gray-800 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}>
+              <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -246,7 +244,7 @@ export default function GlobalSettingsPanel({
           </div>
 
           <div className="space-y-1">
-            <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">
               {cartMode === 'fixed' ? 'Texto del botón' : 'Textos que rotan'}
             </span>
             {cartTexts.map((text: string, i: number) => (
@@ -258,7 +256,7 @@ export default function GlobalSettingsPanel({
                     updated[i] = e.target.value;
                     onUpdate({ ...settings, cart_button_texts: updated } as any);
                   }}
-                  className={`h-7 text-xs bg-white border-gray-300 text-gray-800 flex-1 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}
+                  className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white flex-1"
                 />
                 {cartTexts.length > 1 && (
                   <button
@@ -279,7 +277,7 @@ export default function GlobalSettingsPanel({
                   value={newButtonText}
                   onChange={(e) => setNewButtonText(e.target.value)}
                   placeholder="Nuevo texto..."
-                  className={`h-7 text-xs bg-white border-gray-300 text-gray-800 flex-1 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}
+                  className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white flex-1"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && newButtonText.trim()) {
                       onUpdate({ ...settings, cart_button_texts: [...cartTexts, newButtonText.trim()] } as any);
@@ -309,11 +307,11 @@ export default function GlobalSettingsPanel({
 
       {/* Countdown Timer */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>⏰ Countdown Timer</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">⏰ Countdown Timer</Label>
         <div className="space-y-3">
           {/* Activar/Desactivar */}
           <div className="flex items-center justify-between">
-            <span className={`text-[10px] text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Activar countdown</span>
+            <span className="text-[10px] text-gray-600 dark:text-gray-400">Activar countdown</span>
             <Switch
               checked={(settings as any).countdown_enabled || false}
               onCheckedChange={(checked) => onUpdate({ ...settings, countdown_enabled: checked } as any)}
@@ -324,23 +322,23 @@ export default function GlobalSettingsPanel({
             <>
               {/* Título */}
               <div className="space-y-1">
-                <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>Texto</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-500">Texto</span>
                 <Input
                   value={(settings as any).countdown_title || ''}
                   onChange={(e) => onUpdate({ ...settings, countdown_title: e.target.value } as any)}
                   placeholder="¡Oferta por tiempo limitado!"
-                  className={`h-7 text-xs bg-white border-gray-300 text-gray-800 placeholder:text-gray-400 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}
+                  className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400"
                 />
               </div>
 
               {/* Modo */}
               <div className="space-y-1">
-                <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>Modo</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-500">Modo</span>
                 <Select
                   value={(settings as any).countdown_mode || 'daily_reset'}
                   onValueChange={(val) => onUpdate({ ...settings, countdown_mode: val } as any)}
                 >
-                  <SelectTrigger className={`h-7 text-xs bg-white border-gray-300 text-gray-800 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}>
+                  <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -353,23 +351,23 @@ export default function GlobalSettingsPanel({
               {/* Campos según modo */}
               {(settings as any).countdown_mode === 'custom' ? (
                 <div className="space-y-1">
-                  <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>Fecha fin</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-500">Fecha fin</span>
                   <Input
                     type="datetime-local"
                     value={(settings as any).countdown_end_date || ''}
                     onChange={(e) => onUpdate({ ...settings, countdown_end_date: e.target.value } as any)}
-                    className={`h-7 text-xs bg-white border-gray-300 text-gray-800 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}
+                    className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white"
                   />
                 </div>
               ) : (
                 <>
                   <div className="space-y-1">
-                    <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>Zona horaria</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-500">Zona horaria</span>
                     <Select
                       value={(settings as any).countdown_timezone || 'America/Bogota'}
                       onValueChange={(val) => onUpdate({ ...settings, countdown_timezone: val } as any)}
                     >
-                      <SelectTrigger className={`h-7 text-xs bg-white border-gray-300 text-gray-800 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}>
+                      <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -385,14 +383,14 @@ export default function GlobalSettingsPanel({
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>Hora de reinicio (0-23)</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-500">Hora de reinicio (0-23)</span>
                     <Input
                       type="number"
                       min={0}
                       max={23}
                       value={(settings as any).countdown_reset_hour ?? 0}
                       onChange={(e) => onUpdate({ ...settings, countdown_reset_hour: parseInt(e.target.value) || 0 } as any)}
-                      className={`h-7 text-xs bg-white border-gray-300 text-gray-800 ${resolvedTheme === 'dark' ? "bg-white/5 border-gray-600 text-white" : ""}`}
+                      className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white"
                     />
                   </div>
                 </>
@@ -400,38 +398,38 @@ export default function GlobalSettingsPanel({
 
               {/* Dónde mostrar */}
               <div className="space-y-2">
-                <span className={`text-[10px] text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>Mostrar en</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-500">Mostrar en</span>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className={`text-[10px] text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Header</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Header</span>
                     <Switch
                       checked={(settings as any).countdown_show_in_header ?? true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_header: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className={`text-[10px] text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Carrito</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Carrito</span>
                     <Switch
                       checked={(settings as any).countdown_show_in_cart ?? true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_cart: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className={`text-[10px] text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Detalle producto</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Detalle producto</span>
                     <Switch
                       checked={(settings as any).countdown_show_in_product ?? true}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_product: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className={`text-[10px] text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Hero / Inicio</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Hero / Inicio</span>
                     <Switch
                       checked={(settings as any).countdown_show_in_hero ?? false}
                       onCheckedChange={(checked) => onUpdate({ ...settings, countdown_show_in_hero: checked } as any)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className={`text-[10px] text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Checkout</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Checkout</span>
                     <Switch
                       checked={(settings as any).checkout_show_countdown ?? false}
                       onCheckedChange={(checked) => onUpdate({ ...settings, checkout_show_countdown: checked } as any)}
@@ -446,10 +444,10 @@ export default function GlobalSettingsPanel({
 
       {/* Urgencia de compra */}
       <div>
-        <Label className={`text-xs text-gray-500 mb-2 block ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>� Urgencia de compra</Label>
-        <div className={`space-y-2 rounded-md border p-2 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">� Urgencia de compra</Label>
+        <div className="space-y-2 rounded-md border dark:border-gray-700 p-2">
           <div className="flex items-center justify-between">
-            <span className={`text-[10px] text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Mostrar en checkout</span>
+            <span className="text-[10px] text-gray-600 dark:text-gray-400">Mostrar en checkout</span>
             <Switch
               checked={(settings as any).checkout_show_stock_warning ?? false}
               onCheckedChange={(checked) => onUpdate({ ...settings, checkout_show_stock_warning: checked } as any)}

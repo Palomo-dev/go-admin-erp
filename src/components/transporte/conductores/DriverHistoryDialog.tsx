@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import {
   Dialog,
@@ -57,7 +56,6 @@ export function DriverHistoryDialog({
   trips,
   isLoading,
 }: DriverHistoryDialogProps) {
-  const { resolvedTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('trips');
 
   if (!driver) return null;
@@ -80,12 +78,12 @@ export function DriverHistoryDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className={`flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-4 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
-          <div className={`p-2 rounded-full bg-blue-100 text-blue-600 ${resolvedTheme === 'dark' ? "bg-blue-900/30 text-blue-400" : ""}`}>
+        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg mb-4">
+          <div className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
             <User className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+            <p className="font-semibold text-gray-900 dark:text-white">
               {fullName}
             </p>
             <p className="text-sm text-gray-500">
@@ -125,7 +123,7 @@ export function DriverHistoryDialog({
                 {trips.map((trip) => (
                   <div
                     key={trip.id}
-                    className={`p-3 border rounded-lg hover:bg-gray-50 transition-colors ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
+                    className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -133,7 +131,7 @@ export function DriverHistoryDialog({
                           {tripStatusLabels[trip.status] || trip.status}
                         </Badge>
                         {trip.transport_routes?.name && (
-                          <span className={`text-sm font-medium text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {trip.transport_routes.name}
                           </span>
                         )}
@@ -143,7 +141,7 @@ export function DriverHistoryDialog({
                       </span>
                     </div>
                     
-                    <div className={`grid grid-cols-2 gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <p className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {format(new Date(trip.trip_date), 'dd MMM yyyy', { locale: es })}
@@ -172,31 +170,31 @@ export function DriverHistoryDialog({
 
           <TabsContent value="stats" className="flex-1 overflow-auto mt-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className={`p-4 bg-blue-50 rounded-lg text-center ${resolvedTheme === 'dark' ? "bg-blue-900/20" : ""}`}>
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
                 <p className="text-3xl font-bold text-blue-600">{totalTrips}</p>
-                <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Total viajes</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total viajes</p>
               </div>
-              <div className={`p-4 bg-green-50 rounded-lg text-center ${resolvedTheme === 'dark' ? "bg-green-900/20" : ""}`}>
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
                 <p className="text-3xl font-bold text-green-600">{completedTrips}</p>
-                <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Completados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Completados</p>
               </div>
-              <div className={`p-4 bg-yellow-50 rounded-lg text-center ${resolvedTheme === 'dark' ? "bg-yellow-900/20" : ""}`}>
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
                 <p className="text-3xl font-bold text-yellow-600">
                   {trips.filter(t => t.status === 'in_transit' || t.status === 'boarding').length}
                 </p>
-                <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>En curso</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">En curso</p>
               </div>
-              <div className={`p-4 bg-red-50 rounded-lg text-center ${resolvedTheme === 'dark' ? "bg-red-900/20" : ""}`}>
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
                 <p className="text-3xl font-bold text-red-600">
                   {trips.filter(t => t.status === 'cancelled').length}
                 </p>
-                <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Cancelados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Cancelados</p>
               </div>
             </div>
 
-            <div className={`mt-4 p-4 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <h4 className="font-medium mb-2">Información del conductor</h4>
-              <div className={`space-y-1 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+              <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <p><strong>Licencia:</strong> {driver.license_number}</p>
                 <p><strong>Categoría:</strong> {driver.license_category}</p>
                 <p><strong>Vencimiento:</strong> {format(new Date(driver.license_expiry), 'dd/MM/yyyy')}</p>

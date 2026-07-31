@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
@@ -87,7 +86,6 @@ export function TripsList({
   onStatusChange,
   onBoarding,
 }: TripsListProps) {
-  const { resolvedTheme } = useTheme();
   const router = useRouter();
 
   const handleViewDetails = (trip: TripWithDetails) => {
@@ -102,10 +100,10 @@ export function TripsList({
 
   if (isLoading) {
     return (
-      <Card className="p-4 sm:p-8">
+      <Card className="p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className={`ml-3 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Cargando viajes...</span>
+          <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando viajes...</span>
         </div>
       </Card>
     );
@@ -113,13 +111,13 @@ export function TripsList({
 
   if (trips.length === 0) {
     return (
-      <Card className="p-4 sm:p-8">
+      <Card className="p-8">
         <div className="text-center">
           <Bus className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className={`text-lg font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No hay viajes
           </h3>
-          <p className={`text-gray-600 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             No se encontraron viajes con los filtros aplicados.
           </p>
         </div>
@@ -150,11 +148,11 @@ export function TripsList({
             return (
               <TableRow
                 key={trip.id}
-                className={`cursor-pointer hover:bg-gray-50 ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                 onClick={() => handleViewDetails(trip)}
               >
                 <TableCell className="font-medium">
-                  <span className={`text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
+                  <span className="text-blue-600 dark:text-blue-400">
                     {trip.trip_code}
                   </span>
                 </TableCell>

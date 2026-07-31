@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -54,14 +53,13 @@ export function DriversList({
   onToggleStatus,
   onViewHistory
 }: DriversListProps) {
-  const { resolvedTheme } = useTheme();
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-6">
-              <div className={`h-36 bg-gray-200 rounded ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
+              <div className="h-36 bg-gray-200 dark:bg-gray-700 rounded" />
             </CardContent>
           </Card>
         ))}
@@ -74,10 +72,10 @@ export function DriversList({
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <User className="h-12 w-12 text-gray-400 mb-4" />
-          <h3 className={`text-lg font-medium text-gray-900 mb-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No hay conductores
           </h3>
-          <p className={`text-gray-600 text-center ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <p className="text-gray-600 dark:text-gray-400 text-center">
             Registra las credenciales de tus conductores para gestionar su documentación.
           </p>
         </CardContent>
@@ -105,14 +103,14 @@ export function DriversList({
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full bg-blue-100 text-blue-600 ${resolvedTheme === 'dark' ? "bg-blue-900/30 text-blue-400" : ""}`}>
+                  <div className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                     <User className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
                       {fullName}
                     </h3>
-                    <p className={`text-sm text-gray-500 flex items-center gap-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
                       <IdCard className="h-3 w-3" />
                       {driver.license_number}
                     </p>
@@ -167,7 +165,7 @@ export function DriversList({
                 )}
               </div>
 
-              <div className={`space-y-1 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+              <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <p className={`flex items-center gap-2 ${licenseStatus === 'expired' ? 'text-red-600' : licenseStatus === 'warning' ? 'text-yellow-600' : ''}`}>
                   <Calendar className="h-3 w-3" />
                   Licencia vence: {format(new Date(driver.license_expiry), 'dd/MM/yyyy')}

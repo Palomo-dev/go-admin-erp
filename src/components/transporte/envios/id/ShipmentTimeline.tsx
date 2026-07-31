@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -84,7 +83,6 @@ const ACTOR_LABELS: Record<string, string> = {
 };
 
 export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }: ShipmentTimelineProps) {
-  const { resolvedTheme } = useTheme();
   const [showDialog, setShowDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actorNames, setActorNames] = useState<Record<string, string>>({});
@@ -180,7 +178,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`font-semibold text-gray-900 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+        <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Clock className="h-4 w-4" />
           Timeline de Eventos ({events.length})
         </h3>
@@ -200,7 +198,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
         <p className="text-gray-500 text-center py-4">No hay eventos registrados</p>
       ) : (
         <div className="relative pl-6 space-y-4">
-          <div className={`absolute left-2 top-0 bottom-0 w-0.5 bg-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
+          <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
           {events.map((event, index) => {
             const config = getEventConfig(event.event_type);
             const Icon = config.icon;
@@ -222,10 +220,10 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                     </span>
                   </div>
                   {event.description && (
-                    <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{event.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{event.description}</p>
                   )}
                   {event.actor_type && (
-                    <p className={`text-xs text-gray-400 mt-0.5 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                       Por: {event.actor_id && actorNames[event.actor_id]
                         ? actorNames[event.actor_id]
                         : ACTOR_LABELS[event.actor_type] || event.actor_type}

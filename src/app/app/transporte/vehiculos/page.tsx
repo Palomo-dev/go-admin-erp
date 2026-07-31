@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -27,7 +26,6 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function VehiculosPage() {
-  const { resolvedTheme } = useTheme();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
@@ -285,7 +283,7 @@ export default function VehiculosPage() {
   };
 
   return (
-    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <VehiclesHeader
         searchTerm={searchTerm}
         statusFilter={statusFilter}

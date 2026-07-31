@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -66,7 +65,6 @@ export function TransportFilters({
   onExport,
   isLoading = false,
 }: TransportFiltersProps) {
-  const { resolvedTheme } = useTheme();
   const [localFilters, setLocalFilters] = useState<TransportFiltersState>(filters);
 
   useEffect(() => {
@@ -118,7 +116,7 @@ export function TransportFilters({
     localFilters.carrierId !== 'all';
 
   return (
-    <Card className={`bg-white border-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
+    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardContent className="p-4">
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
           {/* Filtro por Sucursal */}
@@ -241,7 +239,7 @@ export function TransportFilters({
               size="sm"
               onClick={onRefresh}
               disabled={isLoading}
-              className={resolvedTheme === 'dark' ? "bg-gray-800 text-gray-200 border-gray-600 hover:bg-gray-700" : ""}
+              className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
             >
               <RefreshCw className={cn('h-4 w-4 mr-1', isLoading && 'animate-spin')} />
               Actualizar

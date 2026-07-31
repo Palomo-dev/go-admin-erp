@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -15,7 +14,6 @@ interface LabelPreviewProps {
 }
 
 export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
-  const { resolvedTheme } = useTheme();
   return (
     <Card className={`p-6 max-w-md mx-auto ${className}`}>
       {/* Header con código de barras simulado */}
@@ -26,7 +24,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
             {[...Array(30)].map((_, i) => (
               <div
                 key={i}
-                className={`bg-black ${resolvedTheme === 'dark' ? "bg-white" : ""}`}
+                className="bg-black dark:bg-white"
                 style={{
                   width: Math.random() > 0.5 ? '2px' : '1px',
                   height: '40px',
@@ -44,7 +42,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
 
       {/* Número de etiqueta */}
       <div className="text-center mb-4">
-        <Badge className={`text-lg px-4 py-1 bg-black text-white ${resolvedTheme === 'dark' ? "bg-white text-black" : ""}`}>
+        <Badge className="text-lg px-4 py-1 bg-black text-white dark:bg-white dark:text-black">
           {label.label_number}
         </Badge>
       </div>
@@ -61,7 +59,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
               </p>
               <p className="font-bold">{label.shipments.shipment_number}</p>
               {label.shipments.tracking_number && (
-                <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                <p className="text-gray-600 dark:text-gray-400">
                   {label.shipments.tracking_number}
                 </p>
               )}
@@ -74,7 +72,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
                 Destino
               </p>
               <p className="font-bold">{label.shipments.delivery_contact_name || 'N/A'}</p>
-              <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+              <p className="text-gray-600 dark:text-gray-400">
                 {label.shipments.delivery_city || 'Ciudad no especificada'}
               </p>
             </div>
@@ -82,13 +80,13 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
 
           {/* Dirección completa */}
           {label.shipments.delivery_address && (
-            <div className={`mt-4 p-2 bg-gray-50 rounded text-sm ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+            <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
               <p className="text-xs text-gray-500 uppercase font-semibold mb-1">
                 Dirección de Entrega
               </p>
               <p>{label.shipments.delivery_address}</p>
               {label.shipments.delivery_contact_phone && (
-                <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                <p className="text-gray-600 dark:text-gray-400">
                   Tel: {label.shipments.delivery_contact_phone}
                 </p>
               )}
@@ -130,12 +128,12 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
       {label.shipments && (
         <div className="mt-3 flex gap-2 justify-center flex-wrap">
           {label.label_type === 'return' && (
-            <Badge className={`bg-orange-100 text-orange-800 ${resolvedTheme === 'dark' ? "bg-orange-900/30 text-orange-400" : ""}`}>
+            <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
               ↩️ DEVOLUCIÓN
             </Badge>
           )}
           {label.label_type === 'customs' && (
-            <Badge className={`bg-purple-100 text-purple-800 ${resolvedTheme === 'dark' ? "bg-purple-900/30 text-purple-400" : ""}`}>
+            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
               🛃 ADUANAS
             </Badge>
           )}

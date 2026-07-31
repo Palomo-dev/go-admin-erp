@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ import {
 } from 'lucide-react';
 
 export function DashboardQuickActions() {
-  const { resolvedTheme } = useTheme();
   const primaryActions = [
     {
       label: 'Nuevo Viaje',
@@ -105,8 +103,8 @@ export function DashboardQuickActions() {
         </div>
         
         {/* Separador con título */}
-        <div className={`border-t border-gray-200 pt-4 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-          <p className={`text-sm font-medium text-gray-700 mb-3 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             Catálogos
           </p>
           <div className="flex flex-wrap gap-2">
@@ -126,8 +124,8 @@ export function DashboardQuickActions() {
         </div>
 
         {/* Operaciones */}
-        <div className={`border-t border-gray-200 pt-4 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-          <p className={`text-sm font-medium text-gray-700 mb-3 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             Operaciones
           </p>
           <div className="flex flex-wrap gap-2">

@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,7 +77,6 @@ const moduleIcons: Record<string, React.ComponentType<any>> = {
 };
 
 export default function ModulesMarketplacePage() {
-  const { resolvedTheme } = useTheme();
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [allModules, setAllModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
@@ -372,10 +370,10 @@ export default function ModulesMarketplacePage() {
   
   if (showInitialLoader) {
     return (
-      <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div className="space-y-4">
-          <h1 className={`text-3xl font-bold ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{t('modules.title')}</h1>
-          <p className={`text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('modules.description')}</p>
+          <h1 className="text-3xl font-bold dark:text-white">{t('modules.title')}</h1>
+          <p className="text-gray-600 dark:text-gray-400">{t('modules.description')}</p>
         </div>
         <ModulesSkeleton />
       </div>
@@ -384,7 +382,7 @@ export default function ModulesMarketplacePage() {
 
   if (!organizationId) {
     return (
-      <div className={`p-4 sm:p-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+      <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -407,15 +405,15 @@ export default function ModulesMarketplacePage() {
   const totalActiveCount = coreCount + additionalActiveCount;
 
   return (
-    <div className={`p-4 sm:p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className={`p-2 bg-blue-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
-          <LayoutGrid className={`h-6 w-6 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
+        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+          <LayoutGrid className="h-6 w-6 text-blue-600 dark:text-blue-400" />
         </div>
         <div className="space-y-1">
-          <h1 className={`text-xl sm:text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{t('modules.title')}</h1>
-          <p className={`text-xs sm:text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{t('modules.title')}</h1>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             {t('modules.description')}
           </p>
         </div>
@@ -423,13 +421,13 @@ export default function ModulesMarketplacePage() {
 
       {/* Plan Status */}
       {organizationStatus?.plan && (
-        <Card className={resolvedTheme === 'dark' ? "bg-gray-900 border-gray-800" : ""}>
+        <Card className="dark:bg-gray-900 dark:border-gray-800">
           <CardHeader>
-            <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
-              <Crown className={`h-5 w-5 text-yellow-500 ${resolvedTheme === 'dark' ? "text-yellow-400" : ""}`} />
+            <CardTitle className="flex items-center gap-2 dark:text-white">
+              <Crown className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
               {organizationStatus.plan.name}
             </CardTitle>
-            <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+            <CardDescription className="dark:text-gray-400">
               {t('modules.usage', { total: totalActiveCount, max: organizationStatus.plan.max_modules, core: coreCount, additional: additionalActiveCount })}
             </CardDescription>
           </CardHeader>
@@ -439,7 +437,7 @@ export default function ModulesMarketplacePage() {
                 value={(totalActiveCount / organizationStatus.plan.max_modules) * 100} 
                 className="h-2"
               />
-              <div className={`flex justify-between text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+              <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                 <span>{t('modules.activeModules', { count: totalActiveCount, core: coreCount })}</span>
                 <span>{t('modules.availableAdditional', { count: organizationStatus.plan.max_modules - totalActiveCount })}</span>
               </div>
@@ -459,9 +457,9 @@ export default function ModulesMarketplacePage() {
       {/* Core Modules */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Crown className={`h-5 w-5 text-yellow-500 ${resolvedTheme === 'dark' ? "text-yellow-400" : ""}`} />
-          <h2 className={`text-2xl font-semibold ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{t('modules.coreModules')}</h2>
-          <Badge variant="secondary" className={resolvedTheme === 'dark' ? "bg-gray-800 text-gray-300" : ""}>{t('modules.includedInAllPlans')}</Badge>
+          <Crown className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
+          <h2 className="text-2xl font-semibold dark:text-white">{t('modules.coreModules')}</h2>
+          <Badge variant="secondary" className="dark:bg-gray-800 dark:text-gray-300">{t('modules.includedInAllPlans')}</Badge>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
@@ -470,32 +468,32 @@ export default function ModulesMarketplacePage() {
             const isActive = getModuleStatus(module.code);
             
             return (
-              <Card key={module.code} className={`relative ${resolvedTheme === 'dark' ? "bg-gray-900 border-gray-800" : ""}`}>
+              <Card key={module.code} className="relative dark:bg-gray-900 dark:border-gray-800">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 bg-blue-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
-                        <Icon className={`h-6 w-6 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
-                        <CardTitle className={`text-lg ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{module.name}</CardTitle>
-                        <Badge variant="outline" className={`text-xs ${resolvedTheme === 'dark' ? "border-gray-700 text-gray-300" : ""}`}>
+                        <CardTitle className="text-lg dark:text-white">{module.name}</CardTitle>
+                        <Badge variant="outline" className="text-xs dark:border-gray-700 dark:text-gray-300">
                           {t('modules.core')}
                         </Badge>
                       </div>
                     </div>
-                    <CheckCircle className={`h-5 w-5 text-green-500 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`} />
+                    <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className={`mb-4 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                  <CardDescription className="mb-4 dark:text-gray-400">
                     {module.description}
                   </CardDescription>
                   <div className="flex items-center justify-between">
-                    <span className={`text-sm text-green-600 font-medium ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
+                    <span className="text-sm text-green-600 dark:text-green-400 font-medium">
                       {t('modules.alwaysActive')}
                     </span>
-                    <Lock className={`h-4 w-4 text-gray-400 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`} />
+                    <Lock className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -504,14 +502,14 @@ export default function ModulesMarketplacePage() {
         </div>
       </div>
 
-      <Separator className={resolvedTheme === 'dark' ? "bg-gray-800" : ""} />
+      <Separator className="dark:bg-gray-800" />
 
       {/* Paid Modules */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Package className={`h-5 w-5 text-purple-500 ${resolvedTheme === 'dark' ? "text-purple-400" : ""}`} />
-          <h2 className={`text-2xl font-semibold ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{t('modules.specializedModules')}</h2>
-          <Badge variant="secondary" className={resolvedTheme === 'dark' ? "bg-gray-800 text-gray-300" : ""}>{t('modules.accordingToPlan')}</Badge>
+          <Package className="h-5 w-5 text-purple-500 dark:text-purple-400" />
+          <h2 className="text-2xl font-semibold dark:text-white">{t('modules.specializedModules')}</h2>
+          <Badge variant="secondary" className="dark:bg-gray-800 dark:text-gray-300">{t('modules.accordingToPlan')}</Badge>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
@@ -529,8 +527,8 @@ export default function ModulesMarketplacePage() {
                         <Icon className={`h-6 w-6 ${isActive ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`} />
                       </div>
                       <div>
-                        <CardTitle className={`text-lg ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{module.name}</CardTitle>
-                        <Badge variant={isActive ? "default" : "outline"} className={`text-xs ${resolvedTheme === 'dark' ? "border-gray-700 text-gray-300" : ""}`}>
+                        <CardTitle className="text-lg dark:text-white">{module.name}</CardTitle>
+                        <Badge variant={isActive ? "default" : "outline"} className="text-xs dark:border-gray-700 dark:text-gray-300">
                           {isActive ? t('modules.active') : t('modules.inactive')}
                         </Badge>
                       </div>
@@ -543,19 +541,19 @@ export default function ModulesMarketplacePage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className={`mb-4 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                  <CardDescription className="mb-4 dark:text-gray-400">
                     {module.description}
                   </CardDescription>
                   
                   {actionLoading === module.code && (
-                    <div className={`flex items-center gap-2 text-sm text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
+                    <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       {t('modules.processing')}
                     </div>
                   )}
                   
                   {!canToggle && !isActive && (
-                    <div className={`flex items-center gap-2 text-sm text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
+                    <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                       <Lock className="h-4 w-4" />
                       {t('modules.planLimitReached')}
                     </div>
@@ -563,10 +561,10 @@ export default function ModulesMarketplacePage() {
 
                   {/* Sección de submódulos/páginas - solo mostrar si el módulo está activo */}
                   {isActive && MODULE_PAGES[module.code] && MODULE_PAGES[module.code].length > 0 && (
-                    <div className={`mt-4 border-t border-gray-200 pt-3 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
+                    <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-3">
                       <button
                         onClick={() => toggleExpand(module.code)}
-                        className={`flex items-center justify-between text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors w-full group ${resolvedTheme === 'dark' ? "text-gray-300 hover:text-blue-400" : ""}`}
+                        className="flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors w-full group"
                       >
                         <div className="flex items-center gap-1.5">
                           {expandedModules.has(module.code) ? (
@@ -582,7 +580,7 @@ export default function ModulesMarketplacePage() {
                             const totalCount = MODULE_PAGES[module.code].length;
                             const activeCount = modulePageList === undefined ? totalCount : modulePageList.length;
                             return (
-                              <Badge variant="outline" className={`text-xs ${resolvedTheme === 'dark' ? "border-gray-700 text-gray-400" : ""}`}>
+                              <Badge variant="outline" className="text-xs dark:border-gray-700 dark:text-gray-400">
                                 {activeCount}/{totalCount}
                               </Badge>
                             );
@@ -643,19 +641,19 @@ export default function ModulesMarketplacePage() {
 
       {/* Upgrade Plan CTA - Solo mostrar si hay módulos que podrían activarse */}
       {organizationStatus?.plan && totalActiveCount >= organizationStatus.plan.max_modules && paidModules.some(m => !optimisticActiveModules.has(m.code)) && (
-        <Card className={`border-purple-200 bg-purple-50 ${resolvedTheme === 'dark' ? "border-purple-900 bg-purple-950/50" : ""}`}>
+        <Card className="border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/50">
           <CardHeader>
-            <CardTitle className={`flex items-center gap-2 text-purple-800 ${resolvedTheme === 'dark' ? "text-purple-300" : ""}`}>
-              <Crown className={`h-5 w-5 ${resolvedTheme === 'dark' ? "text-purple-400" : ""}`} />
+            <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
+              <Crown className="h-5 w-5 dark:text-purple-400" />
               {t('modules.needMoreModules')}
             </CardTitle>
-            <CardDescription className={`text-purple-600 ${resolvedTheme === 'dark' ? "text-purple-400" : ""}`}>
+            <CardDescription className="text-purple-600 dark:text-purple-400">
               {t('modules.needMoreModulesDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/app/plan">
-              <Button className={`bg-purple-600 hover:bg-purple-700 ${resolvedTheme === 'dark' ? "bg-purple-700 hover:bg-purple-600" : ""}`}>
+              <Button className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600">
                 {t('modules.upgradePlan')}
               </Button>
             </Link>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -19,7 +18,6 @@ interface BrandingAdvancedTabProps {
 }
 
 export default function BrandingAdvancedTab({ settings, onSave, isSaving }: BrandingAdvancedTabProps) {
-  const { resolvedTheme } = useTheme();
   const t = useTranslations('branding.advanced');
   const tc = useTranslations('branding.common');
   const [formData, setFormData] = useState({
@@ -35,41 +33,41 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
   return (
     <div className="space-y-6">
       {/* Advertencia */}
-      <Alert className={`border-yellow-200 bg-yellow-50 ${resolvedTheme === 'dark' ? "border-yellow-800 bg-yellow-900/20" : ""}`}>
-        <AlertTriangle className={`h-4 w-4 text-yellow-600 ${resolvedTheme === 'dark' ? "text-yellow-400" : ""}`} />
-        <AlertDescription className={`text-yellow-700 ${resolvedTheme === 'dark' ? "text-yellow-400" : ""}`}>
+      <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
+        <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+        <AlertDescription className="text-yellow-700 dark:text-yellow-400">
           {t('cautionAlert')}
         </AlertDescription>
       </Alert>
 
       {/* Analytics */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <BarChart3 className="h-5 w-5" />
             {t('analyticsTitle')}
           </CardTitle>
-          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+          <CardDescription className="dark:text-gray-400">
             {t('analyticsDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('measurementId')}</Label>
+            <Label className="dark:text-gray-300">{t('measurementId')}</Label>
             <Input
               value={formData.analytics_id}
               onChange={(e) => setFormData({ ...formData, analytics_id: e.target.value })}
               placeholder="G-XXXXXXXXXX"
-              className={`font-mono ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}`}
+              className="dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono"
             />
-            <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {t('measurementIdHint')}
             </p>
           </div>
 
           {formData.analytics_id && (
-            <div className={`p-3 bg-green-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-green-900/20" : ""}`}>
-              <p className={`text-sm text-green-700 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <p className="text-sm text-green-700 dark:text-green-400">
                 ✓ {t('analyticsConfigured')}
               </p>
             </div>
@@ -78,13 +76,13 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
       </Card>
 
       {/* CSS Personalizado */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Code className="h-5 w-5" />
             {t('customCssTitle')}
           </CardTitle>
-          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+          <CardDescription className="dark:text-gray-400">
             {t('customCssDesc')}
           </CardDescription>
         </CardHeader>
@@ -102,9 +100,9 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
   border-radius: 9999px;
 }`}
               rows={10}
-              className={`font-mono text-sm ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}`}
+              className="font-mono text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
-            <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {t('customCssHint')}
             </p>
           </div>
@@ -112,7 +110,7 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
           {/* Preview de CSS */}
           {formData.custom_css && (
             <div className="mt-4">
-              <Label className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>{t('codePreview')}</Label>
+              <Label className="text-sm dark:text-gray-300">{t('codePreview')}</Label>
               <pre className="mt-2 p-3 bg-gray-900 text-green-400 rounded-lg text-xs overflow-x-auto">
                 <code>{formData.custom_css}</code>
               </pre>
@@ -122,20 +120,20 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
       </Card>
 
       {/* Scripts Personalizados */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Code className="h-5 w-5" />
             {t('customScriptsTitle')}
           </CardTitle>
-          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+          <CardDescription className="dark:text-gray-400">
             {t('customScriptsDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert className={`mb-4 border-red-200 bg-red-50 ${resolvedTheme === 'dark' ? "border-red-800 bg-red-900/20" : ""}`}>
-            <AlertTriangle className={`h-4 w-4 text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`} />
-            <AlertDescription className={`text-red-700 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
+          <Alert className="mb-4 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <AlertDescription className="text-red-700 dark:text-red-400">
               {t('scriptsWarning')}
             </AlertDescription>
           </Alert>
@@ -155,9 +153,9 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
 <!-- Ejemplo: Chat widget -->
 <script src="https://chat-widget.com/widget.js"></script>`}
               rows={10}
-              className={`font-mono text-sm ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}`}
+              className="font-mono text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
-            <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {t('scriptsHint')}
             </p>
           </div>
@@ -165,7 +163,7 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
           {/* Preview de Scripts */}
           {formData.custom_scripts && (
             <div className="mt-4">
-              <Label className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>{t('codePreview')}</Label>
+              <Label className="text-sm dark:text-gray-300">{t('codePreview')}</Label>
               <pre className="mt-2 p-3 bg-gray-900 text-blue-400 rounded-lg text-xs overflow-x-auto max-h-48">
                 <code>{formData.custom_scripts}</code>
               </pre>
@@ -175,29 +173,29 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
       </Card>
 
       {/* Resumen */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>{t('summaryTitle')}</CardTitle>
+          <CardTitle className="dark:text-white">{t('summaryTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4 text-center">
-            <div className={`p-4 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-700/50" : ""}`}>
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className={`text-2xl font-bold ${formData.analytics_id ? 'text-green-600' : 'text-gray-400'}`}>
                 {formData.analytics_id ? '✓' : '○'}
               </div>
-              <p className={`text-sm text-gray-600 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('analytics')}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('analytics')}</p>
             </div>
-            <div className={`p-4 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-700/50" : ""}`}>
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className={`text-2xl font-bold ${formData.custom_css ? 'text-green-600' : 'text-gray-400'}`}>
                 {formData.custom_css ? formData.custom_css.split('\n').length : 0}
               </div>
-              <p className={`text-sm text-gray-600 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('cssLines')}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('cssLines')}</p>
             </div>
-            <div className={`p-4 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-700/50" : ""}`}>
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className={`text-2xl font-bold ${formData.custom_scripts ? 'text-green-600' : 'text-gray-400'}`}>
                 {formData.custom_scripts ? formData.custom_scripts.split('\n').length : 0}
               </div>
-              <p className={`text-sm text-gray-600 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('scriptLines')}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('scriptLines')}</p>
             </div>
           </div>
         </CardContent>

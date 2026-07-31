@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -35,7 +34,6 @@ export function ShipmentPagination({
   onPageChange,
   onPageSizeChange,
 }: ShipmentPaginationProps) {
-  const { resolvedTheme } = useTheme();
   if (totalItems === 0) return null;
 
   const startItem = (currentPage - 1) * pageSize + 1;
@@ -44,10 +42,10 @@ export function ShipmentPagination({
   const pages = getVisiblePages(currentPage, totalPages);
 
   return (
-    <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
-      <div className={`flex items-center gap-4 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+      <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
         <span>
-          Mostrando <strong className={`text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{startItem}</strong>–<strong className={`text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{endItem}</strong> de <strong className={`text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{totalItems}</strong>
+          Mostrando <strong className="text-gray-900 dark:text-gray-100">{startItem}</strong>–<strong className="text-gray-900 dark:text-gray-100">{endItem}</strong> de <strong className="text-gray-900 dark:text-gray-100">{totalItems}</strong>
         </span>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">Filas:</span>

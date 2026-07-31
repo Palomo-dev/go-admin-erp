@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -18,7 +17,6 @@ interface ManifestStatsProps {
 }
 
 export function ManifestStats({ manifest }: ManifestStatsProps) {
-  const { resolvedTheme } = useTheme();
   const total = manifest.total_shipments || 0;
   const delivered = manifest.delivered_count || 0;
   const failed = manifest.failed_count || 0;
@@ -67,8 +65,8 @@ export function ManifestStats({ manifest }: ManifestStatsProps) {
               <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full ${stat.bg} mb-2`}>
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
-              <p className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{stat.value}</p>
-              <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{stat.label}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -76,8 +74,8 @@ export function ManifestStats({ manifest }: ManifestStatsProps) {
         {/* Barra de progreso */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Progreso de entregas</span>
-            <span className={`font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{progress.toFixed(0)}%</span>
+            <span className="text-gray-500 dark:text-gray-400">Progreso de entregas</span>
+            <span className="font-medium text-gray-900 dark:text-white">{progress.toFixed(0)}%</span>
           </div>
           <div className="relative">
             <Progress value={progress} className="h-3" />
@@ -86,34 +84,34 @@ export function ManifestStats({ manifest }: ManifestStatsProps) {
             )}
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className={`text-green-600 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
+            <span className="text-green-600 dark:text-green-400">
               {delivered} entregados ({successRate.toFixed(0)}% éxito)
             </span>
-            <span className={`text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}>
+            <span className="text-red-600 dark:text-red-400">
               {failed} fallidos
             </span>
           </div>
         </div>
 
         {/* Totales adicionales */}
-        <div className={`grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 ${resolvedTheme === 'dark' ? "border-gray-800" : ""}`}>
+        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Weight className="h-4 w-4 text-gray-400" />
             <div>
-              <p className={`text-sm font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
                 {Number(manifest.total_weight_kg || 0).toFixed(1)} kg
               </p>
-              <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Peso total</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Peso total</p>
             </div>
           </div>
           {manifest.total_cod_amount && Number(manifest.total_cod_amount) > 0 && (
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-gray-400" />
               <div>
-                <p className={`text-sm font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
                   ${Number(manifest.total_cod_amount).toLocaleString()}
                 </p>
-                <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>COD a recaudar</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">COD a recaudar</p>
               </div>
             </div>
           )}

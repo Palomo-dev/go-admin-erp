@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,7 +63,6 @@ export function StopDialog({
   onSave,
   isSaving,
 }: StopDialogProps) {
-  const { resolvedTheme } = useTheme();
   const isEditing = !!stop;
   
   // Estados para autocompletado de Google Places
@@ -321,12 +319,12 @@ export function StopDialog({
                 )}
               </div>
               {showSuggestions && suggestions.length > 0 && (
-                <div className={`absolute z-50 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-auto ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+                <div className="absolute z-50 w-full bg-white dark:bg-gray-800 border rounded-md shadow-lg max-h-48 overflow-auto">
                   {suggestions.map((place) => (
                     <button
                       key={place.placeId}
                       type="button"
-                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 flex items-start gap-2 ${resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}`}
+                      className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-start gap-2"
                       onClick={() => handleSelectPlace(place)}
                     >
                       <MapPin className="h-4 w-4 mt-0.5 text-gray-400 flex-shrink-0" />

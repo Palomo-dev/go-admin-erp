@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,7 +62,6 @@ export function ImportAddressesDialog({
   organizationId,
   onImportComplete,
 }: ImportAddressesDialogProps) {
-  const { resolvedTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [parsedAddresses, setParsedAddresses] = useState<ParsedAddress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -382,9 +380,9 @@ export function ImportAddressesDialog({
           )}
 
           {importResults && (
-            <div className={`p-4 rounded-lg bg-blue-50 border border-blue-200 ${resolvedTheme === 'dark' ? "bg-blue-900/20" : ""}`}>
-              <h4 className={`font-medium text-blue-900 ${resolvedTheme === 'dark' ? "text-blue-100" : ""}`}>Resultado de la importación</h4>
-              <p className={`text-sm text-blue-700 mt-1 ${resolvedTheme === 'dark' ? "text-blue-300" : ""}`}>
+            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200">
+              <h4 className="font-medium text-blue-900 dark:text-blue-100">Resultado de la importación</h4>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                 {importResults.success} direcciones importadas correctamente
                 {importResults.failed > 0 && `, ${importResults.failed} fallidas`}
               </p>

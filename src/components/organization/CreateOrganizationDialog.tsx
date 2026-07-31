@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import CreateOrganizationWizard from './CreateOrganizationWizard';
@@ -20,7 +19,6 @@ export default function CreateOrganizationDialog({
   defaultEmail = '',
   onSuccess
 }: CreateOrganizationDialogProps) {
-  const { resolvedTheme } = useTheme();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const t = useTranslations('org.createOrgDialog');
@@ -79,15 +77,15 @@ export default function CreateOrganizationDialog({
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
       <div 
         ref={dialogRef}
-        className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-xl m-4 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}
+        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl m-4"
       >
-        <div className={`flex items-center justify-between p-4 border-b border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-          <h2 className={`text-lg font-semibold text-gray-800 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
             {t('title')}
           </h2>
           <button
             onClick={onClose}
-            className={`text-gray-400 hover:text-gray-500 focus:outline-none ${resolvedTheme === 'dark' ? "text-gray-500 hover:text-gray-400" : ""}`}
+            className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 focus:outline-none"
           >
             <X size={20} />
           </button>

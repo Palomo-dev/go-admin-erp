@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -60,7 +59,6 @@ const REFERENCE_TYPE_OPTIONS = [
 ];
 
 export default function IncidentesPage() {
-  const { resolvedTheme } = useTheme();
   const { toast } = useToast();
   const router = useRouter();
   const { organization } = useOrganization();
@@ -369,12 +367,12 @@ export default function IncidentesPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="min-w-0">
-          <h1 className={`text-2xl font-bold text-gray-900 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <AlertTriangle className="h-7 w-7 text-orange-600" />
             Gestión de Incidentes
           </h1>
-          <p className={`text-gray-500 mt-1 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
             Registra y da seguimiento a incidentes de transporte
           </p>
         </div>
@@ -390,7 +388,7 @@ export default function IncidentesPage() {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-gray-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-gray-600" />
               </div>
               <div>
@@ -401,7 +399,7 @@ export default function IncidentesPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-blue-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <AlertCircle className="h-5 w-5 text-blue-600" />
               </div>
               <div>
@@ -412,7 +410,7 @@ export default function IncidentesPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-yellow-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-yellow-900/30" : ""}`}>
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
                 <Clock className="h-5 w-5 text-yellow-600" />
               </div>
               <div>
@@ -423,7 +421,7 @@ export default function IncidentesPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-green-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-green-900/30" : ""}`}>
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
               <div>
@@ -434,7 +432,7 @@ export default function IncidentesPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-gray-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
                 <XCircle className="h-5 w-5 text-gray-500" />
               </div>
               <div>
@@ -445,7 +443,7 @@ export default function IncidentesPage() {
           </Card>
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 bg-red-100 rounded-lg ${resolvedTheme === 'dark' ? "bg-red-900/30" : ""}`}>
+              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </div>
               <div>
@@ -519,16 +517,16 @@ export default function IncidentesPage() {
 
       {/* Lista de incidentes */}
       {isLoading ? (
-        <Card className="p-4 sm:p-8">
+        <Card className="p-8">
           <div className="flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-            <span className={`ml-3 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Cargando incidentes...</span>
+            <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando incidentes...</span>
           </div>
         </Card>
       ) : incidents.length === 0 ? (
         <Card className="p-8 text-center">
           <AlertTriangle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className={`text-lg font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No hay incidentes registrados
           </h3>
           <p className="text-gray-500 mt-1">

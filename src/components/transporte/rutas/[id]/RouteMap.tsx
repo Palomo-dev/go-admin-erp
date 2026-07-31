@@ -1,7 +1,6 @@
 /// <reference types="@types/google.maps" />
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,7 +52,6 @@ const loadGoogleMapsScript = (): Promise<void> => {
 };
 
 export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProps) {
-  const { resolvedTheme } = useTheme();
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -329,7 +327,7 @@ export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProp
       <CardContent className="p-0">
         <div className="relative">
           {isLoading && (
-            <div className={`absolute inset-0 flex items-center justify-center bg-gray-100 z-10 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
               <div className="text-center">
                 <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">Cargando mapa...</p>
@@ -338,7 +336,7 @@ export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProp
           )}
           
           {error && (
-            <div className={`absolute inset-0 flex items-center justify-center bg-gray-100 z-10 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
               <div className="text-center">
                 <Map className="h-10 w-10 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">{error}</p>
@@ -347,10 +345,10 @@ export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProp
           )}
 
           {!hasCoordinates && !isLoading && (
-            <div className={`absolute inset-0 flex items-center justify-center bg-gray-100/80 z-10 ${resolvedTheme === 'dark' ? "bg-gray-800/80" : ""}`}>
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80 dark:bg-gray-800/80 z-10">
               <div className="text-center p-4">
                 <MapPin className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                <p className={`text-sm font-medium text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                   Sin coordenadas
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
@@ -368,7 +366,7 @@ export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProp
         </div>
 
         {route.polyline_encoded && (
-          <div className={`px-4 py-2 border-t bg-green-50 text-sm text-green-700 flex items-center gap-2 ${resolvedTheme === 'dark' ? "bg-green-900/20 text-green-300" : ""}`}>
+          <div className="px-4 py-2 border-t bg-green-50 dark:bg-green-900/20 text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
             <Navigation className="h-4 w-4" />
             Ruta calculada con Google Maps
           </div>

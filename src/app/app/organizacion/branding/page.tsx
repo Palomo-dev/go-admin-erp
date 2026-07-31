@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -42,7 +41,6 @@ const TAB_ICONS: Record<string, any> = {
 };
 
 export default function BrandingPage() {
-  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
@@ -229,26 +227,26 @@ export default function BrandingPage() {
   };
 
   return (
-    <div className={`h-screen flex flex-col bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className={`bg-white border-b border-gray-200 sticky top-0 z-10 ${resolvedTheme === 'dark' ? "bg-gray-900 border-gray-800" : ""}`}>
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link
                 href="/app/organizacion/informacion"
-                className={`p-2 rounded-lg hover:bg-gray-100 transition-colors ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                <ArrowLeft className={`h-5 w-5 text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`} />
+                <ArrowLeft className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               </Link>
-              <div className={`p-2 rounded-lg bg-purple-100 ${resolvedTheme === 'dark' ? "bg-purple-900/30" : ""}`}>
-                <Palette className={`h-6 w-6 text-purple-600 ${resolvedTheme === 'dark' ? "text-purple-400" : ""}`} />
+              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                <Palette className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <h1 className={`text-xl sm:text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   {t('title')}
                 </h1>
-                <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {t('description')}
                 </p>
               </div>
@@ -259,18 +257,18 @@ export default function BrandingPage() {
                 size="sm"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className={`border-gray-300 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}
+                className="border-gray-300 dark:border-gray-700"
               >
                 <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
                 {t('refresh')}
               </Button>
               {settings?.is_published ? (
-                <div className={`flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-sm ${resolvedTheme === 'dark' ? "bg-green-900/30 text-green-400" : ""}`}>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-md text-sm">
                   <Globe className="h-4 w-4" />
                   {t('published')}
                 </div>
               ) : (
-                <div className={`flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-md text-sm ${resolvedTheme === 'dark' ? "bg-gray-800 text-gray-400" : ""}`}>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-md text-sm">
                   <Globe className="h-4 w-4" />
                   {t('draft')}
                 </div>
@@ -298,14 +296,14 @@ export default function BrandingPage() {
         ) : settings ? (
           <div className="p-4 sm:p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`flex flex-wrap justify-start gap-1 h-auto p-1 bg-gray-100 mb-6 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+              <TabsList className="flex flex-wrap justify-start gap-1 h-auto p-1 bg-gray-100 dark:bg-gray-800 mb-6">
                 {TAB_IDS.map((tabId) => {
                   const Icon = TAB_ICONS[tabId];
                   return (
                     <TabsTrigger
                       key={tabId}
                       value={tabId}
-                      className={`flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white ${resolvedTheme === 'dark' ? "data-[state=active]:bg-gray-700" : ""}`}
+                      className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
                     >
                       <Icon className="h-4 w-4" />
                       <span className="hidden sm:inline">{t(`tabs.${tabId}`)}</span>
@@ -376,7 +374,7 @@ export default function BrandingPage() {
           </div>
         ) : (
           <div className="p-6 text-center">
-            <p className={`text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+            <p className="text-gray-500 dark:text-gray-400">
               {t('errorLoadingConfigEmpty')}
             </p>
             <Button onClick={handleRefresh} className="mt-4">

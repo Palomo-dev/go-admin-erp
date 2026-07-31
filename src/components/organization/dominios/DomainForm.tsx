@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Globe, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,7 +42,6 @@ export function DomainForm({
   onSubmit,
   isLoading = false,
 }: DomainFormProps) {
-  const { resolvedTheme } = useTheme();
   const t = useTranslations('org.domains.form');
   const [host, setHost] = useState('');
   const [domainType, setDomainType] = useState<DomainType>('custom_domain');
@@ -113,17 +111,17 @@ export function DomainForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`sm:max-w-[500px] ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
+      <DialogContent className="sm:max-w-[500px] dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg bg-blue-100 ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
-              <Globe className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <DialogTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>
+              <DialogTitle className="dark:text-white">
                 {isEditing ? t('editTitle') : t('newTitle')}
               </DialogTitle>
-              <DialogDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+              <DialogDescription className="dark:text-gray-400">
                 {isEditing 
                   ? t('editDesc') 
                   : t('newDesc')}
@@ -141,7 +139,7 @@ export function DomainForm({
 
           {/* Tipo de dominio */}
           <div className="space-y-2">
-            <Label htmlFor="domainType" className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>
+            <Label htmlFor="domainType" className="dark:text-gray-200">
               {t('domainTypeLabel')}
             </Label>
             <Select
@@ -149,20 +147,20 @@ export function DomainForm({
               onValueChange={(value: DomainType) => setDomainType(value)}
               disabled={isEditing}
             >
-              <SelectTrigger id="domainType" className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}>
+              <SelectTrigger id="domainType" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 <SelectValue placeholder={t('selectType')} />
               </SelectTrigger>
-              <SelectContent className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
-                <SelectItem value="subdomain" className={resolvedTheme === 'dark' ? "text-white focus:bg-gray-700" : ""}>
+              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                <SelectItem value="subdomain" className="dark:text-white dark:focus:bg-gray-700">
                   {t('subdomainOption')}
                 </SelectItem>
-                <SelectItem value="custom_domain" className={resolvedTheme === 'dark' ? "text-white focus:bg-gray-700" : ""}>
+                <SelectItem value="custom_domain" className="dark:text-white dark:focus:bg-gray-700">
                   {t('customDomainOption')}
                 </SelectItem>
               </SelectContent>
             </Select>
             {domainType === 'subdomain' && (
-              <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {t('subdomainAutoVerify')}
               </p>
             )}
@@ -170,7 +168,7 @@ export function DomainForm({
 
           {/* Host */}
           <div className="space-y-2">
-            <Label htmlFor="host" className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>
+            <Label htmlFor="host" className="dark:text-gray-200">
               {t('domainLabel')}
             </Label>
             <div className="relative">
@@ -179,13 +177,13 @@ export function DomainForm({
                 value={host}
                 onChange={(e) => setHost(e.target.value.toLowerCase())}
                 placeholder={domainType === 'subdomain' ? 'miempresa.goadmin.io' : 'www.miempresa.com'}
-                className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : ""}
+                className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
             </div>
             {domainType === 'custom_domain' && (
-              <Alert className={`mt-2 ${resolvedTheme === 'dark' ? "bg-blue-900/20 border-blue-800" : ""}`}>
-                <Info className={`h-4 w-4 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
-                <AlertDescription className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+              <Alert className="mt-2 dark:bg-blue-900/20 dark:border-blue-800">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-sm dark:text-gray-300">
                   {t('dnsHint')}
                 </AlertDescription>
               </Alert>
@@ -196,10 +194,10 @@ export function DomainForm({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="isPrimary" className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>
+                <Label htmlFor="isPrimary" className="dark:text-gray-200">
                   {t('primaryDomain')}
                 </Label>
-                <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {t('onlyOnePrimary')}
                 </p>
               </div>
@@ -212,10 +210,10 @@ export function DomainForm({
 
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="isActive" className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>
+                <Label htmlFor="isActive" className="dark:text-gray-200">
                   {t('activeLabel')}
                 </Label>
-                <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {t('inactiveHint')}
                 </p>
               </div>
@@ -233,7 +231,7 @@ export function DomainForm({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300 hover:bg-gray-700" : ""}
+            className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             {t('cancel')}
           </Button>

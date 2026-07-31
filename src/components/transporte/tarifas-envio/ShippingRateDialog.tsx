@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -93,7 +92,6 @@ export function ShippingRateDialog({
   onSave,
   isLoading = false,
 }: ShippingRateDialogProps) {
-  const { resolvedTheme } = useTheme();
   const [formData, setFormData] = useState<Partial<CreateShippingRateData> & { show_on_website?: boolean; show_on_pos?: boolean; free_shipping_threshold?: number }>(initialFormData);
 
   useEffect(() => {
@@ -157,7 +155,7 @@ export function ShippingRateDialog({
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Sección: Información General */}
           <div className="space-y-4">
-            <div className={`flex items-center gap-2 text-sm font-medium text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Tag className="h-4 w-4" />
               Información General
             </div>
@@ -264,8 +262,8 @@ export function ShippingRateDialog({
           </div>
 
           {/* Sección: Precios */}
-          <div className={`space-y-4 pt-4 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-            <div className={`flex items-center gap-2 text-sm font-medium text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+          <div className="space-y-4 pt-4 border-t dark:border-gray-700">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <DollarSign className="h-4 w-4" />
               Precios y Cargos
             </div>
@@ -315,8 +313,8 @@ export function ShippingRateDialog({
           </div>
 
           {/* Sección: Zonas */}
-          <div className={`space-y-4 pt-4 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-            <div className={`flex items-center gap-2 text-sm font-medium text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+          <div className="space-y-4 pt-4 border-t dark:border-gray-700">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <MapPin className="h-4 w-4" />
               Zonas de Cobertura
             </div>
@@ -344,8 +342,8 @@ export function ShippingRateDialog({
           </div>
 
           {/* Sección: Vigencia */}
-          <div className={`space-y-4 pt-4 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-            <div className={`flex items-center gap-2 text-sm font-medium text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+          <div className="space-y-4 pt-4 border-t dark:border-gray-700">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Calendar className="h-4 w-4" />
               Vigencia
             </div>
@@ -363,8 +361,8 @@ export function ShippingRateDialog({
           </div>
 
           {/* Sección: Visibilidad */}
-          <div className={`space-y-4 pt-4 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-            <div className={`flex items-center gap-2 text-sm font-medium text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+          <div className="space-y-4 pt-4 border-t dark:border-gray-700">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Globe className="h-4 w-4" />
               Visibilidad y Opciones
             </div>
@@ -387,7 +385,7 @@ export function ShippingRateDialog({
               <Switch id="show_on_pos" checked={(formData as any).show_on_pos !== false} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_on_pos: checked }))} />
             </div>
             {(formData as any).show_on_website && (
-              <div className={`p-3 border rounded-lg bg-blue-50 space-y-3 ${resolvedTheme === 'dark' ? "bg-blue-900/10" : ""}`}>
+              <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/10 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="enable_free_shipping">Habilitar envío gratis</Label>
@@ -407,7 +405,7 @@ export function ShippingRateDialog({
           </div>
 
           {/* Botones */}
-          <div className={`flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t sticky bottom-0 bg-white ${resolvedTheme === 'dark' ? "border-gray-700 bg-gray-900" : ""}`}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-900">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
               Cancelar
             </Button>

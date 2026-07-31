@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Card } from '@/components/ui/card';
 import { Package, Clock, Navigation, CheckCircle } from 'lucide-react';
 
@@ -12,7 +11,6 @@ interface MisEnviosStatsProps {
 }
 
 export function MisEnviosStats({ total, pendientes, enRuta, entregados }: MisEnviosStatsProps) {
-  const { resolvedTheme } = useTheme();
   const stats = [
     { label: 'Total', value: total, icon: Package, color: 'blue' },
     { label: 'Pendientes', value: pendientes, icon: Clock, color: 'yellow' },
@@ -31,8 +29,8 @@ export function MisEnviosStats({ total, pendientes, enRuta, entregados }: MisEnv
                 <Icon className={`h-5 w-5 text-${stat.color}-600 dark:text-${stat.color}-400`} />
               </div>
               <div>
-                <p className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{stat.label}</p>
-                <p className={`text-lg font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>{stat.value}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{stat.value}</p>
               </div>
             </div>
           </Card>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -43,7 +42,6 @@ const eventTypeConfig: Record<string, { icon: any; color: string; label: string 
 };
 
 export function RecentEvents({ events, isLoading }: RecentEventsProps) {
-  const { resolvedTheme } = useTheme();
   if (isLoading) {
     return (
       <Card>
@@ -54,10 +52,10 @@ export function RecentEvents({ events, isLoading }: RecentEventsProps) {
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center gap-3 animate-pulse">
-                <div className={`w-8 h-8 bg-gray-200 rounded-full ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
+                <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full" />
                 <div className="flex-1 space-y-2">
-                  <div className={`h-4 bg-gray-200 rounded w-3/4 ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
-                  <div className={`h-3 bg-gray-200 rounded w-1/2 ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
                 </div>
               </div>
             ))}
@@ -74,7 +72,7 @@ export function RecentEvents({ events, isLoading }: RecentEventsProps) {
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className={`text-center text-gray-500 py-8 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <p className="text-center text-gray-500 dark:text-gray-400 py-8">
             No hay eventos recientes
           </p>
         ) : (
@@ -90,7 +88,7 @@ export function RecentEvents({ events, isLoading }: RecentEventsProps) {
               return (
                 <div
                   key={event.id}
-                  className={`flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors ${resolvedTheme === 'dark' ? "hover:bg-gray-800/50" : ""}`}
+                  className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                 >
                   <div className={`p-2 rounded-full ${config.color}`}>
                     <Icon className="h-4 w-4" />
@@ -100,22 +98,22 @@ export function RecentEvents({ events, isLoading }: RecentEventsProps) {
                       <Badge variant="outline" className="text-xs">
                         {event.reference_type === 'trip' ? 'Viaje' : 'Envío'}
                       </Badge>
-                      <span className={`text-sm font-medium text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {config.label}
                       </span>
                     </div>
                     {event.description && (
-                      <p className={`text-sm text-gray-600 truncate ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                         {event.description}
                       </p>
                     )}
                     {event.location_text && (
-                      <p className={`text-xs text-gray-500 flex items-center gap-1 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+                      <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
                         {event.location_text}
                       </p>
                     )}
-                    <p className={`text-xs text-gray-400 mt-1 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                       {formatDistanceToNow(new Date(event.event_time), {
                         addSuffix: true,
                         locale: es,

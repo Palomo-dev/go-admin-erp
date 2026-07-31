@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +34,6 @@ export function GenerateTripsDialog({
   organizationId,
   onSuccess,
 }: GenerateTripsDialogProps) {
-  const { resolvedTheme } = useTheme();
   const today = new Date().toISOString().split('T')[0];
   const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -134,7 +132,7 @@ export function GenerateTripsDialog({
 
         <div className="space-y-4">
           {/* Info del horario */}
-          <div className={`p-3 bg-gray-50 rounded-lg space-y-2 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-medium">{schedule.schedule_name || 'Sin nombre'}</span>
               <Badge variant="outline">{schedule.departure_time}</Badge>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { 
   Globe, 
@@ -67,7 +66,6 @@ export function DomainCard({
   isVerifying = false,
   isSyncing = false,
 }: DomainCardProps) {
-  const { resolvedTheme } = useTheme();
   const t = useTranslations('org.domains.card');
   const [isTogglingActive, setIsTogglingActive] = useState(false);
 
@@ -81,21 +79,21 @@ export function DomainCard({
     switch (domain.status) {
       case 'verified':
         return (
-          <Badge className={`bg-green-100 text-green-700 border-0 ${resolvedTheme === 'dark' ? "bg-green-900/30 text-green-400" : ""}`}>
+          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0">
             <Check className="w-3 h-3 mr-1" />
             {t('verified')}
           </Badge>
         );
       case 'pending':
         return (
-          <Badge className={`bg-yellow-100 text-yellow-700 border-0 ${resolvedTheme === 'dark' ? "bg-yellow-900/30 text-yellow-400" : ""}`}>
+          <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-0">
             <Clock className="w-3 h-3 mr-1" />
             {t('pending')}
           </Badge>
         );
       case 'failed':
         return (
-          <Badge className={`bg-red-100 text-red-700 border-0 ${resolvedTheme === 'dark' ? "bg-red-900/30 text-red-400" : ""}`}>
+          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">
             <X className="w-3 h-3 mr-1" />
             {t('failed')}
           </Badge>
@@ -108,13 +106,13 @@ export function DomainCard({
   const getDomainTypeBadge = () => {
     if (domain.domain_type === 'subdomain') {
       return (
-        <Badge variant="outline" className={`text-blue-600 border-blue-300 ${resolvedTheme === 'dark' ? "text-blue-400 border-blue-700" : ""}`}>
+        <Badge variant="outline" className="text-blue-600 border-blue-300 dark:text-blue-400 dark:border-blue-700">
           {t('subdomain')}
         </Badge>
       );
     }
     return (
-      <Badge variant="outline" className={`text-purple-600 border-purple-300 ${resolvedTheme === 'dark' ? "text-purple-400 border-purple-700" : ""}`}>
+      <Badge variant="outline" className="text-purple-600 border-purple-300 dark:text-purple-400 dark:border-purple-700">
         {t('customDomain')}
       </Badge>
     );
@@ -150,7 +148,7 @@ export function DomainCard({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className={`font-semibold text-sm sm:text-base text-gray-900 truncate max-w-[180px] sm:max-w-none ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+              <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate max-w-[180px] sm:max-w-none">
                 {domain.host}
               </h3>
               {domain.is_primary && (
@@ -185,26 +183,26 @@ export function DomainCard({
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className={`w-48 ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
-              <DropdownMenuItem onClick={() => onEdit(domain)} className={resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}>
+            <DropdownMenuContent align="end" className="w-48 dark:bg-gray-800 dark:border-gray-700">
+              <DropdownMenuItem onClick={() => onEdit(domain)} className="dark:hover:bg-gray-700">
                 <Edit className="h-4 w-4 mr-2" />
                 {t('edit')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDuplicate(domain)} className={resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}>
+              <DropdownMenuItem onClick={() => onDuplicate(domain)} className="dark:hover:bg-gray-700">
                 <Copy className="h-4 w-4 mr-2" />
                 {t('duplicate')}
               </DropdownMenuItem>
-              <DropdownMenuSeparator className={resolvedTheme === 'dark' ? "bg-gray-700" : ""} />
+              <DropdownMenuSeparator className="dark:bg-gray-700" />
               {domain.status === 'pending' && domain.domain_type === 'custom_domain' && (
                 <>
-                  <DropdownMenuItem onClick={() => onShowDNS(domain)} className={resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}>
+                  <DropdownMenuItem onClick={() => onShowDNS(domain)} className="dark:hover:bg-gray-700">
                     <Settings className="h-4 w-4 mr-2" />
                     {t('dnsInstructions')}
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => onVerify(domain)} 
                     disabled={isVerifying}
-                    className={resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}
+                    className="dark:hover:bg-gray-700"
                   >
                     <RefreshCw className={cn("h-4 w-4 mr-2", isVerifying && "animate-spin")} />
                     {t('verifyDomain')}
@@ -212,27 +210,27 @@ export function DomainCard({
                 </>
               )}
               {!domain.is_primary && domain.status === 'verified' && (
-                <DropdownMenuItem onClick={() => onSetPrimary(domain)} className={resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}>
+                <DropdownMenuItem onClick={() => onSetPrimary(domain)} className="dark:hover:bg-gray-700">
                   <Star className="h-4 w-4 mr-2" />
                   {t('setPrimary')}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => onConfigureRedirect(domain)} className={resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}>
+              <DropdownMenuItem onClick={() => onConfigureRedirect(domain)} className="dark:hover:bg-gray-700">
                 <ArrowRight className="h-4 w-4 mr-2" />
                 {t('configureRedirect')}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => onSyncVercel(domain)} 
                 disabled={isSyncing}
-                className={resolvedTheme === 'dark' ? "hover:bg-gray-700" : ""}
+                className="dark:hover:bg-gray-700"
               >
                 <Zap className={cn("h-4 w-4 mr-2", isSyncing && "animate-pulse")} />
                 {t('syncVercel')}
               </DropdownMenuItem>
-              <DropdownMenuSeparator className={resolvedTheme === 'dark' ? "bg-gray-700" : ""} />
+              <DropdownMenuSeparator className="dark:bg-gray-700" />
               <DropdownMenuItem 
                 onClick={() => onDelete(domain)}
-                className={`text-red-600 ${resolvedTheme === 'dark' ? "text-red-400 hover:bg-gray-700" : ""}`}
+                className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 {t('deleteDomain')}
@@ -243,24 +241,24 @@ export function DomainCard({
       </div>
 
       {/* Info adicional */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-3 pt-3 border-t border-gray-100 ${resolvedTheme === 'dark' ? "border-gray-700/50" : ""}`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
         {domain.verified_at && (
           <div className="flex items-center gap-1">
-            <span className={`text-gray-500 text-xs ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('verifiedAt')}</span>
-            <span className={`text-gray-700 text-xs font-medium ${resolvedTheme === 'dark' ? "text-gray-200" : ""}`}>
+            <span className="text-gray-500 dark:text-gray-400 text-xs">{t('verifiedAt')}</span>
+            <span className="text-gray-700 dark:text-gray-200 text-xs font-medium">
               {new Date(domain.verified_at).toLocaleDateString()}
             </span>
           </div>
         )}
         {domain.verification_attempts > 0 && (
           <div className="flex items-center gap-1">
-            <span className={`text-gray-500 text-xs ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('verificationAttempts')}</span>
-            <span className={`text-gray-700 text-xs font-medium ${resolvedTheme === 'dark' ? "text-gray-200" : ""}`}>{domain.verification_attempts}</span>
+            <span className="text-gray-500 dark:text-gray-400 text-xs">{t('verificationAttempts')}</span>
+            <span className="text-gray-700 dark:text-gray-200 text-xs font-medium">{domain.verification_attempts}</span>
           </div>
         )}
         {domain.redirect_to_domain_id && (
           <div className="flex items-center gap-1 col-span-1 sm:col-span-2">
-            <span className={`text-gray-500 text-xs ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('redirect')}</span>
+            <span className="text-gray-500 dark:text-gray-400 text-xs">{t('redirect')}</span>
             <Badge variant="outline" className="text-xs h-5">
               {domain.redirect_status_code || 301}
             </Badge>
@@ -268,8 +266,8 @@ export function DomainCard({
         )}
         {domain.last_vercel_sync_at && (
           <div className="flex items-center gap-1 col-span-1 sm:col-span-2">
-            <span className={`text-gray-500 text-xs ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('lastVercelSync')}</span>
-            <span className={`text-gray-700 text-xs font-medium ${resolvedTheme === 'dark' ? "text-gray-200" : ""}`}>
+            <span className="text-gray-500 dark:text-gray-400 text-xs">{t('lastVercelSync')}</span>
+            <span className="text-gray-700 dark:text-gray-200 text-xs font-medium">
               {new Date(domain.last_vercel_sync_at).toLocaleString()}
             </span>
           </div>
@@ -277,12 +275,12 @@ export function DomainCard({
       </div>
 
       {/* Botón de visitar */}
-      <div className={`mt-3 pt-3 border-t border-gray-100 ${resolvedTheme === 'dark' ? "border-gray-700/50" : ""}`}>
+      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
         <a
           href={`https://${domain.host}`}
           target="_blank"
           rel="noopener noreferrer"
-          className={`inline-flex items-center text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium ${resolvedTheme === 'dark' ? "text-blue-400 hover:text-blue-300" : ""}`}
+          className="inline-flex items-center text-xs sm:text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
         >
           <ExternalLink className="h-3.5 w-3.5 mr-1" />
           {t('visitSite')}

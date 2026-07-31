@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -259,15 +258,15 @@ function BuyDomainForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`sm:max-w-[600px] max-h-[90vh] overflow-y-auto ${resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}`}>
+      <DialogContent className="sm:max-w-[600px] dark:bg-gray-800 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg bg-blue-100 ${resolvedTheme === 'dark' ? "bg-blue-900/30" : ""}`}>
-              <ShoppingCart className={`h-5 w-5 text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`} />
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <ShoppingCart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <DialogTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>{t('title')}</DialogTitle>
-              <DialogDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+              <DialogTitle className="dark:text-white">{t('title')}</DialogTitle>
+              <DialogDescription className="dark:text-gray-400">
                 {step === 'search' && t('stepSearch')}
                 {step === 'contact' && t('stepContact')}
                 {step === 'payment' && t('stepPayment')}
@@ -289,7 +288,7 @@ function BuyDomainForm({
                   )}>
                     {['search', 'contact', 'payment'].indexOf(step) > i ? <Check className="h-4 w-4" /> : i + 1}
                   </div>
-                  {i < 2 && <div className={`w-8 h-0.5 bg-gray-200 mx-1 ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`} />}
+                  {i < 2 && <div className="w-8 h-0.5 bg-gray-200 dark:bg-gray-700 mx-1" />}
                 </div>
               ))}
             </div>
@@ -308,14 +307,14 @@ function BuyDomainForm({
           {step === 'search' && (
             <>
               <div className="space-y-2">
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('searchLabel')}</Label>
+                <Label className="dark:text-gray-200">{t('searchLabel')}</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value.toLowerCase().replace(/\s/g, ''))}
                     placeholder="miempresa.com"
-                    className={`pl-10 ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""}`}
+                    className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                   {isChecking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />}
                 </div>
@@ -325,7 +324,7 @@ function BuyDomainForm({
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((s) => (
                     <Button key={s} variant="outline" size="sm" onClick={() => setSearchTerm(s)}
-                      className={`text-xs ${resolvedTheme === 'dark' ? "border-gray-600 text-gray-300" : ""}`}>{s}</Button>
+                      className="text-xs dark:border-gray-600 dark:text-gray-300">{s}</Button>
                   ))}
                 </div>
               )}
@@ -349,7 +348,7 @@ function BuyDomainForm({
                          <X className="h-5 w-5 text-red-600" />}
                       </div>
                       <div>
-                        <p className={`font-semibold ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{domainResult.domain}</p>
+                        <p className="font-semibold dark:text-white">{domainResult.domain}</p>
                         <p className={cn("text-sm", 
                           domainResult.available && domainResult.price ? "text-green-600" : 
                           domainResult.available && !domainResult.price ? "text-yellow-600" :
@@ -360,7 +359,7 @@ function BuyDomainForm({
                            domainResult.error || t('notAvailable')}
                         </p>
                         {domainResult.available && !domainResult.price && (
-                          <p className={`text-xs text-yellow-600 mt-1 ${resolvedTheme === 'dark' ? "text-yellow-400" : ""}`}>
+                          <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
                             {t('tryWith')}
                           </p>
                         )}
@@ -368,7 +367,7 @@ function BuyDomainForm({
                     </div>
                     {domainResult.available && domainResult.price && (
                       <div className="text-right">
-                        <span className={`text-2xl font-bold ${resolvedTheme === 'dark' ? "text-white" : ""}`}>${domainResult.price.toFixed(2)}</span>
+                        <span className="text-2xl font-bold dark:text-white">${domainResult.price.toFixed(2)}</span>
                         <span className="text-sm text-gray-500 ml-1">{t('perYear')}</span>
                       </div>
                     )}
@@ -382,49 +381,49 @@ function BuyDomainForm({
           {step === 'contact' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('firstName')}</Label>
+                <Label className="dark:text-gray-200">{t('firstName')}</Label>
                 <Input value={contactInfo.firstName} onChange={(e) => setContactInfo({...contactInfo, firstName: e.target.value})}
-                  className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('lastName')}</Label>
+                <Label className="dark:text-gray-200">{t('lastName')}</Label>
                 <Input value={contactInfo.lastName} onChange={(e) => setContactInfo({...contactInfo, lastName: e.target.value})}
-                  className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('email')}</Label>
+                <Label className="dark:text-gray-200">{t('email')}</Label>
                 <Input type="email" value={contactInfo.email} onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
-                  className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('phone')}</Label>
+                <Label className="dark:text-gray-200">{t('phone')}</Label>
                 <Input value={contactInfo.phone} onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})}
-                  placeholder="+573001234567" className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  placeholder="+573001234567" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div className="col-span-2">
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('address')}</Label>
+                <Label className="dark:text-gray-200">{t('address')}</Label>
                 <Input value={contactInfo.address1} onChange={(e) => setContactInfo({...contactInfo, address1: e.target.value})}
-                  className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('city')}</Label>
+                <Label className="dark:text-gray-200">{t('city')}</Label>
                 <Input value={contactInfo.city} onChange={(e) => setContactInfo({...contactInfo, city: e.target.value})}
-                  className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('state')}</Label>
+                <Label className="dark:text-gray-200">{t('state')}</Label>
                 <Input value={contactInfo.state} onChange={(e) => setContactInfo({...contactInfo, state: e.target.value})}
-                  className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('postalCode')}</Label>
+                <Label className="dark:text-gray-200">{t('postalCode')}</Label>
                 <Input value={contactInfo.zip} onChange={(e) => setContactInfo({...contactInfo, zip: e.target.value})}
-                  className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
               <div>
-                <Label className={resolvedTheme === 'dark' ? "text-gray-200" : ""}>{t('country')}</Label>
+                <Label className="dark:text-gray-200">{t('country')}</Label>
                 <Input value={contactInfo.country} onChange={(e) => setContactInfo({...contactInfo, country: e.target.value.toUpperCase()})}
-                  placeholder="CO" maxLength={2} className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600 text-white" : ""} />
+                  placeholder="CO" maxLength={2} className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
             </div>
           )}
@@ -432,26 +431,26 @@ function BuyDomainForm({
           {/* PASO 3: Pago */}
           {step === 'payment' && (
             <div className="space-y-4">
-              <div className={`p-4 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-700/50" : ""}`}>
+              <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <div className="flex justify-between items-center mb-4">
-                  <span className={`font-medium ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{domainResult?.domain}</span>
-                  <span className={`text-xl font-bold ${resolvedTheme === 'dark' ? "text-white" : ""}`}>${domainResult?.price?.toFixed(2)} USD</span>
+                  <span className="font-medium dark:text-white">{domainResult?.domain}</span>
+                  <span className="text-xl font-bold dark:text-white">${domainResult?.price?.toFixed(2)} USD</span>
                 </div>
-                <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('registration')}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('registration')}</p>
               </div>
 
               <div>
-                <Label className={`flex items-center gap-2 mb-2 ${resolvedTheme === 'dark' ? "text-gray-200" : ""}`}>
+                <Label className="dark:text-gray-200 flex items-center gap-2 mb-2">
                   <CreditCard className="h-4 w-4" /> {t('creditCard')}
                 </Label>
-                <div className={`bg-white rounded-md border border-gray-300 p-3 ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600" : ""}`}>
+                <div className="bg-white dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600 p-3">
                   <CardElement options={cardElementOptions} onChange={(e) => setCardComplete(e.complete)} />
                 </div>
               </div>
 
-              <Alert className={resolvedTheme === 'dark' ? "bg-blue-900/20 border-blue-800" : ""}>
+              <Alert className="dark:bg-blue-900/20 dark:border-blue-800">
                 <Globe className="h-4 w-4 text-blue-600" />
-                <AlertDescription className={`text-sm ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+                <AlertDescription className="text-sm dark:text-gray-300">
                   {t('paymentSecure')}
                 </AlertDescription>
               </Alert>
@@ -460,9 +459,9 @@ function BuyDomainForm({
 
           {/* ÉXITO */}
           {step === 'success' && (
-            <Alert className={`bg-green-50 border-green-200 ${resolvedTheme === 'dark' ? "bg-green-900/20 border-green-800" : ""}`}>
+            <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
               <Check className="h-4 w-4 text-green-600" />
-              <AlertDescription className={`text-green-700 ${resolvedTheme === 'dark' ? "text-green-300" : ""}`}>
+              <AlertDescription className="text-green-700 dark:text-green-300">
                 <strong>{t('successTitle')}</strong><br />
                 <strong>{domainResult?.domain}</strong> {t('successDesc', { domain: domainResult?.domain || '' })}
               </AlertDescription>
@@ -473,7 +472,7 @@ function BuyDomainForm({
         <DialogFooter className="gap-2">
           {step !== 'success' && (
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}
-              className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300" : ""}>{t('cancel')}</Button>
+              className="dark:border-gray-600 dark:text-gray-300">{t('cancel')}</Button>
           )}
 
           {step === 'search' && (
@@ -485,7 +484,7 @@ function BuyDomainForm({
 
           {step === 'contact' && (
             <>
-              <Button variant="outline" onClick={() => setStep('search')} className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300" : ""}>
+              <Button variant="outline" onClick={() => setStep('search')} className="dark:border-gray-600 dark:text-gray-300">
                 <ChevronLeft className="h-4 w-4 mr-1" /> {t('back')}
               </Button>
               <Button onClick={() => setStep('payment')} disabled={!isContactValid()}
@@ -498,7 +497,7 @@ function BuyDomainForm({
           {step === 'payment' && (
             <>
               <Button variant="outline" onClick={() => setStep('contact')} disabled={isProcessing}
-                className={resolvedTheme === 'dark' ? "border-gray-600 text-gray-300" : ""}>
+                className="dark:border-gray-600 dark:text-gray-300">
                 <ChevronLeft className="h-4 w-4 mr-1" /> {t('back')}
               </Button>
               <Button onClick={handlePurchase} disabled={!stripe || !cardComplete || isProcessing || !setupIntentSecret}
@@ -519,7 +518,6 @@ function BuyDomainForm({
 }
 
 export function BuyDomainDialog(props: BuyDomainDialogProps) {
-  const { resolvedTheme } = useTheme();
   return (
     <Elements stripe={stripePromise}>
       <BuyDomainForm {...props} />

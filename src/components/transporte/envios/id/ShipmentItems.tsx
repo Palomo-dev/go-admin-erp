@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -70,7 +69,6 @@ interface ShipmentItemsProps {
 }
 
 export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAddItem, onDeleteItem, onSearchProduct }: ShipmentItemsProps) {
-  const { resolvedTheme } = useTheme();
   const [showDialog, setShowDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ShipmentItem | null>(null);
@@ -181,7 +179,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`font-semibold text-gray-900 flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+        <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Package className="h-4 w-4" />
           Items del Envío ({items.length})
         </h3>
@@ -212,11 +210,11 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
               const productImage = item.product_image || noteImage || null;
 
               return (
-                <div key={item.id} className={`flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-white ${resolvedTheme === 'dark' ? "border-gray-700 bg-gray-800/50" : ""}`}>
+                <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50">
                   {/* Imagen del producto */}
                   <div className="shrink-0">
                     {productImage ? (
-                      <div className={`relative w-12 h-12 rounded-md overflow-hidden bg-gray-100 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+                      <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800">
                         <img
                           src={productImage}
                           alt={productName}
@@ -224,7 +222,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                         />
                       </div>
                     ) : (
-                      <div className={`w-12 h-12 rounded-md bg-gray-100 flex items-center justify-center ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
+                      <div className="w-12 h-12 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                         <Package className="h-6 w-6 text-gray-400" />
                       </div>
                     )}
@@ -232,7 +230,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
 
                   {/* Información del producto */}
                   <div className="flex-1 min-w-0">
-                    <h4 className={`font-medium text-sm text-gray-900 line-clamp-2 leading-tight ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`} title={productName}>
+                    <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight" title={productName}>
                       {productName}
                     </h4>
 
@@ -240,7 +238,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                     {variantEntries.length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-1">
                         {variantEntries.map(([attr, value]) => (
-                          <Badge key={attr} variant="outline" className={`text-[0.65rem] px-1 py-0 border-indigo-300 text-indigo-700 shrink-0 ${resolvedTheme === 'dark' ? "border-indigo-700 text-indigo-300" : ""}`}>
+                          <Badge key={attr} variant="outline" className="text-[0.65rem] px-1 py-0 border-indigo-300 text-indigo-700 dark:border-indigo-700 dark:text-indigo-300 shrink-0">
                             {attr}: {value}
                           </Badge>
                         ))}
@@ -251,7 +249,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                     {modifiers && modifiers.length > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-1">
                         {modifiers.map((mod) => (
-                          <Badge key={mod.modifierId} variant="outline" className={`text-[0.65rem] px-1 py-0 border-amber-300 text-amber-700 shrink-0 ${resolvedTheme === 'dark' ? "border-amber-700 text-amber-300" : ""}`}>
+                          <Badge key={mod.modifierId} variant="outline" className="text-[0.65rem] px-1 py-0 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300 shrink-0">
                             {mod.name}{mod.extraPrice > 0 ? ` (+${formatCOP(mod.extraPrice)})` : ''}
                           </Badge>
                         ))}
@@ -261,7 +259,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                     {/* Badge de descuento */}
                     {discount_amount && discount_amount > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-1">
-                        <Badge variant="outline" className={`text-[0.65rem] px-1 py-0 border-red-300 text-red-700 shrink-0 ${resolvedTheme === 'dark' ? "border-red-700 text-red-300" : ""}`}>
+                        <Badge variant="outline" className="text-[0.65rem] px-1 py-0 border-red-300 text-red-700 dark:border-red-700 dark:text-red-300 shrink-0">
                           <Tag className="h-3 w-3 mr-0.5" />
                           Desc: -{formatCOP(discount_amount)}
                         </Badge>
@@ -271,7 +269,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                     {/* Badge de impuesto */}
                     {tax_amount && tax_amount > 0 && (
                       <div className="flex items-center gap-1 flex-wrap mt-1">
-                        <Badge variant="outline" className={`text-[0.65rem] px-1 py-0 border-green-300 text-green-700 shrink-0 ${resolvedTheme === 'dark' ? "border-green-700 text-green-300" : ""}`}>
+                        <Badge variant="outline" className="text-[0.65rem] px-1 py-0 border-green-300 text-green-700 dark:border-green-700 dark:text-green-300 shrink-0">
                           <Percent className="h-3 w-3 mr-0.5" />
                           Imp: {formatCOP(tax_amount)} ({tax_rate || 0}%{tax_excluded ? ' excl.' : ' incl.'})
                         </Badge>
@@ -281,22 +279,22 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                     {/* SKU y info secundaria */}
                     <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       {productSku && (
-                        <Badge variant="outline" className={`text-[0.65rem] px-1 py-0 border-gray-400 text-gray-600 shrink-0 ${resolvedTheme === 'dark' ? "border-gray-600 text-gray-400" : ""}`}>
+                        <Badge variant="outline" className="text-[0.65rem] px-1 py-0 dark:border-gray-600 dark:text-gray-400 border-gray-400 text-gray-600 shrink-0">
                           {productSku}
                         </Badge>
                       )}
-                      <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         {item.qty} {item.unit || 'und'} × {item.unit_value ? formatCOP(item.unit_value) : '-'}
                       </span>
                       {item.weight_kg ? (
-                        <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{item.weight_kg} kg</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{item.weight_kg} kg</span>
                       ) : null}
                     </div>
                   </div>
 
                   {/* Total y acciones */}
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <div className={`font-semibold text-sm text-gray-900 ${resolvedTheme === 'dark' ? "text-gray-100" : ""}`}>
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
                       {item.total_value ? formatCOP(item.total_value) : '-'}
                     </div>
                     {canEdit && (
@@ -352,7 +350,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                         key={p.id}
                         type="button"
                         onClick={() => selectProduct(p)}
-                        className={`w-full p-2 text-left hover:bg-gray-50 text-sm ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
+                        className="w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
                       >
                         <p className="font-medium">{p.name}</p>
                         <p className="text-xs text-gray-500">
@@ -364,7 +362,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                   </div>
                 )}
                 {selectedProductId && (
-                  <p className={`text-xs text-green-600 ${resolvedTheme === 'dark' ? "text-green-400" : ""}`}>
+                  <p className="text-xs text-green-600 dark:text-green-400">
                     ✓ Producto del inventario seleccionado
                   </p>
                 )}

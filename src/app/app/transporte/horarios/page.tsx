@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -42,7 +41,6 @@ interface Driver {
 }
 
 export default function HorariosPage() {
-  const { resolvedTheme } = useTheme();
   const searchParams = useSearchParams();
   const routeParam = searchParams.get('route');
   const { toast } = useToast();
@@ -200,7 +198,7 @@ export default function HorariosPage() {
   };
 
   return (
-    <div className={`p-6 space-y-6 bg-gray-50 min-h-screen ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <SchedulesHeader
         onRefresh={loadData}
         onNewSchedule={handleNewSchedule}

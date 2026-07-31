@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Card } from '@/components/ui/card';
 import { Bus, MapPin, Clock, Users, DollarSign, User } from 'lucide-react';
 import { format } from 'date-fns';
@@ -11,7 +10,6 @@ interface TripInfoProps {
 }
 
 export function TripInfo({ trip }: TripInfoProps) {
-  const { resolvedTheme } = useTheme();
   const occupancy = trip.total_seats - trip.available_seats;
   const occupancyPercent = trip.total_seats > 0
     ? Math.round((occupancy / trip.total_seats) * 100)
@@ -77,12 +75,12 @@ export function TripInfo({ trip }: TripInfoProps) {
               {card.icon}
             </div>
             <div className="min-w-0 flex-1">
-              <p className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{card.title}</p>
-              <p className={`font-semibold text-gray-900 truncate ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{card.title}</p>
+              <p className="font-semibold text-gray-900 dark:text-white truncate">
                 {card.value}
               </p>
               {card.subtitle && (
-                <p className={`text-xs text-gray-500 truncate ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {card.subtitle}
                 </p>
               )}

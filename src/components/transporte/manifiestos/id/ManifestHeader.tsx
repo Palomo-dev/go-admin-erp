@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -76,13 +75,12 @@ export function ManifestHeader({
   onCompleteManifest,
   onGenerateRouteSheet,
 }: ManifestHeaderProps) {
-  const { resolvedTheme } = useTheme();
   const statusConfig = STATUS_CONFIG[manifest.status] || STATUS_CONFIG.draft;
   const canStart = manifest.status === 'confirmed';
   const canComplete = manifest.status === 'in_progress';
 
   return (
-    <div className={`bg-white border-b border-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-900 border-gray-800" : ""}`}>
+    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {/* Navegación */}
         <div className="flex items-center gap-2 mb-4">
@@ -98,7 +96,7 @@ export function ManifestHeader({
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className={`text-2xl font-bold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {manifest.manifest_number}
               </h1>
               <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
@@ -108,7 +106,7 @@ export function ManifestHeader({
             </div>
 
             {/* Metadatos */}
-            <div className={`flex items-center gap-4 mt-3 text-sm text-gray-500 flex-wrap ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+            <div className="flex items-center gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
                 {format(new Date(manifest.manifest_date), "d 'de' MMMM, yyyy", { locale: es })}

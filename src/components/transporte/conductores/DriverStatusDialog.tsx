@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +33,6 @@ export function DriverStatusDialog({
   onToggleStatus,
   isUpdating,
 }: DriverStatusDialogProps) {
-  const { resolvedTheme } = useTheme();
   if (!driver) return null;
 
   const profile = driver.employments?.organization_members?.profiles;
@@ -68,12 +66,12 @@ export function DriverStatusDialog({
         </DialogHeader>
 
         <div className="py-4">
-          <div className={`flex items-center gap-3 p-4 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}>
-            <div className={`p-2 rounded-full bg-blue-100 text-blue-600 ${resolvedTheme === 'dark' ? "bg-blue-900/30 text-blue-400" : ""}`}>
+          <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
               <User className="h-6 w-6" />
             </div>
             <div>
-              <p className={`font-semibold text-gray-900 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+              <p className="font-semibold text-gray-900 dark:text-white">
                 {fullName}
               </p>
               <p className="text-sm text-gray-500">
@@ -83,9 +81,9 @@ export function DriverStatusDialog({
           </div>
 
           {!newStatus && (
-            <div className={`mt-4 p-3 bg-yellow-50 rounded-lg flex items-start gap-2 ${resolvedTheme === 'dark' ? "bg-yellow-900/20" : ""}`}>
+            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-start gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-              <p className={`text-sm text-yellow-700 ${resolvedTheme === 'dark' ? "text-yellow-300" : ""}`}>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
                 Al desactivar este conductor, no podrá ser asignado a nuevos viajes o manifiestos.
                 Los viajes ya asignados no se verán afectados.
               </p>
@@ -93,9 +91,9 @@ export function DriverStatusDialog({
           )}
 
           {newStatus && (
-            <div className={`mt-4 p-3 bg-green-50 rounded-lg flex items-start gap-2 ${resolvedTheme === 'dark' ? "bg-green-900/20" : ""}`}>
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-start gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <p className={`text-sm text-green-700 ${resolvedTheme === 'dark' ? "text-green-300" : ""}`}>
+              <p className="text-sm text-green-700 dark:text-green-300">
                 Al activar este conductor, estará disponible para ser asignado a viajes y despachos.
               </p>
             </div>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -88,7 +87,6 @@ export function IncidentCard({
   onAssign,
   onChangeStatus,
 }: IncidentCardProps) {
-  const { resolvedTheme } = useTheme();
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -118,7 +116,7 @@ export function IncidentCard({
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className={`font-semibold text-gray-900 truncate ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+              <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                 {incident.title}
               </h3>
               <p className="text-xs text-gray-500 flex items-center gap-1">
@@ -173,7 +171,7 @@ export function IncidentCard({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDelete(incident)}
-                className={`text-red-600 ${resolvedTheme === 'dark' ? "text-red-400" : ""}`}
+                className="text-red-600 dark:text-red-400"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Eliminar
@@ -200,13 +198,13 @@ export function IncidentCard({
 
         {/* Descripción */}
         {incident.description && (
-          <p className={`text-sm text-gray-600 line-clamp-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
             {incident.description}
           </p>
         )}
 
         {/* Referencia */}
-        <div className={`flex items-center gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           {incident.reference_type === 'trip' ? (
             <>
               <Truck className="h-4 w-4 text-blue-500" />
@@ -222,7 +220,7 @@ export function IncidentCard({
 
         {/* Ubicación */}
         {incident.location_description && (
-          <div className={`flex items-center gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <MapPin className="h-4 w-4 text-green-500" />
             <span className="truncate">{incident.location_description}</span>
           </div>
@@ -232,7 +230,7 @@ export function IncidentCard({
         {(incident.estimated_cost > 0 || incident.actual_cost > 0) && (
           <div className="flex items-center gap-4 text-sm">
             {incident.estimated_cost > 0 && (
-              <span className={`flex items-center gap-1 text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+              <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                 <DollarSign className="h-3 w-3" />
                 Est: {formatCurrency(incident.estimated_cost)}
               </span>
@@ -247,11 +245,11 @@ export function IncidentCard({
         )}
 
         {/* Asignado a */}
-        <div className={`flex items-center justify-between pt-2 border-t ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
+        <div className="flex items-center justify-between pt-2 border-t dark:border-gray-700">
           <div className="flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-gray-400" />
             {incident.assigned_user ? (
-              <span className={`text-gray-700 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`}>
+              <span className="text-gray-700 dark:text-gray-300">
                 {incident.assigned_user.full_name}
               </span>
             ) : (

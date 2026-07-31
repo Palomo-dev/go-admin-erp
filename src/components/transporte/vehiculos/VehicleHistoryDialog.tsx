@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState } from 'react';
 import {
   Dialog,
@@ -48,7 +47,6 @@ export function VehicleHistoryDialog({
   trips,
   isLoading,
 }: VehicleHistoryDialogProps) {
-  const { resolvedTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('trips');
 
   if (!vehicle) return null;
@@ -67,19 +65,19 @@ export function VehicleHistoryDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-4 py-4">
-          <div className={`text-center p-3 bg-blue-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-blue-900/20" : ""}`}>
+          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <p className="text-2xl font-bold text-blue-600">{totalTrips}</p>
-            <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Total Viajes</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Viajes</p>
           </div>
-          <div className={`text-center p-3 bg-green-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-green-900/20" : ""}`}>
+          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <p className="text-2xl font-bold text-green-600">{completedTrips}</p>
-            <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Completados</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Completados</p>
           </div>
-          <div className={`text-center p-3 bg-purple-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-purple-900/20" : ""}`}>
+          <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
             <p className="text-2xl font-bold text-purple-600">
               {totalTrips > 0 ? Math.round((completedTrips / totalTrips) * 100) : 0}%
             </p>
-            <p className={`text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Tasa Éxito</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Tasa Éxito</p>
           </div>
         </div>
 
@@ -112,13 +110,13 @@ export function VehicleHistoryDialog({
                   return (
                     <div
                       key={trip.id}
-                      className={`p-3 border rounded-lg hover:bg-gray-50 ${resolvedTheme === 'dark' ? "hover:bg-gray-800/50" : ""}`}
+                      className="p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium">{trip.trip_code}</span>
                         <Badge className={status.color}>{status.label}</Badge>
                       </div>
-                      <div className={`grid grid-cols-2 gap-2 text-sm text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                      <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {format(new Date(trip.trip_date), 'dd/MM/yyyy', { locale: es })}

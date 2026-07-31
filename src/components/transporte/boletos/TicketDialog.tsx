@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
@@ -80,7 +79,6 @@ export function TicketDialog({
   onSave,
   onSearchCustomer,
 }: TicketDialogProps) {
-  const { resolvedTheme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchingCustomer, setSearchingCustomer] = useState(false);
   const [customerResults, setCustomerResults] = useState<Customer[]>([]);
@@ -308,7 +306,7 @@ export function TicketDialog({
               </SelectContent>
             </Select>
             {selectedTrip && (
-              <div className={`text-xs text-gray-500 space-y-1 mt-2 p-2 bg-gray-50 rounded-lg ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+              <div className="text-xs text-gray-500 space-y-1 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <p>
                   <strong>Asientos:</strong> {tripDetails?.available_seats ?? selectedTrip.available_seats ?? 'N/A'} disponibles
                   {tripDetails?.total_seats && ` de ${tripDetails.total_seats}`}
@@ -351,7 +349,7 @@ export function TicketDialog({
                       key={c.id}
                       type="button"
                       onClick={() => selectCustomer(c)}
-                      className={`w-full p-2 text-left hover:bg-gray-50 text-sm ${resolvedTheme === 'dark' ? "hover:bg-gray-800" : ""}`}
+                      className="w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
                     >
                       <p className="font-medium">{c.name}</p>
                       <p className="text-xs text-gray-500">{c.email} · {c.document_number}</p>
@@ -513,7 +511,7 @@ export function TicketDialog({
                   </Label>
                   
                   {tripSeats.length > 0 ? (
-                    <div className={`border rounded-lg p-3 bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-900" : ""}`}>
+                    <div className="border rounded-lg p-3 bg-gray-50 dark:bg-gray-900">
                       <div className="flex flex-wrap gap-2 justify-center">
                         {tripSeats.map((seat) => {
                           const isAvailable = seat.status === 'available';
@@ -545,9 +543,9 @@ export function TicketDialog({
                           );
                         })}
                       </div>
-                      <div className={`flex items-center justify-center gap-4 mt-3 text-xs text-gray-600 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+                      <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-600 dark:text-gray-400">
                         <span className="flex items-center gap-1">
-                          <span className={`w-3 h-3 rounded bg-green-100 border border-green-300 ${resolvedTheme === 'dark' ? "bg-green-900/30 border-green-700" : ""}`}></span>
+                          <span className="w-3 h-3 rounded bg-green-100 border border-green-300 dark:bg-green-900/30 dark:border-green-700"></span>
                           Disponible
                         </span>
                         <span className="flex items-center gap-1">
@@ -555,7 +553,7 @@ export function TicketDialog({
                           Seleccionado
                         </span>
                         <span className="flex items-center gap-1">
-                          <span className={`w-3 h-3 rounded bg-gray-200 border border-gray-300 ${resolvedTheme === 'dark' ? "bg-gray-700" : ""}`}></span>
+                          <span className="w-3 h-3 rounded bg-gray-200 border border-gray-300 dark:bg-gray-700"></span>
                           Ocupado
                         </span>
                       </div>
@@ -571,7 +569,7 @@ export function TicketDialog({
                   )}
                   
                   {formData.seat_number && (
-                    <p className={`text-sm text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
                       Asiento seleccionado: <strong>{formData.seat_number}</strong>
                     </p>
                   )}
@@ -609,7 +607,7 @@ export function TicketDialog({
                   type="number"
                   value={formData.total}
                   readOnly
-                  className={`bg-gray-50 ${resolvedTheme === 'dark' ? "bg-gray-800" : ""}`}
+                  className="bg-gray-50 dark:bg-gray-800"
                 />
               </div>
               <div className="space-y-2">

@@ -1,6 +1,5 @@
 'use client';
 
-import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +34,6 @@ const BUSINESS_TYPE_KEYS: Record<string, string> = {
 };
 
 export default function BrandingThemeTab({ settings, onSave, isSaving, organizationTypeId, organizationId, subdomain }: BrandingThemeTabProps) {
-  const { resolvedTheme } = useTheme();
   const t = useTranslations('branding.theme');
   const tc = useTranslations('branding.common');
   const router = useRouter();
@@ -100,20 +98,20 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
   return (
     <div className="space-y-6">
       {/* Preview del sitio — ocupa solo la mitad del ancho */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="p-4">
           <div className="max-w-md">
-            <h3 className={`text-sm font-semibold mb-3 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{t('appliedTheme')}</h3>
+            <h3 className="text-sm font-semibold dark:text-white mb-3">{t('appliedTheme')}</h3>
             {siteUrl ? (
-              <div className={`rounded-lg overflow-hidden border border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}>
+              <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
                 {/* Barra de navegador simulada */}
-                <div className={`flex items-center gap-2 px-2 py-1 bg-gray-100 border-b border-gray-200 ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600" : ""}`}>
+                <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                   <div className="flex gap-1">
                     <div className="w-2 h-2 rounded-full bg-red-400" />
                     <div className="w-2 h-2 rounded-full bg-yellow-400" />
                     <div className="w-2 h-2 rounded-full bg-green-400" />
                   </div>
-                  <div className={`flex-1 px-2 py-0.5 bg-white rounded text-[10px] text-gray-500 font-mono truncate ${resolvedTheme === 'dark' ? "bg-gray-800 text-gray-400" : ""}`}>
+                  <div className="flex-1 px-2 py-0.5 bg-white dark:bg-gray-800 rounded text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate">
                     {siteUrl}
                   </div>
                 </div>
@@ -130,27 +128,27 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                 </div>
               </div>
             ) : (
-              <div className={`flex flex-col items-center justify-center py-10 text-center rounded-lg border-2 border-dashed border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`}>
-                <Globe className={`h-10 w-10 text-gray-300 mb-2 ${resolvedTheme === 'dark' ? "text-gray-600" : ""}`} />
-                <p className={`text-gray-500 text-xs ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{t('noSubdomain')}</p>
+              <div className="flex flex-col items-center justify-center py-10 text-center rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700">
+                <Globe className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-gray-500 dark:text-gray-400 text-xs">{t('noSubdomain')}</p>
               </div>
             )}
             {/* Info + botones */}
             <div className="mt-2 flex items-center justify-between">
-              <div className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
-                <span className={`font-medium ${resolvedTheme === 'dark' ? "text-white" : ""}`}>{settings.template_id || t('noTemplate')}</span>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="font-medium dark:text-white">{settings.template_id || t('noTemplate')}</span>
                 {settings.updated_at && (
                   <span className="ml-2">· {t('modified')} {new Date(settings.updated_at).toLocaleDateString()}</span>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
                 {siteUrl && (
-                  <Button variant="outline" size="sm" onClick={() => setIframeKey((k) => k + 1)} className={`h-7 w-7 p-0 ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}>
+                  <Button variant="outline" size="sm" onClick={() => setIframeKey((k) => k + 1)} className="h-7 w-7 p-0 dark:border-gray-600">
                     <RefreshCw className="h-3.5 w-3.5" />
                   </Button>
                 )}
                 {siteUrl && (
-                  <Button variant="outline" size="sm" onClick={() => window.open(siteUrl, '_blank')} className={`h-7 text-xs ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}>
+                  <Button variant="outline" size="sm" onClick={() => window.open(siteUrl, '_blank')} className="h-7 text-xs dark:border-gray-600">
                     <ExternalLink className="h-3.5 w-3.5 mr-1" />
                     {t('viewSite')}
                   </Button>
@@ -168,13 +166,13 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
       </Card>
 
       {/* Plantilla */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             <Palette className="h-5 w-5" />
             {t('templateTitle')}
           </CardTitle>
-          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+          <CardDescription className="dark:text-gray-400">
             {t('templateDesc')}
           </CardDescription>
         </CardHeader>
@@ -183,7 +181,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           <div className="flex items-center gap-3 mb-4">
             <Filter className="h-4 w-4 text-gray-400" />
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className={`w-[200px] ${resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600" : ""}`}>
+              <SelectTrigger className="w-[200px] dark:bg-gray-700 dark:border-gray-600">
                 <SelectValue placeholder={t('filterByType')} />
               </SelectTrigger>
               <SelectContent>
@@ -193,7 +191,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                 ))}
               </SelectContent>
             </Select>
-            <span className={`text-xs text-gray-400 ${resolvedTheme === 'dark' ? "text-gray-500" : ""}`}>
+            <span className="text-xs text-gray-400 dark:text-gray-500">
               {presets.length} {presets.length === 1 ? t('themesSingular') : t('themesPlural')}
             </span>
           </div>
@@ -223,11 +221,11 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   )}
                 >
                   {preset.is_default && (
-                    <span className={`absolute top-2 right-2 text-xs bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium ${resolvedTheme === 'dark' ? "bg-yellow-900/40 text-yellow-300" : ""}`}>⭐ Default</span>
+                    <span className="absolute top-2 right-2 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 px-1.5 py-0.5 rounded font-medium">⭐ Default</span>
                   )}
                   {/* Mini preview */}
                   <div
-                    className={`h-24 rounded overflow-hidden mb-3 border border-gray-100 ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`}
+                    className="h-24 rounded overflow-hidden mb-3 border border-gray-100 dark:border-gray-600"
                     style={{ backgroundColor: bgColor }}
                   >
                     {/* Mini header */}
@@ -255,12 +253,12 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                       <div className="flex-1 h-4 rounded" style={{ backgroundColor: preset.colors.secondary, opacity: 0.15 }} />
                     </div>
                   </div>
-                  <h4 className={`font-medium text-sm ${resolvedTheme === 'dark' ? "text-white" : ""}`} style={{ fontFamily: preset.fonts.heading }}>{preset.name}</h4>
-                  <p className={`text-xs text-gray-500 line-clamp-2 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{preset.description}</p>
+                  <h4 className="font-medium text-sm dark:text-white" style={{ fontFamily: preset.fonts.heading }}>{preset.name}</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{preset.description}</p>
                   {/* Color swatches + mode badge */}
                   <div className="flex items-center gap-1 mt-2">
-                    <div className={`w-4 h-4 rounded-full border border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`} style={{ backgroundColor: preset.colors.primary }} title="Principal" />
-                    <div className={`w-4 h-4 rounded-full border border-gray-200 ${resolvedTheme === 'dark' ? "border-gray-600" : ""}`} style={{ backgroundColor: preset.colors.secondary }} title="Secundario" />
+                    <div className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600" style={{ backgroundColor: preset.colors.primary }} title="Principal" />
+                    <div className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600" style={{ backgroundColor: preset.colors.secondary }} title="Secundario" />
                     <span className="ml-auto text-[10px] text-gray-400">
                       {preset.theme_mode === 'dark' ? '🌙' : '☀️'}
                     </span>
@@ -273,13 +271,13 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
       </Card>
 
       {/* Modo de tema */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+          <CardTitle className="flex items-center gap-2 dark:text-white">
             {formData.theme_mode === 'light' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             {t('themeModeTitle')}
           </CardTitle>
-          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+          <CardDescription className="dark:text-gray-400">
             {t('themeModeDesc')}
           </CardDescription>
         </CardHeader>
@@ -291,13 +289,13 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="light" id="light" />
-              <Label htmlFor="light" className={`flex items-center gap-2 cursor-pointer ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+              <Label htmlFor="light" className="flex items-center gap-2 cursor-pointer dark:text-white">
                 <Sun className="h-4 w-4" /> {t('light')}
               </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="dark" id="dark" />
-              <Label htmlFor="dark" className={`flex items-center gap-2 cursor-pointer ${resolvedTheme === 'dark' ? "text-white" : ""}`}>
+              <Label htmlFor="dark" className="flex items-center gap-2 cursor-pointer dark:text-white">
                 <Moon className="h-4 w-4" /> {t('dark')}
               </Label>
             </div>
@@ -306,15 +304,15 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
       </Card>
 
       {/* Colores */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>{t('colorsTitle')}</CardTitle>
-            <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+            <CardTitle className="dark:text-white">{t('colorsTitle')}</CardTitle>
+            <CardDescription className="dark:text-gray-400">
               {t('colorsDesc')}
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={handleReset} className={resolvedTheme === 'dark' ? "border-gray-600" : ""}>
+          <Button variant="outline" size="sm" onClick={handleReset} className="dark:border-gray-600">
             <RotateCcw className="h-4 w-4 mr-2" />
             {t('reset')}
           </Button>
@@ -322,7 +320,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-2">
-              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('colorPrimary')}</Label>
+              <Label className="dark:text-gray-300">{t('colorPrimary')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -331,10 +329,10 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   className="h-10 w-full rounded cursor-pointer"
                 />
               </div>
-              <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{formData.primary_color}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{formData.primary_color}</span>
             </div>
             <div className="space-y-2">
-              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('colorSecondary')}</Label>
+              <Label className="dark:text-gray-300">{t('colorSecondary')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -343,10 +341,10 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   className="h-10 w-full rounded cursor-pointer"
                 />
               </div>
-              <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{formData.secondary_color}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{formData.secondary_color}</span>
             </div>
             <div className="space-y-2">
-              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('colorAccent')}</Label>
+              <Label className="dark:text-gray-300">{t('colorAccent')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -355,10 +353,10 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   className="h-10 w-full rounded cursor-pointer"
                 />
               </div>
-              <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{formData.accent_color}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{formData.accent_color}</span>
             </div>
             <div className="space-y-2">
-              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('colorBackground')}</Label>
+              <Label className="dark:text-gray-300">{t('colorBackground')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -367,10 +365,10 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   className="h-10 w-full rounded cursor-pointer"
                 />
               </div>
-              <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{formData.background_color}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{formData.background_color}</span>
             </div>
             <div className="space-y-2">
-              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('colorText')}</Label>
+              <Label className="dark:text-gray-300">{t('colorText')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -379,12 +377,12 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   className="h-10 w-full rounded cursor-pointer"
                 />
               </div>
-              <span className={`text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>{formData.text_color}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{formData.text_color}</span>
             </div>
           </div>
 
           {/* Preview */}
-          <div className={`mt-6 p-4 rounded-lg border ${resolvedTheme === 'dark' ? "border-gray-700" : ""}`} style={{ backgroundColor: formData.background_color }}>
+          <div className="mt-6 p-4 rounded-lg border dark:border-gray-700" style={{ backgroundColor: formData.background_color }}>
             <h3 className="text-lg font-bold mb-2" style={{ color: formData.primary_color, fontFamily: formData.font_heading }}>
               {t('previewTitle')}
             </h3>
@@ -407,22 +405,22 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
       </Card>
 
       {/* Tipografía */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>{t('typographyTitle')}</CardTitle>
-          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+          <CardTitle className="dark:text-white">{t('typographyTitle')}</CardTitle>
+          <CardDescription className="dark:text-gray-400">
             {t('typographyDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('fontHeading')}</Label>
+              <Label className="dark:text-gray-300">{t('fontHeading')}</Label>
               <Select
                 value={formData.font_heading}
                 onValueChange={(value) => setFormData({ ...formData, font_heading: value })}
               >
-                <SelectTrigger className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600" : ""}>
+                <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -433,17 +431,17 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   ))}
                 </SelectContent>
               </Select>
-              <p className={`text-2xl mt-2 ${resolvedTheme === 'dark' ? "text-white" : ""}`} style={{ fontFamily: formData.font_heading }}>
+              <p className="text-2xl mt-2 dark:text-white" style={{ fontFamily: formData.font_heading }}>
                 {t('sampleHeading')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>{t('fontBody')}</Label>
+              <Label className="dark:text-gray-300">{t('fontBody')}</Label>
               <Select
                 value={formData.font_body}
                 onValueChange={(value) => setFormData({ ...formData, font_body: value })}
               >
-                <SelectTrigger className={resolvedTheme === 'dark' ? "bg-gray-700 border-gray-600" : ""}>
+                <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -454,7 +452,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   ))}
                 </SelectContent>
               </Select>
-              <p className={`mt-2 ${resolvedTheme === 'dark' ? "text-gray-300" : ""}`} style={{ fontFamily: formData.font_body }}>
+              <p className="mt-2 dark:text-gray-300" style={{ fontFamily: formData.font_body }}>
                 {t('sampleBody')}
               </p>
             </div>
@@ -463,10 +461,10 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
       </Card>
 
       {/* Tamaño del Logo */}
-      <Card className={resolvedTheme === 'dark' ? "bg-gray-800 border-gray-700" : ""}>
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className={resolvedTheme === 'dark' ? "text-white" : ""}>Tamaño del Logo</CardTitle>
-          <CardDescription className={resolvedTheme === 'dark' ? "text-gray-400" : ""}>
+          <CardTitle className="dark:text-white">Tamaño del Logo</CardTitle>
+          <CardDescription className="dark:text-gray-400">
             Ajusta la altura del logo en el header y footer del sitio web
           </CardDescription>
         </CardHeader>
@@ -474,8 +472,8 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className={resolvedTheme === 'dark' ? "text-gray-300" : ""}>Altura del logo</Label>
-                <span className={`text-sm font-medium text-blue-600 ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>{formData.logo_height}px</span>
+                <Label className="dark:text-gray-300">Altura del logo</Label>
+                <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{formData.logo_height}px</span>
               </div>
               <input
                 type="range"
@@ -486,7 +484,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                 onChange={(e) => setFormData({ ...formData, logo_height: Number(e.target.value) })}
                 className="w-full accent-blue-600"
               />
-              <div className={`flex justify-between text-xs text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>24px</span>
                 <span>48px</span>
                 <span>72px</span>
@@ -494,14 +492,14 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                 <span>120px</span>
               </div>
             </div>
-            <div className={`p-4 rounded-lg border bg-gray-50 flex items-center gap-3 ${resolvedTheme === 'dark' ? "border-gray-700 bg-gray-900" : ""}`}>
+            <div className="p-4 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center gap-3">
               <div
-                className={`bg-blue-100 rounded flex items-center justify-center ${resolvedTheme === 'dark' ? "bg-blue-900" : ""}`}
+                className="bg-blue-100 dark:bg-blue-900 rounded flex items-center justify-center"
                 style={{ height: formData.logo_height, width: formData.logo_height * 2 }}
               >
-                <span className={`text-xs text-blue-600 font-medium ${resolvedTheme === 'dark' ? "text-blue-400" : ""}`}>Logo</span>
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Logo</span>
               </div>
-              <span className={`text-sm text-gray-500 ${resolvedTheme === 'dark' ? "text-gray-400" : ""}`}>Vista previa del tamaño</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Vista previa del tamaño</span>
             </div>
           </div>
         </CardContent>

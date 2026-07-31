@@ -36,6 +36,9 @@ const productoSchema = z.object({
   supplier_id: z.number().optional(),
   tax_id: z.string().optional(), // UUID del impuesto
   station: z.string().nullable().optional(),
+  product_type: z.enum(['product', 'service']).optional(),
+  brand: z.string().optional(),
+  reference: z.string().optional(),
   
   // Precios y costos
   cost: z.number().min(0).optional(),
@@ -102,6 +105,9 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       supplier_id: undefined,
       tax_id: '',
       station: null,
+      product_type: 'product',
+      brand: '',
+      reference: '',
       cost: 0,
       price: 0,
       track_stock: true,
@@ -313,6 +319,9 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           unit_code: producto.unit_code?.trim() || '',
           supplier_id: supplierData?.supplier_id || undefined,
           station: producto.station || null,
+          product_type: producto.product_type || 'product',
+          brand: producto.brand || '',
+          reference: producto.reference || '',
           cost: costData?.cost || 0,
           price: priceData?.price || 0,
           compare_price: priceData?.compare_price || 0,
@@ -392,6 +401,9 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         status: data.status,
         station: data.station ?? null,
         track_stock: data.track_stock,
+        product_type: data.product_type || 'product',
+        brand: data.brand || null,
+        reference: data.reference || null,
         updated_at: new Date().toISOString(),
       };
 

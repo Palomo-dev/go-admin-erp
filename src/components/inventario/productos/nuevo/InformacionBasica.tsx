@@ -216,6 +216,36 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
           />
         </div>
 
+        {/* Tipo de Producto */}
+        <div className="space-y-2">
+          <Label htmlFor="product_type" className="text-gray-700 dark:text-gray-300">
+            Tipo de Producto
+          </Label>
+          <Select
+            value={formData.product_type || 'product'}
+            onValueChange={(value) => {
+              updateFormData('product_type', value)
+              // Si es servicio, desactivar track_stock
+              if (value === 'service') {
+                updateFormData('track_stock', false)
+              } else {
+                updateFormData('track_stock', true)
+              }
+            }}
+          >
+            <SelectTrigger className="border-gray-300 dark:border-gray-700 dark:bg-gray-800">
+              <SelectValue placeholder="Seleccionar tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="product">Producto</SelectItem>
+              <SelectItem value="service">Servicio</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Los servicios no manejan inventario.
+          </p>
+        </div>
+
         {/* Nombre */}
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="name" className="text-gray-700 dark:text-gray-300">
@@ -354,6 +384,34 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
               noneLabel="Sin proveedor"
             />
           )}
+        </div>
+
+        {/* Marca */}
+        <div className="space-y-2">
+          <Label htmlFor="brand" className="text-gray-700 dark:text-gray-300">
+            Marca
+          </Label>
+          <Input
+            id="brand"
+            value={formData.brand || ''}
+            onChange={(e) => updateFormData('brand', e.target.value)}
+            placeholder="Ej: Nike, Sony, Generica"
+            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+          />
+        </div>
+
+        {/* Referencia */}
+        <div className="space-y-2">
+          <Label htmlFor="reference" className="text-gray-700 dark:text-gray-300">
+            Referencia
+          </Label>
+          <Input
+            id="reference"
+            value={formData.reference || ''}
+            onChange={(e) => updateFormData('reference', e.target.value)}
+            placeholder="Ej: REF-001, Modelo X"
+            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+          />
         </div>
 
         {/* Estación de Cocina/Bar */}

@@ -28,7 +28,7 @@ export interface Product {
   barcode?: string;
   status: 'active' | 'inactive' | 'deleted';
   image?: string;
-  tax_id?: number;
+  // tax_id legacy removido: los impuestos se gestionan via product_tax_relations
   price?: number; // Added for POS pricing
   cost?: number;
   stock_quantity?: number;

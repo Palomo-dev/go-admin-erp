@@ -31,7 +31,7 @@ type Product = {
   price: number;
   sku: string;
   description?: string;
-  tax_id?: string;
+  // tax_id legacy removido: las RPC ya devuelven tax_code y tax_rate desde product_tax_relations
   tax_code?: string;
   tax_name?: string;
   tax_rate?: number;
@@ -100,7 +100,6 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           price: product.product_prices[0]?.price || 0,
           description: product.description,
           // No tenemos información de impuestos en esta consulta fallback
-          tax_id: undefined,
           tax_code: undefined,
           tax_name: undefined,
           tax_rate: undefined

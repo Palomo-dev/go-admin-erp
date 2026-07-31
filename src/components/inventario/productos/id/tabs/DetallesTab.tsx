@@ -56,6 +56,9 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     supplier_id: preferredSupplier?.supplier_id?.toString() || '',
     station: producto.station || null,
     track_stock: producto.track_stock !== false,
+    product_type: producto.product_type || 'product',
+    brand: producto.brand || '',
+    reference: producto.reference || '',
   });
   
   // Cargar datos de categorías, unidades y proveedores al montar el componente
@@ -135,6 +138,9 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           unit_code: formData.unit_code || null,
           station: formData.station || null,
           track_stock: formData.track_stock,
+          product_type: formData.product_type,
+          brand: formData.brand || null,
+          reference: formData.reference || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', producto.id)
@@ -331,6 +337,52 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
             checked={formData.track_stock}
             onCheckedChange={handleTrackStockChange}
           />
+        </div>
+
+        {/* Tipo de Producto */}
+        <div className="space-y-2">
+          <Label htmlFor="product_type">Tipo de Producto</Label>
+          <Select
+            value={formData.product_type}
+            onValueChange={(value) => {
+              setFormData({ ...formData, product_type: value, track_stock: value === 'service' ? false : formData.track_stock });
+            }}
+          >
+            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
+              <SelectValue placeholder="Seleccionar tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="product">Producto</SelectItem>
+              <SelectItem value="service">Servicio</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Los servicios no manejan inventario.</p>
+        </div>
+
+        {/* Marca y Referencia */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="brand">Marca</Label>
+            <Input
+              id="brand"
+              name="brand"
+              value={formData.brand}
+              onChange={handleInputChange}
+              placeholder="Ej: Nike, Sony, Generica"
+              className="dark:bg-gray-800 dark:border-gray-700"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="reference">Referencia</Label>
+            <Input
+              id="reference"
+              name="reference"
+              value={formData.reference}
+              onChange={handleInputChange}
+              placeholder="Ej: REF-001, Modelo X"
+              className="dark:bg-gray-800 dark:border-gray-700"
+            />
+          </div>
         </div>
       </div>
       

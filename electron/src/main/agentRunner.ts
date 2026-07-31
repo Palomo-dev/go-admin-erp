@@ -237,7 +237,10 @@ export function stopAgent(): void {
     reconnectTimer = null;
   }
   reconnectAttempts = 0;
-  supabase?.removeAllChannels();
+  if (supabase) {
+    supabase.removeAllChannels();
+    supabase = null;
+  }
   running = false;
 }
 

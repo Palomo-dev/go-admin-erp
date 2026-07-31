@@ -48,7 +48,8 @@ export default function ProductoDetallePage() {
             product_costs(id, cost, effective_from, effective_to),
             stock_levels(branch_id, qty_on_hand, qty_reserved, branches(id, name)),
             product_images(id, storage_path, is_primary),
-            product_suppliers(id, supplier_id, cost, is_preferred, supplier_sku, lead_time_days, min_order_qty, supplier:suppliers(id, uuid, name, nit))
+            product_suppliers(id, supplier_id, cost, is_preferred, supplier_sku, lead_time_days, min_order_qty, supplier:suppliers(id, uuid, name, nit)),
+            product_tax_relations(tax_id, organization_taxes(id, name, rate))
           `)
           .eq('uuid', id)
           .eq('organization_id', organization.id)

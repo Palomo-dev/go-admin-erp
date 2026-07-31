@@ -284,6 +284,38 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                   <span className="ml-1 dark:text-gray-200">{producto.suppliers?.name || 'Sin proveedor'}</span>
                 </div>
               )}
+
+              <div className="flex items-center mr-6">
+                <InfoIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Tipo:</span>
+                <span className="ml-1 dark:text-gray-200">{producto.product_type === 'service' ? 'Servicio' : 'Producto'}</span>
+              </div>
+
+              {producto.brand && (
+                <div className="flex items-center mr-6">
+                  <InfoIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Marca:</span>
+                  <span className="ml-1 dark:text-gray-200">{producto.brand}</span>
+                </div>
+              )}
+
+              {producto.reference && (
+                <div className="flex items-center mr-6">
+                  <InfoIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Ref:</span>
+                  <span className="ml-1 dark:text-gray-200">{producto.reference}</span>
+                </div>
+              )}
+
+              {producto.product_tax_relations && producto.product_tax_relations.length > 0 && (
+                <div className="flex items-center mr-6">
+                  <InfoIcon className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Impuesto:</span>
+                  <span className="ml-1 dark:text-gray-200">
+                    {producto.product_tax_relations[0].organization_taxes?.name || 'IVA'} {producto.product_tax_relations[0].organization_taxes?.rate != null ? `${producto.product_tax_relations[0].organization_taxes.rate}%` : ''}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

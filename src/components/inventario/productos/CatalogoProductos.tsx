@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { Producto, FiltrosProductos, StockSucursal } from './types';
@@ -60,10 +60,16 @@ const CatalogoProductos: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isScrapingOpen, setIsScrapingOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const lastFetchKey = useRef<string>('');
 
 
   // Cargar productos desde Supabase con una sola consulta eficiente
   useEffect(() => {
+    // Evitar doble ejecución en React Strict Mode (desarrollo)
+    const fetchKey = JSON.stringify([organization?.id, branch_id, filters, refreshKey]);
+    if (lastFetchKey.current === fetchKey) return;
+    lastFetchKey.current = fetchKey;
+
     const fetchProductos = async () => {
       if (!organization?.id) {
         console.log('Esperando organization_id...');

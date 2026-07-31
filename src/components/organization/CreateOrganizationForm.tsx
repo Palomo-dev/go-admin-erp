@@ -186,13 +186,19 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         return;
       }
       setLoadingMunicipalities(true);
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('municipalities')
         .select('id, name, code, state_name')
         .eq('country_code', formData.countryCode)
         .order('name')
-        .limit(500);
-      if (data) setMunicipalities(data);
+        .limit(1000);
+      if (error) {
+        console.error('Error cargando municipios:', error);
+        setMunicipalities([]);
+      } else {
+        console.log(`Municipios cargados: ${data?.length || 0} para ${formData.countryCode}`);
+        setMunicipalities(data || []);
+      }
       setLoadingMunicipalities(false);
     };
     fetchMunicipalities();
@@ -921,7 +927,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               <select
                 value={formData.stateCode}
                 onChange={(e) => {
-                  const state = municipalities.find(m => m.code?.substring(0, 5) === e.target.value);
+                  const state = municipalities.find(m => m.code?.substring(0, 2) === e.target.value);
                   const stateName = state?.state_name || '';
                   setFormData({
                     ...formData,
@@ -936,7 +942,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               >
                 <option value="">Seleccionar...</option>
                 {Array.from(new Map(municipalities.map(m => [m.state_name, m])).values()).map((m) => (
-                  <option key={m.state_name} value={m.code?.substring(0, 5) || m.state_name}>{m.state_name}</option>
+                  <option key={m.state_name} value={m.code?.substring(0, 2) || m.state_name}>{m.state_name}</option>
                 ))}
               </select>
             </div>
@@ -954,7 +960,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               >
                 <option value="">Seleccionar...</option>
                 {municipalities
-                  .filter(m => !formData.stateCode || m.code?.substring(0, 5) === formData.stateCode)
+                  .filter(m => !formData.stateCode || m.code?.substring(0, 2) === formData.stateCode)
                   .map((m) => (
                     <option key={m.id} value={m.id}>{m.name} ({m.code})</option>
                   ))}

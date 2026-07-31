@@ -268,8 +268,43 @@ export class POSService {
       }
 
       // Obtener stock_levels por branch_id actual
+      // Para productos padre, el stock está en las variantes hijas, no en el padre.
       let stockMap: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
+      let variantStockMap: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
       if (productIds.length > 0 && currentBranchId) {
+        // Identificar productos padre para buscar stock de sus hijos
+        const parentIds = data?.filter((p: any) => p.is_parent).map((p: any) => p.id) || [];
+        let variantIds: number[] = [];
+        if (parentIds.length > 0) {
+          const { data: variants } = await supabase
+            .from('products')
+            .select('id, parent_product_id')
+            .in('parent_product_id', parentIds);
+          variantIds = (variants || []).map((v: any) => v.id);
+          // Mapear variant_id -> parent_product_id para acumular después
+          const variantToParent: Record<number, number> = {};
+          (variants || []).forEach((v: any) => {
+            variantToParent[v.id] = v.parent_product_id;
+          });
+          // Consultar stock de las variantes
+          if (variantIds.length > 0) {
+            const { data: variantStockData } = await supabase
+              .from('stock_levels')
+              .select('product_id, qty_on_hand, qty_reserved')
+              .in('product_id', variantIds)
+              .eq('branch_id', currentBranchId)
+              .is('lot_id', null);
+            (variantStockData || []).forEach((s: any) => {
+              const parentId = variantToParent[s.product_id];
+              if (!variantStockMap[parentId]) {
+                variantStockMap[parentId] = { qty_on_hand: 0, qty_reserved: 0 };
+              }
+              variantStockMap[parentId].qty_on_hand += Number(s.qty_on_hand) || 0;
+              variantStockMap[parentId].qty_reserved += Number(s.qty_reserved) || 0;
+            });
+          }
+        }
+        // Consultar stock de los productos de la página actual (incluye padres e hijos directos)
         const { data: stockData } = await supabase
           .from('stock_levels')
           .select('product_id, qty_on_hand, qty_reserved')
@@ -286,7 +321,10 @@ export class POSService {
 
       const products = data?.map((product: any) => {
         const stock = stockMap[product.id];
-        const stockQty = stock?.qty_on_hand ?? 0;
+        const variantStock = variantStockMap[product.id];
+        // Sumar stock propio + stock de variantes hijas
+        const stockQty = (stock?.qty_on_hand ?? 0) + (variantStock?.qty_on_hand ?? 0);
+        const reservedQty = (stock?.qty_reserved ?? 0) + (variantStock?.qty_reserved ?? 0);
         const isOutOfStock = product.track_stock === true && stockQty <= 0;
         return {
           ...product,
@@ -301,7 +339,7 @@ export class POSService {
           // Información de stock
           track_stock: product.track_stock,
           stock_quantity: stockQty,
-          qty_reserved: stock?.qty_reserved ?? 0,
+          qty_reserved: reservedQty,
           is_out_of_stock: isOutOfStock,
           // Mantener compatibilidad con código que use 'image'
           image: productImagesMap[product.id]?.[0]?.storage_path ? 
@@ -1623,7 +1661,7 @@ export class POSService {
         unit_code: data.unit_code,
         status: data.status,
         image: undefined, // TODO: Implementar desde product_images
-        tax_id: data.tax_id,
+        // tax_id legacy removido: los impuestos se consultan via product_tax_relations
         created_at: data.created_at,
         updated_at: data.updated_at,
         tag_id: data.tag_id,

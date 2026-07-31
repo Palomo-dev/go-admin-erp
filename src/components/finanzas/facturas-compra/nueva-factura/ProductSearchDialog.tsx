@@ -27,7 +27,7 @@ export type Product = {
   description?: string;
   cost: number; // Costo de compra al proveedor
   price: number; // Precio de venta (referencia)
-  tax_id?: number;
+  // tax_id legacy removido: las RPC ya devuelven tax_code y tax_rate desde product_tax_relations
   tax_code?: string;
   tax_name?: string;
   tax_rate?: number;
@@ -107,7 +107,6 @@ export function ProductSearchDialog({
           description: product.description,
           cost: product.product_costs?.[0]?.cost || 0,
           price: product.product_prices?.[0]?.price || 0,
-          tax_id: undefined,
           tax_code: undefined,
           tax_name: undefined,
           tax_rate: undefined

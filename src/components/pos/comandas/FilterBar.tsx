@@ -53,7 +53,7 @@ export function FilterBar({
         onPointerLeave={dragScroll.onPointerLeave}
         onClickCapture={dragScroll.onClickCapture}
         className={cn(
-          'flex gap-2 overflow-x-auto pb-1 scrollbar-hide cursor-grab active:cursor-grabbing select-none',
+          'flex flex-wrap gap-2 w-full overflow-x-auto pb-1 scrollbar-hide cursor-grab active:cursor-grabbing select-none',
           availableZones.length > 0 ? 'max-w-full' : ''
         )}
       >
@@ -72,7 +72,7 @@ export function FilterBar({
             variant={zoneFilter === zone ? 'default' : 'outline'}
             size="sm"
             onClick={() => onZoneChange(zone)}
-            className={cn('shrink-0', zoneFilter === zone ? 'bg-blue-600 hover:bg-blue-700' : '')}
+            className={cn('shrink-0', zoneFilter === zone ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800' : '')}
           >
             <MapPin className="h-4 w-4 mr-2" />
             {zone}
@@ -81,10 +81,11 @@ export function FilterBar({
       </div>
 
       {/* Filtro por estación de cocina */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 w-full">
         <Button
           variant={stationFilter === 'all' ? 'default' : 'outline'}
           size="sm"
+          className="shrink-0"
           onClick={() => onStationChange('all')}
         >
           Todas las Estaciones
@@ -95,7 +96,7 @@ export function FilterBar({
             variant={stationFilter === key ? 'default' : 'outline'}
             size="sm"
             onClick={() => onStationChange(key)}
-            className={cn(stationFilter === key ? 'bg-purple-600 hover:bg-purple-700' : '')}
+            className={cn('shrink-0', stationFilter === key ? 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800' : '')}
           >
             <Icon className="h-4 w-4 mr-2" />
             {label}
@@ -104,10 +105,11 @@ export function FilterBar({
       </div>
 
       {/* Filtro por estado */}
-      <div className="flex gap-2 ml-auto">
+      <div className="flex flex-wrap gap-2 w-full">
         <Button
           variant={statusFilter === 'all' ? 'default' : 'outline'}
           size="sm"
+          className="shrink-0"
           onClick={() => onStatusChange('all')}
         >
           Todos
@@ -115,6 +117,7 @@ export function FilterBar({
         <Button
           variant={statusFilter === 'new' ? 'default' : 'outline'}
           size="sm"
+          className="shrink-0"
           onClick={() => onStatusChange('new')}
         >
           Nuevos
@@ -127,6 +130,7 @@ export function FilterBar({
         <Button
           variant={statusFilter === 'preparing' ? 'default' : 'outline'}
           size="sm"
+          className="shrink-0"
           onClick={() => onStatusChange('preparing')}
         >
           En Preparación
@@ -139,6 +143,7 @@ export function FilterBar({
         <Button
           variant={statusFilter === 'ready' ? 'default' : 'outline'}
           size="sm"
+          className="shrink-0"
           onClick={() => onStatusChange('ready')}
         >
           Listos
@@ -152,7 +157,7 @@ export function FilterBar({
           variant={statusFilter === 'delivered' ? 'default' : 'outline'}
           size="sm"
           onClick={() => onStatusChange('delivered')}
-          className={statusFilter === 'delivered' ? 'bg-gray-600 hover:bg-gray-700' : ''}
+          className={cn('shrink-0', statusFilter === 'delivered' ? 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' : '')}
         >
           Entregados
           {statusCounts.delivered > 0 && (

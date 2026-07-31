@@ -21,8 +21,8 @@ export function RevenueStats({
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <DollarSign className="h-5 w-5 text-green-600" />
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+          <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
           Ingresos Hoy
         </CardTitle>
       </CardHeader>
@@ -41,7 +41,7 @@ export function RevenueStats({
           {/* Desglose */}
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Car className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Por sesiones</span>
               </div>
@@ -51,7 +51,7 @@ export function RevenueStats({
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <CreditCard className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Abonados activos</span>
               </div>
@@ -61,7 +61,7 @@ export function RevenueStats({
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Sesiones completadas</span>
               </div>

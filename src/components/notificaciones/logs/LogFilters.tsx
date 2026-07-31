@@ -21,7 +21,7 @@ export function LogFilters({ filters, onFiltersChange, availableProviders, avail
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 sm:px-6 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
       <div className="relative flex-1 min-w-[180px]">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
         <Input
           value={filters.search}
           onChange={(e) => update({ search: e.target.value })}
@@ -30,8 +30,8 @@ export function LogFilters({ filters, onFiltersChange, availableProviders, avail
         />
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <Filter className="h-3.5 w-3.5 text-gray-400" />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Filter className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
 
         <select value={filters.status} onChange={(e) => update({ status: e.target.value })} className={selectClass}>
           <option value="all">Todos los estados</option>

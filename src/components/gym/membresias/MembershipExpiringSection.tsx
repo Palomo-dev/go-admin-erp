@@ -37,7 +37,7 @@ export function MembershipExpiringSection({
       <Card className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800/50">
         <CardHeader className="pb-3">
           <div className="animate-pulse">
-            <div className="h-5 bg-yellow-200 dark:bg-yellow-800/50 rounded w-40" />
+            <div className="h-5 bg-yellow-200 dark:bg-yellow-800/50 rounded w-full sm:w-40" />
           </div>
         </CardHeader>
         <CardContent>
@@ -45,7 +45,7 @@ export function MembershipExpiringSection({
             {[1, 2, 3].map(i => (
               <div key={i} className="animate-pulse flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
                 <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full sm:w-32" />
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24" />
                 </div>
                 <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20" />
@@ -64,7 +64,7 @@ export function MembershipExpiringSection({
   return (
     <Card className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800/50">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-400">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-yellow-800 dark:text-yellow-400">
           <AlertTriangle className="h-5 w-5" />
           Vencimientos Próximos ({expiringMemberships.length})
         </CardTitle>
@@ -81,7 +81,7 @@ export function MembershipExpiringSection({
                 key={membership.id}
                 className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className={cn(
                     "p-2 rounded-full",
                     daysRemaining <= 2 
@@ -99,7 +99,7 @@ export function MembershipExpiringSection({
                     <p className="font-medium text-gray-900 dark:text-white">
                       {customer?.first_name} {customer?.last_name}
                     </p>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                       <span>{plan?.name}</span>
                       <span>•</span>
                       <span>Vence: {formatDate(membership.end_date)}</span>
@@ -107,7 +107,7 @@ export function MembershipExpiringSection({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge className={cn(
                     daysRemaining <= 2 
                       ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"

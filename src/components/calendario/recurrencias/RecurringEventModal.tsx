@@ -243,7 +243,7 @@ export function RecurringEventModal({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: eventColor }}
@@ -256,11 +256,11 @@ export function RecurringEventModal({
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="details" className="flex items-center gap-2">
+              <TabsTrigger value="details" className="flex flex-wrap items-center gap-2">
                 <CalendarIcon className="h-4 w-4" />
                 Detalles
               </TabsTrigger>
-              <TabsTrigger value="exceptions" className="flex items-center gap-2">
+              <TabsTrigger value="exceptions" className="flex flex-wrap items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
                 Excepciones ({exceptions.length})
               </TabsTrigger>
@@ -326,7 +326,7 @@ export function RecurringEventModal({
                 <div className="space-y-4">
                   {/* Información básica */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                       <CalendarIcon className="h-4 w-4 text-blue-500" />
                       <span className="text-gray-500 dark:text-gray-400">Fecha inicio:</span>
                       <span className="font-medium">
@@ -334,7 +334,7 @@ export function RecurringEventModal({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                       <Clock className="h-4 w-4 text-blue-500" />
                       <span className="text-gray-500 dark:text-gray-400">Hora:</span>
                       <span className="font-medium">
@@ -347,8 +347,8 @@ export function RecurringEventModal({
 
                   {/* Recurrencia */}
                   <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Repeat className="h-4 w-4 text-purple-600" />
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <Repeat className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                       <span className="font-medium text-purple-700 dark:text-purple-300">
                         {parseRecurrenceRule(event.recurrence_rule)}
                       </span>
@@ -375,21 +375,21 @@ export function RecurringEventModal({
                   {/* Detalles adicionales */}
                   <div className="grid grid-cols-2 gap-3">
                     {event.location && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <MapPin className="h-4 w-4" />
                         {event.location}
                       </div>
                     )}
 
                     {event.assigned_user && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <User className="h-4 w-4" />
                         {event.assigned_user.first_name} {event.assigned_user.last_name}
                       </div>
                     )}
 
                     {event.branch && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <Building2 className="h-4 w-4" />
                         {event.branch.name}
                       </div>
@@ -525,7 +525,7 @@ export function RecurringEventModal({
                           : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
                       )}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         {exception.exception_type === 'cancelled' ? (
                           <XCircle className="h-5 w-5 text-red-500" />
                         ) : (
@@ -553,7 +553,7 @@ export function RecurringEventModal({
                         variant="ghost"
                         size="sm"
                         onClick={() => setExceptionToDelete(exception)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

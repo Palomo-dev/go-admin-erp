@@ -231,7 +231,7 @@ export function NewEntryDialog({
                   const Icon = type.icon;
                   return (
                     <SelectItem key={type.value} value={type.value}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Icon className="h-4 w-4" />
                         {type.label}
                       </div>
@@ -252,7 +252,7 @@ export function NewEntryDialog({
                   ⚠️ No se encontró una sucursal configurada. No puedes crear espacios de parqueo sin una sucursal.
                 </div>
               ) : isLoadingSpaces ? (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Cargando espacios...
                 </div>

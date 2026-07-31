@@ -211,15 +211,15 @@ export function InstructorAvailabilityDialog({ open, onOpenChange, instructor }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Disponibilidad de {instructor.profiles?.first_name} {instructor.profiles?.last_name}
           </DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : (
           <div className="space-y-4">
@@ -231,7 +231,7 @@ export function InstructorAvailabilityDialog({ open, onOpenChange, instructor }:
               <Card key={day} className="bg-gray-50 dark:bg-gray-900">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <Switch
                         checked={availability[day].enabled}
                         onCheckedChange={() => toggleDay(day)}
@@ -248,8 +248,8 @@ export function InstructorAvailabilityDialog({ open, onOpenChange, instructor }:
                   {availability[day].enabled && (
                     <div className="space-y-2 mt-3">
                       {availability[day].slots.map((slot) => (
-                        <div key={slot.id} className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-gray-400" />
+                        <div key={slot.id} className="flex flex-wrap items-center gap-2">
+                          <Clock className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                           <Select
                             value={slot.start}
                             onValueChange={(v) => updateSlot(day, slot.id, 'start', v)}
@@ -263,7 +263,7 @@ export function InstructorAvailabilityDialog({ open, onOpenChange, instructor }:
                               ))}
                             </SelectContent>
                           </Select>
-                          <span className="text-gray-400">a</span>
+                          <span className="text-gray-400 dark:text-gray-500">a</span>
                           <Select
                             value={slot.end}
                             onValueChange={(v) => updateSlot(day, slot.id, 'end', v)}
@@ -292,7 +292,7 @@ export function InstructorAvailabilityDialog({ open, onOpenChange, instructor }:
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-blue-600 hover:text-blue-700"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700"
                         onClick={() => addSlot(day)}
                       >
                         <Plus className="h-4 w-4 mr-1" />

@@ -71,7 +71,7 @@ export function ConnectionCard({
       case 'revoked':
         return <XCircle className="h-4 w-4 text-orange-500" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-400" />;
+        return <Clock className="h-4 w-4 text-gray-400 dark:text-gray-500" />;
     }
   };
 
@@ -140,7 +140,7 @@ export function ConnectionCard({
 
           {/* Contenido principal */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-semibold text-gray-900 dark:text-white truncate">
@@ -151,7 +151,7 @@ export function ConnectionCard({
                   </Badge>
                 </div>
                 
-                <div className="flex items-center gap-3 mt-1 text-sm">
+                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm">
                   {/* Estado */}
                   <div className={`flex items-center gap-1 ${getStatusColor()}`}>
                     {getStatusIcon()}
@@ -161,22 +161,22 @@ export function ConnectionCard({
                   <span className="text-gray-300 dark:text-gray-600">•</span>
                   
                   {/* Conector */}
-                  <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <span className="text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1">
                     <Zap className="h-3 w-3" />
                     {connection.connector?.name || 'Sin conector'}
                   </span>
                 </div>
 
                 {/* Detalles adicionales */}
-                <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">
                   {connection.country_code && (
-                    <span className="flex items-center gap-1">
+                    <span className="flex flex-wrap items-center gap-1">
                       <Globe className="h-3 w-3" />
                       {connection.country_code}
                     </span>
                   )}
                   {branchName && (
-                    <span className="flex items-center gap-1">
+                    <span className="flex flex-wrap items-center gap-1">
                       <Building2 className="h-3 w-3" />
                       {branchName}
                     </span>
@@ -190,7 +190,7 @@ export function ConnectionCard({
               </div>
 
               {/* Toggle y acciones */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <Switch
                   checked={connection.status === 'connected' || connection.status === 'error'}
                   onCheckedChange={handleToggle}
@@ -203,7 +203,7 @@ export function ConnectionCard({
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent align="end" className="w-full sm:w-48">
                     <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => onEdit(connection)}>
@@ -222,24 +222,24 @@ export function ConnectionCard({
                     {connection.status === 'paused' ? (
                       <DropdownMenuItem onClick={() => onToggleStatus(connection)}>
                         <Play className="h-4 w-4 mr-2 text-green-500" />
-                        <span className="text-green-600">Reanudar</span>
+                        <span className="text-green-600 dark:text-green-400">Reanudar</span>
                       </DropdownMenuItem>
                     ) : connection.status !== 'revoked' && (
                       <DropdownMenuItem onClick={() => onToggleStatus(connection)}>
                         <Pause className="h-4 w-4 mr-2 text-yellow-500" />
-                        <span className="text-yellow-600">Pausar</span>
+                        <span className="text-yellow-600 dark:text-yellow-400">Pausar</span>
                       </DropdownMenuItem>
                     )}
                     {connection.status !== 'revoked' && (
                       <DropdownMenuItem onClick={() => onRevoke(connection)}>
                         <XCircle className="h-4 w-4 mr-2 text-orange-500" />
-                        <span className="text-orange-600">Revocar</span>
+                        <span className="text-orange-600 dark:text-orange-400">Revocar</span>
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       onClick={() => onDelete(connection)}
-                      className="text-red-600 focus:text-red-600"
+                      className="text-red-600 dark:text-red-400 focus:text-red-600"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar

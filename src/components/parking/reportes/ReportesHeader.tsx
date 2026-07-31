@@ -19,7 +19,7 @@ export function ReportesHeader({
 }: ReportesHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
           <BarChart3 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
         </div>
@@ -33,7 +33,7 @@ export function ReportesHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="outline"
           size="sm"

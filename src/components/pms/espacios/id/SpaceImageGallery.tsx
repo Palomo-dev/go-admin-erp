@@ -89,7 +89,7 @@ export function SpaceImageGallery({
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <Skeleton className="h-5 w-5 rounded" />
           <Skeleton className="h-5 w-24" />
         </div>
@@ -107,7 +107,7 @@ export function SpaceImageGallery({
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ImageIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
             Galería de Imágenes

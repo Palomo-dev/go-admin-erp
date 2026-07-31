@@ -90,7 +90,7 @@ function StatusIcon({ status }: { status: string }) {
     case 'partial':
       return <Clock className="h-3.5 w-3.5 text-yellow-500" />;
     default:
-      return <Clock className="h-3.5 w-3.5 text-gray-400" />;
+      return <Clock className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />;
   }
 }
 
@@ -185,7 +185,7 @@ export function ExpediaSyncStatusCard({
   if (isLoading) {
     return (
       <Card className="p-4">
-        <div className="animate-pulse flex items-center gap-3">
+        <div className="animate-pulse flex flex-wrap items-center gap-3">
           <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
           <div className="flex-1 space-y-2">
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
@@ -200,7 +200,7 @@ export function ExpediaSyncStatusCard({
     <Card className="p-4 border-l-4 border-l-[#00355F]">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge className="bg-[#00355F] text-white text-xs">
             <Zap className="h-3 w-3 mr-1" />
             API
@@ -214,7 +214,7 @@ export function ExpediaSyncStatusCard({
         </div>
 
         {/* Quick stats */}
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3 text-xs">
           <span className="text-gray-500 dark:text-gray-400">
             24h: {syncStatus?.totalSyncs24h || 0} syncs
           </span>
@@ -228,7 +228,7 @@ export function ExpediaSyncStatusCard({
 
       {/* Last sync info */}
       {syncStatus?.lastSync && (
-        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
           <StatusIcon status={syncStatus.lastSync.status} />
           <span>
             Último: {SYNC_TYPE_LABELS[syncStatus.lastSync.type] || syncStatus.lastSync.type}
@@ -297,17 +297,17 @@ export function ExpediaSyncStatusCard({
       {/* Room Types section */}
       {showRoomTypes && (
         <div className="mt-3 mb-2 space-y-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
             <Building2 className="h-3.5 w-3.5" />
             <span>Room Types ({roomTypes.length})</span>
           </div>
           {isLoadingRooms ? (
-            <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 py-2">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Consultando Expedia Product API...
             </div>
           ) : roomTypes.length === 0 ? (
-            <p className="text-xs text-gray-400 py-2">No se encontraron room types</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 py-2">No se encontraron room types</p>
           ) : (
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {roomTypes.map(rt => (
@@ -331,7 +331,7 @@ export function ExpediaSyncStatusCard({
                       {rt.ratePlans.map(rp => (
                         <div
                           key={rp.ratePlanId}
-                          className="flex items-center gap-2 text-xs pl-3 border-l-2 border-gray-200 dark:border-gray-700"
+                          className="flex flex-wrap items-center gap-2 text-xs pl-3 border-l-2 border-gray-200 dark:border-gray-700"
                         >
                           <Badge
                             variant={rp.isActive ? 'default' : 'secondary'}
@@ -342,7 +342,7 @@ export function ExpediaSyncStatusCard({
                           <span className="text-gray-700 dark:text-gray-300 truncate flex-1">
                             {rp.ratePlanName}
                           </span>
-                          <span className="text-gray-400 text-[10px] font-mono shrink-0">
+                          <span className="text-gray-400 dark:text-gray-500 text-[10px] font-mono shrink-0">
                             {rp.distributionModel}
                           </span>
                         </div>
@@ -373,7 +373,7 @@ export function ExpediaSyncStatusCard({
           {logs.map(log => (
             <div
               key={log.id}
-              className="flex items-center gap-2 text-xs py-1.5 px-2 rounded bg-gray-50 dark:bg-gray-900/50"
+              className="flex flex-wrap items-center gap-2 text-xs py-1.5 px-2 rounded bg-gray-50 dark:bg-gray-900/50"
             >
               <DirectionIcon direction={log.direction} />
               <StatusIcon status={log.status} />
@@ -386,7 +386,7 @@ export function ExpediaSyncStatusCard({
                   {log.errorMessage}
                 </span>
               )}
-              <span className="text-gray-400 flex-shrink-0">
+              <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">
                 {formatRelativeTime(log.createdAt)}
               </span>
             </div>

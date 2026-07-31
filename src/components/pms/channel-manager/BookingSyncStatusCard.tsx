@@ -76,7 +76,7 @@ function StatusIcon({ status }: { status: string }) {
     case 'partial':
       return <Clock className="h-3.5 w-3.5 text-yellow-500" />;
     default:
-      return <Clock className="h-3.5 w-3.5 text-gray-400" />;
+      return <Clock className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />;
   }
 }
 
@@ -148,7 +148,7 @@ export function BookingSyncStatusCard({
   if (isLoading) {
     return (
       <Card className="p-4">
-        <div className="animate-pulse flex items-center gap-3">
+        <div className="animate-pulse flex flex-wrap items-center gap-3">
           <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
           <div className="flex-1 space-y-2">
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
@@ -163,7 +163,7 @@ export function BookingSyncStatusCard({
     <Card className="p-4 border-l-4 border-l-[#003580]">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge className="bg-[#003580] text-white text-xs">
             <Zap className="h-3 w-3 mr-1" />
             API
@@ -177,7 +177,7 @@ export function BookingSyncStatusCard({
         </div>
 
         {/* Quick stats */}
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3 text-xs">
           <span className="text-gray-500 dark:text-gray-400">
             24h: {syncStatus?.totalSyncs24h || 0} syncs
           </span>
@@ -191,7 +191,7 @@ export function BookingSyncStatusCard({
 
       {/* Last sync info */}
       {syncStatus?.lastSync && (
-        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
           <StatusIcon status={syncStatus.lastSync.status} />
           <span>
             Último: {SYNC_TYPE_LABELS[syncStatus.lastSync.type] || syncStatus.lastSync.type}
@@ -260,7 +260,7 @@ export function BookingSyncStatusCard({
           {logs.map(log => (
             <div
               key={log.id}
-              className="flex items-center gap-2 text-xs py-1.5 px-2 rounded bg-gray-50 dark:bg-gray-900/50"
+              className="flex flex-wrap items-center gap-2 text-xs py-1.5 px-2 rounded bg-gray-50 dark:bg-gray-900/50"
             >
               <DirectionIcon direction={log.direction} />
               <StatusIcon status={log.status} />
@@ -273,7 +273,7 @@ export function BookingSyncStatusCard({
                   {log.errorMessage}
                 </span>
               )}
-              <span className="text-gray-400 flex-shrink-0">
+              <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">
                 {formatRelativeTime(log.createdAt)}
               </span>
             </div>

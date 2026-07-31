@@ -182,7 +182,7 @@ export function ReservationDialog({ open, onOpenChange, reservation, preselected
                     {selectedCustomer.first_name} {selectedCustomer.last_name}
                   </p>
                   {selectedCustomer.email && (
-                    <p className="text-sm text-gray-500">{selectedCustomer.email}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{selectedCustomer.email}</p>
                   )}
                 </div>
                 <Button
@@ -197,7 +197,7 @@ export function ReservationDialog({ open, onOpenChange, reservation, preselected
             ) : (
               <div className="space-y-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     placeholder="Buscar cliente por nombre, email..."
                     value={searchTerm}
@@ -221,7 +221,7 @@ export function ReservationDialog({ open, onOpenChange, reservation, preselected
                           {customer.first_name} {customer.last_name}
                         </p>
                         {customer.email && (
-                          <p className="text-xs text-gray-500">{customer.email}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{customer.email}</p>
                         )}
                       </div>
                     ))}

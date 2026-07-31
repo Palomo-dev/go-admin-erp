@@ -151,13 +151,13 @@ export function PagosTable({ payments, onViewDetails, onReverse }: PagosTablePro
                       </p>
                     </div>
                   ) : (
-                    <span className="text-gray-400">-</span>
+                    <span className="text-gray-400 dark:text-gray-500">-</span>
                   )}
                 </TableCell>
 
                 {/* Método */}
                 <TableCell>
-                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                  <div className="flex flex-wrap items-center gap-2 text-gray-700 dark:text-gray-300">
                     {methodIcon}
                     <span className="text-sm">{methodLabel}</span>
                   </div>

@@ -127,7 +127,7 @@ export function EntityTimelineFilters({
         {/* Búsqueda */}
         <form onSubmit={handleSearchSubmit} className="flex-1 min-w-[200px]">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar en el historial..."
               value={searchText}
@@ -138,7 +138,7 @@ export function EntityTimelineFilters({
         </form>
 
         {/* Presets de fecha */}
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {DATE_PRESETS.map((preset) => (
             <Button
               key={preset.days}
@@ -156,7 +156,7 @@ export function EntityTimelineFilters({
         </div>
 
         {/* Rango de fechas */}
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -178,7 +178,7 @@ export function EntityTimelineFilters({
               />
             </PopoverContent>
           </Popover>
-          <span className="text-gray-400 text-xs">-</span>
+          <span className="text-gray-400 dark:text-gray-500 text-xs">-</span>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -207,7 +207,7 @@ export function EntityTimelineFilters({
           value={filters.action || 'all'}
           onValueChange={handleActionChange}
         >
-          <SelectTrigger className="w-[140px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm">
+          <SelectTrigger className="w-full sm:w-[140px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm">
             <SelectValue placeholder="Acción" />
           </SelectTrigger>
           <SelectContent>
@@ -226,7 +226,7 @@ export function EntityTimelineFilters({
             variant="ghost"
             size="sm"
             onClick={handleReset}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           >
             <RotateCcw className="h-3.5 w-3.5 mr-1" />
             Limpiar

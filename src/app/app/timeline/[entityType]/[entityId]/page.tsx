@@ -322,13 +322,13 @@ export default function EntityTimelinePage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-6">
-          <Skeleton className="h-8 w-32 mb-4" />
-          <div className="flex items-center gap-4">
+          <Skeleton className="h-8 w-full sm:w-32 mb-4" />
+          <div className="flex flex-wrap items-center gap-4">
             <Skeleton className="h-16 w-16 rounded-lg" />
             <div className="space-y-2">
               <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-8 w-full sm:w-64" />
+              <Skeleton className="h-4 w-full sm:w-48" />
             </div>
           </div>
         </div>
@@ -359,7 +359,7 @@ export default function EntityTimelinePage() {
           <p className="text-gray-500 dark:text-gray-400 mb-6">
             {error}
           </p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             <Button variant="outline" onClick={handleBack}>
               Volver al Timeline
             </Button>

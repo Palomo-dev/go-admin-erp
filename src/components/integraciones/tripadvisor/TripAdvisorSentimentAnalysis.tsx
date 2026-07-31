@@ -167,7 +167,7 @@ export function TripAdvisorSentimentAnalysis({
     <Card className={cn('overflow-hidden', className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <CardTitle className="text-base font-semibold flex flex-wrap items-center gap-2">
             <MessageSquareText className="h-4 w-4 text-[#00AA6C]" />
             Análisis de Sentimiento
           </CardTitle>
@@ -186,8 +186,8 @@ export function TripAdvisorSentimentAnalysis({
       <CardContent className="space-y-4">
         {isLoading && (
           <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            <span className="ml-2 text-sm text-gray-500">Analizando reseñas...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" />
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Analizando reseñas...</span>
           </div>
         )}
 
@@ -196,7 +196,7 @@ export function TripAdvisorSentimentAnalysis({
         )}
 
         {!isLoading && !error && reviews.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
             No hay reseñas para analizar.
           </p>
         )}
@@ -205,7 +205,7 @@ export function TripAdvisorSentimentAnalysis({
           <>
             {/* Score general */}
             <div className={cn(
-              'flex items-center gap-3 p-3 rounded-lg',
+              'flex flex-wrap items-center gap-3 p-3 rounded-lg',
               getSentimentColor(overallSentiment),
             )}>
               {getSentimentIcon(overallSentiment)}
@@ -267,7 +267,7 @@ export function TripAdvisorSentimentAnalysis({
                     />
                   )}
                 </div>
-                <div className="flex justify-between text-[10px] text-gray-400">
+                <div className="flex justify-between text-[10px] text-gray-400 dark:text-gray-500">
                   <span>{Math.round((positiveCount / analyzed.length) * 100)}% positivo</span>
                   <span>{Math.round((negativeCount / analyzed.length) * 100)}% negativo</span>
                 </div>
@@ -277,7 +277,7 @@ export function TripAdvisorSentimentAnalysis({
             {/* Keywords frecuentes */}
             {topKeywords.length > 0 && (
               <div className="space-y-1.5">
-                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider flex flex-wrap items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
                   Palabras clave frecuentes
                 </h4>
@@ -311,7 +311,7 @@ export function TripAdvisorSentimentAnalysis({
               {analyzed.map((item) => (
                 <div
                   key={item.review.id}
-                  className="flex items-start gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-800"
+                  className="flex flex-wrap items-start gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-800"
                 >
                   <div className="mt-0.5 shrink-0">
                     {getSentimentIcon(item.analysis.sentiment !== 'neutral' ? item.analysis.sentiment : item.ratingBased)}
@@ -320,12 +320,12 @@ export function TripAdvisorSentimentAnalysis({
                     <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
                       {item.review.title || 'Sin título'}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
                         Rating: {item.review.rating}/5
                       </span>
                       {item.analysis.keywords.length > 0 && (
-                        <span className="text-[10px] text-gray-400">
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
                           · {item.analysis.keywords.join(', ')}
                         </span>
                       )}
@@ -344,7 +344,7 @@ export function TripAdvisorSentimentAnalysis({
             </div>
 
             {/* Attribution */}
-            <p className="text-[10px] text-gray-400 text-center">
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
               Análisis basado en reseñas de{' '}
               <a
                 href="https://www.tripadvisor.com"

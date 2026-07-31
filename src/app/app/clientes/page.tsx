@@ -691,7 +691,7 @@ export default function ClientesPage() {
   if (isLoading && !organizationId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando clientes...</p>
       </div>
     );
@@ -702,7 +702,7 @@ export default function ClientesPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
               <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
@@ -735,7 +735,7 @@ export default function ClientesPage() {
       {error && (
         <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
               <div>
                 <p className="font-medium text-red-700 dark:text-red-300">Error</p>
@@ -770,7 +770,7 @@ export default function ClientesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
                 <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
@@ -783,7 +783,7 @@ export default function ClientesPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
                 <DollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
@@ -796,7 +796,7 @@ export default function ClientesPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
                 <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
@@ -811,7 +811,7 @@ export default function ClientesPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
               </div>
@@ -829,7 +829,7 @@ export default function ClientesPage() {
         <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
           <CardContent className="py-3">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                   {selectedIds.length} cliente(s) seleccionado(s)
                 </span>
@@ -844,7 +844,7 @@ export default function ClientesPage() {
                 </Button>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {isBulkLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
+                {isBulkLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />}
                 <Button
                   variant="outline"
                   size="sm"
@@ -888,11 +888,11 @@ export default function ClientesPage() {
                       <ChevronDown className="h-3 w-3 ml-1" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuContent align="end" className="w-full sm:w-52">
                     <DropdownMenuLabel>Agregar rol</DropdownMenuLabel>
                     {['cliente', 'huesped', 'pasajero', 'proveedor', 'empleado'].map(role => (
                       <DropdownMenuItem key={`add-${role}`} onClick={() => handleBulkChangeRole(role, 'add')}>
-                        <UserPlus className="h-4 w-4 mr-2 text-green-600" />
+                        <UserPlus className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
                         {role.charAt(0).toUpperCase() + role.slice(1)}
                       </DropdownMenuItem>
                     ))}
@@ -962,14 +962,14 @@ export default function ClientesPage() {
             />
           ) : isLoading ? (
             <div className="flex flex-col items-center justify-center h-64 space-y-3">
-              <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+              <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
               <span className="text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
             </div>
           ) : (
             <div className="p-8 text-center">
-              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
               <p className="text-gray-600 dark:text-gray-400 mb-4">No se encontraron clientes</p>
-              <div className="flex justify-center gap-3">
+              <div className="flex flex-wrap justify-center gap-3">
                 <Button
                   variant="outline"
                   onClick={() => organizationId && loadCustomers(organizationId)}

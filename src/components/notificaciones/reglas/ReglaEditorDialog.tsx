@@ -206,7 +206,7 @@ export function ReglaEditorDialog({
                     'px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all',
                     form.severity === s.value
                       ? `${s.color} border-current`
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-transparent hover:border-gray-300 dark:hover:border-gray-600',
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-transparent hover:border-gray-300 dark:hover:border-gray-600',
                   )}
                 >
                   {s.label}
@@ -221,7 +221,7 @@ export function ReglaEditorDialog({
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Condición</Label>
               <button
                 onClick={() => setUseCustomSQL(!useCustomSQL)}
-                className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                className="flex flex-wrap items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
               >
                 {useCustomSQL ? <><ListChecks className="h-3 w-3" /> Usar presets</> : <><Code className="h-3 w-3" /> SQL personalizado</>}
               </button>
@@ -243,7 +243,7 @@ export function ReglaEditorDialog({
             ) : (
               <div className="space-y-1.5">
                 {currentPresets.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic py-2">No hay condiciones predefinidas para este módulo. Usa SQL personalizado.</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">No hay condiciones predefinidas para este módulo. Usa SQL personalizado.</p>
                 ) : (
                   <div className="space-y-1.5 max-h-44 overflow-y-auto">
                     {currentPresets.map((preset) => (
@@ -266,9 +266,9 @@ export function ReglaEditorDialog({
                           </p>
                           <Badge variant="outline" className={cn(
                             'text-[10px] px-1.5',
-                            preset.severity === 'critical' ? 'border-red-300 text-red-600' :
-                            preset.severity === 'warning' ? 'border-amber-300 text-amber-600' :
-                            'border-blue-300 text-blue-600'
+                            preset.severity === 'critical' ? 'border-red-300 text-red-600 dark:text-red-400' :
+                            preset.severity === 'warning' ? 'border-amber-300 text-amber-600 dark:text-amber-400' :
+                            'border-blue-300 text-blue-600 dark:text-blue-400'
                           )}>
                             {preset.severity}
                           </Badge>
@@ -298,13 +298,13 @@ export function ReglaEditorDialog({
                       'px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all',
                       isSelected
                         ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-transparent',
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-transparent',
                       !isActive && ch.value !== 'app' && 'opacity-40 cursor-not-allowed',
                     )}
                   >
                     {ch.label}
                     {!isActive && ch.value !== 'app' && (
-                      <span className="ml-1 text-[9px] text-gray-400">(inactivo)</span>
+                      <span className="ml-1 text-[9px] text-gray-400 dark:text-gray-500">(inactivo)</span>
                     )}
                   </button>
                 );

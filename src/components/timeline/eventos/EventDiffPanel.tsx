@@ -62,19 +62,19 @@ export function EventDiffPanel({ event, hasSensitiveAccess = true }: EventDiffPa
 
   const renderValue = (value: unknown, key: string, depth: number = 0): React.ReactNode => {
     if (isSensitive(key) && (!hasSensitiveAccess || !showSensitive)) {
-      return <span className="text-gray-400 italic">{maskValue(value)}</span>;
+      return <span className="text-gray-400 dark:text-gray-500 italic">{maskValue(value)}</span>;
     }
 
     if (value === null) {
-      return <span className="text-gray-400 italic">null</span>;
+      return <span className="text-gray-400 dark:text-gray-500 italic">null</span>;
     }
 
     if (value === undefined) {
-      return <span className="text-gray-400 italic">undefined</span>;
+      return <span className="text-gray-400 dark:text-gray-500 italic">undefined</span>;
     }
 
     if (typeof value === 'boolean') {
-      return <span className={value ? 'text-green-600' : 'text-red-600'}>{String(value)}</span>;
+      return <span className={value ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{String(value)}</span>;
     }
 
     if (typeof value === 'number') {
@@ -100,7 +100,7 @@ export function EventDiffPanel({ event, hasSensitiveAccess = true }: EventDiffPa
         <div>
           <button
             onClick={() => toggleExpand(arrayKey)}
-            className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="flex flex-wrap items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           >
             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             <span className="text-cyan-600 dark:text-cyan-400">Array[{value.length}]</span>
@@ -108,8 +108,8 @@ export function EventDiffPanel({ event, hasSensitiveAccess = true }: EventDiffPa
           {isExpanded && (
             <div className="ml-4 mt-1 space-y-1">
               {value.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <span className="text-gray-400">[{idx}]:</span>
+                <div key={idx} className="flex flex-wrap items-start gap-2">
+                  <span className="text-gray-400 dark:text-gray-500">[{idx}]:</span>
                   {renderValue(item, `${key}[${idx}]`, depth + 1)}
                 </div>
               ))}
@@ -129,16 +129,16 @@ export function EventDiffPanel({ event, hasSensitiveAccess = true }: EventDiffPa
           {depth > 0 && (
             <button
               onClick={() => toggleExpand(objKey)}
-              className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              className="flex flex-wrap items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
             >
               {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-              <span className="text-gray-500">{`{${entries.length} keys}`}</span>
+              <span className="text-gray-500 dark:text-gray-400">{`{${entries.length} keys}`}</span>
             </button>
           )}
           {isExpanded && (
             <div className={cn('space-y-1', depth > 0 && 'ml-4 mt-1')}>
               {entries.map(([k, v]) => (
-                <div key={k} className="flex items-start gap-2">
+                <div key={k} className="flex flex-wrap items-start gap-2">
                   <span className="text-blue-600 dark:text-blue-400 font-medium">"{k}":</span>
                   {renderValue(v, k, depth + 1)}
                 </div>
@@ -216,11 +216,11 @@ export function EventDiffPanel({ event, hasSensitiveAccess = true }: EventDiffPa
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <GitCompare className="h-5 w-5 text-blue-500" />
             Antes / Después
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {hasSensitiveAccess && (
               <Button
                 variant="ghost"

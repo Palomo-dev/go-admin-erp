@@ -256,7 +256,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
       {!isCompany && linkedCompanies.length > 0 && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
               <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               Empresas vinculadas
             </CardTitle>
@@ -266,7 +266,7 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
             <div className="space-y-3">
               {linkedCompanies.map((company) => (
                 <div key={company.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                       <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>

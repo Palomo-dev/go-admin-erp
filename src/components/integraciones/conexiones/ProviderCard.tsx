@@ -79,7 +79,7 @@ export function ProviderCard({
     >
       {/* Indicador de no disponible en el país */}
       {!isAvailableInCountry && organizationCountryCode && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-3 py-1.5 flex items-center gap-1.5">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-3 py-1.5 flex flex-wrap items-center gap-1.5">
           <Globe className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
           <span className="text-xs text-amber-700 dark:text-amber-400">
             No disponible en {organizationCountryCode}
@@ -88,7 +88,7 @@ export function ProviderCard({
       )}
       {/* Header del proveedor */}
       <div className="p-4 pb-3">
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           {/* Logo */}
           <div className="w-12 h-12 rounded-lg flex-shrink-0 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
             {config.logoUrl ? (

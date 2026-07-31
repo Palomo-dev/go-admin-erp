@@ -69,7 +69,7 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -117,19 +117,19 @@ export function TaskCard({ task, onStatusChange, onEdit, onDelete }: TaskCardPro
 
       <div className="space-y-2 text-sm">
         {task.spaces?.floor_zone && (
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <MapPin className="h-4 w-4" />
             <span>{task.spaces.floor_zone}</span>
           </div>
         )}
 
-        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
           <Calendar className="h-4 w-4" />
           <span>{format(new Date(task.task_date), 'PPP', { locale: es })}</span>
         </div>
 
         {task.assigned_user && (
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <User className="h-4 w-4" />
             <span>{task.assigned_user.email}</span>
           </div>

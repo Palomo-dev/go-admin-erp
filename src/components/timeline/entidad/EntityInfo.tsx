@@ -139,10 +139,10 @@ export function EntityInfo({ entityType, entityId, entityData, loading }: Entity
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-4">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <Skeleton className="h-10 w-10 rounded-lg" />
             <div className="space-y-2">
-              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-full sm:w-32" />
               <Skeleton className="h-3 w-24" />
             </div>
           </div>
@@ -174,7 +174,7 @@ export function EntityInfo({ entityType, entityId, entityData, loading }: Entity
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardContent className="p-4">
         {/* Header con icono */}
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex flex-wrap items-center gap-3 mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
           <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
             <IconComponent className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>

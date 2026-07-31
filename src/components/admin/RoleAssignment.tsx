@@ -192,20 +192,20 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Asignación de Roles</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Asignación de Roles</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Gestiona los roles asignados a los miembros de tu organización
           </p>
         </div>
         
         {hasPendingChanges() && (
           <div className="flex items-center space-x-3">
-            <span className="text-sm text-amber-600 font-medium">
+            <span className="text-sm text-amber-600 dark:text-amber-400 font-medium">
               {Object.keys(pendingChanges).length} cambios pendientes
             </span>
             <button
               onClick={discardChanges}
-              className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               <RotateCcw className="h-4 w-4 mr-1" />
               Descartar
@@ -232,17 +232,17 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
       </div>
 
       {/* Estadísticas de roles */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Distribución de Roles</h3>
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Distribución de Roles</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {getRoleStats().map(({ role, count }) => (
-            <div key={role.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+            <div key={role.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
               <div className={`p-2 rounded-lg ${role.is_system ? 'bg-blue-100' : 'bg-green-100'}`}>
                 <UserCheck className={`h-4 w-4 ${role.is_system ? 'text-blue-600' : 'text-green-600'}`} />
               </div>
               <div>
-                <p className="font-medium text-gray-900">{role.name}</p>
-                <p className="text-sm text-gray-500">{count} usuarios</p>
+                <p className="font-medium text-gray-900 dark:text-white">{role.name}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{count} usuarios</p>
               </div>
             </div>
           ))}
@@ -250,18 +250,18 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
       </div>
 
       {/* Filtros y búsqueda */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Búsqueda */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder="Buscar miembros..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="all">Todos los roles</option>
               {roles.map(role => (
@@ -285,18 +285,18 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
       </div>
 
       {/* Lista de miembros */}
-      <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             Miembros ({filteredMembers.length})
           </h3>
         </div>
 
         {filteredMembers.length === 0 ? (
           <div className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay miembros</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay miembros</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {searchTerm || filterRole !== 'all'
                 ? 'No se encontraron miembros con los filtros aplicados.'
                 : 'No hay miembros en esta organización.'
@@ -323,8 +323,8 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                             alt={`${member.profiles.first_name} ${member.profiles.last_name}`}
                           />
                         ) : (
-                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <User className="h-6 w-6 text-gray-500" />
+                          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                            <User className="h-6 w-6 text-gray-500 dark:text-gray-400" />
                           </div>
                         )}
                       </div>
@@ -332,23 +332,23 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                       {/* Información del usuario */}
                       <div>
                         <div className="flex items-center space-x-2">
-                          <h4 className="text-lg font-medium text-gray-900">
+                          <h4 className="text-lg font-medium text-gray-900 dark:text-white">
                             {member.profiles.first_name} {member.profiles.last_name}
                           </h4>
                           {member.is_super_admin && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800">
                               Super Admin
                             </span>
                           )}
                           {hasChanges && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/20 text-amber-800">
                               <AlertCircle className="h-3 w-3 mr-1" />
                               Cambio pendiente
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">{member.profiles.email}</p>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{member.profiles.email}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                           Rol actual: <span className="font-medium">{member.roles.name}</span>
                         </p>
                       </div>
@@ -372,11 +372,11 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
                       </div>
                       
                       {hasChanges && (
-                        <div className="text-amber-600">
+                        <div className="text-amber-600 dark:text-amber-400">
                           <AlertCircle className="h-5 w-5" />
                         </div>
                       )}
@@ -385,9 +385,9 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                   
                   {/* Mostrar cambio propuesto */}
                   {hasChanges && (
-                    <div className="mt-3 p-3 bg-amber-100 rounded-md border border-amber-200">
+                    <div className="mt-3 p-3 bg-amber-100 dark:bg-amber-900/20 rounded-md border border-amber-200">
                       <div className="flex items-center space-x-2 text-sm">
-                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                         <span className="text-amber-800">
                           Cambio propuesto: <strong>{member.roles.name}</strong> → <strong>{currentRole?.name}</strong>
                         </span>

@@ -119,7 +119,7 @@ export function RecurringEventCard({
         'hover:shadow-md transition-shadow p-4'
       )}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex flex-wrap items-start gap-4">
         {/* Indicador de color */}
         <div
           className="w-1 self-stretch rounded-full flex-shrink-0"
@@ -129,7 +129,7 @@ export function RecurringEventCard({
         {/* Contenido principal */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
             <div>
               <h3 className="font-medium text-gray-900 dark:text-white truncate">
                 {event.title}
@@ -147,7 +147,7 @@ export function RecurringEventCard({
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-full sm:w-48">
                 <DropdownMenuItem onClick={() => onView(event)}>
                   <Eye className="h-4 w-4 mr-2" />
                   Ver detalles
@@ -175,12 +175,12 @@ export function RecurringEventCard({
           {/* Información del evento */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             {/* Fecha y hora */}
-            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-1.5 text-gray-600 dark:text-gray-400">
               <CalendarIcon className="h-4 w-4 text-blue-500" />
               <span>{format(startDate, "d MMM yyyy", { locale: es })}</span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-1.5 text-gray-600 dark:text-gray-400">
               <Clock className="h-4 w-4 text-blue-500" />
               <span>
                 {event.all_day
@@ -190,7 +190,7 @@ export function RecurringEventCard({
             </div>
 
             {/* Recurrencia */}
-            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-1.5 text-gray-600 dark:text-gray-400">
               <Repeat className="h-4 w-4 text-purple-500" />
               <span className="truncate">
                 {parseRecurrenceRule(event.recurrence_rule)}
@@ -198,10 +198,10 @@ export function RecurringEventCard({
             </div>
 
             {/* Excepciones */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <AlertCircle className={cn(
                 'h-4 w-4',
-                (event.exceptions_count || 0) > 0 ? 'text-orange-500' : 'text-gray-400'
+                (event.exceptions_count || 0) > 0 ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500'
               )} />
               <span className={cn(
                 (event.exceptions_count || 0) > 0
@@ -224,7 +224,7 @@ export function RecurringEventCard({
 
             {/* Ubicación */}
             {event.location && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                 <MapPin className="h-3 w-3" />
                 <span className="truncate max-w-[120px]">{event.location}</span>
               </div>
@@ -232,7 +232,7 @@ export function RecurringEventCard({
 
             {/* Usuario asignado */}
             {event.assigned_user && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                 <User className="h-3 w-3" />
                 <span>
                   {event.assigned_user.first_name} {event.assigned_user.last_name}
@@ -242,7 +242,7 @@ export function RecurringEventCard({
 
             {/* Sucursal */}
             {event.branch && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                 <Building2 className="h-3 w-3" />
                 <span>{event.branch.name}</span>
               </div>

@@ -95,7 +95,7 @@ export function CorrelationStepCard({
       >
         <div className="p-4">
           {/* Header */}
-          <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
             <div className="flex flex-wrap items-center gap-2">
               {/* Módulo */}
               <Badge 
@@ -153,9 +153,9 @@ export function CorrelationStepCard({
 
           {/* Footer */}
           <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-3 text-gray-500 dark:text-gray-400">
               {/* Actor */}
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 <User className="h-3 w-3" />
                 <span>{actorName || (event.actor_id ? 'Usuario' : 'Sistema')}</span>
               </div>
@@ -165,7 +165,7 @@ export function CorrelationStepCard({
             </div>
 
             {/* Acciones */}
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex flex-wrap items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -188,7 +188,7 @@ export function CorrelationStepCard({
                 </Tooltip>
               </TooltipProvider>
               
-              <ChevronRight className="h-4 w-4 text-gray-400" />
+              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
         </div>

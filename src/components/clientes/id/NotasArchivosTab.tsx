@@ -287,8 +287,8 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
                 key={nota.id} 
                 className={`border ${nota.is_pinned ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10' : 'border-gray-100 dark:border-gray-700'} rounded-lg p-4`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {renderAvatar(nota.user_id)}
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -299,7 +299,7 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => togglePinNote(nota.id, nota.is_pinned)}
                       className={`p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 ${

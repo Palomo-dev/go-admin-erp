@@ -125,7 +125,7 @@ export function EspaciosGrid({
   if (spaces.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <Car className="h-12 w-12 text-gray-400 mb-4" />
+        <Car className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">
           No hay espacios
         </h3>
@@ -179,7 +179,7 @@ export function EspaciosGrid({
                     />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className={state.color}>
                         {typeIcons[space.type] || <Car className="h-4 w-4" />}
                       </span>
@@ -189,11 +189,11 @@ export function EspaciosGrid({
                   <TableCell>{typeLabels[space.type] || space.type}</TableCell>
                   <TableCell>
                     {space.parking_zones?.name ? (
-                      <Badge variant="outline" className="text-blue-600 border-blue-300">
+                      <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-300">
                         {space.parking_zones.name}
                       </Badge>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 dark:text-gray-500">-</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -219,7 +219,7 @@ export function EspaciosGrid({
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => onDelete(space)}
-                          className="text-red-600"
+                          className="text-red-600 dark:text-red-400"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Eliminar
@@ -270,7 +270,7 @@ export function EspaciosGrid({
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={(e) => { e.stopPropagation(); onDelete(space); }}
-                      className="text-red-600"
+                      className="text-red-600 dark:text-red-400"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar

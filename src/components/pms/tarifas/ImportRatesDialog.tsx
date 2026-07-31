@@ -181,8 +181,8 @@ export function ImportRatesDialog({
           {/* Descargar plantilla */}
           <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+              <div className="flex flex-wrap items-center gap-3">
+                <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <div>
                   <p className="font-medium text-blue-900 dark:text-blue-100">
                     Plantilla CSV
@@ -214,7 +214,7 @@ export function ImportRatesDialog({
               onClick={() => fileInputRef.current?.click()}
             >
               <div className="flex flex-col items-center gap-2">
-                <Upload className="h-6 w-6 text-gray-400" />
+                <Upload className="h-6 w-6 text-gray-400 dark:text-gray-500" />
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   Haz clic para seleccionar archivo CSV
                 </span>
@@ -225,13 +225,13 @@ export function ImportRatesDialog({
           {/* Preview de datos */}
           {parsedData.length > 0 && !importResult && (
             <div className="space-y-3">
-              <div className="flex items-center gap-4">
-                <Badge className="bg-green-100 text-green-800">
+              <div className="flex flex-wrap items-center gap-4">
+                <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   {validCount} válidas
                 </Badge>
                 {invalidCount > 0 && (
-                  <Badge className="bg-red-100 text-red-800">
+                  <Badge className="bg-red-100 dark:bg-red-900/30 text-red-800">
                     <XCircle className="h-3 w-3 mr-1" />
                     {invalidCount} con errores
                   </Badge>
@@ -260,11 +260,11 @@ export function ImportRatesDialog({
                       >
                         <td className="px-3 py-2">
                           {row.isValid ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                           ) : (
-                            <div className="flex items-center gap-1">
-                              <XCircle className="h-4 w-4 text-red-600" />
-                              <span className="text-xs text-red-600">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                              <span className="text-xs text-red-600 dark:text-red-400">
                                 {row.error}
                               </span>
                             </div>
@@ -290,9 +290,9 @@ export function ImportRatesDialog({
             <Card className="p-6">
               <div className="text-center space-y-3">
                 {importResult.errors === 0 ? (
-                  <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto" />
+                  <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400 mx-auto" />
                 ) : (
-                  <AlertCircle className="h-12 w-12 text-yellow-600 mx-auto" />
+                  <AlertCircle className="h-12 w-12 text-yellow-600 dark:text-yellow-400 mx-auto" />
                 )}
                 <div>
                   <p className="text-lg font-semibold">Importación completada</p>

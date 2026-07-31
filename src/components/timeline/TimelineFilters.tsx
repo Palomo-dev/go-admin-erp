@@ -136,7 +136,7 @@ export function TimelineFilters({
         {/* Búsqueda */}
         <form onSubmit={handleSearchSubmit} className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar eventos (factura, usuario, entidad...)"
               value={searchText}
@@ -147,7 +147,7 @@ export function TimelineFilters({
         </form>
 
         {/* Selector de fechas */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {DATE_PRESETS.map((preset) => (
             <Button
               key={preset.days}
@@ -165,7 +165,7 @@ export function TimelineFilters({
         </div>
 
         {/* Rango de fechas personalizado */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -187,7 +187,7 @@ export function TimelineFilters({
               />
             </PopoverContent>
           </Popover>
-          <span className="text-gray-500">-</span>
+          <span className="text-gray-500 dark:text-gray-400">-</span>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -236,7 +236,7 @@ export function TimelineFilters({
             variant="ghost"
             size="sm"
             onClick={handleReset}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           >
             <RotateCcw className="h-4 w-4 mr-1" />
             Limpiar

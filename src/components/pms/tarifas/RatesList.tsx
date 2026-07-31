@@ -43,7 +43,7 @@ export function RatesList({ rates, onEdit, onDelete, onToggleActive }: RatesList
         >
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                   {rate.space_types?.name || 'Tipo de espacio'}
                 </h3>
@@ -56,7 +56,7 @@ export function RatesList({ rates, onEdit, onDelete, onToggleActive }: RatesList
                   {rate.is_active ? 'Activa' : 'Inactiva'}
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex flex-wrap items-center gap-2 mt-1">
                 {rate.restrictions?.plan && (
                   <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                     {rate.restrictions.plan}
@@ -77,7 +77,7 @@ export function RatesList({ rates, onEdit, onDelete, onToggleActive }: RatesList
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Switch
                 checked={rate.is_active}
                 onCheckedChange={() => onToggleActive(rate.id)}
@@ -95,7 +95,7 @@ export function RatesList({ rates, onEdit, onDelete, onToggleActive }: RatesList
                 variant="ghost"
                 size="icon"
                 onClick={() => onDelete(rate.id)}
-                className="h-8 w-8 text-red-600 hover:text-red-700"
+                className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-700"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -103,7 +103,7 @@ export function RatesList({ rates, onEdit, onDelete, onToggleActive }: RatesList
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Calendar className="h-4 w-4" />
               <span>
                 {format(new Date(rate.date_from), 'dd MMM', { locale: es })} -{' '}

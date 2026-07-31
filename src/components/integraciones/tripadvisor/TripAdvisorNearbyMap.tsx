@@ -74,8 +74,8 @@ const CATEGORY_ICON_MAP: Record<string, React.ReactNode> = {
 };
 
 function getCategoryIcon(category?: { key: string; name: string }) {
-  if (!category) return <MapPin className="h-4 w-4 text-gray-400" />;
-  return CATEGORY_ICON_MAP[category.key] || <MapPin className="h-4 w-4 text-gray-400" />;
+  if (!category) return <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />;
+  return CATEGORY_ICON_MAP[category.key] || <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />;
 }
 
 /**
@@ -163,7 +163,7 @@ export function TripAdvisorNearbyMap({
     <Card className={cn('overflow-hidden', className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <CardTitle className="text-base font-semibold flex flex-wrap items-center gap-2">
             <Navigation className="h-4 w-4 text-[#00AA6C]" />
             Cerca de {propertyName || 'tu propiedad'}
           </CardTitle>
@@ -190,7 +190,7 @@ export function TripAdvisorNearbyMap({
             <SelectContent>
               {CATEGORY_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex flex-wrap items-center gap-1.5">
                     {opt.icon}
                     {opt.label}
                   </span>
@@ -204,8 +204,8 @@ export function TripAdvisorNearbyMap({
       <CardContent className="space-y-2">
         {isLoading && (
           <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            <span className="ml-2 text-sm text-gray-500">Buscando cercanos...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" />
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Buscando cercanos...</span>
           </div>
         )}
 
@@ -214,7 +214,7 @@ export function TripAdvisorNearbyMap({
         )}
 
         {!isLoading && !error && nearby.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
             No se encontraron ubicaciones cercanas.
           </p>
         )}
@@ -222,7 +222,7 @@ export function TripAdvisorNearbyMap({
         {!isLoading && nearby.map((loc) => (
           <div
             key={loc.location_id}
-            className="flex items-start gap-3 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            className="flex flex-wrap items-start gap-3 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
           >
             {/* Icono de categoría */}
             <div className="mt-0.5 shrink-0">
@@ -231,7 +231,7 @@ export function TripAdvisorNearbyMap({
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
                 <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {loc.name}
                 </h4>
@@ -263,7 +263,7 @@ export function TripAdvisorNearbyMap({
                   </span>
                 )}
                 {loc.num_reviews && (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
                     ({loc.num_reviews} reseñas)
                   </span>
                 )}
@@ -284,7 +284,7 @@ export function TripAdvisorNearbyMap({
 
         {/* Attribution */}
         {!isLoading && nearby.length > 0 && (
-          <p className="text-[10px] text-gray-400 text-center pt-2">
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pt-2">
             Powered by{' '}
             <a
               href="https://www.tripadvisor.com"

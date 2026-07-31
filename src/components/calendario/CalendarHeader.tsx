@@ -45,7 +45,7 @@ export function CalendarHeader({
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
           <CalendarIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
         </div>
@@ -61,7 +61,7 @@ export function CalendarHeader({
 
       <div className="flex flex-wrap items-center gap-2">
         {/* Navegación */}
-        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+        <div className="flex flex-wrap items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
           <Button
             variant="ghost"
             size="sm"

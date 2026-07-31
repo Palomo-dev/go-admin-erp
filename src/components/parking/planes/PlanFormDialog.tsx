@@ -150,7 +150,7 @@ export function PlanFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="dark:text-white flex items-center gap-2">
+          <DialogTitle className="dark:text-white flex flex-wrap items-center gap-2">
             <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             {isEditing ? 'Editar Plan' : 'Nuevo Plan de Parking'}
           </DialogTitle>
@@ -253,7 +253,7 @@ export function PlanFormDialog({
             <Label className="dark:text-gray-200">Beneficios incluidos</Label>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Sparkles className="h-5 w-5 text-cyan-500" />
                   <div>
                     <p className="text-sm font-medium dark:text-white">Lavado de auto</p>
@@ -269,7 +269,7 @@ export function PlanFormDialog({
               </div>
 
               <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Users className="h-5 w-5 text-purple-500" />
                   <div>
                     <p className="text-sm font-medium dark:text-white">Servicio Valet</p>

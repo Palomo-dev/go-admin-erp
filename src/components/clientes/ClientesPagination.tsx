@@ -98,7 +98,7 @@ export const ClientesPagination: React.FC<ClientesPaginationProps> = ({
         </span>
 
         {showPageSizeSelector && onPageSizeChange && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-gray-500 dark:text-gray-400 text-xs">|</span>
             <Select
               value={pageSize.toString()}
@@ -121,7 +121,7 @@ export const ClientesPagination: React.FC<ClientesPaginationProps> = ({
       </div>
 
       {/* Controles de navegación */}
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {/* Primera página */}
         <Button
           variant="outline"

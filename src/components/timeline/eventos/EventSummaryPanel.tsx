@@ -30,7 +30,7 @@ export function EventSummaryPanel({ event }: EventSummaryPanelProps) {
       approve: <CheckCircle className="h-5 w-5 text-emerald-500" />,
       reject: <XCircle className="h-5 w-5 text-rose-500" />,
     };
-    return icons[action] || <FileText className="h-5 w-5 text-gray-500" />;
+    return icons[action] || <FileText className="h-5 w-5 text-gray-500 dark:text-gray-400" />;
   };
 
   const getChangeSummary = () => {
@@ -91,14 +91,14 @@ export function EventSummaryPanel({ event }: EventSummaryPanelProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
           <FileText className="h-5 w-5 text-blue-500" />
           Resumen del Evento
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Acción principal */}
-        <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+        <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
           {getActionIcon(event.action)}
           <div>
             <p className="font-medium text-gray-900 dark:text-white">
@@ -127,10 +127,10 @@ export function EventSummaryPanel({ event }: EventSummaryPanelProps) {
                     change.type === 'change' && 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800'
                   )}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    {change.type === 'add' && <Plus className="h-3 w-3 text-green-600" />}
-                    {change.type === 'remove' && <Minus className="h-3 w-3 text-red-600" />}
-                    {change.type === 'change' && <Edit className="h-3 w-3 text-blue-600" />}
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    {change.type === 'add' && <Plus className="h-3 w-3 text-green-600 dark:text-green-400" />}
+                    {change.type === 'remove' && <Minus className="h-3 w-3 text-red-600 dark:text-red-400" />}
+                    {change.type === 'change' && <Edit className="h-3 w-3 text-blue-600 dark:text-blue-400" />}
                     <span className="font-medium text-sm text-gray-900 dark:text-white">
                       {change.field}
                     </span>
@@ -140,11 +140,11 @@ export function EventSummaryPanel({ event }: EventSummaryPanelProps) {
                   </div>
                   
                   {change.type === 'change' && (
-                    <div className="flex items-center gap-2 text-xs mt-2">
+                    <div className="flex flex-wrap items-center gap-2 text-xs mt-2">
                       <code className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-1 rounded max-w-[45%] truncate">
                         {formatValue(change.oldValue)}
                       </code>
-                      <ArrowRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                      <ArrowRight className="h-3 w-3 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                       <code className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded max-w-[45%] truncate">
                         {formatValue(change.newValue)}
                       </code>

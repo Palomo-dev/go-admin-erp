@@ -162,7 +162,7 @@ export function ImportDialog({
     }}>
       <DialogContent className="sm:max-w-[550px] dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 dark:text-gray-100">
+          <DialogTitle className="flex flex-wrap items-center gap-2 dark:text-gray-100">
             <Upload className="h-5 w-5" />
             Importar Conexiones
           </DialogTitle>
@@ -239,12 +239,12 @@ export function ImportDialog({
                 {parsedData.slice(0, 5).map((row, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-2 text-sm py-1 text-gray-700 dark:text-gray-300"
+                    className="flex flex-wrap items-center gap-2 text-sm py-1 text-gray-700 dark:text-gray-300"
                   >
-                    <FileText className="h-4 w-4 text-gray-400" />
+                    <FileText className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span>{row.name}</span>
                     {row.countryCode && (
-                      <span className="text-xs text-gray-500">({row.countryCode})</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">({row.countryCode})</span>
                     )}
                   </div>
                 ))}
@@ -267,9 +267,9 @@ export function ImportDialog({
               }
             >
               {result.failed === 0 ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
               ) : (
-                <XCircle className="h-4 w-4 text-yellow-600" />
+                <XCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               )}
               <AlertDescription
                 className={

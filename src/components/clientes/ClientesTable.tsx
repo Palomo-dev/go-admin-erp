@@ -132,7 +132,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
         <span className="mt-2 text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
       </div>
     );
@@ -185,7 +185,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       />
                     </td>
                     <td className="px-3 sm:px-4 py-3">
-                      <div className="flex items-center gap-3 min-w-[120px] sm:min-w-0">
+                      <div className="flex flex-wrap items-center gap-3 min-w-[120px] sm:min-w-0">
                         {/* Avatar del cliente */}
                         <div className="flex-shrink-0">
                           {customer.avatar_url ? (
@@ -203,7 +203,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                           )}
                         </div>
                         <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                               {customer.full_name}
                             </span>
@@ -363,7 +363,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                             <span className="sr-only">Abrir menú</span>
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-48">
+                        <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-full sm:w-48">
                           <DropdownMenuLabel className="text-gray-900 dark:text-gray-100 font-semibold">Acciones</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => window.location.href = `/app/clientes/${customer.id}`} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                             Ver detalles

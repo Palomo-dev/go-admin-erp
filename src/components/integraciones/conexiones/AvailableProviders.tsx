@@ -459,7 +459,7 @@ export function AvailableProviders({
       {/* Estadísticas */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <Link2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
@@ -470,7 +470,7 @@ export function AvailableProviders({
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
               <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
@@ -481,7 +481,7 @@ export function AvailableProviders({
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
               <Pause className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             </div>
@@ -492,7 +492,7 @@ export function AvailableProviders({
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
               <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
             </div>
@@ -508,7 +508,7 @@ export function AvailableProviders({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar integración..."
               value={searchTerm}
@@ -547,22 +547,22 @@ export function AvailableProviders({
         <div className="flex gap-2 flex-wrap items-center">
           {/* Filtro por país */}
           <Select value={countryFilter} onValueChange={(v) => setCountryFilter(v as 'all' | 'my_country' | 'other')}>
-            <SelectTrigger className="w-[180px] h-9">
-              <div className="flex items-center gap-2">
-                <Globe className="h-3.5 w-3.5 text-gray-400" />
+            <SelectTrigger className="w-full sm:w-[180px] h-9">
+              <div className="flex flex-wrap items-center gap-2">
+                <Globe className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                 <SelectValue placeholder="País" />
               </div>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los países</SelectItem>
               <SelectItem value="my_country">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <MapPin className="h-3.5 w-3.5 text-green-500" />
                   <span>Mi país{orgCountryIso2 ? ` (${orgCountryIso2})` : ''}</span>
                 </div>
               </SelectItem>
               <SelectItem value="other">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Globe className="h-3.5 w-3.5 text-amber-500" />
                   <span>Otros países</span>
                 </div>
@@ -574,28 +574,28 @@ export function AvailableProviders({
           {connections.length > 0 && (
             <>
               <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? null : v)}>
-                <SelectTrigger className="w-[170px] h-9">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-3.5 w-3.5 text-gray-400" />
+                <SelectTrigger className="w-full sm:w-[170px] h-9">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                     <SelectValue placeholder="Estado" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="connected">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                       <span>Conectado</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="paused">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Pause className="h-3.5 w-3.5 text-yellow-500" />
                       <span>Pausado</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="error">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <AlertCircle className="h-3.5 w-3.5 text-red-500" />
                       <span>Error</span>
                     </div>
@@ -604,9 +604,9 @@ export function AvailableProviders({
               </Select>
 
               <Select value={environmentFilter || 'all'} onValueChange={(v) => setEnvironmentFilter(v === 'all' ? null : v)}>
-                <SelectTrigger className="w-[150px] h-9">
-                  <div className="flex items-center gap-2">
-                    <Server className="h-3.5 w-3.5 text-gray-400" />
+                <SelectTrigger className="w-full sm:w-[150px] h-9">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Server className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                     <SelectValue placeholder="Ambiente" />
                   </div>
                 </SelectTrigger>
@@ -631,9 +631,9 @@ export function AvailableProviders({
       {/* Grid de proveedores */}
       {Object.entries(groupedProviders).map(([category, categoryProviders]) => (
         <div key={category}>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
             <div className={`p-1.5 rounded-md ${CATEGORY_CONFIG[category]?.bgColor || 'bg-gray-100'}`}>
-              <span className={CATEGORY_CONFIG[category]?.color || 'text-gray-500'}>
+              <span className={CATEGORY_CONFIG[category]?.color || 'text-gray-500 dark:text-gray-400'}>
                 {CATEGORY_CONFIG[category]?.icon}
               </span>
             </div>

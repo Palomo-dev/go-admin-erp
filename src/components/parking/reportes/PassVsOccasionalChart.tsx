@@ -26,7 +26,7 @@ export function PassVsOccasionalChart({ data, isLoading }: PassVsOccasionalChart
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
           <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           Abonados vs Ocasionales
         </CardTitle>
@@ -34,7 +34,7 @@ export function PassVsOccasionalChart({ data, isLoading }: PassVsOccasionalChart
       <CardContent>
         {isLoading ? (
           <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400">Cargando...</div>
+            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -54,13 +54,13 @@ export function PassVsOccasionalChart({ data, isLoading }: PassVsOccasionalChart
                 />
               </div>
               <div className="flex justify-between mt-2 text-sm">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <UserCheck className="h-4 w-4 text-purple-500" />
                   <span className="text-gray-600 dark:text-gray-300">
                     Abonados: <strong>{data.subscribers}</strong> ({subscriberPercent}%)
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Users className="h-4 w-4 text-blue-500" />
                   <span className="text-gray-600 dark:text-gray-300">
                     Ocasionales: <strong>{data.occasional}</strong> ({occasionalPercent}%)

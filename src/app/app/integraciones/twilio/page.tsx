@@ -118,13 +118,13 @@ export default function TwilioConfigPage() {
       received: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
       queued: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
     };
-    return <Badge className={colors[status] || 'bg-gray-100 text-gray-800'}>{status}</Badge>;
+    return <Badge className={colors[status] || 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'}>{status}</Badge>;
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }
@@ -135,7 +135,7 @@ export default function TwilioConfigPage() {
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Link href="/app/integraciones">
                 <Button variant="ghost" size="icon">
                   <ArrowLeft className="h-5 w-5" />
@@ -153,7 +153,7 @@ export default function TwilioConfigPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {credits?.is_active ? (
                 <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                   Activo
@@ -184,7 +184,7 @@ export default function TwilioConfigPage() {
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                     {formatCredits(credits?.sms_remaining ?? 0)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                     {monthlyUsage.sms} enviados este mes
                   </p>
                 </div>
@@ -204,7 +204,7 @@ export default function TwilioConfigPage() {
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                     {formatCredits(credits?.whatsapp_remaining ?? 0)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                     {monthlyUsage.whatsapp} enviados este mes
                   </p>
                 </div>
@@ -224,7 +224,7 @@ export default function TwilioConfigPage() {
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                     {formatCredits(credits?.voice_minutes_remaining ?? 0)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                     {monthlyUsage.voice} min usados este mes
                   </p>
                 </div>
@@ -240,7 +240,7 @@ export default function TwilioConfigPage() {
         {credits?.voice_agent_enabled && (
           <Card className="dark:bg-gray-800 dark:border-gray-700 border-purple-200 dark:border-purple-800">
             <CardContent className="p-6">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                   <Mic className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -261,7 +261,7 @@ export default function TwilioConfigPage() {
         {/* Historial reciente */}
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
               <TrendingUp className="h-5 w-5" />
               Actividad Reciente
             </CardTitle>
@@ -280,7 +280,7 @@ export default function TwilioConfigPage() {
                     key={log.id}
                     className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-800">
                         {getChannelIcon(log.channel)}
                       </div>
@@ -294,9 +294,9 @@ export default function TwilioConfigPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       {getStatusBadge(log.status)}
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
                         {new Date(log.created_at).toLocaleString('es-CO', {
                           month: 'short',
                           day: 'numeric',
@@ -314,7 +314,7 @@ export default function TwilioConfigPage() {
 
         {/* Reset de créditos */}
         {credits?.credits_reset_at && (
-          <p className="text-center text-sm text-gray-400">
+          <p className="text-center text-sm text-gray-400 dark:text-gray-500">
             Los créditos se reinician el{' '}
             {new Date(credits.credits_reset_at).toLocaleDateString('es-CO', {
               day: 'numeric',

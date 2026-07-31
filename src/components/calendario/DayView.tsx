@@ -206,11 +206,11 @@ export function DayView({
             'p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0',
             isTodayDate && 'bg-blue-50 dark:bg-blue-900/20'
           )}>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <span
                 className={cn(
                   'text-3xl font-bold',
-                  isTodayDate ? 'text-blue-600' : 'text-gray-900 dark:text-white'
+                  isTodayDate ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'
                 )}
               >
                 {format(currentDate, 'd')}
@@ -332,7 +332,7 @@ export function DayView({
         </div>
 
         {/* Panel derecho - Lista de eventos */}
-        <div className="w-80 flex-shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden hidden lg:flex">
+        <div className="w-full sm:w-80 flex-shrink-0 flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden hidden lg:flex">
           <div className="p-4 border-b border-gray-200 dark:border-gray-800">
             <h3 className="font-semibold text-gray-900 dark:text-white">
               Eventos del día

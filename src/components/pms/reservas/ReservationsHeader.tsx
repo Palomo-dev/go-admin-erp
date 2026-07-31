@@ -55,7 +55,7 @@ export function ReservationsHeader({
       {/* Estadísticas */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card className="p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               <Calendar className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             </div>
@@ -71,7 +71,7 @@ export function ReservationsHeader({
         </Card>
 
         <Card className="p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
               <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
@@ -87,7 +87,7 @@ export function ReservationsHeader({
         </Card>
 
         <Card className="p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
               <DoorOpen className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
@@ -103,7 +103,7 @@ export function ReservationsHeader({
         </Card>
 
         <Card className="p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
               <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
@@ -119,7 +119,7 @@ export function ReservationsHeader({
         </Card>
 
         <Card className="p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
               <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
             </div>

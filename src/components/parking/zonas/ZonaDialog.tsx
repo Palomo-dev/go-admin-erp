@@ -85,8 +85,8 @@ export function ZonaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             {isEditing ? 'Editar Zona' : 'Nueva Zona'}
           </DialogTitle>
         </DialogHeader>

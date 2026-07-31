@@ -37,7 +37,7 @@ export function VehicleTypeChart({ data, isLoading }: VehicleTypeChartProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
           <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Distribución por Tipo de Vehículo
         </CardTitle>
@@ -45,10 +45,10 @@ export function VehicleTypeChart({ data, isLoading }: VehicleTypeChartProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400">Cargando...</div>
+            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
           </div>
         ) : data.length === 0 ? (
-          <div className="h-48 flex items-center justify-center text-gray-400">
+          <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
             No hay datos disponibles
           </div>
         ) : (
@@ -82,7 +82,7 @@ export function VehicleTypeChart({ data, isLoading }: VehicleTypeChartProps) {
                     key={index}
                     className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-900/50"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <div
                         className={`p-2 rounded-lg ${color} bg-opacity-20 dark:bg-opacity-30 text-gray-700 dark:text-gray-300`}
                       >

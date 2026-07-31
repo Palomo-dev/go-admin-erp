@@ -40,7 +40,7 @@ export function ReservationsBulkActions({
 }: ReservationsBulkActionsProps) {
   if (selectedCount === 0) {
     return (
-      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
         <Checkbox
           checked={allSelected}
           onCheckedChange={onSelectAll}
@@ -54,8 +54,8 @@ export function ReservationsBulkActions({
   }
 
   return (
-    <div className="flex items-center justify-between gap-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+      <div className="flex flex-wrap items-center gap-3">
         <Checkbox
           checked={allSelected}
           onCheckedChange={onSelectAll}
@@ -75,7 +75,7 @@ export function ReservationsBulkActions({
         </Button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {canConfirm && (
           <Button
             size="sm"

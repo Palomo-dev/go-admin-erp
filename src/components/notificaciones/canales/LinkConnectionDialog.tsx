@@ -81,9 +81,9 @@ export function LinkConnectionDialog({
             {conn.provider_name}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="text-[10px] px-1 py-0">{conn.environment}</Badge>
-          <Badge className={cn('text-[10px] px-1.5 py-0', statusBadge[conn.status] || 'bg-gray-100 text-gray-500')}>
+          <Badge className={cn('text-[10px] px-1.5 py-0', statusBadge[conn.status] || 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400')}>
             {conn.status}
           </Badge>
           {selectedId === conn.id && <CheckCircle2 className="h-4 w-4 text-blue-500" />}
@@ -96,7 +96,7 @@ export function LinkConnectionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex flex-wrap items-center gap-2">
             <Link2 className="h-5 w-5 text-blue-500" />
             Vincular Integración
           </DialogTitle>
@@ -108,7 +108,7 @@ export function LinkConnectionDialog({
         <div className="space-y-3 py-2">
           {suggested.length > 0 && (
             <>
-              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Sugeridas para {channel.code}</p>
+              <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">Sugeridas para {channel.code}</p>
               <div className="space-y-2">
                 {suggested.map(renderConnection)}
               </div>
@@ -117,7 +117,7 @@ export function LinkConnectionDialog({
 
           {others.length > 0 && (
             <>
-              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mt-2">Otras conexiones</p>
+              <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-2">Otras conexiones</p>
               <div className="space-y-2">
                 {others.map(renderConnection)}
               </div>

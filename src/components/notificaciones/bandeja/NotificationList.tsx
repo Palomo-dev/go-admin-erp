@@ -108,7 +108,7 @@ export function NotificationList({
               key={notif.id}
               onClick={() => handleRowClick(notif)}
               className={cn(
-                'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm',
+                'flex flex-wrap items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm',
                 isUnread
                   ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
                   : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50'
@@ -130,7 +130,7 @@ export function NotificationList({
 
               {/* Contenido */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex flex-wrap items-center gap-2 mb-0.5">
                   <span className={cn('text-sm font-medium truncate', isUnread ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300')}>
                     {title}
                   </span>
@@ -139,12 +139,12 @@ export function NotificationList({
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{content}</p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <Badge className={cn('text-[10px] px-1.5 py-0', st.color)}>
                     <StatusIcon className="h-3 w-3 mr-0.5" />
                     {st.label}
                   </Badge>
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">
                     {new Date(notif.created_at).toLocaleString('es', {
                       day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
                     })}
@@ -159,14 +159,14 @@ export function NotificationList({
               </div>
 
               {/* Acciones */}
-              <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <div className="flex flex-wrap items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                 {isUnread ? (
                   <Button variant="ghost" size="sm" onClick={() => onMarkRead(notif.id)} title="Marcar como leída" className="h-7 w-7 p-0">
                     <Eye className="h-3.5 w-3.5 text-blue-500" />
                   </Button>
                 ) : (
                   <Button variant="ghost" size="sm" onClick={() => onMarkUnread(notif.id)} title="Marcar como no leída" className="h-7 w-7 p-0">
-                    <EyeOff className="h-3.5 w-3.5 text-gray-400" />
+                    <EyeOff className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                   </Button>
                 )}
                 {notif.status === 'failed' && (
@@ -175,7 +175,7 @@ export function NotificationList({
                   </Button>
                 )}
                 <Button variant="ghost" size="sm" onClick={() => onResend(notif.id)} title="Reenviar como nueva" className="h-7 w-7 p-0">
-                  <Copy className="h-3.5 w-3.5 text-gray-400" />
+                  <Copy className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                 </Button>
               </div>
             </div>
@@ -189,7 +189,7 @@ export function NotificationList({
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} de {total}
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)} className="h-7 w-7 p-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -197,7 +197,7 @@ export function NotificationList({
               .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
               .map((p, idx, arr) => (
                 <span key={p}>
-                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-gray-400 px-1">…</span>}
+                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-gray-400 dark:text-gray-500 px-1">…</span>}
                   <Button
                     variant={p === page ? 'default' : 'outline'}
                     size="sm"

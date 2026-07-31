@@ -83,12 +83,12 @@ export function CanalPreferencia({ preference, onUpdate }: CanalPreferenciaProps
       {/* Header */}
       <div className="p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className={cn('p-2 rounded-lg', colors.bg)}>
               <Icon className={cn('h-5 w-5', colors.icon)} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{meta.label}</p>
                 {preference.mute && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-red-300 text-red-600 dark:border-red-700 dark:text-red-400">
@@ -109,7 +109,7 @@ export function CanalPreferencia({ preference, onUpdate }: CanalPreferenciaProps
               <p className="text-xs text-gray-500 dark:text-gray-400">{meta.description}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />}
             <Switch
               checked={!preference.mute}
@@ -119,7 +119,7 @@ export function CanalPreferencia({ preference, onUpdate }: CanalPreferenciaProps
               variant="ghost"
               size="sm"
               onClick={() => setExpanded(!expanded)}
-              className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="h-7 w-7 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
@@ -132,12 +132,12 @@ export function CanalPreferencia({ preference, onUpdate }: CanalPreferenciaProps
         <div className="px-4 pb-4 space-y-4 border-t border-gray-200 dark:border-gray-700 pt-3">
           {/* DND */}
           <div>
-            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 flex flex-wrap items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
               Horario No Molestar
             </p>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <label className="text-[10px] text-gray-500 dark:text-gray-400">Desde</label>
                 <input
                   type="time"
@@ -146,8 +146,8 @@ export function CanalPreferencia({ preference, onUpdate }: CanalPreferenciaProps
                   className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
-              <span className="text-xs text-gray-400">—</span>
-              <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+              <div className="flex flex-wrap items-center gap-1.5">
                 <label className="text-[10px] text-gray-500 dark:text-gray-400">Hasta</label>
                 <input
                   type="time"

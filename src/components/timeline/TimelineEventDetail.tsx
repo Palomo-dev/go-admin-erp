@@ -117,7 +117,7 @@ export function TimelineEventDetail({
               {/* Event ID */}
               <div className="space-y-1">
                 <span className="text-sm text-gray-500 dark:text-gray-400">Event ID</span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <code className="flex-1 text-xs font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded text-gray-700 dark:text-gray-300 break-all">
                     {event.event_id}
                   </code>
@@ -156,7 +156,7 @@ export function TimelineEventDetail({
 
               <div className="space-y-1">
                 <span className="text-sm text-gray-500 dark:text-gray-400">Entity ID</span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <code className="flex-1 text-xs font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded text-gray-700 dark:text-gray-300 break-all">
                     {event.entity_id}
                   </code>
@@ -186,7 +186,7 @@ export function TimelineEventDetail({
 
             {/* Actor */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                 <User className="h-4 w-4" />
                 Actor
               </h3>
@@ -209,7 +209,7 @@ export function TimelineEventDetail({
               {event.actor_id && (
                 <div className="space-y-1">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Actor ID</span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <code className="flex-1 text-xs font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded text-gray-700 dark:text-gray-300 break-all">
                       {event.actor_id}
                     </code>
@@ -231,14 +231,14 @@ export function TimelineEventDetail({
               <>
                 <Separator className="bg-gray-200 dark:bg-gray-700" />
                 <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                     <Link2 className="h-4 w-4" />
                     Correlación
                   </h3>
 
                   <div className="space-y-1">
                     <span className="text-sm text-gray-500 dark:text-gray-400">Correlation ID</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <code className="flex-1 text-xs font-mono bg-gray-100 dark:bg-gray-800 p-2 rounded text-gray-700 dark:text-gray-300 break-all">
                         {event.correlation_id}
                       </code>
@@ -270,7 +270,7 @@ export function TimelineEventDetail({
 
             {/* Payload */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                 <FileJson className="h-4 w-4" />
                 Payload (Datos del Evento)
               </h3>
@@ -312,7 +312,7 @@ export function TimelineEventDetail({
 
             {/* Timestamps */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Timestamps
               </h3>

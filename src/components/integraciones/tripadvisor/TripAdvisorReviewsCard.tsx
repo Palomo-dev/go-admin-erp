@@ -84,7 +84,7 @@ export function TripAdvisorReviewsCard({
     <Card className={cn('overflow-hidden', className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <CardTitle className="text-base font-semibold flex flex-wrap items-center gap-2">
             <MessageSquare className="h-4 w-4 text-[#00AA6C]" />
             Reseñas de TripAdvisor
           </CardTitle>
@@ -102,15 +102,15 @@ export function TripAdvisorReviewsCard({
       <CardContent className="space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            <span className="ml-2 text-sm text-gray-500">Cargando reseñas...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" />
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Cargando reseñas...</span>
           </div>
         ) : error ? (
           <div className="text-center py-6 text-sm text-red-500 dark:text-red-400">
             {error}
           </div>
         ) : reviews.length === 0 ? (
-          <div className="text-center py-6 text-sm text-gray-500">
+          <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
             No hay reseñas disponibles
           </div>
         ) : (
@@ -120,7 +120,7 @@ export function TripAdvisorReviewsCard({
         )}
 
         {/* Atribución obligatoria */}
-        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
+        <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-2">
           <svg
             width={16}
             height={16}
@@ -163,8 +163,8 @@ function ReviewItem({ review }: { review: TripAdvisorReview }) {
   return (
     <div className="p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 space-y-2">
       {/* Header: Usuario + Rating */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           {review.user?.avatar?.small ? (
             <img
               src={review.user.avatar.small}
@@ -173,7 +173,7 @@ function ReviewItem({ review }: { review: TripAdvisorReview }) {
             />
           ) : (
             <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-              <User className="h-4 w-4 text-gray-400" />
+              <User className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             </div>
           )}
           <div className="min-w-0">
@@ -181,7 +181,7 @@ function ReviewItem({ review }: { review: TripAdvisorReview }) {
               {review.user?.username || 'Viajero de Tripadvisor'}
             </p>
             {review.user?.user_location?.name && (
-              <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
+              <p className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1 truncate">
                 <MapPin className="h-3 w-3 shrink-0" />
                 {review.user.user_location.name}
               </p>
@@ -253,7 +253,7 @@ function ReviewItem({ review }: { review: TripAdvisorReview }) {
       {/* Footer: fecha, tipo viaje, votos */}
       <div className="flex items-center gap-3 flex-wrap text-xs text-gray-500 dark:text-gray-400 pt-1">
         {formattedDate && (
-          <span className="flex items-center gap-1">
+          <span className="flex flex-wrap items-center gap-1">
             <Calendar className="h-3 w-3" />
             {formattedDate}
           </span>
@@ -264,7 +264,7 @@ function ReviewItem({ review }: { review: TripAdvisorReview }) {
           </Badge>
         )}
         {review.helpful_votes && parseInt(review.helpful_votes) > 0 && (
-          <span className="flex items-center gap-1">
+          <span className="flex flex-wrap items-center gap-1">
             <ThumbsUp className="h-3 w-3" />
             {review.helpful_votes} útil{parseInt(review.helpful_votes) !== 1 ? 'es' : ''}
           </span>
@@ -274,7 +274,7 @@ function ReviewItem({ review }: { review: TripAdvisorReview }) {
             href={review.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[#00AA6C] dark:text-[#84E9BD] hover:underline ml-auto"
+            className="flex flex-wrap items-center gap-1 text-[#00AA6C] dark:text-[#84E9BD] hover:underline ml-auto"
           >
             Ver en TripAdvisor
             <ExternalLink className="h-3 w-3" />

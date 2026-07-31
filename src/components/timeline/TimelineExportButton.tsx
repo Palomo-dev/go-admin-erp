@@ -106,7 +106,7 @@ export function TimelineExportButton({
           Exportar
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-full sm:w-48">
         <DropdownMenuItem onClick={handleExportJSON} disabled={exporting !== null}>
           <FileJson className="h-4 w-4 mr-2" />
           Exportar JSON

@@ -243,7 +243,7 @@ export default function TarifasPage() {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Cargando tarifas...</p>
         </div>
       </div>
@@ -276,11 +276,11 @@ export default function TarifasPage() {
         {/* Tabs debajo de filtros */}
         <Tabs defaultValue="habitaciones" className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2 mb-4">
-            <TabsTrigger value="habitaciones" className="flex items-center gap-2">
+            <TabsTrigger value="habitaciones" className="flex flex-wrap items-center gap-2">
               <Building2 className="h-4 w-4" />
               Habitaciones
             </TabsTrigger>
-            <TabsTrigger value="parking" className="flex items-center gap-2">
+            <TabsTrigger value="parking" className="flex flex-wrap items-center gap-2">
               <Car className="h-4 w-4" />
               Estacionamiento
             </TabsTrigger>

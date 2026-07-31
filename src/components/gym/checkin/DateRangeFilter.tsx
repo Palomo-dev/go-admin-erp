@@ -92,7 +92,7 @@ export function DateRangeFilter({
                 : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
             )}
           >
-            <span className="flex items-center gap-2">
+            <span className="flex flex-wrap items-center gap-2">
               <CalendarIcon className="h-4 w-4" />
               {preset === 'custom' ? getDisplayLabel() : 'Personalizado'}
             </span>

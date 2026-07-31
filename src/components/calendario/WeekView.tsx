@@ -231,7 +231,7 @@ export function WeekView({
                 <div
                   className={cn(
                     'text-xl font-semibold mt-1',
-                    isTodayDate ? 'text-blue-600' : 'text-gray-900 dark:text-white'
+                    isTodayDate ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'
                   )}
                 >
                   {format(day, 'd')}
@@ -244,7 +244,7 @@ export function WeekView({
         {/* Eventos de todo el día */}
         {allDayEvents.length > 0 && (
           <div className="flex border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-            <div className="w-16 flex-shrink-0 px-2 py-1 text-xs text-gray-500">
+            <div className="w-16 flex-shrink-0 px-2 py-1 text-xs text-gray-500 dark:text-gray-400">
               Todo el día
             </div>
             {weekDays.map((day) => {

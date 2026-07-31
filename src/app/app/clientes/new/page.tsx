@@ -69,7 +69,7 @@ export default function NewClientPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando formulario...</p>
       </div>
     );
@@ -79,14 +79,14 @@ export default function NewClientPage() {
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header mejorado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <Link href="/app/clientes">
             <Button variant="outline" size="icon" className="h-10 w-10 rounded-lg border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
                 <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>

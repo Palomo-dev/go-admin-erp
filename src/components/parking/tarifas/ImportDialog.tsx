@@ -217,8 +217,8 @@ export function ImportDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Importar Tarifas desde CSV
           </DialogTitle>
           <DialogDescription>
@@ -228,8 +228,8 @@ export function ImportDialog({
 
         <div className="flex-1 overflow-auto space-y-4 py-4">
           <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-3">
-              <FileSpreadsheet className="h-8 w-8 text-blue-600" />
+            <div className="flex flex-wrap items-center gap-3">
+              <FileSpreadsheet className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               <div>
                 <p className="font-medium text-gray-900 dark:text-white">Plantilla CSV</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -253,11 +253,11 @@ export function ImportDialog({
               id="csv-upload-rates"
             />
             <label htmlFor="csv-upload-rates" className="cursor-pointer">
-              <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+              <Upload className="h-10 w-10 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
               <p className="text-gray-600 dark:text-gray-300">
                 {file ? file.name : 'Haz clic para seleccionar un archivo CSV'}
               </p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                 Formato: Nombre, Tipo Vehículo, Unidad, Precio, Gracia, Ticket Perdido
               </p>
             </label>
@@ -269,7 +269,7 @@ export function ImportDialog({
                 <h3 className="font-medium text-gray-900 dark:text-white">
                   Vista Previa ({parsedRows.length} filas)
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     {validCount} válidos
@@ -298,18 +298,18 @@ export function ImportDialog({
                   <TableBody>
                     {parsedRows.slice(0, 50).map((row, idx) => (
                       <TableRow key={idx} className={!row.isValid ? 'bg-red-50 dark:bg-red-900/10' : ''}>
-                        <TableCell className="text-gray-500">{row.rowNumber}</TableCell>
+                        <TableCell className="text-gray-500 dark:text-gray-400">{row.rowNumber}</TableCell>
                         <TableCell className="font-medium">{row.data.rate_name}</TableCell>
                         <TableCell>{row.data.vehicle_type}</TableCell>
                         <TableCell>{row.data.unit}</TableCell>
                         <TableCell>${row.data.price.toLocaleString()}</TableCell>
                         <TableCell>
                           {row.isValid ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                           ) : (
-                            <div className="flex items-center gap-1">
-                              <AlertTriangle className="h-4 w-4 text-red-600" />
-                              <span className="text-xs text-red-600" title={row.errors.join(', ')}>
+                            <div className="flex flex-wrap items-center gap-1">
+                              <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                              <span className="text-xs text-red-600 dark:text-red-400" title={row.errors.join(', ')}>
                                 Error
                               </span>
                             </div>
@@ -329,11 +329,11 @@ export function ImportDialog({
                 ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
                 : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
             }`}>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {importResult.errors === 0 ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                 ) : (
-                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                 )}
                 <span className="font-medium">
                   Importación completada: {importResult.success} tarifas creadas

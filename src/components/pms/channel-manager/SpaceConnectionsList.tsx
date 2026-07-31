@@ -113,19 +113,19 @@ function ConnectionCard({
 
   return (
     <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-3 min-w-0 flex-1">
+      <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
         <div
           className="w-3 h-3 rounded-full flex-shrink-0"
           style={{ backgroundColor: color }}
         />
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
               {name}
             </span>
             {getStatusBadge(connection.last_sync_status)}
           </div>
-          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             <span>Comisión: {connection.commission_percent}%</span>
             <span>Última sync: {formatLastSync(connection.last_sync_at)}</span>
           </div>
@@ -137,7 +137,7 @@ function ConnectionCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
         <Button
           variant="ghost"
           size="sm"

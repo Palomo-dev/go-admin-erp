@@ -54,7 +54,7 @@ export function MembershipCard({
       )}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={cn(
                 "p-2 rounded-full",
                 membership.status === 'active' ? "bg-green-100 dark:bg-green-900/30" :
@@ -78,7 +78,7 @@ export function MembershipCard({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge className={getMembershipStatusColor(membership.status)}>
                 {getMembershipStatusLabel(membership.status)}
               </Badge>
@@ -130,8 +130,8 @@ export function MembershipCard({
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap items-center gap-1 text-gray-500 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
                 <span>{formatDate(membership.end_date)}</span>
               </div>
@@ -150,10 +150,10 @@ export function MembershipCard({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {membership.status === 'active' && (
                 <span className={cn(
-                  "text-sm font-medium flex items-center gap-1",
+                  "text-sm font-medium flex flex-wrap items-center gap-1",
                   isExpired ? "text-red-600 dark:text-red-400" :
                   isExpiringSoon ? "text-yellow-600 dark:text-yellow-400" :
                   "text-green-600 dark:text-green-400"
@@ -162,7 +162,7 @@ export function MembershipCard({
                   {isExpired ? 'Vencida' : `${daysRemaining}d`}
                 </span>
               )}
-              <ChevronRight className="h-4 w-4 text-gray-400" />
+              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
         </CardContent>

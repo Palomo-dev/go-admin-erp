@@ -1121,7 +1121,7 @@ export default function NuevaConexionPage() {
       <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <Loader2 className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
             <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
           </div>
         </div>
@@ -1134,7 +1134,7 @@ export default function NuevaConexionPage() {
       {/* Header Sticky */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
         <div className="px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/app/integraciones/conexiones"
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -1158,12 +1158,12 @@ export default function NuevaConexionPage() {
             )}
             
             <div className="flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                   {getPageTitle()}
                 </h1>
-                {mode === 'edit' && <Edit className="h-4 w-4 text-blue-600" />}
-                {mode === 'duplicate' && <Copy className="h-4 w-4 text-blue-600" />}
+                {mode === 'edit' && <Edit className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                {mode === 'duplicate' && <Copy className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {wizardData.provider ? `${wizardData.provider.name}${wizardData.connector ? ` • ${wizardData.connector.name}` : ''}` : getPageDescription()}
@@ -1216,7 +1216,7 @@ export default function NuevaConexionPage() {
 
           {/* Step Title */}
           <div className="mb-6">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                 <span className="text-blue-600 dark:text-blue-400 font-bold text-lg">
                   {currentStep}

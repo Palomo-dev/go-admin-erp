@@ -307,14 +307,14 @@ export default function GymDispositivosPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
             <Link href="/app/gym/checkin">
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Cpu className="h-7 w-7 text-blue-600" />
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+              <Cpu className="h-7 w-7 text-blue-600 dark:text-blue-400" />
               Dispositivos de Acceso
             </h1>
           </div>
@@ -322,7 +322,7 @@ export default function GymDispositivosPage() {
             Gestiona torniquetes, kioscos y lectores biométricos del gimnasio
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Actualizar
@@ -338,7 +338,7 @@ export default function GymDispositivosPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                 <Cpu className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
@@ -351,7 +351,7 @@ export default function GymDispositivosPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
@@ -364,7 +364,7 @@ export default function GymDispositivosPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                 <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               </div>
@@ -377,7 +377,7 @@ export default function GymDispositivosPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                 <QrCode className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
@@ -392,7 +392,7 @@ export default function GymDispositivosPage() {
         </Card>
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                 <Fingerprint className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
@@ -412,7 +412,7 @@ export default function GymDispositivosPage() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <Input
                 placeholder="Buscar por nombre o serie..."
                 value={searchTerm}
@@ -421,7 +421,7 @@ export default function GymDispositivosPage() {
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-900">
+              <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-900">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -434,7 +434,7 @@ export default function GymDispositivosPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[130px] bg-white dark:bg-gray-900">
+              <SelectTrigger className="w-full sm:w-[130px] bg-white dark:bg-gray-900">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
@@ -483,7 +483,7 @@ export default function GymDispositivosPage() {
                   return (
                     <TableRow key={device.id}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${typeConf.color}`}>
                             <TypeIcon className="h-5 w-5" />
                           </div>
@@ -553,7 +553,7 @@ export default function GymDispositivosPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => setDeleteId(device.id)}
-                              className="text-red-600"
+                              className="text-red-600 dark:text-red-400"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Eliminar
@@ -640,8 +640,8 @@ export default function GymDispositivosPage() {
             <div className="space-y-3 pt-2">
               <Label>Métodos de acceso</Label>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <QrCode className="h-4 w-4 text-purple-600" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <QrCode className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                   <span className="text-sm">Código QR</span>
                 </div>
                 <Switch
@@ -650,8 +650,8 @@ export default function GymDispositivosPage() {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Fingerprint className="h-4 w-4 text-orange-600" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Fingerprint className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                   <span className="text-sm">Huella digital</span>
                 </div>
                 <Switch
@@ -708,19 +708,19 @@ export default function GymDispositivosPage() {
           <div className="flex flex-col items-center py-6">
             {selectedDevice?.current_qr_token ? (
               <>
-                <div className="p-4 bg-white rounded-lg">
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-lg">
                   <QRCodeSVG
                     value={`gym-checkin:${selectedDevice.id}:${selectedDevice.current_qr_token}`}
                     size={200}
                     level="H"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
                   Expira: {new Date(selectedDevice.qr_token_expires_at || '').toLocaleString('es')}
                 </p>
               </>
             ) : (
-              <p className="text-gray-500">Generando token...</p>
+              <p className="text-gray-500 dark:text-gray-400">Generando token...</p>
             )}
           </div>
 

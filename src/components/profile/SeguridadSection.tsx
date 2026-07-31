@@ -254,7 +254,7 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
                     <button
                       type="button"
                       onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
@@ -281,7 +281,7 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
@@ -312,7 +312,7 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
@@ -489,7 +489,7 @@ export default function SeguridadSection({ user, mfaMethods, onMfaUpdated }: Seg
             
             <div className="p-4 flex justify-center">
               {/* Aquí iría el código QR generado por Supabase */}
-              <div className="w-48 h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+              <div className="w-full sm:w-48 h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center p-2">
                   QR Code Placeholder<br/>
                   (Se generaría con datos reales de Supabase)

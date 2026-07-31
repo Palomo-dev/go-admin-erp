@@ -113,7 +113,7 @@ export default function SubscriptionPlanSelector({
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Cargando planes...</span>
+        <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando planes...</span>
       </div>
     );
   }
@@ -123,7 +123,7 @@ export default function SubscriptionPlanSelector({
       {/* Billing period toggle */}
       {onChangeBillingPeriod && (
         <div className="flex justify-center">
-          <div className="bg-gray-100 p-0.5 sm:p-1 rounded-lg inline-flex">
+          <div className="bg-gray-100 dark:bg-gray-800 p-0.5 sm:p-1 rounded-lg inline-flex">
             <button
               type="button"
               onClick={() => onChangeBillingPeriod('monthly')}
@@ -164,7 +164,7 @@ export default function SubscriptionPlanSelector({
           >
             {plan.isPopular && (
               <div className="absolute top-0 right-0 -mt-2 -mr-2">
-                <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-blue-800">
+                <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-blue-800">
                   Popular
                 </span>
               </div>
@@ -172,28 +172,28 @@ export default function SubscriptionPlanSelector({
             
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex-1">
-                <div className="flex items-baseline gap-2">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{plan.name}</h3>
+                  <div className="flex flex-wrap items-baseline gap-1">
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                       {plan.price ? `$${plan.price}` : 'Personalizado'}
                     </span>
-                    <span className="text-xs sm:text-sm font-medium text-gray-500">
+                    <span className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">
                       {billingPeriod === 'monthly' ? '/mes' : '/año'}
                     </span>
                   </div>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm text-gray-500">{plan.description}</p>
+                <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400">{plan.description}</p>
                 
                 {plan.trialDays && (
-                  <p className="mt-1 text-xs text-blue-600">
+                  <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
                     ✓ Incluye {plan.trialDays} días de prueba
                   </p>
                 )}
                 
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
                   {plan.features.slice(0, 4).map((feature, index) => (
-                    <span key={index} className="inline-flex items-center text-[10px] sm:text-xs text-gray-600">
+                    <span key={index} className="inline-flex items-center text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
                       <CheckIcon className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-1" aria-hidden="true" />
                       {feature}
                     </span>

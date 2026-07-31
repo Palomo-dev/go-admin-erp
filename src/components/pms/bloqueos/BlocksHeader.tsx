@@ -10,7 +10,7 @@ interface BlocksHeaderProps {
 export function BlocksHeader({ onNewBlock }: BlocksHeaderProps) {
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
           <Ban className="h-5 w-5 text-blue-600 dark:text-blue-400" />
         </div>

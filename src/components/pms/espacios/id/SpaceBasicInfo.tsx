@@ -31,7 +31,7 @@ export function SpaceBasicInfo({ space, servicesRefreshTrigger = 0 }: SpaceBasic
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Tipo */}
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
             <Tag className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
@@ -47,7 +47,7 @@ export function SpaceBasicInfo({ space, servicesRefreshTrigger = 0 }: SpaceBasic
         </div>
 
         {/* Capacidad */}
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
             <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           </div>
@@ -60,7 +60,7 @@ export function SpaceBasicInfo({ space, servicesRefreshTrigger = 0 }: SpaceBasic
         </div>
 
         {/* Tarifa Base */}
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
             <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
           </div>
@@ -75,7 +75,7 @@ export function SpaceBasicInfo({ space, servicesRefreshTrigger = 0 }: SpaceBasic
 
         {/* Área */}
         {space.space_types?.area_sqm && (
-          <div className="flex items-start gap-3">
+          <div className="flex flex-wrap items-start gap-3">
             <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
               <Maximize className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             </div>

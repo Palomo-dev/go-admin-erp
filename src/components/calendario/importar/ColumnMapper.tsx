@@ -37,7 +37,7 @@ export function ColumnMapper({
   return (
     <div className="space-y-4">
       {/* Indicador de campos requeridos */}
-      <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
         {allRequiredMapped ? (
           <Check className="h-5 w-5 text-green-500" />
         ) : (
@@ -71,7 +71,7 @@ export function ColumnMapper({
           return (
             <div
               key={column}
-              className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+              className="flex flex-wrap items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
             >
               {/* Columna CSV */}
               <div className="flex-1 min-w-0">
@@ -84,10 +84,10 @@ export function ColumnMapper({
               </div>
 
               {/* Flecha */}
-              <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+              <ArrowRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
 
               {/* Selector de campo destino */}
-              <div className="w-48">
+              <div className="w-full sm:w-48">
                 <Select
                   value={targetField || 'none'}
                   onValueChange={(value) => 

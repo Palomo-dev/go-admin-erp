@@ -24,7 +24,7 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
           <Zap className="h-5 w-5 text-blue-500" />
           Rendimiento y UI
         </CardTitle>
@@ -35,8 +35,8 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
       <CardContent className="space-y-6">
         {/* Rango de fechas por defecto */}
         <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <Calendar className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <Calendar className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="flex-1 space-y-2">
               <Label className="text-sm font-medium">
                 Rango de fechas por defecto
@@ -48,7 +48,7 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
                 value={String(settings.defaultDateRangeDays)}
                 onValueChange={(value) => onChange('defaultDateRangeDays', parseInt(value))}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -65,8 +65,8 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
 
         {/* Límite de exportación */}
         <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <Download className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <Download className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="flex-1 space-y-2">
               <Label htmlFor="maxExportRecords" className="text-sm font-medium">
                 Límite de exportación
@@ -74,7 +74,7 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Número máximo de registros permitidos por exportación.
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   id="maxExportRecords"
                   type="number"
@@ -83,7 +83,7 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
                   step={1000}
                   value={settings.maxExportRecords}
                   onChange={(e) => onChange('maxExportRecords', parseInt(e.target.value) || 10000)}
-                  className="w-32"
+                  className="w-full sm:w-32"
                 />
                 <span className="text-sm text-gray-500 dark:text-gray-400">registros</span>
               </div>
@@ -93,8 +93,8 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
 
         {/* Tamaño de página */}
         <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <LayoutList className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <LayoutList className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="flex-1 space-y-2">
               <Label className="text-sm font-medium">
                 Eventos por página
@@ -106,7 +106,7 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
                 value={String(settings.defaultPageSize)}
                 onValueChange={(value) => onChange('defaultPageSize', parseInt(value))}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -122,8 +122,8 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
 
         {/* Actualizaciones en tiempo real */}
         <div className="flex items-center justify-between">
-          <div className="flex items-start gap-3">
-            <RefreshCw className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <RefreshCw className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="space-y-1">
               <Label htmlFor="enableRealTimeUpdates" className="text-sm font-medium cursor-pointer">
                 Actualizaciones en tiempo real
@@ -142,8 +142,8 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
 
         {/* Vista compacta */}
         <div className="flex items-center justify-between">
-          <div className="flex items-start gap-3">
-            <LayoutList className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <LayoutList className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="space-y-1">
               <Label htmlFor="compactView" className="text-sm font-medium cursor-pointer">
                 Vista compacta
@@ -162,8 +162,8 @@ export function PerformanceSettings({ settings, onChange }: PerformanceSettingsP
 
         {/* Mostrar links de correlación */}
         <div className="flex items-center justify-between">
-          <div className="flex items-start gap-3">
-            <Link2 className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <Link2 className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="space-y-1">
               <Label htmlFor="showCorrelationLinks" className="text-sm font-medium cursor-pointer">
                 Mostrar enlaces de correlación

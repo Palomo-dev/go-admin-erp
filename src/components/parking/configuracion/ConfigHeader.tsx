@@ -23,7 +23,7 @@ export function ConfigHeader({
 }: ConfigHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
           <Settings className="h-8 w-8 text-blue-600 dark:text-blue-400" />
         </div>
@@ -37,7 +37,7 @@ export function ConfigHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -53,7 +53,7 @@ export function ConfigHeader({
           size="sm"
           onClick={onReset}
           disabled={isLoading || isSaving}
-          className="dark:border-gray-600 text-amber-600 hover:text-amber-700"
+          className="dark:border-gray-600 text-amber-600 dark:text-amber-400 hover:text-amber-700"
         >
           <RotateCcw className="h-4 w-4 mr-2" />
           Restablecer

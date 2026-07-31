@@ -78,7 +78,7 @@ export function CategoryCard({ category, stats, onEdit, onDelete }: CategoryCard
       </div>
 
       {/* Contenido */}
-      <div className="flex items-start gap-4">
+      <div className="flex flex-wrap items-start gap-4">
         {/* Icono */}
         <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
           {icon}

@@ -38,7 +38,7 @@ export function FileUploader({
     return (
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
@@ -53,7 +53,7 @@ export function FileUploader({
             variant="ghost"
             size="sm"
             onClick={onFileClear}
-            className="text-gray-500 hover:text-red-500"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-500"
           >
             <X className="h-4 w-4" />
           </Button>

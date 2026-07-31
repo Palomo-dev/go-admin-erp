@@ -223,17 +223,17 @@ export default function BillingTab({ orgId }: BillingTabProps) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Cargando información de facturación...</span>
+        <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando información de facturación...</span>
       </div>
     );
   }
 
   if (!hasStripeCustomer) {
     return (
-      <div className="bg-white shadow rounded-lg p-8 text-center">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-8 text-center">
         <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-yellow-400" />
-        <h3 className="mt-4 text-lg font-medium text-gray-900">Sin información de facturación</h3>
-        <p className="mt-2 text-sm text-gray-500">
+        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">Sin información de facturación</h3>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
           Actualmente estás usando un plan gratuito o sin integración de pagos.
           Actualiza a un plan de pago para acceder a la información de facturación.
         </p>
@@ -254,7 +254,7 @@ export default function BillingTab({ orgId }: BillingTabProps) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-blue-800">Portal de Facturación de Stripe</h3>
-            <p className="text-sm text-blue-600">Gestiona tus facturas, métodos de pago y suscripción</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">Gestiona tus facturas, métodos de pago y suscripción</p>
           </div>
           <EmailConfirmedGate>
             <button
@@ -270,16 +270,16 @@ export default function BillingTab({ orgId }: BillingTabProps) {
       </div>
 
       {/* Métodos de Pago */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">Métodos de Pago</h3>
-              <p className="text-sm text-gray-500">Tarjetas guardadas para facturación</p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Métodos de Pago</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Tarjetas guardadas para facturación</p>
             </div>
             <button
               onClick={handleOpenBillingPortal}
-              className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               <PlusIcon className="h-4 w-4 mr-1" />
               Agregar
@@ -292,17 +292,17 @@ export default function BillingTab({ orgId }: BillingTabProps) {
               {paymentMethods.map((pm) => (
                 <div key={pm.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center space-x-3">
-                    <CreditCardIcon className="h-8 w-8 text-gray-400" />
+                    <CreditCardIcon className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
                         {getBrandIcon(pm.brand)} •••• {pm.last4}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         Vence: {pm.expMonth}/{pm.expYear}
                       </p>
                     </div>
                     {pm.isDefault && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800">
                         <CheckCircleIcon className="h-3 w-3 mr-1" />
                         Predeterminada
                       </span>
@@ -313,7 +313,7 @@ export default function BillingTab({ orgId }: BillingTabProps) {
                       <button
                         onClick={() => handleSetDefaultPaymentMethod(pm.id)}
                         disabled={actionLoading === pm.id}
-                        className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 disabled:opacity-50"
                       >
                         Usar como principal
                       </button>
@@ -321,7 +321,7 @@ export default function BillingTab({ orgId }: BillingTabProps) {
                     <button
                       onClick={() => handleDeletePaymentMethod(pm.id)}
                       disabled={actionLoading === pm.id}
-                      className="p-1 text-gray-400 hover:text-red-600 disabled:opacity-50"
+                      className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 disabled:opacity-50"
                     >
                       <TrashIcon className="h-4 w-4" />
                     </button>
@@ -331,8 +331,8 @@ export default function BillingTab({ orgId }: BillingTabProps) {
             </div>
           ) : (
             <div className="text-center py-6">
-              <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">No hay métodos de pago guardados</p>
+              <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No hay métodos de pago guardados</p>
               <button
                 onClick={handleOpenBillingPortal}
                 className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
@@ -346,38 +346,38 @@ export default function BillingTab({ orgId }: BillingTabProps) {
       </div>
 
       {/* Historial de Facturas */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Historial de Facturas</h3>
-          <p className="text-sm text-gray-500">Facturas generadas por Stripe</p>
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Historial de Facturas</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Facturas generadas por Stripe</p>
         </div>
         <div className="overflow-hidden">
           {invoices.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Factura</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Factura</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Monto</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200">
                 {invoices.map((invoice) => (
                   <tr key={invoice.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">
+                        <DocumentTextIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
                           {invoice.number || invoice.id.slice(-8)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(invoice.created)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {formatAmount(invoice.amount, invoice.currency)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -390,7 +390,7 @@ export default function BillingTab({ orgId }: BillingTabProps) {
                             href={invoice.hostedInvoiceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800"
                           >
                             Ver
                           </a>
@@ -400,7 +400,7 @@ export default function BillingTab({ orgId }: BillingTabProps) {
                             href={invoice.invoicePdf}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-green-600 hover:text-green-800"
+                            className="text-green-600 dark:text-green-400 hover:text-green-800"
                           >
                             PDF
                           </a>
@@ -413,8 +413,8 @@ export default function BillingTab({ orgId }: BillingTabProps) {
             </table>
           ) : (
             <div className="text-center py-12">
-              <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">No hay facturas disponibles</p>
+              <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No hay facturas disponibles</p>
             </div>
           )}
         </div>

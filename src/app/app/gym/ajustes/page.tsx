@@ -140,7 +140,7 @@ export default function AjustesPage() {
   if (isLoading) {
     return (
       <div className="p-6 flex justify-center items-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }

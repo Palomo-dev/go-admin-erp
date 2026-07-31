@@ -180,8 +180,8 @@ export default function RolesSection({ user, roles = [], branches = [] }: RolesS
       {/* Sección de sucursales asignadas */}
       <div className="mt-8">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-gray-500" />
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1 flex flex-wrap items-center gap-2">
+            <MapPin className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             Sucursales asignadas
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -196,7 +196,7 @@ export default function RolesSection({ user, roles = [], branches = [] }: RolesS
                 key={`${branch.organization_id}-${branch.id}`}
                 className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="w-8 h-8 rounded-md bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
                     <Building className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   </div>

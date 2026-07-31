@@ -49,7 +49,7 @@ export function ImportPresetDialog({ open, onOpenChange, onImport }: ImportPrese
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
             <Download className="h-5 w-5 text-blue-500" />
             Importar Reglas Predefinidas
           </DialogTitle>
@@ -89,7 +89,7 @@ export function ImportPresetDialog({ open, onOpenChange, onImport }: ImportPrese
                           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600',
                       )}
                     >
-                      <Icon className={cn('h-5 w-5 mb-1', selected === ind.key ? 'text-blue-500' : 'text-gray-400')} />
+                      <Icon className={cn('h-5 w-5 mb-1', selected === ind.key ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500')} />
                       <p className="text-xs font-medium text-gray-900 dark:text-white">{ind.label}</p>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{ind.description}</p>
                     </button>

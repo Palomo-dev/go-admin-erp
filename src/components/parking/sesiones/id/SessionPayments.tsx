@@ -97,7 +97,7 @@ export function SessionPayments({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex flex-wrap items-center gap-2">
             <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Pagos
           </CardTitle>
@@ -116,7 +116,7 @@ export function SessionPayments({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2">
           <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Pagos
         </CardTitle>
@@ -162,7 +162,7 @@ export function SessionPayments({
                 key={payment.id}
                 className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                     {getMethodIcon(payment.method)}
                   </div>

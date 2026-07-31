@@ -37,8 +37,8 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                   className={cn(
                     'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors',
                     isCompleted && 'bg-blue-600 border-blue-600 text-white',
-                    isCurrent && 'border-blue-600 text-blue-600 bg-blue-50 dark:bg-blue-900/20',
-                    !isCompleted && !isCurrent && 'border-gray-300 dark:border-gray-600 text-gray-400'
+                    isCurrent && 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20',
+                    !isCompleted && !isCurrent && 'border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500'
                   )}
                 >
                   {isCompleted ? (
@@ -53,7 +53,7 @@ export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
                       'text-sm font-medium',
                       isCurrent && 'text-blue-600 dark:text-blue-400',
                       isCompleted && 'text-gray-900 dark:text-white',
-                      !isCompleted && !isCurrent && 'text-gray-400'
+                      !isCompleted && !isCurrent && 'text-gray-400 dark:text-gray-500'
                     )}
                   >
                     {step.title}

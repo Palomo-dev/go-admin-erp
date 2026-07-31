@@ -123,7 +123,7 @@ export function StepCustomer({
       {selectedCustomer && (
         <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
           <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
+            <div className="flex flex-wrap items-start gap-3">
               <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
                 {selectedCustomer.first_name[0]}{selectedCustomer.last_name[0]}
               </div>
@@ -133,19 +133,19 @@ export function StepCustomer({
                 </h3>
                 <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                   {selectedCustomer.email && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1">
                       <Mail className="h-3 w-3" />
                       {selectedCustomer.email}
                     </div>
                   )}
                   {selectedCustomer.phone && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1">
                       <Phone className="h-3 w-3" />
                       {selectedCustomer.phone}
                     </div>
                   )}
                   {selectedCustomer.document_number && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-1">
                       <IdCard className="h-3 w-3" />
                       {selectedCustomer.document_type}: {selectedCustomer.document_number}
                     </div>
@@ -198,7 +198,7 @@ export function StepCustomer({
                         className="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                         onClick={() => onCustomerSelect(customer)}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                             <User className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                           </div>
@@ -325,7 +325,7 @@ export function StepCustomer({
 
             {/* Roles del Cliente */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium flex items-center gap-1">
+              <Label className="text-sm font-medium flex flex-wrap items-center gap-1">
                 <User className="h-3.5 w-3.5" /> Roles
               </Label>
               <div className="flex flex-wrap gap-1.5">
@@ -350,7 +350,7 @@ export function StepCustomer({
 
             {/* Resp. Fiscal */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium flex items-center gap-1">
+              <Label className="text-sm font-medium flex flex-wrap items-center gap-1">
                 <CreditCard className="h-3.5 w-3.5" /> Resp. Fiscal
               </Label>
               <div className="flex flex-wrap gap-1.5">

@@ -79,7 +79,7 @@ export function EventCorrelationPanel({
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Link2 className="h-5 w-5 text-blue-500" />
             Correlación
           </CardTitle>
@@ -102,7 +102,7 @@ export function EventCorrelationPanel({
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Link2 className="h-5 w-5 text-blue-500" />
             Correlación
             {correlatedEvents.length > 1 && (
@@ -182,7 +182,7 @@ export function EventCorrelationPanel({
                     )}
                     onClick={() => !isCurrentEvent && onViewEvent(e.event_id)}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex flex-wrap items-start gap-3">
                       {/* Número de secuencia */}
                       <div className={cn(
                         'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
@@ -215,14 +215,14 @@ export function EventCorrelationPanel({
                           {e.event_type}
                         </p>
                         
-                        <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        <div className="flex flex-wrap items-center gap-1 text-xs text-gray-400 dark:text-gray-500 mt-1">
                           <Clock className="h-3 w-3" />
                           {format(eventTime, "HH:mm:ss.SSS", { locale: es })}
                         </div>
                       </div>
                       
                       {!isCurrentEvent && (
-                        <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                       )}
                     </div>
                   </div>

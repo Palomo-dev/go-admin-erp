@@ -50,7 +50,7 @@ export function EventCard({ event, variant = 'compact', onClick }: EventCardProp
       )}
       style={{ borderLeftColor: eventColor, borderLeftWidth: '4px' }}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-gray-900 dark:text-white truncate">
             {event.title}
@@ -60,7 +60,7 @@ export function EventCard({ event, variant = 'compact', onClick }: EventCardProp
           </p>
         </div>
         {!isManual && (
-          <ExternalLink className="h-4 w-4 text-gray-400 flex-shrink-0" />
+          <ExternalLink className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
         )}
       </div>
 

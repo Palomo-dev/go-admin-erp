@@ -34,7 +34,7 @@ export function RevenueByPlan({ data, currency = 'COP' }: RevenueByPlanProps) {
                       {formatCurrency(item.revenue, currency)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-blue-600 dark:bg-blue-500 rounded-full transition-all"

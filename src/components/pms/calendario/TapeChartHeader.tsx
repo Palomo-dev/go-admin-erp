@@ -55,7 +55,7 @@ export function TapeChartHeader({
 
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
           <CalendarDays className="h-5 w-5 text-blue-600 dark:text-blue-400" />
         </div>
@@ -121,7 +121,7 @@ export function TapeChartHeader({
           value={daysToShow.toString()}
           onValueChange={(value) => onDaysToShowChange(parseInt(value))}
         >
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-full sm:w-[120px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -133,7 +133,7 @@ export function TapeChartHeader({
         </Select>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"

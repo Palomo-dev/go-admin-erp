@@ -86,7 +86,7 @@ export function ZonasStats({ stats, isLoading }: ZonasStatsProps) {
       {statItems.map((item) => (
         <Card key={item.label}>
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={`p-2 rounded-lg ${item.bg}`}>
                 <item.icon className={`h-5 w-5 ${item.color}`} />
               </div>

@@ -309,7 +309,7 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const SectionTitle = ({ icon: Icon, label }: { icon: React.ElementType; label: string }) => (
-    <div className="flex items-center gap-2 pt-2 pb-1">
+    <div className="flex flex-wrap items-center gap-2 pt-2 pb-1">
       <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{label}</span>
       <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
@@ -386,8 +386,8 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
               {/* Descripción */}
               <div className="grid gap-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="description" className="text-xs flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5 text-gray-400" /> Descripción
+                  <Label htmlFor="description" className="text-xs flex flex-wrap items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" /> Descripción
                   </Label>
                   <Button
                     type="button"
@@ -414,8 +414,8 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Piso/Zona */}
                 <div className="grid gap-1.5">
-                  <Label htmlFor="floor_zone" className="text-xs flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-gray-400" /> Piso/Zona
+                  <Label htmlFor="floor_zone" className="text-xs flex flex-wrap items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" /> Piso/Zona
                   </Label>
                   {showNewZoneInput ? (
                     <div className="space-y-1.5">
@@ -455,8 +455,8 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
 
                 {/* Estado */}
                 <div className="grid gap-1.5">
-                  <Label htmlFor="status" className="text-xs flex items-center gap-1.5">
-                    <Activity className="h-3.5 w-3.5 text-gray-400" /> Estado
+                  <Label htmlFor="status" className="text-xs flex flex-wrap items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" /> Estado
                   </Label>
                   <Select
                     value={formData.status}
@@ -501,7 +501,7 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
                             <Star className="h-3 w-3 text-white" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex flex-wrap items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
                           {imgActionId === img.id ? (
                             <Loader2 className="h-4 w-4 text-white animate-spin" />
                           ) : (
@@ -543,11 +543,11 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
                       className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors gap-1"
                     >
                       {uploading ? (
-                        <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+                        <Loader2 className="h-5 w-5 text-gray-400 dark:text-gray-500 animate-spin" />
                       ) : (
                         <>
-                          <ImagePlus className="h-5 w-5 text-gray-400" />
-                          <span className="text-[9px] text-gray-400">Subir</span>
+                          <ImagePlus className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                          <span className="text-[9px] text-gray-400 dark:text-gray-500">Subir</span>
                         </>
                       )}
                     </button>
@@ -569,14 +569,14 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
                   {servicesLoading ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 py-1">
                       {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                        <div key={i} className="flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
                           <div className="h-4 w-4 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
                           <div className="h-3 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" style={{ width: `${50 + i * 10}px` }} />
                         </div>
                       ))}
                     </div>
                   ) : orgServices.length === 0 ? (
-                    <p className="text-xs text-gray-400 py-2">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 py-2">
                       No hay servicios configurados. Configúralos en PMS → Servicios.
                     </p>
                   ) : (

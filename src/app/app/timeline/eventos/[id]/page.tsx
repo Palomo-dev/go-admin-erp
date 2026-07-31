@@ -138,13 +138,13 @@ export default function EventDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-6">
-          <Skeleton className="h-8 w-48 mb-4" />
+          <Skeleton className="h-8 w-full sm:w-48 mb-4" />
           <div className="flex gap-2 mb-4">
             <Skeleton className="h-6 w-24" />
             <Skeleton className="h-6 w-20" />
           </div>
-          <Skeleton className="h-8 w-96 mb-2" />
-          <Skeleton className="h-5 w-64" />
+          <Skeleton className="h-8 w-full sm:w-96 mb-2" />
+          <Skeleton className="h-5 w-full sm:w-64" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -176,7 +176,7 @@ export default function EventDetailPage() {
           <p className="text-gray-500 dark:text-gray-400 mb-6">
             El evento que buscas no existe o no tienes permisos para verlo.
           </p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             <Button variant="outline" onClick={handleBack}>
               Volver al Timeline
             </Button>

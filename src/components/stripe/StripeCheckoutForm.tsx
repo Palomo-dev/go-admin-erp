@@ -66,7 +66,7 @@ export function StripeCheckoutForm({
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
+            <span className="flex flex-wrap items-center gap-2">
               <CreditCard className="h-5 w-5" />
               Información de Pago
             </span>
@@ -100,7 +100,7 @@ export function StripeCheckoutForm({
 
           {/* Información de seguridad */}
           <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 space-y-1">
-            <p className="text-xs text-muted-foreground flex items-center gap-2">
+            <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
               🔒 Pago seguro con cifrado SSL
             </p>
             <p className="text-xs text-muted-foreground">

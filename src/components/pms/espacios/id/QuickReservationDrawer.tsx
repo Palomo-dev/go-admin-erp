@@ -298,7 +298,7 @@ export function QuickReservationDrawer({
                   className="pr-8"
                 />
                 {isSearching && (
-                  <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                  <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
                 )}
               </div>
               <Button
@@ -330,7 +330,7 @@ export function QuickReservationDrawer({
                       setCustomers([]); // Limpiar resultados
                     }}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       {/* Avatar del cliente */}
                       <div className="flex-shrink-0">
                         {customer.avatar_url ? (
@@ -366,7 +366,7 @@ export function QuickReservationDrawer({
 
             {selectedCustomer && (
               <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {/* Avatar del cliente seleccionado */}
                   <div className="flex-shrink-0">
                     {selectedCustomer.avatar_url ? (
@@ -473,7 +473,7 @@ export function QuickReservationDrawer({
             
             {/* Alerta de capacidad excedida */}
             {occupantCount > (space.space_types?.capacity || 0) && (
-              <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <div className="flex flex-wrap items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
@@ -503,7 +503,7 @@ export function QuickReservationDrawer({
                 placeholder="Precio"
                 value={extraPrice}
                 onChange={(e) => setExtraPrice(e.target.value)}
-                className="w-32"
+                className="w-full sm:w-32"
               />
               <Button
                 type="button"
@@ -560,8 +560,8 @@ export function QuickReservationDrawer({
           
           {/* Depósito / Pago Inicial */}
           <div className="space-y-4 border rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-blue-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <Label className="text-base font-semibold">Depósito / Pago Inicial</Label>
             </div>
             

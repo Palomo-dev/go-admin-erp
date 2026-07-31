@@ -76,7 +76,7 @@ export function TripAdvisorPhotosGallery({
       <Card className={cn('overflow-hidden', className)}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-base font-semibold flex flex-wrap items-center gap-2">
               <Camera className="h-4 w-4 text-[#00AA6C]" />
               Fotos de TripAdvisor
             </CardTitle>
@@ -94,15 +94,15 @@ export function TripAdvisorPhotosGallery({
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-              <span className="ml-2 text-sm text-gray-500">Cargando fotos...</span>
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" />
+              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Cargando fotos...</span>
             </div>
           ) : error ? (
             <div className="text-center py-6 text-sm text-red-500 dark:text-red-400">
               {error}
             </div>
           ) : photos.length === 0 ? (
-            <div className="text-center py-6 text-sm text-gray-500">
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
               No hay fotos disponibles
             </div>
           ) : (
@@ -141,7 +141,7 @@ export function TripAdvisorPhotosGallery({
 
           {/* Atribución */}
           {photos.length > 0 && (
-            <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
+            <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-2">
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="shrink-0">
                 <circle cx="12" cy="12" r="12" className="fill-[#00AA6C] dark:fill-[#84E9BD]" />
                 <circle cx="8.5" cy="12" r="3" fill="white" />
@@ -243,7 +243,7 @@ function Lightbox({
           {photo.caption && (
             <p className="text-sm text-white">{photo.caption}</p>
           )}
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
             {currentIndex + 1} de {photos.length}
             {photo.source?.localized_name && ` · ${photo.source.localized_name}`}
             {photo.user?.username && ` · @${photo.user.username}`}

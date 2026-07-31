@@ -275,7 +275,7 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
       return (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto" />
             <p className="mt-2 text-gray-500 dark:text-gray-400">Cargando eventos...</p>
           </div>
         </div>
@@ -289,7 +289,7 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
             <p className="text-red-600 dark:text-red-400">{error}</p>
             <button
               onClick={refreshEvents}
-              className="mt-2 text-blue-600 hover:underline"
+              className="mt-2 text-blue-600 dark:text-blue-400 hover:underline"
             >
               Reintentar
             </button>

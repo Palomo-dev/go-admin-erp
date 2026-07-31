@@ -86,8 +86,8 @@ export function IncidentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             Reportar Incidente
           </DialogTitle>
         </DialogHeader>

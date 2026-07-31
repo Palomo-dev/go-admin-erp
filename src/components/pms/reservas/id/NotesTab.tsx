@@ -36,7 +36,7 @@ export function NotesTab({ initialNotes, onSave }: NotesTabProps) {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           <FileText className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">
             Notas Internas

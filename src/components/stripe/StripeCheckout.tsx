@@ -174,7 +174,7 @@ export function StripeCheckout({
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <CreditCard className="h-5 w-5" />
           Pago con Tarjeta
         </CardTitle>

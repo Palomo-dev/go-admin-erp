@@ -19,7 +19,7 @@ export function MuteGlobal({ isMutedAll, onToggle, disabled }: MuteGlobalProps) 
         : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900',
     )}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {isMutedAll ? (
             <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/40">
               <VolumeX className="h-5 w-5 text-red-600 dark:text-red-400" />

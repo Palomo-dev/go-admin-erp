@@ -40,7 +40,7 @@ export function TopPlatesList({ plates }: TopPlatesListProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
           <Trophy className="h-5 w-5 text-yellow-500" />
           Placas Frecuentes
         </CardTitle>
@@ -63,7 +63,7 @@ export function TopPlatesList({ plates }: TopPlatesListProps) {
                     : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
                 )}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className={cn(
                     'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm',
                     index < 3 ? 'bg-white dark:bg-gray-800 shadow' : 'bg-gray-200 dark:bg-gray-600'
@@ -78,7 +78,7 @@ export function TopPlatesList({ plates }: TopPlatesListProps) {
                     <p className="font-semibold text-gray-900 dark:text-gray-100">
                       {plate.vehicle_plate}
                     </p>
-                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                       <Clock className="h-3 w-3" />
                       <span>{formatLastVisit(plate.last_visit)}</span>
                     </div>

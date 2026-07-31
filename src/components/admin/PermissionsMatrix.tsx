@@ -184,10 +184,10 @@ export default function PermissionsMatrix({
   if (loading || permissionsLoading) {
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-6xl shadow-lg rounded-md bg-white">
+        <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-6xl shadow-lg rounded-md bg-white dark:bg-gray-800">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <span className="ml-2 text-gray-600">Cargando permisos...</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando permisos...</span>
           </div>
         </div>
       </div>
@@ -196,39 +196,39 @@ export default function PermissionsMatrix({
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-4 mx-auto p-5 border w-[95%] max-w-7xl shadow-lg rounded-md bg-white mb-4">
+      <div className="relative top-4 mx-auto p-5 border w-[95%] max-w-7xl shadow-lg rounded-md bg-white dark:bg-gray-800 mb-4">
         <div className="flex flex-col h-[90vh]">
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+          <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Gestionar Permisos - {role.name}
               </h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Selecciona los permisos que tendrá este rol
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
 
           {/* Controles */}
-          <div className="py-4 border-b border-gray-200 space-y-4">
+          <div className="py-4 border-b border-gray-200 dark:border-gray-700 space-y-4">
             {/* Búsqueda y filtros */}
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
                     placeholder="Buscar permisos o módulos..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
               </div>
@@ -250,19 +250,19 @@ export default function PermissionsMatrix({
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={selectAllPermissions}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Seleccionar todos
               </button>
               <button
                 onClick={deselectAllPermissions}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Deseleccionar todos
               </button>
               <button
                 onClick={resetToOriginal}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 <RotateCcw className="h-4 w-4 mr-1" />
                 Restaurar original
@@ -270,7 +270,7 @@ export default function PermissionsMatrix({
             </div>
 
             {/* Estadísticas */}
-            <div className="flex items-center space-x-6 text-sm text-gray-600">
+            <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
               <span>
                 Total seleccionados: <strong>{selectedPermissions.length}</strong>
               </span>
@@ -278,7 +278,7 @@ export default function PermissionsMatrix({
                 Total disponibles: <strong>{modulePermissions.reduce((acc, m) => acc + m.permissions.length, 0)}</strong>
               </span>
               {hasChanges() && (
-                <span className="text-amber-600 font-medium">
+                <span className="text-amber-600 dark:text-amber-400 font-medium">
                   ⚠ Hay cambios sin guardar
                 </span>
               )}
@@ -289,9 +289,9 @@ export default function PermissionsMatrix({
           <div className="flex-1 overflow-y-auto py-4">
             {filteredModules.length === 0 ? (
               <div className="text-center py-12">
-                <Shield className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No hay permisos</h3>
-                <p className="mt-1 text-sm text-gray-500">
+                <Shield className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay permisos</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   {searchTerm 
                     ? 'No se encontraron permisos con el término de búsqueda.'
                     : 'No hay permisos disponibles para mostrar.'
@@ -305,22 +305,22 @@ export default function PermissionsMatrix({
                   const isExpanded = expandedModules.has(module.module);
                   
                   return (
-                    <div key={module.module} className="border border-gray-200 rounded-lg">
+                    <div key={module.module} className="border border-gray-200 dark:border-gray-700 rounded-lg">
                       {/* Header del módulo */}
                       <div 
-                        className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
                         onClick={() => toggleModule(module.module)}
                       >
                         <div className="flex items-center space-x-3">
                           {isExpanded ? (
-                            <ChevronDown className="h-5 w-5 text-gray-500" />
+                            <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                           ) : (
-                            <ChevronRight className="h-5 w-5 text-gray-500" />
+                            <ChevronRight className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                           )}
-                          <h4 className="text-lg font-medium text-gray-900">
+                          <h4 className="text-lg font-medium text-gray-900 dark:text-white">
                             {module.moduleName}
                           </h4>
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
                             ({stats.selected}/{stats.total})
                           </span>
                         </div>
@@ -364,14 +364,14 @@ export default function PermissionsMatrix({
                                   </div>
                                   
                                   <div>
-                                    <h5 className="font-medium text-gray-900">
+                                    <h5 className="font-medium text-gray-900 dark:text-white">
                                       {permission.name}
                                     </h5>
-                                    <p className="text-sm text-gray-500">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
                                       {permission.code}
                                     </p>
                                     {permission.description && (
-                                      <p className="text-xs text-gray-400 mt-1">
+                                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                         {permission.description}
                                       </p>
                                     )}
@@ -390,15 +390,15 @@ export default function PermissionsMatrix({
           </div>
 
           {/* Footer con acciones */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {selectedPermissions.length} permisos seleccionados
             </div>
             
             <div className="flex space-x-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"
               >
                 Cancelar
               </button>

@@ -90,8 +90,8 @@ export function StepCountryEnvironment({
       {/* Selección de País */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Globe className="h-5 w-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             País de Operación
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -100,7 +100,7 @@ export function StepCountryEnvironment({
         </div>
 
         {isGlobal ? (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
             <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
             <span className="text-sm text-blue-700 dark:text-blue-300">
               Este conector está disponible en <strong>todos los países</strong>. Selecciona el país donde opera tu negocio.
@@ -129,15 +129,15 @@ export function StepCountryEnvironment({
                 )}
                 onClick={() => isSupported && onSelectCountry(country.code)}
               >
-                <CardContent className="p-3 flex items-center gap-3">
+                <CardContent className="p-3 flex flex-wrap items-center gap-3">
                   <span className="text-2xl">{country.flag}</span>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 dark:text-white text-sm truncate">
                       {country.name}
                     </p>
-                    <p className="text-xs text-gray-500">{country.code}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{country.code}</p>
                   </div>
-                  {isSelected && <Check className="h-4 w-4 text-blue-600 shrink-0" />}
+                  {isSelected && <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />}
                 </CardContent>
               </Card>
             );
@@ -145,7 +145,7 @@ export function StepCountryEnvironment({
         </div>
 
         {showCountryWarning && (
-          <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-yellow-600 dark:text-yellow-500 text-sm">
             <AlertTriangle className="h-4 w-4" />
             <span>Este conector puede no estar disponible en el país seleccionado</span>
           </div>
@@ -156,8 +156,8 @@ export function StepCountryEnvironment({
       {/* Selección de Ambiente */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Server className="h-5 w-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <Server className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Ambiente
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -181,9 +181,9 @@ export function StepCountryEnvironment({
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className={cn(
-                          isSelected ? 'text-current' : 'text-gray-400'
+                          isSelected ? 'text-current' : 'text-gray-400 dark:text-gray-500'
                         )}>
                           {env.icon}
                         </span>
@@ -195,7 +195,7 @@ export function StepCountryEnvironment({
                         {env.description}
                       </p>
                     </div>
-                    {isSelected && <Check className="h-5 w-5 text-blue-600 shrink-0" />}
+                    {isSelected && <Check className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />}
                   </div>
                 </CardContent>
               </Card>
@@ -204,7 +204,7 @@ export function StepCountryEnvironment({
         </div>
 
         {selectedEnvironment === 'production' && (
-          <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500 text-sm bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
+          <div className="flex flex-wrap items-center gap-2 text-orange-600 dark:text-orange-500 text-sm bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span>
               En producción, las transacciones y datos serán reales. Asegúrate de tener las credenciales correctas.
@@ -216,8 +216,8 @@ export function StepCountryEnvironment({
       {/* Selección de Sucursal (opcional) */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Sucursal (Opcional)
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -234,8 +234,8 @@ export function StepCountryEnvironment({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-gray-400" />
+              <div className="flex flex-wrap items-center gap-2">
+                <Building2 className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 Todas las sucursales
               </div>
             </SelectItem>
@@ -248,7 +248,7 @@ export function StepCountryEnvironment({
         </Select>
 
         {branches.length === 0 && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             No hay sucursales configuradas. La conexión estará disponible para toda la organización.
           </p>
         )}

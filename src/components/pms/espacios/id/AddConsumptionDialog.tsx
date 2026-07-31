@@ -251,7 +251,7 @@ export function AddConsumptionDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[95vw] w-[1400px] max-h-[85vh] h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[95vw] w-full sm:w-[1400px] max-h-[85vh] h-[85vh] p-0 gap-0 overflow-hidden flex flex-col">
         <div className="flex flex-1 min-h-0">
           {/* Panel izquierdo - Productos */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -259,10 +259,10 @@ export function AddConsumptionDialog({
               <div className="flex items-center justify-between">
                 <div>
                   <DialogTitle className="text-xl">Agregar Consumos</DialogTitle>
-                  <p className="text-sm text-gray-500 mt-1">{spaceName}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{spaceName}</p>
                 </div>
-                <div className="relative w-80">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <div className="relative w-full sm:w-80">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     placeholder="Buscar productos..."
                     value={searchTerm}
@@ -307,14 +307,14 @@ export function AddConsumptionDialog({
                 <div className="flex items-center justify-center py-20">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-500">Cargando productos...</p>
+                    <p className="text-gray-500 dark:text-gray-400">Cargando productos...</p>
                   </div>
                 </div>
               ) : products.length === 0 ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="text-center">
                     <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No se encontraron productos</p>
+                    <p className="text-gray-500 dark:text-gray-400">No se encontraron productos</p>
                   </div>
                 </div>
               ) : (
@@ -345,7 +345,7 @@ export function AddConsumptionDialog({
                         }`}
                       >
                         {/* Imagen */}
-                        <div className="aspect-square relative overflow-hidden rounded-t-lg bg-gray-100">
+                        <div className="aspect-square relative overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800">
                           {productImage ? (
                             <Image
                               src={productImage}
@@ -399,10 +399,10 @@ export function AddConsumptionDialog({
           </div>
 
           {/* Panel derecho - Carrito */}
-          <div className="w-[380px] border-l bg-gray-50 dark:bg-gray-900 flex flex-col min-h-0 overflow-hidden">
+          <div className="w-full sm:w-[380px] border-l bg-gray-50 dark:bg-gray-900 flex flex-col min-h-0 overflow-hidden">
             <div className="px-4 py-3 border-b bg-white dark:bg-gray-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="h-6 w-6 text-blue-600" />
+              <div className="flex flex-wrap items-center gap-2">
+                <ShoppingCart className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 <h2 className="text-xl font-bold">Carrito</h2>
                 <Badge variant="secondary" className="ml-auto">
                   {cart.size} {cart.size === 1 ? 'producto' : 'productos'}
@@ -414,8 +414,8 @@ export function AddConsumptionDialog({
               {cart.size === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center px-6">
                   <ShoppingCart className="h-12 w-12 text-gray-300 mb-3" />
-                  <p className="text-gray-500 font-medium text-sm">Carrito vacío</p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-gray-500 dark:text-gray-400 font-medium text-sm">Carrito vacío</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                     Selecciona productos para agregar
                   </p>
                 </div>
@@ -450,7 +450,7 @@ export function AddConsumptionDialog({
                         </div>
                       )}
 
-                      <div className="flex items-center gap-1 mb-2">
+                      <div className="flex flex-wrap items-center gap-1 mb-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -483,7 +483,7 @@ export function AddConsumptionDialog({
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
-                        <span className="ml-auto font-bold text-blue-600 text-sm">
+                        <span className="ml-auto font-bold text-blue-600 dark:text-blue-400 text-sm">
                           {formatCurrency(item.quantity * item.unit_price)}
                         </span>
                       </div>
@@ -507,7 +507,7 @@ export function AddConsumptionDialog({
             <div className="border-t bg-white dark:bg-gray-800 p-4 space-y-3 shrink-0">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Total:</span>
-                <span className="text-xl font-bold text-blue-600">
+                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
                   {formatCurrency(cartTotal)}
                 </span>
               </div>

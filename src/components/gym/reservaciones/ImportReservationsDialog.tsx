@@ -219,8 +219,8 @@ export function ImportReservationsDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Importar Reservaciones
           </DialogTitle>
           <DialogDescription>
@@ -234,11 +234,11 @@ export function ImportReservationsDialog({
               className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
-              <FileSpreadsheet className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <FileSpreadsheet className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
               <p className="text-gray-600 dark:text-gray-400 mb-2">
                 Arrastra un archivo CSV o haz clic para seleccionar
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Formato: email, nombre_cliente, clase, fecha, notas
               </p>
               <input
@@ -263,13 +263,13 @@ export function ImportReservationsDialog({
 
         {importStep === 'preview' && (
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Badge className="bg-green-100 text-green-800">
+            <div className="flex flex-wrap items-center gap-4">
+              <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 {validCount} válidas
               </Badge>
               {invalidCount > 0 && (
-                <Badge className="bg-red-100 text-red-800">
+                <Badge className="bg-red-100 dark:bg-red-900/30 text-red-800">
                   <AlertCircle className="h-3 w-3 mr-1" />
                   {invalidCount} con errores
                 </Badge>
@@ -301,11 +301,11 @@ export function ImportReservationsDialog({
                       <TableCell>
                         <div>
                           <p className="font-medium">{res.customerName || res.customerEmail}</p>
-                          {res.customerName && <p className="text-xs text-gray-500">{res.customerEmail}</p>}
+                          {res.customerName && <p className="text-xs text-gray-500 dark:text-gray-400">{res.customerEmail}</p>}
                         </div>
                       </TableCell>
                       <TableCell>{res.classTitle}</TableCell>
-                      <TableCell className="text-sm text-gray-500">{res.notes || '-'}</TableCell>
+                      <TableCell className="text-sm text-gray-500 dark:text-gray-400">{res.notes || '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

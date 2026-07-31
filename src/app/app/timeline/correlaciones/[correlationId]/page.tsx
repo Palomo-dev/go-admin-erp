@@ -168,13 +168,13 @@ export default function CorrelationDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-6">
-          <Skeleton className="h-8 w-32 mb-4" />
-          <div className="flex items-center gap-4">
+          <Skeleton className="h-8 w-full sm:w-32 mb-4" />
+          <div className="flex flex-wrap items-center gap-4">
             <Skeleton className="h-16 w-16 rounded-lg" />
             <div className="space-y-2">
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="h-4 w-96" />
+              <Skeleton className="h-6 w-full sm:w-32" />
+              <Skeleton className="h-8 w-full sm:w-64" />
+              <Skeleton className="h-4 w-full sm:w-96" />
             </div>
           </div>
         </div>
@@ -217,7 +217,7 @@ export default function CorrelationDetailPage() {
           <p className="text-xs font-mono text-gray-400 dark:text-gray-500 mb-6 break-all">
             {correlationId}
           </p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             <Button variant="outline" onClick={handleBack}>
               Volver al Timeline
             </Button>
@@ -250,7 +250,7 @@ export default function CorrelationDetailPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Traza de la Operación
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"

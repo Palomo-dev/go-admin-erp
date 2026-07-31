@@ -76,7 +76,7 @@ export function TarifasList({
           <Card key={i}>
             <CardContent className="p-6">
               <div className="animate-pulse space-y-4">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-lg" />
                   <div className="space-y-2 flex-1">
                     <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
@@ -95,7 +95,7 @@ export function TarifasList({
   if (rates.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <DollarSign className="h-12 w-12 text-gray-400 mb-4" />
+        <DollarSign className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">
           No hay tarifas configuradas
         </h3>
@@ -128,7 +128,7 @@ export function TarifasList({
           >
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
                     {vehicleIcons[rate.vehicle_type] || <Car className="h-6 w-6" />}
                   </div>
@@ -159,7 +159,7 @@ export function TarifasList({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => onDelete(rate)}
-                      className="text-red-600"
+                      className="text-red-600 dark:text-red-400"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar
@@ -170,7 +170,7 @@ export function TarifasList({
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                     {unitIcons[rate.unit]}
                     <span className="text-sm">{unitLabels[rate.unit]}</span>
                   </div>

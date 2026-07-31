@@ -71,8 +71,8 @@ export function CalendarSettingsForm({
         {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardHeader>
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-6 w-full sm:w-48" />
+              <Skeleton className="h-4 w-full sm:w-64" />
             </CardHeader>
             <CardContent className="space-y-4">
               <Skeleton className="h-10 w-full" />
@@ -105,7 +105,7 @@ export function CalendarSettingsForm({
       {/* Sección: Vista y Navegación */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <CalendarIcon className="h-5 w-5 text-blue-500" />
             <CardTitle className="text-lg">Vista y Navegación</CardTitle>
           </div>
@@ -176,7 +176,7 @@ export function CalendarSettingsForm({
       {/* Sección: Horario Laboral */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Clock className="h-5 w-5 text-green-500" />
             <CardTitle className="text-lg">Horario Laboral</CardTitle>
           </div>
@@ -219,7 +219,7 @@ export function CalendarSettingsForm({
       {/* Sección: Módulos Visibles */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Eye className="h-5 w-5 text-purple-500" />
             <CardTitle className="text-lg">Módulos Visibles</CardTitle>
           </div>
@@ -233,7 +233,7 @@ export function CalendarSettingsForm({
               <div
                 key={option.value}
                 className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                  'flex flex-wrap items-center gap-3 p-3 rounded-lg border transition-colors',
                   settings.visibleSourceTypes.includes(option.value)
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                     : 'border-gray-200 dark:border-gray-700'
@@ -258,7 +258,7 @@ export function CalendarSettingsForm({
       {/* Sección: Colores */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Palette className="h-5 w-5 text-pink-500" />
             <CardTitle className="text-lg">Colores por Tipo</CardTitle>
           </div>
@@ -269,7 +269,7 @@ export function CalendarSettingsForm({
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {SOURCE_TYPE_OPTIONS.map((option) => (
-              <div key={option.value} className="flex items-center gap-3">
+              <div key={option.value} className="flex flex-wrap items-center gap-3">
                 <input
                   type="color"
                   value={settings.sourceTypeColors[option.value as keyof typeof settings.sourceTypeColors] || '#3B82F6'}
@@ -291,7 +291,7 @@ export function CalendarSettingsForm({
       {/* Sección: Zona Horaria y Notificaciones */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Globe className="h-5 w-5 text-cyan-500" />
             <CardTitle className="text-lg">Zona Horaria y Recordatorios</CardTitle>
           </div>
@@ -345,8 +345,8 @@ export function CalendarSettingsForm({
       {/* Sección: Opciones de Visualización */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-gray-500" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Settings className="h-5 w-5 text-gray-500 dark:text-gray-400" />
             <CardTitle className="text-lg">Opciones de Visualización</CardTitle>
           </div>
           <CardDescription>
@@ -409,7 +409,7 @@ export function CalendarSettingsForm({
           Restaurar predeterminados
         </Button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {hasChanges && (
             <span className="text-sm text-orange-600 dark:text-orange-400">
               Hay cambios sin guardar

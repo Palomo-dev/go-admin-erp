@@ -221,8 +221,8 @@ export function RecurrenceSelector({ value, onChange, startDate }: RecurrenceSel
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Repeat className="h-4 w-4 text-gray-500" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Repeat className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           <Label>Repetir evento</Label>
         </div>
         <Switch checked={value.enabled} onCheckedChange={handleToggle} />
@@ -250,7 +250,7 @@ export function RecurrenceSelector({ value, onChange, startDate }: RecurrenceSel
 
             <div className="space-y-2">
               <Label>Cada</Label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   type="number"
                   min={1}
@@ -259,7 +259,7 @@ export function RecurrenceSelector({ value, onChange, startDate }: RecurrenceSel
                   onChange={(e) => onChange({ ...value, interval: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                   className="w-20 dark:bg-gray-800 dark:border-gray-700"
                 />
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   {value.frequency === 'daily' && (value.interval === 1 ? 'día' : 'días')}
                   {value.frequency === 'weekly' && (value.interval === 1 ? 'semana' : 'semanas')}
                   {value.frequency === 'monthly' && (value.interval === 1 ? 'mes' : 'meses')}
@@ -313,24 +313,24 @@ export function RecurrenceSelector({ value, onChange, startDate }: RecurrenceSel
           <div className="space-y-2">
             <Label>Termina</Label>
             <div className="space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex flex-wrap items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
                   name="endType"
                   checked={value.endType === 'never'}
                   onChange={() => onChange({ ...value, endType: 'never' })}
-                  className="w-4 h-4 text-blue-600"
+                  className="w-4 h-4 text-blue-600 dark:text-blue-400"
                 />
                 <span className="text-sm">Nunca</span>
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex flex-wrap items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
                   name="endType"
                   checked={value.endType === 'until'}
                   onChange={() => onChange({ ...value, endType: 'until', until: format(addMonths(startDate, 3), 'yyyy-MM-dd') })}
-                  className="w-4 h-4 text-blue-600"
+                  className="w-4 h-4 text-blue-600 dark:text-blue-400"
                 />
                 <span className="text-sm">Hasta</span>
                 {value.endType === 'until' && (
@@ -338,18 +338,18 @@ export function RecurrenceSelector({ value, onChange, startDate }: RecurrenceSel
                     type="date"
                     value={value.until || ''}
                     onChange={(e) => onChange({ ...value, until: e.target.value })}
-                    className="w-40 h-8 text-sm dark:bg-gray-800 dark:border-gray-700"
+                    className="w-full sm:w-40 h-8 text-sm dark:bg-gray-800 dark:border-gray-700"
                   />
                 )}
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex flex-wrap items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
                   name="endType"
                   checked={value.endType === 'count'}
                   onChange={() => onChange({ ...value, endType: 'count', count: 10 })}
-                  className="w-4 h-4 text-blue-600"
+                  className="w-4 h-4 text-blue-600 dark:text-blue-400"
                 />
                 <span className="text-sm">Después de</span>
                 {value.endType === 'count' && (

@@ -76,7 +76,7 @@ export function RatesStats({ rates, isLoading }: RatesStatsProps) {
           key={stat.label}
           className="p-6 border border-gray-200 dark:border-gray-700"
         >
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className={`p-3 rounded-lg ${stat.bgColor}`}>
               <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
             </div>

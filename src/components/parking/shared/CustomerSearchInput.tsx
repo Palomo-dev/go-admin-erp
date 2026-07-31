@@ -123,14 +123,14 @@ export function CustomerSearchInput({
           disabled={disabled}
           className={`w-full justify-start text-left font-normal h-10 ${className}`}
         >
-          <Search className="h-4 w-4 mr-2 text-gray-400" />
+          <Search className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
           <span className="text-gray-500 dark:text-gray-400">{placeholder}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
+      <PopoverContent className="w-full sm:w-80 p-0" align="start">
         <div className="p-3 border-b dark:border-gray-700">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Nombre, email, teléfono o documento..."
               value={searchTerm}
@@ -146,7 +146,7 @@ export function CustomerSearchInput({
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-                <span className="ml-2 text-sm text-gray-500">Buscando...</span>
+                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Buscando...</span>
               </div>
             ) : customers.length > 0 ? (
               <div className="space-y-1">
@@ -154,7 +154,7 @@ export function CustomerSearchInput({
                   <div
                     key={customer.id}
                     onClick={() => handleSelect(customer)}
-                    className="flex items-start gap-3 p-2 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    className="flex flex-wrap items-start gap-3 p-2 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                       <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
@@ -165,13 +165,13 @@ export function CustomerSearchInput({
                       </p>
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                         {customer.email && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                          <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                             <Mail className="h-3 w-3" />
                             <span className="truncate max-w-[120px]">{customer.email}</span>
                           </div>
                         )}
                         {customer.phone && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                          <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                             <Phone className="h-3 w-3" />
                             <span>{customer.phone}</span>
                           </div>

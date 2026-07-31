@@ -131,18 +131,18 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
       </div>
 
       {/* Filtros y búsqueda */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Búsqueda */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder="Buscar roles..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
@@ -152,7 +152,7 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as 'all' | 'system' | 'custom')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="all">Todos los roles</option>
               <option value="system">Roles del sistema</option>
@@ -163,18 +163,18 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
       </div>
 
       {/* Lista de roles */}
-      <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             Roles ({filteredRoles.length})
           </h3>
         </div>
 
         {filteredRoles.length === 0 ? (
           <div className="text-center py-12">
-            <Shield className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay roles</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <Shield className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay roles</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {searchTerm || filterType !== 'all' 
                 ? 'No se encontraron roles con los filtros aplicados.'
                 : 'Comienza creando tu primer rol personalizado.'
@@ -249,30 +249,30 @@ function RoleCard({ role, onEdit, onDelete, onClone, onManagePermissions }: Role
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div className="p-6 hover:bg-gray-50 transition-colors">
+    <div className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className={`p-2 rounded-lg ${role.is_system ? 'bg-blue-100' : 'bg-green-100'}`}>
             {role.is_system ? (
-              <Lock className="h-5 w-5 text-blue-600" />
+              <Lock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             ) : (
-              <Unlock className="h-5 w-5 text-green-600" />
+              <Unlock className="h-5 w-5 text-green-600 dark:text-green-400" />
             )}
           </div>
           
           <div>
             <div className="flex items-center space-x-2">
-              <h4 className="text-lg font-medium text-gray-900">{role.name}</h4>
+              <h4 className="text-lg font-medium text-gray-900 dark:text-white">{role.name}</h4>
               {role.is_system && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800">
                   Sistema
                 </span>
               )}
             </div>
             {role.description && (
-              <p className="text-sm text-gray-500 mt-1">{role.description}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{role.description}</p>
             )}
-            <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+            <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
               <span className="flex items-center">
                 <Shield className="h-4 w-4 mr-1" />
                 {role.permission_count || 0} permisos
@@ -289,20 +289,20 @@ function RoleCard({ role, onEdit, onDelete, onClone, onManagePermissions }: Role
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+            className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <MoreVertical className="h-5 w-5" />
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+            <div className="absolute right-0 mt-2 w-full sm:w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10">
               <div className="py-1">
                 <button
                   onClick={() => {
                     onManagePermissions();
                     setShowMenu(false);
                   }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   Gestionar Permisos
@@ -315,7 +315,7 @@ function RoleCard({ role, onEdit, onDelete, onClone, onManagePermissions }: Role
                         onEdit();
                         setShowMenu(false);
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
@@ -326,7 +326,7 @@ function RoleCard({ role, onEdit, onDelete, onClone, onManagePermissions }: Role
                         onClone();
                         setShowMenu(false);
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                       <Copy className="h-4 w-4 mr-2" />
                       Clonar
@@ -374,34 +374,34 @@ function CreateRoleModal({ onClose, onSubmit }: CreateRoleModalProps) {
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div className="relative top-20 mx-auto p-5 border w-full sm:w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div className="mt-3">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Crear Nuevo Rol</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Crear Nuevo Rol</h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Nombre del Rol *
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Ej: Vendedor, Supervisor, etc."
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Descripción
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Describe las responsabilidades de este rol..."
               />
             </div>
@@ -410,7 +410,7 @@ function CreateRoleModal({ onClose, onSubmit }: CreateRoleModalProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"
               >
                 Cancelar
               </button>
@@ -448,33 +448,33 @@ function EditRoleModal({ role, onClose, onSubmit }: EditRoleModalProps) {
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div className="relative top-20 mx-auto p-5 border w-full sm:w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
         <div className="mt-3">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Editar Rol</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Editar Rol</h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Nombre del Rol *
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Descripción
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
             
@@ -482,7 +482,7 @@ function EditRoleModal({ role, onClose, onSubmit }: EditRoleModalProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"
               >
                 Cancelar
               </button>

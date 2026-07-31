@@ -306,8 +306,8 @@ CrossFit Intenso,crossfit,2025-02-01,18:00,19:00,12,Box CrossFit,Carlos López,P
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Importar Clases desde CSV
           </DialogTitle>
           <DialogDescription>
@@ -328,16 +328,16 @@ CrossFit Intenso,crossfit,2025-02-01,18:00,19:00,12,Box CrossFit,Carlos López,P
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <Upload className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
               <p className="text-gray-600 dark:text-gray-400">
                 {isParsing ? (
-                  <span className="flex items-center justify-center gap-2">
+                  <span className="flex flex-wrap items-center justify-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Procesando archivo...
                   </span>
                 ) : (
                   <>
-                    Arrastra un archivo CSV aquí o <span className="text-blue-600">haz clic para seleccionar</span>
+                    Arrastra un archivo CSV aquí o <span className="text-blue-600 dark:text-blue-400">haz clic para seleccionar</span>
                   </>
                 )}
               </p>
@@ -349,7 +349,7 @@ CrossFit Intenso,crossfit,2025-02-01,18:00,19:00,12,Box CrossFit,Carlos López,P
                 Descargar Plantilla
               </Button>
               
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Columnas: titulo, tipo, fecha, hora_inicio, hora_fin, capacidad, sala, instructor, sede
               </p>
             </div>
@@ -359,7 +359,7 @@ CrossFit Intenso,crossfit,2025-02-01,18:00,19:00,12,Box CrossFit,Carlos López,P
         {step === 'preview' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   {validCount} válidas
@@ -379,10 +379,10 @@ CrossFit Intenso,crossfit,2025-02-01,18:00,19:00,12,Box CrossFit,Carlos López,P
             </div>
 
             {branches.length > 0 && (
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <Label className="text-sm">Sede por defecto:</Label>
                 <Select value={defaultBranchId} onValueChange={setDefaultBranchId}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Seleccionar sede" />
                   </SelectTrigger>
                   <SelectContent>

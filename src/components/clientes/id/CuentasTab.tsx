@@ -313,8 +313,8 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* Información y selector de tamaño */}
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm text-gray-500 dark:text-gray-400">Mostrar</span>
                   <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                     <SelectTrigger className="w-[70px] h-8 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -339,7 +339,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
               </div>
               
               {/* Controles de navegación */}
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 <Button
                   variant="outline"
                   size="icon"
@@ -362,7 +362,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                 </Button>
                 
                 {/* Indicador de página */}
-                <div className="flex items-center gap-1 px-2">
+                <div className="flex flex-wrap items-center gap-1 px-2">
                   <span className="text-sm text-gray-600 dark:text-gray-300">
                     Página <span className="font-semibold text-blue-600 dark:text-blue-400">{currentPage}</span> de <span className="font-medium">{totalPages}</span>
                   </span>

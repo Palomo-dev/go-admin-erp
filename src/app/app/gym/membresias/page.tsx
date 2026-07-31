@@ -163,7 +163,7 @@ export default function GymMembresiasPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="animate-pulse bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex flex-wrap items-center gap-3 mb-3">
                 <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
                 <div className="space-y-2 flex-1">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
@@ -178,7 +178,7 @@ export default function GymMembresiasPage() {
       {/* Empty state */}
       {!isLoading && filteredMemberships.length === 0 && (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No hay membresías
           </h3>
@@ -230,8 +230,8 @@ export default function GymMembresiasPage() {
       {/* Indicador de procesamiento */}
       {isProcessing && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 flex flex-wrap items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
             <span className="text-gray-900 dark:text-white">Procesando...</span>
           </div>
         </div>

@@ -284,7 +284,7 @@ export default function HistorialPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
           <button 
             onClick={() => window.location.reload()} 
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -299,8 +299,8 @@ export default function HistorialPage() {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Historial de Suscripciones</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Historial de Suscripciones</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
           Revisa el historial completo de suscripciones para {organizationName || 'tu organización'}
         </p>
       </div>
@@ -308,11 +308,11 @@ export default function HistorialPage() {
       {subscriptions.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
-            <CreditCardIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <CreditCardIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               No hay historial de suscripciones
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Aún no tienes suscripciones registradas en el sistema.
             </p>
           </CardContent>
@@ -339,31 +339,31 @@ export default function HistorialPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-2">
-                      <CreditCardIcon className="h-4 w-4 text-gray-500" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CreditCardIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                       <div>
-                        <p className="text-sm text-gray-600">Precio del Plan</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Precio del Plan</p>
                         <p className="font-medium">
                           {formatCurrency(subscription.plans.price_usd_month)}/mes
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
                           {formatCurrency(subscription.plans.price_usd_year)}/año
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4 text-gray-500" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                       <div>
-                        <p className="text-sm text-gray-600">Fecha de inicio</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Fecha de inicio</p>
                         <p className="font-medium">{formatDate(subscription.created_at)}</p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4 text-gray-500" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                       <div>
-                        <p className="text-sm text-gray-600">Periodo actual</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Periodo actual</p>
                         <p className="font-medium">
                           {formatDate(subscription.current_period_start)} - {formatDate(subscription.current_period_end)}
                         </p>
@@ -371,7 +371,7 @@ export default function HistorialPage() {
                     </div>
                     
                     <div>
-                      <p className="text-sm text-gray-600">Límites del plan</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Límites del plan</p>
                       <p className="font-medium">
                         {subscription.plans.max_modules} módulos, {subscription.plans.max_branches} sucursales
                       </p>
@@ -386,7 +386,7 @@ export default function HistorialPage() {
                     </div>
                   )}
                   
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     Última actualización: {formatDate(subscription.updated_at)}
                   </div>
                 </CardContent>
@@ -399,7 +399,7 @@ export default function HistorialPage() {
       {/* Historial de Addons */}
       {addons.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Historial de Addons</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Historial de Addons</h2>
           <div className="space-y-3">
             {addons.map((addon) => {
               const isUsers = addon.addon_type === 'extra_users';
@@ -409,20 +409,20 @@ export default function HistorialPage() {
               return (
                 <Card key={addon.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="flex items-center justify-between py-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <div className={`p-2 rounded-lg ${colorClass}`}>
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{label}: {addon.quantity}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="font-medium text-gray-900 dark:text-white">{label}: {addon.quantity}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {formatDate(addon.created_at)}
                           {addon.current_period_end && ` · Hasta: ${formatDate(addon.current_period_end)}`}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-gray-500">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         {formatCurrency(addon.unit_price_cents / 100)}/mes
                       </span>
                       <Badge className={`${statusColors[addon.status] || 'bg-gray-100 text-gray-800'} flex items-center gap-1`}>
@@ -440,24 +440,24 @@ export default function HistorialPage() {
       {/* Historial de Créditos IA */}
       {aiCredits.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Historial de Créditos IA</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Historial de Créditos IA</h2>
           <div className="space-y-3">
             {aiCredits.map((credit) => (
               <Card key={credit.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg text-amber-600 bg-amber-50">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="p-2 rounded-lg text-amber-600 dark:text-amber-400 bg-amber-50">
                       <SparklesIcon className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 dark:text-white">
                         {credit.credits_amount.toLocaleString()} créditos IA
                       </p>
-                      <p className="text-xs text-gray-500">{formatDate(credit.created_at)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(credit.created_at)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-500">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {formatCurrency(credit.total_price_cents / 100)}
                     </span>
                     <Badge className={`${statusColors[credit.status] || 'bg-gray-100 text-gray-800'} flex items-center gap-1`}>

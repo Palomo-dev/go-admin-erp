@@ -99,7 +99,7 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
 
         <div className="space-y-6">
           {/* Header con info del instructor */}
-          <div className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+          <div className="flex flex-wrap items-start gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
             <Avatar className="h-20 w-20">
               <AvatarImage src={instructor.profiles?.avatar_url} />
               <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 text-xl">
@@ -108,7 +108,7 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
             </Avatar>
 
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   {instructor.profiles?.first_name} {instructor.profiles?.last_name}
                 </h2>
@@ -124,13 +124,13 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
 
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 {instructor.profiles?.email && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Mail className="h-4 w-4" />
                     {instructor.profiles.email}
                   </div>
                 )}
                 {instructor.profiles?.phone && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Phone className="h-4 w-4" />
                     {instructor.profiles.phone}
                   </div>
@@ -141,7 +141,7 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
 
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
             </div>
           ) : (
             <Tabs defaultValue="stats" className="w-full">
@@ -155,44 +155,44 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <Card>
                     <CardContent className="p-4 text-center">
-                      <Calendar className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                      <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.totalClasses || 0}</p>
-                      <p className="text-xs text-gray-500">Total Clases</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Total Clases</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 text-center">
-                      <CheckCircle2 className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-green-600">{stats?.completedClasses || 0}</p>
-                      <p className="text-xs text-gray-500">Completadas</p>
+                      <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats?.completedClasses || 0}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Completadas</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 text-center">
-                      <XCircle className="h-6 w-6 text-red-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-red-600">{stats?.cancelledClasses || 0}</p>
-                      <p className="text-xs text-gray-500">Canceladas</p>
+                      <XCircle className="h-6 w-6 text-red-600 dark:text-red-400 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">{stats?.cancelledClasses || 0}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Canceladas</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 text-center">
-                      <Users className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-purple-600">{stats?.totalReservations || 0}</p>
-                      <p className="text-xs text-gray-500">Reservaciones</p>
+                      <Users className="h-6 w-6 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats?.totalReservations || 0}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Reservaciones</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 text-center">
                       <Users className="h-6 w-6 text-cyan-600 mx-auto mb-2" />
                       <p className="text-2xl font-bold text-cyan-600">{stats?.totalAttendance || 0}</p>
-                      <p className="text-xs text-gray-500">Asistentes</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Asistentes</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 text-center">
-                      <TrendingUp className="h-6 w-6 text-orange-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-orange-600">{(stats?.avgAttendanceRate || 0).toFixed(0)}%</p>
-                      <p className="text-xs text-gray-500">Tasa Asistencia</p>
+                      <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{(stats?.avgAttendanceRate || 0).toFixed(0)}%</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Tasa Asistencia</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -200,20 +200,20 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
 
               <TabsContent value="upcoming" className="space-y-2">
                 {upcomingClasses.length === 0 ? (
-                  <p className="text-center text-gray-500 py-4">No hay clases próximas programadas</p>
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-4">No hay clases próximas programadas</p>
                 ) : (
                   upcomingClasses.map((gymClass) => (
                     <div key={gymClass.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{gymClass.title}</p>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                           <Clock className="h-3 w-3" />
                           {formatDate(gymClass.start_at)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">{getClassTypeLabel(gymClass.class_type)}</Badge>
-                        <Badge className="bg-blue-100 text-blue-800">
+                        <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-800">
                           {gymClass.reservations_count || 0}/{gymClass.capacity}
                         </Badge>
                       </div>
@@ -224,13 +224,13 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
 
               <TabsContent value="history" className="space-y-2">
                 {recentClasses.length === 0 ? (
-                  <p className="text-center text-gray-500 py-4">No hay historial de clases</p>
+                  <p className="text-center text-gray-500 dark:text-gray-400 py-4">No hay historial de clases</p>
                 ) : (
                   recentClasses.map((gymClass) => (
                     <div key={gymClass.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{gymClass.title}</p>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                           <Clock className="h-3 w-3" />
                           {formatDate(gymClass.start_at)}
                         </div>
@@ -238,10 +238,10 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
                       <Badge 
                         className={
                           gymClass.status === 'completed' 
-                            ? 'bg-green-100 text-green-800' 
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800' 
                             : gymClass.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800'
+                            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800'
                         }
                       >
                         {gymClass.status === 'completed' ? 'Completada' : gymClass.status === 'cancelled' ? 'Cancelada' : 'Programada'}

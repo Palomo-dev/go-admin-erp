@@ -181,7 +181,7 @@ export function EventDetailView({
   return (
     <div className="space-y-4">
       {/* Header con título y estado */}
-      <div className="flex items-start gap-4 pb-4 border-b dark:border-gray-700">
+      <div className="flex flex-wrap items-start gap-4 pb-4 border-b dark:border-gray-700">
         <div
           className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
           style={{ backgroundColor: eventColor }}
@@ -214,8 +214,8 @@ export function EventDetailView({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
         {/* Columna izquierda - Fecha y hora */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4 text-blue-600" />
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <CalendarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             Fecha y Hora
           </h4>
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-2">
@@ -251,7 +251,7 @@ export function EventDetailView({
             )}
             {event.location && (
               <div className="flex justify-between text-sm pt-2 border-t dark:border-gray-700">
-                <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1">
                   <MapPin className="h-3 w-3" /> Ubicación
                 </span>
                 <span className="text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">
@@ -264,8 +264,8 @@ export function EventDetailView({
 
         {/* Columna derecha - Asignación */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
-            <User className="h-4 w-4 text-green-600" />
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <User className="h-4 w-4 text-green-600 dark:text-green-400" />
             Asignación
           </h4>
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-2">
@@ -284,7 +284,7 @@ export function EventDetailView({
             )}
             {customer ? (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1">
                   <Users className="h-3 w-3" /> Cliente
                 </span>
                 <span className="text-gray-900 dark:text-white font-medium">
@@ -293,7 +293,7 @@ export function EventDetailView({
               </div>
             ) : (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1">
                   <Users className="h-3 w-3" /> Cliente
                 </span>
                 <span className="text-gray-400 dark:text-gray-500 italic">Sin cliente</span>
@@ -301,7 +301,7 @@ export function EventDetailView({
             )}
             {branch ? (
               <div className="flex justify-between text-sm pt-2 border-t dark:border-gray-700">
-                <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1">
                   <Building2 className="h-3 w-3" /> Sucursal
                 </span>
                 <span className="text-gray-900 dark:text-white font-medium">
@@ -337,8 +337,8 @@ export function EventDetailView({
             className="w-full justify-between p-2 h-auto"
             onClick={() => setRecurrenceOpen(!recurrenceOpen)}
           >
-            <div className="flex items-center gap-2">
-              <Repeat className="h-4 w-4 text-blue-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Repeat className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <span className="text-sm font-medium">Recurrencia</span>
               <Badge variant="secondary" className="text-xs">
                 {upcomingOccurrences.length} próximas
@@ -376,7 +376,7 @@ export function EventDetailView({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                            className="h-6 px-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700"
                             onClick={() => setCancelOccurrenceDate(date)}
                           >
                             <XCircle className="h-3 w-3 mr-1" />
@@ -386,7 +386,7 @@ export function EventDetailView({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700"
+                              className="h-6 px-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700"
                               onClick={() => setMoveOccurrenceDate(date)}
                             >
                               <MoveHorizontal className="h-3 w-3 mr-1" />
@@ -417,8 +417,8 @@ export function EventDetailView({
             className="w-full justify-between p-2 h-auto"
             onClick={() => setExceptionsOpen(!exceptionsOpen)}
           >
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               <span className="text-sm font-medium">Excepciones</span>
               <Badge variant="secondary" className="text-xs">
                 {activeExceptions.length}
@@ -438,7 +438,7 @@ export function EventDetailView({
                     key={exception.id}
                     className="flex items-center justify-between py-1.5 px-2 rounded text-sm"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {exception.exception_type === 'cancelled' ? (
                         <XCircle className="h-4 w-4 text-red-500" />
                       ) : (
@@ -494,7 +494,7 @@ export function EventDetailView({
               variant="outline"
               size="sm"
               onClick={onCancel}
-              className="text-orange-600 hover:text-orange-700"
+              className="text-orange-600 dark:text-orange-400 hover:text-orange-700"
             >
               <Ban className="h-4 w-4 mr-1" />
               Cancelar
@@ -504,7 +504,7 @@ export function EventDetailView({
             variant="ghost"
             size="sm"
             onClick={onDelete}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+            className="text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             <Trash2 className="h-4 w-4 mr-1" />
             Eliminar

@@ -70,13 +70,13 @@ export function PlantillaList({
               key={t.id}
               className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 hover:shadow-sm transition-shadow"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex flex-wrap items-start gap-3">
                 <div className={cn('flex-shrink-0 p-2 rounded-lg', ch.color)}>
                   <ChIcon className="h-4 w-4" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                       {t.name}
                     </span>
@@ -96,24 +96,24 @@ export function PlantillaList({
                     {t.body_text.substring(0, 120)}{t.body_text.length > 120 ? '...' : ''}
                   </p>
 
-                  <div className="flex items-center gap-3 mt-2">
+                  <div className="flex flex-wrap items-center gap-3 mt-2">
                     {t.variables && t.variables.length > 0 && (
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
                         Variables: {t.variables.map((v) => `{{${v}}}`).join(', ')}
                       </span>
                     )}
-                    <span className="text-[10px] text-gray-400 ml-auto">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
                       {new Date(t.updated_at).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onTest(t)}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-blue-500"
+                    className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-blue-500"
                     title="Probar envío"
                   >
                     <Send className="h-3.5 w-3.5" />
@@ -122,7 +122,7 @@ export function PlantillaList({
                     variant="ghost"
                     size="sm"
                     onClick={() => onEdit(t)}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-blue-500"
+                    className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-blue-500"
                     title="Editar"
                   >
                     <Edit className="h-3.5 w-3.5" />
@@ -133,7 +133,7 @@ export function PlantillaList({
                         variant="ghost"
                         size="sm"
                         onClick={() => onDuplicate(t)}
-                        className="h-8 w-8 p-0 text-gray-400 hover:text-amber-500"
+                        className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-amber-500"
                         title="Duplicar"
                       >
                         <Copy className="h-3.5 w-3.5" />
@@ -142,7 +142,7 @@ export function PlantillaList({
                         variant="ghost"
                         size="sm"
                         onClick={() => onDelete(t)}
-                        className="h-8 w-8 p-0 text-gray-400 hover:text-red-500"
+                        className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500"
                         title="Eliminar"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -161,7 +161,7 @@ export function PlantillaList({
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} de {total}
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)} className="h-7 w-7 p-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -169,7 +169,7 @@ export function PlantillaList({
               .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
               .map((p, idx, arr) => (
                 <span key={p}>
-                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-gray-400 px-1">…</span>}
+                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-gray-400 dark:text-gray-500 px-1">…</span>}
                   <Button
                     variant={p === page ? 'default' : 'outline'}
                     size="sm"

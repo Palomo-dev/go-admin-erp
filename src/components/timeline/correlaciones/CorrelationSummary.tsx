@@ -77,7 +77,7 @@ export function CorrelationSummary({ events }: CorrelationSummaryProps) {
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-4 flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
               <Layers className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
             </div>
@@ -89,7 +89,7 @@ export function CorrelationSummary({ events }: CorrelationSummaryProps) {
         </Card>
 
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-4 flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
               <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
@@ -103,7 +103,7 @@ export function CorrelationSummary({ events }: CorrelationSummaryProps) {
         </Card>
 
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-4 flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
               <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
@@ -115,7 +115,7 @@ export function CorrelationSummary({ events }: CorrelationSummaryProps) {
         </Card>
 
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-4 flex items-center gap-3">
+          <CardContent className="p-4 flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
               <GitBranch className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             </div>
@@ -146,7 +146,7 @@ export function CorrelationSummary({ events }: CorrelationSummaryProps) {
                     {module}
                   </Badge>
                   {idx < flowModules.length - 1 && (
-                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                    <ArrowRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   )}
                 </React.Fragment>
               ))}
@@ -160,7 +160,7 @@ export function CorrelationSummary({ events }: CorrelationSummaryProps) {
         {/* Por módulo */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex flex-wrap items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Por Módulo
             </CardTitle>
@@ -189,7 +189,7 @@ export function CorrelationSummary({ events }: CorrelationSummaryProps) {
         {/* Por acción */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300 flex flex-wrap items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Por Acción
             </CardTitle>

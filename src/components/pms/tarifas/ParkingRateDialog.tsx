@@ -149,7 +149,7 @@ export function ParkingRateDialog({
                   const Icon = type.icon;
                   return (
                     <SelectItem key={type.value} value={type.value}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Icon className="h-4 w-4" />
                         {type.label}
                       </div>
@@ -202,7 +202,7 @@ export function ParkingRateDialog({
               value={gracePeriod}
               onChange={(e) => setGracePeriod(e.target.value)}
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Minutos gratuitos antes de empezar a cobrar.
             </p>
           </div>

@@ -143,7 +143,7 @@ export function TripAdvisorCompetitorDashboard({
     <Card className={cn('overflow-hidden', className)}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <CardTitle className="text-base font-semibold flex flex-wrap items-center gap-2">
             <BarChart3 className="h-4 w-4 text-[#00AA6C]" />
             Comparativa TripAdvisor
           </CardTitle>
@@ -162,8 +162,8 @@ export function TripAdvisorCompetitorDashboard({
       <CardContent className="space-y-4">
         {isLoading && (
           <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            <span className="ml-2 text-sm text-gray-500">Analizando competencia...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" />
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Analizando competencia...</span>
           </div>
         )}
 
@@ -172,7 +172,7 @@ export function TripAdvisorCompetitorDashboard({
         )}
 
         {!isLoading && !error && competitors.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
             No se encontraron competidores cercanos para comparar.
           </p>
         )}
@@ -183,26 +183,26 @@ export function TripAdvisorCompetitorDashboard({
             <div className="grid grid-cols-3 gap-3">
               {/* Posición */}
               <div className="text-center p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
                   <Crown className="h-4 w-4 text-amber-500" />
                   <span className="text-xl font-bold text-gray-900 dark:text-white">
                     #{ownPosition}
                   </span>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1">
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                   de {allWithOwn.length}
                 </p>
               </div>
 
               {/* Rating vs promedio */}
               <div className="text-center p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
                   {ratingDiff > 0 ? (
                     <TrendingUp className="h-4 w-4 text-green-500" />
                   ) : ratingDiff < 0 ? (
                     <TrendingDown className="h-4 w-4 text-red-500" />
                   ) : (
-                    <Minus className="h-4 w-4 text-gray-400" />
+                    <Minus className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   )}
                   <span className={cn(
                     'text-xl font-bold',
@@ -213,12 +213,12 @@ export function TripAdvisorCompetitorDashboard({
                     {ratingDiff > 0 ? '+' : ''}{ratingDiff.toFixed(1)}
                   </span>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1">Rating vs prom.</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Rating vs prom.</p>
               </div>
 
               {/* Reseñas vs promedio */}
               <div className="text-center p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
                   <Users className="h-4 w-4 text-blue-500" />
                   <span className={cn(
                     'text-xl font-bold',
@@ -227,7 +227,7 @@ export function TripAdvisorCompetitorDashboard({
                     {reviewsDiff > 0 ? '+' : ''}{reviewsDiff}
                   </span>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1">Reseñas vs prom.</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Reseñas vs prom.</p>
               </div>
             </div>
 
@@ -240,7 +240,7 @@ export function TripAdvisorCompetitorDashboard({
                 <div
                   key={item.location_id}
                   className={cn(
-                    'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
+                    'flex flex-wrap items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
                     item.isOwn
                       ? 'bg-[#00AA6C]/10 dark:bg-[#00AA6C]/20 border border-[#00AA6C]/30'
                       : 'bg-gray-50 dark:bg-gray-800/30',
@@ -276,7 +276,7 @@ export function TripAdvisorCompetitorDashboard({
                   </span>
 
                   {/* Reseñas */}
-                  <span className="text-xs text-gray-400 shrink-0 w-14 text-right">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 w-14 text-right">
                     {item.numReviews} rev.
                   </span>
 
@@ -286,7 +286,7 @@ export function TripAdvisorCompetitorDashboard({
                       href={(item as CompetitorData).webUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-[#00AA6C] shrink-0"
+                      className="text-gray-400 dark:text-gray-500 hover:text-[#00AA6C] shrink-0"
                     >
                       <ExternalLink className="h-3 w-3" />
                     </a>
@@ -312,7 +312,7 @@ export function TripAdvisorCompetitorDashboard({
             </div>
 
             {/* Attribution */}
-            <p className="text-[10px] text-gray-400 text-center">
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
               Datos de{' '}
               <a
                 href="https://www.tripadvisor.com"

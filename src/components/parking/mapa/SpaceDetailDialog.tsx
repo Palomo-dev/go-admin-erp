@@ -362,7 +362,7 @@ export function SpaceDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 dark:text-white">
+          <DialogTitle className="flex flex-wrap items-center gap-2 dark:text-white">
             <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Espacio {space.label}
           </DialogTitle>
@@ -427,7 +427,7 @@ export function SpaceDetailDialog({
               {/* Sección de Tarifa y Monto a Pagar */}
               <div className="pt-2 border-t border-red-200 dark:border-red-700">
                 {loadingRate ? (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Calculando tarifa...
                   </div>
@@ -467,7 +467,7 @@ export function SpaceDetailDialog({
                     {showPaymentForm && calculatedFee.amount > 0 && (
                       <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-700 space-y-3">
                         {/* Opción de crédito */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <input
                             type="checkbox"
                             id="mapIsCredit"
@@ -475,7 +475,7 @@ export function SpaceDetailDialog({
                             onChange={(e) => setIsCredit(e.target.checked)}
                             className="rounded border-gray-300 dark:border-gray-600"
                           />
-                          <Label htmlFor="mapIsCredit" className="flex items-center gap-2 text-xs cursor-pointer">
+                          <Label htmlFor="mapIsCredit" className="flex flex-wrap items-center gap-2 text-xs cursor-pointer">
                             <Calendar className="h-3 w-3 text-orange-500" />
                             Crédito (cuenta por cobrar)
                           </Label>
@@ -514,7 +514,7 @@ export function SpaceDetailDialog({
                               {paymentMethods.length > 0 ? (
                                 paymentMethods.map((pm) => (
                                   <SelectItem key={pm.payment_method_code} value={pm.payment_method_code}>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                       {METHOD_ICONS[pm.payment_method_code] || <CreditCard className="h-3 w-3" />}
                                       {pm.payment_method?.name || pm.payment_method_code}
                                     </div>
@@ -533,7 +533,7 @@ export function SpaceDetailDialog({
 
                         {/* Opción de factura */}
                         {hasInvoicing && (
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <input
                               type="checkbox"
                               id="mapGenerateInvoice"
@@ -541,7 +541,7 @@ export function SpaceDetailDialog({
                               onChange={(e) => setGenerateInvoice(e.target.checked)}
                               className="rounded border-gray-300 dark:border-gray-600"
                             />
-                            <Label htmlFor="mapGenerateInvoice" className="flex items-center gap-2 text-xs cursor-pointer">
+                            <Label htmlFor="mapGenerateInvoice" className="flex flex-wrap items-center gap-2 text-xs cursor-pointer">
                               <FileText className="h-3 w-3 text-blue-500" />
                               Generar factura
                             </Label>
@@ -576,7 +576,7 @@ export function SpaceDetailDialog({
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
                     <DollarSign className="h-4 w-4" />
                     Sin tarifa configurada para este tipo de vehículo
                   </div>

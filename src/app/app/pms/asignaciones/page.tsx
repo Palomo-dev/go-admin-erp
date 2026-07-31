@@ -162,7 +162,7 @@ export default function AsignacionesPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <LayoutGrid className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>

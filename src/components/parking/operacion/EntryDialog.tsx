@@ -99,7 +99,7 @@ export function EntryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
               <LogIn className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>

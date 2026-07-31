@@ -93,7 +93,7 @@ export function StepExtras({
                 key={extra.id}
                 className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg"
               >
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex flex-wrap items-center gap-3 flex-1">
                   <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
                     {iconMap[extra.icon || ''] || <Plus className="h-4 w-4" />}
                   </div>
@@ -105,7 +105,7 @@ export function StepExtras({
                       ${extra.price} × {extra.quantity}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
                       variant="outline"
@@ -162,7 +162,7 @@ export function StepExtras({
                 }`}
                 onClick={() => !added && handleAddExtra(extra)}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex flex-wrap items-start gap-3">
                   <div
                     className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       added

@@ -55,7 +55,7 @@ export function EstadoCanales({ channels, isLoading, onToggleChannel, onNavigate
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <Radio className="h-5 w-5 text-blue-500" />
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Estado de Canales</h2>
       </div>
@@ -98,7 +98,7 @@ export function EstadoCanales({ channels, isLoading, onToggleChannel, onNavigate
                     {channel.provider_name}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                   <Badge className={
                     channel.is_active
                       ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
@@ -115,7 +115,7 @@ export function EstadoCanales({ channels, isLoading, onToggleChannel, onNavigate
                     {channel.is_active ? (
                       <ToggleRight className="h-5 w-5 text-green-500" />
                     ) : (
-                      <ToggleLeft className="h-5 w-5 text-gray-400" />
+                      <ToggleLeft className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     )}
                   </Button>
                 </div>

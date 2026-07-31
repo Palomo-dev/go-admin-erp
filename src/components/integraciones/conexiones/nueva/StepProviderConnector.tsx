@@ -188,7 +188,7 @@ export function StepProviderConnector({
         {/* Búsqueda y filtros */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar proveedor..."
               value={searchTerm}
@@ -262,7 +262,7 @@ export function StepProviderConnector({
                     />
                   ) : (
                     <div className={cn('', categoryConfig.color)}>
-                      {categoryConfig.icon || <Globe className="h-5 w-5 text-gray-400" />}
+                      {categoryConfig.icon || <Globe className="h-5 w-5 text-gray-400 dark:text-gray-500" />}
                     </div>
                   )}
                 </div>
@@ -288,7 +288,7 @@ export function StepProviderConnector({
         </div>
 
         {filteredProviders.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             No se encontraron proveedores
           </div>
         )}
@@ -346,7 +346,7 @@ export function StepProviderConnector({
 
                         {/* Países soportados */}
                         {connector.supported_countries.length > 0 && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             Países: {connector.supported_countries.slice(0, 5).join(', ')}
                             {connector.supported_countries.length > 5 && '...'}
                           </p>
@@ -354,9 +354,9 @@ export function StepProviderConnector({
                       </div>
                       
                       {isSelected ? (
-                        <Check className="h-5 w-5 text-blue-600 shrink-0" />
+                        <Check className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
                       ) : (
-                        <ChevronRight className="h-5 w-5 text-gray-400 shrink-0" />
+                        <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500 shrink-0" />
                       )}
                     </div>
                   </CardContent>
@@ -371,13 +371,13 @@ export function StepProviderConnector({
       {selectedProvider && (
         <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="shrink-0">
                 {selectedProvider.logo_url ? (
                   <img src={selectedProvider.logo_url} alt="" className="w-12 h-12 object-contain" />
                 ) : (
                   <div className="w-12 h-12 bg-blue-100 dark:bg-blue-800 rounded flex items-center justify-center">
-                    <Globe className="h-6 w-6 text-blue-600" />
+                    <Globe className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 )}
               </div>
@@ -393,7 +393,7 @@ export function StepProviderConnector({
                     href={selectedProvider.docs_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Ver documentación →
                   </a>

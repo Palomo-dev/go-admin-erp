@@ -138,12 +138,12 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
             
             {isLoading ? (
               <div className="flex items-center justify-center p-4 border rounded-lg dark:border-gray-700">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400 mr-2" />
                 <span className="text-sm dark:text-gray-400">Cargando planes...</span>
               </div>
             ) : plans.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-6 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                <Package className="h-10 w-10 text-gray-400 mb-3" />
+                <Package className="h-10 w-10 text-gray-400 dark:text-gray-500 mb-3" />
                 <p className="text-sm font-medium dark:text-gray-300 text-center mb-1">
                   No hay planes activos
                 </p>
@@ -169,7 +169,7 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
                       <SelectItem key={plan.id} value={plan.id.toString()}>
                         <div className="flex items-center justify-between w-full">
                           <span>{plan.name}</span>
-                          <span className="ml-2 text-gray-500">
+                          <span className="ml-2 text-gray-500 dark:text-gray-400">
                             ${plan.price.toLocaleString()} • {plan.duration_days}d
                           </span>
                         </div>
@@ -178,7 +178,7 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
                   </SelectContent>
                 </Select>
                 {selectedPlan && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                     <span>Duración: <strong>{selectedPlan.duration_days} días</strong></span>
                     <span>•</span>
                     <span>Precio: <strong>${selectedPlan.price.toLocaleString()}</strong></span>

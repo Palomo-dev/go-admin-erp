@@ -244,7 +244,7 @@ export default function MembershipDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }
@@ -258,7 +258,7 @@ export default function MembershipDetailPage() {
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
@@ -386,7 +386,7 @@ export default function MembershipDetailPage() {
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent className="bg-white dark:bg-gray-800">
           <DialogHeader>
-            <DialogTitle className="text-red-600">Cancelar Membresía</DialogTitle>
+            <DialogTitle className="text-red-600 dark:text-red-400">Cancelar Membresía</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-gray-600 dark:text-gray-400">

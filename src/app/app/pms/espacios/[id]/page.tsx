@@ -401,7 +401,7 @@ export default function SpaceDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Cargando detalles del espacio...
           </p>
@@ -559,19 +559,19 @@ export default function SpaceDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-green-500" />
                       Baja
                     </span>
                   </SelectItem>
                   <SelectItem value="med">
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-yellow-500" />
                       Media
                     </span>
                   </SelectItem>
                   <SelectItem value="high">
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-red-500" />
                       Alta
                     </span>

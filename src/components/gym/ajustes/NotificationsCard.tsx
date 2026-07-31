@@ -16,8 +16,8 @@ export function NotificationsCard({ settings, onChange }: NotificationsCardProps
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Bell className="h-5 w-5 text-blue-600" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           <CardTitle className="text-lg">Notificaciones</CardTitle>
         </div>
         <CardDescription>
@@ -73,7 +73,7 @@ export function NotificationsCard({ settings, onChange }: NotificationsCardProps
               max={72}
               value={settings.reminderHoursBefore}
               onChange={(e) => onChange('reminderHoursBefore', parseInt(e.target.value) || 24)}
-              className="w-32"
+              className="w-full sm:w-32"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Cuántas horas antes enviar el recordatorio de clases

@@ -90,7 +90,7 @@ export function MembershipTimeline({ events, isLoading, maxVisible = 10 }: Membe
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-48" />
+          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-full sm:w-48" />
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -113,8 +113,8 @@ export function MembershipTimeline({ events, isLoading, maxVisible = 10 }: Membe
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <History className="h-5 w-5 text-purple-600" />
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <History className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             Trazabilidad Completa
           </CardTitle>
           <Badge variant="outline" className="text-xs">
@@ -164,19 +164,19 @@ export function MembershipTimeline({ events, isLoading, maxVisible = 10 }: Membe
                       hasDetails ? "hover:bg-gray-50 dark:hover:bg-gray-900/50" : "",
                       isExpanded ? "bg-gray-50 dark:bg-gray-900/50" : ""
                     )}>
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <p className="font-medium text-sm text-gray-900 dark:text-white">
                             {event.description || label}
                           </p>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
                             <span>{date.toLocaleDateString('es-CO')}</span>
                             <span>•</span>
                             <span>{date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
                             {event.performed_by && (
                               <>
                                 <span>•</span>
-                                <span className="flex items-center gap-1">
+                                <span className="flex flex-wrap items-center gap-1">
                                   <User className="h-3 w-3" />
                                   Usuario
                                 </span>

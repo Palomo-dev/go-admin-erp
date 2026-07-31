@@ -299,11 +299,11 @@ export default function GymCheckinPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <LogIn className="h-7 w-7 text-blue-600" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <LogIn className="h-7 w-7 text-blue-600 dark:text-blue-400" />
             Check-in Gimnasio
             {isToday && (
-              <span className="text-sm font-normal text-green-600 dark:text-green-400 flex items-center gap-1 ml-2">
+              <span className="text-sm font-normal text-green-600 dark:text-green-400 flex flex-wrap items-center gap-1 ml-2">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -316,7 +316,7 @@ export default function GymCheckinPage() {
             Control de acceso y registro de entradas
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Actualizar
@@ -337,7 +337,7 @@ export default function GymCheckinPage() {
       {expiringToday.length > 0 && (
         <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
           <CardContent className="py-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
               <div className="flex-1">
                 <span className="font-medium text-yellow-800 dark:text-yellow-200">
@@ -361,8 +361,8 @@ export default function GymCheckinPage() {
         <div className="space-y-6">
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <Search className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex flex-wrap items-center gap-2">
+                <Search className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 Buscar Miembro
               </h2>
               <CheckinSearch 
@@ -384,7 +384,7 @@ export default function GymCheckinPage() {
                     <button
                       key={member.membership.id}
                       onClick={() => selectMember(member)}
-                      className="w-full flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                      className="w-full flex flex-wrap items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
                     >
                       <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
                         <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -454,10 +454,10 @@ export default function GymCheckinPage() {
                   }}
                 />
                 
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="flex flex-wrap items-center gap-2 ml-auto">
                   <Select value={branchFilter} onValueChange={setBranchFilter}>
-                    <SelectTrigger className="w-[140px] bg-white dark:bg-gray-900">
-                      <Building2 className="h-4 w-4 mr-2 text-gray-400" />
+                    <SelectTrigger className="w-full sm:w-[140px] bg-white dark:bg-gray-900">
+                      <Building2 className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
                       <SelectValue placeholder="Sede" />
                     </SelectTrigger>
                     <SelectContent>
@@ -471,7 +471,7 @@ export default function GymCheckinPage() {
                   </Select>
 
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[130px] bg-white dark:bg-gray-900">
+                    <SelectTrigger className="w-full sm:w-[130px] bg-white dark:bg-gray-900">
                       <SelectValue placeholder="Estado" />
                     </SelectTrigger>
                     <SelectContent>
@@ -484,7 +484,7 @@ export default function GymCheckinPage() {
               </div>
 
               <div className="relative mt-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <Input
                   placeholder="Buscar por nombre, documento..."
                   value={searchTerm}

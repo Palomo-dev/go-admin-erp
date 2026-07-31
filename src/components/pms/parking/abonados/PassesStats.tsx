@@ -91,7 +91,7 @@ export function PassesStats({ stats, isLoading }: PassesStatsProps) {
             key={item.label}
             className="p-4 dark:bg-gray-800 dark:border-gray-700"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={`p-2 rounded-lg ${colors.bg}`}>
                 <Icon className={`h-5 w-5 ${colors.icon}`} />
               </div>

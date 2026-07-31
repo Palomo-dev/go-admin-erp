@@ -119,7 +119,7 @@ export function IncidentCard({
               <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                 {incident.title}
               </h3>
-              <p className="text-xs text-gray-500 flex items-center gap-1">
+              <p className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
                 <Calendar className="h-3 w-3" />
                 {timeAgo}
               </p>
@@ -207,12 +207,12 @@ export function IncidentCard({
         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           {incident.reference_type === 'trip' ? (
             <>
-              <Truck className="h-4 w-4 text-blue-500" />
+              <Truck className="h-4 w-4 text-blue-500 dark:text-blue-400" />
               <span>Viaje: {incident.trip?.trip_code || incident.reference_id.slice(0, 8)}</span>
             </>
           ) : (
             <>
-              <Package className="h-4 w-4 text-purple-500" />
+              <Package className="h-4 w-4 text-purple-500 dark:text-purple-400" />
               <span>Envío: {incident.shipment?.tracking_number || incident.reference_id.slice(0, 8)}</span>
             </>
           )}
@@ -221,7 +221,7 @@ export function IncidentCard({
         {/* Ubicación */}
         {incident.location_description && (
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <MapPin className="h-4 w-4 text-green-500" />
+            <MapPin className="h-4 w-4 text-green-500 dark:text-green-400" />
             <span className="truncate">{incident.location_description}</span>
           </div>
         )}
@@ -236,7 +236,7 @@ export function IncidentCard({
               </span>
             )}
             {incident.actual_cost > 0 && (
-              <span className="flex items-center gap-1 text-blue-600">
+              <span className="flex items-center gap-1 text-blue-600 dark:text-blue-300">
                 <DollarSign className="h-3 w-3" />
                 Real: {formatCurrency(incident.actual_cost)}
               </span>
@@ -247,18 +247,18 @@ export function IncidentCard({
         {/* Asignado a */}
         <div className="flex items-center justify-between pt-2 border-t dark:border-gray-700">
           <div className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-gray-400" />
+            <User className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             {incident.assigned_user ? (
               <span className="text-gray-700 dark:text-gray-300">
                 {incident.assigned_user.full_name}
               </span>
             ) : (
-              <span className="text-gray-400 italic">Sin asignar</span>
+              <span className="text-gray-400 italic dark:text-gray-500">Sin asignar</span>
             )}
           </div>
           
           {incident.sla_hours && (
-            <div className="flex items-center gap-1 text-xs text-gray-500">
+            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
               <Clock className="h-3 w-3" />
               SLA: {incident.sla_hours}h
             </div>

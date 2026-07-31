@@ -103,7 +103,7 @@ export function SimulatorDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5 text-blue-600" />
+            <Calculator className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Simulador de Tarifas
           </DialogTitle>
         </DialogHeader>
@@ -263,23 +263,23 @@ export function SimulatorDialog({
 
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
               </div>
             ) : results.length === 0 ? (
               <Card className="p-6 text-center">
                 {hasSearched ? (
                   <>
-                    <Info className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                    <p className="text-gray-500">No se encontraron tarifas aplicables</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <Info className="h-8 w-8 mx-auto text-gray-400 mb-2 dark:text-gray-500" />
+                    <p className="text-gray-500 dark:text-gray-400">No se encontraron tarifas aplicables</p>
+                    <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">
                       Verifica los filtros o crea nuevas tarifas
                     </p>
                   </>
                 ) : (
                   <>
-                    <Calculator className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                    <p className="text-gray-500">Ingresa los datos del envío</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <Calculator className="h-8 w-8 mx-auto text-gray-400 mb-2 dark:text-gray-500" />
+                    <p className="text-gray-500 dark:text-gray-400">Ingresa los datos del envío</p>
+                    <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">
                       y presiona calcular para ver las tarifas
                     </p>
                   </>
@@ -288,19 +288,19 @@ export function SimulatorDialog({
             ) : (
               <div className="space-y-3 max-h-[400px] overflow-y-auto">
                 {results.map((result, index) => (
-                  <Card key={result.rate.id} className={`p-4 ${index === 0 ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
+                  <Card key={result.rate.id} className={`p-4 ${index === 0 ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 dark:border-blue-400' : ''}`}>
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <h5 className="font-medium text-sm">{result.rate.rate_name}</h5>
                         {result.rate.transport_carriers && (
-                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                          <span className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
                             <Truck className="h-3 w-3" />
                             {result.rate.transport_carriers.name}
                           </span>
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-lg text-blue-600">
+                        <p className="font-bold text-lg text-blue-600 dark:text-blue-300">
                           {formatCurrency(result.total_cost, result.rate.currency)}
                         </p>
                         {index === 0 && (
@@ -340,7 +340,7 @@ export function SimulatorDialog({
                       )}
                     </div>
 
-                    <p className="text-xs text-gray-500 mt-2 italic">
+                    <p className="text-xs text-gray-500 mt-2 italic dark:text-gray-400">
                       {result.calculation_details}
                     </p>
                   </Card>

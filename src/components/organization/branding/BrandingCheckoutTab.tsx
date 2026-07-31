@@ -139,7 +139,7 @@ export default function BrandingCheckoutTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
       </div>
     );
   }
@@ -169,16 +169,16 @@ export default function BrandingCheckoutTab() {
               className={`p-4 rounded-lg border-2 text-left transition-colors ${
                 config.checkout_mode === 'steps'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-400'
-                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex items-center gap-1">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'steps' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
-                  <div className={`w-4 h-0.5 ${config.checkout_mode === 'steps' ? 'bg-blue-500' : 'bg-gray-200'}`} />
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'steps' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-                  <div className={`w-4 h-0.5 ${config.checkout_mode === 'steps' ? 'bg-blue-500' : 'bg-gray-200'}`} />
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'steps' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>3</div>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'steps' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>1</div>
+                  <div className={`w-4 h-0.5 ${config.checkout_mode === 'steps' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'steps' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>2</div>
+                  <div className={`w-4 h-0.5 ${config.checkout_mode === 'steps' ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'steps' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>3</div>
                 </div>
               </div>
               <p className="font-medium dark:text-white">3 pasos</p>
@@ -195,11 +195,11 @@ export default function BrandingCheckoutTab() {
               className={`p-4 rounded-lg border-2 text-left transition-colors ${
                 config.checkout_mode === 'one_page'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-400'
-                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className={`w-full h-6 rounded flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'one_page' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                <div className={`w-full h-6 rounded flex items-center justify-center text-xs font-bold ${config.checkout_mode === 'one_page' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
                   Todo en 1
                 </div>
               </div>
@@ -225,7 +225,7 @@ export default function BrandingCheckoutTab() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-600">
               <div className="flex items-center gap-3">
-                <Store className="h-5 w-5 text-green-600" />
+                <Store className="h-5 w-5 text-green-600 dark:text-green-300" />
                 <div>
                   <Label className="cursor-pointer font-medium">Retiro en tienda</Label>
                   <p className="text-xs text-muted-foreground">El cliente recoge en el local</p>
@@ -239,7 +239,7 @@ export default function BrandingCheckoutTab() {
 
             <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-600">
               <div className="flex items-center gap-3">
-                <Bike className="h-5 w-5 text-blue-600" />
+                <Bike className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                 <div>
                   <Label className="cursor-pointer font-medium">Delivery propio</Label>
                   <p className="text-xs text-muted-foreground">Entrega con tu equipo</p>
@@ -253,7 +253,7 @@ export default function BrandingCheckoutTab() {
 
             <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-600">
               <div className="flex items-center gap-3">
-                <Truck className="h-5 w-5 text-purple-600" />
+                <Truck className="h-5 w-5 text-purple-600 dark:text-purple-300" />
                 <div>
                   <Label className="cursor-pointer font-medium">Delivery tercero</Label>
                   <p className="text-xs text-muted-foreground">Transportador externo</p>
@@ -429,7 +429,7 @@ export default function BrandingCheckoutTab() {
                       setConfig(newConfig);
                       saveConfig(newConfig);
                     }}
-                    className="text-red-500 hover:text-red-700"
+                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

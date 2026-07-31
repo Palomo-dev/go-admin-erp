@@ -49,9 +49,9 @@ export function DNSInstructions({
       className="h-8 px-2 dark:hover:bg-gray-700"
     >
       {copiedField === field ? (
-        <Check className="h-4 w-4 text-green-500" />
+        <Check className="h-4 w-4 text-green-500 dark:text-green-400" />
       ) : (
-        <Copy className="h-4 w-4 text-gray-500" />
+        <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
       )}
     </Button>
   );

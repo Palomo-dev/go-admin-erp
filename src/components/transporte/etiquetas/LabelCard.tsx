@@ -89,7 +89,7 @@ export function LabelCard({
         {/* Icono y número */}
         <div className="flex items-start gap-3">
           <div className={`p-2 rounded-lg ${label.is_void ? 'bg-gray-100 dark:bg-gray-800' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
-            <Tag className={`h-5 w-5 ${label.is_void ? 'text-gray-400' : 'text-blue-600 dark:text-blue-400'}`} />
+            <Tag className={`h-5 w-5 ${label.is_void ? 'text-gray-400 dark:text-gray-500' : 'text-blue-600 dark:text-blue-400'}`} />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -137,7 +137,7 @@ export function LabelCard({
                   Re-generar
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onVoid(label)} className="text-red-600">
+                <DropdownMenuItem onClick={() => onVoid(label)} className="text-red-600 dark:text-red-300">
                   <Ban className="h-4 w-4 mr-2" />
                   Anular
                 </DropdownMenuItem>
@@ -151,14 +151,14 @@ export function LabelCard({
       {label.shipments && (
         <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2 text-sm">
-            <Package className="h-4 w-4 text-gray-400" />
+            <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <span className="font-medium">{label.shipments.shipment_number}</span>
             {label.shipments.tracking_number && (
-              <span className="text-gray-500">• {label.shipments.tracking_number}</span>
+              <span className="text-gray-500 dark:text-gray-400">• {label.shipments.tracking_number}</span>
             )}
           </div>
           {label.shipments.delivery_contact_name && (
-            <p className="text-sm text-gray-500 mt-1 ml-6">
+            <p className="text-sm text-gray-500 mt-1 ml-6 dark:text-gray-400">
               {label.shipments.delivery_contact_name}
               {label.shipments.delivery_city && ` - ${label.shipments.delivery_city}`}
             </p>
@@ -169,7 +169,7 @@ export function LabelCard({
       {/* Info del carrier */}
       {label.transport_carriers && (
         <div className="mt-3 flex items-center gap-2 text-sm">
-          <Truck className="h-4 w-4 text-gray-400" />
+          <Truck className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           <span className="text-gray-600 dark:text-gray-400">
             {label.transport_carriers.name}
           </span>
@@ -183,7 +183,7 @@ export function LabelCard({
 
       {/* Footer con fecha y acciones rápidas */}
       <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-400 dark:text-gray-500">
           Creada: {format(new Date(label.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
         </p>
         {!label.is_void && (

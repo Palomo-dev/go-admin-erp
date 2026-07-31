@@ -173,7 +173,7 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecip
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5 text-green-600" />
+            <FileCheck className="h-5 w-5 text-green-600 dark:text-green-300" />
             Confirmar Entrega
           </DialogTitle>
         </DialogHeader>
@@ -258,11 +258,11 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecip
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-colors"
+                    className="w-full h-40 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-colors dark:hover:border-blue-400 dark:hover:text-blue-400"
                   >
                     <ImageIcon className="h-8 w-8" />
                     <span className="text-sm font-medium">Seleccionar imagen</span>
-                    <span className="text-xs text-gray-400">Click para elegir un archivo</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Click para elegir un archivo</span>
                   </button>
                 )}
 
@@ -270,7 +270,7 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecip
                 {captureMode === 'camera' && (
                   <div className="space-y-2">
                     {cameraError ? (
-                      <div className="w-full h-40 border-2 border-red-300 dark:border-red-800 rounded-lg flex flex-col items-center justify-center gap-2 text-red-500 p-4 text-center">
+                      <div className="w-full h-40 border-2 border-red-300 dark:border-red-800 rounded-lg flex flex-col items-center justify-center gap-2 text-red-500 p-4 text-center dark:text-red-400">
                         <Camera className="h-8 w-8" />
                         <span className="text-sm font-medium">Error: {cameraError}</span>
                         <Button size="sm" variant="outline" onClick={startCamera} className="mt-1">

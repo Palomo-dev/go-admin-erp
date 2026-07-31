@@ -121,7 +121,7 @@ export function AssignDriverDialog({
               size="sm"
               onClick={handleUnassign}
               disabled={assigning}
-              className="text-red-600 border-red-300 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20"
+              className="text-red-600 border-red-300 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20 dark:text-red-300"
             >
               <UserMinus className="h-4 w-4 mr-1" />
               Desasignar
@@ -131,7 +131,7 @@ export function AssignDriverDialog({
         )}
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por nombre, teléfono o licencia..."
             value={searchTerm}
@@ -143,12 +143,12 @@ export function AssignDriverDialog({
         <ScrollArea className="h-[300px] rounded-lg border">
           {isLoading ? (
             <div className="flex items-center justify-center h-full py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <span className="ml-2 text-sm text-gray-500">Cargando conductores...</span>
+              <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
+              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Cargando conductores...</span>
             </div>
           ) : filteredDrivers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-8 text-gray-500">
-              <User className="h-8 w-8 mb-2 text-gray-300" />
+            <div className="flex flex-col items-center justify-center h-full py-8 text-gray-500 dark:text-gray-400">
+              <User className="h-8 w-8 mb-2 text-gray-300 dark:text-gray-600" />
               <p className="text-sm">No se encontraron conductores</p>
             </div>
           ) : (

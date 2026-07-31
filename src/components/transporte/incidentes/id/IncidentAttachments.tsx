@@ -48,9 +48,9 @@ export function IncidentAttachments({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const getFileIcon = (type: string) => {
-    if (type.startsWith('image/')) return <Image className="h-8 w-8 text-blue-500" />;
-    if (type.includes('pdf')) return <FileText className="h-8 w-8 text-red-500" />;
-    return <File className="h-8 w-8 text-gray-500" />;
+    if (type.startsWith('image/')) return <Image className="h-8 w-8 text-blue-500 dark:text-blue-400" />;
+    if (type.includes('pdf')) return <FileText className="h-8 w-8 text-red-500 dark:text-red-400" />;
+    return <File className="h-8 w-8 text-gray-500 dark:text-gray-400" />;
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,10 +99,10 @@ export function IncidentAttachments({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Paperclip className="h-5 w-5 text-blue-600" />
+            <Paperclip className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Evidencias y Adjuntos
             {attachments.length > 0 && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
                 ({attachments.length})
               </span>
             )}
@@ -189,7 +189,7 @@ export function IncidentAttachments({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-300 dark:hover:text-red-200"
                       onClick={() => setAttachmentToDelete(attachment)}
                     >
                       <Trash2 className="h-3 w-3" />

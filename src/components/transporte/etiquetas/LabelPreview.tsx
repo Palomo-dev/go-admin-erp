@@ -53,7 +53,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
           <div className="grid grid-cols-2 gap-4 text-sm">
             {/* Remitente (origen) */}
             <div>
-              <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1">
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1 dark:text-gray-400">
                 <Package className="h-3 w-3" />
                 Envío
               </p>
@@ -67,7 +67,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
 
             {/* Destinatario */}
             <div>
-              <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1">
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1 dark:text-gray-400">
                 <MapPin className="h-3 w-3" />
                 Destino
               </p>
@@ -81,7 +81,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
           {/* Dirección completa */}
           {label.shipments.delivery_address && (
             <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
-              <p className="text-xs text-gray-500 uppercase font-semibold mb-1">
+              <p className="text-xs text-gray-500 uppercase font-semibold mb-1 dark:text-gray-400">
                 Dirección de Entrega
               </p>
               <p>{label.shipments.delivery_address}</p>
@@ -101,7 +101,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
       <div className="flex justify-between items-center text-sm">
         {label.transport_carriers && (
           <div className="flex items-center gap-2">
-            <Truck className="h-4 w-4 text-gray-400" />
+            <Truck className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <span className="font-medium">{label.transport_carriers.name}</span>
           </div>
         )}
@@ -113,7 +113,7 @@ export function LabelPreview({ label, className = '' }: LabelPreviewProps) {
       </div>
 
       {/* Footer */}
-      <div className="mt-4 pt-4 border-t flex justify-between items-center text-xs text-gray-500">
+      <div className="mt-4 pt-4 border-t flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-1">
           <Calendar className="h-3 w-3" />
           {format(new Date(label.created_at), "dd/MM/yyyy", { locale: es })}

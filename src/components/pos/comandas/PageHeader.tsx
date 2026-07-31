@@ -17,7 +17,7 @@ export function PageHeader({ onRefresh, isLoading, soundEnabled, onToggleSound }
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <ChefHat className="h-8 w-8 text-blue-600" />
+            <ChefHat className="h-8 w-8 text-blue-600 dark:text-blue-300" />
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Comandas de Cocina
@@ -36,7 +36,7 @@ export function PageHeader({ onRefresh, isLoading, soundEnabled, onToggleSound }
                 size="icon"
                 title={soundEnabled ? 'Desactivar sonido de notificación' : 'Activar sonido de notificación'}
               >
-                {soundEnabled ? <Volume2 className="h-4 w-4 text-blue-600" /> : <VolumeX className="h-4 w-4 text-gray-400" />}
+                {soundEnabled ? <Volume2 className="h-4 w-4 text-blue-600 dark:text-blue-300" /> : <VolumeX className="h-4 w-4 text-gray-400 dark:text-gray-500" />}
               </Button>
             )}
             <Button

@@ -100,7 +100,7 @@ export function RouteStopDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-blue-600" />
+            <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {isEditing ? 'Editar Parada' : 'Agregar Parada'}
           </DialogTitle>
           <DialogDescription>

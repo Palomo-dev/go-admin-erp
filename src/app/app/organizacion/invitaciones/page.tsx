@@ -104,7 +104,7 @@ export default function InvitacionesPage() {
   if (error) {
     return (
       <div className="p-8">
-        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4">
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 dark:border-red-400">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -123,7 +123,7 @@ export default function InvitacionesPage() {
   if (!isOrgAdmin) {
     return (
       <div className="p-8">
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 p-4">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 p-4 dark:border-yellow-400">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-yellow-500 dark:text-yellow-400" viewBox="0 0 20 20" fill="currentColor">

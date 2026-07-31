@@ -184,7 +184,7 @@ export function VehicleDialog({
                 placeholder="ABC-123"
               />
               {errors.plate_number && (
-                <p className="text-sm text-red-500">{errors.plate_number.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.plate_number.message}</p>
               )}
             </div>
 

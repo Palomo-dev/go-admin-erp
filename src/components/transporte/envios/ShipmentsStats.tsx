@@ -38,40 +38,40 @@ export function ShipmentsStats({ stats }: ShipmentsStatsProps) {
       value: stats.total,
       sub: stats.shipmentsToday ? `${stats.shipmentsToday} hoy` : undefined,
       icon: <Package className="h-5 w-5" />,
-      color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
+      color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300',
     },
     {
       title: 'Tasa de Entrega',
       value: `${stats.deliveryRate ?? 0}%`,
       sub: `${stats.delivered} entregados`,
       icon: <TrendingUp className="h-5 w-5" />,
-      color: 'text-green-600 bg-green-100 dark:bg-green-900/30',
+      color: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-300',
     },
     {
       title: 'Sin Asignar',
       value: stats.unassignedPending ?? 0,
       sub: 'pendientes sin conductor',
       icon: <UserX className="h-5 w-5" />,
-      color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30',
+      color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300',
     },
     {
       title: 'Ingresos',
       value: fmtCOP(stats.revenue),
       sub: 'envíos entregados',
       icon: <DollarSign className="h-5 w-5" />,
-      color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30',
+      color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300',
     },
   ];
 
   const statusCards = [
-    { title: 'Pendientes', value: stats.pending, icon: <Clock className="h-4 w-4" />, color: 'text-yellow-600' },
-    { title: 'Asignados', value: stats.assigned, icon: <ClipboardList className="h-4 w-4" />, color: 'text-cyan-600' },
-    { title: 'En Tránsito', value: stats.inTransit, icon: <Truck className="h-4 w-4" />, color: 'text-purple-600' },
-    { title: 'En Entrega', value: stats.outForDelivery, icon: <Truck className="h-4 w-4" />, color: 'text-orange-600' },
-    { title: 'Entregados', value: stats.delivered, icon: <CheckCircle className="h-4 w-4" />, color: 'text-green-600' },
-    { title: 'Fallidos', value: stats.failed, icon: <AlertCircle className="h-4 w-4" />, color: 'text-red-600' },
-    { title: 'Devueltos', value: stats.returned, icon: <RotateCcw className="h-4 w-4" />, color: 'text-orange-600' },
-    { title: 'Cancelados', value: stats.cancelled, icon: <XCircle className="h-4 w-4" />, color: 'text-gray-600' },
+    { title: 'Pendientes', value: stats.pending, icon: <Clock className="h-4 w-4" />, color: 'text-yellow-600 dark:text-yellow-300' },
+    { title: 'Asignados', value: stats.assigned, icon: <ClipboardList className="h-4 w-4" />, color: 'text-cyan-600 dark:text-cyan-300' },
+    { title: 'En Tránsito', value: stats.inTransit, icon: <Truck className="h-4 w-4" />, color: 'text-purple-600 dark:text-purple-300' },
+    { title: 'En Entrega', value: stats.outForDelivery, icon: <Truck className="h-4 w-4" />, color: 'text-orange-600 dark:text-orange-300' },
+    { title: 'Entregados', value: stats.delivered, icon: <CheckCircle className="h-4 w-4" />, color: 'text-green-600 dark:text-green-300' },
+    { title: 'Fallidos', value: stats.failed, icon: <AlertCircle className="h-4 w-4" />, color: 'text-red-600 dark:text-red-300' },
+    { title: 'Devueltos', value: stats.returned, icon: <RotateCcw className="h-4 w-4" />, color: 'text-orange-600 dark:text-orange-300' },
+    { title: 'Cancelados', value: stats.cancelled, icon: <XCircle className="h-4 w-4" />, color: 'text-gray-600 dark:text-gray-300' },
   ];
 
   const extraStats = [
@@ -114,10 +114,10 @@ export function ShipmentsStats({ stats }: ShipmentsStatsProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {extraStats.map((stat) => (
           <Card key={stat.label} className="p-3 flex items-center gap-2">
-            <span className="text-gray-400">{stat.icon}</span>
+            <span className="text-gray-400 dark:text-gray-500">{stat.icon}</span>
             <div>
               <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{stat.value}</p>
-              <p className="text-xs text-gray-400">{stat.label}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">{stat.label}</p>
             </div>
           </Card>
         ))}

@@ -57,20 +57,20 @@ export default function EditorHeader({
   ];
 
   return (
-    <div className="h-14 bg-blue-600 text-white flex items-center justify-between px-4 border-b border-blue-700 shrink-0">
+    <div className="h-14 bg-blue-600 text-white flex items-center justify-between px-4 border-b border-blue-700 shrink-0 dark:border-blue-200">
       {/* Left: Back + Page name */}
       <div className="flex items-center gap-3">
         <Link
           href="/app/organizacion/branding"
-          className="p-1.5 rounded hover:bg-white/10 transition-colors"
+          className="p-1.5 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-blue-200">{t('editing')}</span>
+          <span className="text-sm text-blue-200 dark:text-blue-700">{t('editing')}</span>
           <Select value={currentPageId} onValueChange={onPageChange}>
-            <SelectTrigger className="h-8 w-[180px] bg-white/10 border-white/20 text-white text-sm">
+            <SelectTrigger className="h-8 w-[180px] bg-white/10 border-white/20 text-white text-sm dark:bg-gray-800/10 dark:border-gray-700/20">
               <SelectValue placeholder={t('selectPage')} />
             </SelectTrigger>
             <SelectContent>
@@ -85,7 +85,7 @@ export default function EditorHeader({
       </div>
 
       {/* Center: Device Preview Toggle */}
-      <div className="flex items-center gap-1 bg-white/10 rounded-lg p-0.5">
+      <div className="flex items-center gap-1 bg-white/10 rounded-lg p-0.5 dark:bg-gray-800/10">
         {devices.map((device) => {
           const Icon = device.icon;
           return (
@@ -96,8 +96,8 @@ export default function EditorHeader({
               className={cn(
                 'p-1.5 rounded transition-colors',
                 devicePreview === device.id
-                  ? 'bg-white/20 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  ? 'bg-white/20 text-white dark:bg-gray-800/20'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10 dark:text-gray-500 dark:hover:bg-gray-800/10'
               )}
             >
               <Icon className="h-4 w-4" />
@@ -113,7 +113,7 @@ export default function EditorHeader({
             href={previewUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded hover:bg-white/10 transition-colors text-gray-300 hover:text-white"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded hover:bg-white/10 transition-colors text-gray-300 hover:text-white dark:hover:bg-gray-800/10 dark:text-gray-600"
           >
             <Eye className="h-3.5 w-3.5" />
             {t('viewSite')}

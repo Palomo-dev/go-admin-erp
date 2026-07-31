@@ -148,7 +148,7 @@ export function DriverDialog({
               </SelectContent>
             </Select>
             {errors.employment_id && (
-              <p className="text-sm text-red-500">{errors.employment_id.message}</p>
+              <p className="text-sm text-red-500 dark:text-red-400">{errors.employment_id.message}</p>
             )}
           </div>
 
@@ -161,7 +161,7 @@ export function DriverDialog({
                 placeholder="123456789"
               />
               {errors.license_number && (
-                <p className="text-sm text-red-500">{errors.license_number.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.license_number.message}</p>
               )}
             </div>
 
@@ -186,7 +186,7 @@ export function DriverDialog({
                 </SelectContent>
               </Select>
               {errors.license_category && (
-                <p className="text-sm text-red-500">{errors.license_category.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.license_category.message}</p>
               )}
             </div>
           </div>
@@ -200,7 +200,7 @@ export function DriverDialog({
                 {...register('license_expiry')}
               />
               {errors.license_expiry && (
-                <p className="text-sm text-red-500">{errors.license_expiry.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.license_expiry.message}</p>
               )}
             </div>
 
@@ -221,7 +221,7 @@ export function DriverDialog({
               {...register('certifications')}
               placeholder="Matpel, Primeros Auxilios, Defensivo..."
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Separa las certificaciones con comas
             </p>
           </div>

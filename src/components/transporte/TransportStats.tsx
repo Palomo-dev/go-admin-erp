@@ -42,10 +42,10 @@ export function TransportStats({ stats, isLoading }: TransportStatsProps) {
       icon: Bus,
       color: 'blue',
       items: [
-        { label: 'Programados', value: stats.trips.scheduled, color: 'text-blue-600' },
-        { label: 'En ruta', value: stats.trips.in_transit, color: 'text-yellow-600' },
-        { label: 'Completados', value: stats.trips.completed, color: 'text-green-600' },
-        { label: 'Cancelados', value: stats.trips.cancelled, color: 'text-red-600' },
+        { label: 'Programados', value: stats.trips.scheduled, color: 'text-blue-600 dark:text-blue-300' },
+        { label: 'En ruta', value: stats.trips.in_transit, color: 'text-yellow-600 dark:text-yellow-300' },
+        { label: 'Completados', value: stats.trips.completed, color: 'text-green-600 dark:text-green-300' },
+        { label: 'Cancelados', value: stats.trips.cancelled, color: 'text-red-600 dark:text-red-300' },
       ]
     },
     {
@@ -53,10 +53,10 @@ export function TransportStats({ stats, isLoading }: TransportStatsProps) {
       icon: Package,
       color: 'purple',
       items: [
-        { label: 'Listos', value: stats.shipments.ready, color: 'text-blue-600' },
-        { label: 'En tránsito', value: stats.shipments.in_transit, color: 'text-yellow-600' },
-        { label: 'Entregados', value: stats.shipments.delivered, color: 'text-green-600' },
-        { label: 'Fallidos', value: stats.shipments.failed, color: 'text-red-600' },
+        { label: 'Listos', value: stats.shipments.ready, color: 'text-blue-600 dark:text-blue-300' },
+        { label: 'En tránsito', value: stats.shipments.in_transit, color: 'text-yellow-600 dark:text-yellow-300' },
+        { label: 'Entregados', value: stats.shipments.delivered, color: 'text-green-600 dark:text-green-300' },
+        { label: 'Fallidos', value: stats.shipments.failed, color: 'text-red-600 dark:text-red-300' },
       ]
     },
     {
@@ -64,9 +64,9 @@ export function TransportStats({ stats, isLoading }: TransportStatsProps) {
       icon: Ticket,
       color: 'green',
       items: [
-        { label: 'Vendidos', value: stats.tickets.sold_today, color: 'text-blue-600' },
-        { label: 'Ingresos', value: formatCurrency(stats.tickets.revenue_today), color: 'text-green-600', isText: true },
-        { label: 'Ocupación', value: `${stats.tickets.occupancy_avg}%`, color: 'text-purple-600', isText: true },
+        { label: 'Vendidos', value: stats.tickets.sold_today, color: 'text-blue-600 dark:text-blue-300' },
+        { label: 'Ingresos', value: formatCurrency(stats.tickets.revenue_today), color: 'text-green-600 dark:text-green-300', isText: true },
+        { label: 'Ocupación', value: `${stats.tickets.occupancy_avg}%`, color: 'text-purple-600 dark:text-purple-300', isText: true },
       ]
     },
     {
@@ -74,9 +74,9 @@ export function TransportStats({ stats, isLoading }: TransportStatsProps) {
       icon: AlertTriangle,
       color: 'red',
       items: [
-        { label: 'Abiertos', value: stats.incidents.open, color: 'text-yellow-600' },
-        { label: 'Críticos', value: stats.incidents.critical, color: 'text-red-600' },
-        { label: 'SLA vencido', value: stats.incidents.sla_breached, color: 'text-orange-600' },
+        { label: 'Abiertos', value: stats.incidents.open, color: 'text-yellow-600 dark:text-yellow-300' },
+        { label: 'Críticos', value: stats.incidents.critical, color: 'text-red-600 dark:text-red-300' },
+        { label: 'SLA vencido', value: stats.incidents.sla_breached, color: 'text-orange-600 dark:text-orange-300' },
       ]
     },
   ];

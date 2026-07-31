@@ -30,7 +30,7 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
       <div className="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-900">
         <div className="text-center space-y-3 max-w-sm">
           <div className="mx-auto w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
-            <Globe className="h-8 w-8 text-gray-400" />
+            <Globe className="h-8 w-8 text-gray-400 dark:text-gray-500" />
           </div>
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
             {t('noPreviewTitle')}
@@ -62,7 +62,7 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
       <div className="flex-1 flex items-start justify-center p-4 overflow-auto">
         <div
           className={cn(
-            'bg-white shadow-2xl rounded-lg overflow-hidden transition-all duration-300 relative',
+            'bg-white shadow-2xl rounded-lg overflow-hidden transition-all duration-300 relative dark:bg-gray-800',
             devicePreview !== 'desktop' && 'border border-gray-300 dark:border-gray-600'
           )}
           style={{
@@ -73,23 +73,23 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
         >
           {/* Loading Overlay */}
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-white z-10 dark:bg-gray-800">
               <div className="text-center space-y-2">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-                <p className="text-sm text-gray-500">{t('loading')}</p>
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto dark:text-blue-300" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('loading')}</p>
               </div>
             </div>
           )}
 
           {/* Error State */}
           {hasError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10 dark:bg-gray-900">
               <div className="text-center space-y-2">
-                <AlertCircle className="h-8 w-8 text-orange-500 mx-auto" />
-                <p className="text-sm text-gray-600">
+                <AlertCircle className="h-8 w-8 text-orange-500 mx-auto dark:text-orange-400" />
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   {t('loadError')}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 dark:text-gray-500">
                   {t('loadErrorHint')}
                 </p>
               </div>

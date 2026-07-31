@@ -66,7 +66,7 @@ export function CarriersList({
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <Truck className="h-12 w-12 text-gray-400 mb-4" />
+          <Truck className="h-12 w-12 text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No hay transportadoras
           </h3>
@@ -159,7 +159,7 @@ export function CarriersList({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onDelete(carrier)}
-                    className="text-red-600"
+                    className="text-red-600 dark:text-red-300"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Eliminar

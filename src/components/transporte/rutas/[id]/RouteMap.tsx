@@ -286,7 +286,7 @@ export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProp
     <Card>
       <CardHeader className="flex flex-row items-center justify-between py-3">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Map className="h-5 w-5 text-blue-600" />
+          <Map className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           Mapa de la Ruta
         </CardTitle>
         <div className="flex items-center gap-2">
@@ -329,8 +329,8 @@ export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProp
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
               <div className="text-center">
-                <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Cargando mapa...</p>
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2 dark:text-blue-300" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">Cargando mapa...</p>
               </div>
             </div>
           )}
@@ -338,8 +338,8 @@ export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProp
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 z-10">
               <div className="text-center">
-                <Map className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">{error}</p>
+                <Map className="h-10 w-10 text-gray-400 mx-auto mb-2 dark:text-gray-500" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">{error}</p>
               </div>
             </div>
           )}
@@ -347,11 +347,11 @@ export function RouteMap({ route, onRecalculate, isRecalculating }: RouteMapProp
           {!hasCoordinates && !isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80 dark:bg-gray-800/80 z-10">
               <div className="text-center p-4">
-                <MapPin className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                <MapPin className="h-10 w-10 text-gray-400 mx-auto mb-2 dark:text-gray-500" />
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                   Sin coordenadas
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">
                   Las paradas no tienen coordenadas definidas
                 </p>
               </div>

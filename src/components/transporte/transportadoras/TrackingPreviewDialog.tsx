@@ -67,7 +67,7 @@ export function TrackingPreviewDialog({
               readOnly
               className="bg-gray-50 dark:bg-gray-800 font-mono text-sm"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               La variable {'{tracking_number}'} será reemplazada por el número de guía
             </p>
           </div>
@@ -97,7 +97,7 @@ export function TrackingPreviewDialog({
                 title="Copiar URL"
               >
                 {copied ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}

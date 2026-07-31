@@ -122,7 +122,7 @@ export function GenerateTripsDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-600" />
+            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Generar Viajes
           </DialogTitle>
           <DialogDescription>
@@ -137,7 +137,7 @@ export function GenerateTripsDialog({
               <span className="font-medium">{schedule.schedule_name || 'Sin nombre'}</span>
               <Badge variant="outline">{schedule.departure_time}</Badge>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {schedule.transport_routes?.name} • {getRecurrenceDescription()}
             </p>
           </div>
@@ -189,7 +189,7 @@ export function GenerateTripsDialog({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 No hay fechas que coincidan con la programación
               </p>
             )}
@@ -214,20 +214,20 @@ export function GenerateTripsDialog({
           {result && (
             <Alert variant={result.created > 0 ? 'default' : 'destructive'}>
               {result.created > 0 ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-300" />
               ) : (
                 <XCircle className="h-4 w-4" />
               )}
               <AlertDescription>
                 <div className="space-y-1">
                   <p>
-                    <span className="font-medium text-green-600">{result.created}</span> viajes creados
+                    <span className="font-medium text-green-600 dark:text-green-300">{result.created}</span> viajes creados
                     {result.skipped > 0 && (
-                      <span className="text-gray-500"> • {result.skipped} ya existían</span>
+                      <span className="text-gray-500 dark:text-gray-400"> • {result.skipped} ya existían</span>
                     )}
                   </p>
                   {result.errors.length > 0 && (
-                    <div className="text-sm text-red-600">
+                    <div className="text-sm text-red-600 dark:text-red-300">
                       <p>Errores:</p>
                       <ul className="list-disc list-inside">
                         {result.errors.slice(0, 3).map((e, i) => (

@@ -257,7 +257,7 @@ export function ShipmentDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-600" />
+            <Package className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {shipment ? 'Editar Envío' : 'Nuevo Envío'}
           </DialogTitle>
         </DialogHeader>
@@ -452,7 +452,7 @@ export function ShipmentDialog({
                       }}
                     >
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{rate.rate_name}</div>
-                      <div className="text-xs text-gray-500 flex items-center gap-2">
+                      <div className="text-xs text-gray-500 flex items-center gap-2 dark:text-gray-400">
                         {rate.transport_carriers && <span>{rate.transport_carriers.name}</span>}
                         <span className="font-semibold text-green-600 dark:text-green-400">
                           ${rate.base_rate || rate.min_charge || 0}
@@ -552,7 +552,7 @@ export function ShipmentDialog({
               </Button>
             </div>
             {items.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-gray-500 text-center py-4 dark:text-gray-400">
                 No hay items agregados
               </p>
             ) : (
@@ -605,7 +605,7 @@ export function ShipmentDialog({
                         size="sm"
                         variant="ghost"
                         onClick={() => removeItem(item.id)}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

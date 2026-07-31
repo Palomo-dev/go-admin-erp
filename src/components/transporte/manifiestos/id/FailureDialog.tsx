@@ -95,7 +95,7 @@ export function FailureDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-red-600" />
+            <XCircle className="h-5 w-5 text-red-600 dark:text-red-300" />
             Registrar Entrega Fallida
           </DialogTitle>
         </DialogHeader>
@@ -103,11 +103,11 @@ export function FailureDialog({
         {shipment && (
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
             <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-gray-500" />
+              <Package className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               <span className="font-medium">{shipment.shipment_number}</span>
             </div>
             {shipment.delivery_address && (
-              <p className="text-sm text-gray-500 mt-1 truncate">
+              <p className="text-sm text-gray-500 mt-1 truncate dark:text-gray-400">
                 {shipment.delivery_address}
               </p>
             )}

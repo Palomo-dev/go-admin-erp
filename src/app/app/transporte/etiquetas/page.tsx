@@ -274,7 +274,7 @@ export default function EtiquetasPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Tag className="h-6 w-6 text-blue-600" />
+            <Tag className="h-6 w-6 text-blue-600 dark:text-blue-300" />
             Etiquetas de Envío
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -306,44 +306,44 @@ export default function EtiquetasPage() {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
+              <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-sm text-gray-500">Total</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
             </div>
           </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-              <Tag className="h-5 w-5 text-green-600" />
+              <Tag className="h-5 w-5 text-green-600 dark:text-green-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.active}</p>
-              <p className="text-sm text-gray-500">Activas</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Activas</p>
             </div>
           </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-              <Printer className="h-5 w-5 text-purple-600" />
+              <Printer className="h-5 w-5 text-purple-600 dark:text-purple-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.printed}</p>
-              <p className="text-sm text-gray-500">Impresas</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Impresas</p>
             </div>
           </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
-              <Tag className="h-5 w-5 text-red-600" />
+              <Tag className="h-5 w-5 text-red-600 dark:text-red-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.void}</p>
-              <p className="text-sm text-gray-500">Anuladas</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Anuladas</p>
             </div>
           </div>
         </Card>
@@ -352,7 +352,7 @@ export default function EtiquetasPage() {
       {/* Filtros */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por número, código de barras..."
             value={searchTerm}
@@ -391,13 +391,13 @@ export default function EtiquetasPage() {
           {isLoading ? (
             <Card className="p-8">
               <div className="flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
                 <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando etiquetas...</span>
               </div>
             </Card>
           ) : labels.length === 0 ? (
             <Card className="p-8 text-center">
-              <Tag className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <Tag className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay etiquetas</h3>
               <p className="text-gray-600 dark:text-gray-400 mt-1 mb-4">
                 {shipments.length > 0
@@ -465,7 +465,7 @@ export default function EtiquetasPage() {
               </div>
             </div>
           ) : (
-            <Card className="p-6 text-center text-gray-500">
+            <Card className="p-6 text-center text-gray-500 dark:text-gray-400">
               <Tag className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Seleccione una etiqueta para ver la vista previa</p>
             </Card>

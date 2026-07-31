@@ -15,7 +15,7 @@ export default function PageEditorRedirect() {
 
   return (
     <div className="flex items-center justify-center h-64">
-      <p className="text-sm text-gray-500">Redirigiendo al editor...</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">Redirigiendo al editor...</p>
     </div>
   );
 }

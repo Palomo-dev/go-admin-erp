@@ -33,7 +33,7 @@ export default function PageSEOPanel({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className="text-xs text-gray-500 dark:text-gray-400">{t('metaTitle')}</Label>
-          <span className={`text-[10px] ${titleLength > 60 ? 'text-red-500' : 'text-gray-400'}`}>
+          <span className={`text-[10px] ${titleLength > 60 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
             {titleLength}/60
           </span>
         </div>
@@ -50,7 +50,7 @@ export default function PageSEOPanel({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className="text-xs text-gray-500 dark:text-gray-400">{t('metaDescription')}</Label>
-          <span className={`text-[10px] ${descLength > 160 ? 'text-red-500' : 'text-gray-400'}`}>
+          <span className={`text-[10px] ${descLength > 160 ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
             {descLength}/160
           </span>
         </div>

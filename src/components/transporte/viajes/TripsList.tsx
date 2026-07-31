@@ -102,7 +102,7 @@ export function TripsList({
     return (
       <Card className="p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
           <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando viajes...</span>
         </div>
       </Card>
@@ -113,7 +113,7 @@ export function TripsList({
     return (
       <Card className="p-8">
         <div className="text-center">
-          <Bus className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <Bus className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No hay viajes
           </h3>
@@ -161,7 +161,7 @@ export function TripsList({
                     <span className="font-medium">
                       {format(new Date(trip.trip_date), 'dd/MM/yyyy', { locale: es })}
                     </span>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {format(new Date(trip.scheduled_departure), 'HH:mm')}
                       {trip.scheduled_arrival && (
                         <> - {format(new Date(trip.scheduled_arrival), 'HH:mm')}</>
@@ -171,7 +171,7 @@ export function TripsList({
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span>{trip.transport_routes?.name || '-'}</span>
                   </div>
                 </TableCell>
@@ -179,12 +179,12 @@ export function TripsList({
                   {trip.vehicles ? (
                     <div className="flex flex-col">
                       <span>{trip.vehicles.plate}</span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         {trip.vehicles.brand} {trip.vehicles.model}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-gray-400">Sin asignar</span>
+                    <span className="text-gray-400 dark:text-gray-500">Sin asignar</span>
                   )}
                 </TableCell>
                 <TableCell>
@@ -194,16 +194,16 @@ export function TripsList({
                       {trip.driver_credentials.employments.organization_members.profiles.last_name}
                     </span>
                   ) : (
-                    <span className="text-gray-400">Sin asignar</span>
+                    <span className="text-gray-400 dark:text-gray-500">Sin asignar</span>
                   )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-gray-400" />
+                    <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span>
                       {occupancy.occupied}/{occupancy.total}
                     </span>
-                    <span className="text-xs text-gray-500">({occupancy.percentage}%)</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">({occupancy.percentage}%)</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -255,7 +255,7 @@ export function TripsList({
                       {trip.status !== 'cancelled' && trip.status !== 'completed' && (
                         <DropdownMenuItem
                           onClick={() => onStatusChange(trip, 'cancelled')}
-                          className="text-red-600"
+                          className="text-red-600 dark:text-red-300"
                         >
                           <AlertTriangle className="h-4 w-4 mr-2" />
                           Cancelar
@@ -263,7 +263,7 @@ export function TripsList({
                       )}
                       <DropdownMenuItem
                         onClick={() => onDelete(trip)}
-                        className="text-red-600"
+                        className="text-red-600 dark:text-red-300"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Eliminar

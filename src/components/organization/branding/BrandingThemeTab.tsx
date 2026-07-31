@@ -179,7 +179,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
         <CardContent>
           {/* Filtro por tipo de organización */}
           <div className="flex items-center gap-3 mb-4">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="w-[200px] dark:bg-gray-700 dark:border-gray-600">
                 <SelectValue placeholder={t('filterByType')} />
@@ -214,9 +214,9 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                     });
                   }}
                   className={cn(
-                    'cursor-pointer rounded-lg border-2 p-4 transition-all hover:border-blue-400 relative',
+                    'cursor-pointer rounded-lg border-2 p-4 transition-all hover:border-blue-400 relative dark:hover:border-blue-500',
                     formData.template_id === preset.id
-                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-300'
                       : 'border-gray-200 dark:border-gray-700'
                   )}
                 >
@@ -233,11 +233,11 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                       className="h-5 flex items-center px-2 gap-1"
                       style={{ backgroundColor: preset.colors.primary }}
                     >
-                      <div className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                      <div className="w-6 h-1 rounded bg-white/40" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-white/60 dark:bg-gray-800/60" />
+                      <div className="w-6 h-1 rounded bg-white/40 dark:bg-gray-800/40" />
                       <div className="ml-auto flex gap-0.5">
-                        <div className="w-4 h-1 rounded bg-white/30" />
-                        <div className="w-4 h-1 rounded bg-white/30" />
+                        <div className="w-4 h-1 rounded bg-white/30 dark:bg-gray-800/30" />
+                        <div className="w-4 h-1 rounded bg-white/30 dark:bg-gray-800/30" />
                       </div>
                     </div>
                     {/* Mini hero */}
@@ -259,7 +259,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   <div className="flex items-center gap-1 mt-2">
                     <div className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600" style={{ backgroundColor: preset.colors.primary }} title="Principal" />
                     <div className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600" style={{ backgroundColor: preset.colors.secondary }} title="Secundario" />
-                    <span className="ml-auto text-[10px] text-gray-400">
+                    <span className="ml-auto text-[10px] text-gray-400 dark:text-gray-500">
                       {preset.theme_mode === 'dark' ? '🌙' : '☀️'}
                     </span>
                   </div>
@@ -482,7 +482,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                 step={4}
                 value={formData.logo_height}
                 onChange={(e) => setFormData({ ...formData, logo_height: Number(e.target.value) })}
-                className="w-full accent-blue-600"
+                className="w-full accent-blue-600 dark:accent-blue-300"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>24px</span>

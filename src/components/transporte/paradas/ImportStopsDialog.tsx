@@ -211,7 +211,7 @@ export function ImportStopsDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+            <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Importar Paradas
           </DialogTitle>
           <DialogDescription>
@@ -238,7 +238,7 @@ export function ImportStopsDialog({
                   ref={fileInputRef}
                   onChange={handleFileChange}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Tipos válidos: terminal, station, warehouse, stop, branch, customer
                 </p>
               </div>
@@ -292,7 +292,7 @@ export function ImportStopsDialog({
                       ))}
                       {parsedData.length > 10 && (
                         <tr className="border-t">
-                          <td colSpan={5} className="px-3 py-2 text-gray-500 text-center">
+                          <td colSpan={5} className="px-3 py-2 text-gray-500 text-center dark:text-gray-400">
                             ... y {parsedData.length - 10} más
                           </td>
                         </tr>
@@ -306,7 +306,7 @@ export function ImportStopsDialog({
             <div className="space-y-4">
               {importResult.success > 0 && (
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center gap-3">
-                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                  <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-300" />
                   <div>
                     <p className="font-medium text-green-700 dark:text-green-300">
                       Importación completada

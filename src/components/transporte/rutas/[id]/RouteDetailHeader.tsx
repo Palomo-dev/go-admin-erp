@@ -30,7 +30,7 @@ export function RouteDetailHeader({
       case 'mixed':
         return { label: 'Mixto', icon: Route, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300' };
       default:
-        return { label: type, icon: Route, color: 'bg-gray-100 text-gray-800' };
+        return { label: type, icon: Route, color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100' };
     }
   };
 
@@ -48,7 +48,7 @@ export function RouteDetailHeader({
         <div>
           <div className="flex items-center gap-3 mb-1">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-              <Route className="h-6 w-6 text-blue-600" />
+              <Route className="h-6 w-6 text-blue-600 dark:text-blue-300" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {route.name}

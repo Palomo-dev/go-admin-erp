@@ -175,7 +175,7 @@ export function RouteDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Route className="h-5 w-5 text-blue-600" />
+            <Route className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {isEditing ? 'Editar Ruta' : 'Nueva Ruta'}
           </DialogTitle>
           <DialogDescription>
@@ -302,7 +302,7 @@ export function RouteDialog({
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-base font-medium">Calcular Ruta</Label>
-                <p className="text-sm text-gray-500">Calcula distancia y duración con Google Maps</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Calcula distancia y duración con Google Maps</p>
               </div>
               <Button
                 type="button"
@@ -409,7 +409,7 @@ export function RouteDialog({
           <div className="flex items-center justify-between border-t pt-4">
             <div>
               <Label>Estado de la ruta</Label>
-              <p className="text-sm text-gray-500">Las rutas inactivas no aparecen en la programación</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Las rutas inactivas no aparecen en la programación</p>
             </div>
             <Switch
               checked={formData.is_active}

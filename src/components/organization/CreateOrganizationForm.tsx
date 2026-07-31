@@ -457,7 +457,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
     return (
       <div className={colSpan}>
         <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
+          {label} {required && <span className="text-red-500 dark:text-red-400">*</span>}
         </label>
         <div className="relative">
           <input
@@ -472,11 +472,11 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 setFormErrors({ ...formErrors, [id]: '' });
               }
             }}
-            className={`block w-full rounded-lg border ${formErrors[id] ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
+            className={`block w-full rounded-lg border ${formErrors[id] ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400 dark:focus:border-red-400 dark:focus:ring-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
           />
           {formErrors[id] && (
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-              <ExclamationCircleIcon className="h-5 w-5 text-red-500" aria-hidden="true" />
+              <ExclamationCircleIcon className="h-5 w-5 text-red-500 dark:text-red-400" aria-hidden="true" />
             </div>
           )}
         </div>
@@ -594,7 +594,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           <div className="col-span-6">
             <label htmlFor="typeId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Tipo de Organización <span className="text-red-500">*</span>
+              Tipo de Organización <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <select
               id="typeId"
@@ -607,7 +607,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   setFormErrors({ ...formErrors, typeId: '' });
                 }
               }}
-              className={`block w-full rounded-lg border ${formErrors.typeId ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
+              className={`block w-full rounded-lg border ${formErrors.typeId ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:focus:border-red-400 dark:focus:ring-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
             >
               <option value="">Seleccionar...</option>
               {organizationTypes.map((type) => (
@@ -626,7 +626,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           {/* Always show email field, but if defaultEmail is provided, show it as disabled/readonly */}
           <div className="col-span-6 sm:col-span-4">
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Correo Electrónico <span className="text-red-500">*</span>
+              Correo Electrónico <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <div className="relative">
               <input
@@ -644,13 +644,13 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 }}
                 className={`block w-full rounded-lg border ${
                   formErrors.email 
-                    ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' 
-                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'
+                    ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400 dark:focus:border-red-400 dark:focus:ring-red-400' 
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400'
                 } shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 ${!!defaultEmail ? 'bg-gray-100 dark:bg-gray-100' : ''}`}
               />
               {formErrors.email && (
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                  <ExclamationCircleIcon className="h-5 w-5 text-red-500" aria-hidden="true" />
+                  <ExclamationCircleIcon className="h-5 w-5 text-red-500 dark:text-red-400" aria-hidden="true" />
                 </div>
               )}
             </div>
@@ -668,7 +668,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           
           <div className="col-span-6 sm:col-span-3">
             <label htmlFor="taxId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              NIT/RUT <span className="text-red-500">*</span>
+              NIT/RUT <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <div className="relative">
               <input
@@ -691,12 +691,12 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     setFormErrors({ ...formErrors, taxId: '' });
                   }
                 }}
-                className={`block w-full rounded-lg border ${formErrors.taxId ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
+                className={`block w-full rounded-lg border ${formErrors.taxId ? 'border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:text-red-200 dark:placeholder-red-400 dark:focus:border-red-400 dark:focus:ring-red-400' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400'} shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900`}
                 placeholder="Ej: 900123456"
               />
               {formErrors.taxId && (
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                  <ExclamationCircleIcon className="h-5 w-5 text-red-500" aria-hidden="true" />
+                  <ExclamationCircleIcon className="h-5 w-5 text-red-500 dark:text-red-400" aria-hidden="true" />
                 </div>
               )}
             </div>
@@ -721,10 +721,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 setDvManuallyEdited(true);
                 setFormData({ ...formData, dv: e.target.value });
               }}
-              className="block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900"
+              className="block w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 dark:focus:border-blue-400 dark:focus:ring-blue-400"
               placeholder="Auto"
             />
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
               {dvManuallyEdited ? 'Editado manualmente' : 'Calculado desde el NIT'}
             </p>
           </div>
@@ -754,7 +754,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     type="button"
                     onClick={() => setFormData({ ...formData, primaryColor: color })}
                     className={`w-8 h-8 rounded-full border ${
-                      formData.primaryColor === color ? 'ring-2 ring-offset-2 ring-gray-500' : 'border-gray-300'
+                      formData.primaryColor === color ? 'ring-2 ring-offset-2 ring-gray-500 dark:ring-gray-400' : 'border-gray-300 dark:border-gray-600'
                     }`}
                     style={{ backgroundColor: color }}
                     aria-label={`Color ${color}`}
@@ -773,10 +773,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   />
                   <label
                     htmlFor="primaryColor"
-                    className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 cursor-pointer bg-white"
+                    className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 cursor-pointer bg-white dark:border-gray-600 dark:bg-gray-800"
                   >
                     <span className="sr-only">Personalizado</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500 dark:text-gray-400">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
                   </label>
@@ -812,7 +812,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     type="button"
                     onClick={() => setFormData({ ...formData, secondaryColor: color })}
                     className={`w-8 h-8 rounded-full border ${
-                      formData.secondaryColor === color ? 'ring-2 ring-offset-2 ring-gray-500' : 'border-gray-300'
+                      formData.secondaryColor === color ? 'ring-2 ring-offset-2 ring-gray-500 dark:ring-gray-400' : 'border-gray-300 dark:border-gray-600'
                     }`}
                     style={{ backgroundColor: color }}
                     aria-label={`Color ${color}`}
@@ -831,10 +831,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   />
                   <label
                     htmlFor="secondaryColor"
-                    className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 cursor-pointer bg-white"
+                    className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 cursor-pointer bg-white dark:border-gray-600 dark:bg-gray-800"
                   >
                     <span className="sr-only">Personalizado</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500 dark:text-gray-400">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
                   </label>
@@ -877,7 +877,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 dark:focus:border-blue-400 dark:focus:ring-blue-400"
             />
           </div>
 
@@ -904,7 +904,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                     city: '',
                   });
                 }}
-                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900"
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 dark:focus:border-blue-400 dark:focus:ring-blue-400"
               >
                 <option value="">Seleccionar país...</option>
                 {countries.map((c) => (
@@ -932,7 +932,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                   });
                 }}
                 disabled={loadingMunicipalities}
-                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 disabled:opacity-50"
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 disabled:opacity-50 dark:focus:border-blue-400 dark:focus:ring-blue-400"
               >
                 <option value="">Seleccionar...</option>
                 {Array.from(new Map(municipalities.map(m => [m.state_name, m])).values()).map((m) => (
@@ -950,7 +950,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 value={formData.municipalityId}
                 onChange={(e) => handleMunicipalityChange(e.target.value)}
                 disabled={loadingMunicipalities || !formData.stateCode}
-                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 disabled:opacity-50"
+                className="block w-full rounded-lg border border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500 shadow-sm px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 disabled:opacity-50 dark:focus:border-blue-400 dark:focus:ring-blue-400"
               >
                 <option value="">Seleccionar...</option>
                 {municipalities
@@ -983,10 +983,10 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
                 placeholder="miempresa"
                 className={`block w-full rounded-l-lg border px-4 py-3 sm:text-sm dark:bg-white dark:text-gray-900 ${
                   subdomainStatus === 'taken' 
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500' 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-500 dark:focus:border-red-400 dark:focus:ring-red-400' 
                     : subdomainStatus === 'available'
-                    ? 'border-green-300 focus:border-green-500 focus:ring-green-500 dark:border-green-500'
-                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600'
+                    ? 'border-green-300 focus:border-green-500 focus:ring-green-500 dark:border-green-500 dark:focus:border-green-400 dark:focus:ring-green-400'
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400'
                 }`}
               />
               <span className="inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 text-gray-500 dark:text-gray-400 sm:text-sm">
@@ -998,7 +998,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
             <div className="mt-2 flex items-center">
               {subdomainStatus === 'checking' && (
                 <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                  <svg className="animate-spin h-4 w-4 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-4 w-4 mr-2 text-blue-500 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -1061,8 +1061,8 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
               }}
               className={`relative rounded-lg border p-4 cursor-pointer transition-all ${
                 selectedPlanId === plan.id
-                  ? 'border-blue-500 ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                  ? 'border-blue-500 ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400 dark:ring-blue-400'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -1106,7 +1106,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <ExclamationCircleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
+              <ExclamationCircleIcon className="h-5 w-5 text-red-400 dark:text-red-500" aria-hidden="true" />
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800 dark:text-red-300">{error}</h3>
@@ -1119,7 +1119,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
         <button
           type="button"
           onClick={step === 1 ? onCancel : prevStep}
-          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 px-4 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-blue-400"
         >
           {step === 1 ? 'Cancelar' : 'Atrás'}
         </button>
@@ -1128,7 +1128,7 @@ export default function CreateOrganizationForm({ onSuccess, onCancel, defaultEma
           type="button"
           onClick={step === totalSteps ? handleSubmit : nextStep}
           disabled={loading || (step === 2 && (subdomainStatus === 'checking' || subdomainStatus === 'taken'))}
-          className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-6 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all"
+          className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-6 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all dark:focus:ring-blue-400"
         >
           {loading ? (
             <>

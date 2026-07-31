@@ -106,25 +106,25 @@ export default function ManageOrganizationsTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium text-gray-900">{t('title')}</h2>
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('title')}</h2>
         <button
           onClick={() => setShowCreateForm(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-blue-400"
         >
           {t('createNew')}
         </button>
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
+        <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/30">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-red-400 dark:text-red-500" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
+              <h3 className="text-sm font-medium text-red-800 dark:text-red-100">{error}</h3>
             </div>
           </div>
         </div>
@@ -139,8 +139,8 @@ export default function ManageOrganizationsTab() {
         </Suspense>
       ) : (
         <div>
-          <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
-            <p className="text-sm text-blue-700">
+          <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded dark:bg-blue-900/30 dark:border-blue-400">
+            <p className="text-sm text-blue-700 dark:text-blue-200">
               {t('infoMessage')}
             </p>
           </div>
@@ -159,7 +159,7 @@ export default function ManageOrganizationsTab() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-300" />
               {t('confirmDelete')}
             </AlertDialogTitle>
             <AlertDialogDescription>

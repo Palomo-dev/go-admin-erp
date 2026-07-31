@@ -218,7 +218,7 @@ export function ImportVehiclesDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+            <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Importar Vehículos
           </DialogTitle>
           <DialogDescription>
@@ -245,7 +245,7 @@ export function ImportVehiclesDialog({
                   ref={fileInputRef}
                   onChange={handleFileChange}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Tipos válidos: motorcycle, car, van, truck, minibus, bus
                 </p>
               </div>
@@ -295,7 +295,7 @@ export function ImportVehiclesDialog({
                       ))}
                       {parsedData.length > 10 && (
                         <tr className="border-t">
-                          <td colSpan={4} className="px-3 py-2 text-gray-500 text-center">
+                          <td colSpan={4} className="px-3 py-2 text-gray-500 text-center dark:text-gray-400">
                             ... y {parsedData.length - 10} más
                           </td>
                         </tr>
@@ -309,7 +309,7 @@ export function ImportVehiclesDialog({
             <div className="space-y-4">
               {importResult.success > 0 && (
                 <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center gap-3">
-                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                  <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-300" />
                   <div>
                     <p className="font-medium text-green-700 dark:text-green-300">
                       Importación completada

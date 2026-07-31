@@ -309,14 +309,14 @@ function BuyDomainForm({
               <div className="space-y-2">
                 <Label className="dark:text-gray-200">{t('searchLabel')}</Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value.toLowerCase().replace(/\s/g, ''))}
                     placeholder="miempresa.com"
                     className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
-                  {isChecking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />}
+                  {isChecking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500 dark:text-blue-400" />}
                 </div>
               </div>
 
@@ -343,16 +343,16 @@ function BuyDomainForm({
                         domainResult.available && !domainResult.price ? "bg-yellow-100 dark:bg-yellow-900/50" :
                         "bg-red-100 dark:bg-red-900/50"
                       )}>
-                        {domainResult.available && domainResult.price ? <Check className="h-5 w-5 text-green-600" /> : 
-                         domainResult.available && !domainResult.price ? <AlertTriangle className="h-5 w-5 text-yellow-600" /> :
-                         <X className="h-5 w-5 text-red-600" />}
+                        {domainResult.available && domainResult.price ? <Check className="h-5 w-5 text-green-600 dark:text-green-300" /> : 
+                         domainResult.available && !domainResult.price ? <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-300" /> :
+                         <X className="h-5 w-5 text-red-600 dark:text-red-300" />}
                       </div>
                       <div>
                         <p className="font-semibold dark:text-white">{domainResult.domain}</p>
                         <p className={cn("text-sm", 
-                          domainResult.available && domainResult.price ? "text-green-600" : 
-                          domainResult.available && !domainResult.price ? "text-yellow-600" :
-                          "text-red-600"
+                          domainResult.available && domainResult.price ? "text-green-600 dark:text-green-300" : 
+                          domainResult.available && !domainResult.price ? "text-yellow-600 dark:text-yellow-300" :
+                          "text-red-600 dark:text-red-300"
                         )}>
                           {domainResult.available && domainResult.price ? t('available') : 
                            domainResult.available && !domainResult.price ? t('tldNotAvailable') :
@@ -368,7 +368,7 @@ function BuyDomainForm({
                     {domainResult.available && domainResult.price && (
                       <div className="text-right">
                         <span className="text-2xl font-bold dark:text-white">${domainResult.price.toFixed(2)}</span>
-                        <span className="text-sm text-gray-500 ml-1">{t('perYear')}</span>
+                        <span className="text-sm text-gray-500 ml-1 dark:text-gray-400">{t('perYear')}</span>
                       </div>
                     )}
                   </div>
@@ -449,7 +449,7 @@ function BuyDomainForm({
               </div>
 
               <Alert className="dark:bg-blue-900/20 dark:border-blue-800">
-                <Globe className="h-4 w-4 text-blue-600" />
+                <Globe className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                 <AlertDescription className="text-sm dark:text-gray-300">
                   {t('paymentSecure')}
                 </AlertDescription>
@@ -460,7 +460,7 @@ function BuyDomainForm({
           {/* ÉXITO */}
           {step === 'success' && (
             <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
-              <Check className="h-4 w-4 text-green-600" />
+              <Check className="h-4 w-4 text-green-600 dark:text-green-300" />
               <AlertDescription className="text-green-700 dark:text-green-300">
                 <strong>{t('successTitle')}</strong><br />
                 <strong>{domainResult?.domain}</strong> {t('successDesc', { domain: domainResult?.domain || '' })}

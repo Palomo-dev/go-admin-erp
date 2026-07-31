@@ -75,7 +75,7 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
     return (
       <Card className="p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
         </div>
       </Card>
     );
@@ -96,7 +96,7 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
 
       {events.length === 0 ? (
         <div className="p-8 text-center">
-          <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <p className="text-gray-600 dark:text-gray-400">
             No hay eventos registrados para este viaje
           </p>
@@ -136,7 +136,7 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
                           </p>
                         </div>
                         {event.sequence && (
-                          <span className="text-xs text-gray-400">#{event.sequence}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">#{event.sequence}</span>
                         )}
                       </div>
 
@@ -147,17 +147,17 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
                       )}
 
                       {event.transport_stops && (
-                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
                           <MapPin className="h-4 w-4" />
                           <span>{event.transport_stops.name}</span>
                           {event.transport_stops.city && (
-                            <span className="text-gray-400">({event.transport_stops.city})</span>
+                            <span className="text-gray-400 dark:text-gray-500">({event.transport_stops.city})</span>
                           )}
                         </div>
                       )}
 
                       {event.location_text && (
-                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
                           <MapPin className="h-4 w-4" />
                           <span>{event.location_text}</span>
                         </div>

@@ -71,7 +71,7 @@ export function DriversList({
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <User className="h-12 w-12 text-gray-400 mb-4" />
+          <User className="h-12 w-12 text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No hay conductores
           </h3>
@@ -141,7 +141,7 @@ export function DriversList({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => onDelete(driver)}
-                      className="text-red-600"
+                      className="text-red-600 dark:text-red-300"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar
@@ -158,7 +158,7 @@ export function DriversList({
                   {driver.is_active ? 'Activo' : 'Inactivo'}
                 </Badge>
                 {(hasWarnings || hasExpired) && (
-                  <Badge variant={hasExpired ? 'destructive' : 'outline'} className={hasWarnings && !hasExpired ? 'border-yellow-500 text-yellow-600' : ''}>
+                  <Badge variant={hasExpired ? 'destructive' : 'outline'} className={hasWarnings && !hasExpired ? 'border-yellow-500 text-yellow-600 dark:border-yellow-400 dark:text-yellow-300' : ''}>
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     {hasExpired ? 'Docs vencidos' : 'Docs por vencer'}
                   </Badge>
@@ -166,12 +166,12 @@ export function DriversList({
               </div>
 
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                <p className={`flex items-center gap-2 ${licenseStatus === 'expired' ? 'text-red-600' : licenseStatus === 'warning' ? 'text-yellow-600' : ''}`}>
+                <p className={`flex items-center gap-2 ${licenseStatus === 'expired' ? 'text-red-600 dark:text-red-300' : licenseStatus === 'warning' ? 'text-yellow-600 dark:text-yellow-300' : ''}`}>
                   <Calendar className="h-3 w-3" />
                   Licencia vence: {format(new Date(driver.license_expiry), 'dd/MM/yyyy')}
                 </p>
                 {driver.medical_certificate_expiry && (
-                  <p className={`flex items-center gap-2 ${medicalStatus === 'expired' ? 'text-red-600' : medicalStatus === 'warning' ? 'text-yellow-600' : ''}`}>
+                  <p className={`flex items-center gap-2 ${medicalStatus === 'expired' ? 'text-red-600 dark:text-red-300' : medicalStatus === 'warning' ? 'text-yellow-600 dark:text-yellow-300' : ''}`}>
                     <Calendar className="h-3 w-3" />
                     Examen médico: {format(new Date(driver.medical_certificate_expiry), 'dd/MM/yyyy')}
                   </p>

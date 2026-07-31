@@ -80,7 +80,7 @@ export function DashboardQuickActions() {
     <Card className="h-full">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Plus className="h-5 w-5 text-blue-600" />
+          <Plus className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           Acciones Rápidas
         </CardTitle>
       </CardHeader>

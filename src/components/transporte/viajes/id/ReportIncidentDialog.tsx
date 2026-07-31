@@ -109,7 +109,7 @@ export function ReportIncidentDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-300" />
             Reportar Incidente
           </DialogTitle>
         </DialogHeader>
@@ -156,7 +156,7 @@ export function ReportIncidentDialog({
                     <SelectItem key={opt.value} value={opt.value}>
                       <div>
                         <span className="font-medium">{opt.label}</span>
-                        <span className="text-xs text-gray-500 ml-2">
+                        <span className="text-xs text-gray-500 ml-2 dark:text-gray-400">
                           - {opt.description}
                         </span>
                       </div>

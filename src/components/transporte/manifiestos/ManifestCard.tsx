@@ -139,26 +139,26 @@ export function ManifestCard({
             <DropdownMenuSeparator />
             {manifest.status === 'draft' && (
               <DropdownMenuItem onClick={() => onChangeStatus(manifest, 'confirmed')}>
-                <CheckCircle className="h-4 w-4 mr-2 text-blue-600" />
+                <CheckCircle className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-300" />
                 Confirmar
               </DropdownMenuItem>
             )}
             {manifest.status === 'confirmed' && (
               <DropdownMenuItem onClick={() => onChangeStatus(manifest, 'in_progress')}>
-                <PlayCircle className="h-4 w-4 mr-2 text-yellow-600" />
+                <PlayCircle className="h-4 w-4 mr-2 text-yellow-600 dark:text-yellow-300" />
                 Iniciar
               </DropdownMenuItem>
             )}
             {manifest.status === 'in_progress' && (
               <DropdownMenuItem onClick={() => onChangeStatus(manifest, 'completed')}>
-                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                <CheckCircle className="h-4 w-4 mr-2 text-green-600 dark:text-green-300" />
                 Completar
               </DropdownMenuItem>
             )}
             {manifest.status === 'draft' && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onDelete(manifest)} className="text-red-600">
+                <DropdownMenuItem onClick={() => onDelete(manifest)} className="text-red-600 dark:text-red-300">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Eliminar
                 </DropdownMenuItem>
@@ -172,7 +172,7 @@ export function ManifestCard({
       <div className="mt-4 grid grid-cols-2 gap-3">
         {manifest.vehicles && (
           <div className="flex items-center gap-2 text-sm">
-            <Truck className="h-4 w-4 text-gray-400" />
+            <Truck className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <span className="text-gray-600 dark:text-gray-400">
               {manifest.vehicles.plate}
               {manifest.vehicles.vehicle_type && ` (${manifest.vehicles.vehicle_type})`}
@@ -181,7 +181,7 @@ export function ManifestCard({
         )}
         {manifest.transport_carriers && (
           <div className="flex items-center gap-2 text-sm">
-            <Package className="h-4 w-4 text-gray-400" />
+            <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <span className="text-gray-600 dark:text-gray-400">
               {manifest.transport_carriers.name}
             </span>
@@ -196,32 +196,32 @@ export function ManifestCard({
             <p className="text-lg font-bold text-gray-900 dark:text-white">
               {manifest.total_shipments}
             </p>
-            <p className="text-xs text-gray-500">Envíos</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Envíos</p>
           </div>
           <div>
-            <p className="text-lg font-bold text-green-600">
+            <p className="text-lg font-bold text-green-600 dark:text-green-300">
               {manifest.delivered_count}
             </p>
-            <p className="text-xs text-gray-500">Entregados</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Entregados</p>
           </div>
           <div>
-            <p className="text-lg font-bold text-red-600">
+            <p className="text-lg font-bold text-red-600 dark:text-red-300">
               {manifest.failed_count}
             </p>
-            <p className="text-xs text-gray-500">Fallidos</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Fallidos</p>
           </div>
           <div>
-            <p className="text-lg font-bold text-yellow-600">
+            <p className="text-lg font-bold text-yellow-600 dark:text-yellow-300">
               {manifest.pending_count}
             </p>
-            <p className="text-xs text-gray-500">Pendientes</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Pendientes</p>
           </div>
         </div>
 
         {/* Barra de progreso */}
         {manifest.total_shipments > 0 && (
           <div className="mt-3">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <div className="flex justify-between text-xs text-gray-500 mb-1 dark:text-gray-400">
               <span>Progreso</span>
               <span>{progressPercent}%</span>
             </div>
@@ -236,7 +236,7 @@ export function ManifestCard({
       </div>
 
       {/* Footer con peso y paquetes */}
-      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-sm text-gray-500">
+      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1">
             <Weight className="h-3 w-3" />

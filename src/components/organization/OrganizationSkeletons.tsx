@@ -265,8 +265,8 @@ export function InvitationsSkeleton() {
 // Skeleton para método de pago
 export function PaymentMethodSkeleton() {
   return (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+    <div className="bg-white shadow rounded-lg dark:bg-gray-800">
+      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center dark:border-gray-700">
         <div className="space-y-2">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-4 w-56" />
@@ -276,7 +276,7 @@ export function PaymentMethodSkeleton() {
       <div className="p-6">
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="flex items-center justify-between p-4 rounded-lg border border-gray-200">
+            <div key={i} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-4">
                 <Skeleton className="h-8 w-12 rounded" />
                 <div className="space-y-2">
@@ -306,12 +306,12 @@ export function OrganizationPageSkeleton({
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           {title ? (
-            <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-50">{title}</h1>
           ) : (
             <Skeleton className="h-8 w-64" />
           )}
           {description ? (
-            <p className="mt-2 text-gray-600">{description}</p>
+            <p className="mt-2 text-gray-600 dark:text-gray-300">{description}</p>
           ) : (
             <Skeleton className="h-5 w-96 mt-2" />
           )}

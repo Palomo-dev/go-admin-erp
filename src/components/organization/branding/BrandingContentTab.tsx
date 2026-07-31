@@ -243,7 +243,7 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
                         variant="ghost"
                         size="sm"
                         onClick={() => setFooterLinks(footerLinks.filter((f) => f.id !== link.id))}
-                        className="text-red-500 hover:text-red-600"
+                        className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

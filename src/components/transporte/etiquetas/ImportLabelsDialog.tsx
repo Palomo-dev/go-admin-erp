@@ -74,7 +74,7 @@ export function ImportLabelsDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-blue-600" />
+            <Upload className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Importar Etiquetas
           </DialogTitle>
           <DialogDescription>
@@ -85,7 +85,7 @@ export function ImportLabelsDialog({
         <div className="space-y-4">
           {/* Área de drop/selección */}
           <div
-            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer dark:hover:border-blue-400"
             onClick={() => fileInputRef.current?.click()}
           >
             <input
@@ -97,21 +97,21 @@ export function ImportLabelsDialog({
             />
             {file ? (
               <div className="flex items-center justify-center gap-2">
-                <FileText className="h-8 w-8 text-blue-600" />
+                <FileText className="h-8 w-8 text-blue-600 dark:text-blue-300" />
                 <div className="text-left">
                   <p className="font-medium">{file.name}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {(file.size / 1024).toFixed(2)} KB
                   </p>
                 </div>
               </div>
             ) : (
               <>
-                <Upload className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                <Upload className="h-10 w-10 mx-auto text-gray-400 mb-2 dark:text-gray-500" />
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Haga clic para seleccionar un archivo CSV
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">
                   o arrastre y suelte aquí
                 </p>
               </>
@@ -133,8 +133,8 @@ export function ImportLabelsDialog({
           {result && (
             <div className="space-y-2">
               {result.success > 0 && (
-                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-300" />
                   <AlertDescription className="text-green-800 dark:text-green-300">
                     {result.success} etiqueta(s) importada(s) correctamente
                   </AlertDescription>

@@ -175,7 +175,7 @@ export function ImportRatesDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-blue-600" />
+            <Upload className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Importar Tarifas de Envío
           </DialogTitle>
         </DialogHeader>
@@ -185,7 +185,7 @@ export function ImportRatesDialog({
           <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <FileSpreadsheet className="h-8 w-8 text-blue-600" />
+                <FileSpreadsheet className="h-8 w-8 text-blue-600 dark:text-blue-300" />
                 <div>
                   <p className="font-medium">Plantilla CSV</p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -214,7 +214,7 @@ export function ImportRatesDialog({
               htmlFor="csv-upload"
               className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <Upload className="h-8 w-8 text-gray-400 mb-2" />
+              <Upload className="h-8 w-8 text-gray-400 mb-2 dark:text-gray-500" />
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {fileName || 'Haz clic o arrastra un archivo CSV'}
               </p>
@@ -252,7 +252,7 @@ export function ImportRatesDialog({
                   </tbody>
                 </table>
                 {parsedData.length > 10 && (
-                  <p className="text-xs text-gray-500 text-center mt-2">
+                  <p className="text-xs text-gray-500 text-center mt-2 dark:text-gray-400">
                     ...y {parsedData.length - 10} más
                   </p>
                 )}
@@ -265,9 +265,9 @@ export function ImportRatesDialog({
             <Card className={`p-4 ${importResult.errors.length > 0 ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
               <div className="flex items-start gap-3">
                 {importResult.errors.length === 0 ? (
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 dark:text-green-300" />
                 ) : (
-                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 dark:text-amber-300" />
                 )}
                 <div className="flex-1">
                   <p className="font-medium">
@@ -275,8 +275,8 @@ export function ImportRatesDialog({
                   </p>
                   {importResult.errors.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-sm text-red-600">{importResult.errors.length} errores:</p>
-                      <ul className="text-xs text-red-500 list-disc list-inside max-h-24 overflow-y-auto">
+                      <p className="text-sm text-red-600 dark:text-red-300">{importResult.errors.length} errores:</p>
+                      <ul className="text-xs text-red-500 list-disc list-inside max-h-24 overflow-y-auto dark:text-red-400">
                         {importResult.errors.map((error, i) => (
                           <li key={i}>{error}</li>
                         ))}

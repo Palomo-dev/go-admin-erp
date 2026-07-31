@@ -50,7 +50,7 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
       case 'cancelled':
         return { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' };
       default:
-        return { label: status, color: 'bg-gray-100 text-gray-800' };
+        return { label: status, color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100' };
     }
   };
 
@@ -75,7 +75,7 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-blue-600" />
+          <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           Viajes Recientes
         </CardTitle>
       </CardHeader>
@@ -104,17 +104,17 @@ export function RouteTripsHistory({ routeId }: RouteTripsHistoryProps) {
                         })}
                       </p>
                       {trip.departure_time && (
-                        <p className="text-gray-500">{trip.departure_time}</p>
+                        <p className="text-gray-500 dark:text-gray-400">{trip.departure_time}</p>
                       )}
                     </div>
                     {trip.vehicles && (
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                         <Bus className="h-4 w-4" />
                         {trip.vehicles.plate_number}
                       </div>
                     )}
                     {trip.driver_credentials && (
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                         <User className="h-4 w-4" />
                         {trip.driver_credentials.license_number}
                       </div>

@@ -298,7 +298,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   variant="ghost"
                   size="sm"
                   onClick={handleAddAllAIKeywords}
-                  className="h-6 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                  className="h-6 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-200"
                 >
                   {t('addAll')}
                 </Button>
@@ -336,7 +336,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
             {formData.meta_keywords.map((keyword) => (
               <Badge key={keyword} variant="secondary" className="flex items-center gap-1">
                 {keyword}
-                <button onClick={() => handleRemoveKeyword(keyword)} className="ml-1 hover:text-red-500">
+                <button onClick={() => handleRemoveKeyword(keyword)} className="ml-1 hover:text-red-500 dark:hover:text-red-400">
                   <X className="h-3 w-3" />
                 </button>
               </Badge>

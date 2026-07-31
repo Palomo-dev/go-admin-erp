@@ -425,7 +425,7 @@ export default function DominiosPage() {
               {/* Lista de dominios personalizados */}
               {domains.length === 0 ? (
                 <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                  <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4 dark:text-gray-500" />
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                     {t('noCustomDomains')}
                   </h3>

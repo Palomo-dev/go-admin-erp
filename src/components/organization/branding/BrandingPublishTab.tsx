@@ -107,7 +107,7 @@ export default function BrandingPublishTab({
             {subdomain && (
               <>
                 <Button variant="ghost" size="sm" onClick={handleCopyUrl}>
-                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  {copied ? <Check className="h-4 w-4 text-green-500 dark:text-green-400" /> : <Copy className="h-4 w-4" />}
                 </Button>
                 {settings.is_published && (
                   <Button variant="ghost" size="sm" asChild>
@@ -240,9 +240,9 @@ export default function BrandingPublishTab({
               <div
                 key={template.id}
                 onClick={() => setSelectedTemplate(template.id)}
-                className={`cursor-pointer rounded-lg border-2 p-3 transition-all hover:border-blue-400 ${
+                className={`cursor-pointer rounded-lg border-2 p-3 transition-all hover:border-blue-400  dark:hover:border-blue-500${
                   selectedTemplate === template.id
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-300'
                     : 'border-gray-200 dark:border-gray-700'
                 }`}
               >

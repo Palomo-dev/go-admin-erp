@@ -281,8 +281,8 @@ export function SubdomainManager({
                   placeholder="miempresa"
                   className={cn(
                     "rounded-r-none dark:bg-gray-700 dark:border-gray-600 dark:text-white",
-                    status === 'taken' && "border-red-500 focus:border-red-500",
-                    status === 'available' && "border-green-500 focus:border-green-500"
+                    status === 'taken' && "border-red-500 focus:border-red-500 dark:border-red-400 dark:focus:border-red-400",
+                    status === 'available' && "border-green-500 focus:border-green-500 dark:border-green-400 dark:focus:border-green-400"
                   )}
                   disabled={isSaving}
                 />

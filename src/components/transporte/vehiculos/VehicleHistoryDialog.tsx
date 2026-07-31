@@ -33,11 +33,11 @@ interface VehicleHistoryDialogProps {
 }
 
 const tripStatusConfig: Record<string, { label: string; color: string }> = {
-  scheduled: { label: 'Programado', color: 'bg-blue-100 text-blue-700' },
-  boarding: { label: 'Abordando', color: 'bg-yellow-100 text-yellow-700' },
-  in_transit: { label: 'En tránsito', color: 'bg-purple-100 text-purple-700' },
-  completed: { label: 'Completado', color: 'bg-green-100 text-green-700' },
-  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-700' },
+  scheduled: { label: 'Programado', color: 'bg-blue-100 text-blue-700 dark:bg-blue-800/30 dark:text-blue-200' },
+  boarding: { label: 'Abordando', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-800/30 dark:text-yellow-200' },
+  in_transit: { label: 'En tránsito', color: 'bg-purple-100 text-purple-700 dark:bg-purple-800/30 dark:text-purple-200' },
+  completed: { label: 'Completado', color: 'bg-green-100 text-green-700 dark:bg-green-800/30 dark:text-green-200' },
+  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-800/30 dark:text-red-200' },
 };
 
 export function VehicleHistoryDialog({
@@ -59,22 +59,22 @@ export function VehicleHistoryDialog({
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <HistoryIcon className="h-5 w-5 text-blue-600" />
+            <HistoryIcon className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Historial - {vehicle.plate_number}
           </DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-4 py-4">
           <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <p className="text-2xl font-bold text-blue-600">{totalTrips}</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-300">{totalTrips}</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">Total Viajes</p>
           </div>
           <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <p className="text-2xl font-bold text-green-600">{completedTrips}</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-300">{completedTrips}</p>
             <p className="text-sm text-gray-600 dark:text-gray-400">Completados</p>
           </div>
           <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-            <p className="text-2xl font-bold text-purple-600">
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-300">
               {totalTrips > 0 ? Math.round((completedTrips / totalTrips) * 100) : 0}%
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">Tasa Éxito</p>
@@ -96,10 +96,10 @@ export function VehicleHistoryDialog({
           <TabsContent value="trips" className="max-h-64 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
               </div>
             ) : trips.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Bus className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No hay viajes registrados</p>
               </div>
@@ -140,7 +140,7 @@ export function VehicleHistoryDialog({
           </TabsContent>
 
           <TabsContent value="manifests" className="max-h-64 overflow-y-auto">
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No hay manifiestos registrados</p>
               <p className="text-xs mt-1">Los manifiestos de despacho aparecerán aquí</p>

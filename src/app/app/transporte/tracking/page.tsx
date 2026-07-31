@@ -133,7 +133,7 @@ export default function TrackingPage() {
   if (!organizationId) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
       </div>
     );
   }

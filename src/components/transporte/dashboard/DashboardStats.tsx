@@ -62,25 +62,25 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Programados</span>
+                <span className="text-gray-500 dark:text-gray-400">Programados</span>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                   {stats.trips.scheduled}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">En ruta</span>
+                <span className="text-gray-500 dark:text-gray-400">En ruta</span>
                 <Badge variant="outline" className="bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
                   {stats.trips.in_transit}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Completados</span>
+                <span className="text-gray-500 dark:text-gray-400">Completados</span>
                 <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
                   {stats.trips.completed}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Cancelados</span>
+                <span className="text-gray-500 dark:text-gray-400">Cancelados</span>
                 <Badge variant="outline" className="bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400">
                   {stats.trips.cancelled}
                 </Badge>
@@ -107,7 +107,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1">
+                <span className="text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <DollarSign className="h-3 w-3" />
                   Ingresos
                 </span>
@@ -116,7 +116,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1">
+                <span className="text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <Users className="h-3 w-3" />
                   Ocupación
                 </span>
@@ -154,25 +154,25 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Listos</span>
+                <span className="text-gray-500 dark:text-gray-400">Listos</span>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                   {stats.shipments.ready}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">En tránsito</span>
+                <span className="text-gray-500 dark:text-gray-400">En tránsito</span>
                 <Badge variant="outline" className="bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
                   {stats.shipments.in_transit}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Entregados</span>
+                <span className="text-gray-500 dark:text-gray-400">Entregados</span>
                 <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
                   {stats.shipments.delivered}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Fallidos</span>
+                <span className="text-gray-500 dark:text-gray-400">Fallidos</span>
                 <Badge variant="outline" className="bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400">
                   {stats.shipments.failed}
                 </Badge>
@@ -199,7 +199,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1">
+                <span className="text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <AlertCircle className="h-3 w-3" />
                   Críticos
                 </span>
@@ -208,7 +208,7 @@ export function DashboardStats({ stats, isLoading }: DashboardStatsProps) {
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1">
+                <span className="text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <Clock className="h-3 w-3" />
                   SLA vencido
                 </span>

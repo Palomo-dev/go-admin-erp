@@ -143,7 +143,7 @@ export function ImportFaresDialog({
 
           {/* Selector de archivo */}
           <div
-            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors dark:hover:border-blue-400"
             onClick={() => fileInputRef.current?.click()}
           >
             <input
@@ -153,7 +153,7 @@ export function ImportFaresDialog({
               accept=".csv"
               className="hidden"
             />
-            <Upload className="h-10 w-10 mx-auto text-gray-400 mb-4" />
+            <Upload className="h-10 w-10 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
             <p className="text-gray-600 dark:text-gray-400">
               {file ? file.name : 'Haz clic para seleccionar un archivo CSV'}
             </p>
@@ -197,8 +197,8 @@ export function ImportFaresDialog({
           {result && (
             <div className="space-y-2">
               {result.success > 0 && (
-                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-300" />
                   <AlertDescription className="text-green-700 dark:text-green-400">
                     {result.success} tarifa(s) importada(s) correctamente
                   </AlertDescription>

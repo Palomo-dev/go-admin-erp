@@ -153,7 +153,7 @@ export default function GlobalSettingsPanel({
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs transition-colors ${
               settings.theme_mode === 'light'
                 ? 'bg-blue-100 text-blue-700 dark:bg-white/20 dark:text-white'
-                : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 dark:text-gray-400'
             }`}
           >
             <Sun className="h-3 w-3" />
@@ -164,7 +164,7 @@ export default function GlobalSettingsPanel({
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs transition-colors ${
               settings.theme_mode === 'dark'
                 ? 'bg-blue-100 text-blue-700 dark:bg-white/20 dark:text-white'
-                : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 dark:text-gray-400'
             }`}
           >
             <Moon className="h-3 w-3" />
@@ -264,7 +264,7 @@ export default function GlobalSettingsPanel({
                       const updated = cartTexts.filter((_: string, j: number) => j !== i);
                       onUpdate({ ...settings, cart_button_texts: updated } as any);
                     }}
-                    className="p-1 text-red-400 hover:text-red-600"
+                    className="p-1 text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -292,14 +292,14 @@ export default function GlobalSettingsPanel({
                       setNewButtonText('');
                     }
                   }}
-                  className="p-1 text-green-500 hover:text-green-700"
+                  className="p-1 text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-200"
                 >
                   <Plus className="h-3 w-3" />
                 </button>
               </div>
             )}
           </div>
-          <p className="text-[9px] text-gray-400">
+          <p className="text-[9px] text-gray-400 dark:text-gray-500">
             {cartMode === 'dynamic' ? 'Cada vez que se abre el carrito, se muestra un texto aleatorio' : 'Se mostrará siempre el primer texto'}
           </p>
         </div>
@@ -327,7 +327,7 @@ export default function GlobalSettingsPanel({
                   value={(settings as any).countdown_title || ''}
                   onChange={(e) => onUpdate({ ...settings, countdown_title: e.target.value } as any)}
                   placeholder="¡Oferta por tiempo limitado!"
-                  className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400"
+                  className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
               </div>
 
@@ -453,7 +453,7 @@ export default function GlobalSettingsPanel({
               onCheckedChange={(checked) => onUpdate({ ...settings, checkout_show_stock_warning: checked } as any)}
             />
           </div>
-          <p className="text-[9px] text-gray-400">Muestra mensajes como &quot;¡Solo quedan 3!&quot; para incentivar la compra rápida</p>
+          <p className="text-[9px] text-gray-400 dark:text-gray-500">Muestra mensajes como &quot;¡Solo quedan 3!&quot; para incentivar la compra rápida</p>
         </div>
       </div>
 

@@ -211,13 +211,13 @@ export function IncidentHeader({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
                 {/* Fecha ocurrencia */}
                 <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <div>
                     <span className="text-gray-500 dark:text-gray-400">Ocurrió:</span>
                     <p className="font-medium text-gray-900 dark:text-white">
                       {format(new Date(incident.occurred_at), 'dd/MM/yyyy HH:mm', { locale: es })}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {formatDistanceToNow(new Date(incident.occurred_at), { addSuffix: true, locale: es })}
                     </p>
                   </div>
@@ -225,14 +225,14 @@ export function IncidentHeader({
 
                 {/* Responsable */}
                 <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-gray-400" />
+                  <User className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <div>
                     <span className="text-gray-500 dark:text-gray-400">Responsable:</span>
                     <p className="font-medium text-gray-900 dark:text-white">
                       {incident.assigned_user?.full_name || 'Sin asignar'}
                     </p>
                     {incident.assigned_user?.email && (
-                      <p className="text-xs text-gray-500">{incident.assigned_user.email}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{incident.assigned_user.email}</p>
                     )}
                   </div>
                 </div>
@@ -240,7 +240,7 @@ export function IncidentHeader({
                 {/* Ubicación */}
                 {incident.location_description && (
                   <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">Ubicación:</span>
                       <p className="font-medium text-gray-900 dark:text-white">
@@ -253,10 +253,10 @@ export function IncidentHeader({
                 {/* SLA */}
                 {incident.sla_hours && (
                   <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-gray-400" />
+                    <Clock className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">SLA:</span>
-                      <p className={`font-medium ${incident.sla_breached ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                      <p className={`font-medium ${incident.sla_breached ? 'text-red-600 dark:text-red-300' : 'text-gray-900 dark:text-white'}`}>
                         {incident.sla_hours} horas
                       </p>
                     </div>
@@ -271,9 +271,9 @@ export function IncidentHeader({
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     {incident.reference_type === 'trip' ? (
-                      <Truck className="h-5 w-5 text-blue-600" />
+                      <Truck className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                     ) : (
-                      <Package className="h-5 w-5 text-blue-600" />
+                      <Package className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                     )}
                     <span className="font-medium text-gray-900 dark:text-white">
                       {incident.reference_type === 'trip' ? 'Viaje' : 'Envío'}
@@ -282,7 +282,7 @@ export function IncidentHeader({
 
                   {incident.reference_type === 'trip' && relatedTrip && (
                     <div className="space-y-2 text-sm">
-                      <p className="font-mono text-blue-600">{relatedTrip.trip_code}</p>
+                      <p className="font-mono text-blue-600 dark:text-blue-300">{relatedTrip.trip_code}</p>
                       {relatedTrip.origin && relatedTrip.destination && (
                         <p className="text-gray-600 dark:text-gray-400">
                           {relatedTrip.origin} → {relatedTrip.destination}
@@ -301,7 +301,7 @@ export function IncidentHeader({
 
                   {incident.reference_type === 'shipment' && relatedShipment && (
                     <div className="space-y-2 text-sm">
-                      <p className="font-mono text-blue-600">{relatedShipment.tracking_number}</p>
+                      <p className="font-mono text-blue-600 dark:text-blue-300">{relatedShipment.tracking_number}</p>
                       <Badge variant="outline">{relatedShipment.status}</Badge>
                       <Button
                         variant="link"
@@ -315,7 +315,7 @@ export function IncidentHeader({
                   )}
 
                   {!relatedTrip && !relatedShipment && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       ID: {incident.reference_id.slice(0, 8)}...
                     </p>
                   )}

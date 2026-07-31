@@ -116,7 +116,7 @@ export function ManifestDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-blue-600" />
+            <ClipboardList className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {manifest ? 'Editar Manifiesto' : 'Nuevo Manifiesto'}
           </DialogTitle>
         </DialogHeader>

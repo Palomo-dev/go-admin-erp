@@ -126,7 +126,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
               <Route className="h-4 w-4" />
               <span>{fare.transport_routes.name}</span>
               {fare.transport_routes.code && (
-                <span className="text-gray-400">({fare.transport_routes.code})</span>
+                <span className="text-gray-400 dark:text-gray-500">({fare.transport_routes.code})</span>
               )}
             </div>
           )}
@@ -146,13 +146,13 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
           {/* Precio */}
           <div className="flex items-center gap-3 mt-3">
             <div className="flex items-center gap-1">
-              <DollarSign className="h-5 w-5 text-green-600" />
+              <DollarSign className="h-5 w-5 text-green-600 dark:text-green-300" />
               {hasDiscount ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-green-600">
+                  <span className="text-lg font-bold text-green-600 dark:text-green-300">
                     ${finalPrice.toLocaleString()}
                   </span>
-                  <span className="text-sm text-gray-400 line-through">
+                  <span className="text-sm text-gray-400 line-through dark:text-gray-500">
                     ${fare.amount.toLocaleString()}
                   </span>
                   {fare.discount_percent && fare.discount_percent > 0 && (
@@ -166,13 +166,13 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
                   ${fare.amount.toLocaleString()}
                 </span>
               )}
-              <span className="text-xs text-gray-400 ml-1">{fare.currency}</span>
+              <span className="text-xs text-gray-400 ml-1 dark:text-gray-500">{fare.currency}</span>
             </div>
           </div>
 
           {/* Vigencia */}
           {(fare.valid_from || fare.valid_until) && (
-            <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+            <div className="flex items-center gap-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
               <Calendar className="h-3 w-3" />
               <span>
                 {fare.valid_from && format(new Date(fare.valid_from), "dd MMM yyyy", { locale: es })}
@@ -185,7 +185,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
 
           {/* Días aplicables */}
           {fare.applicable_days && fare.applicable_days.length < 7 && (
-            <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+            <div className="flex items-center gap-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
               <Clock className="h-3 w-3" />
               <span>
                 {fare.applicable_days.map(d => DAY_NAMES[d]).join(', ')}
@@ -195,7 +195,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
 
           {/* Horarios */}
           {(fare.applicable_from_time || fare.applicable_to_time) && (
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-500 mt-1 dark:text-gray-400">
               Horario: {fare.applicable_from_time || '00:00'} - {fare.applicable_to_time || '23:59'}
             </div>
           )}
@@ -242,7 +242,7 @@ export function FareCard({ fare, onEdit, onDuplicate, onDelete, onToggleActive }
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDelete(fare)}
-                className="text-red-600 focus:text-red-600"
+                className="text-red-600 focus:text-red-600 dark:text-red-300 dark:focus:text-red-300"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Eliminar

@@ -88,13 +88,13 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
+            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Bitácora del Incidente
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300" />
           </div>
         </CardContent>
       </Card>
@@ -105,7 +105,7 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-blue-600" />
+          <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           Bitácora del Incidente
         </CardTitle>
         <Button size="sm" onClick={onAddEvent} className="gap-2">
@@ -145,7 +145,7 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           {format(new Date(event.event_time), 'dd/MM/yyyy HH:mm', { locale: es })}
                         </span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
                           ({formatDistanceToNow(new Date(event.event_time), { addSuffix: true, locale: es })})
                         </span>
                       </div>
@@ -170,7 +170,7 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
                           </span>
                         )}
                         {event.source && event.source !== 'internal' && (
-                          <span className="text-blue-600">Fuente: {event.source}</span>
+                          <span className="text-blue-600 dark:text-blue-300">Fuente: {event.source}</span>
                         )}
                       </div>
 

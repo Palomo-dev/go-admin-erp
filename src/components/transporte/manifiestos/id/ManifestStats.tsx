@@ -96,7 +96,7 @@ export function ManifestStats({ manifest }: ManifestStatsProps) {
         {/* Totales adicionales */}
         <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
-            <Weight className="h-4 w-4 text-gray-400" />
+            <Weight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">
                 {Number(manifest.total_weight_kg || 0).toFixed(1)} kg
@@ -106,7 +106,7 @@ export function ManifestStats({ manifest }: ManifestStatsProps) {
           </div>
           {manifest.total_cod_amount && Number(manifest.total_cod_amount) > 0 && (
             <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-gray-400" />
+              <DollarSign className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   ${Number(manifest.total_cod_amount).toLocaleString()}

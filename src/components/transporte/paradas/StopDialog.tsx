@@ -244,7 +244,7 @@ export function StopDialog({
                 placeholder="TER-001"
               />
               {errors.code && (
-                <p className="text-sm text-red-500">{errors.code.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.code.message}</p>
               )}
             </div>
 
@@ -256,7 +256,7 @@ export function StopDialog({
                 placeholder="Terminal Norte"
               />
               {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.name.message}</p>
               )}
             </div>
 
@@ -306,7 +306,7 @@ export function StopDialog({
             <div className="space-y-2 relative">
               <Label>Buscar Ubicación (Google Maps)</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <Input
                   placeholder="Buscar dirección, lugar o establecimiento..."
                   value={searchQuery}
@@ -315,7 +315,7 @@ export function StopDialog({
                   className="pl-10"
                 />
                 {isSearching && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
                 )}
               </div>
               {showSuggestions && suggestions.length > 0 && (
@@ -327,17 +327,17 @@ export function StopDialog({
                       className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-start gap-2"
                       onClick={() => handleSelectPlace(place)}
                     >
-                      <MapPin className="h-4 w-4 mt-0.5 text-gray-400 flex-shrink-0" />
+                      <MapPin className="h-4 w-4 mt-0.5 text-gray-400 flex-shrink-0 dark:text-gray-500" />
                       <div>
                         <p className="text-sm font-medium">{place.mainText}</p>
-                        <p className="text-xs text-gray-500">{place.secondaryText}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{place.secondaryText}</p>
                       </div>
                     </button>
                   ))}
                 </div>
               )}
               {googlePlaceId && (
-                <p className="text-xs text-green-600 flex items-center gap-1">
+                <p className="text-xs text-green-600 flex items-center gap-1 dark:text-green-300">
                   <MapPin className="h-3 w-3" />
                   Ubicación vinculada a Google Maps
                 </p>

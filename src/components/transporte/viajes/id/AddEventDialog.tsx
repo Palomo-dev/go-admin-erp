@@ -113,7 +113,7 @@ export function AddEventDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
+            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Registrar Evento
           </DialogTitle>
         </DialogHeader>

@@ -164,13 +164,13 @@ export function RegisterEventDialog({
                       onClick={() => setSelectedReference(ref)}
                     >
                       {ref.type === 'trip' ? (
-                        <Truck className="h-4 w-4 text-purple-600" />
+                        <Truck className="h-4 w-4 text-purple-600 dark:text-purple-300" />
                       ) : (
-                        <Package className="h-4 w-4 text-green-600" />
+                        <Package className="h-4 w-4 text-green-600 dark:text-green-300" />
                       )}
                       <div>
                         <p className="font-mono font-medium">{ref.code}</p>
-                        <p className="text-xs text-gray-500">{ref.type === 'trip' ? 'Viaje' : 'Envío'} - {ref.status}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{ref.type === 'trip' ? 'Viaje' : 'Envío'} - {ref.status}</p>
                       </div>
                     </button>
                   ))}
@@ -182,12 +182,12 @@ export function RegisterEventDialog({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {selectedReference.type === 'trip' ? (
-                    <Truck className="h-4 w-4 text-purple-600" />
+                    <Truck className="h-4 w-4 text-purple-600 dark:text-purple-300" />
                   ) : (
-                    <Package className="h-4 w-4 text-green-600" />
+                    <Package className="h-4 w-4 text-green-600 dark:text-green-300" />
                   )}
                   <span className="font-mono font-medium">{selectedReference.code}</span>
-                  <span className="text-sm text-gray-500">({selectedReference.type === 'trip' ? 'Viaje' : 'Envío'})</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">({selectedReference.type === 'trip' ? 'Viaje' : 'Envío'})</span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setSelectedReference(null)}>
                   Cambiar
@@ -263,7 +263,7 @@ export function RegisterEventDialog({
                   onChange={(e) => setFormData((p) => ({ ...p, external_event_id: e.target.value }))}
                   placeholder="ID único de sistema externo"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Si ingresa un ID externo, el sistema validará que no exista duplicado
                 </p>
               </div>

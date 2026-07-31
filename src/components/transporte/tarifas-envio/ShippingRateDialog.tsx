@@ -147,7 +147,7 @@ export function ShippingRateDialog({
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-blue-600" />
+            <Truck className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {rate ? 'Editar Tarifa de Envío' : 'Nueva Tarifa de Envío'}
           </DialogTitle>
         </DialogHeader>
@@ -285,7 +285,7 @@ export function ShippingRateDialog({
               <div className="space-y-2">
                 <Label htmlFor="dimensional_factor">Factor dimensional</Label>
                 <Input id="dimensional_factor" type="number" min="1" value={formData.dimensional_factor || 5000} onChange={(e) => handleChange('dimensional_factor', parseFloat(e.target.value) || 5000)} />
-                <p className="text-xs text-gray-500">Divisor (L×A×H / factor)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Divisor (L×A×H / factor)</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="min_charge">Cargo mínimo</Label>
@@ -338,7 +338,7 @@ export function ShippingRateDialog({
                 <Input id="destination_city" value={formData.destination_city || ''} onChange={(e) => handleChange('destination_city', e.target.value)} placeholder="Ej: Medellín" />
               </div>
             </div>
-            <p className="text-xs text-gray-500">Deja los campos vacíos para aplicar a cualquier origen/destino.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Deja los campos vacíos para aplicar a cualquier origen/destino.</p>
           </div>
 
           {/* Sección: Vigencia */}
@@ -357,7 +357,7 @@ export function ShippingRateDialog({
                 <Input id="valid_until" type="date" value={formData.valid_until || ''} onChange={(e) => handleChange('valid_until', e.target.value || undefined)} />
               </div>
             </div>
-            <p className="text-xs text-gray-500">Si no seleccionas fechas, la tarifa no tiene vencimiento.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Si no seleccionas fechas, la tarifa no tiene vencimiento.</p>
           </div>
 
           {/* Sección: Visibilidad */}

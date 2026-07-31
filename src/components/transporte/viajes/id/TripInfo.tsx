@@ -21,14 +21,14 @@ export function TripInfo({ trip }: TripInfoProps) {
       value: trip.transport_routes?.name || '-',
       subtitle: trip.transport_routes?.code,
       icon: <MapPin className="h-5 w-5" />,
-      color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
+      color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300',
     },
     {
       title: 'Vehículo',
       value: trip.vehicles?.plate || 'Sin asignar',
       subtitle: trip.vehicles ? `${trip.vehicles.brand || ''} ${trip.vehicles.model || ''}`.trim() : undefined,
       icon: <Bus className="h-5 w-5" />,
-      color: 'text-green-600 bg-green-100 dark:bg-green-900/30',
+      color: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-300',
     },
     {
       title: 'Conductor',
@@ -36,7 +36,7 @@ export function TripInfo({ trip }: TripInfoProps) {
         ? `${trip.driver_credentials.employments.organization_members.profiles.first_name} ${trip.driver_credentials.employments.organization_members.profiles.last_name}`
         : 'Sin asignar',
       icon: <User className="h-5 w-5" />,
-      color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30',
+      color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300',
     },
     {
       title: 'Horario',
@@ -45,14 +45,14 @@ export function TripInfo({ trip }: TripInfoProps) {
         ? `Llegada: ${format(new Date(trip.scheduled_arrival), 'HH:mm')}`
         : undefined,
       icon: <Clock className="h-5 w-5" />,
-      color: 'text-orange-600 bg-orange-100 dark:bg-orange-900/30',
+      color: 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-300',
     },
     {
       title: 'Ocupación',
       value: `${occupancy}/${trip.total_seats}`,
       subtitle: `${occupancyPercent}% ocupado`,
       icon: <Users className="h-5 w-5" />,
-      color: 'text-teal-600 bg-teal-100 dark:bg-teal-900/30',
+      color: 'text-teal-600 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-300',
     },
     {
       title: 'Tarifa Base',
@@ -62,7 +62,7 @@ export function TripInfo({ trip }: TripInfoProps) {
         minimumFractionDigits: 0,
       }).format(trip.base_fare || 0),
       icon: <DollarSign className="h-5 w-5" />,
-      color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30',
+      color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300',
     },
   ];
 

@@ -253,7 +253,7 @@ export default function ManifiestosPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <ClipboardList className="h-6 w-6 text-blue-600" />
+            <ClipboardList className="h-6 w-6 text-blue-600 dark:text-blue-300" />
             Manifiestos de Despacho
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -287,55 +287,55 @@ export default function ManifiestosPage() {
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
+              <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-sm text-gray-500">Total</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
             </div>
           </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-              <Clock className="h-5 w-5 text-gray-600" />
+              <Clock className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.draft}</p>
-              <p className="text-sm text-gray-500">Borradores</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Borradores</p>
             </div>
           </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
-              <Truck className="h-5 w-5 text-yellow-600" />
+              <Truck className="h-5 w-5 text-yellow-600 dark:text-yellow-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.inProgress}</p>
-              <p className="text-sm text-gray-500">En Progreso</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">En Progreso</p>
             </div>
           </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.completed}</p>
-              <p className="text-sm text-gray-500">Completados</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Completados</p>
             </div>
           </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-              <Package className="h-5 w-5 text-purple-600" />
+              <Package className="h-5 w-5 text-purple-600 dark:text-purple-300" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalShipments}</p>
-              <p className="text-sm text-gray-500">Envíos</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Envíos</p>
             </div>
           </div>
         </Card>
@@ -344,7 +344,7 @@ export default function ManifiestosPage() {
       {/* Filtros */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por número de manifiesto..."
             value={searchTerm}
@@ -371,13 +371,13 @@ export default function ManifiestosPage() {
       {isLoading ? (
         <Card className="p-8">
           <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
             <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando manifiestos...</span>
           </div>
         </Card>
       ) : manifests.length === 0 ? (
         <Card className="p-8 text-center">
-          <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay manifiestos</h3>
           <p className="text-gray-600 dark:text-gray-400 mt-1 mb-4">
             Cree un nuevo manifiesto para agrupar envíos

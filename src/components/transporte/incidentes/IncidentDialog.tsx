@@ -110,7 +110,7 @@ export function IncidentDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
+            <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-300" />
             {incident ? 'Editar Incidente' : 'Nuevo Incidente'}
           </DialogTitle>
         </DialogHeader>

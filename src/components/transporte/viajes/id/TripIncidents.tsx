@@ -25,18 +25,18 @@ interface TripIncidentsProps {
 }
 
 const SEVERITY_CONFIG: Record<string, { label: string; color: string }> = {
-  low: { label: 'Baja', color: 'bg-green-100 text-green-800' },
-  medium: { label: 'Media', color: 'bg-yellow-100 text-yellow-800' },
-  high: { label: 'Alta', color: 'bg-orange-100 text-orange-800' },
-  critical: { label: 'Crítica', color: 'bg-red-100 text-red-800' },
+  low: { label: 'Baja', color: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' },
+  medium: { label: 'Media', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100' },
+  high: { label: 'Alta', color: 'bg-orange-100 text-orange-800 dark:bg-orange-800/30 dark:text-orange-100' },
+  critical: { label: 'Crítica', color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100' },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  open: { label: 'Abierto', color: 'bg-red-100 text-red-800' },
-  investigating: { label: 'Investigando', color: 'bg-yellow-100 text-yellow-800' },
-  in_progress: { label: 'En Progreso', color: 'bg-blue-100 text-blue-800' },
-  resolved: { label: 'Resuelto', color: 'bg-green-100 text-green-800' },
-  closed: { label: 'Cerrado', color: 'bg-gray-100 text-gray-800' },
+  open: { label: 'Abierto', color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100' },
+  investigating: { label: 'Investigando', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100' },
+  in_progress: { label: 'En Progreso', color: 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100' },
+  resolved: { label: 'Resuelto', color: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' },
+  closed: { label: 'Cerrado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100' },
 };
 
 export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIncidentsProps) {
@@ -44,7 +44,7 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
     return (
       <Card className="p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
         </div>
       </Card>
     );
@@ -70,7 +70,7 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
 
       {incidents.length === 0 ? (
         <div className="p-8 text-center">
-          <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
+          <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4 dark:text-green-400" />
           <p className="text-gray-600 dark:text-gray-400">
             No hay incidentes reportados para este viaje
           </p>
@@ -97,13 +97,13 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
                         {incident.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {format(new Date(incident.occurred_at), "d MMM yyyy, HH:mm", { locale: es })}
                       </span>
                       {incident.resolved_at && (
-                        <span className="flex items-center gap-1 text-green-600">
+                        <span className="flex items-center gap-1 text-green-600 dark:text-green-300">
                           <CheckCircle className="h-3 w-3" />
                           Resuelto: {format(new Date(incident.resolved_at), "d MMM, HH:mm", { locale: es })}
                         </span>

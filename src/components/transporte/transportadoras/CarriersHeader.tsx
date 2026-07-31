@@ -53,7 +53,7 @@ export function CarriersHeader({
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Truck className="h-6 w-6 text-blue-600" />
+                <Truck className="h-6 w-6 text-blue-600 dark:text-blue-300" />
               </div>
               Transportadoras
             </h1>
@@ -93,7 +93,7 @@ export function CarriersHeader({
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por nombre, código o NIT..."
             value={searchTerm}

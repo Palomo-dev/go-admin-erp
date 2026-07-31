@@ -79,7 +79,7 @@ export function ShipmentsFilters({
     <div className="space-y-3">
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por tracking, remitente, destinatario..."
             value={searchTerm}
@@ -157,7 +157,7 @@ export function ShipmentsFilters({
         <div className="flex flex-wrap items-end gap-3">
           {onDateFromChange && (
             <div className="flex flex-col gap-1">
-              <Label className="text-xs text-gray-500 flex items-center gap-1">
+              <Label className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
                 <CalendarDays className="h-3 w-3" />
                 Desde
               </Label>
@@ -171,7 +171,7 @@ export function ShipmentsFilters({
           )}
           {onDateToChange && (
             <div className="flex flex-col gap-1">
-              <Label className="text-xs text-gray-500 flex items-center gap-1">
+              <Label className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
                 <CalendarDays className="h-3 w-3" />
                 Hasta
               </Label>

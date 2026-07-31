@@ -118,7 +118,7 @@ export function LabelDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5 text-blue-600" />
+            <Tag className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {label ? 'Editar Etiqueta' : 'Nueva Etiqueta'}
           </DialogTitle>
         </DialogHeader>

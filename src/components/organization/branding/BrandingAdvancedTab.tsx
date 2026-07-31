@@ -111,7 +111,7 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
           {formData.custom_css && (
             <div className="mt-4">
               <Label className="text-sm dark:text-gray-300">{t('codePreview')}</Label>
-              <pre className="mt-2 p-3 bg-gray-900 text-green-400 rounded-lg text-xs overflow-x-auto">
+              <pre className="mt-2 p-3 bg-gray-900 text-green-400 rounded-lg text-xs overflow-x-auto dark:text-green-500">
                 <code>{formData.custom_css}</code>
               </pre>
             </div>
@@ -164,7 +164,7 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
           {formData.custom_scripts && (
             <div className="mt-4">
               <Label className="text-sm dark:text-gray-300">{t('codePreview')}</Label>
-              <pre className="mt-2 p-3 bg-gray-900 text-blue-400 rounded-lg text-xs overflow-x-auto max-h-48">
+              <pre className="mt-2 p-3 bg-gray-900 text-blue-400 rounded-lg text-xs overflow-x-auto max-h-48 dark:text-blue-500">
                 <code>{formData.custom_scripts}</code>
               </pre>
             </div>
@@ -180,19 +180,19 @@ export default function BrandingAdvancedTab({ settings, onSave, isSaving }: Bran
         <CardContent>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div className={`text-2xl font-bold ${formData.analytics_id ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`text-2xl font-bold ${formData.analytics_id ? 'text-green-600 dark:text-green-300' : 'text-gray-400 dark:text-gray-500'}`}>
                 {formData.analytics_id ? '✓' : '○'}
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('analytics')}</p>
             </div>
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div className={`text-2xl font-bold ${formData.custom_css ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`text-2xl font-bold ${formData.custom_css ? 'text-green-600 dark:text-green-300' : 'text-gray-400 dark:text-gray-500'}`}>
                 {formData.custom_css ? formData.custom_css.split('\n').length : 0}
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('cssLines')}</p>
             </div>
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div className={`text-2xl font-bold ${formData.custom_scripts ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`text-2xl font-bold ${formData.custom_scripts ? 'text-green-600 dark:text-green-300' : 'text-gray-400 dark:text-gray-500'}`}>
                 {formData.custom_scripts ? formData.custom_scripts.split('\n').length : 0}
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('scriptLines')}</p>

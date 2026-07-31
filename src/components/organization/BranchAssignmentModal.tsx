@@ -185,21 +185,21 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
 
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md dark:bg-gray-800">
         <div className="p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-1">{t('title')}</h3>
-          <p className="text-sm text-gray-600 mb-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-1 dark:text-gray-50">{t('title')}</h3>
+          <p className="text-sm text-gray-600 mb-6 dark:text-gray-300">
             {memberName}
           </p>
           
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4">
+            <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 dark:bg-red-900/30 dark:text-red-300">
               {error}
             </div>
           )}
           
           {success && (
-            <div className="bg-green-50 text-green-600 p-3 rounded-md mb-4">
+            <div className="bg-green-50 text-green-600 p-3 rounded-md mb-4 dark:bg-green-900/30 dark:text-green-300">
               {success}
             </div>
           )}
@@ -211,18 +211,18 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
           ) : (
             <div className="max-h-64 overflow-y-auto">
               {branches.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">{t('noBranches')}</p>
+                <p className="text-gray-500 text-center py-8 dark:text-gray-400">{t('noBranches')}</p>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center border-b border-gray-200 pb-3 mb-1">
+                  <div className="flex items-center border-b border-gray-200 pb-3 mb-1 dark:border-gray-700">
                     <input
                       type="checkbox"
                       id="branch-all"
                       checked={allSelected}
                       onChange={handleToggleAll}
-                      className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mr-3"
+                      className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mr-3 dark:border-gray-600"
                     />
-                    <label htmlFor="branch-all" className="text-gray-900 font-medium">
+                    <label htmlFor="branch-all" className="text-gray-900 font-medium dark:text-gray-50">
                       {t('selectAll')}
                     </label>
                   </div>
@@ -233,9 +233,9 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
                         id={`branch-${branch.id}`}
                         checked={assignedBranches.includes(branch.id)}
                         onChange={() => handleCheckboxChange(branch.id)}
-                        className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mr-3"
+                        className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary mr-3 dark:border-gray-600"
                       />
-                      <label htmlFor={`branch-${branch.id}`} className="text-gray-700">
+                      <label htmlFor={`branch-${branch.id}`} className="text-gray-700 dark:text-gray-200">
                         {branch.name}
                       </label>
                     </div>
@@ -250,7 +250,7 @@ export default function BranchAssignmentModal({ isOpen, onClose, memberId, membe
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors"
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition-colors dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100"
             >
               {t('cancel')}
             </button>

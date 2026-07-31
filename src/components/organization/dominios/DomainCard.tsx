@@ -155,7 +155,7 @@ export function DomainCard({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />
+                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0 dark:text-yellow-400 dark:fill-yellow-400" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>{t('primaryDomain')}</p>

@@ -80,7 +80,7 @@ export function RoutesList({
       case 'mixed':
         return { label: 'Mixto', icon: Route, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300' };
       default:
-        return { label: type, icon: Route, color: 'bg-gray-100 text-gray-800' };
+        return { label: type, icon: Route, color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100' };
     }
   };
 
@@ -104,7 +104,7 @@ export function RoutesList({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por nombre, código, origen, destino..."
             value={searchTerm}
@@ -131,7 +131,7 @@ export function RoutesList({
       {filteredRoutes.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Route className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <Route className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">
               No hay rutas
             </h3>
@@ -193,7 +193,7 @@ export function RoutesList({
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={(e) => { e.stopPropagation(); onDelete(route); }}
-                          className="text-red-600"
+                          className="text-red-600 dark:text-red-300"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Eliminar
@@ -205,12 +205,12 @@ export function RoutesList({
                   <div className="space-y-3">
                     <div>
                       <p className="font-semibold text-gray-900 dark:text-white">{route.name}</p>
-                      <p className="text-sm text-gray-500">{route.code}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{route.code}</p>
                     </div>
 
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-green-500" />
+                        <MapPin className="h-4 w-4 text-green-500 dark:text-green-400" />
                         <span className="text-gray-600 dark:text-gray-300">
                           {route.origin_stop?.name || 'Sin origen'} → {route.destination_stop?.name || 'Sin destino'}
                         </span>
@@ -218,12 +218,12 @@ export function RoutesList({
 
                       <div className="flex items-center gap-4">
                         {route.estimated_distance_km && (
-                          <span className="text-gray-500">
+                          <span className="text-gray-500 dark:text-gray-400">
                             {route.estimated_distance_km.toFixed(1)} km
                           </span>
                         )}
                         {route.estimated_duration_minutes && (
-                          <span className="flex items-center gap-1 text-gray-500">
+                          <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                             <Clock className="h-3 w-3" />
                             {Math.floor(route.estimated_duration_minutes / 60)}h {route.estimated_duration_minutes % 60}m
                           </span>
@@ -231,11 +231,11 @@ export function RoutesList({
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {route._count?.route_stops || 0} paradas
                         </span>
                         {route.base_fare && route.base_fare > 0 && (
-                          <span className="text-sm font-medium text-blue-600">
+                          <span className="text-sm font-medium text-blue-600 dark:text-blue-300">
                             ${route.base_fare.toLocaleString()}
                           </span>
                         )}

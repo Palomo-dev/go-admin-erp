@@ -56,9 +56,9 @@ const FAILURE_REASONS = [
 ];
 
 const STATUS_CONFIG = {
-  successful: { label: 'Exitoso', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  failed: { label: 'Fallido', color: 'bg-red-100 text-red-800', icon: XCircle },
-  partial: { label: 'Parcial', color: 'bg-yellow-100 text-yellow-800', icon: AlertTriangle },
+  successful: { label: 'Exitoso', color: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100', icon: CheckCircle },
+  failed: { label: 'Fallido', color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100', icon: XCircle },
+  partial: { label: 'Parcial', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100', icon: AlertTriangle },
 };
 
 export function DeliveryAttempts({ attempts, isLoading, canRegister, onRegisterAttempt }: DeliveryAttemptsProps) {
@@ -110,10 +110,10 @@ export function DeliveryAttempts({ attempts, isLoading, canRegister, onRegisterA
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
         </div>
       ) : attempts.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">No hay intentos de entrega registrados</p>
+        <p className="text-gray-500 text-center py-4 dark:text-gray-400">No hay intentos de entrega registrados</p>
       ) : (
         <div className="space-y-3">
           {attempts.map((attempt) => {
@@ -131,30 +131,30 @@ export function DeliveryAttempts({ attempts, isLoading, canRegister, onRegisterA
                       {config.label}
                     </Badge>
                   </div>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     {format(new Date(attempt.attempted_at), "d MMM yyyy, HH:mm", { locale: es })}
                   </span>
                 </div>
                 
                 {attempt.status === 'failed' && (
                   <div className="mt-2 text-sm">
-                    <p className="text-red-600 font-medium">
+                    <p className="text-red-600 font-medium dark:text-red-300">
                       {failureReason?.label || attempt.failure_reason_code}
                     </p>
                     {attempt.failure_reason_text && (
-                      <p className="text-gray-600 mt-1">{attempt.failure_reason_text}</p>
+                      <p className="text-gray-600 mt-1 dark:text-gray-300">{attempt.failure_reason_text}</p>
                     )}
                   </div>
                 )}
                 
                 {attempt.driver_notes && (
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-gray-600 mt-2 dark:text-gray-300">
                     <strong>Notas:</strong> {attempt.driver_notes}
                   </p>
                 )}
 
                 {attempt.reschedule_date && (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+                  <div className="mt-2 flex items-center gap-2 text-sm text-blue-600 dark:text-blue-300">
                     <Calendar className="h-4 w-4" />
                     Reprogramado para: {format(new Date(attempt.reschedule_date), "d MMM yyyy", { locale: es })}
                   </div>

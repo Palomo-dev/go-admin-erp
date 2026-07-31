@@ -128,15 +128,15 @@ export default function PlanPage() {
   if (error) {
     return (
       <div className="p-8">
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
             </div>
           </div>
         </div>
@@ -147,15 +147,15 @@ export default function PlanPage() {
   if (!isOrgAdmin) {
     return (
       <div className="p-8">
-        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 dark:bg-yellow-900/30 dark:border-yellow-400">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-yellow-500 dark:text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-yellow-700">{t('common.noPermissions')}</p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-200">{t('common.noPermissions')}</p>
             </div>
           </div>
         </div>
@@ -167,13 +167,13 @@ export default function PlanPage() {
     <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         {/* Mensaje de éxito */}
         {successMessage && (
-          <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+          <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg dark:bg-green-900/30 dark:border-green-400">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
-                <p className="text-sm font-medium text-green-800">{successMessage}</p>
+                <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3 dark:text-green-400" />
+                <p className="text-sm font-medium text-green-800 dark:text-green-100">{successMessage}</p>
               </div>
-              <button onClick={() => setSuccessMessage(null)} className="text-green-500 hover:text-green-700">
+              <button onClick={() => setSuccessMessage(null)} className="text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-200">
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
@@ -182,13 +182,13 @@ export default function PlanPage() {
 
         {/* Mensaje de error/cancelación */}
         {errorMessage && (
-          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg">
+          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg dark:bg-yellow-900/30 dark:border-yellow-400">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <XCircleIcon className="h-5 w-5 text-yellow-500 mr-3" />
-                <p className="text-sm font-medium text-yellow-800">{errorMessage}</p>
+                <XCircleIcon className="h-5 w-5 text-yellow-500 mr-3 dark:text-yellow-400" />
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-100">{errorMessage}</p>
               </div>
-              <button onClick={() => setErrorMessage(null)} className="text-yellow-500 hover:text-yellow-700">
+              <button onClick={() => setErrorMessage(null)} className="text-yellow-500 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-200">
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
@@ -203,14 +203,14 @@ export default function PlanPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/app/plan/billing"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-900"
             >
               <DocumentTextIcon className="h-4 w-4 mr-2" />
               Facturación
             </Link>
             <Link
               href="/app/plan/historial"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-900"
             >
               <ClockIcon className="h-4 w-4 mr-2" />
               Historial

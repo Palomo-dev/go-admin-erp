@@ -121,7 +121,7 @@ export function TransportFilters({
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
           {/* Filtro por Sucursal */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Building2 className="h-4 w-4 text-gray-500 flex-shrink-0" />
+            <Building2 className="h-4 w-4 text-gray-500 flex-shrink-0 dark:text-gray-400" />
             <Select value={localFilters.branchId} onValueChange={handleBranchChange}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Sucursal" />
@@ -139,7 +139,7 @@ export function TransportFilters({
 
           {/* Filtro por Transportadora */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Truck className="h-4 w-4 text-gray-500 flex-shrink-0" />
+            <Truck className="h-4 w-4 text-gray-500 flex-shrink-0 dark:text-gray-400" />
             <Select value={localFilters.carrierId} onValueChange={handleCarrierChange}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Transportadora" />
@@ -157,7 +157,7 @@ export function TransportFilters({
 
           {/* Filtro por Fecha Desde */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <CalendarIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
+            <CalendarIcon className="h-4 w-4 text-gray-500 flex-shrink-0 dark:text-gray-400" />
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -188,7 +188,7 @@ export function TransportFilters({
 
           {/* Filtro por Fecha Hasta */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-gray-500 flex-shrink-0">-</span>
+            <span className="text-gray-500 flex-shrink-0 dark:text-gray-400">-</span>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -227,7 +227,7 @@ export function TransportFilters({
                 variant="ghost"
                 size="sm"
                 onClick={handleClearFilters}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <X className="h-4 w-4 mr-1" />
                 Limpiar

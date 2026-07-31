@@ -106,7 +106,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
     return (
       <Card className="p-4">
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
         </div>
       </Card>
     );
@@ -116,21 +116,21 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
     return (
       <Card className="p-4">
         <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <FileCheck className="h-4 w-4 text-green-600" />
+          <FileCheck className="h-4 w-4 text-green-600 dark:text-green-300" />
           Prueba de Entrega
-          <Badge className="bg-green-100 text-green-800">Registrada</Badge>
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">Registrada</Badge>
         </h3>
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500">Entregado el</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Entregado el</p>
               <p className="font-medium">
                 {format(new Date(pod.delivered_at), "d 'de' MMMM yyyy, HH:mm", { locale: es })}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Lugar de entrega</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Lugar de entrega</p>
               <p className="font-medium">
                 {LOCATION_TYPES.find(l => l.value === pod.delivery_location_type)?.label || pod.delivery_location_type}
               </p>
@@ -139,17 +139,17 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
 
           <div className="border-t pt-4">
             <div className="flex items-center gap-2 mb-2">
-              <User className="h-4 w-4 text-gray-500" />
-              <span className="text-sm text-gray-500">Recibió:</span>
+              <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">Recibió:</span>
             </div>
             <p className="font-medium">{pod.recipient_name}</p>
             {pod.recipient_doc_number && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 {pod.recipient_doc_type}: {pod.recipient_doc_number}
               </p>
             )}
             {pod.recipient_relationship && pod.recipient_relationship !== 'self' && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Relación: {RELATIONSHIPS.find(r => r.value === pod.recipient_relationship)?.label}
               </p>
             )}
@@ -158,8 +158,8 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
           {pod.signature_url && (
             <div className="border-t pt-4">
               <div className="flex items-center gap-2 mb-2">
-                <PenTool className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-500">Firma:</span>
+                <PenTool className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-500 dark:text-gray-400">Firma:</span>
               </div>
               <img src={pod.signature_url} alt="Firma" className="max-h-24 border rounded" />
             </div>
@@ -168,8 +168,8 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
           {pod.photo_urls && pod.photo_urls.length > 0 && (
             <div className="border-t pt-4">
               <div className="flex items-center gap-2 mb-2">
-                <Image className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-500">Fotos ({pod.photo_urls.length}):</span>
+                <Image className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm text-gray-500 dark:text-gray-400">Fotos ({pod.photo_urls.length}):</span>
               </div>
               <div className="flex gap-2 flex-wrap">
                 {pod.photo_urls.map((url, idx) => (
@@ -188,10 +188,10 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
           {pod.customer_rating && (
             <div className="border-t pt-4">
               <div className="flex items-center gap-2">
-                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 dark:text-yellow-400 dark:fill-yellow-400" />
                 <span className="font-medium">{pod.customer_rating}/5</span>
                 {pod.customer_feedback && (
-                  <span className="text-gray-600">- {pod.customer_feedback}</span>
+                  <span className="text-gray-600 dark:text-gray-300">- {pod.customer_feedback}</span>
                 )}
               </div>
             </div>
@@ -199,7 +199,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
 
           {pod.notes && (
             <div className="border-t pt-4">
-              <p className="text-sm text-gray-500">Notas:</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Notas:</p>
               <p className="text-gray-700 dark:text-gray-300">{pod.notes}</p>
             </div>
           )}
@@ -219,22 +219,22 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
 
       {canRegister ? (
         <div className="text-center py-6">
-          <FileCheck className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 mb-4">No hay prueba de entrega registrada</p>
+          <FileCheck className="h-12 w-12 mx-auto text-gray-300 mb-3 dark:text-gray-600" />
+          <p className="text-gray-500 mb-4 dark:text-gray-400">No hay prueba de entrega registrada</p>
           <Button onClick={() => setShowDialog(true)} className="bg-green-600 hover:bg-green-700">
             <Plus className="h-4 w-4 mr-2" />
             Registrar Entrega
           </Button>
         </div>
       ) : (
-        <p className="text-gray-500 text-center py-4">No hay prueba de entrega registrada</p>
+        <p className="text-gray-500 text-center py-4 dark:text-gray-400">No hay prueba de entrega registrada</p>
       )}
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileCheck className="h-5 w-5 text-green-600" />
+              <FileCheck className="h-5 w-5 text-green-600 dark:text-green-300" />
               Registrar Prueba de Entrega
             </DialogTitle>
           </DialogHeader>
@@ -321,7 +321,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
                     className="p-1"
                   >
                     <Star
-                      className={`h-6 w-6 ${star <= formData.customer_rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                      className={`h-6 w-6 ${star <= formData.customer_rating ? 'text-yellow-500 fill-yellow-500 dark:text-yellow-400 dark:fill-yellow-400' : 'text-gray-300 dark:text-gray-600'}`}
                     />
                   </button>
                 ))}

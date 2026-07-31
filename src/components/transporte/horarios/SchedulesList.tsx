@@ -104,7 +104,7 @@ export function SchedulesList({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por nombre, ruta, hora..."
             value={searchTerm}
@@ -133,7 +133,7 @@ export function SchedulesList({
       {filteredSchedules.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">
               No hay horarios
             </h3>
@@ -184,7 +184,7 @@ export function SchedulesList({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => onDelete(schedule)}
-                        className="text-red-600"
+                        className="text-red-600 dark:text-red-300"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Eliminar
@@ -196,27 +196,27 @@ export function SchedulesList({
                 <div className="space-y-3">
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-blue-600" />
+                      <Clock className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                       {schedule.departure_time}
                       {schedule.arrival_time && (
-                        <span className="text-gray-500">→ {schedule.arrival_time}</span>
+                        <span className="text-gray-500 dark:text-gray-400">→ {schedule.arrival_time}</span>
                       )}
                     </p>
                     {schedule.schedule_name && (
-                      <p className="text-sm text-gray-500">{schedule.schedule_name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{schedule.schedule_name}</p>
                     )}
                   </div>
 
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <Route className="h-4 w-4 text-gray-400" />
+                      <Route className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <span className="text-gray-600 dark:text-gray-300">
                         {schedule.transport_routes?.name || 'Sin ruta'}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <span className="text-gray-600 dark:text-gray-300">
                         {getRecurrenceLabel(schedule)}
                       </span>
@@ -224,7 +224,7 @@ export function SchedulesList({
 
                     {schedule.vehicles && (
                       <div className="flex items-center gap-2">
-                        <Bus className="h-4 w-4 text-gray-400" />
+                        <Bus className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                         <span className="text-gray-600 dark:text-gray-300">
                           {schedule.vehicles.plate_number}
                         </span>
@@ -233,7 +233,7 @@ export function SchedulesList({
 
                     {schedule.available_seats && (
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
+                        <User className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                         <span className="text-gray-600 dark:text-gray-300">
                           {schedule.available_seats} cupos
                         </span>
@@ -241,7 +241,7 @@ export function SchedulesList({
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t text-xs text-gray-500">
+                  <div className="flex items-center justify-between pt-2 border-t text-xs text-gray-500 dark:text-gray-400">
                     <span>
                       Desde: {new Date(schedule.valid_from).toLocaleDateString('es-CO')}
                     </span>

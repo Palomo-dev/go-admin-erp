@@ -85,7 +85,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
               }
             }}
             placeholder="Ingresa tu código"
-            className="w-full sm:flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase text-gray-900 dark:text-gray-100"
+            className="w-full sm:flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-900 px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase text-gray-900 dark:text-gray-100 dark:focus:ring-blue-400"
             disabled={couponLoading}
           />
           <button
@@ -104,7 +104,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
       ) : (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 dark:text-green-300" />
             <div className="min-w-0">
               <p className="text-xs sm:text-sm font-medium text-green-900 dark:text-green-300 truncate">
                 {validatedCoupon.code} — {validatedCoupon.name}
@@ -117,7 +117,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
           <button
             type="button"
             onClick={handleRemoveCoupon}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors dark:text-gray-500"
           >
             <XCircle className="h-4 w-4" />
           </button>
@@ -125,7 +125,7 @@ export default function CouponInput({ onCouponValidated, initialCode = '' }: Cou
       )}
 
       {couponError && (
-        <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600">
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-300">
           <XCircle className="h-3.5 w-3.5" />
           {couponError}
         </div>

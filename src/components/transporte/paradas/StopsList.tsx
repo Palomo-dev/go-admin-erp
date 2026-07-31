@@ -60,7 +60,7 @@ export function StopsList({ stops, isLoading, onEdit, onDelete, onDuplicate, onS
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <MapPin className="h-12 w-12 text-gray-400 mb-4" />
+          <MapPin className="h-12 w-12 text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No hay paradas
           </h3>
@@ -121,7 +121,7 @@ export function StopsList({ stops, isLoading, onEdit, onDelete, onDuplicate, onS
                     )}
                     <DropdownMenuItem
                       onClick={() => onDelete(stop)}
-                      className="text-red-600"
+                      className="text-red-600 dark:text-red-300"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar
@@ -169,7 +169,7 @@ export function StopsList({ stops, isLoading, onEdit, onDelete, onDuplicate, onS
                   </p>
                 )}
                 {stop.latitude && stop.longitude && (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
                     📍 {stop.latitude.toFixed(6)}, {stop.longitude.toFixed(6)}
                   </p>
                 )}

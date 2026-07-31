@@ -130,7 +130,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
       </div>
     );
   }
@@ -221,9 +221,9 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
                       title={page.is_published ? t('unpublish') : t('publish')}
                     >
                       {page.is_published ? (
-                        <Eye className="h-3.5 w-3.5 text-green-600" />
+                        <Eye className="h-3.5 w-3.5 text-green-600 dark:text-green-300" />
                       ) : (
-                        <EyeOff className="h-3.5 w-3.5 text-gray-400" />
+                        <EyeOff className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                       )}
                     </Button>
                     <Button
@@ -233,7 +233,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
                       className="h-8 w-8 p-0"
                       title={t('deletePage')}
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                      <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500" />
                     </Button>
                   </div>
 
@@ -281,7 +281,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
             <div className="space-y-2">
               <Label>{t('slugLabel')}</Label>
               <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-500">/</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">/</span>
                 <Input
                   value={newPageSlug}
                   onChange={(e) => setNewPageSlug(e.target.value)}

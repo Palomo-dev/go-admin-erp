@@ -335,7 +335,7 @@ export default function MisEnviosPage() {
   if (isLoading && !driverLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
       </div>
     );
   }

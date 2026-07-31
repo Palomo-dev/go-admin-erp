@@ -268,7 +268,7 @@ export function AddCustomDomainDialog({
                               className="h-8 w-8 p-0"
                             >
                               {copiedField === `name-${idx}` ? (
-                                <Check className="h-4 w-4 text-green-600" />
+                                <Check className="h-4 w-4 text-green-600 dark:text-green-300" />
                               ) : (
                                 <Copy className="h-4 w-4" />
                               )}
@@ -289,7 +289,7 @@ export function AddCustomDomainDialog({
                               className="h-8 w-8 p-0"
                             >
                               {copiedField === `value-${idx}` ? (
-                                <Check className="h-4 w-4 text-green-600" />
+                                <Check className="h-4 w-4 text-green-600 dark:text-green-300" />
                               ) : (
                                 <Copy className="h-4 w-4" />
                               )}

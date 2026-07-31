@@ -373,7 +373,7 @@ export default function IncidentDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4 dark:text-blue-300" />
           <p className="text-gray-500 dark:text-gray-400">Cargando incidente...</p>
         </div>
       </div>

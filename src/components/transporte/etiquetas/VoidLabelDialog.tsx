@@ -42,7 +42,7 @@ export function VoidLabelDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-600">
+          <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-300">
             <Ban className="h-5 w-5" />
             Anular Etiqueta
           </DialogTitle>
@@ -54,7 +54,7 @@ export function VoidLabelDialog({
         {label && (
           <div className="space-y-4">
             <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 dark:text-red-300" />
               <div className="text-sm">
                 <p className="font-medium text-red-800 dark:text-red-300">
                   Etiqueta: {label.label_number}

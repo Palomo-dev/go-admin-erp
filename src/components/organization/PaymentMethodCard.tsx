@@ -152,16 +152,16 @@ export default function PaymentMethodCard({
 
   if (!stripeCustomerId) {
     return (
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">{t('title')}</h3>
-          <p className="text-sm text-gray-500">{t('description')}</p>
+      <div className="bg-white shadow rounded-lg dark:bg-gray-800">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('title')}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('description')}</p>
         </div>
         <div className="p-6">
           <div className="text-center py-6">
-            <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h4 className="mt-2 text-sm font-medium text-gray-900">{t('noPaymentMethod')}</h4>
-            <p className="mt-1 text-sm text-gray-500">
+            <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+            <h4 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-50">{t('noPaymentMethod')}</h4>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {t('noPaymentMethodDesc')}
             </p>
           </div>
@@ -175,20 +175,20 @@ export default function PaymentMethodCard({
   }
 
   return (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+    <div className="bg-white shadow rounded-lg dark:bg-gray-800">
+      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center dark:border-gray-700">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">{t('title')}</h3>
-          <p className="text-sm text-gray-500">{t('description')}</p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">{t('title')}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('description')}</p>
         </div>
         <button
           onClick={handleOpenBillingPortal}
           disabled={actionLoading === 'portal'}
-          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 dark:focus:ring-blue-400"
         >
           {actionLoading === 'portal' ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2 dark:border-gray-300"></div>
               {t('opening')}
             </>
           ) : (
@@ -202,16 +202,16 @@ export default function PaymentMethodCard({
       
       <div className="p-6">
         {error && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
+            <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
           </div>
         )}
         
         {paymentMethods.length === 0 ? (
           <div className="text-center py-6">
-            <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h4 className="mt-2 text-sm font-medium text-gray-900">{t('noPaymentMethods')}</h4>
-            <p className="mt-1 text-sm text-gray-500">
+            <CreditCardIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+            <h4 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-50">{t('noPaymentMethods')}</h4>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {t('addPaymentMethodDesc')}
             </p>
             <button
@@ -228,7 +228,7 @@ export default function PaymentMethodCard({
               <div 
                 key={pm.id} 
                 className={`flex items-center justify-between p-4 rounded-lg border ${
-                  pm.isDefault ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  pm.isDefault ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'
                 }`}
               >
                 <div className="flex items-center space-x-4">
@@ -240,15 +240,15 @@ export default function PaymentMethodCard({
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-50">
                       {formatBrand(pm.brand)} •••• {pm.last4}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {t('expires')} {pm.expMonth.toString().padStart(2, '0')}/{pm.expYear}
                     </p>
                   </div>
                   {pm.isDefault && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">
                       {t('default')}
                     </span>
                   )}
@@ -258,11 +258,11 @@ export default function PaymentMethodCard({
                   <button
                     onClick={() => handleDeletePaymentMethod(pm.id)}
                     disabled={actionLoading === pm.id || paymentMethods.length === 1}
-                    className="p-2 text-gray-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 text-gray-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed dark:text-gray-500 dark:hover:text-red-300"
                     title={paymentMethods.length === 1 ? t('cantDeleteOnly') : t('delete')}
                   >
                     {actionLoading === pm.id ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 dark:border-red-300"></div>
                     ) : (
                       <TrashIcon className="h-5 w-5" />
                     )}

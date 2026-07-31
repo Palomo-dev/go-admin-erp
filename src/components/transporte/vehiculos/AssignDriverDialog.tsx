@@ -82,7 +82,7 @@ export function AssignDriverDialog({
 
         <div className="space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar por nombre, licencia o teléfono..."
               value={searchTerm}
@@ -94,7 +94,7 @@ export function AssignDriverDialog({
           {vehicle.current_driver_id && (
             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-blue-600" />
+                <User className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                 <span className="text-sm text-blue-700 dark:text-blue-300">
                   Conductor actual asignado
                 </span>
@@ -104,7 +104,7 @@ export function AssignDriverDialog({
                 size="sm"
                 onClick={handleRemoveDriver}
                 disabled={isUpdating}
-                className="text-red-600 hover:text-red-700"
+                className="text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
               >
                 <UserX className="h-4 w-4 mr-1" />
                 Remover
@@ -114,7 +114,7 @@ export function AssignDriverDialog({
 
           <div className="max-h-64 overflow-y-auto space-y-2">
             {filteredDrivers.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No se encontraron conductores</p>
               </div>
@@ -131,14 +131,14 @@ export function AssignDriverDialog({
                     disabled={isUpdating}
                     className={`w-full p-3 rounded-lg border text-left transition-all ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <User className="h-5 w-5 text-gray-600" />
+                          <User className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                         </div>
                         <div>
                           <p className="font-medium flex items-center gap-2">
@@ -149,10 +149,10 @@ export function AssignDriverDialog({
                               </span>
                             )}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             Licencia: {driver.license_number} ({driver.license_category})
                           </p>
-                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
                             {profile?.phone && (
                               <span className="flex items-center gap-1">
                                 <Phone className="h-3 w-3" />
@@ -169,7 +169,7 @@ export function AssignDriverDialog({
                         </div>
                       </div>
                       {isSelected && (
-                        <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                        <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                       )}
                     </div>
                   </button>

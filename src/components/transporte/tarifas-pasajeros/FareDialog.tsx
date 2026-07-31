@@ -373,7 +373,7 @@ export function FareDialog({
             {formData.amount && formData.amount > 0 && (
               <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Precio final:</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-300">
                   ${(formData.amount - (formData.discount_amount || (formData.amount * (formData.discount_percent || 0)) / 100)).toLocaleString()} {formData.currency}
                 </p>
               </div>
@@ -473,7 +473,7 @@ export function FareDialog({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Requiere documento de identidad</Label>
-                  <p className="text-sm text-gray-500">El pasajero debe mostrar documento</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">El pasajero debe mostrar documento</p>
                 </div>
                 <Switch
                   checked={formData.requires_id || false}
@@ -484,7 +484,7 @@ export function FareDialog({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Requiere aprobación</Label>
-                  <p className="text-sm text-gray-500">Necesita autorización para aplicar</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Necesita autorización para aplicar</p>
                 </div>
                 <Switch
                   checked={formData.requires_approval || false}
@@ -495,7 +495,7 @@ export function FareDialog({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Tarifa activa</Label>
-                  <p className="text-sm text-gray-500">Disponible para venta</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Disponible para venta</p>
                 </div>
                 <Switch
                   checked={formData.is_active || false}

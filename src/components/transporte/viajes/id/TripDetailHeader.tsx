@@ -88,7 +88,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           <Button
             variant="outline"
             onClick={() => onStatusChange('boarding')}
-            className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
+            className="text-yellow-600 border-yellow-600 hover:bg-yellow-50 dark:text-yellow-300 dark:border-yellow-300 dark:hover:bg-yellow-900/30"
           >
             <UserCheck className="h-4 w-4 mr-2" />
             Iniciar Abordaje
@@ -98,7 +98,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           <Button
             variant="outline"
             onClick={() => onStatusChange('in_transit')}
-            className="text-green-600 border-green-600 hover:bg-green-50"
+            className="text-green-600 border-green-600 hover:bg-green-50 dark:text-green-300 dark:border-green-300 dark:hover:bg-green-900/30"
           >
             <Play className="h-4 w-4 mr-2" />
             Iniciar Viaje
@@ -108,7 +108,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           <Button
             variant="outline"
             onClick={() => onStatusChange('completed')}
-            className="text-gray-600 border-gray-600 hover:bg-gray-50"
+            className="text-gray-600 border-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-300 dark:hover:bg-gray-900"
           >
             <Square className="h-4 w-4 mr-2" />
             Completar Viaje
@@ -118,7 +118,7 @@ export function TripDetailHeader({ trip, onEdit, onStatusChange }: TripDetailHea
           <Button
             variant="outline"
             onClick={() => onStatusChange('cancelled')}
-            className="text-red-600 border-red-600 hover:bg-red-50"
+            className="text-red-600 border-red-600 hover:bg-red-50 dark:text-red-300 dark:border-red-300 dark:hover:bg-red-900/30"
           >
             <AlertTriangle className="h-4 w-4 mr-2" />
             Cancelar

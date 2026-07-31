@@ -53,7 +53,7 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5 text-blue-600" />
+          <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           Costos del Incidente
         </CardTitle>
         {!isEditing ? (
@@ -136,7 +136,7 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
               </p>
               {estimatedCost > 0 && (
                 <p className={`text-xs ${
-                  difference > 0 ? 'text-red-500' : difference < 0 ? 'text-green-500' : 'text-gray-500'
+                  difference > 0 ? 'text-red-500' : difference < 0 ? 'text-green-500 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
                 }`}>
                   {difference > 0 ? '+' : ''}{percentDiff}% vs estimado
                 </p>

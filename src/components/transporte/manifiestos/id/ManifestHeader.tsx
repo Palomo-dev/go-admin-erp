@@ -165,7 +165,7 @@ export function ManifestHeader({
                   Generar hoja de ruta
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600">
+                <DropdownMenuItem className="text-red-600 dark:text-red-300">
                   Cancelar manifiesto
                 </DropdownMenuItem>
               </DropdownMenuContent>

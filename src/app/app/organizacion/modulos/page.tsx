@@ -616,7 +616,7 @@ export default function ModulesMarketplacePage() {
                                     {page.name}
                                   </span>
                                   {isPageLoading && (
-                                    <Loader2 className="h-3 w-3 animate-spin text-blue-500 flex-shrink-0" />
+                                    <Loader2 className="h-3 w-3 animate-spin text-blue-500 flex-shrink-0 dark:text-blue-400" />
                                   )}
                                 </div>
                                 <Switch

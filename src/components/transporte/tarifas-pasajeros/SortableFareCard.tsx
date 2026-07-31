@@ -44,7 +44,7 @@ export function SortableFareCard({
         {...listeners}
         className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing z-10 bg-gray-50 dark:bg-gray-800 rounded-l-lg border-r border-gray-200 dark:border-gray-700 opacity-60 group-hover:opacity-100 transition-opacity"
       >
-        <GripVertical className="h-5 w-5 text-gray-400" />
+        <GripVertical className="h-5 w-5 text-gray-400 dark:text-gray-500" />
       </div>
       
       {/* Contenido con margen izquierdo para el handle */}

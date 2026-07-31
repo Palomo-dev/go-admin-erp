@@ -80,14 +80,14 @@ export function ShippingRateCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${rate.is_active ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
-              <Truck className={`h-5 w-5 ${rate.is_active ? 'text-blue-600' : 'text-gray-500'}`} />
+              <Truck className={`h-5 w-5 ${rate.is_active ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`} />
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white">
                 {rate.rate_name}
               </h3>
               {rate.rate_code && (
-                <p className="text-xs text-gray-500">Código: {rate.rate_code}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Código: {rate.rate_code}</p>
               )}
             </div>
           </div>
@@ -145,7 +145,7 @@ export function ShippingRateCard({
             {CALCULATION_METHOD_LABELS[rate.calculation_method] || rate.calculation_method}
           </Badge>
           {rate.show_on_website && (
-            <Badge variant="outline" className="text-xs text-green-600 border-green-300">
+            <Badge variant="outline" className="text-xs text-green-600 border-green-300 dark:text-green-300 dark:border-green-600">
               <Globe className="h-3 w-3 mr-1" />
               Web
             </Badge>
@@ -161,7 +161,7 @@ export function ShippingRateCard({
         {/* Origen/Destino */}
         {(rate.origin_city || rate.destination_city || rate.origin_zone || rate.destination_zone) && (
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <MapPin className="h-4 w-4 text-blue-500" />
+            <MapPin className="h-4 w-4 text-blue-500 dark:text-blue-400" />
             <span>
               {rate.origin_city || rate.origin_zone || 'Cualquier origen'}
               {' → '}
@@ -173,24 +173,24 @@ export function ShippingRateCard({
         {/* Precios */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-            <p className="text-xs text-gray-500">Base</p>
-            <p className="font-semibold text-blue-600">{formatCurrency(rate.base_rate || 0)}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Base</p>
+            <p className="font-semibold text-blue-600 dark:text-blue-300">{formatCurrency(rate.base_rate || 0)}</p>
           </div>
           {rate.rate_per_kg > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-              <p className="text-xs text-gray-500">Por kg</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Por kg</p>
               <p className="font-semibold">{formatCurrency(rate.rate_per_kg)}</p>
             </div>
           )}
           {rate.rate_per_m3 > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-              <p className="text-xs text-gray-500">Por m³</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Por m³</p>
               <p className="font-semibold">{formatCurrency(rate.rate_per_m3)}</p>
             </div>
           )}
           {rate.min_charge > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-              <p className="text-xs text-gray-500">Mínimo</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Mínimo</p>
               <p className="font-semibold">{formatCurrency(rate.min_charge)}</p>
             </div>
           )}
@@ -226,7 +226,7 @@ export function ShippingRateCard({
 
         {/* Vigencia */}
         {(rate.valid_from || rate.valid_until) && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t dark:border-gray-700">
+          <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t dark:border-gray-700 dark:text-gray-400">
             <Calendar className="h-3 w-3" />
             <span>
               {rate.valid_from && `Desde: ${format(new Date(rate.valid_from), 'dd MMM yyyy', { locale: es })}`}

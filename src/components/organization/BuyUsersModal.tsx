@@ -125,21 +125,21 @@ export default function BuyUsersModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800">
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2"
+                  className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2 dark:text-gray-50"
                 >
-                  <UserPlusIcon className="h-5 w-5 text-indigo-500" />
+                  <UserPlusIcon className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
                   Comprar Usuarios Extra
                 </Dialog.Title>
 
                 <div className="mt-2">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Agrega usuarios adicionales a tu plan. Se cobran mensualmente.
                   </p>
                   {maxUsers !== null && (
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">
                       Límite actual: {maxUsers} usuarios · Usados: {currentUsers}
                       {addonSlots > 0 && ` · Addons activos: ${addonSlots}`}
                     </p>
@@ -147,14 +147,14 @@ export default function BuyUsersModal({
                 </div>
 
                 {error && (
-                  <div className="mt-4 bg-red-50 border-l-4 border-red-500 p-4">
-                    <p className="text-sm text-red-700">{error}</p>
+                  <div className="mt-4 bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
+                    <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
                   </div>
                 )}
 
                 {/* Paquetes predefinidos */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Paquetes</h4>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 dark:text-gray-200">Paquetes</h4>
                   <div className="grid grid-cols-2 gap-4">
                     {USER_PACKAGES.map((pkg) => {
                       const monthlyPrice = (pkg.quantity * unitPrice) / 100;
@@ -169,7 +169,7 @@ export default function BuyUsersModal({
                           className={`relative text-left rounded-lg border-2 p-4 transition-all ${
                             selectedPackage === pkg.id
                               ? 'border-indigo-500 bg-indigo-50'
-                              : 'border-gray-200 hover:border-indigo-300'
+                              : 'border-gray-200 hover:border-indigo-300 dark:border-gray-700 dark:hover:border-indigo-600'
                           }`}
                         >
                           {pkg.popular && (
@@ -179,13 +179,13 @@ export default function BuyUsersModal({
                           )}
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-bold text-gray-900">{pkg.label}</p>
-                              <p className="text-lg font-semibold text-indigo-600 mt-1">
+                              <p className="font-bold text-gray-900 dark:text-gray-50">{pkg.label}</p>
+                              <p className="text-lg font-semibold text-indigo-600 mt-1 dark:text-indigo-300">
                                 ${monthlyPrice.toLocaleString()}/mes
                               </p>
                             </div>
                             {selectedPackage === pkg.id && (
-                              <CheckIcon className="h-5 w-5 text-indigo-500" />
+                              <CheckIcon className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
                             )}
                           </div>
                         </button>
@@ -196,7 +196,7 @@ export default function BuyUsersModal({
 
                 {/* Cantidad personalizada */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Cantidad personalizada</h4>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2 dark:text-gray-200">Cantidad personalizada</h4>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -209,26 +209,26 @@ export default function BuyUsersModal({
                         if (val) setSelectedPackage(null);
                       }}
                       placeholder="Ej: 7"
-                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none dark:border-gray-600 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
                     />
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {customQuantity ? `= $${((customQuantity * unitPrice) / 100).toLocaleString()}/mes` : ''}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Mínimo: 1 usuario</p>
+                  <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">Mínimo: 1 usuario</p>
                 </div>
 
                 {/* Resumen */}
-                <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                <div className="mt-6 bg-gray-50 rounded-lg p-4 dark:bg-gray-900">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Usuarios a agregar:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-600 dark:text-gray-300">Usuarios a agregar:</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-50">
                       {getQuantity() || '—'}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
-                    <span className="text-gray-600">Costo mensual:</span>
-                    <span className="font-bold text-indigo-600">
+                    <span className="text-gray-600 dark:text-gray-300">Costo mensual:</span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-300">
                       {getQuantity() > 0 ? `$${getTotal().toLocaleString()}/mes USD` : '—'}
                     </span>
                   </div>
@@ -239,7 +239,7 @@ export default function BuyUsersModal({
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="inline-flex justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    className="inline-flex justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-900 dark:focus:ring-indigo-400"
                   >
                     Cancelar
                   </button>
@@ -247,7 +247,7 @@ export default function BuyUsersModal({
                     type="button"
                     onClick={handleBuy}
                     disabled={loading || (!selectedPackage && !customQuantity)}
-                    className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+                    className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 dark:focus:ring-indigo-400"
                   >
                     {loading ? 'Procesando...' : 'Suscribir'}
                   </button>

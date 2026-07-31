@@ -58,7 +58,7 @@ export function RouteInfo({ route }: RouteInfoProps) {
             {route.base_fare ? `$${route.base_fare.toLocaleString()}` : '-'}
           </p>
           {route.base_shipping_fee && route.base_shipping_fee > 0 && (
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
               Envío: ${route.base_shipping_fee.toLocaleString()}
             </p>
           )}
@@ -77,7 +77,7 @@ export function RouteInfo({ route }: RouteInfoProps) {
             {route.route_stops?.length || 0}
           </p>
           {route.transport_carriers && (
-            <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+            <p className="text-sm text-gray-500 mt-1 flex items-center gap-1 dark:text-gray-400">
               <Truck className="h-3 w-3" />
               {route.transport_carriers.name}
             </p>

@@ -86,7 +86,7 @@ export function ApiCredentialsDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5 text-blue-600" />
+            <Key className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Credenciales API - {carrier.name}
           </DialogTitle>
           <DialogDescription>
@@ -96,7 +96,7 @@ export function ApiCredentialsDialog({
 
         <div className="space-y-4">
           <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 dark:text-yellow-300" />
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
               Las credenciales sensibles se almacenan de forma segura. Solo ingresa nuevos valores si deseas actualizarlas.
             </p>

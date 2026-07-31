@@ -361,16 +361,16 @@ export default function MembersTab({ orgId }: { orgId: number }) {
     ].filter(Boolean).length;
     
     return (
-      <div className="mb-6 bg-white border rounded-lg shadow-sm overflow-hidden">
+      <div className="mb-6 bg-white border rounded-lg shadow-sm overflow-hidden dark:bg-gray-800">
         {/* Encabezado de filtros */}
         <div className="bg-gradient-to-r from-blue-50 to-white p-4 border-b flex justify-between items-center">
           <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2 dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
             </svg>
-            <h3 className="font-medium text-gray-700">{t('filterMembers')}</h3>
+            <h3 className="font-medium text-gray-700 dark:text-gray-200">{t('filterMembers')}</h3>
             {activeFiltersCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full dark:bg-blue-800/30 dark:text-blue-100">
                 {activeFiltersCount} {activeFiltersCount === 1 ? t('activeFilter') : t('activeFilters')}
               </span>
             )}
@@ -386,7 +386,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                 setBranchFilter('');
                 setStatusFilter('all');
               }}
-              className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors flex items-center border border-blue-200"
+              className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors flex items-center border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/30 dark:border-blue-700"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -401,10 +401,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Filtro por nombre */}
             <div className="relative">
-              <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('nameLabel')}</label>
+              <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('nameLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
@@ -414,13 +414,13 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   value={nameFilter}
                   onChange={(e) => setNameFilter(e.target.value)}
                   placeholder={t('namePlaceholder')}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 />
                 {nameFilter && (
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     <button 
                       onClick={() => setNameFilter('')}
-                      className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                      className="text-gray-400 hover:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:text-gray-400"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -433,10 +433,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por email */}
             <div className="relative">
-              <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('emailLabel')}</label>
+              <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('emailLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
@@ -446,13 +446,13 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   value={emailFilter}
                   onChange={(e) => setEmailFilter(e.target.value)}
                   placeholder={t('emailPlaceholder')}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 />
                 {emailFilter && (
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     <button 
                       onClick={() => setEmailFilter('')}
-                      className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                      className="text-gray-400 hover:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:text-gray-400"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -465,10 +465,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por rol */}
             <div>
-              <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('roleLabel')}</label>
+              <label htmlFor="role-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('roleLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
@@ -476,7 +476,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   id="role-filter"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="">{t('allRoles')}</option>
                   {uniqueRoles.map((role: string) => (
@@ -488,10 +488,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por sucursal */}
             <div>
-              <label htmlFor="branch-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('branchLabel')}</label>
+              <label htmlFor="branch-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('branchLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                 </div>
@@ -499,7 +499,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   id="branch-filter"
                   value={branchFilter}
                   onChange={(e) => setBranchFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="">{t('allBranches')}</option>
                   {branches.map(branch => (
@@ -511,10 +511,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             
             {/* Filtro por estado */}
             <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('statusLabel')}</label>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('statusLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
@@ -522,7 +522,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                   id="status-filter"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="all">{t('allStatuses')}</option>
                   <option value="active">{t('activeStatus')}</option>
@@ -542,15 +542,15 @@ export default function MembersTab({ orgId }: { orgId: number }) {
 
   if (error) {
     return (
-      <div className="bg-red-50 border-l-4 border-red-500 p-4">
+      <div className="bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
         <div className="flex">
           <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
           </div>
           <div className="ml-3">
-            <p className="text-sm text-red-700">{error}</p>
+            <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
           </div>
         </div>
       </div>
@@ -562,17 +562,17 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       {/* Sección de filtros */}
       {renderFilters()}
       
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="bg-white shadow overflow-hidden sm:rounded-md dark:bg-gray-800">
         <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
           <div>
-            <h3 className="text-lg leading-6 font-medium text-gray-900">{t('title')}</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-50">{t('title')}</h3>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
               {t('currentList')} {members.length > 0 && filteredMembers.length !== members.length && ` (${filteredMembers.length} de ${members.length})`}
               {maxUsers && (
                 <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                   members.length >= maxUsers
                     ? 'bg-red-100 text-red-800'
-                    : 'bg-blue-100 text-blue-800'
+                    : 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100'
                 }`}>
                   {members.length}/{maxUsers} {t('users')}
                 </span>
@@ -583,7 +583,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
           {/* Botón para alternar filtros */}
           <button 
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900"
           >
             {showFilters ? (
               <>
@@ -605,53 +605,53 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                 {t('thName')}
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                 {t('thEmail')}
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                 {t('thRole')}
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                 {t('thJobPosition')}
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                 {t('thBranch')}
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                 {t('thStatus')}
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                 {t('thDate')}
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">
                 {t('thActions')}
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800">
             {filteredMembers.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   {members.length === 0 ? t('noMembers') : t('noResults')}
                 </td>
               </tr>
             ) : (
               paginatedMembers.map((member) => (
                 <tr key={member.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-50">
                     {member.full_name}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {member.email}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     <select 
-                      className="rounded-md border border-gray-300 p-1"
+                      className="rounded-md border border-gray-300 p-1 dark:border-gray-600"
                       value={member.role_code || ""}
                       onChange={(e) => updateMemberRole(member.id, e.target.value)}
                       disabled={member.is_admin} // Disable changing role for owners/admins
@@ -669,10 +669,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       })}
                     </select>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {member.job_position_name}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     <button
                       onClick={() => openBranchAssignmentModal(member.id, member.full_name)}
                       className="inline-flex items-center px-2 py-1 border border-primary text-xs font-medium rounded-md text-primary hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
@@ -689,19 +689,19 @@ export default function MembersTab({ orgId }: { orgId: number }) {
                       onClick={() => !member.is_admin && toggleMemberStatus(member.id, member.status === t('active'))}
                       disabled={member.is_admin}
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        member.status === t('active') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        member.status === t('active') ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100'
                       } ${!member.is_admin ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-75'}`}
                     >
                       {member.status}
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {member.created_at}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => removeMember(member.id)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 dark:text-red-300 dark:hover:text-red-50"
                     >
                       {t('remove')}
                     </button>
@@ -714,7 +714,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       </div>
 
       {filteredMembers.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-200">
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
           <DataTablePagination
             currentPage={currentPage}
             totalPages={totalPages}

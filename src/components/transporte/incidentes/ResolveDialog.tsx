@@ -45,12 +45,12 @@ export function ResolveDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-300" />
             Resolver Incidente
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Documentar resolución de: <strong>{incidentTitle}</strong>
           </p>

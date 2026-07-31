@@ -175,7 +175,7 @@ export function RouteDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Route className="h-5 w-5 text-blue-600" />
+            <Route className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {isEditing ? 'Editar Ruta' : 'Nueva Ruta'}
           </DialogTitle>
           <DialogDescription>
@@ -183,9 +183,9 @@ export function RouteDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Nombre y Código */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nombre *</Label>
               <Input
@@ -209,7 +209,7 @@ export function RouteDialog({
           </div>
 
           {/* Tipo y Transportadora */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Tipo de ruta *</Label>
               <Select
@@ -252,7 +252,7 @@ export function RouteDialog({
           </div>
 
           {/* Origen y Destino */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Parada de origen</Label>
               <Select
@@ -302,7 +302,7 @@ export function RouteDialog({
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-base font-medium">Calcular Ruta</Label>
-                <p className="text-sm text-gray-500">Calcula distancia y duración con Google Maps</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Calcula distancia y duración con Google Maps</p>
               </div>
               <Button
                 type="button"
@@ -335,7 +335,7 @@ export function RouteDialog({
           </div>
 
           {/* Distancia y Duración */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="distance">Distancia estimada (km)</Label>
               <Input
@@ -366,7 +366,7 @@ export function RouteDialog({
           </div>
 
           {/* Tarifas */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="base_fare">Tarifa base pasajero</Label>
               <Input
@@ -409,7 +409,7 @@ export function RouteDialog({
           <div className="flex items-center justify-between border-t pt-4">
             <div>
               <Label>Estado de la ruta</Label>
-              <p className="text-sm text-gray-500">Las rutas inactivas no aparecen en la programación</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Las rutas inactivas no aparecen en la programación</p>
             </div>
             <Switch
               checked={formData.is_active}

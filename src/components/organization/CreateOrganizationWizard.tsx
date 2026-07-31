@@ -311,7 +311,7 @@ export default function CreateOrganizationWizard({ onSuccess, onCancel }: Create
   const stepLabels = ['Organización', 'Sucursal', 'Plan', 'Pago'];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Indicador de pasos */}
       <div className="flex justify-center">
         <div className="flex items-start">

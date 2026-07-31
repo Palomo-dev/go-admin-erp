@@ -53,7 +53,7 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5 text-blue-600" />
+          <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           Costos del Incidente
         </CardTitle>
         {!isEditing ? (
@@ -74,8 +74,8 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
       </CardHeader>
       <CardContent>
         {isEditing ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div>
                 <Label htmlFor="estimated_cost">Costo Estimado</Label>
                 <Input
@@ -99,11 +99,11 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             {/* Costo Estimado */}
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">Costo Estimado</p>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {formatCurrency(incident.estimated_cost || 0)}
               </p>
             </div>
@@ -111,7 +111,7 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
             {/* Costo Real */}
             <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">Costo Real</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
                 {formatCurrency(incident.actual_cost || 0)}
               </p>
             </div>
@@ -136,7 +136,7 @@ export function IncidentCosts({ incident, onUpdateCosts }: IncidentCostsProps) {
               </p>
               {estimatedCost > 0 && (
                 <p className={`text-xs ${
-                  difference > 0 ? 'text-red-500' : difference < 0 ? 'text-green-500' : 'text-gray-500'
+                  difference > 0 ? 'text-red-500' : difference < 0 ? 'text-green-500 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
                 }`}>
                   {difference > 0 ? '+' : ''}{percentDiff}% vs estimado
                 </p>

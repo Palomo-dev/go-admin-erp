@@ -73,9 +73,9 @@ const EVENT_CONFIG: Record<string, { label: string; icon: React.ReactNode; color
 export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProps) {
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
         </div>
       </Card>
     );
@@ -95,8 +95,8 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
       </div>
 
       {events.length === 0 ? (
-        <div className="p-8 text-center">
-          <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+        <div className="p-4 sm:p-8 text-center">
+          <Clock className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <p className="text-gray-600 dark:text-gray-400">
             No hay eventos registrados para este viaje
           </p>
@@ -108,7 +108,7 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
 
             {/* Eventos */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {events.map((event, index) => {
                 const config = EVENT_CONFIG[event.event_type] || {
                   label: event.event_type,
@@ -136,7 +136,7 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
                           </p>
                         </div>
                         {event.sequence && (
-                          <span className="text-xs text-gray-400">#{event.sequence}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">#{event.sequence}</span>
                         )}
                       </div>
 
@@ -147,17 +147,17 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
                       )}
 
                       {event.transport_stops && (
-                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
                           <MapPin className="h-4 w-4" />
                           <span>{event.transport_stops.name}</span>
                           {event.transport_stops.city && (
-                            <span className="text-gray-400">({event.transport_stops.city})</span>
+                            <span className="text-gray-400 dark:text-gray-500">({event.transport_stops.city})</span>
                           )}
                         </div>
                       )}
 
                       {event.location_text && (
-                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
                           <MapPin className="h-4 w-4" />
                           <span>{event.location_text}</span>
                         </div>

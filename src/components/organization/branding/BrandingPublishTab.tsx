@@ -68,7 +68,7 @@ export default function BrandingPublishTab({
   const allChecksPassed = passedChecks === checks.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Estado de Publicación */}
       <Card className={`${settings.is_published ? 'border-green-200 dark:border-green-800' : 'border-gray-200 dark:border-gray-700'} dark:bg-gray-800`}>
         <CardHeader>
@@ -99,7 +99,7 @@ export default function BrandingPublishTab({
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           {/* URL del sitio */}
           <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400" />
@@ -107,7 +107,7 @@ export default function BrandingPublishTab({
             {subdomain && (
               <>
                 <Button variant="ghost" size="sm" onClick={handleCopyUrl}>
-                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  {copied ? <Check className="h-4 w-4 text-green-500 dark:text-green-400" /> : <Copy className="h-4 w-4" />}
                 </Button>
                 {settings.is_published && (
                   <Button variant="ghost" size="sm" asChild>
@@ -240,9 +240,9 @@ export default function BrandingPublishTab({
               <div
                 key={template.id}
                 onClick={() => setSelectedTemplate(template.id)}
-                className={`cursor-pointer rounded-lg border-2 p-3 transition-all hover:border-blue-400 ${
+                className={`cursor-pointer rounded-lg border-2 p-3 transition-all hover:border-blue-400  dark:hover:border-blue-500${
                   selectedTemplate === template.id
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-300'
                     : 'border-gray-200 dark:border-gray-700'
                 }`}
               >
@@ -281,21 +281,21 @@ export default function BrandingPublishTab({
           <CardTitle className="dark:text-white">{t('infoTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{organizationName}</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{organizationName}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">{t('organization')}</p>
             </div>
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 capitalize">{settings.template_id}</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400 capitalize">{settings.template_id}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">{t('template')}</p>
             </div>
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 capitalize">{settings.theme_mode}</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400 capitalize">{settings.theme_mode}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">{t('mode')}</p>
             </div>
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {new Date(settings.updated_at).toLocaleDateString()}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">{t('lastUpdate')}</p>

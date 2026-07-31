@@ -271,9 +271,9 @@ export default function RouteDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <Skeleton className="h-20 w-full" />
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
@@ -288,7 +288,7 @@ export default function RouteDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <RouteDetailHeader
         route={route}
         onRefresh={loadData}
@@ -306,7 +306,7 @@ export default function RouteDetailPage() {
         isRecalculating={isRecalculating}
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <RouteStopsList
             stops={route.route_stops || []}

@@ -60,11 +60,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const PAYMENT_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
-  paid: { label: 'Pagado', color: 'bg-green-100 text-green-800' },
-  partial: { label: 'Parcial', color: 'bg-orange-100 text-orange-800' },
-  refunded: { label: 'Reembolsado', color: 'bg-gray-100 text-gray-800' },
-  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800' },
+  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100' },
+  paid: { label: 'Pagado', color: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' },
+  partial: { label: 'Parcial', color: 'bg-orange-100 text-orange-800 dark:bg-orange-800/30 dark:text-orange-100' },
+  refunded: { label: 'Reembolsado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100' },
+  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100' },
 };
 
 export function TicketsList({
@@ -82,9 +82,9 @@ export function TicketsList({
 }: TicketsListProps) {
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
           <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando boletos...</span>
         </div>
       </Card>
@@ -93,9 +93,9 @@ export function TicketsList({
 
   if (tickets.length === 0) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="text-center">
-          <Ticket className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <Ticket className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay boletos</h3>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             No se encontraron boletos con los filtros aplicados.
@@ -130,7 +130,7 @@ export function TicketsList({
               <TableRow key={ticket.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
-                    <QrCode className="h-4 w-4 text-gray-400" />
+                    <QrCode className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span className="text-blue-600 dark:text-blue-400">{ticket.ticket_number}</span>
                   </div>
                 </TableCell>
@@ -139,7 +139,7 @@ export function TicketsList({
                     <p className="font-medium">
                       {ticket.passenger_name || ticket.customers?.full_name || 'Sin nombre'}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                       {ticket.passenger_doc && <span>{ticket.passenger_doc}</span>}
                       {ticket.passenger_phone && (
                         <span className="flex items-center gap-1">
@@ -153,7 +153,7 @@ export function TicketsList({
                 <TableCell>
                   <div>
                     <p className="font-medium">{ticket.trips?.trip_code || '-'}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {ticket.trips?.trip_date && format(new Date(ticket.trips.trip_date), 'dd/MM/yyyy', { locale: es })}
                       {ticket.trips?.scheduled_departure && ` ${format(new Date(ticket.trips.scheduled_departure), 'HH:mm')}`}
                     </p>
@@ -163,7 +163,7 @@ export function TicketsList({
                 <TableCell>
                   <div className="text-sm">
                     <p>{ticket.boarding_stop?.name || '-'}</p>
-                    <p className="text-gray-500">→ {ticket.alighting_stop?.name || '-'}</p>
+                    <p className="text-gray-500 dark:text-gray-400">→ {ticket.alighting_stop?.name || '-'}</p>
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">
@@ -198,18 +198,18 @@ export function TicketsList({
                       <DropdownMenuSeparator />
                       {ticket.status === 'reserved' && (
                         <DropdownMenuItem onClick={() => onConfirm(ticket)}>
-                          <UserCheck className="h-4 w-4 mr-2 text-green-600" />
+                          <UserCheck className="h-4 w-4 mr-2 text-green-600 dark:text-green-300" />
                           Confirmar
                         </DropdownMenuItem>
                       )}
                       {['reserved', 'confirmed'].includes(ticket.status) && (
                         <>
                           <DropdownMenuItem onClick={() => onBoard(ticket)}>
-                            <UserCheck className="h-4 w-4 mr-2 text-purple-600" />
+                            <UserCheck className="h-4 w-4 mr-2 text-purple-600 dark:text-purple-300" />
                             Marcar Abordado
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onNoShow(ticket)}>
-                            <UserX className="h-4 w-4 mr-2 text-red-600" />
+                            <UserX className="h-4 w-4 mr-2 text-red-600 dark:text-red-300" />
                             Marcar No Show
                           </DropdownMenuItem>
                         </>
@@ -217,25 +217,25 @@ export function TicketsList({
                       <DropdownMenuSeparator />
                       {onDuplicate && (
                         <DropdownMenuItem onClick={() => onDuplicate(ticket)}>
-                          <Copy className="h-4 w-4 mr-2 text-blue-600" />
+                          <Copy className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-300" />
                           Duplicar
                         </DropdownMenuItem>
                       )}
                       {onResendQR && ticket.status !== 'cancelled' && (
                         <DropdownMenuItem onClick={() => onResendQR(ticket)}>
-                          <Send className="h-4 w-4 mr-2 text-green-600" />
+                          <Send className="h-4 w-4 mr-2 text-green-600 dark:text-green-300" />
                           Re-enviar QR
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
                       {ticket.payment_status === 'paid' && ticket.status !== 'cancelled' && (
                         <DropdownMenuItem onClick={() => onRefund(ticket)}>
-                          <RefreshCw className="h-4 w-4 mr-2 text-orange-600" />
+                          <RefreshCw className="h-4 w-4 mr-2 text-orange-600 dark:text-orange-300" />
                           Reembolsar
                         </DropdownMenuItem>
                       )}
                       {ticket.status !== 'cancelled' && (
-                        <DropdownMenuItem onClick={() => onCancel(ticket)} className="text-red-600">
+                        <DropdownMenuItem onClick={() => onCancel(ticket)} className="text-red-600 dark:text-red-300">
                           <XCircle className="h-4 w-4 mr-2" />
                           Cancelar
                         </DropdownMenuItem>

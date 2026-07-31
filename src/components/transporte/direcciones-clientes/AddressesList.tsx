@@ -46,9 +46,9 @@ export function AddressesList({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <Skeleton className="h-10 w-full max-w-sm" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-48" />
           ))}
@@ -58,7 +58,7 @@ export function AddressesList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-500 dark:text-gray-400">
           {addresses.length} direcciones
@@ -68,7 +68,7 @@ export function AddressesList({
       {addresses.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <MapPin className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <MapPin className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">
               No hay direcciones
             </h3>
@@ -78,7 +78,7 @@ export function AddressesList({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {addresses.map((address) => (
             <Card key={address.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
@@ -88,7 +88,7 @@ export function AddressesList({
                       {address.label}
                     </Badge>
                     {address.is_default && (
-                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 dark:text-yellow-400 dark:fill-yellow-400" />
                     )}
                   </div>
                   <DropdownMenu>
@@ -121,7 +121,7 @@ export function AddressesList({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => onDelete(address)}
-                        className="text-red-600"
+                        className="text-red-600 dark:text-red-300"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Eliminar
@@ -132,14 +132,14 @@ export function AddressesList({
 
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2">
-                    <User className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <User className="h-4 w-4 text-gray-400 mt-0.5 dark:text-gray-500" />
                     <span className="font-medium text-gray-900 dark:text-white">
                       {address.customers?.first_name} {address.customers?.last_name}
                     </span>
                   </div>
                   
                   <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
+                    <MapPin className="h-4 w-4 text-gray-400 mt-0.5 dark:text-gray-500" />
                     <div className="text-gray-600 dark:text-gray-300">
                       <p>{address.address_line1}</p>
                       {address.address_line2 && <p>{address.address_line2}</p>}
@@ -149,7 +149,7 @@ export function AddressesList({
 
                   {address.recipient_phone && (
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
+                      <Phone className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <span className="text-gray-600 dark:text-gray-300">
                         {address.recipient_phone}
                       </span>
@@ -158,7 +158,7 @@ export function AddressesList({
 
                   {(address.latitude && address.longitude) && (
                     <div className="flex items-center gap-2 pt-2 border-t">
-                      <Navigation className="h-4 w-4 text-green-500" />
+                      <Navigation className="h-4 w-4 text-green-500 dark:text-green-400" />
                       <span className="text-xs text-green-600 dark:text-green-400">
                         Geolocalización válida
                       </span>

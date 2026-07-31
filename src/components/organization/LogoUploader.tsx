@@ -94,14 +94,14 @@ export default function LogoUploader({
 
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <div className="mb-2 text-sm font-medium text-gray-700">{t('label')}</div>
+      <div className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-200">{t('label')}</div>
       
       <div 
         className="relative group cursor-pointer"
         onClick={handleClick}
       >
         {logo ? (
-          <div className="relative w-32 h-32 rounded-full border-2 border-gray-200 overflow-hidden">
+          <div className="relative w-32 h-32 rounded-full border-2 border-gray-200 overflow-hidden dark:border-gray-700">
             <StorageImage 
               src={logo} 
               alt={t('altText')} 
@@ -115,17 +115,17 @@ export default function LogoUploader({
             </div>
           </div>
         ) : (
-          <div className="w-32 h-32 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-32 h-32 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors dark:border-gray-600 dark:bg-gray-900 dark:hover:bg-gray-800">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <span className="mt-2 text-sm text-gray-500">{t('upload')}</span>
+            <span className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t('upload')}</span>
           </div>
         )}
         
         {uploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-full">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-full dark:bg-gray-800">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin dark:border-blue-400"></div>
           </div>
         )}
       </div>
@@ -134,7 +134,7 @@ export default function LogoUploader({
         <button 
           type="button" 
           onClick={handleRemove}
-          className="mt-2 text-sm text-red-600 hover:text-red-800"
+          className="mt-2 text-sm text-red-600 hover:text-red-800 dark:text-red-300 dark:hover:text-red-100"
         >
           {t('remove')}
         </button>
@@ -149,7 +149,7 @@ export default function LogoUploader({
       />
       
       {error && (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <p className="mt-2 text-sm text-red-600 dark:text-red-300">{error}</p>
       )}
     </div>
   );

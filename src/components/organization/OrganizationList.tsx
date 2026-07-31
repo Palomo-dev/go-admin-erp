@@ -271,15 +271,15 @@ export default function OrganizationList({ showActions = false, onDelete, filter
 
   if (error) {
     return (
-      <div className="rounded-md bg-red-50 p-4">
+      <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/30">
         <div className="flex">
           <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="h-5 w-5 text-red-400 dark:text-red-500" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">{error}</h3>
+            <h3 className="text-sm font-medium text-red-800 dark:text-red-100">{error}</h3>
           </div>
         </div>
       </div>
@@ -299,16 +299,16 @@ export default function OrganizationList({ showActions = false, onDelete, filter
     ].filter(Boolean).length;
     
     return (
-      <div className="mb-6 bg-white border rounded-lg shadow-sm overflow-hidden">
+      <div className="mb-6 bg-white border rounded-lg shadow-sm overflow-hidden dark:bg-gray-800 dark:border-gray-700">
         {/* Encabezado de filtros */}
-        <div className="bg-gradient-to-r from-blue-50 to-white p-4 border-b flex justify-between items-center">
+        <div className="bg-gradient-to-r from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-800 p-4 border-b dark:border-gray-700 flex justify-between items-center">
           <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mr-2 dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
             </svg>
-            <h3 className="font-medium text-gray-700">{t('filters')}</h3>
+            <h3 className="font-medium text-gray-700 dark:text-gray-200">{t('filters')}</h3>
             {activeFiltersCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full dark:bg-blue-800/30 dark:text-blue-100">
                 {activeFiltersCount} {activeFiltersCount === 1 ? t('activeFilter') : t('activeFilters')}
               </span>
             )}
@@ -323,7 +323,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                 setPlanFilter('');
                 setStatusFilter('all');
               }}
-              className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors flex items-center border border-blue-200"
+              className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors flex items-center border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-800/30 dark:border-blue-700"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -335,13 +335,13 @@ export default function OrganizationList({ showActions = false, onDelete, filter
         
         {/* Contenido de filtros */}
         <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             {/* Filtro por nombre */}
             <div className="relative">
-              <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('nameLabel')}</label>
+              <label htmlFor="name-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('nameLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
@@ -351,13 +351,13 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                   value={nameFilter}
                   onChange={(e) => setNameFilter(e.target.value)}
                   placeholder={t('namePlaceholder')}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 />
                 {nameFilter && (
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     <button 
                       onClick={() => setNameFilter('')}
-                      className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                      className="text-gray-400 hover:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:text-gray-400"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -370,10 +370,10 @@ export default function OrganizationList({ showActions = false, onDelete, filter
             
             {/* Filtro por tipo */}
             <div>
-              <label htmlFor="type-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('typeLabel')}</label>
+              <label htmlFor="type-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('typeLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                 </div>
@@ -381,7 +381,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                   id="type-filter"
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="">{t('allTypes')}</option>
                   {uniqueTypes.map(type => (
@@ -393,10 +393,10 @@ export default function OrganizationList({ showActions = false, onDelete, filter
             
             {/* Filtro por plan */}
             <div>
-              <label htmlFor="plan-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('planLabel')}</label>
+              <label htmlFor="plan-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('planLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
@@ -404,7 +404,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                   id="plan-filter"
                   value={planFilter}
                   onChange={(e) => setPlanFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="">{t('allPlans')}</option>
                   {uniquePlans.map(plan => (
@@ -416,10 +416,10 @@ export default function OrganizationList({ showActions = false, onDelete, filter
             
             {/* Filtro por estado */}
             <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('statusLabel')}</label>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">{t('statusLabel')}</label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -427,7 +427,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                   id="status-filter"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="all">{t('allStatuses')}</option>
                   <option value="active">{t('activeStatus')}</option>
@@ -446,10 +446,10 @@ export default function OrganizationList({ showActions = false, onDelete, filter
       {/* Mostrar los filtros solo si showFilters es true */}
       {renderFilters()}
       
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="bg-white shadow overflow-hidden sm:rounded-md dark:bg-gray-800">
         {filteredOrganizations.length === 0 ? (
           <div className="text-center py-6">
-            <p className="text-gray-500">{t('noResults')}</p>
+            <p className="text-gray-500 dark:text-gray-400">{t('noResults')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-200">
@@ -457,7 +457,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
               <li key={org.id}>
                 <div
                   onClick={() => handleSelectOrganization(org.id)}
-                  className="w-full hover:bg-gray-50 p-4 focus:outline-none cursor-pointer"
+                  className="w-full hover:bg-gray-50 p-4 focus:outline-none cursor-pointer dark:hover:bg-gray-900"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && handleSelectOrganization(org.id)}
@@ -466,29 +466,29 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <p className="text-sm font-medium text-blue-600 truncate">{org.name}</p>
+                          <p className="text-sm font-medium text-blue-600 min-w-0 break-words dark:text-blue-300">{org.name}</p>
                           {org.is_current && (
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">
                               {t('current')}
                             </span>
                           )}
                         </div>
                         <div className="ml-2 flex-shrink-0 flex">
-                          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">
                             {org.type_id.name}
                           </p>
                         </div>
                       </div>
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex space-x-4">
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {org.role_id === 2 ? t('admin') : t('member')}
                           </p>
-                          <p className="text-sm text-gray-500">
-                            {t('planPrefix')} <span className="font-medium text-purple-600">{org.plan_name}</span>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {t('planPrefix')} <span className="font-medium text-purple-600 dark:text-purple-300">{org.plan_name}</span>
                           </p>
                         </div>
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${org.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${org.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'}`}>
                           {org.status === 'active' ? t('active') : t('inactive')}
                         </span>
                       </div>
@@ -499,7 +499,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                           {/* Botón para cambiar estado activo/inactivo */}
                           <div
                             onClick={(e) => handleToggleStatus(org.id, org.status, e)}
-                            className={`cursor-pointer ${org.status === 'active' ? 'text-green-600 hover:text-green-800' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`cursor-pointer ${org.status === 'active' ? 'text-green-600 hover:text-green-800 dark:text-green-300 dark:hover:text-green-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
                             role="button"
                             tabIndex={0}
                             aria-label={org.status === 'active' ? t('deactivateOrg') : t('activateOrg')}
@@ -535,7 +535,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                               });
                               setChangePlanModalOpen(true);
                             }}
-                            className="text-purple-600 hover:text-purple-900 cursor-pointer"
+                            className="text-purple-600 hover:text-purple-900 cursor-pointer dark:text-purple-300 dark:hover:text-purple-50"
                             role="button"
                             tabIndex={0}
                             aria-label={t('changePlanLabel')}
@@ -566,7 +566,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                               e.stopPropagation();
                               onDelete?.(org.id);
                             }}
-                            className="text-red-600 hover:text-red-900 cursor-pointer"
+                            className="text-red-600 hover:text-red-900 cursor-pointer dark:text-red-300 dark:hover:text-red-50"
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => {
@@ -582,7 +582,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
                           </div>
                         </>
                       )}
-                      <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                      <svg className="h-5 w-5 text-gray-400 dark:text-gray-500" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                       </svg>
                     </div>

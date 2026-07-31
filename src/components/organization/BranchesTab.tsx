@@ -15,10 +15,10 @@ import { BRANCHES_UPDATED_EVENT } from '@/lib/context/BranchContext';
 const DynamicBranchesMap = dynamic(() => import('@/components/maps/BranchesMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-64 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center">
+    <div className="h-64 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center dark:bg-gray-900 dark:border-gray-700">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-600">Loading map...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2 dark:border-blue-300"></div>
+        <p className="text-sm text-gray-600 dark:text-gray-300">Loading map...</p>
       </div>
     </div>
   )
@@ -269,20 +269,20 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
 
   return (
     <div className="w-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">{t('title')}</h2>
-          <p className="text-sm text-gray-500 mt-1">{branches.length} {branches.length === 1 ? t('branchSingular') : t('branchPlural')} {t('registered')}</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">{t('title')}</h2>
+          <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">{branches.length} {branches.length === 1 ? t('branchSingular') : t('branchPlural')} {t('registered')}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Selector de vista */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 dark:bg-gray-800">
             <button
               onClick={() => setViewMode('table')}
               className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                 viewMode === 'table'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-50'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50'
               }`}
             >
               <svg className="w-4 h-4 inline mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -294,8 +294,8 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
               onClick={() => setViewMode('map')}
               className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                 viewMode === 'map'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-50'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50'
               }`}
             >
               <svg className="w-4 h-4 inline mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +309,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
           {/* Botón de mapa expandido */}
           <button
             onClick={handleShowMap}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors dark:text-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-900 dark:focus:ring-blue-400"
             title={t('fullMapTitle')}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -322,14 +322,14 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
               branches.length >= maxBranches
                 ? 'bg-red-100 text-red-800'
-                : 'bg-blue-100 text-blue-800'
+                : 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100'
             }`}>
               {branches.length}/{maxBranches}
             </span>
           )}
 
           <button
-            className="btn btn-primary flex items-center gap-2 px-5 py-2 text-base font-semibold rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors"
+            className="flex items-center gap-2 px-5 py-2 text-base font-semibold rounded-lg shadow bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-colors dark:focus:ring-blue-500"
             onClick={handleCreate}
             aria-label={t('newBranchAria')}
           >
@@ -349,8 +349,8 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       </div>
       
       {successMessage && (
-        <div className="mb-6 px-4 py-3 rounded-lg bg-green-50 text-green-800 border border-green-200 shadow-sm flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="mb-6 px-4 py-3 rounded-lg bg-green-50 text-green-800 border border-green-200 shadow-sm flex items-center dark:bg-green-900/30 dark:text-green-100 dark:border-green-700">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           {successMessage}
@@ -359,19 +359,19 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       
       {userBranches && userBranches.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('yourBranches')}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 dark:text-gray-50">{t('yourBranches')}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
             {userBranches.map((branch) => (
-              <div key={branch.branch_id} className="bg-white overflow-hidden shadow-sm rounded-lg border border-blue-100">
+              <div key={branch.branch_id} className="bg-white overflow-hidden shadow-sm rounded-lg border border-blue-100 dark:bg-gray-800 dark:border-blue-800">
                 <div className="px-4 py-4 flex items-center">
-                  <div className="flex-shrink-0 h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-700 font-bold dark:bg-blue-800/30 dark:text-blue-200">
                     {branch.branch_name ? branch.branch_name.substring(0, 2).toUpperCase() : 'BR'}
                   </div>
                   <div className="ml-4">
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-gray-50">
                       {branch.branch_name || `${t('branchFallback')} #${branch.branch_id}`}
                     </div>
-                    <div className="text-sm text-blue-600">
+                    <div className="text-sm text-blue-600 dark:text-blue-300">
                       {t('assignedMember')}
                     </div>
                   </div>
@@ -384,32 +384,32 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       
       {/* Vista condicional: Tabla o Mapa */}
       {viewMode === 'map' ? (
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-gray-800">
           {loading ? (
-            <div className="p-8 flex justify-center items-center">
+            <div className="p-4 sm:p-8 flex justify-center items-center">
               <div className="flex flex-col items-center">
                 <span className="loading loading-spinner loading-lg text-primary"></span>
-                <p className="mt-4 text-gray-600">{t('loadingBranches')}</p>
+                <p className="mt-4 text-gray-600 dark:text-gray-300">{t('loadingBranches')}</p>
               </div>
             </div>
           ) : error ? (
-            <div className="p-8 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="p-4 sm:p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4 dark:bg-red-800/30">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <p className="text-red-500 font-medium">{error}</p>
+              <p className="text-red-500 font-medium dark:text-red-400">{error}</p>
             </div>
           ) : branches.length === 0 ? (
-            <div className="p-8 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="p-4 sm:p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4 dark:bg-blue-800/30">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
-              <p className="text-gray-600 font-medium mb-2">{t('noBranches')}</p>
-              <p className="text-gray-500 text-sm">{t('noBranchesHint')}</p>
+              <p className="text-gray-600 font-medium mb-2 dark:text-gray-300">{t('noBranches')}</p>
+              <p className="text-gray-500 text-sm dark:text-gray-400">{t('noBranchesHint')}</p>
             </div>
           ) : (
             <div className="p-4">
@@ -424,37 +424,37 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-gray-800">
           {loading ? (
-            <div className="p-8 flex justify-center items-center">
+            <div className="p-4 sm:p-8 flex justify-center items-center">
               <div className="flex flex-col items-center">
                 <span className="loading loading-spinner loading-lg text-primary"></span>
-                <p className="mt-4 text-gray-600">{t('loadingBranches')}</p>
+                <p className="mt-4 text-gray-600 dark:text-gray-300">{t('loadingBranches')}</p>
               </div>
             </div>
           ) : error ? (
-            <div className="p-8 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="p-4 sm:p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4 dark:bg-red-800/30">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <p className="text-red-500 font-medium">{error}</p>
+              <p className="text-red-500 font-medium dark:text-red-400">{error}</p>
             </div>
           ) : branches.length === 0 ? (
-            <div className="p-8 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="p-4 sm:p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4 dark:bg-blue-800/30">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
-              <p className="text-gray-600 font-medium mb-2">{t('noBranches')}</p>
-              <p className="text-gray-500 text-sm">{t('noBranchesHint')}</p>
+              <p className="text-gray-600 font-medium mb-2 dark:text-gray-300">{t('noBranches')}</p>
+              <p className="text-gray-500 text-sm dark:text-gray-400">{t('noBranchesHint')}</p>
             </div>
           ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1100px] table-auto">
-              <thead className="bg-gray-50 text-gray-700">
+              <thead className="bg-gray-50 text-gray-700 dark:bg-gray-900 dark:text-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t('thBranch')}</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t('thLocation')}</th>
@@ -466,45 +466,45 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">{t('thActions')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-gray-200 bg-white dark:bg-gray-800">
                 {branches.map((branch) => (
-                  <tr key={branch.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={branch.id} className="hover:bg-gray-50 transition-colors dark:hover:bg-gray-900">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                        <div className="flex-shrink-0 h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-700 font-bold dark:bg-blue-800/30 dark:text-blue-200">
                           {branch.name.substring(0, 2).toUpperCase()}
                         </div>
                         <div className="ml-4">
-                          <div className="font-medium text-gray-900 flex items-center">
+                          <div className="font-medium text-gray-900 flex items-center dark:text-gray-50">
                             {branch.name}
                             {branch.is_main && (
-                              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
+                              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">
                                 {t('main')}
                               </span>
                             )}
                             {branch.is_web_stock_source && (
                               <span
-                                className="ml-2 px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800"
+                                className="ml-2 px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-800/30 dark:text-purple-100"
                                 title="El sitio web usa el inventario de esta sucursal"
                               >
                                 Web
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-500">{branch.branch_code || t('noCode')}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{branch.branch_code || t('noCode')}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <div className="font-medium">{branch.city || 'N/A'}</div>
-                        <div className="text-gray-500 truncate max-w-[200px]">{branch.address || t('noAddress')}</div>
+                        <div className="text-gray-500 min-w-0 break-words max-w-[200px] dark:text-gray-400">{branch.address || t('noAddress')}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <div className="font-medium">{branch.phone || 'N/A'}</div>
-                        <div className="text-gray-500">{branch.email || t('noEmail')}</div>
+                        <div className="text-gray-500 dark:text-gray-400">{branch.email || t('noEmail')}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -518,54 +518,54 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                                 alt=""
                               />
                             ) : (
-                              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <svg className="h-4 w-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center dark:bg-gray-700">
+                                <svg className="h-4 w-4 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                                 </svg>
                               </div>
                             )}
                             <div className="ml-3">
-                              <div className="font-medium text-gray-900">
+                              <div className="font-medium text-gray-900 dark:text-gray-50">
                                 {(branch as any).manager.first_name} {(branch as any).manager.last_name}
                               </div>
-                              <div className="text-gray-500 text-xs">
+                              <div className="text-gray-500 text-xs dark:text-gray-400">
                                 {t('assignedManager')}
                               </div>
                             </div>
                           </div>
                         ) : branch.manager_id ? (
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                              <svg className="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center dark:bg-blue-800/30">
+                              <svg className="h-4 w-4 text-blue-600 dark:text-blue-300" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                               </svg>
                             </div>
                             <div className="ml-3">
-                              <div className="font-medium text-gray-900">
+                              <div className="font-medium text-gray-900 dark:text-gray-50">
                                 {t('assignedManager')}
                               </div>
                               <button
                                 onClick={() => handleAssignManager(branch)}
-                                className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                                className="text-xs text-blue-600 hover:text-blue-800 transition-colors dark:text-blue-300 dark:hover:text-blue-100"
                               >
                                 {t('assignManager')}
                               </button>
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center text-gray-400">
-                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                              <svg className="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <div className="flex items-center text-gray-400 dark:text-gray-500">
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center dark:bg-gray-800">
+                              <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                               </svg>
                             </div>
                             <div className="ml-3">
-                              <div className="text-sm text-gray-500">
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
                                 {t('noManager')}
                               </div>
                               <button
                                 onClick={() => handleAssignManager(branch)}
-                                className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                                className="text-xs text-blue-600 hover:text-blue-800 transition-colors dark:text-blue-300 dark:hover:text-blue-100"
                               >
                                 {t('assignManager')}
                               </button>
@@ -576,20 +576,20 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-gray-900 dark:text-gray-50">
                           {formatOpeningHours(branch.opening_hours)}
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-1 dark:text-gray-400">
                           {branch.opening_hours ? (
                             <div className="flex items-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-green-500 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                               {t('scheduleDefined')}
                             </div>
                           ) : (
                             <div className="flex items-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                               {t('noSchedule')}
@@ -600,15 +600,15 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                     </td>
                     <td className="px-6 py-4">
                       {branch.is_active ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <svg className="mr-1.5 h-2 w-2 text-green-500" fill="currentColor" viewBox="0 0 8 8">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">
+                          <svg className="mr-1.5 h-2 w-2 text-green-500 dark:text-green-400" fill="currentColor" viewBox="0 0 8 8">
                             <circle cx="4" cy="4" r="3" />
                           </svg>
                           {t('active')}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          <svg className="mr-1.5 h-2 w-2 text-gray-500" fill="currentColor" viewBox="0 0 8 8">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+                          <svg className="mr-1.5 h-2 w-2 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 8 8">
                             <circle cx="4" cy="4" r="3" />
                           </svg>
                           {t('inactive')}
@@ -617,14 +617,14 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                     </td>
                     <td className="px-6 py-4">
                       {userBranches?.some(ub => ub.branch_id === branch.id) || branch.manager_id ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          <svg className="mr-1.5 h-2 w-2 text-blue-500" fill="currentColor" viewBox="0 0 8 8">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">
+                          <svg className="mr-1.5 h-2 w-2 text-blue-500 dark:text-blue-400" fill="currentColor" viewBox="0 0 8 8">
                             <circle cx="4" cy="4" r="3" />
                           </svg>
                           {t('assigned')}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                           {t('notAssigned')}
                         </span>
                       )}
@@ -632,7 +632,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
                         <button 
-                          className="inline-flex items-center px-2.5 py-1.5 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          className="inline-flex items-center px-2.5 py-1.5 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:border-blue-600 dark:text-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/30 dark:focus:ring-blue-400"
                           onClick={() => handleAssignManager(branch)}
                           title={(branch as any).manager ? t('changeManager') : t('assignManager')}
                         >
@@ -642,7 +642,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                           {(branch as any).manager ? t('change') : t('assign')}
                         </button>
                         <button 
-                          className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 dark:focus:ring-blue-400"
                           onClick={() => handleEdit(branch)}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -651,7 +651,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                           {t('edit')}
                         </button>
                         <button 
-                          className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                          className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:text-red-200 dark:bg-red-800/30 dark:hover:bg-red-700/30 dark:focus:ring-red-400"
                           onClick={() => handleDelete(branch.id!)}
                           disabled={formLoading}
                         >
@@ -674,23 +674,23 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
           <div className="min-h-screen px-2 sm:px-4 py-4 sm:py-8 flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
               {/* Header */}
-              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between">
+              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-50">
                     {editingBranch ? t('editBranch') : t('newBranch')}
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
                     {editingBranch ? t('editBranchDesc') : t('newBranchDesc')}
                   </p>
                 </div>
                 <button 
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors" 
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-800" 
                   onClick={() => setShowForm(false)}
                   disabled={formLoading}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -698,12 +698,12 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
               
               {/* Error Message */}
               {error && (
-                <div className="mx-4 sm:mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="mx-4 sm:mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:border-red-700">
                   <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400 mr-2 dark:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    <p className="text-sm text-red-800">{error}</p>
+                    <p className="text-sm text-red-800 dark:text-red-100">{error}</p>
                   </div>
                 </div>
               )}
@@ -720,18 +720,18 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
               </div>
               
               {/* Footer with actions */}
-              <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 dark:bg-gray-800 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors dark:text-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-900 dark:focus:ring-blue-400"
                   disabled={formLoading}
                 >
                   {t('cancel')}
                 </button>
                 <div className="flex items-center gap-3">
                   {formLoading && (
-                    <div className="flex items-center text-sm text-gray-500">
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                       <span className="loading loading-spinner loading-sm mr-2"></span>
                       {t('saving')}
                     </div>
@@ -739,7 +739,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                   <button
                     type="submit"
                     form="branch-form"
-                    className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:focus:ring-blue-400"
                     disabled={formLoading}
                   >
                     {editingBranch ? t('updateBranch') : t('createBranch')}

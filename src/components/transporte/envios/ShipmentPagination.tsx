@@ -43,12 +43,12 @@ export function ShipmentPagination({
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-800">
-      <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex items-center gap-2 sm:gap-4 text-sm text-gray-600 dark:text-gray-400">
         <span>
           Mostrando <strong className="text-gray-900 dark:text-gray-100">{startItem}</strong>–<strong className="text-gray-900 dark:text-gray-100">{endItem}</strong> de <strong className="text-gray-900 dark:text-gray-100">{totalItems}</strong>
         </span>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Filas:</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Filas:</span>
           <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
             <SelectTrigger className="h-8 w-[70px] text-xs">
               <SelectValue />
@@ -87,7 +87,7 @@ export function ShipmentPagination({
 
           {pages.map((p, i) =>
             p === '...' ? (
-              <span key={`ellipsis-${i}`} className="px-2 text-gray-400 text-sm">...</span>
+              <span key={`ellipsis-${i}`} className="px-2 text-gray-400 text-sm dark:text-gray-500">...</span>
             ) : (
               <Button
                 key={p}

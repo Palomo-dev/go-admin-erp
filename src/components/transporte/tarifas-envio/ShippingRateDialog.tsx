@@ -147,19 +147,19 @@ export function ShippingRateDialog({
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-blue-600" />
+            <Truck className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {rate ? 'Editar Tarifa de Envío' : 'Nueva Tarifa de Envío'}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Sección: Información General */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Tag className="h-4 w-4" />
               Información General
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="rate_name">Nombre de tarifa *</Label>
                 <Input
@@ -181,7 +181,7 @@ export function ShippingRateDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Transportador</Label>
                 <Select
@@ -221,7 +221,7 @@ export function ShippingRateDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Método de cálculo</Label>
                 <Select
@@ -262,12 +262,12 @@ export function ShippingRateDialog({
           </div>
 
           {/* Sección: Precios */}
-          <div className="space-y-4 pt-4 border-t dark:border-gray-700">
+          <div className="space-y-3 sm:space-y-4 pt-4 border-t dark:border-gray-700">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <DollarSign className="h-4 w-4" />
               Precios y Cargos
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="base_rate">Tarifa base</Label>
                 <Input id="base_rate" type="number" min="0" step="0.01" value={formData.base_rate || 0} onChange={(e) => handleChange('base_rate', parseFloat(e.target.value) || 0)} />
@@ -281,11 +281,11 @@ export function ShippingRateDialog({
                 <Input id="rate_per_m3" type="number" min="0" step="0.01" value={formData.rate_per_m3 || 0} onChange={(e) => handleChange('rate_per_m3', parseFloat(e.target.value) || 0)} />
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="dimensional_factor">Factor dimensional</Label>
                 <Input id="dimensional_factor" type="number" min="1" value={formData.dimensional_factor || 5000} onChange={(e) => handleChange('dimensional_factor', parseFloat(e.target.value) || 5000)} />
-                <p className="text-xs text-gray-500">Divisor (L×A×H / factor)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Divisor (L×A×H / factor)</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="min_charge">Cargo mínimo</Label>
@@ -296,7 +296,7 @@ export function ShippingRateDialog({
                 <Input id="min_weight_kg" type="number" min="0" step="0.01" value={formData.min_weight_kg ?? ''} onChange={(e) => handleChange('min_weight_kg', e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="Sin mínimo" />
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="max_weight_kg">Peso máx. (kg)</Label>
                 <Input id="max_weight_kg" type="number" min="0" step="0.01" value={formData.max_weight_kg ?? ''} onChange={(e) => handleChange('max_weight_kg', e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="Sin máximo" />
@@ -313,12 +313,12 @@ export function ShippingRateDialog({
           </div>
 
           {/* Sección: Zonas */}
-          <div className="space-y-4 pt-4 border-t dark:border-gray-700">
+          <div className="space-y-3 sm:space-y-4 pt-4 border-t dark:border-gray-700">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <MapPin className="h-4 w-4" />
               Zonas de Cobertura
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="origin_zone">Zona origen</Label>
                 <Input id="origin_zone" value={formData.origin_zone || ''} onChange={(e) => handleChange('origin_zone', e.target.value)} placeholder="Ej: Zona Norte" />
@@ -328,7 +328,7 @@ export function ShippingRateDialog({
                 <Input id="destination_zone" value={formData.destination_zone || ''} onChange={(e) => handleChange('destination_zone', e.target.value)} placeholder="Ej: Zona Sur" />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="origin_city">Ciudad origen</Label>
                 <Input id="origin_city" value={formData.origin_city || ''} onChange={(e) => handleChange('origin_city', e.target.value)} placeholder="Ej: Bogotá" />
@@ -338,16 +338,16 @@ export function ShippingRateDialog({
                 <Input id="destination_city" value={formData.destination_city || ''} onChange={(e) => handleChange('destination_city', e.target.value)} placeholder="Ej: Medellín" />
               </div>
             </div>
-            <p className="text-xs text-gray-500">Deja los campos vacíos para aplicar a cualquier origen/destino.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Deja los campos vacíos para aplicar a cualquier origen/destino.</p>
           </div>
 
           {/* Sección: Vigencia */}
-          <div className="space-y-4 pt-4 border-t dark:border-gray-700">
+          <div className="space-y-3 sm:space-y-4 pt-4 border-t dark:border-gray-700">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Calendar className="h-4 w-4" />
               Vigencia
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="valid_from">Válida desde</Label>
                 <Input id="valid_from" type="date" value={formData.valid_from || ''} onChange={(e) => handleChange('valid_from', e.target.value || undefined)} />
@@ -357,11 +357,11 @@ export function ShippingRateDialog({
                 <Input id="valid_until" type="date" value={formData.valid_until || ''} onChange={(e) => handleChange('valid_until', e.target.value || undefined)} />
               </div>
             </div>
-            <p className="text-xs text-gray-500">Si no seleccionas fechas, la tarifa no tiene vencimiento.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Si no seleccionas fechas, la tarifa no tiene vencimiento.</p>
           </div>
 
           {/* Sección: Visibilidad */}
-          <div className="space-y-4 pt-4 border-t dark:border-gray-700">
+          <div className="space-y-3 sm:space-y-4 pt-4 border-t dark:border-gray-700">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Globe className="h-4 w-4" />
               Visibilidad y Opciones

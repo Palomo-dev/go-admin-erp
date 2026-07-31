@@ -55,7 +55,7 @@ export default function BrandingSectionsTab({ settings, onSave, isSaving }: Bran
   const enabledCount = Object.values(formData).filter(Boolean).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
@@ -67,7 +67,7 @@ export default function BrandingSectionsTab({ settings, onSave, isSaving }: Bran
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             {SECTIONS.map((section) => {
               const Icon = section.icon;
               const isEnabled = formData[section.key as keyof typeof formData];

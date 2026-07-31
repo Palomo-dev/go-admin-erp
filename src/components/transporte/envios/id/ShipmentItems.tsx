@@ -193,10 +193,10 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
         </div>
       ) : items.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">No hay items registrados</p>
+        <p className="text-gray-500 text-center py-4 dark:text-gray-400">No hay items registrados</p>
       ) : (
         <>
           <div className="space-y-3">
@@ -223,7 +223,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                       </div>
                     ) : (
                       <div className="w-12 h-12 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                        <Package className="h-6 w-6 text-gray-400" />
+                        <Package className="h-6 w-6 text-gray-400 dark:text-gray-500" />
                       </div>
                     )}
                   </div>
@@ -299,7 +299,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                     </div>
                     {canEdit && (
                       <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(item)} className="h-6 w-6 p-0">
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        <Trash2 className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
                       </Button>
                     )}
                   </div>
@@ -308,9 +308,9 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
             })}
           </div>
           <div className="mt-4 pt-4 border-t flex justify-between text-sm">
-            <span className="text-gray-500">Peso Total: <strong>{totalWeight.toFixed(2)} kg</strong></span>
-            <span className="text-gray-500">
-              Valor Total: <strong className="text-blue-600">{formatCOP(totalValue)}</strong>
+            <span className="text-gray-500 dark:text-gray-400">Peso Total: <strong>{totalWeight.toFixed(2)} kg</strong></span>
+            <span className="text-gray-500 dark:text-gray-400">
+              Valor Total: <strong className="text-blue-600 dark:text-blue-300">{formatCOP(totalValue)}</strong>
             </span>
           </div>
         </>
@@ -328,7 +328,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
           <DialogHeader>
             <DialogTitle>Agregar Item</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {onSearchProduct && (
               <div className="space-y-2">
                 <Label>Buscar Producto del Inventario</Label>
@@ -353,7 +353,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                         className="w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
                       >
                         <p className="font-medium">{p.name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {p.sku && `${p.sku} · `}
                           {p.unit_code || 'und'} · {formatCOP(p.price)}
                         </p>
@@ -379,7 +379,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                 placeholder="Descripción del producto"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>SKU</Label>
                 <Input
@@ -397,7 +397,7 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Valor Unitario</Label>
                 <Input

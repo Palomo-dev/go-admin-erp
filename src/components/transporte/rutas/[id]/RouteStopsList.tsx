@@ -93,7 +93,7 @@ export function RouteStopsList({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-blue-600" />
+          <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-300" />
           Paradas de la Ruta ({stops.length})
         </CardTitle>
         <Button size="sm" onClick={onAddStop} className="bg-blue-600 hover:bg-blue-700">
@@ -122,24 +122,24 @@ export function RouteStopsList({
                 }`}
               >
                 <div className="cursor-grab active:cursor-grabbing">
-                  <GripVertical className="h-5 w-5 text-gray-400" />
+                  <GripVertical className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                 </div>
 
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 font-semibold text-sm">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 font-semibold text-sm dark:text-blue-300">
                   {stop.stop_order}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 dark:text-white truncate">
+                  <p className="font-medium text-gray-900 dark:text-white min-w-0 break-words">
                     {stop.transport_stops?.name}
                   </p>
-                  <p className="text-sm text-gray-500 truncate">
+                  <p className="text-sm text-gray-500 min-w-0 break-words dark:text-gray-400">
                     {stop.transport_stops?.city}
                     {stop.transport_stops?.address && ` • ${stop.transport_stops.address}`}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center gap-2 sm:gap-4 text-sm text-gray-500 dark:text-gray-400">
                   {stop.estimated_arrival_minutes !== undefined && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -201,7 +201,7 @@ export function RouteStopsList({
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDeleteStop(stop)} className="text-red-600">
+                    <DropdownMenuItem onClick={() => onDeleteStop(stop)} className="text-red-600 dark:text-red-300">
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar
                     </DropdownMenuItem>

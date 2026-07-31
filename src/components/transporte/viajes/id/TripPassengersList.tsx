@@ -68,11 +68,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const PAYMENT_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
-  paid: { label: 'Pagado', color: 'bg-green-100 text-green-800' },
-  partial: { label: 'Parcial', color: 'bg-orange-100 text-orange-800' },
-  refunded: { label: 'Reembolsado', color: 'bg-gray-100 text-gray-800' },
-  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800' },
+  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100' },
+  paid: { label: 'Pagado', color: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' },
+  partial: { label: 'Parcial', color: 'bg-orange-100 text-orange-800 dark:bg-orange-800/30 dark:text-orange-100' },
+  refunded: { label: 'Reembolsado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100' },
+  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100' },
 };
 
 export function TripPassengersList({
@@ -105,9 +105,9 @@ export function TripPassengersList({
 
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
           <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando pasajeros...</span>
         </div>
       </Card>
@@ -117,8 +117,8 @@ export function TripPassengersList({
   return (
     <Card>
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <Users className="h-5 w-5" />
               Pasajeros
@@ -127,7 +127,7 @@ export function TripPassengersList({
               <Badge variant="outline">{stats.boarded} abordados</Badge>
               <Badge variant="outline">{stats.pending} pendientes</Badge>
               {stats.noShow > 0 && (
-                <Badge variant="outline" className="text-red-600">
+                <Badge variant="outline" className="text-red-600 dark:text-red-300">
                   {stats.noShow} no show
                 </Badge>
               )}
@@ -135,7 +135,7 @@ export function TripPassengersList({
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <Input
                 placeholder="Buscar pasajero..."
                 value={searchTerm}
@@ -152,8 +152,8 @@ export function TripPassengersList({
       </div>
 
       {filteredTickets.length === 0 ? (
-        <div className="p-8 text-center">
-          <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+        <div className="p-4 sm:p-8 text-center">
+          <Users className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <p className="text-gray-600 dark:text-gray-400">
             {tickets.length === 0
               ? 'No hay pasajeros registrados para este viaje'
@@ -189,7 +189,7 @@ export function TripPassengersList({
                       <p className="font-medium">
                         {ticket.passenger_name || ticket.customers?.full_name || 'Sin nombre'}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                         {ticket.passenger_phone && (
                           <span className="flex items-center gap-1">
                             <Phone className="h-3 w-3" />
@@ -215,7 +215,7 @@ export function TripPassengersList({
                   <TableCell>
                     <Badge className={status.color}>{status.label}</Badge>
                     {ticket.boarded_at && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">
                         {format(new Date(ticket.boarded_at), 'HH:mm')}
                       </p>
                     )}
@@ -234,11 +234,11 @@ export function TripPassengersList({
                         {['reserved', 'confirmed'].includes(ticket.status) && (
                           <>
                             <DropdownMenuItem onClick={() => onBoard(ticket)}>
-                              <UserCheck className="h-4 w-4 mr-2 text-green-600" />
+                              <UserCheck className="h-4 w-4 mr-2 text-green-600 dark:text-green-300" />
                               Marcar Abordado
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onNoShow(ticket)}>
-                              <UserX className="h-4 w-4 mr-2 text-red-600" />
+                              <UserX className="h-4 w-4 mr-2 text-red-600 dark:text-red-300" />
                               Marcar No Show
                             </DropdownMenuItem>
                           </>

@@ -110,7 +110,7 @@ export function ShipmentItem({
           {/* Handle y número de secuencia */}
           <div className="flex flex-col items-center gap-1">
             {canEdit && isPending && (
-              <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
+              <GripVertical className="h-4 w-4 text-gray-400 cursor-grab dark:text-gray-500" />
             )}
             <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium ${
               manifestShipment.status === 'delivered'
@@ -157,9 +157,9 @@ export function ShipmentItem({
             )}
 
             {/* Contacto */}
-            <div className="flex items-center gap-4 mt-2 text-sm">
+            <div className="flex items-center gap-2 sm:gap-4 mt-2 text-sm">
               {shipment?.delivery_contact_name && (
-                <span className="flex items-center gap-1 text-gray-500">
+                <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                   <User className="h-3 w-3" />
                   {shipment.delivery_contact_name}
                 </span>
@@ -167,7 +167,7 @@ export function ShipmentItem({
               {shipment?.delivery_contact_phone && (
                 <a
                   href={`tel:${shipment.delivery_contact_phone}`}
-                  className="flex items-center gap-1 text-blue-600 hover:underline"
+                  className="flex items-center gap-1 text-blue-600 hover:underline dark:text-blue-300"
                 >
                   <Phone className="h-3 w-3" />
                   {shipment.delivery_contact_phone}
@@ -215,7 +215,7 @@ export function ShipmentItem({
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 flex items-start gap-1">
+                  <p className="text-sm text-gray-500 flex items-start gap-1 dark:text-gray-400">
                     <MessageSquare className="h-3 w-3 mt-0.5" />
                     {manifestShipment.driver_notes}
                   </p>

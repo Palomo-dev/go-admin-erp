@@ -118,12 +118,12 @@ export function LabelDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5 text-blue-600" />
+            <Tag className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             {label ? 'Editar Etiqueta' : 'Nueva Etiqueta'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Envío */}
           <div className="space-y-2">
             <Label htmlFor="shipment" className="flex items-center gap-2">
@@ -150,7 +150,7 @@ export function LabelDialog({
           </div>
 
           {/* Tipo y Formato */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Tipo de Etiqueta</Label>
               <Select
@@ -211,7 +211,7 @@ export function LabelDialog({
           </div>
 
           {/* Dimensiones */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label>Ancho (mm)</Label>
               <Input

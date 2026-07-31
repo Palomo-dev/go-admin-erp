@@ -88,10 +88,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 );
 
 const PAYMENT_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
-  paid: { label: 'Pagado', color: 'bg-green-100 text-green-800' },
-  cod: { label: 'Contra entrega', color: 'bg-blue-100 text-blue-800' },
-  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800' },
+  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100' },
+  paid: { label: 'Pagado', color: 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100' },
+  cod: { label: 'Contra entrega', color: 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100' },
+  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100' },
 };
 
 export function ShipmentsList({
@@ -163,9 +163,9 @@ export function ShipmentsList({
 
   if (isLoading) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
           <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando envíos...</span>
         </div>
       </Card>
@@ -174,9 +174,9 @@ export function ShipmentsList({
 
   if (shipments.length === 0) {
     return (
-      <Card className="p-8">
+      <Card className="p-4 sm:p-8">
         <div className="text-center">
-          <Package className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <Package className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">No hay envíos</h3>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             No se encontraron envíos con los filtros aplicados.
@@ -195,7 +195,7 @@ export function ShipmentsList({
               {selected.size} envío{selected.size > 1 ? 's' : ''} seleccionado{selected.size > 1 ? 's' : ''}
             </span>
             {onBulkAssignDriver && (
-              <Button size="sm" variant="outline" onClick={onBulkAssignDriver} className="border-blue-500 text-blue-600">
+              <Button size="sm" variant="outline" onClick={onBulkAssignDriver} className="border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-300">
                 <User className="h-4 w-4 mr-1" />
                 Asignar Conductor
               </Button>
@@ -220,13 +220,13 @@ export function ShipmentsList({
               </DropdownMenu>
             )}
             {onBulkMarkPaid && (
-              <Button size="sm" variant="outline" onClick={onBulkMarkPaid} className="border-green-500 text-green-600">
+              <Button size="sm" variant="outline" onClick={onBulkMarkPaid} className="border-green-500 text-green-600 dark:border-green-400 dark:text-green-300">
                 <DollarSign className="h-4 w-4 mr-1" />
                 Marcar Pagado
               </Button>
             )}
             {onBulkMarkReturned && (
-              <Button size="sm" variant="outline" onClick={onBulkMarkReturned} className="border-orange-500 text-orange-600">
+              <Button size="sm" variant="outline" onClick={onBulkMarkReturned} className="border-orange-500 text-orange-600 dark:border-orange-400 dark:text-orange-300">
                 <RotateCcw className="h-4 w-4 mr-1" />
                 Devolución
               </Button>
@@ -238,19 +238,19 @@ export function ShipmentsList({
               </Button>
             )}
             {onBulkAddIncident && (
-              <Button size="sm" variant="outline" onClick={onBulkAddIncident} className="border-yellow-500 text-yellow-600">
+              <Button size="sm" variant="outline" onClick={onBulkAddIncident} className="border-yellow-500 text-yellow-600 dark:border-yellow-400 dark:text-yellow-300">
                 <AlertTriangle className="h-4 w-4 mr-1" />
                 Incidentes
               </Button>
             )}
             {onBulkCancel && (
-              <Button size="sm" variant="outline" onClick={onBulkCancel} className="border-red-500 text-red-600">
+              <Button size="sm" variant="outline" onClick={onBulkCancel} className="border-red-500 text-red-600 dark:border-red-400 dark:text-red-300">
                 <XCircle className="h-4 w-4 mr-1" />
                 Cancelar
               </Button>
             )}
           </div>
-          <Button size="sm" variant="ghost" onClick={clearSelection} className="text-gray-500">
+          <Button size="sm" variant="ghost" onClick={clearSelection} className="text-gray-500 dark:text-gray-400">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -267,7 +267,7 @@ export function ShipmentsList({
                 />
                 <DropdownMenu open={showSelectMenu} onOpenChange={setShowSelectMenu}>
                   <DropdownMenuTrigger asChild>
-                    <button className="ml-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <button className="ml-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 dark:text-gray-500">
                       <ChevronDown className="h-3 w-3" />
                     </button>
                   </DropdownMenuTrigger>
@@ -321,15 +321,15 @@ export function ShipmentsList({
                 </TableCell>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-gray-400" />
+                    <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span className="text-blue-600 dark:text-blue-400">{shipment.tracking_number}</span>
                   </div>
                   {shipment.shipment_number && (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5 dark:text-gray-400">
                       Envío: {shipment.shipment_number}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {format(new Date(shipment.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
                   </p>
                 </TableCell>
@@ -337,7 +337,7 @@ export function ShipmentsList({
                   <div>
                     <p className="font-medium">{shipment.sender_name}</p>
                     {shipment.sender_phone && (
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <p className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
                         <Phone className="h-3 w-3" />
                         {shipment.sender_phone}
                       </p>
@@ -348,7 +348,7 @@ export function ShipmentsList({
                   <div>
                     <p className="font-medium">{shipment.receiver_name}</p>
                     {shipment.receiver_phone && (
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <p className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
                         <Phone className="h-3 w-3" />
                         {shipment.receiver_phone}
                       </p>
@@ -358,20 +358,20 @@ export function ShipmentsList({
                 <TableCell>
                   <div className="text-sm">
                     <p>{shipment.origin_stop?.name || shipment.sender_name || 'Sucursal'}</p>
-                    <p className="text-gray-500">→ {shipment.destination_stop?.name || shipment.delivery_address || shipment.receiver_name || '-'}</p>
+                    <p className="text-gray-500 dark:text-gray-400">→ {shipment.destination_stop?.name || shipment.delivery_address || shipment.receiver_name || '-'}</p>
                     {shipment.delivery_city && !shipment.destination_stop && (
-                      <p className="text-gray-400 text-xs">{shipment.delivery_city}</p>
+                      <p className="text-gray-400 text-xs dark:text-gray-500">{shipment.delivery_city}</p>
                     )}
                   </div>
                 </TableCell>
                 <TableCell>
                   {shipment.driver_name ? (
                     <div className="flex items-center gap-1 text-sm">
-                      <User className="h-3 w-3 text-gray-400" />
+                      <User className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                       <span>{shipment.driver_name}</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-gray-400">Sin asignar</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Sin asignar</span>
                   )}
                 </TableCell>
                 <TableCell>
@@ -415,50 +415,50 @@ export function ShipmentsList({
                       </DropdownMenuItem>
                       {onDuplicate && (
                         <DropdownMenuItem onClick={() => onDuplicate(shipment)}>
-                          <Copy className="h-4 w-4 mr-2 text-blue-600" />
+                          <Copy className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-300" />
                           Duplicar
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
                       {shipment.status === 'pending' && (
                         <DropdownMenuItem onClick={() => onStatusChange(shipment, 'assigned')}>
-                          <Package className="h-4 w-4 mr-2 text-cyan-600" />
+                          <Package className="h-4 w-4 mr-2 text-cyan-600 dark:text-cyan-300" />
                           Marcar Asignado
                         </DropdownMenuItem>
                       )}
                       {shipment.status === 'assigned' && (
                         <DropdownMenuItem onClick={() => onStatusChange(shipment, 'dispatched')}>
-                          <Truck className="h-4 w-4 mr-2 text-indigo-600" />
+                          <Truck className="h-4 w-4 mr-2 text-indigo-600 dark:text-indigo-300" />
                           Despachar
                         </DropdownMenuItem>
                       )}
                       {shipment.status === 'dispatched' && (
                         <DropdownMenuItem onClick={() => onStatusChange(shipment, 'in_transit')}>
-                          <Truck className="h-4 w-4 mr-2 text-purple-600" />
+                          <Truck className="h-4 w-4 mr-2 text-purple-600 dark:text-purple-300" />
                           En Tránsito
                         </DropdownMenuItem>
                       )}
                       {shipment.status === 'in_transit' && (
                         <DropdownMenuItem onClick={() => onStatusChange(shipment, 'out_for_delivery')}>
-                          <MapPin className="h-4 w-4 mr-2 text-orange-600" />
+                          <MapPin className="h-4 w-4 mr-2 text-orange-600 dark:text-orange-300" />
                           En Entrega
                         </DropdownMenuItem>
                       )}
                       {shipment.status === 'out_for_delivery' && (
                         <DropdownMenuItem onClick={() => onStatusChange(shipment, 'delivered')}>
-                          <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                          <CheckCircle className="h-4 w-4 mr-2 text-green-600 dark:text-green-300" />
                           Marcar Entregado
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
                       {onMarkReturned && shipment.status !== 'cancelled' && shipment.status !== 'delivered' && shipment.status !== 'returned' && (
                         <DropdownMenuItem onClick={() => onMarkReturned(shipment)}>
-                          <RotateCcw className="h-4 w-4 mr-2 text-orange-600" />
+                          <RotateCcw className="h-4 w-4 mr-2 text-orange-600 dark:text-orange-300" />
                           Marcar Devuelto
                         </DropdownMenuItem>
                       )}
                       {shipment.status !== 'cancelled' && shipment.status !== 'delivered' && (
-                        <DropdownMenuItem onClick={() => onCancel(shipment)} className="text-red-600">
+                        <DropdownMenuItem onClick={() => onCancel(shipment)} className="text-red-600 dark:text-red-300">
                           <XCircle className="h-4 w-4 mr-2" />
                           Cancelar
                         </DropdownMenuItem>

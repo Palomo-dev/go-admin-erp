@@ -267,11 +267,11 @@ export function ImportRoutesDialog({
   const getRouteTypeBadge = (type: string) => {
     switch (type) {
       case 'passenger':
-        return <Badge className="bg-blue-100 text-blue-800">Pasajeros</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">Pasajeros</Badge>;
       case 'cargo':
-        return <Badge className="bg-orange-100 text-orange-800">Carga</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-800/30 dark:text-orange-100">Carga</Badge>;
       case 'mixed':
-        return <Badge className="bg-purple-100 text-purple-800">Mixto</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-800/30 dark:text-purple-100">Mixto</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
     }
@@ -282,7 +282,7 @@ export function ImportRoutesDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-blue-600" />
+            <Upload className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Importar Rutas
           </DialogTitle>
           <DialogDescription>
@@ -290,8 +290,8 @@ export function ImportRoutesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="flex items-center gap-4">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button variant="outline" onClick={downloadTemplate}>
               <Download className="h-4 w-4 mr-2" />
               Descargar Plantilla
@@ -310,15 +310,15 @@ export function ImportRoutesDialog({
 
           {isProcessing && (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
               <span className="ml-2">Procesando archivo...</span>
             </div>
           )}
 
           {parsedRoutes.length > 0 && !isProcessing && (
             <>
-              <div className="flex items-center gap-4">
-                <Badge variant="default" className="bg-green-100 text-green-800">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   {validCount} válidas
                 </Badge>
@@ -347,9 +347,9 @@ export function ImportRoutesDialog({
                       <TableRow key={idx} className={!route.isValid ? 'bg-red-50 dark:bg-red-900/10' : ''}>
                         <TableCell>
                           {route.isValid ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
                           ) : (
-                            <X className="h-4 w-4 text-red-500" />
+                            <X className="h-4 w-4 text-red-500 dark:text-red-400" />
                           )}
                         </TableCell>
                         <TableCell className="font-medium">{route.name}</TableCell>
@@ -360,7 +360,7 @@ export function ImportRoutesDialog({
                         </TableCell>
                         <TableCell>
                           {route.errors.length > 0 && (
-                            <span className="text-xs text-red-500">{route.errors.join(', ')}</span>
+                            <span className="text-xs text-red-500 dark:text-red-400">{route.errors.join(', ')}</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -368,7 +368,7 @@ export function ImportRoutesDialog({
                   </TableBody>
                 </Table>
                 {parsedRoutes.length > 20 && (
-                  <div className="px-4 py-2 text-sm text-gray-500 border-t">
+                  <div className="px-4 py-2 text-sm text-gray-500 border-t dark:text-gray-400">
                     Mostrando 20 de {parsedRoutes.length} registros
                   </div>
                 )}
@@ -377,7 +377,7 @@ export function ImportRoutesDialog({
           )}
 
           {importResults && (
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200">
+            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
               <h4 className="font-medium text-blue-900 dark:text-blue-100">Resultado de la importación</h4>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                 {importResults.success} rutas importadas correctamente

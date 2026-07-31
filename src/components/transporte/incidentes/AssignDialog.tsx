@@ -52,12 +52,12 @@ export function AssignDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-blue-600" />
+            <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Asignar Responsable
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 sm:space-y-4 py-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Asignar responsable para: <strong>{incidentTitle}</strong>
           </p>
@@ -77,7 +77,7 @@ export function AssignDialog({
                     <div className="flex flex-col">
                       <span>{emp.full_name}</span>
                       {emp.email && (
-                        <span className="text-xs text-gray-500">{emp.email}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{emp.email}</span>
                       )}
                     </div>
                   </SelectItem>

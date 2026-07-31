@@ -132,9 +132,9 @@ export function CustomerSearchSelect({
               {getInitials(selectedName)}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{selectedName}</p>
+              <p className="text-sm font-medium min-w-0 break-words">{selectedName}</p>
               {selectedPhone && (
-                <p className="text-xs text-gray-500 flex items-center gap-1">
+                <p className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
                   <Phone className="h-3 w-3" />
                   {selectedPhone}
                 </p>
@@ -149,7 +149,7 @@ export function CustomerSearchSelect({
         </div>
       ) : (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none dark:text-gray-500" />
           <Input
             ref={inputRef}
             placeholder={placeholder}
@@ -170,7 +170,7 @@ export function CustomerSearchSelect({
             }}
           />
           {loading && (
-            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
           )}
         </div>
       )}
@@ -179,8 +179,8 @@ export function CustomerSearchSelect({
         <div className="absolute z-50 mt-1 w-full rounded-lg border bg-white dark:bg-gray-900 shadow-lg">
           {loading ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-              <span className="ml-2 text-sm text-gray-500">Buscando...</span>
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" />
+              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Buscando...</span>
             </div>
           ) : results.length > 0 ? (
             <ScrollArea className="max-h-64">
@@ -196,8 +196,8 @@ export function CustomerSearchSelect({
                       {getInitials(c.full_name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{c.full_name}</p>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                      <p className="text-sm font-medium min-w-0 break-words">{c.full_name}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
                         {c.phone && (
                           <span className="flex items-center gap-1">
                             <Phone className="h-3 w-3" />
@@ -218,7 +218,7 @@ export function CustomerSearchSelect({
                         )}
                       </div>
                       {c.address && (
-                        <p className="text-xs text-gray-400 truncate mt-0.5">{c.address}</p>
+                        <p className="text-xs text-gray-400 min-w-0 break-words mt-0.5 dark:text-gray-500">{c.address}</p>
                       )}
                     </div>
                   </button>
@@ -226,15 +226,15 @@ export function CustomerSearchSelect({
               </div>
             </ScrollArea>
           ) : query.trim() ? (
-            <div className="py-6 text-center text-sm text-gray-500">
+            <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               No se encontraron clientes
             </div>
           ) : loading ? (
-            <div className="py-6 text-center text-sm text-gray-500">
+            <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               Cargando clientes...
             </div>
           ) : (
-            <div className="py-6 text-center text-sm text-gray-500">
+            <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               {results.length === 0 ? 'No hay clientes registrados' : 'Escriba para filtrar'}
             </div>
           )}

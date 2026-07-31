@@ -32,13 +32,13 @@ interface RecentEventsProps {
 }
 
 const eventTypeConfig: Record<string, { icon: any; color: string; label: string }> = {
-  departure: { icon: Bus, color: 'bg-blue-100 text-blue-600', label: 'Salida' },
-  arrival: { icon: MapPin, color: 'bg-green-100 text-green-600', label: 'Llegada' },
-  pickup: { icon: Package, color: 'bg-purple-100 text-purple-600', label: 'Recogida' },
-  delivery: { icon: CheckCircle2, color: 'bg-green-100 text-green-600', label: 'Entrega' },
-  delay: { icon: Clock, color: 'bg-yellow-100 text-yellow-600', label: 'Retraso' },
-  incident: { icon: AlertCircle, color: 'bg-red-100 text-red-600', label: 'Incidente' },
-  dispatch: { icon: Truck, color: 'bg-blue-100 text-blue-600', label: 'Despacho' },
+  departure: { icon: Bus, color: 'bg-blue-100 text-blue-600 dark:bg-blue-800/30 dark:text-blue-300', label: 'Salida' },
+  arrival: { icon: MapPin, color: 'bg-green-100 text-green-600 dark:bg-green-800/30 dark:text-green-300', label: 'Llegada' },
+  pickup: { icon: Package, color: 'bg-purple-100 text-purple-600 dark:bg-purple-800/30 dark:text-purple-300', label: 'Recogida' },
+  delivery: { icon: CheckCircle2, color: 'bg-green-100 text-green-600 dark:bg-green-800/30 dark:text-green-300', label: 'Entrega' },
+  delay: { icon: Clock, color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-800/30 dark:text-yellow-300', label: 'Retraso' },
+  incident: { icon: AlertCircle, color: 'bg-red-100 text-red-600 dark:bg-red-800/30 dark:text-red-300', label: 'Incidente' },
+  dispatch: { icon: Truck, color: 'bg-blue-100 text-blue-600 dark:bg-blue-800/30 dark:text-blue-300', label: 'Despacho' },
 };
 
 export function RecentEvents({ events, isLoading }: RecentEventsProps) {
@@ -80,7 +80,7 @@ export function RecentEvents({ events, isLoading }: RecentEventsProps) {
             {events.map((event) => {
               const config = eventTypeConfig[event.event_type] || {
                 icon: MapPin,
-                color: 'bg-gray-100 text-gray-600',
+                color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
                 label: event.event_type,
               };
               const Icon = config.icon;
@@ -103,7 +103,7 @@ export function RecentEvents({ events, isLoading }: RecentEventsProps) {
                       </span>
                     </div>
                     {event.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 min-w-0 break-words">
                         {event.description}
                       </p>
                     )}

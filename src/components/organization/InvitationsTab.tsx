@@ -633,7 +633,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         
         {/* Contenido de filtros */}
         <div className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             {/* Filtro por email */}
             <div className="relative">
               <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('emailLabel')}</label>
@@ -649,7 +649,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   value={emailFilter}
                   onChange={(e) => setEmailFilter(e.target.value)}
                   placeholder={t('emailPlaceholder')}
-                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 />
                 {emailFilter && (
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -679,7 +679,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   id="role-filter"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="">{t('allRoles')}</option>
                   {uniqueRoles.map((role: string) => (
@@ -702,7 +702,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   id="status-filter"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="pl-10 w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:focus:border-blue-400 dark:focus:ring-blue-400"
                 >
                   <option value="all">{t('allStatuses')}</option>
                   <option value="pending">{t('pendingStatus')}</option>
@@ -722,7 +722,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* Sección de filtros */}
       {renderFilters()}
       
@@ -769,7 +769,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           )}
           
           {error && (
-            <div className="mt-2 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4">
+            <div className="mt-2 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 dark:border-red-400">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -784,7 +784,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           )}
           
           {success && (
-            <div className="mt-2 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 p-4">
+            <div className="mt-2 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 p-4 dark:border-green-400">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-green-500 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
@@ -799,7 +799,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           )}
           
           <EmailConfirmedWarning message="Debes confirmar tu correo electrónico para invitar nuevos usuarios." />
-          <form onSubmit={handleSendInvitation} className="space-y-4 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+          <form onSubmit={handleSendInvitation} className="space-y-3 sm:space-y-4 mt-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t('emailField')}
@@ -811,7 +811,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
-                className="mt-1 block w-full border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                className="mt-1 block w-full border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed dark:focus:ring-blue-400 dark:focus:border-blue-400"
                 placeholder={t('emailFieldPlaceholder')}
                 required
               />
@@ -827,7 +827,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 value={roleId}
                 onChange={(e) => setRoleId(e.target.value)}
                 disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
-                className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed dark:focus:ring-blue-400 dark:focus:border-blue-400"
                 required
               >
                 <option value="" disabled>{t('selectRole')}</option>
@@ -855,7 +855,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   value={branchId}
                   onChange={(e) => setBranchId(e.target.value)}
                   disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
-                  className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                  className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed dark:focus:ring-blue-400 dark:focus:border-blue-400"
                 >
                   {branches.map((branch) => (
                     <option key={branch.id} value={branch.id}>
@@ -880,7 +880,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   value={jobPositionId}
                   onChange={(e) => setJobPositionId(e.target.value)}
                   disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
-                  className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
+                  className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed dark:focus:ring-blue-400 dark:focus:border-blue-400"
                 >
                   <option value="">Sin cargo específico</option>
                   {jobPositions.map((position) => (
@@ -900,7 +900,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                 <button
                   type="submit"
                   disabled={sendingInvitation || !!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-blue-400"
                 >
                   {sendingInvitation ? t('sending') : t('sendInvitation')}
                 </button>

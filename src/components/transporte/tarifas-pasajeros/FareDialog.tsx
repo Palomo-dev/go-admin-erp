@@ -188,8 +188,8 @@ export function FareDialog({
           </TabsList>
 
           {/* General */}
-          <TabsContent value="general" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+          <TabsContent value="general" className="space-y-3 sm:space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fare_name">Nombre de la tarifa *</Label>
                 <Input
@@ -210,7 +210,7 @@ export function FareDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Tipo de tarifa *</Label>
                 <Select
@@ -258,7 +258,7 @@ export function FareDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>Parada origen (tramo)</Label>
                 <Select
@@ -312,8 +312,8 @@ export function FareDialog({
           </TabsContent>
 
           {/* Pricing */}
-          <TabsContent value="pricing" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+          <TabsContent value="pricing" className="space-y-3 sm:space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="amount">Precio base *</Label>
                 <Input
@@ -343,7 +343,7 @@ export function FareDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="discount_percent">Descuento (%)</Label>
                 <Input
@@ -373,7 +373,7 @@ export function FareDialog({
             {formData.amount && formData.amount > 0 && (
               <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Precio final:</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">
                   ${(formData.amount - (formData.discount_amount || (formData.amount * (formData.discount_percent || 0)) / 100)).toLocaleString()} {formData.currency}
                 </p>
               </div>
@@ -381,8 +381,8 @@ export function FareDialog({
           </TabsContent>
 
           {/* Schedule */}
-          <TabsContent value="schedule" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+          <TabsContent value="schedule" className="space-y-3 sm:space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="valid_from">Válido desde</Label>
                 <Input
@@ -420,7 +420,7 @@ export function FareDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="applicable_from_time">Hora desde</Label>
                 <Input
@@ -443,8 +443,8 @@ export function FareDialog({
           </TabsContent>
 
           {/* Rules */}
-          <TabsContent value="rules" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+          <TabsContent value="rules" className="space-y-3 sm:space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="min_age">Edad mínima</Label>
                 <Input
@@ -469,11 +469,11 @@ export function FareDialog({
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Requiere documento de identidad</Label>
-                  <p className="text-sm text-gray-500">El pasajero debe mostrar documento</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">El pasajero debe mostrar documento</p>
                 </div>
                 <Switch
                   checked={formData.requires_id || false}
@@ -484,7 +484,7 @@ export function FareDialog({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Requiere aprobación</Label>
-                  <p className="text-sm text-gray-500">Necesita autorización para aplicar</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Necesita autorización para aplicar</p>
                 </div>
                 <Switch
                   checked={formData.requires_approval || false}
@@ -495,7 +495,7 @@ export function FareDialog({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Tarifa activa</Label>
-                  <p className="text-sm text-gray-500">Disponible para venta</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Disponible para venta</p>
                 </div>
                 <Switch
                   checked={formData.is_active || false}

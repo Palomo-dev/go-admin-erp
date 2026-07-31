@@ -42,8 +42,8 @@ export function AddressesHeader({
   customers,
 }: AddressesHeaderProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 sm:gap-4">
         <div className="flex items-center gap-3">
           <Link href="/app/transporte">
             <Button variant="ghost" size="icon">
@@ -51,9 +51,9 @@ export function AddressesHeader({
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <MapPin className="h-6 w-6 text-blue-600" />
+                <MapPin className="h-6 w-6 text-blue-600 dark:text-blue-300" />
               </div>
               Direcciones de Clientes
             </h1>
@@ -63,7 +63,7 @@ export function AddressesHeader({
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -86,20 +86,20 @@ export function AddressesHeader({
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por dirección, ciudad..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
+            className="pl-10 placeholder:text-xs sm:placeholder:text-sm"
           />
         </div>
         
         <Select value={selectedCustomerId} onValueChange={onCustomerChange}>
           <SelectTrigger className="w-full sm:w-[250px]">
-            <Users className="h-4 w-4 mr-2 text-gray-400" />
+            <Users className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
             <SelectValue placeholder="Todos los clientes" />
           </SelectTrigger>
           <SelectContent>

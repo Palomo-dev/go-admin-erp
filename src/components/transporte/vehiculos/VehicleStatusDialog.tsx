@@ -26,28 +26,28 @@ const statusOptions = [
     label: 'Disponible', 
     description: 'Listo para asignar a viajes o envíos',
     icon: CheckCircle2, 
-    color: 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' 
+    color: 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200 dark:bg-green-800/30 dark:text-green-200 dark:border-green-600 dark:hover:bg-green-700/30' 
   },
   { 
     value: 'in_use', 
     label: 'En uso', 
     description: 'Actualmente en un viaje o servicio',
     icon: Clock, 
-    color: 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' 
+    color: 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200 dark:bg-blue-800/30 dark:text-blue-200 dark:border-blue-600 dark:hover:bg-blue-700/30' 
   },
   { 
     value: 'maintenance', 
     label: 'Mantenimiento', 
     description: 'En reparación o mantenimiento preventivo',
     icon: Wrench, 
-    color: 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' 
+    color: 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200 dark:bg-yellow-800/30 dark:text-yellow-200 dark:border-yellow-600 dark:hover:bg-yellow-700/30' 
   },
   { 
     value: 'inactive', 
     label: 'Inactivo', 
     description: 'Fuera de servicio temporalmente',
     icon: XCircle, 
-    color: 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200' 
+    color: 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700' 
   },
 ];
 
@@ -86,14 +86,14 @@ export function VehicleStatusDialog({
                 disabled={isUpdating || isCurrentStatus}
                 className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
                   isCurrentStatus 
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400' 
                     : `border-gray-200 dark:border-gray-700 hover:border-gray-300 ${option.color}`
                 } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`h-5 w-5 ${isCurrentStatus ? 'text-blue-600' : ''}`} />
+                  <Icon className={`h-5 w-5 ${isCurrentStatus ? 'text-blue-600 dark:text-blue-300' : ''}`} />
                   <div className="flex-1">
-                    <p className={`font-medium ${isCurrentStatus ? 'text-blue-600' : ''}`}>
+                    <p className={`font-medium ${isCurrentStatus ? 'text-blue-600 dark:text-blue-300' : ''}`}>
                       {option.label}
                       {isCurrentStatus && (
                         <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">

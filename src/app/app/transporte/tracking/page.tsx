@@ -132,14 +132,14 @@ export default function TrackingPage() {
 
   if (!organizationId) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <TrackingHeader stats={stats} isLoading={isLoading} />
 
       <Card className="p-4">

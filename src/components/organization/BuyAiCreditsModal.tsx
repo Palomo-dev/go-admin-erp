@@ -123,31 +123,31 @@ export default function BuyAiCreditsModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-4 sm:p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800">
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2"
+                  className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2 dark:text-gray-50"
                 >
-                  <SparklesIcon className="h-5 w-5 text-amber-500" />
+                  <SparklesIcon className="h-5 w-5 text-amber-500 dark:text-amber-400" />
                   Comprar Créditos de IA
                 </Dialog.Title>
 
                 <div className="mt-2">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Los créditos comprados no expiran y se suman a tu saldo actual. Elige un paquete o una cantidad personalizada.
                   </p>
                 </div>
 
                 {error && (
-                  <div className="mt-4 bg-red-50 border-l-4 border-red-500 p-4">
-                    <p className="text-sm text-red-700">{error}</p>
+                  <div className="mt-4 bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
+                    <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
                   </div>
                 )}
 
                 {/* Paquetes predefinidos */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Paquetes</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 dark:text-gray-200">Paquetes</h4>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
                     {CREDIT_PACKAGES.map((pkg) => {
                       const { basePrice, bonusCredits } = calculatePrice(pkg);
                       const totalCredits = pkg.credits + bonusCredits;
@@ -162,7 +162,7 @@ export default function BuyAiCreditsModal({
                           className={`relative text-left rounded-lg border-2 p-4 transition-all ${
                             selectedPackage === pkg.id
                               ? 'border-amber-500 bg-amber-50'
-                              : 'border-gray-200 hover:border-amber-300'
+                              : 'border-gray-200 hover:border-amber-300 dark:border-gray-700 dark:hover:border-amber-600'
                           }`}
                         >
                           {pkg.popular && (
@@ -172,18 +172,18 @@ export default function BuyAiCreditsModal({
                           )}
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-bold text-gray-900">{pkg.label}</p>
+                              <p className="font-bold text-gray-900 dark:text-gray-50">{pkg.label}</p>
                               {bonusCredits > 0 && (
-                                <p className="text-xs text-green-600 mt-0.5">
+                                <p className="text-xs text-green-600 mt-0.5 dark:text-green-300">
                                   {pkg.bonus} = {totalCredits.toLocaleString()} total
                                 </p>
                               )}
-                              <p className="text-lg font-semibold text-amber-600 mt-1">
+                              <p className="text-lg font-semibold text-amber-600 mt-1 dark:text-amber-300">
                                 ${basePrice.toLocaleString()} USD
                               </p>
                             </div>
                             {selectedPackage === pkg.id && (
-                              <CheckIcon className="h-5 w-5 text-amber-500" />
+                              <CheckIcon className="h-5 w-5 text-amber-500 dark:text-amber-400" />
                             )}
                           </div>
                         </button>
@@ -194,7 +194,7 @@ export default function BuyAiCreditsModal({
 
                 {/* Cantidad personalizada */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Cantidad personalizada</h4>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2 dark:text-gray-200">Cantidad personalizada</h4>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -207,20 +207,20 @@ export default function BuyAiCreditsModal({
                         if (val) setSelectedPackage(null);
                       }}
                       placeholder="Ej: 8000"
-                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none dark:border-gray-600 dark:focus:border-amber-400 dark:focus:ring-amber-400"
                     />
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {customCredits ? `= $${((customCredits * UNIT_PRICE_CENTS) / 100).toLocaleString()} USD` : ''}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Mínimo: 100 créditos</p>
+                  <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">Mínimo: 100 créditos</p>
                 </div>
 
                 {/* Resumen */}
-                <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                <div className="mt-6 bg-gray-50 rounded-lg p-4 dark:bg-gray-900">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Créditos a comprar:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-600 dark:text-gray-300">Créditos a comprar:</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-50">
                       {(() => {
                         const pkg = CREDIT_PACKAGES.find((p) => p.id === selectedPackage);
                         if (pkg) return (pkg.credits + calculatePrice(pkg).bonusCredits).toLocaleString();
@@ -229,8 +229,8 @@ export default function BuyAiCreditsModal({
                     </span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
-                    <span className="text-gray-600">Total a pagar:</span>
-                    <span className="font-bold text-amber-600">
+                    <span className="text-gray-600 dark:text-gray-300">Total a pagar:</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-300">
                       {(() => {
                         const pkg = CREDIT_PACKAGES.find((p) => p.id === selectedPackage);
                         if (pkg) return `$${calculatePrice(pkg).basePrice.toLocaleString()} USD`;
@@ -245,7 +245,7 @@ export default function BuyAiCreditsModal({
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="inline-flex justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                    className="inline-flex justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-900 dark:focus:ring-amber-400"
                   >
                     Cancelar
                   </button>
@@ -253,7 +253,7 @@ export default function BuyAiCreditsModal({
                     type="button"
                     onClick={handleBuy}
                     disabled={loading || (!selectedPackage && !customCredits)}
-                    className="inline-flex justify-center rounded-md border border-transparent bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50"
+                    className="inline-flex justify-center rounded-md border border-transparent bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 dark:focus:ring-amber-400"
                   >
                     {loading ? 'Procesando...' : 'Comprar ahora'}
                   </button>

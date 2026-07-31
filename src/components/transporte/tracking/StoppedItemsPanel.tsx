@@ -36,7 +36,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
     return (
       <Card className="p-4">
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
         </div>
       </Card>
     );
@@ -46,7 +46,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-orange-500" />
+          <AlertTriangle className="h-4 w-4 text-orange-500 dark:text-orange-400" />
           Diagnóstico: Items Detenidos ({items.length})
         </h3>
         <Button variant="ghost" size="sm" onClick={onRefresh}>
@@ -56,11 +56,11 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
 
       {items.length === 0 ? (
         <div className="text-center py-6">
-          <Clock className="h-10 w-10 mx-auto text-green-500 mb-2" />
+          <Clock className="h-10 w-10 mx-auto text-green-500 mb-2 dark:text-green-400" />
           <p className="text-gray-600 dark:text-gray-400">
             No hay viajes ni envíos detenidos
           </p>
-          <p className="text-sm text-gray-500">Todo está en movimiento</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Todo está en movimiento</p>
         </div>
       ) : (
         <div className="space-y-3 max-h-[400px] overflow-y-auto">
@@ -72,9 +72,9 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
                   {item.type === 'trip' ? (
-                    <Truck className="h-4 w-4 text-purple-600" />
+                    <Truck className="h-4 w-4 text-purple-600 dark:text-purple-300" />
                   ) : (
-                    <Package className="h-4 w-4 text-green-600" />
+                    <Package className="h-4 w-4 text-green-600 dark:text-green-300" />
                   )}
                   <span className="font-mono font-medium">{item.code}</span>
                   <Badge variant="outline" className="text-xs">
@@ -95,8 +95,8 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
                   <Badge
                     className={
                       item.status === 'incident' || item.status === 'delayed'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-100'
+                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-100'
                     }
                   >
                     {item.status}
@@ -108,7 +108,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
                 </p>
 
                 {item.stoppedSince && (
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <p className="text-xs text-gray-500 flex items-center gap-1 dark:text-gray-400">
                     <Clock className="h-3 w-3" />
                     Detenido hace {formatDistanceToNow(new Date(item.stoppedSince), { locale: es })}
                   </p>
@@ -120,7 +120,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
       )}
 
       <div className="mt-4 pt-4 border-t">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
           <strong>Tip:</strong> Los items aparecen aquí si tienen estados que indican inactividad
           (delayed, incident, pending, received, scheduled).
         </p>

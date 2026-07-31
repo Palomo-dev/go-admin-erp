@@ -362,10 +362,10 @@ export default function ManifestDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <Card className="p-8">
+      <div className="p-4 sm:p-6">
+        <Card className="p-4 sm:p-8">
           <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
             <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando manifiesto...</span>
           </div>
         </Card>
@@ -375,9 +375,9 @@ export default function ManifestDetailPage() {
 
   if (!manifest) {
     return (
-      <div className="p-6">
-        <Card className="p-8 text-center">
-          <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+      <div className="p-4 sm:p-6">
+        <Card className="p-4 sm:p-8 text-center">
+          <ClipboardList className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">Manifiesto no encontrado</h3>
           <Button onClick={() => router.push('/app/transporte/manifiestos')} className="mt-4">
             Volver a manifiestos
@@ -393,16 +393,16 @@ export default function ManifestDetailPage() {
     : 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push('/app/transporte/manifiestos')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {manifest.manifest_number}
               </h1>
               <Badge className={statusConfig.color}>
@@ -445,19 +445,19 @@ export default function ManifestDetailPage() {
               <DropdownMenuSeparator />
               {manifest.status === 'draft' && (
                 <DropdownMenuItem onClick={() => handleChangeStatus('confirmed')}>
-                  <CheckCircle className="h-4 w-4 mr-2 text-blue-600" />
+                  <CheckCircle className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-300" />
                   Confirmar
                 </DropdownMenuItem>
               )}
               {manifest.status === 'confirmed' && (
                 <DropdownMenuItem onClick={() => handleChangeStatus('in_progress')}>
-                  <PlayCircle className="h-4 w-4 mr-2 text-yellow-600" />
+                  <PlayCircle className="h-4 w-4 mr-2 text-yellow-600 dark:text-yellow-300" />
                   Iniciar
                 </DropdownMenuItem>
               )}
               {manifest.status === 'in_progress' && (
                 <DropdownMenuItem onClick={() => handleChangeStatus('completed')}>
-                  <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                  <CheckCircle className="h-4 w-4 mr-2 text-green-600 dark:text-green-300" />
                   Completar
                 </DropdownMenuItem>
               )}
@@ -466,46 +466,46 @@ export default function ManifestDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Panel izquierdo - Info del manifiesto */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Información general */}
           <Card className="p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Información General</h3>
             <div className="space-y-3">
               {manifest.vehicles && (
                 <div className="flex items-center gap-3">
-                  <Truck className="h-4 w-4 text-gray-400" />
+                  <Truck className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <div>
-                    <p className="text-sm text-gray-500">Vehículo</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Vehículo</p>
                     <p className="font-medium">{manifest.vehicles.plate}</p>
-                    <p className="text-xs text-gray-400">{manifest.vehicles.vehicle_type}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{manifest.vehicles.vehicle_type}</p>
                   </div>
                 </div>
               )}
               {manifest.transport_carriers && (
                 <div className="flex items-center gap-3">
-                  <Package className="h-4 w-4 text-gray-400" />
+                  <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <div>
-                    <p className="text-sm text-gray-500">Transportadora</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Transportadora</p>
                     <p className="font-medium">{manifest.transport_carriers.name}</p>
                   </div>
                 </div>
               )}
               {manifest.transport_routes && (
                 <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-gray-400" />
+                  <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <div>
-                    <p className="text-sm text-gray-500">Ruta</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Ruta</p>
                     <p className="font-medium">{manifest.transport_routes.name || manifest.transport_routes.code}</p>
                   </div>
                 </div>
               )}
               {(manifest.planned_start || manifest.planned_end) && (
                 <div className="flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-gray-400" />
+                  <Clock className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <div>
-                    <p className="text-sm text-gray-500">Horario planificado</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Horario planificado</p>
                     <p className="font-medium">
                       {manifest.planned_start && format(new Date(manifest.planned_start), "HH:mm", { locale: es })}
                       {manifest.planned_start && manifest.planned_end && ' - '}
@@ -520,28 +520,28 @@ export default function ManifestDetailPage() {
           {/* Estadísticas */}
           <Card className="p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Estadísticas</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{manifest.total_shipments}</p>
-                <p className="text-xs text-gray-500">Total Envíos</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{manifest.total_shipments}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total Envíos</p>
               </div>
               <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{manifest.delivered_count}</p>
-                <p className="text-xs text-gray-500">Entregados</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-300">{manifest.delivered_count}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Entregados</p>
               </div>
               <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-red-600">{manifest.failed_count}</p>
-                <p className="text-xs text-gray-500">Fallidos</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-300">{manifest.failed_count}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Fallidos</p>
               </div>
               <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                <p className="text-2xl font-bold text-yellow-600">{manifest.pending_count}</p>
-                <p className="text-xs text-gray-500">Pendientes</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-300">{manifest.pending_count}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Pendientes</p>
               </div>
             </div>
 
             {/* Barra de progreso */}
             <div className="mt-4">
-              <div className="flex justify-between text-sm text-gray-500 mb-1">
+              <div className="flex justify-between text-sm text-gray-500 mb-1 dark:text-gray-400">
                 <span>Progreso</span>
                 <span>{progressPercent}%</span>
               </div>
@@ -555,13 +555,13 @@ export default function ManifestDetailPage() {
 
             <Separator className="my-4" />
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <Weight className="h-4 w-4 text-gray-400" />
+                <Weight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <span>{manifest.total_weight_kg || 0} kg</span>
               </div>
               <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-gray-400" />
+                <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <span>{manifest.total_packages || 0} paquetes</span>
               </div>
             </div>
@@ -593,7 +593,7 @@ export default function ManifestDetailPage() {
             </div>
 
             {!manifest.manifest_shipments || manifest.manifest_shipments.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-4 sm:p-8 text-center text-gray-500 dark:text-gray-400">
                 <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No hay envíos en este manifiesto</p>
                 {manifest.status === 'draft' && (
@@ -630,7 +630,7 @@ export default function ManifestDetailPage() {
                             {/* Orden */}
                             <div className="flex flex-col items-center gap-1">
                               {manifest.status === 'draft' && (
-                                <GripVertical className="h-4 w-4 text-gray-400 cursor-grab" />
+                                <GripVertical className="h-4 w-4 text-gray-400 cursor-grab dark:text-gray-500" />
                               )}
                               <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium ${
                                 ms.status === 'delivered'
@@ -677,9 +677,9 @@ export default function ManifestDetailPage() {
                               )}
 
                               {/* Contacto */}
-                              <div className="flex items-center gap-4 mt-2 text-sm">
+                              <div className="flex items-center gap-2 sm:gap-4 mt-2 text-sm">
                                 {ms.shipments?.delivery_contact_name && (
-                                  <span className="flex items-center gap-1 text-gray-500">
+                                  <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                                     <User className="h-3 w-3" />
                                     {ms.shipments.delivery_contact_name}
                                   </span>
@@ -687,7 +687,7 @@ export default function ManifestDetailPage() {
                                 {ms.shipments?.delivery_contact_phone && (
                                   <a
                                     href={`tel:${ms.shipments.delivery_contact_phone}`}
-                                    className="flex items-center gap-1 text-blue-600 hover:underline"
+                                    className="flex items-center gap-1 text-blue-600 hover:underline dark:text-blue-300"
                                   >
                                     <Phone className="h-3 w-3" />
                                     {ms.shipments.delivery_contact_phone}
@@ -759,7 +759,7 @@ export default function ManifestDetailPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:text-red-200 dark:hover:bg-red-900/30"
                                   onClick={() => handleRemoveShipment(ms.shipment_id)}
                                 >
                                   <Trash2 className="h-4 w-4" />

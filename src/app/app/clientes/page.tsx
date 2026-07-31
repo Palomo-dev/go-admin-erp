@@ -698,7 +698,7 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen min-w-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -946,7 +946,7 @@ export default function ClientesPage() {
       </Card>
 
       {/* Tabla */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 min-w-0">
         <CardContent className="p-0">
           {customers.length > 0 ? (
             <ClientesTable 

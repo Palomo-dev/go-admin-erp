@@ -111,6 +111,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [salespersonId, setSalespersonId] = useState<string>('');
   const [commissionRate, setCommissionRate] = useState<number>(0);
   const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>('salesperson');
+  const [commissionMethod, setCommissionMethod] = useState<'percentage' | 'fixed_amount'>('percentage');
 
   // Estados para delivery
   const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery_own' | 'delivery_third_party'>('pickup');
@@ -138,8 +139,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [showAddressDropdown, setShowAddressDropdown] = useState<boolean>(false);
 
   // Comisión calculada
-  const commissionAmount = commissionRate > 0 && salespersonId
-    ? Math.round((calculatedTotals.subtotal || cart.subtotal) * commissionRate / 100 * 100) / 100
+  const commissionAmount = commissionRate > 0 && salespersonId && salespersonId !== '__none__'
+    ? commissionMethod === 'fixed_amount'
+      ? commissionRate
+      : Math.round((calculatedTotals.subtotal || cart.subtotal) * commissionRate / 100 * 100) / 100
     : 0;
   
   // Calculados - usar totales con impuestos + propina
@@ -193,6 +196,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setSalespersonId('');
       setCommissionRate(0);
       setCommissionType('salesperson');
+      setCommissionMethod('percentage');
       setDeliveryType('pickup');
       setDeliveryAddress('');
       setDeliveryCity('');
@@ -487,7 +491,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         const taxItem: TaxCalculationItem = {
           quantity: item.quantity,
           unit_price: item.unit_price,
-          product_id: item.product_id
+          product_id: item.product_id,
+          discount_amount: item.discount_amount || 0,
+          tax_rate: item.tax_rate || undefined,
+          tax_included: item.tax_excluded ? false : (cart.tax_included || undefined)
         };
         
         let result;
@@ -662,6 +669,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
         commission_rate: commissionRate > 0 ? commissionRate : undefined,
         commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
+        commission_method: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionMethod : undefined,
+        commission_amount: commissionAmount > 0 ? commissionAmount : undefined,
         delivery_type: deliveryType,
         delivery_info: deliveryType !== 'pickup' ? {
           address: deliveryAddress,
@@ -1086,6 +1095,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     setSalespersonId('');
     setCommissionRate(0);
     setCommissionType('salesperson');
+    setCommissionMethod('percentage');
   };
 
   // Generar botones de monto rápido dinámicos según el total a pagar
@@ -1842,15 +1852,39 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
                       <div className="space-y-1">
                         <Label className="text-xs dark:text-gray-400 text-gray-600">
-                          % Comisión
+                          Comisión
                         </Label>
+                        <div className="flex gap-1 mb-1">
+                          <Button
+                            type="button"
+                            variant={commissionMethod === 'percentage' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setCommissionMethod('percentage')}
+                            className="h-7 px-2 text-xs"
+                          >
+                            <Percent className="h-3 w-3 mr-1" /> %
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={commissionMethod === 'fixed_amount' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setCommissionMethod('fixed_amount')}
+                            className="h-7 px-2 text-xs"
+                          >
+                            <DollarSign className="h-3 w-3 mr-1" /> Monto
+                          </Button>
+                        </div>
                         <div className="relative">
-                          <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
+                          {commissionMethod === 'percentage' ? (
+                            <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
+                          ) : (
+                            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 dark:text-gray-400 text-gray-500" />
+                          )}
                           <Input
                             type="number"
                             min="0"
-                            max="100"
-                            step="0.5"
+                            max={commissionMethod === 'percentage' ? "100" : undefined}
+                            step={commissionMethod === 'percentage' ? "0.5" : "100"}
                             value={commissionRate || ''}
                             onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
                             placeholder="0"
@@ -1864,7 +1898,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                         <div className="flex justify-between items-center text-sm">
                           <span className="dark:text-blue-400 text-blue-700">
-                            Comisión ({commissionRate}%):
+                            Comisión ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatCurrency(commissionRate)}):
                           </span>
                           <span className="font-semibold dark:text-blue-400 text-blue-700">
                             {formatCurrency(commissionAmount)}

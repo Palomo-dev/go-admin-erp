@@ -19,7 +19,9 @@ import {
   Printer,
   Copy,
   Pencil,
-  Ban
+  Ban,
+  Percent,
+  DollarSign
 } from 'lucide-react';
 import { 
   Card,
@@ -129,6 +131,25 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const [eInvoiceCufe, setEInvoiceCufe] = useState<string | null>(null);
   const [eInvoiceFactusNumber, setEInvoiceFactusNumber] = useState<string | null>(null);
   const [creditoAplicado, setCreditoAplicado] = useState<number>(0);
+  const [salespersonName, setSalespersonName] = useState<string | null>(factura.salesperson_name || null);
+
+  // Cargar nombre del vendedor desde profiles si no viene en la factura
+  useEffect(() => {
+    if (facturaActual.salesperson_id && !facturaActual.salesperson_name && !salespersonName) {
+      const loadSalespersonName = async () => {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', facturaActual.salesperson_id!)
+          .single();
+        if (profileData) {
+          const name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+          setSalespersonName(name);
+        }
+      };
+      loadSalespersonName();
+    }
+  }, [facturaActual.salesperson_id, facturaActual.salesperson_name, salespersonName]);
 
   // Cargar datos de la organización al montar
   useEffect(() => {
@@ -1035,6 +1056,51 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         </CardContent>
       </Card>
       
+      {/* Sección de Vendedor y Comisión */}
+      {facturaActual.salesperson_id && (Number(facturaActual.commission_rate) > 0 || Number(facturaActual.commission_amount) > 0) && (
+        <Card>
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <User className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+              <span className="text-gray-900 dark:text-gray-100">Vendedor y Comisión</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36">Vendedor:</span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                  {facturaActual.salesperson_name || salespersonName || 'N/A'}
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium sm:w-36 flex items-center gap-1">
+                  {facturaActual.commission_method === 'percentage' 
+                    ? <Percent className="h-3.5 w-3.5" /> 
+                    : <DollarSign className="h-3.5 w-3.5" />}
+                  Comisión:
+                </span>
+                <span className="text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                  {facturaActual.commission_method === 'percentage' 
+                    ? `${facturaActual.commission_rate || 0}%` 
+                    : formatCurrency(facturaActual.commission_rate || 0)}
+                </span>
+              </div>
+            </div>
+            {facturaActual.commission_amount && facturaActual.commission_amount > 0 && (
+              <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-blue-700 dark:text-blue-400">Comisión calculada:</span>
+                  <span className="font-semibold text-blue-700 dark:text-blue-400">
+                    {formatCurrency(facturaActual.commission_amount)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Sección de items */}
       <Card>
         <CardHeader className="pb-3 sm:pb-6">
@@ -1044,7 +1110,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <ItemsDetalle items={factura.items} />
+          <ItemsDetalle items={factura.items} taxIncluded={factura.tax_included || false} />
         </CardContent>
       </Card>
       

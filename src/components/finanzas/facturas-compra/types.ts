@@ -42,6 +42,9 @@ export interface InvoicePurchase {
   salesperson_id?: string;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_purchase' | 'none';
+  commission_method?: 'percentage' | 'fixed_amount';
+  commission_amount?: number;
+  salesperson_name?: string;
   
   // Relaciones
   supplier?: SupplierBase;
@@ -184,6 +187,8 @@ export interface NuevaFacturaCompraForm {
   salesperson_id?: string;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_purchase' | 'none';
+  commission_method?: 'percentage' | 'fixed_amount';
+  commission_amount?: number;
 }
 
 export interface InvoiceItemForm {
@@ -193,6 +198,7 @@ export interface InvoiceItemForm {
   qty: number;
   unit_price: number;
   tax_rate: number;
+  tax_code?: string | null;
   discount_amount: number;
 }
 

@@ -130,7 +130,10 @@ export function TaxSummary({
           const taxItem: TaxCalculationItem = {
             quantity: item.quantity,
             unit_price: item.unit_price,
-            product_id: item.product_id
+            product_id: item.product_id,
+            discount_amount: item.discount_amount || 0,
+            tax_rate: item.tax_rate || undefined,
+            tax_included: item.tax_excluded ? false : (taxIncluded || undefined)
           };
           
           let result;

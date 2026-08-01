@@ -74,6 +74,7 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
               <TableHead className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Descripción</TableHead>
               <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300">Cant.</TableHead>
               <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">Precio Unit.</TableHead>
+              <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">Desc.</TableHead>
               <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">Impuesto</TableHead>
               <TableHead className="text-right text-xs sm:text-sm text-gray-700 dark:text-gray-300">Total</TableHead>
             </TableRow>
@@ -100,6 +101,9 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                 </TableCell>
                 <TableCell className="text-right text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">{Number(item.qty).toLocaleString()}</TableCell>
                 <TableCell className="text-right text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3 hidden sm:table-cell">{formatCurrency(item.unit_price)}</TableCell>
+                <TableCell className="text-right text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3 hidden md:table-cell">
+                  {item.discount_amount ? formatCurrency(item.discount_amount) : '-'}
+                </TableCell>
                 <TableCell className="text-right text-xs sm:text-sm py-2 sm:py-3 hidden md:table-cell">
                   {(() => {
                     const rate = Number(item.tax_rate);

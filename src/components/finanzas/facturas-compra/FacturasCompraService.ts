@@ -166,6 +166,19 @@ export class FacturasCompraService {
         facturaCompleta.applied_taxes = appliedTaxesData;
       }
 
+      // Obtener el nombre del vendedor si existe
+      if (facturaCompleta.salesperson_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', facturaCompleta.salesperson_id)
+          .single();
+
+        if (profileData) {
+          facturaCompleta.salesperson_name = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+        }
+      }
+
       console.log('Factura encontrada:', facturaCompleta);
       return facturaCompleta;
     } catch (error) {
@@ -235,7 +248,9 @@ export class FacturasCompraService {
           tax_included: formData.tax_included,
           salesperson_id: formData.salesperson_id || null,
           commission_rate: formData.commission_rate || 0,
-          commission_type: formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 ? formData.commission_type : 'none'
+          commission_type: formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 ? formData.commission_type : 'none',
+          commission_method: (formData as any).commission_method || 'percentage',
+          commission_amount: (formData as any).commission_amount || 0
         })
         .select()
         .single();
@@ -324,6 +339,58 @@ export class FacturasCompraService {
       // mediante el trigger trg_auto_journal_purchase (fn_auto_journal_purchase)
       // cuando la factura pasa a status='received', usando accounting_rules.
 
+      // Crear registro de comisión si aplica
+      if (formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 && formData.commission_type !== 'none') {
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', formData.salesperson_id!)
+            .single();
+
+          let salespersonName = 'N/A';
+          if (profileData) {
+            salespersonName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'N/A';
+          }
+
+          const baseAmount = subtotal > 0 ? subtotal : total;
+          const commissionAmount = (formData as any).commission_amount || 0;
+
+          // Setear app.current_org_id para que la RLS de commissions permita el insert
+          await supabase.rpc('set_config', {
+            setting_name: 'app.current_org_id',
+            new_value: String(this.organizationId),
+            is_local: false
+          });
+
+          const { error: commissionInsertError } = await supabase
+            .from('commissions')
+            .insert({
+              organization_id: this.organizationId,
+              branch_id: this.branchId,
+              commission_type: formData.commission_type,
+              source_type: 'invoice_purchase',
+              source_id: factura.id,
+              payee_type: 'employee',
+              payee_id: formData.salesperson_id,
+              payee_name: salespersonName,
+              base_amount: baseAmount,
+              commission_rate: formData.commission_rate,
+              commission_amount: commissionAmount,
+              currency: formData.currency,
+              status: 'accrued',
+              accrued_at: new Date().toISOString(),
+              created_by: currentUserId,
+              metadata: { invoice_number: formData.number_ext, commission_method: (formData as any).commission_method || 'percentage' },
+            });
+          if (commissionInsertError) {
+            console.error('Error al crear registro de comisión:', commissionInsertError);
+          }
+        } catch (commissionErr) {
+          console.error('Error al crear registro de comisión (catch):', commissionErr);
+        }
+      }
+
       return factura;
     } catch (error) {
       console.error('Error en crearFactura:', error);
@@ -410,7 +477,9 @@ export class FacturasCompraService {
           updated_at: new Date().toISOString(),
           salesperson_id: formData.salesperson_id || null,
           commission_rate: formData.commission_rate || 0,
-          commission_type: formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 ? formData.commission_type : 'none'
+          commission_type: formData.salesperson_id && formData.commission_rate && formData.commission_rate > 0 ? formData.commission_type : 'none',
+          commission_method: (formData as any).commission_method || 'percentage',
+          commission_amount: (formData as any).commission_amount || 0
         })
         .eq('id', facturaId)
         .select()

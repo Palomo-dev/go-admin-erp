@@ -29,7 +29,9 @@ import {
   Send,
   Loader2,
   CheckCircle,
-  Ban
+  Ban,
+  User,
+  Percent
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { FacturasCompraService } from '../FacturasCompraService';
@@ -53,6 +55,24 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [factura, setFactura] = useState<InvoicePurchase | null>(null);
+  const [salespersonName, setSalespersonName] = useState<string | null>(null);
+
+  // Cargar nombre del vendedor desde profiles
+  useEffect(() => {
+    if (factura?.salesperson_id && !factura?.salesperson_name && !salespersonName) {
+      const loadName = async () => {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', factura.salesperson_id!)
+          .single();
+        if (profileData) {
+          setSalespersonName(`${profileData.first_name || ''} ${profileData.last_name || ''}`.trim());
+        }
+      };
+      loadName();
+    }
+  }, [factura?.salesperson_id, factura?.salesperson_name, salespersonName]);
   
   // Detectar si estamos en inventario o finanzas
   const basePath = pathname.includes('/inventario/') 
@@ -658,6 +678,49 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         <div className="space-y-4 sm:space-y-6">
           {/* Información del proveedor */}
           <InfoProveedorFactura factura={factura} />
+
+          {/* Vendedor y Comisión */}
+          {factura.salesperson_id && (Number(factura.commission_rate) > 0 || Number(factura.commission_amount) > 0) && (
+            <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
+              <CardHeader className="pb-2 sm:pb-3">
+                <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white flex items-center">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600 dark:text-blue-400" />
+                  <span>Vendedor y Comisión</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-400">Vendedor:</span>
+                    <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
+                      {factura.salesperson_name || salespersonName || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-400 flex items-center gap-1">
+                      {factura.commission_method === 'percentage' 
+                        ? <Percent className="w-3.5 h-3.5" /> 
+                        : <DollarSign className="w-3.5 h-3.5" />}
+                      Comisión:
+                    </span>
+                    <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
+                      {factura.commission_method === 'percentage' 
+                        ? `${factura.commission_rate || 0}%` 
+                        : formatCurrency(factura.commission_rate || 0, factura.currency)}
+                    </span>
+                  </div>
+                  {factura.commission_amount && factura.commission_amount > 0 && (
+                    <div className="flex justify-between items-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <span className="text-sm text-blue-700 dark:text-blue-400">Comisión calculada:</span>
+                      <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                        {formatCurrency(factura.commission_amount, factura.currency)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Totales */}
           <ResumenTotalesFactura factura={factura} />

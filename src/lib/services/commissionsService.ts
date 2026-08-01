@@ -58,10 +58,20 @@ class CommissionsService {
   }
 
   async getCommissions(filters?: CommissionFilters): Promise<Commission[]> {
+    // Setear app.current_org_id para que la RLS de commissions permita leer
+    const orgId = this.getOrgId();
+    if (orgId) {
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_org_id',
+        new_value: String(orgId),
+        is_local: false
+      });
+    }
+
     let query = supabase
       .from('commissions')
       .select('*')
-      .eq('organization_id', this.getOrgId())
+      .eq('organization_id', orgId)
       .order('created_at', { ascending: false });
 
     if (filters?.status && filters.status !== 'all') {
@@ -138,6 +148,10 @@ class CommissionsService {
   }
 
   async markAsPaid(id: string): Promise<Commission> {
+    const orgId = this.getOrgId();
+    if (orgId) {
+      await supabase.rpc('set_config', { setting_name: 'app.current_org_id', new_value: String(orgId), is_local: false });
+    }
     const { data, error } = await supabase
       .from('commissions')
       .update({ status: 'paid', paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -149,6 +163,10 @@ class CommissionsService {
   }
 
   async markAsCancelled(id: string, reason?: string): Promise<Commission> {
+    const orgId = this.getOrgId();
+    if (orgId) {
+      await supabase.rpc('set_config', { setting_name: 'app.current_org_id', new_value: String(orgId), is_local: false });
+    }
     const { data, error } = await supabase
       .from('commissions')
       .update({
@@ -164,6 +182,10 @@ class CommissionsService {
   }
 
   async bulkMarkAsPaid(ids: string[]): Promise<void> {
+    const orgId = this.getOrgId();
+    if (orgId) {
+      await supabase.rpc('set_config', { setting_name: 'app.current_org_id', new_value: String(orgId), is_local: false });
+    }
     const { error } = await supabase
       .from('commissions')
       .update({ status: 'paid', paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -172,10 +194,14 @@ class CommissionsService {
   }
 
   async getCommissionsByPayee(payeeId: string): Promise<Commission[]> {
+    const orgId = this.getOrgId();
+    if (orgId) {
+      await supabase.rpc('set_config', { setting_name: 'app.current_org_id', new_value: String(orgId), is_local: false });
+    }
     const { data, error } = await supabase
       .from('commissions')
       .select('*')
-      .eq('organization_id', this.getOrgId())
+      .eq('organization_id', orgId)
       .eq('payee_id', payeeId)
       .order('created_at', { ascending: false });
     if (error) throw error;

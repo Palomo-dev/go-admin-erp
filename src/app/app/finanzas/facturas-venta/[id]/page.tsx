@@ -56,11 +56,26 @@ export default function FacturaDetallesPage({ params }: PageProps) {
 
         if (pagosError) throw pagosError;
         
+        // Obtener el nombre del vendedor si existe
+        let salespersonName = null;
+        if (facturaData.salesperson_id) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', facturaData.salesperson_id)
+            .single();
+          
+          if (profileData) {
+            salespersonName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
+          }
+        }
+        
         // Combinar todos los datos
         const facturaCompleta = {
           ...facturaData,
           items: itemsData || [],
-          pagos: pagosData || []
+          pagos: pagosData || [],
+          salesperson_name: salespersonName
         };
         
         setFactura(facturaCompleta);

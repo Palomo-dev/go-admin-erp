@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ListChecks } from 'lucide-react';
 import { InvoiceItemForm } from '../types';
-import { ProductSearchDialog, type Product } from './ProductSearchDialog';
+import { ProductSearchDialog, type UnifiedProduct, type SelectedModifier } from '@/components/shared/product-search';
 import { SelectedProductsTable, type SelectedProduct } from './SelectedProductsTable';
 import { ManualItemDialog } from './ManualItemDialog';
 
@@ -108,53 +108,48 @@ export function ItemsListForm({
   }, [onAgregarItem, onItemChange, onDirectAddItem, items.length]);
 
   // Manejar selección de producto desde el catálogo
-  const handleProductSelect = useCallback((product: Product) => {
-    console.log('=== DEBUG handleProductSelect SIMPLIFICADO ===');
-    console.log('Producto seleccionado:', product);
-    
+  const handleProductSelect = useCallback((product: UnifiedProduct, modifiers: SelectedModifier[] = []) => {
+    let description = product.name;
+    if (modifiers.length > 0) {
+      const modNames = modifiers.map(m => m.name).join(', ');
+      description += ` (${modNames})`;
+    }
+
+    const modifiersExtra = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+    const unitCost = (product.cost || 0) + modifiersExtra;
+
     const selectedProduct: SelectedProduct = {
       ...product,
       quantity: 1,
-      unit_cost: product.cost,
+      unit_cost: unitCost,
       discount_amount: 0,
       tax_rate: product.tax_rate || 0
     };
-    
+
     setSelectedProducts(prev => [...prev, selectedProduct]);
-    
-    // En lugar de usar onAgregarItem + onItemChange, usar directamente onDirectAddItem
-    // que agregará el producto completo de una vez
+
     if (onDirectAddItem) {
       const newItem: InvoiceItemForm = {
         product_id: product.id,
-        description: `${product.name} (${product.sku})`,
+        description: `${description} (${product.sku})`,
         qty: 1,
-        unit_price: product.cost,
+        unit_price: unitCost,
         tax_rate: product.tax_rate || 0,
         discount_amount: 0
       };
-      
-      console.log('Agregando item directamente:', newItem);
       onDirectAddItem(newItem);
     } else {
-      // Fallback al método original si onDirectAddItem no está disponible
       onAgregarItem();
-      
-      // Usar setTimeout para actualizar el último item agregado
       setTimeout(() => {
-        const lastIndex = items.length; // Debería ser el nuevo índice
-        console.log('Actualizando item en índice:', lastIndex);
-        
+        const lastIndex = items.length;
         onItemChange(lastIndex, 'product_id', product.id);
-        onItemChange(lastIndex, 'description', `${product.name} (${product.sku})`);
+        onItemChange(lastIndex, 'description', `${description} (${product.sku})`);
         onItemChange(lastIndex, 'qty', 1);
-        onItemChange(lastIndex, 'unit_price', product.cost);
-        onItemChange(lastIndex, 'tax_rate', product.tax_rate || 19);
+        onItemChange(lastIndex, 'unit_price', unitCost);
+        onItemChange(lastIndex, 'tax_rate', product.tax_rate || 0);
         onItemChange(lastIndex, 'discount_amount', 0);
       }, 100);
     }
-    
-    console.log('=== FIN DEBUG handleProductSelect ===');
   }, [onAgregarItem, onItemChange, onDirectAddItem, items.length]);
   
   // Manejar actualización de producto seleccionado
@@ -227,9 +222,11 @@ export function ItemsListForm({
                 onItemAdd={handleManualItemAdd}
               />
               <ProductSearchDialog 
-                currency={currency}
+                mode="purchase"
+                currency={currency} 
                 onProductSelect={handleProductSelect}
                 selectedProductIds={selectedProductIds}
+                showCreateButton
               />
             </div>
           </div>

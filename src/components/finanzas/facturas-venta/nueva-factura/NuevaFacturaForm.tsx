@@ -15,12 +15,12 @@ import { ItemsFactura } from './ItemsFactura';
 import { ImpuestosFactura } from './ImpuestosFactura';
 import { FormaPagoSelector } from './FormaPagoSelector';
 import { format } from 'date-fns';
-import { Save, FileCheck, ArrowLeft, RefreshCw, Coins, User, Percent } from 'lucide-react';
+import { Save, FileCheck, ArrowLeft, RefreshCw, Coins, User, Percent, DollarSign, AlertCircle } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
-import { toLocalDateString, parseLocalDate } from '@/utils/Utils';
+import { toLocalDateString, parseLocalDate, formatCurrency } from '@/utils/Utils';
 
 // Tipo para un ítem de factura
 export type InvoiceItem = {
@@ -39,6 +39,8 @@ export type InvoiceItem = {
   total_line: number;
   discount_amount?: number | null;
   product_name?: string; // Campo adicional para UI
+  stock_qty?: number | null; // Stock disponible (para validación en UI)
+  track_stock?: boolean | null; // Si el producto controla stock
 };
 
 // Tipo para una factura
@@ -125,6 +127,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [salespersonId, setSalespersonId] = useState<string>('');
   const [commissionRate, setCommissionRate] = useState<number>(0);
   const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>('salesperson');
+  const [commissionMethod, setCommissionMethod] = useState<'percentage' | 'fixed_amount'>('percentage');
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({}); // Indicador de impuestos aplicados
   const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: any}>({}); // Totales de impuestos aplicados
@@ -200,13 +203,24 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       try {
         const { data: members } = await supabase
           .from('organization_members')
-          .select('user_id, profiles(first_name, last_name)')
+          .select('user_id')
           .eq('organization_id', organizationId);
-        if (members) {
-          const formatted = members.map((m: any) => ({
-            id: m.user_id,
-            name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario'
-          }));
+
+        if (members && members.length > 0) {
+          const userIds = members.map(m => m.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', userIds);
+
+          const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+          const formatted = members.map((m: any) => {
+            const p = profileMap.get(m.user_id);
+            return {
+              id: m.user_id,
+              name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Usuario'
+            };
+          });
           setOrganizationMembers(formatted);
         }
       } catch (e) {
@@ -230,6 +244,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setSalespersonId(facturaInicial.salesperson_id || '');
       setCommissionRate(Number(facturaInicial.commission_rate) || 0);
       setCommissionType(facturaInicial.commission_type || 'salesperson');
+      setCommissionMethod((facturaInicial as any).commission_method || 'percentage');
 
       if (facturaInicial.issue_date) {
         setIssueDate(parseLocalDate(facturaInicial.issue_date));
@@ -482,14 +497,16 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     const itemsTaxTotal = items.reduce((sum, it) => {
       const qty = Number(it.qty) || 0;
       const unitPrice = Number(it.unit_price) || 0;
+      const discount = Number(it.discount_amount) || 0;
       const rate = Number(it.tax_rate) || 0;
       const totalLine = Number(it.total_line) || 0;
       if (rate <= 0) return sum;
+      const lineBase = qty * unitPrice - discount;
       if (it.tax_included) {
         const base = totalLine / (1 + rate / 100);
         return sum + (totalLine - base);
       }
-      return sum + (totalLine - qty * unitPrice);
+      return sum + (totalLine - lineBase);
     }, 0);
     const itemsSubtotal = itemsTotal - itemsTaxTotal;
 
@@ -516,6 +533,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         salesperson_id: salespersonId || null,
         commission_rate: commissionRate || 0,
         commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none',
+        commission_method: salespersonId && commissionRate > 0 ? commissionMethod : 'percentage',
+        commission_amount: salespersonId && commissionRate > 0
+          ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((subtotal > 0 ? subtotal : total) * commissionRate / 100 * 100) / 100)
+          : 0,
         appliedTaxes,
         items: items.map(item => ({
           id: item.id,
@@ -609,11 +630,16 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       };
       
       // Añadir campos de comisión al insert
+      const commissionAmountCalc = salespersonId && commissionRate > 0
+        ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((subtotal > 0 ? subtotal : total) * commissionRate / 100 * 100) / 100)
+        : 0;
       const invoiceWithCommission = {
         ...invoice,
         salesperson_id: salespersonId || null,
         commission_rate: commissionRate || 0,
-        commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none'
+        commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none',
+        commission_method: salespersonId && commissionRate > 0 ? commissionMethod : 'percentage',
+        commission_amount: commissionAmountCalc
       };
       
       // 4. Guardar factura en Supabase
@@ -674,6 +700,47 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // Nota: el asiento contable de devengo se crea automaticamente en la BD
       // mediante el trigger trg_auto_journal_sale (fn_auto_journal_sale) al
       // insertar en invoice_sales, usando la tabla accounting_rules.
+
+      // 6.6. Crear registro de comisión si aplica
+      if (salespersonId && commissionRate > 0 && commissionType !== 'none') {
+        try {
+          const salespersonName = organizationMembers.find(m => m.id === salespersonId)?.name || 'N/A';
+          const baseAmount = subtotal > 0 ? subtotal : total;
+
+          // Setear app.current_org_id para que la RLS de commissions permita el insert
+          await supabase.rpc('set_config', {
+            setting_name: 'app.current_org_id',
+            new_value: String(organizationId),
+            is_local: false
+          });
+
+          const { error: commissionInsertError } = await supabase
+            .from('commissions')
+            .insert({
+              organization_id: Number(organizationId),
+              branch_id: branchId,
+              commission_type: commissionType,
+              source_type: 'invoice_sale',
+              source_id: invoiceData.id,
+              payee_type: 'employee',
+              payee_id: salespersonId,
+              payee_name: salespersonName,
+              base_amount: baseAmount,
+              commission_rate: commissionRate,
+              commission_amount: commissionAmountCalc,
+              currency: currency,
+              status: 'accrued',
+              accrued_at: new Date().toISOString(),
+              created_by: currentUserId,
+              metadata: { invoice_number: invoiceNumber, commission_method: commissionMethod },
+            });
+          if (commissionInsertError) {
+            console.error('Error al crear registro de comisión:', commissionInsertError);
+          }
+        } catch (commissionErr) {
+          console.error('Error al crear registro de comisión (catch):', commissionErr);
+        }
+      }
 
       // 6.6. Avisar si la factura no tiene existencias para emitirse.
       // Guardar un borrador no compromete inventario, asi que no se bloquea: el
@@ -1094,38 +1161,84 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           </div>
           <div>
             <Label htmlFor="commission-rate" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-              <span className="flex items-center gap-1.5">
-                <Percent className="h-3.5 w-3.5" />
-                Porcentaje de Comisión
-              </span>
+              Comisión
             </Label>
-            <Input
-              id="commission-rate"
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
-              value={commissionRate || ''}
-              onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
-              placeholder="0"
-              className="
-                text-sm
-                bg-white dark:bg-gray-900
-                border-gray-300 dark:border-gray-600
-                text-gray-900 dark:text-gray-100
-              "
-            />
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
+                {commissionMethod === 'percentage' ? <Percent className="h-3.5 w-3.5" /> : <DollarSign className="h-3.5 w-3.5" />}
+              </span>
+              <Input
+                id="commission-rate"
+                type="number"
+                min="0"
+                max={commissionMethod === 'percentage' ? "100" : undefined}
+                step={commissionMethod === 'percentage' ? "0.5" : "100"}
+                value={commissionRate || ''}
+                onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
+                placeholder="0"
+                className={`
+                  text-sm pl-8
+                  bg-white dark:bg-gray-900
+                  text-gray-900 dark:text-gray-100
+                  ${commissionMethod === 'percentage' && commissionRate > 100
+                    ? 'border-red-500 dark:border-red-500 text-red-600 dark:text-red-400'
+                    : commissionMethod === 'fixed_amount' && commissionRate > (subtotal > 0 ? subtotal : total)
+                    ? 'border-red-500 dark:border-red-500 text-red-600 dark:text-red-400'
+                    : 'border-gray-300 dark:border-gray-600'
+                  }
+                `
+                }
+              />
+              {((commissionMethod === 'percentage' && commissionRate > 100) ||
+                (commissionMethod === 'fixed_amount' && commissionRate > (subtotal > 0 ? subtotal : total))) && commissionRate > 0 && (
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-red-500 dark:text-red-400">
+                  <AlertCircle className="h-4 w-4" />
+                </span>
+              )}
+            </div>
+            <div className="flex gap-1 mt-1.5">
+              <Button
+                type="button"
+                variant={commissionMethod === 'percentage' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCommissionMethod('percentage')}
+                className="h-7 px-2 text-xs"
+              >
+                <Percent className="h-3 w-3 mr-1" /> Porcentaje
+              </Button>
+              <Button
+                type="button"
+                variant={commissionMethod === 'fixed_amount' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCommissionMethod('fixed_amount')}
+                className="h-7 px-2 text-xs"
+              >
+                <DollarSign className="h-3 w-3 mr-1" /> Monto Fijo
+              </Button>
+            </div>
+            {commissionMethod === 'percentage' && commissionRate > 100 && (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                El porcentaje no puede superar 100%
+              </p>
+            )}
+            {commissionMethod === 'fixed_amount' && commissionRate > (subtotal > 0 ? subtotal : total) && commissionRate > 0 && (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                El monto supera el total de la factura
+              </p>
+            )}
           </div>
         </div>
         {salespersonId && salespersonId !== '__none__' && commissionRate > 0 && (
           <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <div className="flex justify-between items-center text-sm">
               <span className="text-blue-700 dark:text-blue-400">
-                Comisión estimada ({commissionRate}%):
+                Comisión estimada ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatCurrency(commissionRate)}):
               </span>
               <span className="font-semibold text-blue-700 dark:text-blue-400">
                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: currency || 'COP' }).format(
-                  (subtotal > 0 ? subtotal : total) * commissionRate / 100
+                  commissionMethod === 'fixed_amount' ? commissionRate : (subtotal > 0 ? subtotal : total) * commissionRate / 100
                 )}
               </span>
             </div>

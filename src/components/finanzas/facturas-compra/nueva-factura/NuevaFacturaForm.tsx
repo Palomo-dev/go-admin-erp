@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Percent } from 'lucide-react';
+import { ArrowLeft, User, Percent, DollarSign, AlertCircle } from 'lucide-react';
 import { FacturasCompraService } from '../FacturasCompraService';
-import { parseLocalDate, toLocalDateString } from '@/utils/Utils';
+import { parseLocalDate, toLocalDateString, formatCurrency } from '@/utils/Utils';
 import { 
   NuevaFacturaCompraForm, 
   InvoiceItemForm, 
@@ -70,6 +70,7 @@ export function NuevaFacturaForm({
   const [salespersonId, setSalespersonId] = useState<string>('');
   const [commissionRate, setCommissionRate] = useState<number>(0);
   const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_purchase' | 'none'>('salesperson');
+  const [commissionMethod, setCommissionMethod] = useState<'percentage' | 'fixed_amount'>('percentage');
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
 
   // Función para obtener datos iniciales
@@ -94,7 +95,8 @@ export function NuevaFacturaForm({
         })) || [],
         salesperson_id: facturaInicial.salesperson_id || '',
         commission_rate: Number(facturaInicial.commission_rate) || 0,
-        commission_type: facturaInicial.commission_type || 'salesperson'
+        commission_type: facturaInicial.commission_type || 'salesperson',
+        commission_method: (facturaInicial as any).commission_method || 'percentage'
       };
     }
     
@@ -110,7 +112,8 @@ export function NuevaFacturaForm({
       items: [],
       salesperson_id: '',
       commission_rate: 0,
-      commission_type: 'salesperson'
+      commission_type: 'salesperson',
+      commission_method: 'percentage'
     };
   };
 
@@ -130,13 +133,24 @@ export function NuevaFacturaForm({
       try {
         const { data: members } = await supabase
           .from('organization_members')
-          .select('user_id, profiles(first_name, last_name)')
+          .select('user_id')
           .eq('organization_id', orgId);
-        if (members) {
-          const formatted = members.map((m: any) => ({
-            id: m.user_id,
-            name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario'
-          }));
+
+        if (members && members.length > 0) {
+          const userIds = members.map(m => m.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', userIds);
+
+          const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+          const formatted = members.map((m: any) => {
+            const p = profileMap.get(m.user_id);
+            return {
+              id: m.user_id,
+              name: `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || 'Usuario'
+            };
+          });
           setOrganizationMembers(formatted);
         }
       } catch (e) {
@@ -183,6 +197,7 @@ export function NuevaFacturaForm({
     if (field === 'salesperson_id') setSalespersonId(value);
     if (field === 'commission_rate') setCommissionRate(Number(value) || 0);
     if (field === 'commission_type') setCommissionType(value);
+    if (field === 'commission_method') setCommissionMethod(value);
     
     // Limpiar error del campo si existe usando función que no depende de errors
     setErrors(prev => {
@@ -391,6 +406,10 @@ export function NuevaFacturaForm({
           salesperson_id: salespersonId || undefined,
           commission_rate: commissionRate || 0,
           commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
+          commission_method: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionMethod : 'percentage',
+          commission_amount: salespersonId && salespersonId !== '__none__' && commissionRate > 0
+            ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((calculatedSubtotal > 0 ? calculatedSubtotal : calculatedTotal) * commissionRate / 100 * 100) / 100)
+            : 0,
           appliedTaxes,
           _calculatedTotals: {
             subtotal: calculatedSubtotal,
@@ -414,6 +433,10 @@ export function NuevaFacturaForm({
           salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
           commission_rate: commissionRate || 0,
           commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
+          commission_method: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionMethod : 'percentage',
+          commission_amount: salespersonId && salespersonId !== '__none__' && commissionRate > 0
+            ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((calculatedSubtotal > 0 ? calculatedSubtotal : calculatedTotal) * commissionRate / 100 * 100) / 100)
+            : 0,
           // Pasar totales calculados explícitamente
           _calculatedTotals: {
             subtotal: calculatedSubtotal,
@@ -450,8 +473,12 @@ export function NuevaFacturaForm({
     formData.items.map(item => ({
       quantity: typeof item.qty === 'string' ? parseFloat(item.qty) || 0 : item.qty || 0,
       unit_price: typeof item.unit_price === 'string' ? parseFloat(item.unit_price) || 0 : item.unit_price || 0,
-      product_id: item.product_id || 0 // Valor por defecto si no hay product_id
-    })), [formData.items]
+      product_id: item.product_id || 0,
+      discount_amount: typeof item.discount_amount === 'string' ? parseFloat(item.discount_amount) || 0 : item.discount_amount || 0,
+      tax_rate: typeof item.tax_rate === 'string' ? parseFloat(item.tax_rate) || 0 : item.tax_rate || 0,
+      tax_included: formData.tax_included,
+      tax_code: item.tax_code || null
+    })), [formData.items, formData.tax_included]
   );
 
   // Memoizar códigos de impuestos iniciales para edición
@@ -578,37 +605,83 @@ export function NuevaFacturaForm({
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                <span className="flex items-center gap-1.5">
-                  <Percent className="h-3.5 w-3.5" />
-                  Porcentaje de Comisión
-                </span>
+                Comisión
               </Label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.5"
-                value={commissionRate || ''}
-                onChange={(e) => handleInputChange('commission_rate', Number(e.target.value) || 0)}
-                placeholder="0"
-                className="
-                  text-sm
-                  bg-white dark:bg-gray-900
-                  border-gray-300 dark:border-gray-600
-                  text-gray-900 dark:text-gray-100
-                "
-              />
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none">
+                  {commissionMethod === 'percentage' ? <Percent className="h-3.5 w-3.5" /> : <DollarSign className="h-3.5 w-3.5" />}
+                </span>
+                <Input
+                  type="number"
+                  min="0"
+                  max={commissionMethod === 'percentage' ? "100" : undefined}
+                  step={commissionMethod === 'percentage' ? "0.5" : "100"}
+                  value={commissionRate || ''}
+                  onChange={(e) => handleInputChange('commission_rate', Number(e.target.value) || 0)}
+                  placeholder="0"
+                  className={`
+                    text-sm pl-8
+                    bg-white dark:bg-gray-900
+                    text-gray-900 dark:text-gray-100
+                    ${commissionMethod === 'percentage' && commissionRate > 100
+                      ? 'border-red-500 dark:border-red-500 text-red-600 dark:text-red-400'
+                      : commissionMethod === 'fixed_amount' && commissionRate > (subtotal > 0 ? subtotal : total)
+                      ? 'border-red-500 dark:border-red-500 text-red-600 dark:text-red-400'
+                      : 'border-gray-300 dark:border-gray-600'
+                    }
+                  `
+                  }
+                />
+                {((commissionMethod === 'percentage' && commissionRate > 100) ||
+                  (commissionMethod === 'fixed_amount' && commissionRate > (subtotal > 0 ? subtotal : total))) && commissionRate > 0 && (
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-red-500 dark:text-red-400">
+                    <AlertCircle className="h-4 w-4" />
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-1 mt-1.5">
+                <Button
+                  type="button"
+                  variant={commissionMethod === 'percentage' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCommissionMethod('percentage')}
+                  className="h-7 px-2 text-xs"
+                >
+                  <Percent className="h-3 w-3 mr-1" /> Porcentaje
+                </Button>
+                <Button
+                  type="button"
+                  variant={commissionMethod === 'fixed_amount' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCommissionMethod('fixed_amount')}
+                  className="h-7 px-2 text-xs"
+                >
+                  <DollarSign className="h-3 w-3 mr-1" /> Monto Fijo
+                </Button>
+              </div>
+              {commissionMethod === 'percentage' && commissionRate > 100 && (
+                <p className="text-xs text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  El porcentaje no puede superar 100%
+                </p>
+              )}
+              {commissionMethod === 'fixed_amount' && commissionRate > (subtotal > 0 ? subtotal : total) && commissionRate > 0 && (
+                <p className="text-xs text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  El monto supera el total de la factura
+                </p>
+              )}
             </div>
           </div>
           {salespersonId && salespersonId !== '__none__' && commissionRate > 0 && (
             <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-blue-700 dark:text-blue-400">
-                  Comisión estimada ({commissionRate}%):
+                  Comisión estimada ({commissionMethod === 'percentage' ? `${commissionRate}%` : formatCurrency(commissionRate)}):
                 </span>
                 <span className="font-semibold text-blue-700 dark:text-blue-400">
                   {new Intl.NumberFormat('es-CO', { style: 'currency', currency: formData.currency || 'COP' }).format(
-                    (subtotal > 0 ? subtotal : total) * commissionRate / 100
+                    commissionMethod === 'fixed_amount' ? commissionRate : (subtotal > 0 ? subtotal : total) * commissionRate / 100
                   )}
                 </span>
               </div>

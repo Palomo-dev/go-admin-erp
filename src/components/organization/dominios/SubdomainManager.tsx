@@ -240,7 +240,7 @@ export function SubdomainManager({
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex flex-wrap items-start justify-between mb-4 gap-2">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
             <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -271,31 +271,31 @@ export function SubdomainManager({
           <Label htmlFor="subdomain" className="text-gray-700 dark:text-gray-300">
             {t('subdomainLabel')}
           </Label>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex flex-col sm:flex-row sm:items-center gap-2">
             {isEditing ? (
-              <div className="flex-1 flex items-center">
+              <div className="w-full sm:flex-1 flex items-center min-w-0">
                 <Input
                   id="subdomain"
                   value={subdomain}
                   onChange={handleChange}
                   placeholder="miempresa"
                   className={cn(
-                    "rounded-r-none dark:bg-gray-700 dark:border-gray-600 dark:text-white",
+                    "rounded-r-none min-w-0 dark:bg-gray-700 dark:border-gray-600 dark:text-white",
                     status === 'taken' && "border-red-500 focus:border-red-500 dark:border-red-400 dark:focus:border-red-400",
                     status === 'available' && "border-green-500 focus:border-green-500 dark:border-green-400 dark:focus:border-green-400"
                   )}
                   disabled={isSaving}
                 />
-                <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-md text-gray-500 dark:text-gray-400 text-sm">
+                <div className="shrink-0 px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-md text-gray-500 dark:text-gray-400 text-sm">
                   .goadmin.io
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex items-center">
-                <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-l-md text-gray-900 dark:text-white font-medium">
+              <div className="w-full sm:flex-1 flex items-center min-w-0">
+                <div className="flex-1 min-w-0 px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-l-md text-gray-900 dark:text-white font-medium truncate">
                   {currentSubdomain || t('notConfigured')}
                 </div>
-                <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-md text-gray-500 dark:text-gray-400 text-sm">
+                <div className="shrink-0 px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-md text-gray-500 dark:text-gray-400 text-sm">
                   .goadmin.io
                 </div>
               </div>
@@ -306,7 +306,7 @@ export function SubdomainManager({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="dark:border-gray-600 dark:text-gray-300"
+                className="w-full sm:w-auto shrink-0 dark:border-gray-600 dark:text-gray-300"
               >
                 <Pencil className="h-4 w-4 mr-1" />
                 {t('edit')}
@@ -315,9 +315,9 @@ export function SubdomainManager({
           </div>
 
           {isEditing && (
-            <div className="mt-2 flex items-center justify-between">
-              {renderStatus()}
-              <div className="flex gap-2">
+            <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="min-w-0">{renderStatus()}</div>
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   variant="outline"
                   size="sm"

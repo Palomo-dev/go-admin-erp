@@ -707,13 +707,6 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           const salespersonName = organizationMembers.find(m => m.id === salespersonId)?.name || 'N/A';
           const baseAmount = subtotal > 0 ? subtotal : total;
 
-          // Setear app.current_org_id para que la RLS de commissions permita el insert
-          await supabase.rpc('set_config', {
-            setting_name: 'app.current_org_id',
-            new_value: String(organizationId),
-            is_local: false
-          });
-
           const { error: commissionInsertError } = await supabase
             .from('commissions')
             .insert({

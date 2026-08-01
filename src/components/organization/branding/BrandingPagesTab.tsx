@@ -22,7 +22,6 @@ import {
   Eye,
   EyeOff,
   LayoutGrid,
-  ExternalLink,
   GripVertical,
   ShoppingBag,
 } from 'lucide-react';
@@ -140,10 +139,10 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
       {/* Header */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <CardTitle className="flex items-center gap-2 dark:text-white">
-                <LayoutGrid className="h-5 w-5" />
+                <LayoutGrid className="h-5 w-5 shrink-0" />
                 {t('title')}
               </CardTitle>
               <CardDescription className="dark:text-gray-400">
@@ -153,7 +152,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
             <Button
               onClick={() => setShowCreateDialog(true)}
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto shrink-0"
             >
               <Plus className="h-4 w-4 mr-2" />
               {t('newPage')}
@@ -186,65 +185,71 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
               {pages.map((page) => (
                 <div
                   key={page.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors group"
+                  className="flex flex-col sm:flex-row sm:items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors group"
                 >
-                  <GripVertical className="h-4 w-4 text-gray-300 dark:text-gray-600 shrink-0" />
+                  <div className="flex items-center gap-3 w-full min-w-0">
+                    <GripVertical className="h-4 w-4 text-gray-300 dark:text-gray-600 shrink-0" />
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm dark:text-white min-w-0 break-words">
-                        {page.title}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-sm dark:text-white min-w-0 break-words">
+                          {page.title}
+                        </p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Badge
+                            variant={page.is_published ? 'default' : 'secondary'}
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {page.is_published ? t('published') : t('draft')}
+                          </Badge>
+                          {page.show_in_header && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 dark:border-gray-600">
+                              {t('header')}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        /{page.slug}
                       </p>
-                      <Badge
-                        variant={page.is_published ? 'default' : 'secondary'}
-                        className="text-[10px] px-1.5 py-0"
-                      >
-                        {page.is_published ? t('published') : t('draft')}
-                      </Badge>
-                      {page.show_in_header && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 dark:border-gray-600">
-                          {t('header')}
-                        </Badge>
-                      )}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      /{page.slug}
-                    </p>
                   </div>
 
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-2 w-full sm:w-auto shrink-0">
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleTogglePublish(page)}
+                        className="h-8 w-8 p-0"
+                        title={page.is_published ? t('unpublish') : t('publish')}
+                      >
+                        {page.is_published ? (
+                          <Eye className="h-3.5 w-3.5 text-green-600 dark:text-green-300" />
+                        ) : (
+                          <EyeOff className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeletePage(page.id)}
+                        className="h-8 w-8 p-0"
+                        title={t('deletePage')}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500" />
+                      </Button>
+                    </div>
+
                     <Button
-                      variant="ghost"
                       size="sm"
-                      onClick={() => handleTogglePublish(page)}
-                      className="h-8 w-8 p-0"
-                      title={page.is_published ? t('unpublish') : t('publish')}
+                      onClick={() => openEditor(page.id)}
+                      className="bg-blue-600 hover:bg-blue-700 shrink-0"
                     >
-                      {page.is_published ? (
-                        <Eye className="h-3.5 w-3.5 text-green-600 dark:text-green-300" />
-                      ) : (
-                        <EyeOff className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeletePage(page.id)}
-                      className="h-8 w-8 p-0"
-                      title={t('deletePage')}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500" />
+                      <FileEdit className="h-3.5 w-3.5 mr-1.5" />
+                      {t('edit')}
                     </Button>
                   </div>
-
-                  <Button
-                    size="sm"
-                    onClick={() => openEditor(page.id)}
-                    className="bg-blue-600 hover:bg-blue-700 shrink-0"
-                  >
-                    <FileEdit className="h-3.5 w-3.5 mr-1.5" />
-                    {t('edit')}
-                  </Button>
                 </div>
               ))}
             </div>
@@ -280,12 +285,13 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
             </div>
             <div className="space-y-2">
               <Label>{t('slugLabel')}</Label>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-500 dark:text-gray-400">/</span>
+              <div className="flex items-center gap-1 min-w-0">
+                <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">/</span>
                 <Input
                   value={newPageSlug}
                   onChange={(e) => setNewPageSlug(e.target.value)}
                   placeholder={t('slugPlaceholder')}
+                  className="min-w-0"
                 />
               </div>
             </div>

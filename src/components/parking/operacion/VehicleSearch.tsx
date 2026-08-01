@@ -72,7 +72,7 @@ export function VehicleSearch({
   return (
     <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
           <Search className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Buscar Vehículo
         </CardTitle>
@@ -131,7 +131,7 @@ export function VehicleSearch({
                 className="bg-gray-50 dark:bg-gray-900 border-gray-300 dark:border-gray-600 pr-10"
               />
               {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
               )}
             </div>
           </div>
@@ -140,7 +140,7 @@ export function VehicleSearch({
           {showResults && searchQuery.length >= 2 && (
             <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
               {isSearching ? (
-                <div className="p-4 text-center text-gray-500">
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                   <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                   Buscando...
                 </div>
@@ -155,20 +155,20 @@ export function VehicleSearch({
                       onClick={() => handleSelectResult(result)}
                       className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 last:border-0"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
                           <Car className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                         </div>
                         <div>
                           <p className="font-bold text-gray-900 dark:text-white">{result.vehicle_plate}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {formatDate(result.entry_at)}
                             {result.space_label && ` • ${result.space_label}`}
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-orange-600 border-orange-300">
+                      <Badge variant="outline" className="text-orange-600 dark:text-orange-400 border-orange-300">
                         <LogOut className="h-3 w-3 mr-1" />
                         Registrar Salida
                       </Badge>
@@ -190,14 +190,14 @@ export function VehicleSearch({
               {!isSearching && searchQuery.length >= 3 && (
                 <button
                   onClick={handleNewEntry}
-                  className="w-full px-3 py-3 text-left hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                  className="w-full px-3 py-3 text-left hover:bg-green-50 dark:hover:bg-green-900/20 flex flex-wrap items-center gap-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
                 >
                   <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                     <LogIn className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
                     <p className="font-medium text-green-700 dark:text-green-400">Registrar entrada de {searchQuery}</p>
-                    <p className="text-xs text-gray-500">Crear nueva sesión de parqueo</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Crear nueva sesión de parqueo</p>
                   </div>
                 </button>
               )}

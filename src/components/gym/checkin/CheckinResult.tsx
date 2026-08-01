@@ -50,7 +50,7 @@ export function CheckinResult({
     )}>
       {/* Header con estado */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {validationResult.valid ? (
             <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/40">
               <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -85,7 +85,7 @@ export function CheckinResult({
       {/* Información del miembro */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
               <User className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             </div>
@@ -102,7 +102,7 @@ export function CheckinResult({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
               <CreditCard className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             </div>
@@ -115,7 +115,7 @@ export function CheckinResult({
           </div>
 
           {membership.access_code && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
                 <span className="text-sm font-mono text-gray-600 dark:text-gray-300">
                   #
@@ -132,7 +132,7 @@ export function CheckinResult({
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
               <Calendar className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             </div>
@@ -149,7 +149,7 @@ export function CheckinResult({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
               <Clock className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             </div>
@@ -167,7 +167,7 @@ export function CheckinResult({
           </div>
 
           {membership.status === 'frozen' && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/40">
                 <Snowflake className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
@@ -183,7 +183,7 @@ export function CheckinResult({
 
       {/* Alerta de vencimiento próximo */}
       {isExpiringSoon && !isExpired && validationResult.valid && (
-        <div className="flex items-center gap-3 p-4 mb-6 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700">
+        <div className="flex flex-wrap items-center gap-3 p-4 mb-6 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700">
           <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
           <p className="text-yellow-700 dark:text-yellow-300">
             <strong>Atención:</strong> La membresía vence en {daysRemaining} días. 

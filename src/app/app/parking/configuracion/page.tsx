@@ -123,7 +123,7 @@ export default function ConfiguracionPage() {
   if (orgLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }
@@ -146,7 +146,7 @@ export default function ConfiguracionPage() {
   if (!config) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center">
-        <Settings className="h-12 w-12 text-gray-400 mb-4" />
+        <Settings className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Error cargando configuración
         </h2>

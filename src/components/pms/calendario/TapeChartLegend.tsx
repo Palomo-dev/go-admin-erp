@@ -23,7 +23,7 @@ export function TapeChartLegend() {
     <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Leyenda:</span>
       {legendItems.map((item) => (
-        <div key={item.label} className="flex items-center gap-2">
+        <div key={item.label} className="flex flex-wrap items-center gap-2">
           <div
             className={cn(
               'w-4 h-4 rounded',

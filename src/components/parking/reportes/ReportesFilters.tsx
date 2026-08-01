@@ -57,7 +57,7 @@ export function ReportesFilters({ filters, onFiltersChange }: ReportesFiltersPro
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <Filter className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         <span className="font-medium text-gray-900 dark:text-white">Filtros</span>
       </div>
@@ -67,7 +67,7 @@ export function ReportesFilters({ filters, onFiltersChange }: ReportesFiltersPro
         <div className="space-y-2">
           <Label className="text-sm text-gray-600 dark:text-gray-400">Desde</Label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               type="date"
               value={filters.startDate}
@@ -81,7 +81,7 @@ export function ReportesFilters({ filters, onFiltersChange }: ReportesFiltersPro
         <div className="space-y-2">
           <Label className="text-sm text-gray-600 dark:text-gray-400">Hasta</Label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               type="date"
               value={filters.endDate}

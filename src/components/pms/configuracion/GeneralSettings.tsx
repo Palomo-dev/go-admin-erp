@@ -25,8 +25,8 @@ export function GeneralSettings({ settings, onChange, timezones, currencies }: G
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Clock className="h-5 w-5 text-blue-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+          <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Configuración General
         </CardTitle>
         <CardDescription>

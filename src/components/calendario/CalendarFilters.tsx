@@ -116,8 +116,8 @@ export function CalendarFilters({
         value={filters.branchId?.toString() || 'all'}
         onValueChange={(v) => onFiltersChange({ branchId: v === 'all' ? null : parseInt(v) })}
       >
-        <SelectTrigger className="w-[180px] h-9 bg-white dark:bg-gray-900">
-          <Building2 className="h-4 w-4 mr-2 text-gray-500" />
+        <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white dark:bg-gray-900">
+          <Building2 className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
           <SelectValue placeholder="Sucursal" />
         </SelectTrigger>
         <SelectContent>
@@ -135,8 +135,8 @@ export function CalendarFilters({
         value={filters.assignedTo || 'all'}
         onValueChange={(v) => onFiltersChange({ assignedTo: v === 'all' ? null : v })}
       >
-        <SelectTrigger className="w-[180px] h-9 bg-white dark:bg-gray-900">
-          <User className="h-4 w-4 mr-2 text-gray-500" />
+        <SelectTrigger className="w-full sm:w-[180px] h-9 bg-white dark:bg-gray-900">
+          <User className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
           <SelectValue placeholder="Asignado a" />
         </SelectTrigger>
         <SelectContent>
@@ -158,7 +158,7 @@ export function CalendarFilters({
         value={filters.status}
         onValueChange={(v) => onFiltersChange({ status: v as EventStatus | 'all' })}
       >
-        <SelectTrigger className="w-[150px] h-9 bg-white dark:bg-gray-900">
+        <SelectTrigger className="w-full sm:w-[150px] h-9 bg-white dark:bg-gray-900">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>
         <SelectContent>
@@ -184,7 +184,7 @@ export function CalendarFilters({
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuContent align="start" className="w-full sm:w-56">
           <DropdownMenuLabel>Mostrar eventos de</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {ALL_SOURCE_TYPES.map((sourceType) => (
@@ -216,7 +216,7 @@ export function CalendarFilters({
           variant="ghost"
           size="sm"
           onClick={clearFilters}
-          className="h-9 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+          className="h-9 text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
         >
           <X className="h-4 w-4 mr-2" />
           Limpiar ({activeFiltersCount})
@@ -229,7 +229,7 @@ export function CalendarFilters({
           <div
             key={sourceType}
             className={cn(
-              'flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400',
+              'flex flex-wrap items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400',
               !filters.sourceTypes.includes(sourceType) && 'opacity-40'
             )}
           >

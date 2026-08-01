@@ -17,7 +17,7 @@ export function ZoneAvailability({ zones, stats, isLoading }: ZoneAvailabilityPr
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex flex-wrap items-center gap-2">
             <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Disponibilidad por Zona
           </CardTitle>
@@ -55,7 +55,7 @@ export function ZoneAvailability({ zones, stats, isLoading }: ZoneAvailabilityPr
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2">
           <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Disponibilidad por Zona
         </CardTitle>
@@ -69,7 +69,7 @@ export function ZoneAvailability({ zones, stats, isLoading }: ZoneAvailabilityPr
           zoneData.map((zone) => (
             <div key={zone.id} className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-gray-900 dark:text-white">
                     {zone.name}
                   </span>

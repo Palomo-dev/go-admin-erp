@@ -41,7 +41,7 @@ export function SourcesSettings({ settings, availableSources, onChange }: Source
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
               <Layers className="h-5 w-5 text-blue-500" />
               Fuentes Visibles
             </CardTitle>
@@ -56,7 +56,7 @@ export function SourcesSettings({ settings, availableSources, onChange }: Source
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Acciones rápidas */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -87,7 +87,7 @@ export function SourcesSettings({ settings, availableSources, onChange }: Source
               <div
                 key={source}
                 className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                  'flex flex-wrap items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
                   isChecked
                     ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
                     : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'

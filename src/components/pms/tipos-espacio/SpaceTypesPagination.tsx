@@ -34,7 +34,7 @@ export function SpaceTypesPagination({
   return (
     <div className="flex items-center justify-between gap-4 flex-wrap">
       {/* Items per page */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-gray-600 dark:text-gray-400">
           Mostrar
         </span>
@@ -72,7 +72,7 @@ export function SpaceTypesPagination({
       </div>
 
       {/* Pagination controls */}
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <Button
           variant="outline"
           size="sm"
@@ -91,7 +91,7 @@ export function SpaceTypesPagination({
         </Button>
 
         {/* Page numbers */}
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
             let pageNum: number;
 

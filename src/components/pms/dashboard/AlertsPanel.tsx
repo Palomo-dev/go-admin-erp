@@ -58,7 +58,7 @@ function AlertItem({ alert }: { alert: Alert }) {
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-3 rounded-lg border transition-colors',
+        'flex flex-wrap items-start gap-3 p-3 rounded-lg border transition-colors',
         config.bgColor,
         config.borderColor,
         alert.link && 'cursor-pointer hover:opacity-80'
@@ -73,7 +73,7 @@ function AlertItem({ alert }: { alert: Alert }) {
         </p>
       </div>
       {alert.link && (
-        <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+        <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
       )}
     </div>
   );
@@ -81,7 +81,7 @@ function AlertItem({ alert }: { alert: Alert }) {
 
 function AlertSkeleton() {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
+    <div className="flex flex-wrap items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
       <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded" />
       <div className="flex-1 space-y-2">
         <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -95,8 +95,8 @@ export function AlertsPanel({ alerts, isLoading = false }: AlertsPanelProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-          <Bell className="h-5 w-5 text-blue-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+          <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Alertas
           {alerts.length > 0 && (
             <Badge variant="secondary" className="ml-auto bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">

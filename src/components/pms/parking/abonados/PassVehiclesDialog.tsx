@@ -214,7 +214,7 @@ export function PassVehiclesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="dark:text-white flex items-center gap-2">
+          <DialogTitle className="dark:text-white flex flex-wrap items-center gap-2">
             <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Gestionar Vehículos del Pase
           </DialogTitle>
@@ -230,10 +230,10 @@ export function PassVehiclesDialog({
                   key={pv.id}
                   className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border dark:border-gray-700"
                 >
-                  <div className="flex items-center gap-3">
-                    <Car className="h-5 w-5 text-gray-400" />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Car className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-bold dark:text-white">
                           {pv.vehicle?.plate}
                         </span>
@@ -250,7 +250,7 @@ export function PassVehiclesDialog({
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     {!pv.is_primary && (
                       <Button
                         variant="ghost"
@@ -259,7 +259,7 @@ export function PassVehiclesDialog({
                         disabled={isLoading}
                         title="Marcar como principal"
                       >
-                        <StarOff className="h-4 w-4 text-gray-400" />
+                        <StarOff className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       </Button>
                     )}
                     {pv.is_primary && (

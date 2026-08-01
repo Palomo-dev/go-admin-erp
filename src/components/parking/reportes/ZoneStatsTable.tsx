@@ -30,7 +30,7 @@ export function ZoneStatsTable({ data, isLoading }: ZoneStatsTableProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
           <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           Estadísticas por Zona
         </CardTitle>
@@ -38,10 +38,10 @@ export function ZoneStatsTable({ data, isLoading }: ZoneStatsTableProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400">Cargando...</div>
+            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
           </div>
         ) : data.length === 0 ? (
-          <div className="h-48 flex items-center justify-center text-gray-400">
+          <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
             No hay zonas configuradas
           </div>
         ) : (

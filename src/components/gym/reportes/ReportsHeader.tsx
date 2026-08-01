@@ -47,16 +47,16 @@ export function ReportsHeader({
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/app/gym">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <BarChart3 className="h-6 w-6 text-blue-600" />
+                <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               Reportes Operativos
             </h1>
@@ -65,7 +65,7 @@ export function ReportsHeader({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -104,13 +104,13 @@ export function ReportsHeader({
           onDateRangeChange={onDateRangeChange} 
         />
 
-        <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-gray-500" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Building2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           <Select 
             value={selectedBranch === 'all' ? 'all' : selectedBranch.toString()} 
             onValueChange={(v) => onBranchChange(v === 'all' ? 'all' : parseInt(v))}
           >
-            <SelectTrigger className="w-[180px] h-8 text-sm">
+            <SelectTrigger className="w-full sm:w-[180px] h-8 text-sm">
               <SelectValue placeholder="Todas las sedes" />
             </SelectTrigger>
             <SelectContent>

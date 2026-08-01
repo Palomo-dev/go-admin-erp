@@ -81,12 +81,12 @@ function SpaceCard({
       </div>
       
       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-        <span className="flex items-center gap-1">
+        <span className="flex flex-wrap items-center gap-1">
           <Users className="h-3 w-3" />
           {space.capacity} huésped(es)
         </span>
         {space.floorZone && (
-          <span className="flex items-center gap-1">
+          <span className="flex flex-wrap items-center gap-1">
             <MapPin className="h-3 w-3" />
             {space.floorZone}
           </span>
@@ -94,7 +94,7 @@ function SpaceCard({
       </div>
       
       {!space.isAvailable && space.conflictReason && (
-        <div className="flex items-center gap-1 mt-2 text-xs text-red-600 dark:text-red-400">
+        <div className="flex flex-wrap items-center gap-1 mt-2 text-xs text-red-600 dark:text-red-400">
           <AlertCircle className="h-3 w-3" />
           {space.conflictReason}
         </div>
@@ -132,8 +132,8 @@ export function AvailableSpacesPanel({
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-          <DoorOpen className="h-5 w-5 text-green-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+          <DoorOpen className="h-5 w-5 text-green-600 dark:text-green-400" />
           Espacios Disponibles
           {availableSpaces.length > 0 && (
             <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
@@ -158,7 +158,7 @@ export function AvailableSpacesPanel({
         ) : spaces.length === 0 ? (
           <div className="text-center py-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 mb-3">
-              <DoorOpen className="h-6 w-6 text-gray-400" />
+              <DoorOpen className="h-6 w-6 text-gray-400 dark:text-gray-500" />
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Selecciona una reserva para ver espacios disponibles

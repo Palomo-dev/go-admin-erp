@@ -329,7 +329,7 @@ export function PaymentFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="dark:text-white flex items-center gap-2">
+          <DialogTitle className="dark:text-white flex flex-wrap items-center gap-2">
             <Wallet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Registrar Pago de Parking
           </DialogTitle>
@@ -340,7 +340,7 @@ export function PaymentFormDialog({
           {!selectedItem ? (
             <>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <Input
                   placeholder="Buscar por placa, cliente..."
                   value={searchTerm}
@@ -351,11 +351,11 @@ export function PaymentFormDialog({
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'session' | 'pass')}>
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="session" className="flex items-center gap-2">
+                  <TabsTrigger value="session" className="flex flex-wrap items-center gap-2">
                     <Car className="h-4 w-4" />
                     Sesiones ({filteredSessions.length})
                   </TabsTrigger>
-                  <TabsTrigger value="pass" className="flex items-center gap-2">
+                  <TabsTrigger value="pass" className="flex flex-wrap items-center gap-2">
                     <CreditCard className="h-4 w-4" />
                     Abonados ({filteredPasses.length})
                   </TabsTrigger>
@@ -365,7 +365,7 @@ export function PaymentFormDialog({
                   <ScrollArea className="h-64">
                     {isLoadingItems ? (
                       <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
                       </div>
                     ) : filteredSessions.length === 0 ? (
                       <p className="text-center text-gray-500 dark:text-gray-400 py-8">
@@ -381,7 +381,7 @@ export function PaymentFormDialog({
                           >
                             <CardContent className="p-3">
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
+                                <div className="flex flex-wrap items-center gap-3">
                                   <Car className="h-5 w-5 text-blue-500" />
                                   <div>
                                     <p className="font-semibold dark:text-white">{item.label}</p>
@@ -419,7 +419,7 @@ export function PaymentFormDialog({
                   <ScrollArea className="h-64">
                     {isLoadingItems ? (
                       <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
                       </div>
                     ) : filteredPasses.length === 0 ? (
                       <p className="text-center text-gray-500 dark:text-gray-400 py-8">
@@ -434,7 +434,7 @@ export function PaymentFormDialog({
                             onClick={() => handleSelectItem(item)}
                           >
                             <CardContent className="p-3 flex items-center justify-between">
-                              <div className="flex items-center gap-3">
+                              <div className="flex flex-wrap items-center gap-3">
                                 <CreditCard className="h-5 w-5 text-purple-500" />
                                 <div>
                                   <p className="font-semibold dark:text-white">{item.label}</p>
@@ -461,7 +461,7 @@ export function PaymentFormDialog({
               {/* Item seleccionado */}
               <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
                 <CardContent className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     {selectedItem.type === 'session' ? (
                       <Car className="h-5 w-5 text-blue-500" />
                     ) : (
@@ -478,7 +478,7 @@ export function PaymentFormDialog({
                     variant="ghost"
                     size="sm"
                     onClick={() => setSelectedItem(null)}
-                    className="text-blue-600"
+                    className="text-blue-600 dark:text-blue-400"
                   >
                     Cambiar
                   </Button>
@@ -569,7 +569,7 @@ export function PaymentFormDialog({
               {/* Opciones de finanzas */}
               <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-700">
                 {/* Opción de crédito */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <input
                     type="checkbox"
                     id="pagosIsCredit"
@@ -577,7 +577,7 @@ export function PaymentFormDialog({
                     onChange={(e) => setIsCredit(e.target.checked)}
                     className="rounded border-gray-300 dark:border-gray-600"
                   />
-                  <Label htmlFor="pagosIsCredit" className="flex items-center gap-2 text-sm cursor-pointer dark:text-gray-300">
+                  <Label htmlFor="pagosIsCredit" className="flex flex-wrap items-center gap-2 text-sm cursor-pointer dark:text-gray-300">
                     <Calendar className="h-4 w-4 text-orange-500" />
                     Registrar como crédito (cuenta por cobrar)
                   </Label>
@@ -616,7 +616,7 @@ export function PaymentFormDialog({
 
                 {/* Opción de factura */}
                 {hasInvoicing && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="checkbox"
                       id="pagosGenerateInvoice"
@@ -624,7 +624,7 @@ export function PaymentFormDialog({
                       onChange={(e) => setGenerateInvoice(e.target.checked)}
                       className="rounded border-gray-300 dark:border-gray-600"
                     />
-                    <Label htmlFor="pagosGenerateInvoice" className="flex items-center gap-2 text-sm cursor-pointer dark:text-gray-300">
+                    <Label htmlFor="pagosGenerateInvoice" className="flex flex-wrap items-center gap-2 text-sm cursor-pointer dark:text-gray-300">
                       <FileText className="h-4 w-4 text-blue-500" />
                       Generar factura de venta
                     </Label>

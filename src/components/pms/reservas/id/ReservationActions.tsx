@@ -44,7 +44,7 @@ export function ReservationActions({
   const canCancel = ['tentative', 'confirmed'].includes(status);
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <Button variant="outline" onClick={onBack}>
         <ArrowLeft className="h-4 w-4 mr-2" />
         Volver
@@ -62,7 +62,7 @@ export function ReservationActions({
             Más Acciones
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-full sm:w-48">
           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
           <DropdownMenuSeparator />
 

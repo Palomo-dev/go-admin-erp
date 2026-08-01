@@ -86,26 +86,26 @@ export function AssignmentStats({
       <StatCard
         title="Sin Asignar"
         value={totalUnassigned}
-        icon={<AlertTriangle className="h-5 w-5 text-orange-600" />}
+        icon={<AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />}
         color="bg-orange-100 dark:bg-orange-900/30"
       />
       <StatCard
         title="Llegan Hoy"
         value={arrivingToday}
-        icon={<Calendar className="h-5 w-5 text-red-600" />}
+        icon={<Calendar className="h-5 w-5 text-red-600 dark:text-red-400" />}
         color="bg-red-100 dark:bg-red-900/30"
         urgent
       />
       <StatCard
         title="Llegan Mañana"
         value={arrivingTomorrow}
-        icon={<CalendarClock className="h-5 w-5 text-yellow-600" />}
+        icon={<CalendarClock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />}
         color="bg-yellow-100 dark:bg-yellow-900/30"
       />
       <StatCard
         title="Esta Semana"
         value={arrivingThisWeek}
-        icon={<CalendarDays className="h-5 w-5 text-blue-600" />}
+        icon={<CalendarDays className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
         color="bg-blue-100 dark:bg-blue-900/30"
       />
     </div>

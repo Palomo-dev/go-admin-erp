@@ -110,8 +110,8 @@ export function SpaceHousekeeping({ tasks, onUpdateStatus }: SpaceHousekeepingPr
                   className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <StatusIcon className="h-4 w-4 text-gray-500" />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <StatusIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {format(new Date(task.task_date), 'dd MMMM', { locale: es })}
@@ -203,7 +203,7 @@ export function SpaceHousekeeping({ tasks, onUpdateStatus }: SpaceHousekeepingPr
 
       {tasks.length === 0 && (
         <div className="text-center py-8">
-          <Sparkles className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <Sparkles className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
           <p className="text-gray-500 dark:text-gray-400">
             No hay tareas de limpieza registradas
           </p>

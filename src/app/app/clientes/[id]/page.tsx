@@ -87,7 +87,7 @@ export default function PerfilCliente() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando perfil del cliente...</p>
       </div>
     );
@@ -96,7 +96,7 @@ export default function PerfilCliente() {
   if (error || !cliente) {
     return (
       <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/app/clientes">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
@@ -119,15 +119,15 @@ export default function PerfilCliente() {
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header con botón volver */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Link href="/app/clientes">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <User className="h-7 w-7 text-blue-600" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <User className="h-7 w-7 text-blue-600 dark:text-blue-400" />
             {cliente.full_name}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">

@@ -186,7 +186,7 @@ export function FolioDetailDialog({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : folio ? (
           <div className="space-y-6">
@@ -194,7 +194,7 @@ export function FolioDetailDialog({
             <Card className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
                     <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       Folio #{folio.id.slice(0, 8).toUpperCase()}
@@ -205,7 +205,7 @@ export function FolioDetailDialog({
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <Calendar className="h-4 w-4" />
                     <span>
                       Creado: {format(new Date(folio.created_at), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: es })}
@@ -234,7 +234,7 @@ export function FolioDetailDialog({
               </div>
 
               {/* Customer Info */}
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+              <div className="flex flex-wrap items-center gap-2 text-gray-700 dark:text-gray-300">
                 <User className="h-4 w-4" />
                 <span className="font-medium">{customerName}</span>
               </div>
@@ -248,7 +248,7 @@ export function FolioDetailDialog({
             {/* Items Section */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
                   <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   Items ({summary.itemCount})
                 </h3>
@@ -260,7 +260,7 @@ export function FolioDetailDialog({
                     <Card key={item.id} className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
                             <Badge variant="outline" className="text-xs">
                               {item.source}
                             </Badge>
@@ -272,7 +272,7 @@ export function FolioDetailDialog({
                             {format(new Date(item.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <span className={`text-lg font-bold ${
                             item.amount >= 0 
                               ? 'text-gray-900 dark:text-gray-100' 
@@ -285,7 +285,7 @@ export function FolioDetailDialog({
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteItem(item.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                              className="text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -308,7 +308,7 @@ export function FolioDetailDialog({
             {/* Payments Section */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
                   <CreditCard className="h-5 w-5 text-green-600 dark:text-green-400" />
                   Pagos ({summary.paymentCount})
                 </h3>
@@ -320,7 +320,7 @@ export function FolioDetailDialog({
                     <Card key={payment.id} className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
                             <Badge variant="outline" className="text-xs">
                               {payment.method || 'N/A'}
                             </Badge>
@@ -368,7 +368,7 @@ export function FolioDetailDialog({
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     <span className="text-lg font-bold text-gray-900 dark:text-gray-100">
                       Balance:

@@ -90,7 +90,7 @@ export function SpaceCard({ space, selected, onSelect, onEdit, onDelete, service
       className="p-4 hover:shadow-md transition-shadow cursor-pointer"
       onClick={handleCardClick}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3">
         {/* Checkbox */}
         <Checkbox
           checked={selected}
@@ -102,7 +102,7 @@ export function SpaceCard({ space, selected, onSelect, onEdit, onDelete, service
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
             <div className="flex-1">
               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                 {space.label}
@@ -165,16 +165,16 @@ export function SpaceCard({ space, selected, onSelect, onEdit, onDelete, service
               )}
             </div>
 
-            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
               {space.floor_zone && (
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <MapPin className="h-4 w-4" />
                   <span>{space.floor_zone}</span>
                 </div>
               )}
               
               {space.space_types?.capacity && (
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <Users className="h-4 w-4" />
                   <span>{space.space_types.capacity} personas</span>
                 </div>
@@ -196,7 +196,7 @@ export function SpaceCard({ space, selected, onSelect, onEdit, onDelete, service
                   );
                 })}
                 {services.length > 5 && (
-                  <span className="text-[10px] text-gray-400">+{services.length - 5}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">+{services.length - 5}</span>
                 )}
               </div>
             )}

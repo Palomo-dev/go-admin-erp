@@ -90,7 +90,7 @@ export default function PlanPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
           <button 
             onClick={() => window.location.reload()} 
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -106,7 +106,7 @@ export default function PlanPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-gray-600">No se encontró información de la organización</p>
+          <p className="text-gray-600 dark:text-gray-400">No se encontró información de la organización</p>
         </div>
       </div>
     );
@@ -117,22 +117,22 @@ export default function PlanPage() {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Planes y Suscripciones</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Planes y Suscripciones</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
               Gestiona tu plan actual y revisa el historial de suscripciones
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
               href="/app/plan/billing"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               <DocumentTextIcon className="h-4 w-4 mr-2" />
               Facturación
             </Link>
             <Link
               href="/app/plan/historial"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               <ClockIcon className="h-4 w-4 mr-2" />
               Historial

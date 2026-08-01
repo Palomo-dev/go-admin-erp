@@ -130,7 +130,7 @@ export function EntityTimelineHeader({
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         {/* Navegación */}
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-4 mb-4">
           <Button
             variant="ghost"
             size="sm"
@@ -144,7 +144,7 @@ export function EntityTimelineHeader({
 
         {/* Contenido principal */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div className="flex items-start gap-4">
+          <div className="flex flex-wrap items-start gap-4">
             {/* Icono de entidad */}
             <div className={cn('p-3 rounded-lg', entityColor)}>
               <IconComponent className="h-8 w-8" />
@@ -162,7 +162,7 @@ export function EntityTimelineHeader({
               </h1>
 
               {/* ID y acciones */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <code className="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
                   {entityId.length > 36 ? `${entityId.substring(0, 36)}...` : entityId}
                 </code>

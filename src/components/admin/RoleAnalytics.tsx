@@ -414,7 +414,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
                 className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
               />
             </div>
-            <div className="flex items-end gap-2">
+            <div className="flex flex-wrap items-end gap-2">
               <Button
                 onClick={handleApplyFilters}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
@@ -710,7 +710,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
         <CardContent>
           {stats.recentChanges.length === 0 ? (
             <div className="text-center py-8">
-              <Activity className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <Activity className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
               <p className="text-gray-500 dark:text-gray-400 font-medium">
                 No hay actividad reciente
               </p>

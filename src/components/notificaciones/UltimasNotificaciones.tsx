@@ -80,7 +80,7 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
   return (
     <>
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           <Bell className="h-5 w-5 text-blue-500" />
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Últimas Notificaciones</h2>
           <Badge variant="outline" className="ml-auto">{notifications.length}</Badge>
@@ -125,7 +125,7 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
                           </span>
                         </td>
                         <td className="py-2.5 px-3">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <Icon className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
                             <span className="text-gray-700 dark:text-gray-300 capitalize text-xs">{notif.channel}</span>
                           </div>
@@ -144,7 +144,7 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-right" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex flex-wrap items-center justify-end gap-1">
                             <Button variant="ghost" size="sm" onClick={() => handleViewDetail(notif)} title="Ver detalle" className="h-7 w-7 p-0">
                               <Eye className="h-3.5 w-3.5 text-blue-500" />
                             </Button>
@@ -173,7 +173,7 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, notifications.length)} de {notifications.length}
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="h-7 w-7 p-0">
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -181,7 +181,7 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
                     .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                     .map((p, idx, arr) => (
                       <span key={p}>
-                        {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-gray-400 px-1">…</span>}
+                        {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-gray-400 dark:text-gray-500 px-1">…</span>}
                         <Button
                           variant={p === currentPage ? 'default' : 'outline'}
                           size="sm"

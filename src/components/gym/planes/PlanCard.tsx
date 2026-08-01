@@ -59,7 +59,7 @@ export function PlanCard({ plan, onEdit, onDuplicate, onToggleStatus }: PlanCard
     )}>
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className={cn(
               "p-2 rounded-lg",
               plan.is_active 
@@ -126,7 +126,7 @@ export function PlanCard({ plan, onEdit, onDuplicate, onToggleStatus }: PlanCard
         )}
 
         <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <Clock className="h-4 w-4" />
             <span className="text-sm">{formatDuration(plan.duration_days)}</span>
           </div>
@@ -149,7 +149,7 @@ export function PlanCard({ plan, onEdit, onDuplicate, onToggleStatus }: PlanCard
                     badges.push(
                       <Tooltip key="branches">
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className="text-xs flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs flex flex-wrap items-center gap-1">
                             <Building2 className="h-3 w-3" />
                             {rules.allowed_branches.length} sede{rules.allowed_branches.length > 1 ? 's' : ''}
                           </Badge>
@@ -165,7 +165,7 @@ export function PlanCard({ plan, onEdit, onDuplicate, onToggleStatus }: PlanCard
                     badges.push(
                       <Tooltip key="schedule">
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className="text-xs flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs flex flex-wrap items-center gap-1">
                             <CalendarClock className="h-3 w-3" />
                             Horarios
                           </Badge>
@@ -181,7 +181,7 @@ export function PlanCard({ plan, onEdit, onDuplicate, onToggleStatus }: PlanCard
                     badges.push(
                       <Tooltip key="checkins">
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className="text-xs flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs flex flex-wrap items-center gap-1">
                             <Shield className="h-3 w-3" />
                             {rules.max_daily_checkins}/día
                           </Badge>

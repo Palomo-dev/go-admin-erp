@@ -145,15 +145,15 @@ export function InstructorPerformanceDialog({ open, onOpenChange, instructor }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Desempeño de {instructor.profiles?.first_name} {instructor.profiles?.last_name}
           </DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : metrics ? (
           <div className="space-y-6">
@@ -162,12 +162,12 @@ export function InstructorPerformanceDialog({ open, onOpenChange, instructor }: 
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Calificación General</p>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
                     <Star className="h-6 w-6 text-yellow-500 fill-yellow-500" />
                     <span className="text-3xl font-bold text-gray-900 dark:text-white">
                       {((metrics.avgAttendanceRate + metrics.completionRate + metrics.avgCapacityUtilization) / 3).toFixed(0)}
                     </span>
-                    <span className="text-lg text-gray-500">/100</span>
+                    <span className="text-lg text-gray-500 dark:text-gray-400">/100</span>
                   </div>
                 </div>
                 <Badge className={`${getPerformanceLevel(metrics.avgAttendanceRate).bg} ${getPerformanceLevel(metrics.avgAttendanceRate).color}`}>
@@ -180,44 +180,44 @@ export function InstructorPerformanceDialog({ open, onOpenChange, instructor }: 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Card>
                 <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-blue-600" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     <div>
                       <p className="text-xl font-bold">{metrics.totalClasses}</p>
-                      <p className="text-xs text-gray-500">Total Clases</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Total Clases</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <div>
-                      <p className="text-xl font-bold text-green-600">{metrics.completionRate.toFixed(0)}%</p>
-                      <p className="text-xs text-gray-500">Completadas</p>
+                      <p className="text-xl font-bold text-green-600 dark:text-green-400">{metrics.completionRate.toFixed(0)}%</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Completadas</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-purple-600" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     <div>
-                      <p className="text-xl font-bold text-purple-600">{metrics.avgAttendanceRate.toFixed(0)}%</p>
-                      <p className="text-xs text-gray-500">Asistencia</p>
+                      <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{metrics.avgAttendanceRate.toFixed(0)}%</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Asistencia</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-orange-600" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Award className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                     <div>
-                      <p className="text-xl font-bold text-orange-600">{metrics.avgCapacityUtilization.toFixed(0)}%</p>
-                      <p className="text-xs text-gray-500">Ocupación</p>
+                      <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{metrics.avgCapacityUtilization.toFixed(0)}%</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Ocupación</p>
                     </div>
                   </div>
                 </CardContent>
@@ -284,9 +284,9 @@ export function InstructorPerformanceDialog({ open, onOpenChange, instructor }: 
                     const trend = prevMonth ? month.classes - prevMonth.classes : 0;
                     return (
                       <div key={month.month} className="text-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                        <p className="text-sm text-gray-500 uppercase">{month.month}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 uppercase">{month.month}</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{month.classes}</p>
-                        <p className="text-xs text-gray-500">clases</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">clases</p>
                         {trend !== 0 && (
                           <div className={`flex items-center justify-center gap-1 text-xs ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -301,7 +301,7 @@ export function InstructorPerformanceDialog({ open, onOpenChange, instructor }: 
             </Card>
           </div>
         ) : (
-          <p className="text-center text-gray-500 py-8">No hay datos disponibles</p>
+          <p className="text-center text-gray-500 dark:text-gray-400 py-8">No hay datos disponibles</p>
         )}
       </DialogContent>
     </Dialog>

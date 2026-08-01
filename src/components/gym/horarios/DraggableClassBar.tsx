@@ -156,7 +156,7 @@ export function DraggableClassBar({
           </span>
         )}
         {height > 60 && (
-          <div className="flex items-center gap-1 text-[10px] opacity-80 text-white">
+          <div className="flex flex-wrap items-center gap-1 text-[10px] opacity-80 text-white">
             <Users className="h-3 w-3" />
             <span>{gymClass.capacity}</span>
           </div>

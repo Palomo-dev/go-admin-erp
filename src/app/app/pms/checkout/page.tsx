@@ -170,7 +170,7 @@ export default function CheckoutPage() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-orange-50 dark:bg-orange-950 flex-shrink-0">
                 <LogOut className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
               </div>
@@ -178,7 +178,7 @@ export default function CheckoutPage() {
                 <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
                   Salidas del Día
                 </h1>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
                     {getPageTitle()}
@@ -187,7 +187,7 @@ export default function CheckoutPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {/* Filtro de fechas */}
               <DateRangeFilter
                 preset={datePreset}

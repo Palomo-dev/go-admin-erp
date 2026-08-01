@@ -84,7 +84,7 @@ export function ChatChannelsSection({ organizationId }: ChatChannelsSectionProps
     return (
       <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50">
         <CardHeader>
-          <CardTitle className="text-lg text-blue-600 dark:text-blue-400 flex items-center gap-2">
+          <CardTitle className="text-lg text-blue-600 dark:text-blue-400 flex flex-wrap items-center gap-2">
             <MessageCircle className="h-5 w-5" />
             Canales de Mensajería
           </CardTitle>
@@ -94,7 +94,7 @@ export function ChatChannelsSection({ organizationId }: ChatChannelsSectionProps
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
                   <div className="flex-1 space-y-2">
                     <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
@@ -114,7 +114,7 @@ export function ChatChannelsSection({ organizationId }: ChatChannelsSectionProps
       <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-lg text-blue-600 dark:text-blue-400 flex items-center gap-2">
+            <CardTitle className="text-lg text-blue-600 dark:text-blue-400 flex flex-wrap items-center gap-2">
               <MessageCircle className="h-5 w-5" />
               Canales de Mensajería
             </CardTitle>
@@ -145,7 +145,7 @@ export function ChatChannelsSection({ organizationId }: ChatChannelsSectionProps
     <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-lg text-blue-600 dark:text-blue-400 flex items-center gap-2">
+          <CardTitle className="text-lg text-blue-600 dark:text-blue-400 flex flex-wrap items-center gap-2">
             <MessageCircle className="h-5 w-5" />
             Canales de Mensajería
           </CardTitle>
@@ -153,12 +153,12 @@ export function ChatChannelsSection({ organizationId }: ChatChannelsSectionProps
             Estado de conexión de canales externos
           </CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleRefresh}
-            className="text-gray-500"
+            className="text-gray-500 dark:text-gray-400"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>

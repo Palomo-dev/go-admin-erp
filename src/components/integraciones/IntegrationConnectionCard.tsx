@@ -73,7 +73,7 @@ export function IntegrationConnectionCard({
   if (isLoading) {
     return (
       <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <CardContent className={cn('flex items-center gap-4', compact ? 'p-3' : 'p-4')}>
+        <CardContent className={cn('flex flex-wrap items-center gap-4', compact ? 'p-3' : 'p-4')}>
           <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
           <div className="flex-1 space-y-2">
             <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
@@ -93,7 +93,7 @@ export function IntegrationConnectionCard({
         : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
       'hover:shadow-md'
     )}>
-      <CardContent className={cn('flex items-center gap-4', compact ? 'p-3' : 'p-4')}>
+      <CardContent className={cn('flex flex-wrap items-center gap-4', compact ? 'p-3' : 'p-4')}>
         {/* Logo/Icono del proveedor */}
         <div className={cn(
           'flex items-center justify-center rounded-lg text-white font-bold',
@@ -105,7 +105,7 @@ export function IntegrationConnectionCard({
 
         {/* Información */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className={cn(
               'font-medium text-gray-900 dark:text-white truncate',
               compact ? 'text-sm' : 'text-base'
@@ -119,8 +119,8 @@ export function IntegrationConnectionCard({
             )}
           </div>
           {status && (
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <Badge className={cn('text-xs flex items-center gap-1', status.color)}>
+            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+              <Badge className={cn('text-xs flex flex-wrap items-center gap-1', status.color)}>
                 {status.icon}
                 {status.label}
               </Badge>
@@ -139,7 +139,7 @@ export function IntegrationConnectionCard({
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {isConnected ? (
             <>
               {onConfigure && (

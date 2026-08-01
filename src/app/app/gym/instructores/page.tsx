@@ -159,7 +159,7 @@ export default function InstructoresPage() {
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <Input
                 placeholder="Buscar instructor por nombre o email..."
                 value={searchTerm}
@@ -168,7 +168,7 @@ export default function InstructoresPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'active' | 'inactive')}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
@@ -185,12 +185,12 @@ export default function InstructoresPage() {
       {/* Lista de instructores */}
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
       ) : filteredInstructors.length === 0 ? (
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users className="h-12 w-12 text-gray-400 mb-4" />
+            <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
             <p className="text-gray-600 dark:text-gray-400 text-center">
               {searchTerm || statusFilter !== 'all' 
                 ? 'No se encontraron instructores con los filtros aplicados' 

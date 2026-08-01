@@ -86,7 +86,7 @@ export function CanalEditorDialog({ open, onOpenChange, channel, onSave }: Canal
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex flex-wrap items-center gap-2">
             <Settings className="h-5 w-5 text-blue-500" />
             Configuración del Canal
           </DialogTitle>
@@ -113,7 +113,7 @@ export function CanalEditorDialog({ open, onOpenChange, channel, onSave }: Canal
                 variant="outline"
                 size="sm"
                 onClick={() => setIsActive(!isActive)}
-                className={cn('w-full h-9', isActive ? 'border-green-300 text-green-700 dark:border-green-700 dark:text-green-400' : 'border-gray-300 text-gray-500')}
+                className={cn('w-full h-9', isActive ? 'border-green-300 text-green-700 dark:border-green-700 dark:text-green-400' : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400')}
               >
                 {isActive ? 'Activo' : 'Inactivo'}
               </Button>
@@ -125,7 +125,7 @@ export function CanalEditorDialog({ open, onOpenChange, channel, onSave }: Canal
             <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
               <p className="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Integración vinculada</p>
               <p className="text-sm font-medium text-gray-900 dark:text-white">{channel.linked_connection.name}</p>
-              <p className="text-xs text-gray-500">{channel.linked_connection.provider_name} · {channel.linked_connection.status}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{channel.linked_connection.provider_name} · {channel.linked_connection.status}</p>
             </div>
           )}
 
@@ -133,16 +133,16 @@ export function CanalEditorDialog({ open, onOpenChange, channel, onSave }: Canal
 
           {/* Config de notificaciones (no credenciales) */}
           <div className="space-y-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+            <Label className="text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-1">
               <Settings className="h-3.5 w-3.5" /> Ajustes de notificación
             </Label>
-            <p className="text-[10px] text-gray-400">
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">
               Configuración específica del canal: rate limits, remitente por defecto, etc.
             </p>
 
             {configEntries.map((entry) => (
-              <div key={entry.key} className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 dark:text-gray-400 w-32 flex-shrink-0 truncate font-mono">
+              <div key={entry.key} className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400 w-full sm:w-32 flex-shrink-0 truncate font-mono">
                   {entry.key}
                 </span>
                 <Input
@@ -155,7 +155,7 @@ export function CanalEditorDialog({ open, onOpenChange, channel, onSave }: Canal
                   variant="ghost"
                   size="sm"
                   onClick={() => removeConfigEntry(entry.key)}
-                  className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 flex-shrink-0"
+                  className="h-8 w-8 p-0 text-gray-400 dark:text-gray-500 hover:text-red-500 flex-shrink-0"
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>

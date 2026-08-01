@@ -158,8 +158,8 @@ export function ImportWizard({
                   index < currentStepIndex
                     ? 'bg-blue-600 border-blue-600 text-white'
                     : index === currentStepIndex
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-gray-300 dark:border-gray-600 text-gray-400'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500'
                 )}
               >
                 {index < currentStepIndex ? (
@@ -172,7 +172,7 @@ export function ImportWizard({
                 'mt-2 text-xs font-medium',
                 index <= currentStepIndex
                   ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-400'
+                  : 'text-gray-400 dark:text-gray-500'
               )}>
                 {step.title}
               </span>
@@ -223,16 +223,16 @@ export function ImportWizard({
 
         {currentStep === 'importing' && (
           <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-12 w-12 text-blue-600 animate-spin mb-4" />
+            <Loader2 className="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
             <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               Importando eventos...
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Por favor, no cierres esta página
             </p>
-            <div className="w-64">
+            <div className="w-full sm:w-64">
               <Progress value={progress} />
-              <p className="text-sm text-center text-gray-500 mt-2">{progress}%</p>
+              <p className="text-sm text-center text-gray-500 dark:text-gray-400 mt-2">{progress}%</p>
             </div>
           </div>
         )}
@@ -249,12 +249,12 @@ export function ImportWizard({
             </p>
             <div className="flex gap-4 mt-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{importResult.success}</p>
-                <p className="text-sm text-gray-500">Exitosos</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{importResult.success}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Exitosos</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-red-600">{importResult.failed}</p>
-                <p className="text-sm text-gray-500">Fallidos</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{importResult.failed}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Fallidos</p>
               </div>
             </div>
             {importResult.errors.length > 0 && (

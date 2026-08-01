@@ -61,7 +61,7 @@ export function FoliosList({ folios, onViewDetails }: FoliosListProps) {
           <Card key={folio.id} className="p-5 hover:shadow-md transition-shadow duration-200">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -79,18 +79,18 @@ export function FoliosList({ folios, onViewDetails }: FoliosListProps) {
             </div>
 
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                 <User className="h-4 w-4 flex-shrink-0" />
                 <span>{customerName}</span>
               </div>
 
               {folio.reservations?.customers?.email && (
-                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs">
+                <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400 text-xs">
                   <span className="ml-6">{folio.reservations.customers.email}</span>
                 </div>
               )}
 
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                 <Calendar className="h-4 w-4 flex-shrink-0" />
                 <span>
                   Creado: {format(new Date(folio.created_at), 'dd MMM yyyy', { locale: es })}
@@ -99,7 +99,7 @@ export function FoliosList({ folios, onViewDetails }: FoliosListProps) {
 
               <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <DollarSign className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                     <span className="font-semibold text-gray-900 dark:text-gray-100">
                       Balance:

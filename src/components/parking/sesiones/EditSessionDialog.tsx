@@ -105,7 +105,7 @@ export function EditSessionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex flex-wrap items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />
             Editar Sesión (Auditable)
           </DialogTitle>
@@ -168,7 +168,7 @@ export function EditSessionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reason" className="flex items-center gap-1">
+            <Label htmlFor="reason" className="flex flex-wrap items-center gap-1">
               Motivo de la corrección
               <span className="text-red-500">*</span>
             </Label>

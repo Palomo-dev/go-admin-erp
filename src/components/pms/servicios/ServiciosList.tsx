@@ -25,7 +25,7 @@ export function ServiciosList({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
         <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Cargando servicios...</span>
       </div>
     );
@@ -62,7 +62,7 @@ export function ServiciosList({
             {items.map((service) => (
               <div
                 key={service.org_service_id || service.service_id || service.name}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
                 {/* Icono */}
                 <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
@@ -73,7 +73,7 @@ export function ServiciosList({
 
                 {/* Nombre + badges */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {service.name}
                     </span>
@@ -96,9 +96,9 @@ export function ServiciosList({
                 </div>
 
                 {/* Toggle activo */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {togglingId === (service.org_service_id || service.service_id) ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
                   ) : (
                     <Switch
                       checked={service.is_active}

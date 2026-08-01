@@ -263,11 +263,11 @@ export function ClassDialog({
         <form onSubmit={handleSubmit} className="flex flex-col">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="general" className="flex items-center gap-2">
+              <TabsTrigger value="general" className="flex flex-wrap items-center gap-2">
                 <Settings className="h-4 w-4" />
                 General
               </TabsTrigger>
-              <TabsTrigger value="recurrence" className="flex items-center gap-2">
+              <TabsTrigger value="recurrence" className="flex flex-wrap items-center gap-2">
                 <Repeat className="h-4 w-4" />
                 Repetición
               </TabsTrigger>
@@ -410,7 +410,7 @@ export function ClassDialog({
                       value={formData.duration_minutes}
                       onChange={(e) => handleDurationChange(parseInt(e.target.value) || 60)}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {Math.floor(formData.duration_minutes / 60)}h {formData.duration_minutes % 60}min
                     </p>
                   </div>
@@ -533,7 +533,7 @@ export function ClassDialog({
                         onChange={(e) => setRecurrence({ ...recurrence, until: e.target.value })}
                         min={formData.start_date}
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Dejar vacío para repetir indefinidamente
                       </p>
                     </div>

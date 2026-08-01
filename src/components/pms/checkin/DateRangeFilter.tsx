@@ -39,7 +39,7 @@ export function DateRangeFilter({
 }: DateRangeFilterProps) {
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Período:
@@ -47,7 +47,7 @@ export function DateRangeFilter({
       </div>
 
       <Select value={preset} onValueChange={(value) => onPresetChange(value as DateRangePreset)}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -60,17 +60,17 @@ export function DateRangeFilter({
       </Select>
 
       {preset === 'custom' && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DatePicker
             date={customDateRange?.from}
             onSelect={(date) => onCustomDateRangeChange({ ...customDateRange, from: date })}
-            className="w-[170px]"
+            className="w-full sm:w-[170px]"
           />
           <span className="text-sm text-gray-500 dark:text-gray-400">hasta</span>
           <DatePicker
             date={customDateRange?.to}
             onSelect={(date) => onCustomDateRangeChange({ ...customDateRange, to: date })}
-            className="w-[170px]"
+            className="w-full sm:w-[170px]"
           />
         </div>
       )}

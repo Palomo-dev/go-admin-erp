@@ -95,21 +95,21 @@ export default function CancelSubscriptionModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
-                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
                   </div>
                   <div className="ml-3 flex-1">
                     <Dialog.Title
                       as="h3"
-                      className="text-lg font-medium leading-6 text-gray-900"
+                      className="text-lg font-medium leading-6 text-gray-900 dark:text-white"
                     >
                       Cancelar Suscripción
                     </Dialog.Title>
                     <button
                       onClick={onClose}
-                      className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                      className="absolute top-4 right-4 text-gray-400 dark:text-gray-500 hover:text-gray-600"
                     >
                       <XMarkIcon className="h-5 w-5" />
                     </button>
@@ -117,7 +117,7 @@ export default function CancelSubscriptionModal({
                 </div>
 
                 <div className="mt-4">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Estás a punto de cancelar la suscripción de <strong>{organizationName}</strong>.
                   </p>
 
@@ -128,40 +128,40 @@ export default function CancelSubscriptionModal({
                   )}
 
                   <div className="mt-4 space-y-3">
-                    <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
                       <input
                         type="radio"
                         name="cancelType"
                         value="end_of_period"
                         checked={cancelType === 'end_of_period'}
                         onChange={() => setCancelType('end_of_period')}
-                        className="mt-1 h-4 w-4 text-blue-600"
+                        className="mt-1 h-4 w-4 text-blue-600 dark:text-blue-400"
                       />
                       <div className="ml-3">
-                        <span className="block text-sm font-medium text-gray-900">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-white">
                           Cancelar al final del período
                         </span>
-                        <span className="block text-xs text-gray-500 mt-1">
+                        <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1">
                           Mantendrás acceso hasta el {formatDate(currentPeriodEnd)}.
                           No se realizarán más cobros.
                         </span>
                       </div>
                     </label>
 
-                    <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
                       <input
                         type="radio"
                         name="cancelType"
                         value="immediate"
                         checked={cancelType === 'immediate'}
                         onChange={() => setCancelType('immediate')}
-                        className="mt-1 h-4 w-4 text-red-600"
+                        className="mt-1 h-4 w-4 text-red-600 dark:text-red-400"
                       />
                       <div className="ml-3">
-                        <span className="block text-sm font-medium text-gray-900">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-white">
                           Cancelar inmediatamente
                         </span>
-                        <span className="block text-xs text-red-600 mt-1">
+                        <span className="block text-xs text-red-600 dark:text-red-400 mt-1">
                           ⚠️ Perderás acceso a las funciones premium de inmediato.
                           No hay reembolso por el tiempo restante.
                         </span>
@@ -170,7 +170,7 @@ export default function CancelSubscriptionModal({
                   </div>
 
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Escribe <strong>CANCELAR</strong> para confirmar
                     </label>
                     <input
@@ -178,7 +178,7 @@ export default function CancelSubscriptionModal({
                       value={confirmText}
                       onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
                       placeholder="CANCELAR"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
                     />
                   </div>
                 </div>
@@ -187,7 +187,7 @@ export default function CancelSubscriptionModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="inline-flex justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   >
                     Mantener Suscripción
                   </button>

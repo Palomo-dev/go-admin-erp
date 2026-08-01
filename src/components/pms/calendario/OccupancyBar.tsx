@@ -12,7 +12,7 @@ interface OccupancyBarProps {
 export function OccupancyBar({ data, isLoading = false }: OccupancyBarProps) {
   if (isLoading) {
     return (
-      <div className="flex items-center gap-1 px-4 py-2 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <div className="flex flex-wrap items-center gap-1 px-4 py-2 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mr-2">Ocupación:</span>
         {Array.from({ length: 7 }).map((_, i) => (
           <div key={i} className="w-8 h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
@@ -24,7 +24,7 @@ export function OccupancyBar({ data, isLoading = false }: OccupancyBarProps) {
   if (data.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1 px-4 py-2 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 overflow-x-auto">
+    <div className="flex flex-wrap items-center gap-1 px-4 py-2 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 overflow-x-auto">
       <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mr-2 flex-shrink-0">Ocupación:</span>
       <div className="flex gap-0.5">
         {data.map((day) => {
@@ -48,7 +48,7 @@ export function OccupancyBar({ data, isLoading = false }: OccupancyBarProps) {
                   style={{ height: `${day.percentage}%` }}
                 />
               </div>
-              <span className="text-[9px] text-gray-400 mt-0.5">{day.percentage}%</span>
+              <span className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5">{day.percentage}%</span>
             </div>
           );
         })}

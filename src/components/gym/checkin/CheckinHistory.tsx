@@ -20,7 +20,7 @@ export function CheckinHistory({ checkins, isLoading }: CheckinHistoryProps) {
         </h3>
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="animate-pulse flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+            <div key={i} className="animate-pulse flex flex-wrap items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
               <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
               <div className="flex-1 space-y-2">
                 <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
@@ -46,7 +46,7 @@ export function CheckinHistory({ checkins, isLoading }: CheckinHistoryProps) {
 
       {checkins.length === 0 ? (
         <div className="text-center py-8">
-          <Clock className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <Clock className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
           <p className="text-gray-500 dark:text-gray-400">
             No hay check-ins registrados hoy
           </p>
@@ -64,7 +64,7 @@ export function CheckinHistory({ checkins, isLoading }: CheckinHistoryProps) {
               <div
                 key={checkin.id}
                 className={cn(
-                  "flex items-center gap-4 p-3 rounded-lg transition-colors",
+                  "flex flex-wrap items-center gap-4 p-3 rounded-lg transition-colors",
                   isDenied 
                     ? "bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800"
                     : "bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700"

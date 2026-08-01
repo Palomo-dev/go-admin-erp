@@ -20,16 +20,16 @@ export function InstructorsHeader({ onRefresh, isLoading, stats }: InstructorsHe
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/app/gym">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <UserCheck className="h-6 w-6 text-blue-600" />
+                <UserCheck className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               Instructores
             </h1>
@@ -38,7 +38,7 @@ export function InstructorsHeader({ onRefresh, isLoading, stats }: InstructorsHe
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -54,8 +54,8 @@ export function InstructorsHeader({ onRefresh, isLoading, stats }: InstructorsHe
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalInstructors}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
@@ -63,34 +63,34 @@ export function InstructorsHeader({ onRefresh, isLoading, stats }: InstructorsHe
             </div>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-green-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
               <div>
-                <p className="text-2xl font-bold text-green-600">{stats.activeInstructors}</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.activeInstructors}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Activos</p>
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-purple-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               <div>
-                <p className="text-2xl font-bold text-purple-600">{stats.totalClassesThisWeek}</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.totalClassesThisWeek}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Clases/Semana</p>
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               <div>
-                <p className="text-2xl font-bold text-orange-600">{stats.totalHoursThisWeek}h</p>
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.totalHoursThisWeek}h</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Horas/Semana</p>
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <TrendingUp className="h-5 w-5 text-cyan-600" />
               <div>
                 <p className="text-2xl font-bold text-cyan-600">{stats.avgAttendanceRate.toFixed(0)}%</p>

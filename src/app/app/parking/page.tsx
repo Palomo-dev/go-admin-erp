@@ -192,7 +192,7 @@ export default function ParkingDashboardPage() {
         <div className="max-w-md mx-auto mt-20">
           <Card>
             <CardContent className="pt-6 text-center">
-              <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <Building2 className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 Sin sucursal configurada
               </h2>
@@ -216,7 +216,7 @@ export default function ParkingDashboardPage() {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Cargando dashboard...</p>
         </div>
       </div>

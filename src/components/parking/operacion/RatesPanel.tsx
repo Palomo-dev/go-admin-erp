@@ -76,7 +76,7 @@ export function RatesPanel({ rates, isLoading }: RatesPanelProps) {
   return (
     <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
           <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Tarifas Vigentes
         </CardTitle>
@@ -97,7 +97,7 @@ export function RatesPanel({ rates, isLoading }: RatesPanelProps) {
               const Icon = getVehicleIcon(vehicleType);
               return (
                 <div key={vehicleType} className="space-y-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Icon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {getVehicleLabel(vehicleType)}

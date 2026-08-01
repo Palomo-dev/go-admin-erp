@@ -78,7 +78,7 @@ export function AlertaList({
               key={alert.id}
               onClick={() => onSelect(alert)}
               className={cn(
-                'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm',
+                'flex flex-wrap items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm',
                 isActive ? sev.border : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50'
               )}
             >
@@ -89,12 +89,12 @@ export function AlertaList({
 
               {/* Icono */}
               <div className={cn('flex-shrink-0 p-2 rounded-lg', isActive ? sev.border : 'bg-gray-100 dark:bg-gray-800')}>
-                <SevIcon className={cn('h-4 w-4', isActive ? '' : 'text-gray-400')} />
+                <SevIcon className={cn('h-4 w-4', isActive ? '' : 'text-gray-400 dark:text-gray-500')} />
               </div>
 
               {/* Contenido */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex flex-wrap items-center gap-2 mb-0.5">
                   <span className={cn('text-sm font-medium truncate', isActive ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400')}>
                     {alert.title}
                   </span>
@@ -103,18 +103,18 @@ export function AlertaList({
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{alert.message}</p>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <Badge className={cn('text-[10px] px-1.5 py-0', stCfg.color, 'bg-transparent')}>
                     <StatusIcon className="h-3 w-3 mr-0.5" />
                     {stCfg.label}
                   </Badge>
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">
                     {new Date(alert.created_at).toLocaleString('es', {
                       day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
                     })}
                   </span>
                   {alert.sent_channels && alert.sent_channels.length > 0 && (
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">
                       · {alert.sent_channels.join(', ')}
                     </span>
                   )}
@@ -131,7 +131,7 @@ export function AlertaList({
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} de {total}
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)} className="h-7 w-7 p-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -139,7 +139,7 @@ export function AlertaList({
               .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
               .map((p, idx, arr) => (
                 <span key={p}>
-                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-gray-400 px-1">…</span>}
+                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-gray-400 dark:text-gray-500 px-1">…</span>}
                   <Button
                     variant={p === page ? 'default' : 'outline'}
                     size="sm"

@@ -36,11 +36,11 @@ export function SpaceTypesFilters({
         placeholder="Buscar por nombre..."
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="w-64"
+        className="w-full sm:w-64"
       />
 
       <Select value={categoryFilter} onValueChange={onCategoryChange}>
-        <SelectTrigger className="w-[200px]">
+        <SelectTrigger className="w-full sm:w-[200px]">
           <SelectValue placeholder="Categoría" />
         </SelectTrigger>
         <SelectContent>
@@ -54,7 +54,7 @@ export function SpaceTypesFilters({
       </Select>
 
       <Select value={statusFilter} onValueChange={(v: any) => onStatusChange(v)}>
-        <SelectTrigger className="w-[160px]">
+        <SelectTrigger className="w-full sm:w-[160px]">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>
         <SelectContent>

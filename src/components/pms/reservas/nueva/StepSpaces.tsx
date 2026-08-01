@@ -86,7 +86,7 @@ export function StepSpaces({
       {/* Loading state */}
       {isLoading && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span>Buscando espacios disponibles...</span>
           </div>
@@ -107,8 +107,8 @@ export function StepSpaces({
         <div className="space-y-6">
           {Object.entries(spacesByZone).map(([zone, spaces]) => (
             <div key={zone}>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-gray-500" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
+                <MapPin className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 {zone}
                 <Badge variant="secondary">{spaces.length}</Badge>
               </h3>
@@ -133,7 +133,7 @@ export function StepSpaces({
                       onClick={() => isAvailable && onSpaceToggle(space.id)}
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <div
                             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                               !isAvailable
@@ -196,7 +196,7 @@ export function StepSpaces({
       {/* No hay espacios disponibles */}
       {!isLoading && availableSpaces.length === 0 && (
         <Card className="p-12 text-center">
-          <DoorOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <DoorOpen className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
             No hay espacios disponibles
           </h3>

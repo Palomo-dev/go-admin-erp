@@ -68,7 +68,7 @@ export function ReservationsList({
     return (
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <BookOpen className="h-12 w-12 text-gray-400 mb-4" />
+          <BookOpen className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
           <p className="text-gray-600 dark:text-gray-400">
             No hay reservaciones
           </p>
@@ -126,8 +126,8 @@ export function ReservationsList({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4 text-gray-400" />
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <span className={`text-sm font-medium ${availableSpots <= 2 ? 'text-orange-600' : 'text-gray-700 dark:text-gray-300'}`}>
                         {reservedCount}/{capacity}
                       </span>
@@ -153,7 +153,7 @@ export function ReservationsList({
                   </TableCell>
                   <TableCell>
                     {reservation.checkin_time ? (
-                      <div className="flex items-center gap-1 text-green-600">
+                      <div className="flex flex-wrap items-center gap-1 text-green-600 dark:text-green-400">
                         <UserCheck className="h-4 w-4" />
                         <span className="text-xs">
                           {formatTime(reservation.checkin_time)}
@@ -164,24 +164,24 @@ export function ReservationsList({
                         variant="outline"
                         size="sm"
                         onClick={() => onCheckIn?.(reservation)}
-                        className="text-green-600 border-green-200 hover:bg-green-50 h-7 text-xs"
+                        className="text-green-600 dark:text-green-400 border-green-200 hover:bg-green-50 h-7 text-xs"
                       >
                         <UserCheck className="h-3 w-3 mr-1" />
                         Check-in
                       </Button>
                     ) : (
-                      <span className="text-xs text-gray-400">-</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
                       {reservation.status === 'booked' && (
                         <>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => onMarkAttendance(reservation, true)}
-                            className="text-green-600 hover:text-green-700"
+                            className="text-green-600 dark:text-green-400 hover:text-green-700"
                             title="Marcar asistencia"
                           >
                             <Check className="h-4 w-4" />
@@ -190,7 +190,7 @@ export function ReservationsList({
                             variant="ghost"
                             size="sm"
                             onClick={() => onMarkAttendance(reservation, false)}
-                            className="text-orange-600 hover:text-orange-700"
+                            className="text-orange-600 dark:text-orange-400 hover:text-orange-700"
                             title="Marcar no asistencia"
                           >
                             <X className="h-4 w-4" />
@@ -226,7 +226,7 @@ export function ReservationsList({
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => onCancel(reservation)}
-                                className="text-red-600"
+                                className="text-red-600 dark:text-red-400"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Cancelar

@@ -45,9 +45,9 @@ export function SpaceServicesChecklist({
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 py-2">
-        <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
-        <span className="text-xs text-gray-400">Cargando servicios...</span>
+      <div className="flex flex-wrap items-center gap-2 py-2">
+        <Loader2 className="h-3 w-3 animate-spin text-gray-400 dark:text-gray-500" />
+        <span className="text-xs text-gray-400 dark:text-gray-500">Cargando servicios...</span>
       </div>
     );
   }
@@ -65,7 +65,7 @@ export function SpaceServicesChecklist({
       {services.map((s) => (
         <label
           key={s.org_service_id}
-          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded px-1 py-0.5"
+          className="flex flex-wrap items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded px-1 py-0.5"
         >
           <Checkbox
             checked={selectedIds.includes(s.org_service_id)}

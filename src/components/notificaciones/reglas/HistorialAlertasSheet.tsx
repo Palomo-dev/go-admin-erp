@@ -97,7 +97,7 @@ export function HistorialAlertasSheet({
                     key={alert.id}
                     className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
                   >
-                    <div className="flex items-start gap-2">
+                    <div className="flex flex-wrap items-start gap-2">
                       <Icon className={cn('h-4 w-4 mt-0.5 flex-shrink-0',
                         alert.severity === 'critical' ? 'text-red-500' :
                         alert.severity === 'warning' ? 'text-amber-500' : 'text-blue-500'
@@ -109,14 +109,14 @@ export function HistorialAlertasSheet({
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
                           {alert.message}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
                           <Badge className={cn('text-[10px] px-1.5 py-0', severityBadge[alert.severity])}>
                             {alert.severity}
                           </Badge>
                           <Badge className={cn('text-[10px] px-1.5 py-0', statusBadge[alert.status])}>
                             {alert.status}
                           </Badge>
-                          <span className="text-[10px] text-gray-400">{formatDate(alert.created_at)}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500">{formatDate(alert.created_at)}</span>
                         </div>
                       </div>
                     </div>

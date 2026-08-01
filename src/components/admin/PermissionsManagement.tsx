@@ -135,7 +135,7 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
             Visualiza todos los permisos disponibles en el sistema organizados por módulo
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
             <Shield className="h-3 w-3 mr-1" />
             Solo lectura
@@ -231,7 +231,7 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
           <Card key={moduleName} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                     <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
@@ -271,7 +271,7 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
                     {modulePermissions.map((permission) => (
                       <tr key={permission.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                             <span className="text-sm font-medium text-gray-900 dark:text-white">
                               {permission.name}

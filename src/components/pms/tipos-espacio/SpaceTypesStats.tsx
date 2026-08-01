@@ -59,7 +59,7 @@ export function SpaceTypesStats({ stats }: SpaceTypesStatsProps) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
       {statCards.map((stat, index) => (
         <Card key={index} className="p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className={`p-2 rounded-lg ${stat.bgColor}`}>
               <stat.icon className={`h-5 w-5 ${stat.color}`} />
             </div>

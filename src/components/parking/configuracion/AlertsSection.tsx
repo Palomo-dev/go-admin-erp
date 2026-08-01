@@ -24,7 +24,7 @@ export function AlertsSection({ alerts, onChange }: AlertsSectionProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg text-gray-900 dark:text-white">
           <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Alertas y Notificaciones
         </CardTitle>
@@ -47,7 +47,7 @@ export function AlertsSection({ alerts, onChange }: AlertsSectionProps) {
             />
           </div>
           {alerts.notify_when_full && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                 Umbral de capacidad:
               </Label>
@@ -61,7 +61,7 @@ export function AlertsSection({ alerts, onChange }: AlertsSectionProps) {
                 }
                 className="w-20 h-8 dark:bg-gray-700 dark:border-gray-600"
               />
-              <span className="text-sm text-gray-500">%</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">%</span>
             </div>
           )}
         </div>
@@ -83,7 +83,7 @@ export function AlertsSection({ alerts, onChange }: AlertsSectionProps) {
             />
           </div>
           {alerts.notify_long_stay && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                 Alertar después de:
               </Label>
@@ -95,7 +95,7 @@ export function AlertsSection({ alerts, onChange }: AlertsSectionProps) {
                 onChange={(e) => handleChange('long_stay_hours', parseInt(e.target.value) || 8)}
                 className="w-20 h-8 dark:bg-gray-700 dark:border-gray-600"
               />
-              <span className="text-sm text-gray-500">horas</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">horas</span>
             </div>
           )}
         </div>

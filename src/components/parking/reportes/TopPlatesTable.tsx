@@ -42,7 +42,7 @@ export function TopPlatesTable({ data, isLoading }: TopPlatesTableProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
           <Trophy className="h-5 w-5 text-amber-600 dark:text-amber-400" />
           Top Clientes Frecuentes
         </CardTitle>
@@ -50,10 +50,10 @@ export function TopPlatesTable({ data, isLoading }: TopPlatesTableProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400">Cargando...</div>
+            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
           </div>
         ) : data.length === 0 ? (
-          <div className="h-48 flex items-center justify-center text-gray-400">
+          <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
             No hay datos disponibles
           </div>
         ) : (
@@ -77,8 +77,8 @@ export function TopPlatesTable({ data, isLoading }: TopPlatesTableProps) {
                       <Badge className={getMedalColor(index)}>{index + 1}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Car className="h-4 w-4 text-gray-400" />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Car className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                         <span className="font-mono font-medium text-gray-900 dark:text-white">
                           {item.plate}
                         </span>

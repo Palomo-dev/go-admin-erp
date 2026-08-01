@@ -29,15 +29,15 @@ interface SessionTimelineProps {
 
 const getEventIcon = (type: string) => {
   const icons: Record<string, React.ReactNode> = {
-    entry: <LogIn className="h-4 w-4 text-green-600" />,
-    exit: <LogOut className="h-4 w-4 text-red-600" />,
-    payment: <CreditCard className="h-4 w-4 text-blue-600" />,
-    edit: <Edit className="h-4 w-4 text-orange-600" />,
-    incident: <AlertTriangle className="h-4 w-4 text-yellow-600" />,
-    note: <Edit className="h-4 w-4 text-gray-600" />,
-    status_change: <CheckCircle className="h-4 w-4 text-purple-600" />,
+    entry: <LogIn className="h-4 w-4 text-green-600 dark:text-green-400" />,
+    exit: <LogOut className="h-4 w-4 text-red-600 dark:text-red-400" />,
+    payment: <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />,
+    edit: <Edit className="h-4 w-4 text-orange-600 dark:text-orange-400" />,
+    incident: <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />,
+    note: <Edit className="h-4 w-4 text-gray-600 dark:text-gray-400" />,
+    status_change: <CheckCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />,
   };
-  return icons[type] || <Clock className="h-4 w-4 text-gray-600" />;
+  return icons[type] || <Clock className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
 };
 
 const getEventColor = (type: string) => {
@@ -58,7 +58,7 @@ export function SessionTimeline({ events, isLoading }: SessionTimelineProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex flex-wrap items-center gap-2">
             <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Línea de Tiempo
           </CardTitle>
@@ -83,7 +83,7 @@ export function SessionTimeline({ events, isLoading }: SessionTimelineProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2">
           <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Línea de Tiempo
         </CardTitle>
@@ -110,7 +110,7 @@ export function SessionTimeline({ events, isLoading }: SessionTimelineProps) {
                     <p className="font-medium text-gray-900 dark:text-white">
                       {event.description}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(event.timestamp).toLocaleString('es-ES', {
                           dateStyle: 'short',

@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTheme } from 'next-themes';
 import { Camera, Loader2, Building2, User } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { supabase } from '@/lib/supabase/config';
@@ -28,9 +27,7 @@ interface ClienteHeaderProps {
 
 // Componente para mostrar el nivel de fidelidad del cliente
 const NivelFidelidad = ({ nivel = 'Básico' }: { nivel?: string }) => {
-  const { theme } = useTheme();
-  
-  let color = 'bg-gray-100 text-gray-800';
+  let color = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
   
   switch(nivel.toLowerCase()) {
     case 'oro':
@@ -191,7 +188,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
   
   return (
     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
           <UserAvatar name={nombreCompleto} avatarUrl={avatarUrl} size="lg" className="w-16 h-16" />
           <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -211,7 +208,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
         </div>
         
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{nombreCompleto}</h1>
             {cliente.customer_type === 'company' ? (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
@@ -253,7 +250,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
             </div>
           )}
           
-          <div className="mt-1 flex items-center gap-3">
+          <div className="mt-1 flex flex-wrap items-center gap-3">
             {cliente.email && (
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {cliente.email}
@@ -265,11 +262,11 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
         </div>
       </div>
       
-      <div className="flex items-center gap-3 mt-4 md:mt-0 w-full md:w-auto">
+      <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0 w-full md:w-auto">
         {/* Botón para volver a la lista de clientes */}
         <Link
           href="/app/clientes"
-          className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+          className="flex flex-wrap items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -280,7 +277,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
         {/* Botón para editar cliente */}
         <Link
           href={`/app/clientes/${cliente.id}/editar`}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition"
+          className="flex flex-wrap items-center gap-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />

@@ -90,7 +90,7 @@ export function AlertsPanel({
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
             <Bell className="h-5 w-5 text-orange-500" />
             Alertas
           </CardTitle>
@@ -120,7 +120,7 @@ export function AlertsPanel({
               <div
                 key={index}
                 className={cn(
-                  'flex items-start gap-3 p-3 rounded-lg border',
+                  'flex flex-wrap items-start gap-3 p-3 rounded-lg border',
                   getAlertStyles(alert.type)
                 )}
               >

@@ -81,8 +81,8 @@ export function QuickActions({
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-          <Plus className="h-5 w-5 text-blue-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+          <Plus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Acciones Rápidas
         </CardTitle>
       </CardHeader>

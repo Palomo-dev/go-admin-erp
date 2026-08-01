@@ -30,16 +30,16 @@ export function ReservationsHeader({
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/app/gym">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <BookOpen className="h-6 w-6 text-blue-600" />
+                <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               Reservaciones
             </h1>
@@ -71,7 +71,7 @@ export function ReservationsHeader({
               variant="outline"
               size="sm"
               onClick={onBulkCheckIn}
-              className="text-green-600 border-green-200 hover:bg-green-50"
+              className="text-green-600 dark:text-green-400 border-green-200 hover:bg-green-50"
             >
               <UserCheck className="h-4 w-4 mr-2" />
               Check-in Masivo
@@ -95,15 +95,15 @@ export function ReservationsHeader({
             <p className="text-xs text-gray-500 dark:text-gray-400">Hoy</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <p className="text-2xl font-bold text-blue-600">{stats.booked}</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.booked}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Reservadas</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <p className="text-2xl font-bold text-green-600">{stats.attended}</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.attended}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Asistieron</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-            <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.cancelled}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Canceladas</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">

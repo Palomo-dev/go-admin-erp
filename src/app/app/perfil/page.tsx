@@ -315,8 +315,8 @@ export default function PerfilUsuarioPage() {
             <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">
               <div className="flex flex-col items-center mb-6 p-4">
                 <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse mb-4" />
-                <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
-                <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                <div className="h-5 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                <div className="h-4 w-full sm:w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
               </div>
               <div className="space-y-2">
                 {[...Array(7)].map((_, i) => (
@@ -327,8 +327,8 @@ export default function PerfilUsuarioPage() {
           </aside>
           {/* Skeleton content */}
           <main className="flex-grow bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-            <div className="h-7 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
-            <div className="h-4 w-72 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-8" />
+            <div className="h-7 w-full sm:w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+            <div className="h-4 w-full sm:w-72 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-8" />
             <div className="space-y-4">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="h-14 bg-gray-100 dark:bg-gray-700/50 rounded-lg animate-pulse" />
@@ -453,7 +453,7 @@ export default function PerfilUsuarioPage() {
 
               {isSeller ? (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-wrap items-start gap-4">
                     <div className="w-12 h-12 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
                       <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
                     </div>
@@ -559,7 +559,7 @@ function BecomeSellerSection({ user, profile, onBecameSeller }: {
 
   return (
     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-      <div className="flex items-start gap-4">
+      <div className="flex flex-wrap items-start gap-4">
         <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
           <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>

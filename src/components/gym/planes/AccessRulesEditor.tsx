@@ -176,8 +176,8 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
       {/* Reglas de Sedes */}
       <Card className="border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-blue-600" />
+          <CardTitle className="text-sm font-medium flex flex-wrap items-center gap-2">
+            <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             Acceso por Sede
           </CardTitle>
         </CardHeader>
@@ -199,16 +199,16 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
             <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
               <Label className="text-sm">Sedes permitidas</Label>
               {isLoading ? (
-                <div className="text-sm text-gray-500">Cargando sedes...</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">Cargando sedes...</div>
               ) : branches.length === 0 ? (
-                <div className="text-sm text-gray-500">No hay sedes configuradas</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">No hay sedes configuradas</div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {branches.map((branch) => (
                     <div
                       key={branch.id}
                       className={cn(
-                        "flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors",
+                        "flex flex-wrap items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors",
                         rules.allowed_branches?.includes(branch.id)
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                           : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
@@ -225,7 +225,7 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
                 </div>
               )}
               {!rules.all_branches && rules.allowed_branches?.length === 0 && (
-                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs">
+                <div className="flex flex-wrap items-center gap-2 text-amber-600 dark:text-amber-400 text-xs">
                   <AlertCircle className="h-3 w-3" />
                   Selecciona al menos una sede
                 </div>
@@ -238,8 +238,8 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
       {/* Reglas de Horario */}
       <Card className="border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-600" />
+          <CardTitle className="text-sm font-medium flex flex-wrap items-center gap-2">
+            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             Restricción de Horarios
           </CardTitle>
         </CardHeader>
@@ -265,7 +265,7 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
                 return (
                   <div key={key} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Checkbox
                           checked={daySchedule.enabled}
                           onCheckedChange={(checked) => 
@@ -291,14 +291,14 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
                     {daySchedule.enabled && daySchedule.ranges.length > 0 && (
                       <div className="ml-6 space-y-2">
                         {daySchedule.ranges.map((range, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
+                          <div key={idx} className="flex flex-wrap items-center gap-2">
                             <input
                               type="time"
                               value={range.start}
                               onChange={(e) => updateTimeRange(key, idx, 'start', e.target.value)}
                               className="text-sm px-2 py-1 border rounded dark:bg-gray-900 dark:border-gray-700"
                             />
-                            <span className="text-gray-500">a</span>
+                            <span className="text-gray-500 dark:text-gray-400">a</span>
                             <input
                               type="time"
                               value={range.end}
@@ -322,7 +322,7 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
                     )}
                     
                     {daySchedule.enabled && daySchedule.ranges.length === 0 && (
-                      <p className="ml-6 text-xs text-gray-500">
+                      <p className="ml-6 text-xs text-gray-500 dark:text-gray-400">
                         Sin horarios definidos (acceso todo el día)
                       </p>
                     )}
@@ -337,13 +337,13 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
       {/* Límite de Check-ins */}
       <Card className="border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-blue-600" />
+          <CardTitle className="text-sm font-medium flex flex-wrap items-center gap-2">
+            <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             Límite de Check-ins
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="flex-1">
               <Label className="text-sm font-medium">Máximo check-ins por día</Label>
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -356,7 +356,7 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
                 max_daily_checkins: val === 'unlimited' ? undefined : parseInt(val) 
               })}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full sm:w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -129,7 +129,7 @@ export function SesionesTable({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
         <div className="flex flex-col items-center justify-center text-center">
-          <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
+          <AlertCircle className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No se encontraron sesiones
           </h3>
@@ -168,7 +168,7 @@ export function SesionesTable({
                   className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 >
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono font-semibold text-gray-900 dark:text-white">
                         {session.vehicle_plate}
                       </span>
@@ -180,7 +180,7 @@ export function SesionesTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                    <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-300">
                       {vehicleIcons[session.vehicle_type] || <Car className="h-4 w-4" />}
                       <span>{vehicleLabels[session.vehicle_type] || session.vehicle_type}</span>
                     </div>
@@ -203,25 +203,25 @@ export function SesionesTable({
                   </TableCell>
                   <TableCell>
                     {session.payment_method ? (
-                      <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                      <div className="flex flex-wrap items-center gap-1.5 text-gray-600 dark:text-gray-300">
                         <CreditCard className="h-4 w-4" />
                         <span className="capitalize">{session.payment_method}</span>
                       </div>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 dark:text-gray-500">-</span>
                     )}
                   </TableCell>
                   <TableCell>
                     <Badge 
                       variant={status.variant}
-                      className="flex items-center gap-1 w-fit"
+                      className="flex flex-wrap items-center gap-1 w-fit"
                     >
                       {status.icon}
                       {status.label}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
                       <Link href={`/app/parking/sesiones/${session.id}`}>
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver detalle">
                           <Eye className="h-4 w-4" />

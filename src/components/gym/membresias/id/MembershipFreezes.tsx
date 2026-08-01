@@ -47,7 +47,7 @@ export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-48" />
+          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-full sm:w-48" />
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -70,7 +70,7 @@ export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Snowflake className="h-5 w-5 text-cyan-600" />
             Historial de Congelamientos
           </CardTitle>
@@ -83,7 +83,7 @@ export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps
         
         {activeFreeze && (
           <div className="mt-2 p-3 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Snowflake className="h-4 w-4 text-cyan-600 dark:text-cyan-400 animate-pulse" />
               <span className="text-sm font-medium text-cyan-700 dark:text-cyan-300">
                 Membresía actualmente congelada
@@ -122,7 +122,7 @@ export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps
                       : "bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700"
                   )}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex flex-wrap items-start gap-3">
                     <div className={cn(
                       "p-2 rounded-full",
                       freeze.status === 'active' 
@@ -149,7 +149,7 @@ export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps
                         )}
                       </div>
                       
-                      <div className="mt-1 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                         <Calendar className="h-3 w-3" />
                         <span>
                           {startDate.toLocaleDateString('es-CO')}

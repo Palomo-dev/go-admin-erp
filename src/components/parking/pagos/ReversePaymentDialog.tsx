@@ -67,7 +67,7 @@ export function ReversePaymentDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+          <AlertDialogTitle className="flex flex-wrap items-center gap-2 text-red-600 dark:text-red-400">
             <AlertTriangle className="h-5 w-5" />
             Reversar Pago
           </AlertDialogTitle>

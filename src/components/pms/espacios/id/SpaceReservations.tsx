@@ -69,7 +69,7 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
       {/* Reserva Actual - Ocupado */}
       {currentReservation && (
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             <DoorOpen className="h-5 w-5 text-green-600 dark:text-green-400" />
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Reserva Actual - Ocupado
@@ -79,7 +79,7 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
           <div className="p-5 bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border-2 border-green-200 dark:border-green-800">
             {/* Header con huésped y estado */}
             <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                 <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                   {currentReservation.customer?.first_name} {currentReservation.customer?.last_name}
@@ -96,16 +96,16 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
                 Información del Huésped
               </h5>
               {currentReservation.customer?.email && (
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-gray-500" />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   <span className="text-sm text-gray-700 dark:text-gray-300">
                     {currentReservation.customer.email}
                   </span>
                 </div>
               )}
               {currentReservation.customer?.phone && (
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-gray-500" />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   <span className="text-sm text-gray-700 dark:text-gray-300">
                     {currentReservation.customer.phone}
                   </span>
@@ -116,7 +116,7 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
             {/* Fechas de Estadía */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="bg-white/70 dark:bg-gray-800/70 rounded-lg p-3">
-                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
+                <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
                   <LogIn className="h-4 w-4" />
                   <span className="text-xs font-medium">Check-in</span>
                 </div>
@@ -126,7 +126,7 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
               </div>
 
               <div className="bg-white/70 dark:bg-gray-800/70 rounded-lg p-3">
-                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
+                <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
                   <LogOut className="h-4 w-4" />
                   <span className="text-xs font-medium">Check-out</span>
                 </div>
@@ -138,12 +138,12 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
 
             {/* Información Adicional */}
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                 <Clock className="h-4 w-4" />
                 <span>{currentReservation.occupant_count} huésped{currentReservation.occupant_count > 1 ? 'es' : ''}</span>
               </div>
               
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
                 <span>
                   {differenceInDays(
@@ -168,7 +168,7 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
               const daysLeft = differenceInDays(new Date(currentReservation.checkout), now);
               if (daysLeft > 0) {
                 return (
-                  <div className="mt-3 flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-900/30 rounded-md px-3 py-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-blue-700 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-900/30 rounded-md px-3 py-2">
                     <AlertCircle className="h-4 w-4" />
                     <span>
                       {daysLeft === 1 
@@ -179,14 +179,14 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
                 );
               } else if (daysLeft === 0) {
                 return (
-                  <div className="mt-3 flex items-center gap-2 text-xs text-orange-700 dark:text-orange-300 bg-orange-100/50 dark:bg-orange-900/30 rounded-md px-3 py-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-orange-700 dark:text-orange-300 bg-orange-100/50 dark:bg-orange-900/30 rounded-md px-3 py-2">
                     <AlertCircle className="h-4 w-4" />
                     <span>Check-out programado para hoy</span>
                   </div>
                 );
               } else {
                 return (
-                  <div className="mt-3 flex items-center gap-2 text-xs text-red-700 dark:text-red-300 bg-red-100/50 dark:bg-red-900/30 rounded-md px-3 py-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-red-700 dark:text-red-300 bg-red-100/50 dark:bg-red-900/30 rounded-md px-3 py-2">
                     <AlertCircle className="h-4 w-4" />
                     <span>Check-out tardío ({Math.abs(daysLeft)} {Math.abs(daysLeft) === 1 ? 'día' : 'días'} de retraso)</span>
                   </div>
@@ -214,8 +214,8 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
                   className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-500" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                       <span className="font-medium text-gray-900 dark:text-gray-100">
                         {reservation.customer?.first_name} {reservation.customer?.last_name}
                       </span>
@@ -226,14 +226,14 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                       <Calendar className="h-4 w-4" />
                       <span>
                         {format(new Date(reservation.checkin), 'dd MMM', { locale: es })} - {' '}
                         {format(new Date(reservation.checkout), 'dd MMM yyyy', { locale: es })}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                       <Clock className="h-4 w-4" />
                       <span>{reservation.occupant_count} huéspedes</span>
                     </div>
@@ -288,7 +288,7 @@ export function SpaceReservations({ reservations }: SpaceReservationsProps) {
 
       {reservations.length === 0 && (
         <div className="text-center py-12">
-          <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <Calendar className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
           <p className="text-gray-500 dark:text-gray-400">
             No hay reservas registradas
           </p>

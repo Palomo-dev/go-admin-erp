@@ -73,8 +73,8 @@ export function RegisterPaymentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Registrar Pago
           </DialogTitle>
         </DialogHeader>
@@ -109,7 +109,7 @@ export function RegisterPaymentDialog({
               <SelectContent>
                 {paymentMethods.map((pm) => (
                   <SelectItem key={pm.value} value={pm.value}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <pm.icon className="h-4 w-4" />
                       {pm.label}
                     </div>

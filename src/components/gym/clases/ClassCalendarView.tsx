@@ -254,14 +254,14 @@ export function ClassCalendarView({
         <CardContent className="p-4">
           {/* Header con navegación */}
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-blue-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white capitalize">
                 {formatMonthYear()}
               </h2>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={goToToday}>
                 Hoy
               </Button>
@@ -394,7 +394,7 @@ export function ClassCalendarView({
           </div>
 
           {/* Leyenda */}
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <span className="text-xs text-gray-500 dark:text-gray-400">Estados:</span>
             <div className="flex items-center gap-3 flex-wrap">
               <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">

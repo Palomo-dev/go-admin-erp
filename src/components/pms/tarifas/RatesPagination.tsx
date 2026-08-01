@@ -73,8 +73,8 @@ export function RatesPagination({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
       {/* Info y selector de tamaño */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-gray-600 dark:text-gray-400">
             Mostrar
           </span>
@@ -114,7 +114,7 @@ export function RatesPagination({
 
       {/* Controles de navegación */}
       {totalPages > 1 && (
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {/* Primera página */}
           <Button
             variant="outline"
@@ -138,7 +138,7 @@ export function RatesPagination({
           </Button>
 
           {/* Números de página */}
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {getVisiblePages().map((page, index) =>
               page === '...' ? (
                 <span

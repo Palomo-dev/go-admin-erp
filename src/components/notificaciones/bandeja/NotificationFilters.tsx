@@ -68,9 +68,9 @@ export function NotificationFilters({ filters, onChange, availableTypes }: Notif
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 space-y-3">
       {/* Barra de búsqueda */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por título o contenido..."
             value={filters.search}
@@ -83,7 +83,7 @@ export function NotificationFilters({ filters, onChange, availableTypes }: Notif
             variant="ghost"
             size="sm"
             onClick={() => onChange(DEFAULT_FILTERS)}
-            className="text-gray-500 hover:text-red-500"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-500"
           >
             <X className="h-4 w-4 mr-1" />
             Limpiar
@@ -93,7 +93,7 @@ export function NotificationFilters({ filters, onChange, availableTypes }: Notif
 
       {/* Fila de filtros */}
       <div className="flex flex-wrap items-center gap-2">
-        <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />
+        <Filter className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
 
         {/* Lectura */}
         <FilterSelect
@@ -137,7 +137,7 @@ export function NotificationFilters({ filters, onChange, availableTypes }: Notif
           className="h-8 px-2 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
           title="Desde"
         />
-        <span className="text-xs text-gray-400">—</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
         <input
           type="date"
           value={filters.dateTo}

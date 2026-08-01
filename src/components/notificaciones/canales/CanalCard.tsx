@@ -88,12 +88,12 @@ export function CanalCard({
     )}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className={cn('p-2.5 rounded-xl', colors.bg)}>
             <Icon className={cn('h-5 w-5', colors.icon)} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                 {channel.provider_name}
               </h3>
@@ -119,7 +119,7 @@ export function CanalCard({
             size="sm"
             onClick={onToggle}
             disabled={isToggling}
-            className={cn('h-8 px-2', channel.is_active ? 'text-green-600 hover:text-red-500' : 'text-gray-400 hover:text-green-500')}
+            className={cn('h-8 px-2', channel.is_active ? 'text-green-600 dark:text-green-400 hover:text-red-500' : 'text-gray-400 dark:text-gray-500 hover:text-green-500')}
             title={channel.is_active ? 'Desactivar' : 'Activar'}
           >
             {isToggling ? (
@@ -136,15 +136,15 @@ export function CanalCard({
       {/* Integración vinculada */}
       {!isApp && linked ? (
         <div className="mb-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <Link2 className="h-3.5 w-3.5 text-blue-500" />
             <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">Integración vinculada</span>
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white">{linked.name}</p>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <span className="text-xs text-gray-500 dark:text-gray-400">{linked.provider_name}</span>
-            <span className="text-[10px] text-gray-400">·</span>
-            <span className={cn('text-xs font-medium', statusColors[linked.status] || 'text-gray-400')}>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">·</span>
+            <span className={cn('text-xs font-medium', statusColors[linked.status] || 'text-gray-400 dark:text-gray-500')}>
               {linked.status}
             </span>
             <Badge variant="outline" className="text-[10px] px-1 py-0">{linked.environment}</Badge>
@@ -152,7 +152,7 @@ export function CanalCard({
         </div>
       ) : !isApp ? (
         <div className="mb-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Unlink className="h-3.5 w-3.5 text-amber-500" />
             <p className="text-xs text-amber-700 dark:text-amber-300">
               Sin integración — vincula desde Integraciones
@@ -169,13 +169,13 @@ export function CanalCard({
 
       {/* Último log */}
       {lastLog && (
-        <div className="mb-3 flex items-center gap-2 text-xs">
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
           {lastLog.status === 'delivered' || lastLog.status === 'sent' ? (
             <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
           ) : lastLog.status === 'failed' ? (
             <XCircle className="h-3.5 w-3.5 text-red-500" />
           ) : (
-            <Clock className="h-3.5 w-3.5 text-gray-400" />
+            <Clock className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
           )}
           <span className="text-gray-500 dark:text-gray-400">
             Último: {lastLog.status}
@@ -184,31 +184,31 @@ export function CanalCard({
         </div>
       )}
 
-      <p className="text-[10px] text-gray-400 mb-3">
+      <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3">
         Actualizado: {new Date(channel.updated_at).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
       </p>
 
       {/* Acciones */}
-      <div className="flex items-center gap-1 pt-2 border-t border-gray-100 dark:border-gray-800">
-        <Button variant="ghost" size="sm" onClick={onTest} className="text-xs text-gray-500 hover:text-blue-600 h-7 px-2">
+      <div className="flex flex-wrap items-center gap-1 pt-2 border-t border-gray-100 dark:border-gray-800">
+        <Button variant="ghost" size="sm" onClick={onTest} className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 h-7 px-2">
           <Play className="h-3.5 w-3.5 mr-1" /> Probar
         </Button>
         {!isApp && isAdmin && (
           linked ? (
-            <Button variant="ghost" size="sm" onClick={onUnlink} className="text-xs text-gray-500 hover:text-amber-600 h-7 px-2">
+            <Button variant="ghost" size="sm" onClick={onUnlink} className="text-xs text-gray-500 dark:text-gray-400 hover:text-amber-600 h-7 px-2">
               <Unlink className="h-3.5 w-3.5 mr-1" /> Desvincular
             </Button>
           ) : (
-            <Button variant="ghost" size="sm" onClick={onLink} className="text-xs text-gray-500 hover:text-blue-600 h-7 px-2">
+            <Button variant="ghost" size="sm" onClick={onLink} className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 h-7 px-2">
               <LinkIcon className="h-3.5 w-3.5 mr-1" /> Vincular
             </Button>
           )
         )}
-        <Button variant="ghost" size="sm" onClick={onEdit} className="text-xs text-gray-500 hover:text-blue-600 h-7 px-2">
+        <Button variant="ghost" size="sm" onClick={onEdit} className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 h-7 px-2">
           <Edit className="h-3.5 w-3.5 mr-1" /> Config
         </Button>
         {isAdmin && !isApp && (
-          <Button variant="ghost" size="sm" onClick={onDelete} className="text-xs text-gray-500 hover:text-red-600 h-7 px-2 ml-auto">
+          <Button variant="ghost" size="sm" onClick={onDelete} className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 h-7 px-2 ml-auto">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         )}

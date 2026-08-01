@@ -197,8 +197,8 @@ export function PlansImportDialog({ open, onOpenChange, onImport }: PlansImportD
         <div className="space-y-4">
           {/* Template download */}
           <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+            <div className="flex flex-wrap items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <span className="text-sm text-blue-700 dark:text-blue-300">
                 Descarga la plantilla CSV
               </span>
@@ -230,9 +230,9 @@ export function PlansImportDialog({ open, onOpenChange, onImport }: PlansImportD
               className="hidden"
               onChange={handleFileSelect}
             />
-            <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+            <Upload className="h-8 w-8 mx-auto text-gray-400 dark:text-gray-500 mb-2" />
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Arrastra un archivo CSV o <span className="text-blue-600">haz clic para seleccionar</span>
+              Arrastra un archivo CSV o <span className="text-blue-600 dark:text-blue-400">haz clic para seleccionar</span>
             </p>
           </div>
 
@@ -240,8 +240,8 @@ export function PlansImportDialog({ open, onOpenChange, onImport }: PlansImportD
           {parsedData && (
             <div className="space-y-3">
               {parsedData.valid.length > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <div className="flex flex-wrap items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                   <span className="text-sm text-green-700 dark:text-green-300">
                     {parsedData.valid.length} plan{parsedData.valid.length !== 1 ? 'es' : ''} listo{parsedData.valid.length !== 1 ? 's' : ''} para importar
                   </span>
@@ -250,8 +250,8 @@ export function PlansImportDialog({ open, onOpenChange, onImport }: PlansImportD
 
               {parsedData.errors.length > 0 && (
                 <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle className="h-5 w-5 text-red-600" />
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                     <span className="text-sm font-medium text-red-700 dark:text-red-300">
                       {parsedData.errors.length} error{parsedData.errors.length !== 1 ? 'es' : ''}
                     </span>

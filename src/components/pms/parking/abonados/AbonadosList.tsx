@@ -61,7 +61,7 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
   if (passes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <Car className="h-16 w-16 text-gray-400 mb-4" />
+        <Car className="h-16 w-16 text-gray-400 dark:text-gray-500 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
           No hay abonados registrados
         </h3>
@@ -87,12 +87,12 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
         return (
           <Card key={pass.id} className="p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                   <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     <p className="font-semibold text-gray-900 dark:text-gray-100">
                       {displayPlate}
                     </p>
@@ -122,7 +122,7 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
                   {(pass.status === 'active' || pass.status === 'suspended') && (
                     <DropdownMenuItem 
                       onClick={() => onCancel(pass)}
-                      className="text-red-600"
+                      className="text-red-600 dark:text-red-400"
                     >
                       <XCircle className="h-4 w-4 mr-2" />
                       Cancelar Pase
@@ -133,18 +133,18 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
             </div>
 
             <div className="space-y-2 mb-3">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <User className="h-4 w-4" />
                 <span>{pass.customer?.full_name || 'Sin cliente'}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
                 <span>{formatDate(pass.start_date)} - {formatDate(pass.end_date)}</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge className={statusConfig.className}>
                   {statusConfig.label}
                 </Badge>

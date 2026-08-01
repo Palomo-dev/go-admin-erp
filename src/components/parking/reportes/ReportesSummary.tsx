@@ -78,7 +78,7 @@ export function ReportesSummary({ summary, isLoading }: ReportesSummaryProps) {
                 <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                   <stat.icon className={`h-5 w-5 ${stat.textColor}`} />
                 </div>

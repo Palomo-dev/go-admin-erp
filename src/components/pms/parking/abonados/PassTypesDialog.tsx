@@ -143,7 +143,7 @@ export function PassTypesDialog({
             </Button>
 
             {passTypes.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 No hay tipos de plan creados
               </div>
             ) : (
@@ -163,7 +163,7 @@ export function PassTypesDialog({
                             {type.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
                           <Badge variant="outline">
                             {type.duration_days} días
                           </Badge>
@@ -178,7 +178,7 @@ export function PassTypesDialog({
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-wrap items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -190,7 +190,7 @@ export function PassTypesDialog({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(type.id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 dark:text-red-400 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

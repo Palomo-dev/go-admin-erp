@@ -81,7 +81,7 @@ export function SessionStats({
       {stats.map((stat, index) => (
         <Card key={index} className="border-gray-200 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                 <span className={stat.color}>{stat.icon}</span>
               </div>

@@ -727,8 +727,8 @@ export function StepCredentials({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <Key className="h-5 w-5 text-blue-600" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+          <Key className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Credenciales de Acceso
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -739,8 +739,8 @@ export function StepCredentials({
       {/* Aviso de seguridad */}
       <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
         <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
             <div>
               <p className="font-medium text-blue-900 dark:text-blue-100">
                 Seguridad de credenciales
@@ -762,9 +762,9 @@ export function StepCredentials({
               <h4 className="font-medium text-gray-900 dark:text-white">
                 Tipo de Autenticación
               </h4>
-              <p className="text-sm text-gray-500">{authConfig.description}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{authConfig.description}</p>
             </div>
-            <Badge variant="outline" className="text-blue-600 border-blue-300">
+            <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-300">
               {authConfig.label}
             </Badge>
           </div>
@@ -777,7 +777,7 @@ export function StepCredentials({
                   <p className="font-medium text-gray-900 dark:text-white">
                     Autorización OAuth
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Conecta tu cuenta de {provider?.name} de forma segura
                   </p>
                 </div>
@@ -800,8 +800,8 @@ export function StepCredentials({
       {/* Campos de credenciales */}
       <Card>
         <CardContent className="p-4 space-y-6">
-          <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-            <Lock className="h-4 w-4 text-gray-500" />
+          <h4 className="font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <Lock className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             {isPropertyLinking ? 'Vincular Propiedad' : isOAuthProvider || isEmbeddedSignup ? 'Conexión Automática' : 'Datos de Acceso'}
           </h4>
 
@@ -836,8 +836,8 @@ export function StepCredentials({
 
               {/* Error */}
               {taSearchError && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex flex-wrap items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
                   <span className="text-sm text-red-700 dark:text-red-400">{taSearchError}</span>
                 </div>
               )}
@@ -853,24 +853,24 @@ export function StepCredentials({
               {/* Resultados de búsqueda */}
               {!taSelectedLocation && taSearchResults.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs text-gray-500">{taSearchResults.length} resultado(s)</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{taSearchResults.length} resultado(s)</p>
                   {taSearchResults.map((loc: any) => (
                     <div
                       key={loc.location_id}
                       onClick={() => handleTaSelectLocation(loc)}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer transition-all hover:shadow-md hover:border-[#00AA6C]/50"
+                      className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer transition-all hover:shadow-md hover:border-[#00AA6C]/50"
                     >
                       <div className="w-9 h-9 rounded-full bg-[#00AA6C]/10 flex items-center justify-center shrink-0">
                         <Building2 className="h-4 w-4 text-[#00AA6C]" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{loc.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 truncate">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1 truncate">
                           <MapPin className="h-3 w-3 shrink-0" />
                           {getTaAddress(loc)}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-gray-400 shrink-0" />
+                      <ArrowRight className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
                     </div>
                   ))}
                 </div>
@@ -885,7 +885,7 @@ export function StepCredentials({
                         <Loader2 className="h-6 w-6 animate-spin text-[#00AA6C]" />
                       </div>
                     ) : (
-                      <div className="flex items-start gap-3">
+                      <div className="flex flex-wrap items-start gap-3">
                         {taSelectedLocation.photo?.images?.medium?.url ? (
                           <img
                             src={taSelectedLocation.photo.images.medium.url}
@@ -898,11 +898,11 @@ export function StepCredentials({
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <p className="font-semibold text-gray-900 dark:text-white">{taSelectedLocation.name}</p>
                             <CheckCircle className="h-4 w-4 text-[#00AA6C] shrink-0" />
                           </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1 mt-0.5">
                             <MapPin className="h-3 w-3 shrink-0" />
                             {getTaAddress(taSelectedLocation)}
                           </p>
@@ -914,7 +914,7 @@ export function StepCredentials({
                               </Badge>
                             )}
                             {taSelectedLocation.num_reviews && (
-                              <span className="text-xs text-gray-500 flex items-center gap-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1">
                                 <MessageSquare className="h-3 w-3" />
                                 {taSelectedLocation.num_reviews} reseñas
                               </span>
@@ -926,7 +926,7 @@ export function StepCredentials({
                           {taSelectedLocation.ranking_data?.ranking_string && (
                             <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{taSelectedLocation.ranking_data.ranking_string}</p>
                           )}
-                          <p className="text-[10px] text-gray-400 mt-1">Location ID: {taSelectedLocation.location_id}</p>
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Location ID: {taSelectedLocation.location_id}</p>
                         </div>
                       </div>
                     )}
@@ -937,7 +937,7 @@ export function StepCredentials({
                       setTaSelectedLocation(null);
                       onCredentialsChange({ ...credentials, secret_ref: '{}' });
                     }}
-                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline"
+                    className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 underline"
                   >
                     ← Buscar otra propiedad
                   </button>
@@ -1030,8 +1030,8 @@ export function StepCredentials({
               </div>
 
               {oauthError && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex flex-wrap items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
                   <span className="text-sm text-red-700 dark:text-red-400">{oauthError}</span>
                 </div>
               )}
@@ -1058,7 +1058,7 @@ export function StepCredentials({
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">¡WhatsApp Conectado!</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{embeddedSignupSuccess}</p>
-                  <p className="text-xs text-gray-500 mt-2">Las credenciales y el webhook se configuraron automáticamente.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Las credenciales y el webhook se configuraron automáticamente.</p>
                 </div>
               ) : (
                 <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800 text-center">
@@ -1100,8 +1100,8 @@ export function StepCredentials({
               )}
 
               {oauthError && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex flex-wrap items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
                   <span className="text-sm text-red-700 dark:text-red-400">{oauthError}</span>
                 </div>
               )}
@@ -1121,7 +1121,7 @@ export function StepCredentials({
               <button
                 type="button"
                 onClick={() => setShowManualFields(true)}
-                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline"
+                className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 underline"
               >
                 ¿Prefieres ingresar las credenciales manualmente?
               </button>
@@ -1149,8 +1149,8 @@ export function StepCredentials({
           {/* Ayuda específica del proveedor (solo para NO-OAuth, NO-EmbeddedSignup y NO-PropertyLinking) */}
           {!isOAuthProvider && !isEmbeddedSignup && !isPropertyLinking && providerOverride?.helpText && (
             <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex flex-wrap items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <p className="text-amber-800 dark:text-amber-300">{providerOverride.helpText}</p>
                   {providerOverride.helpUrl && (
@@ -1185,7 +1185,7 @@ export function StepCredentials({
                   <button
                     type="button"
                     onClick={() => toggleShowSecret(field.key)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600"
                   >
                     {showSecrets[field.key] ? (
                       <EyeOff className="h-4 w-4" />
@@ -1219,7 +1219,7 @@ export function StepCredentials({
                   <SelectItem key={option.value} value={option.value}>
                     <div>
                       <span>{option.label}</span>
-                      <span className="text-xs text-gray-500 ml-2">- {option.description}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">- {option.description}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -1229,8 +1229,8 @@ export function StepCredentials({
 
           {/* Expiración (solo NO-OAuth y NO-PropertyLinking) */}
           {!isOAuthProvider && !isPropertyLinking && <div className="space-y-2">
-            <Label htmlFor="expires_at" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
+            <Label htmlFor="expires_at" className="flex flex-wrap items-center gap-2">
+              <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Fecha de expiración (opcional)
             </Label>
             <Input
@@ -1243,7 +1243,7 @@ export function StepCredentials({
               })}
               className="max-w-md"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Se notificará antes del vencimiento para renovar las credenciales
             </p>
           </div>}
@@ -1258,7 +1258,7 @@ export function StepCredentials({
               <h4 className="font-medium text-gray-900 dark:text-white">
                 Validar Conexión
               </h4>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Verifica que las credenciales sean correctas antes de guardar
               </p>
             </div>
@@ -1275,7 +1275,7 @@ export function StepCredentials({
           {validationResult && (
             <div
               className={cn(
-                'mt-4 p-3 rounded-lg flex items-center gap-2',
+                'mt-4 p-3 rounded-lg flex flex-wrap items-center gap-2',
                 validationResult.success
                   ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
                   : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
@@ -1296,8 +1296,8 @@ export function StepCredentials({
       {provider?.docs_url && (
         <Card className="bg-gray-50 dark:bg-gray-800/50">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Info className="h-5 w-5 text-gray-500" />
+            <div className="flex flex-wrap items-center gap-3">
+              <Info className="h-5 w-5 text-gray-500 dark:text-gray-400" />
               <div className="flex-1">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   ¿Necesitas ayuda para obtener las credenciales?
@@ -1307,7 +1307,7 @@ export function StepCredentials({
                 href={provider.docs_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex flex-wrap items-center gap-1"
               >
                 Ver documentación
                 <ExternalLink className="h-3 w-3" />

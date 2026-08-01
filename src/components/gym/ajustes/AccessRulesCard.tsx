@@ -16,8 +16,8 @@ export function AccessRulesCard({ settings, onChange }: AccessRulesCardProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-blue-600" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           <CardTitle className="text-lg">Reglas de Acceso</CardTitle>
         </div>
         <CardDescription>

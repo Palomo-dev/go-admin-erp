@@ -250,7 +250,7 @@ export function PassDialog({
                     variant="link"
                     size="sm"
                     onClick={() => setSelectedCustomer(null)}
-                    className="p-0 h-auto text-blue-600"
+                    className="p-0 h-auto text-blue-600 dark:text-blue-400"
                   >
                     Cambiar cliente
                   </Button>
@@ -291,7 +291,7 @@ export function PassDialog({
                         className="w-full p-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800 border-b last:border-b-0"
                       >
                         <p className="font-medium text-sm">{customer.full_name}</p>
-                        <p className="text-xs text-gray-500">{customer.email || customer.phone}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{customer.email || customer.phone}</p>
                       </button>
                     ))}
                   </div>
@@ -323,8 +323,8 @@ export function PassDialog({
                   className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-800 space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Car className="h-4 w-4 text-gray-500" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Car className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                       <span className="text-sm font-medium">Vehículo {index + 1}</span>
                       {vehicle.is_primary && (
                         <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded">
@@ -395,7 +395,7 @@ export function PassDialog({
                       variant="link"
                       size="sm"
                       onClick={() => updateVehicle(index, 'is_primary', true)}
-                      className="h-6 p-0 text-xs text-blue-600"
+                      className="h-6 p-0 text-xs text-blue-600 dark:text-blue-400"
                     >
                       Marcar como principal
                     </Button>

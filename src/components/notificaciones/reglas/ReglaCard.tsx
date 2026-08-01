@@ -67,14 +67,14 @@ export function ReglaCard({
       !rule.active && 'opacity-60',
     )}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <ShieldAlert className={cn('h-5 w-5 flex-shrink-0', colors.icon)} />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
             {rule.name}
           </h3>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
           <Badge className={cn('text-[10px] px-1.5 py-0', sevOption?.color)}>
             {sevOption?.label || rule.severity}
           </Badge>
@@ -94,7 +94,7 @@ export function ReglaCard({
 
       {/* Info */}
       <div className="space-y-2 mb-3">
-        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
           <span className="font-medium">Módulo:</span>
           <Badge variant="outline" className="text-[10px] px-1.5 py-0">{moduleLabel}</Badge>
         </div>
@@ -112,12 +112,12 @@ export function ReglaCard({
       </div>
 
       {/* Stats */}
-      <div className="flex items-center gap-4 mb-3 text-xs text-gray-500 dark:text-gray-400">
-        <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-4 mb-3 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-1">
           <Zap className="h-3 w-3" />
           <span>{rule.fire_count ?? 0} disparos</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <Clock className="h-3 w-3" />
           <span>{formatRelativeTime(rule.last_fired_at)}</span>
         </div>
@@ -125,7 +125,7 @@ export function ReglaCard({
 
       {/* Actions */}
       {isAdmin && (
-        <div className="flex items-center gap-1 pt-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex flex-wrap items-center gap-1 pt-2 border-t border-gray-200 dark:border-gray-700">
           <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 px-2 text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600">
             <Edit className="h-3.5 w-3.5 mr-1" />
             Editar
@@ -146,7 +146,7 @@ export function ReglaCard({
             size="sm"
             onClick={onToggle}
             disabled={isToggling}
-            className={cn('h-7 px-2 text-xs', rule.active ? 'text-amber-600 hover:text-amber-700' : 'text-green-600 hover:text-green-700')}
+            className={cn('h-7 px-2 text-xs', rule.active ? 'text-amber-600 dark:text-amber-400 hover:text-amber-700' : 'text-green-600 dark:text-green-400 hover:text-green-700')}
           >
             {isToggling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : rule.active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
           </Button>

@@ -114,12 +114,12 @@ export function PlanesTable({
 
                 {/* Vehículos */}
                 <TableCell>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {plan.allowed_vehicle_types?.map((type) => (
                       <Badge
                         key={type}
                         variant="secondary"
-                        className="flex items-center gap-1 text-xs"
+                        className="flex flex-wrap items-center gap-1 text-xs"
                       >
                         {VEHICLE_TYPE_ICONS[type]}
                         {VEHICLE_TYPE_LABELS[type]}
@@ -130,7 +130,7 @@ export function PlanesTable({
 
                 {/* Beneficios */}
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {plan.includes_car_wash && (
                       <Badge className="bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 text-xs">
                         <Sparkles className="h-3 w-3 mr-1" />
@@ -153,8 +153,8 @@ export function PlanesTable({
 
                 {/* Suscriptores */}
                 <TableCell>
-                  <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                    <Users className="h-4 w-4 text-gray-400" />
+                  <div className="flex flex-wrap items-center gap-1.5 text-gray-700 dark:text-gray-300">
+                    <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span>{subscribers}</span>
                   </div>
                 </TableCell>

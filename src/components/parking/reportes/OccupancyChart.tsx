@@ -20,7 +20,7 @@ export function OccupancyChart({ data, isLoading }: OccupancyChartProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
           <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Ocupación por Hora
         </CardTitle>
@@ -28,10 +28,10 @@ export function OccupancyChart({ data, isLoading }: OccupancyChartProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-64 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400">Cargando...</div>
+            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
           </div>
         ) : (
-          <div className="h-64 flex items-end gap-1">
+          <div className="h-64 flex flex-wrap items-end gap-1">
             {data.map((item) => {
               const height = (item.sessions / maxSessions) * 100;
               const isHighTraffic = item.sessions > maxSessions * 0.7;
@@ -72,16 +72,16 @@ export function OccupancyChart({ data, isLoading }: OccupancyChartProps) {
         )}
 
         {/* Leyenda */}
-        <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-500 dark:text-gray-400">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-blue-600 dark:bg-blue-500" />
             <span>Alto tráfico</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-blue-400 dark:bg-blue-600" />
             <span>Medio</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-blue-200 dark:bg-blue-800" />
             <span>Bajo</span>
           </div>

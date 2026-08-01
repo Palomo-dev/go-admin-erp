@@ -93,9 +93,9 @@ export function ExportCard({
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
       <div className="p-4">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           {/* Icono y contenido */}
-          <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="flex flex-wrap items-start gap-3 min-w-0 flex-1">
             <div className={cn(
               'p-2 rounded-lg',
               exportItem.format === 'csv' 
@@ -111,7 +111,7 @@ export function ExportCard({
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h3 className="font-medium text-gray-900 dark:text-white truncate">
                   {exportItem.name}
                 </h3>
@@ -128,7 +128,7 @@ export function ExportCard({
               )}
 
               <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                <span className="flex items-center gap-1">
+                <span className="flex flex-wrap items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {formatDistanceToNow(new Date(exportItem.created_at), { addSuffix: true, locale: es })}
                 </span>

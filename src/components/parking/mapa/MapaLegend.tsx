@@ -36,7 +36,7 @@ export function MapaLegend() {
         </p>
         <div className="flex flex-wrap gap-3">
           {items.map((item) => (
-            <div key={item.label} className="flex items-center gap-2">
+            <div key={item.label} className="flex flex-wrap items-center gap-2">
               <div className={`w-4 h-4 rounded ${item.color}`} />
               <item.icon className="h-3 w-3 text-gray-500 dark:text-gray-400" />
               <span className="text-xs text-gray-600 dark:text-gray-300">{item.label}</span>

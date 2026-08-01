@@ -316,9 +316,9 @@ export default function ClasesPage() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Calendar className="h-5 w-5 text-blue-600" />
+                <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.todayClasses}</p>
@@ -330,9 +330,9 @@ export default function ClasesPage() {
         
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Clock className="h-5 w-5 text-green-600" />
+                <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.scheduled}</p>
@@ -344,9 +344,9 @@ export default function ClasesPage() {
         
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-yellow-600" />
+                <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.inProgress}</p>
@@ -358,7 +358,7 @@ export default function ClasesPage() {
         
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
                 <CheckCircle2 className="h-5 w-5 text-gray-600 dark:text-gray-400" />
               </div>
@@ -372,9 +372,9 @@ export default function ClasesPage() {
         
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <XCircle className="h-5 w-5 text-red-600" />
+                <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.cancelled}</p>
@@ -386,9 +386,9 @@ export default function ClasesPage() {
         
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <Users className="h-5 w-5 text-purple-600" />
+                <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalCapacity}</p>
@@ -418,7 +418,7 @@ export default function ClasesPage() {
 
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
       ) : viewMode === 'calendar' ? (
         <ClassCalendarView
@@ -432,7 +432,7 @@ export default function ClasesPage() {
       ) : filteredClasses.length === 0 ? (
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+            <Calendar className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
             <p className="text-gray-600 dark:text-gray-400 text-center">
               {searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
                 ? 'No se encontraron clases con los filtros aplicados'

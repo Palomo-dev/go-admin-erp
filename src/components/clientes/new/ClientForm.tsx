@@ -669,7 +669,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   if (loadingData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando datos del cliente...</p>
       </div>
     );
@@ -706,7 +706,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
               className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               onClick={() => toggleSection('personal')}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
                   <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
@@ -715,13 +715,13 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <p className="text-sm text-gray-500 dark:text-gray-400">Datos básicos de identificación del cliente</p>
                 </div>
               </div>
-              <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", openSections.personal && "rotate-180")} />
+              <ChevronDown className={cn("h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform", openSections.personal && "rotate-180")} />
             </div>
             {openSections.personal && (
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mt-2">
               <CardContent className="space-y-6 pt-6">
                 {/* Avatar upload */}
-                <div className="flex items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex flex-wrap items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                   <div className="relative group cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
                     <UserAvatar
                       name={customerType === 'company' ? (formData.companyName || 'Nueva Empresa') : `${formData.firstName} ${formData.lastName}`.trim() || 'Nuevo Cliente'}
@@ -754,14 +754,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
 
                 {/* Tipo de cliente */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <Users className="h-4 w-4 text-gray-400" />
+                  <Label className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     Tipo de Cliente
                   </Label>
                   <div className="grid grid-cols-2 gap-3 max-w-md">
                     <div
                       className={cn(
-                        "flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
+                        "flex flex-wrap items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
                         customerType === 'person'
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
                           : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
@@ -773,7 +773,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                     </div>
                     <div
                       className={cn(
-                        "flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
+                        "flex flex-wrap items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
                         customerType === 'company'
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
                           : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
@@ -790,8 +790,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 {customerType === 'company' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="companyName" className="text-sm font-medium flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-gray-400" />
+                      <Label htmlFor="companyName" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                        <Building2 className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                         Razón Social <span className="text-red-500">*</span>
                       </Label>
                       <Input 
@@ -823,7 +823,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 {customerType === 'person' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm font-medium flex items-center gap-1">
+                    <Label htmlFor="firstName" className="text-sm font-medium flex flex-wrap items-center gap-1">
                       Nombre <span className="text-red-500">*</span>
                     </Label>
                     <Input 
@@ -838,7 +838,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium flex items-center gap-1">
+                    <Label htmlFor="lastName" className="text-sm font-medium flex flex-wrap items-center gap-1">
                       Apellido <span className="text-red-500">*</span>
                     </Label>
                     <Input 
@@ -857,8 +857,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 {/* Empresa padre (solo para personas) */}
                 {customerType === 'person' && companies.length > 0 && (
                   <div className="space-y-2">
-                    <Label htmlFor="parentCustomer" className="text-sm font-medium flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-gray-400" />
+                    <Label htmlFor="parentCustomer" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                      <Building2 className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       Empresa a la que pertenece (opcional)
                     </Label>
                     <select
@@ -879,8 +879,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 {/* Documento */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="documentType" className="text-sm font-medium flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-gray-400" />
+                    <Label htmlFor="documentType" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       Tipo de Documento
                     </Label>
                     <select
@@ -934,7 +934,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
               className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               onClick={() => toggleSection('classification')}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
                   <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -943,15 +943,15 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <p className="text-sm text-gray-500 dark:text-gray-400">Roles y responsabilidades fiscales del cliente</p>
                 </div>
               </div>
-              <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", openSections.classification && "rotate-180")} />
+              <ChevronDown className={cn("h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform", openSections.classification && "rotate-180")} />
             </div>
             {openSections.classification && (
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mt-2">
               <CardContent className="space-y-6 pt-6">
                 {/* Roles */}
                 <div className="space-y-3 pt-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <Users className="h-4 w-4 text-gray-400" />
+                  <Label className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     Roles del Cliente
                   </Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
@@ -959,7 +959,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       <div 
                         key={role.code} 
                         className={cn(
-                          "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
+                          "flex flex-wrap items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
                           selectedRoles.includes(role.code)
                             ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                             : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
@@ -984,8 +984,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
 
                 {/* Responsabilidades Fiscales DIAN */}
                 <div className="space-y-3 pt-2">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-gray-400" />
+                  <Label className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     Responsabilidad Fiscal (DIAN)
                   </Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -993,7 +993,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       <div 
                         key={fiscal.code} 
                         className={cn(
-                          "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
+                          "flex flex-wrap items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all",
                           selectedFiscal.includes(fiscal.code)
                             ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                             : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
@@ -1033,7 +1033,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
               className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               onClick={() => toggleSection('contact')}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-green-100 dark:bg-green-900/40 rounded-lg">
                   <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
@@ -1042,7 +1042,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <p className="text-sm text-gray-500 dark:text-gray-400">Información para comunicarnos con el cliente</p>
                 </div>
               </div>
-              <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", openSections.contact && "rotate-180")} />
+              <ChevronDown className={cn("h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform", openSections.contact && "rotate-180")} />
             </div>
             {openSections.contact && (
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mt-2">
@@ -1050,8 +1050,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 {/* Email y Teléfono */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
+                    <Label htmlFor="email" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       Correo Electrónico
                     </Label>
                     <Input 
@@ -1066,8 +1066,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
+                    <Label htmlFor="phone" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       Teléfono
                     </Label>
                     <Input 
@@ -1083,8 +1083,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 
                 {/* Dirección */}
                 <div className="space-y-2">
-                  <Label htmlFor="address" className="text-sm font-medium flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-gray-400" />
+                  <Label htmlFor="address" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     Dirección
                   </Label>
                   <Input 
@@ -1099,8 +1099,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 
                 {/* Ubicación: País, Departamento, Municipio */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-gray-400" />
+                  <Label className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     Ubicación
                   </Label>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1145,7 +1145,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
               className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               onClick={() => toggleSection('additional')}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
                   <Tag className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -1154,15 +1154,15 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   <p className="text-sm text-gray-500 dark:text-gray-400">Etiquetas y notas para categorizar al cliente</p>
                 </div>
               </div>
-              <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", openSections.additional && "rotate-180")} />
+              <ChevronDown className={cn("h-5 w-5 text-gray-400 dark:text-gray-500 transition-transform", openSections.additional && "rotate-180")} />
             </div>
             {openSections.additional && (
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mt-2">
               <CardContent className="space-y-6 pt-6">
                 {/* Etiquetas */}
                 <div className="space-y-2">
-                  <Label htmlFor="tags" className="text-sm font-medium flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-gray-400" />
+                  <Label htmlFor="tags" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    <Tag className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     Etiquetas
                   </Label>
                   <Input 
@@ -1180,8 +1180,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                 
                 {/* Notas */}
                 <div className="space-y-2">
-                  <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-400" />
+                  <Label htmlFor="notes" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    <FileText className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     Notas Internas
                   </Label>
                   <Textarea 
@@ -1230,12 +1230,12 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   )}
                 >
                   {loading ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>{isEditMode ? 'Actualizando...' : 'Guardando...'}</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Save className="h-4 w-4" />
                       <span>{isEditMode ? 'Guardar Cambios' : 'Guardar Cliente'}</span>
                     </div>

@@ -171,7 +171,7 @@ export function ReservationsTable({
                 </TableCell>
                 
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                       <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
@@ -187,8 +187,8 @@ export function ReservationsTable({
                 </TableCell>
                 
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-400" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {formatDate(reservation.checkin)}
@@ -201,8 +201,8 @@ export function ReservationsTable({
                 </TableCell>
                 
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <DoorOpen className="h-4 w-4 text-gray-400" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DoorOpen className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {reservation.space_types.join(', ') || 'N/A'}
@@ -249,7 +249,7 @@ export function ReservationsTable({
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-full sm:w-48">
                       <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       

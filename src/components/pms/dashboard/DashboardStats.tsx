@@ -94,19 +94,19 @@ export function DashboardStats({
       <StatCard
         title="Llegadas Hoy"
         value={arrivalsToday}
-        icon={<LogIn className="h-5 w-5 text-green-600" />}
+        icon={<LogIn className="h-5 w-5 text-green-600 dark:text-green-400" />}
         color="bg-green-100 dark:bg-green-900/30"
       />
       <StatCard
         title="Salidas Hoy"
         value={departuresToday}
-        icon={<LogOut className="h-5 w-5 text-blue-600" />}
+        icon={<LogOut className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
         color="bg-blue-100 dark:bg-blue-900/30"
       />
       <StatCard
         title="Ocupación"
         value={`${occupancy}%`}
-        icon={<Percent className="h-5 w-5 text-purple-600" />}
+        icon={<Percent className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
         color="bg-purple-100 dark:bg-purple-900/30"
       />
       <StatCard
@@ -118,19 +118,19 @@ export function DashboardStats({
       <StatCard
         title="Limpieza"
         value={cleaning}
-        icon={<Sparkles className="h-5 w-5 text-yellow-600" />}
+        icon={<Sparkles className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />}
         color="bg-yellow-100 dark:bg-yellow-900/30"
       />
       <StatCard
         title="Mantenimiento"
         value={maintenance}
-        icon={<Wrench className="h-5 w-5 text-red-600" />}
+        icon={<Wrench className="h-5 w-5 text-red-600 dark:text-red-400" />}
         color="bg-red-100 dark:bg-red-900/30"
       />
       <StatCard
         title="Total Espacios"
         value={totalSpaces}
-        icon={<Building2 className="h-5 w-5 text-gray-600" />}
+        icon={<Building2 className="h-5 w-5 text-gray-600 dark:text-gray-400" />}
         color="bg-gray-100 dark:bg-gray-700"
       />
     </div>

@@ -286,7 +286,7 @@ export function ExitDialog({
               </span>
             </div>
             <div className="flex items-center justify-between pt-2 border-t">
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <div className="flex flex-wrap items-center gap-2 text-blue-600 dark:text-blue-400">
                 <Clock className="h-4 w-4" />
                 <span className="text-sm font-medium">Duración:</span>
               </div>
@@ -325,7 +325,7 @@ export function ExitDialog({
                   </SelectContent>
                 </Select>
                 {selectedRate && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {selectedRate.grace_period_min && 
                       `Tiempo de gracia: ${selectedRate.grace_period_min} minutos`
                     }
@@ -333,7 +333,7 @@ export function ExitDialog({
                 )}
               </>
             ) : (
-              <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg flex items-start gap-2">
+              <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg flex flex-wrap items-start gap-2">
                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium">No hay tarifas configuradas</p>
@@ -346,7 +346,7 @@ export function ExitDialog({
           {/* Monto calculado */}
           <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <span className="font-medium">Total a Pagar:</span>
               </div>

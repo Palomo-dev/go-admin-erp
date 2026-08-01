@@ -66,7 +66,7 @@ export function EventDetailHeader({
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         {/* Navegación */}
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-4 mb-4">
           <Button
             variant="ghost"
             size="sm"
@@ -118,18 +118,18 @@ export function EventDetailHeader({
 
             {/* Metadatos rápidos */}
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <Clock className="h-4 w-4" />
                 <span>{format(eventTime, "EEEE, d 'de' MMMM 'de' yyyy, HH:mm:ss", { locale: es })}</span>
               </div>
               
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <User className="h-4 w-4" />
                 <span>{actorName || (event.actor_id ? 'Usuario' : 'Sistema')}</span>
               </div>
 
               {(event.branch_id || branchName) && (
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <MapPin className="h-4 w-4" />
                   <span>{branchName || `Sucursal #${event.branch_id}`}</span>
                 </div>
@@ -138,7 +138,7 @@ export function EventDetailHeader({
           </div>
 
           {/* Event ID */}
-          <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 rounded-lg px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-gray-900 rounded-lg px-4 py-3">
             <div className="text-xs text-gray-500 dark:text-gray-400">Event ID</div>
             <code className="text-xs font-mono text-gray-700 dark:text-gray-300 max-w-[200px] truncate">
               {event.event_id}

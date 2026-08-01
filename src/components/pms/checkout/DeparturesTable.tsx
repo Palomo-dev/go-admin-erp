@@ -95,7 +95,7 @@ export function DeparturesTable({
               className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
             >
               <TableCell>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                     <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   </div>
@@ -112,20 +112,20 @@ export function DeparturesTable({
 
               <TableCell>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-400" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <User className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {departure.customer_name}
                     </span>
                   </div>
                   {departure.customer_email && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                       <Mail className="h-3 w-3" />
                       <span>{departure.customer_email}</span>
                     </div>
                   )}
                   {departure.customer_phone && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                       <Phone className="h-3 w-3" />
                       <span>{departure.customer_phone}</span>
                     </div>
@@ -138,9 +138,9 @@ export function DeparturesTable({
                   {departure.spaces.map((space, index) => (
                     <div
                       key={space.id}
-                      className="flex items-center gap-2 text-sm"
+                      className="flex flex-wrap items-center gap-2 text-sm"
                     >
-                      <DoorOpen className="h-4 w-4 text-gray-400" />
+                      <DoorOpen className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <span className="font-medium text-gray-900 dark:text-gray-100">
                         {space.label}
                       </span>
@@ -154,15 +154,15 @@ export function DeparturesTable({
 
               <TableCell>
                 <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-gray-400" />
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span className="text-gray-500 dark:text-gray-400">Check-in:</span>
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {formatDate(departure.checkin)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-gray-400" />
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span className="text-gray-500 dark:text-gray-400">Check-out:</span>
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {formatDate(departure.checkout)}
@@ -174,8 +174,8 @@ export function DeparturesTable({
               <TableCell>
                 {departure.folio ? (
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-gray-400" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         Total:
                       </span>
@@ -183,8 +183,8 @@ export function DeparturesTable({
                         {formatCurrency(departure.folio.total_charges)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-gray-400" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         Saldo:
                       </span>

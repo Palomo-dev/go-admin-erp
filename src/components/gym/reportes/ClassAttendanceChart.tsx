@@ -21,8 +21,8 @@ export function ClassAttendanceChart({ data }: ClassAttendanceChartProps) {
     return (
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Users className="h-5 w-5 text-purple-600" />
+          <CardTitle className="text-lg flex flex-wrap items-center gap-2">
+            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             Asistencia por Tipo de Clase
           </CardTitle>
         </CardHeader>
@@ -40,8 +40,8 @@ export function ClassAttendanceChart({ data }: ClassAttendanceChartProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="h-5 w-5 text-purple-600" />
+            <CardTitle className="text-lg flex flex-wrap items-center gap-2">
+              <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               Asistencia por Tipo de Clase
             </CardTitle>
             <CardDescription>
@@ -49,8 +49,8 @@ export function ClassAttendanceChart({ data }: ClassAttendanceChartProps) {
             </CardDescription>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-purple-600">{stats.avgRate.toFixed(0)}%</p>
-            <p className="text-xs text-gray-500">Promedio</p>
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.avgRate.toFixed(0)}%</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Promedio</p>
           </div>
         </div>
       </CardHeader>
@@ -82,16 +82,16 @@ export function ClassAttendanceChart({ data }: ClassAttendanceChartProps) {
           ))}
         </div>
 
-        <div className="flex items-center justify-center gap-4 mt-6 text-xs">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-center gap-4 mt-6 text-xs">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-green-500 dark:bg-green-400" />
             <span className="text-gray-600 dark:text-gray-400">{'>'}80%</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-yellow-500 dark:bg-yellow-400" />
             <span className="text-gray-600 dark:text-gray-400">50-80%</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-red-500 dark:bg-red-400" />
             <span className="text-gray-600 dark:text-gray-400">{'<'}50%</span>
           </div>

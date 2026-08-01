@@ -109,7 +109,7 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
   return (
     <div className="bg-white dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4 space-y-3 sm:space-y-4">
       <div className="flex flex-row justify-between items-center">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">Filtros y opciones</h2>
           {hasActiveFilters && (
             <Badge variant="secondary" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">
@@ -157,10 +157,10 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
               <SelectGroup>
                 <SelectItem value="all_types" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">Todos los tipos</SelectItem>
                 <SelectItem value="person" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                  <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Persona</span>
+                  <span className="flex flex-wrap items-center gap-1.5"><User className="h-3.5 w-3.5" /> Persona</span>
                 </SelectItem>
                 <SelectItem value="company" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                  <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Empresa</span>
+                  <span className="flex flex-wrap items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Empresa</span>
                 </SelectItem>
               </SelectGroup>
             </SelectContent>

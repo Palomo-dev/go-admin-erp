@@ -318,17 +318,17 @@ export default function ChannelManagerPage() {
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {/* Skeleton Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Skeleton className="h-10 w-10 rounded-lg flex-shrink-0" />
               <div className="space-y-2">
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-4 w-64" />
+                <Skeleton className="h-6 w-full sm:w-48" />
+                <Skeleton className="h-4 w-full sm:w-64" />
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Skeleton className="h-8 w-24" />
-              <Skeleton className="h-8 w-28" />
-              <Skeleton className="h-8 w-36" />
+              <Skeleton className="h-8 w-full sm:w-28" />
+              <Skeleton className="h-8 w-full sm:w-36" />
             </div>
           </div>
 
@@ -344,13 +344,13 @@ export default function ChannelManagerPage() {
 
           {/* Skeleton List */}
           <div className="space-y-3">
-            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-5 w-full sm:w-40" />
             {[0, 1, 2].map(i => (
               <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-5 w-full sm:w-32" />
+                    <Skeleton className="h-4 w-full sm:w-48" />
                   </div>
                   <div className="flex gap-2">
                     <Skeleton className="h-8 w-20" />

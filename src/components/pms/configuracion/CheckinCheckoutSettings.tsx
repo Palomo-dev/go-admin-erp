@@ -17,8 +17,8 @@ export function CheckinCheckoutSettings({ settings, onChange }: CheckinCheckoutS
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <LogIn className="h-5 w-5 text-blue-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+          <LogIn className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Check-in / Check-out
         </CardTitle>
         <CardDescription>
@@ -28,7 +28,7 @@ export function CheckinCheckoutSettings({ settings, onChange }: CheckinCheckoutS
       <CardContent className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label className="flex items-center gap-2">
+            <Label className="flex flex-wrap items-center gap-2">
               <LogIn className="h-4 w-4" />
               Permitir early check-in
             </Label>
@@ -54,7 +54,7 @@ export function CheckinCheckoutSettings({ settings, onChange }: CheckinCheckoutS
               min="0"
               value={settings.earlyCheckinFee}
               onChange={(e) => onChange('earlyCheckinFee', parseFloat(e.target.value) || 0)}
-              className="w-32"
+              className="w-full sm:w-32"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Costo adicional (0 = gratis según disponibilidad)
@@ -64,7 +64,7 @@ export function CheckinCheckoutSettings({ settings, onChange }: CheckinCheckoutS
 
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label className="flex items-center gap-2">
+            <Label className="flex flex-wrap items-center gap-2">
               <LogOut className="h-4 w-4" />
               Permitir late check-out
             </Label>
@@ -90,7 +90,7 @@ export function CheckinCheckoutSettings({ settings, onChange }: CheckinCheckoutS
               min="0"
               value={settings.lateCheckoutFee}
               onChange={(e) => onChange('lateCheckoutFee', parseFloat(e.target.value) || 0)}
-              className="w-32"
+              className="w-full sm:w-32"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Costo adicional (0 = gratis según disponibilidad)

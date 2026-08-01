@@ -87,7 +87,7 @@ export function TimelineEventList({
                 <Skeleton className="h-4 w-3/4" />
                 <div className="flex gap-4">
                   <Skeleton className="h-3 w-24" />
-                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-3 w-full sm:w-32" />
                 </div>
               </div>
             </div>
@@ -101,7 +101,7 @@ export function TimelineEventList({
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-          <AlertCircle className="h-8 w-8 text-gray-400" />
+          <AlertCircle className="h-8 w-8 text-gray-400 dark:text-gray-500" />
         </div>
         <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
           No hay eventos

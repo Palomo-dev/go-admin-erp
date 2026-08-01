@@ -75,7 +75,7 @@ export function SpaceDetailHeader({
         {/* Breadcrumb */}
         <button
           onClick={() => router.push('/app/pms/espacios')}
-          className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
+          className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a Espacios
@@ -83,7 +83,7 @@ export function SpaceDetailHeader({
 
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 {space.label}
               </h1>
@@ -103,7 +103,7 @@ export function SpaceDetailHeader({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               onClick={onNewReservation}

@@ -206,10 +206,10 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
 
   return (
     <div className={`border-b ${c.bg} px-3 sm:px-4 py-2`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Icon className={`h-4 w-4 shrink-0 ${c.iconColor}`} />
-          <p className={`text-xs sm:text-sm font-medium ${c.text} truncate`}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-start gap-2 min-w-0">
+          <Icon className={`h-4 w-4 shrink-0 mt-0.5 ${c.iconColor}`} />
+          <p className={`text-xs sm:text-sm font-medium ${c.text} break-words min-w-0`}>
             {c.message}
             <span className={`font-normal ml-1 ${c.subtext}`}>
               — {c.detail}

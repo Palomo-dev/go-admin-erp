@@ -22,8 +22,8 @@ export function PeakHoursChart({ data }: PeakHoursChartProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-lg flex flex-wrap items-center gap-2">
+              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               Horas Pico
             </CardTitle>
             <CardDescription>
@@ -32,14 +32,14 @@ export function PeakHoursChart({ data }: PeakHoursChartProps) {
           </div>
           {peakHour && peakHour.checkins > 0 && (
             <div className="text-right">
-              <p className="text-2xl font-bold text-blue-600">{peakHour.hour}:00</p>
-              <p className="text-xs text-gray-500">Hora pico</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{peakHour.hour}:00</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Hora pico</p>
             </div>
           )}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-end justify-between h-40 gap-1">
+        <div className="flex flex-wrap items-end justify-between h-40 gap-1">
           {data.map((item) => {
             const height = maxCheckins > 0 ? (item.checkins / maxCheckins) * 100 : 0;
             const isHighTraffic = height > 60;
@@ -68,16 +68,16 @@ export function PeakHoursChart({ data }: PeakHoursChartProps) {
           })}
         </div>
 
-        <div className="flex items-center justify-center gap-4 mt-4 text-xs">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-xs">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-red-500 dark:bg-red-400" />
             <span className="text-gray-600 dark:text-gray-400">Alto</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-yellow-500 dark:bg-yellow-400" />
             <span className="text-gray-600 dark:text-gray-400">Medio</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="w-3 h-3 rounded bg-blue-500 dark:bg-blue-400" />
             <span className="text-gray-600 dark:text-gray-400">Bajo</span>
           </div>

@@ -77,19 +77,19 @@ export function GroupsStats({
       <StatCard
         title="Total Grupos"
         value={totalGroups}
-        icon={<Users className="h-5 w-5 text-blue-600" />}
+        icon={<Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
         color="bg-blue-100 dark:bg-blue-900/30"
       />
       <StatCard
         title="Grupos Activos"
         value={activeGroups}
-        icon={<UserCheck className="h-5 w-5 text-green-600" />}
+        icon={<UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />}
         color="bg-green-100 dark:bg-green-900/30"
       />
       <StatCard
         title="Room Nights"
         value={totalRoomNights}
-        icon={<Moon className="h-5 w-5 text-purple-600" />}
+        icon={<Moon className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
         color="bg-purple-100 dark:bg-purple-900/30"
       />
       <StatCard

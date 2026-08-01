@@ -69,7 +69,7 @@ export function CorrelationHeader({
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         {/* Navegación */}
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-4 mb-4">
           <Button
             variant="ghost"
             size="sm"
@@ -83,7 +83,7 @@ export function CorrelationHeader({
 
         {/* Contenido principal */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div className="flex items-start gap-4">
+          <div className="flex flex-wrap items-start gap-4">
             {/* Icono */}
             <div className="p-3 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
               <Link2 className="h-8 w-8 text-cyan-600 dark:text-cyan-400" />
@@ -101,7 +101,7 @@ export function CorrelationHeader({
               </h1>
 
               {/* Correlation ID */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <code className="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded text-gray-700 dark:text-gray-300">
                   {correlationId}
                 </code>
@@ -136,7 +136,7 @@ export function CorrelationHeader({
                 </span>
                 
                 {duration && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Clock className="h-4 w-4" />
                     <span>Duración: {duration}</span>
                   </div>
@@ -152,7 +152,7 @@ export function CorrelationHeader({
           </div>
 
           {/* Acciones */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

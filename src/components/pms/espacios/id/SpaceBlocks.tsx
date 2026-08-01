@@ -50,7 +50,7 @@ export function SpaceBlocks({ blocks, isLoading }: SpaceBlocksProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <Ban className="h-5 w-5" />
             Bloqueos
           </CardTitle>
@@ -69,7 +69,7 @@ export function SpaceBlocks({ blocks, isLoading }: SpaceBlocksProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <Ban className="h-5 w-5" />
           Bloqueos
           {blocks.length > 0 && (
@@ -102,7 +102,7 @@ export function SpaceBlocks({ blocks, isLoading }: SpaceBlocksProps) {
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <Badge className={config.color} variant="secondary">
                         {config.label}
                       </Badge>
@@ -112,7 +112,7 @@ export function SpaceBlocks({ blocks, isLoading }: SpaceBlocksProps) {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                       <Calendar className="h-3 w-3" />
                       <span>
                         {format(parseISO(block.date_from), 'dd MMM', { locale: es })} -{' '}

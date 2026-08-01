@@ -80,7 +80,7 @@ export function ConnectionsFilters({
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Búsqueda */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar conexiones..."
             value={filters.search}
@@ -225,7 +225,7 @@ export function ConnectionsFilters({
 
       {/* Indicador de filtros activos */}
       {hasActiveFilters && (
-        <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
           <Filter className="h-4 w-4" />
           <span>Filtros activos</span>
         </div>

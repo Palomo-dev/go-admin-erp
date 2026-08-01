@@ -330,8 +330,8 @@ export function CheckinDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-blue-600" />
+          <DialogTitle className="text-2xl flex flex-wrap items-center gap-2">
+            <CheckCircle2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             Realizar Check-in
           </DialogTitle>
           <DialogDescription>
@@ -386,8 +386,8 @@ export function CheckinDialog({
               Información del Huésped
             </h3>
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-3">
-              <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-gray-400" />
+              <div className="flex flex-wrap items-center gap-3">
+                <User className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Nombre
@@ -397,8 +397,8 @@ export function CheckinDialog({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-gray-400" />
+              <div className="flex flex-wrap items-center gap-3">
+                <Mail className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Email
@@ -409,8 +409,8 @@ export function CheckinDialog({
                 </div>
               </div>
               {reservation.customer_phone && (
-                <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-gray-400" />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Phone className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Teléfono
@@ -431,8 +431,8 @@ export function CheckinDialog({
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="h-4 w-4 text-gray-400" />
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Check-in
                   </p>
@@ -442,8 +442,8 @@ export function CheckinDialog({
                 </p>
               </div>
               <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="h-4 w-4 text-gray-400" />
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Check-out
                   </p>
@@ -455,8 +455,8 @@ export function CheckinDialog({
             </div>
 
             <div className="mt-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <DoorOpen className="h-4 w-4 text-gray-400" />
+              <div className="flex flex-wrap items-center gap-2">
+                <DoorOpen className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Espacios Asignados:
                 </p>
@@ -507,7 +507,7 @@ export function CheckinDialog({
 
           {/* Datos del Documento */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
               <IdCard className="h-5 w-5" />
               Datos del Documento
             </h3>
@@ -544,7 +544,7 @@ export function CheckinDialog({
 
           {/* Procedencia y Destino */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
               <Globe className="h-5 w-5" />
               Procedencia y Destino
             </h3>
@@ -651,7 +651,7 @@ export function CheckinDialog({
 
           {/* Firma Electrónica */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
               <PenTool className="h-5 w-5" />
               Firma del Huésped
             </h3>
@@ -659,7 +659,7 @@ export function CheckinDialog({
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Por favor firme en el recuadro a continuación
               </p>
-              <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white">
+              <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
                 <canvas
                   ref={canvasRef}
                   width={600}
@@ -690,7 +690,7 @@ export function CheckinDialog({
 
           {/* Depósito de Seguridad */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
               <CreditCard className="h-5 w-5" />
               Depósito de Seguridad (Opcional)
             </h3>
@@ -747,7 +747,7 @@ export function CheckinDialog({
 
           {/* Notas */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
               <FileText className="h-5 w-5" />
               Notas del Check-in (Opcional)
             </h3>

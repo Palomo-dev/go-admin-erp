@@ -14,7 +14,7 @@ export function NotificacionesHeader({ onRefresh, isRefreshing }: Notificaciones
     <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
       <div className="px-4 sm:px-6 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
               <Bell className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
@@ -27,7 +27,7 @@ export function NotificacionesHeader({ onRefresh, isRefreshing }: Notificaciones
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"

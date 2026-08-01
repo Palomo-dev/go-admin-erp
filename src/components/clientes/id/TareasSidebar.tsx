@@ -242,7 +242,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
               key={tarea.id} 
               className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
             >
-              <div className="flex items-start gap-2">
+              <div className="flex flex-wrap items-start gap-2">
                 <div className="mt-0.5 text-gray-500 dark:text-gray-400">
                   {getStatusIcon(tarea.status)}
                 </div>
@@ -312,7 +312,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
               key={tarea.id} 
               className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition opacity-75"
             >
-              <div className="flex items-start gap-2">
+              <div className="flex flex-wrap items-start gap-2">
                 <div className="mt-0.5 text-gray-500 dark:text-gray-400">
                   {getStatusIcon(tarea.status)}
                 </div>

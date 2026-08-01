@@ -34,26 +34,26 @@ export function HourlyChart({ data }: HourlyChartProps) {
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-blue-600" />
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Horas Pico
           </CardTitle>
           {peakHour && peakHour.entries > 0 && (
             <div className="text-right">
               <p className="text-sm text-gray-500 dark:text-gray-400">Hora pico</p>
-              <p className="font-semibold text-blue-600">{formatHour(peakHour.hour)}</p>
+              <p className="font-semibold text-blue-600 dark:text-blue-400">{formatHour(peakHour.hour)}</p>
             </div>
           )}
         </div>
       </CardHeader>
       <CardContent>
         {/* Leyenda */}
-        <div className="flex items-center gap-4 mb-4 text-sm">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="w-3 h-3 rounded bg-blue-500"></div>
             <span className="text-gray-600 dark:text-gray-400">Entradas</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="w-3 h-3 rounded bg-green-500"></div>
             <span className="text-gray-600 dark:text-gray-400">Salidas</span>
           </div>
@@ -62,7 +62,7 @@ export function HourlyChart({ data }: HourlyChartProps) {
         {/* Gráfico de barras simple */}
         <div className="space-y-2">
           {relevantHours.map((hourData) => (
-            <div key={hourData.hour} className="flex items-center gap-2">
+            <div key={hourData.hour} className="flex flex-wrap items-center gap-2">
               <span className="w-12 text-xs text-gray-500 dark:text-gray-400 text-right">
                 {formatHour(hourData.hour)}
               </span>
@@ -87,7 +87,7 @@ export function HourlyChart({ data }: HourlyChartProps) {
               </div>
               <div className="w-16 flex gap-1 text-xs">
                 <span className="text-blue-600 dark:text-blue-400 w-7 text-right">{hourData.entries}</span>
-                <span className="text-gray-400">/</span>
+                <span className="text-gray-400 dark:text-gray-500">/</span>
                 <span className="text-green-600 dark:text-green-400 w-7">{hourData.exits}</span>
               </div>
             </div>

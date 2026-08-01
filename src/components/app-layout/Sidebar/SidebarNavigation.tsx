@@ -516,28 +516,35 @@ const SidebarNavigationComponent = ({
           })
           .map(item => {
             // Filtrar submenu basado en páginas activas y acceso del cargo
-            if ((item as any).submenu && (item as any).moduleCode && activeModulePages) {
-              const activePages = activeModulePages[(item as any).moduleCode];
-              if (activePages !== undefined) {
-                let filteredSubmenu = (item as any).submenu.filter((sub: any) => activePages.includes(sub.href));
-                // Filtrar también por acceso del cargo a páginas
-                if (jobPositionVisiblePages !== null && jobPositionVisiblePages !== undefined) {
-                  filteredSubmenu = filteredSubmenu.filter((sub: any) => jobPositionVisiblePages.includes(sub.href));
+            if ((item as any).submenu && (item as any).moduleCode) {
+              let filteredSubmenu = (item as any).submenu;
+
+              // Filtrar por páginas activas de la organización
+              if (activeModulePages) {
+                const activePages = activeModulePages[(item as any).moduleCode];
+                if (activePages !== undefined) {
+                  filteredSubmenu = filteredSubmenu.filter((sub: any) => activePages.includes(sub.href));
                 }
-                // Si solo queda 1 página activa, convertir en link directo sin submenu
-                if (filteredSubmenu.length === 1) {
-                  const singlePage = filteredSubmenu[0];
-                  return {
-                    ...item,
-                    href: singlePage.href,
-                    submenu: undefined,
-                  };
-                }
+              }
+
+              // Filtrar por acceso del cargo a páginas (siempre aplicar)
+              if (jobPositionVisiblePages !== null && jobPositionVisiblePages !== undefined) {
+                filteredSubmenu = filteredSubmenu.filter((sub: any) => jobPositionVisiblePages.includes(sub.href));
+              }
+
+              // Si solo queda 1 página activa, convertir en link directo sin submenu
+              if (filteredSubmenu.length === 1) {
+                const singlePage = filteredSubmenu[0];
                 return {
                   ...item,
-                  submenu: filteredSubmenu
+                  href: singlePage.href,
+                  submenu: undefined,
                 };
               }
+              return {
+                ...item,
+                submenu: filteredSubmenu
+              };
             }
             return item;
           })

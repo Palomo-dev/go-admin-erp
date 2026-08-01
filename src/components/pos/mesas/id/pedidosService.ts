@@ -1191,13 +1191,6 @@ export class PedidosService {
             ? data.commission_rate
             : Math.round(baseAmount * data.commission_rate / 100 * 100) / 100;
 
-          // Setear app.current_org_id para que la RLS de commissions permita el insert
-          await supabase.rpc('set_config', {
-            setting_name: 'app.current_org_id',
-            new_value: String(saleData.organization_id),
-            is_local: false
-          });
-
           const { error: commissionInsertError } = await supabase
             .from('commissions')
             .insert({

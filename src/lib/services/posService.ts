@@ -1230,13 +1230,6 @@ export class POSService {
             salespersonName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'N/A';
           }
 
-          // Setear app.current_org_id para que la RLS de commissions permita el insert
-          await supabase.rpc('set_config', {
-            setting_name: 'app.current_org_id',
-            new_value: String(cart.organization_id),
-            is_local: false
-          });
-
           const { error: commissionInsertError } = await supabase
             .from('commissions')
             .insert({

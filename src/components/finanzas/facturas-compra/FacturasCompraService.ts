@@ -356,13 +356,6 @@ export class FacturasCompraService {
           const baseAmount = subtotal > 0 ? subtotal : total;
           const commissionAmount = (formData as any).commission_amount || 0;
 
-          // Setear app.current_org_id para que la RLS de commissions permita el insert
-          await supabase.rpc('set_config', {
-            setting_name: 'app.current_org_id',
-            new_value: String(this.organizationId),
-            is_local: false
-          });
-
           const { error: commissionInsertError } = await supabase
             .from('commissions')
             .insert({

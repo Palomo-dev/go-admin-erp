@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -1206,8 +1207,13 @@ function CategorySelectorEditor({
 
   if (loading) {
     return (
-      <div className="pt-2 border-t border-gray-200 dark:border-gray-700/50">
-        <p className="text-[10px] text-gray-400 text-center py-2 dark:text-gray-500">Cargando categorías...</p>
+      <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+        <Skeleton className="h-4 w-40" />
+        <div className="space-y-1">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-8 w-full rounded" />
+          ))}
+        </div>
       </div>
     );
   }

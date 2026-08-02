@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -99,14 +100,7 @@ export function TripsList({
   };
 
   if (isLoading) {
-    return (
-      <Card className="p-4 sm:p-8">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
-          <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando viajes...</span>
-        </div>
-      </Card>
-    );
+    return <TableSkeleton rows={5} columns={7} />;
   }
 
   if (trips.length === 0) {

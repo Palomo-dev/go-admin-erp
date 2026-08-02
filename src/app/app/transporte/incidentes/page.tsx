@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -517,12 +518,19 @@ export default function IncidentesPage() {
 
       {/* Lista de incidentes */}
       {isLoading ? (
-        <Card className="p-4 sm:p-8">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-orange-600 dark:text-orange-300" />
-            <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando incidentes...</span>
-          </div>
-        </Card>
+        <div className="grid gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="p-4 space-y-3">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-20 w-full" />
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : incidents.length === 0 ? (
         <Card className="p-4 sm:p-8 text-center">
           <AlertTriangle className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />

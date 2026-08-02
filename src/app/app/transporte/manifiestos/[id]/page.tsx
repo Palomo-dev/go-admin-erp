@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,6 @@ import {
 import {
   ClipboardList,
   ArrowLeft,
-  Loader2,
   Truck,
   Package,
   Calendar,
@@ -362,13 +362,8 @@ export default function ManifestDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6">
-        <Card className="p-4 sm:p-8">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
-            <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando manifiesto...</span>
-          </div>
-        </Card>
+      <div className="p-4 sm:p-6 space-y-4">
+        <DetailSkeleton />
       </div>
     );
   }

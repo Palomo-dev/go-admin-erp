@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,6 @@ import {
   Tag,
   DollarSign,
   AlertTriangle,
-  Loader2,
   FileCheck,
   RotateCcw,
   Clock,
@@ -368,9 +368,8 @@ export default function ShipmentDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
-        <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando envío...</span>
+      <div className="p-4 sm:p-6 space-y-4">
+        <DetailSkeleton />
       </div>
     );
   }

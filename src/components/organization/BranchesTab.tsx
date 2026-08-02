@@ -7,6 +7,8 @@ import { AssignManagerModal } from '@/components/branches/AssignManagerModal';
 import BranchesMap from '@/components/maps/BranchesMap';
 import BranchMapModal from '@/components/maps/BranchMapModal';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
+import { BranchesSkeleton } from './OrganizationSkeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { BRANCHES_UPDATED_EVENT } from '@/lib/context/BranchContext';
@@ -15,12 +17,7 @@ import { BRANCHES_UPDATED_EVENT } from '@/lib/context/BranchContext';
 const DynamicBranchesMap = dynamic(() => import('@/components/maps/BranchesMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-64 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center dark:bg-gray-900 dark:border-gray-700">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2 dark:border-blue-300"></div>
-        <p className="text-sm text-gray-600 dark:text-gray-300">Loading map...</p>
-      </div>
-    </div>
+    <Skeleton className="h-64 w-full rounded-lg" />
   )
 });
 
@@ -386,11 +383,8 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       {viewMode === 'map' ? (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-gray-800">
           {loading ? (
-            <div className="p-4 sm:p-8 flex justify-center items-center">
-              <div className="flex flex-col items-center">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-                <p className="mt-4 text-gray-600 dark:text-gray-300">{t('loadingBranches')}</p>
-              </div>
+            <div className="p-4 sm:p-6">
+              <BranchesSkeleton />
             </div>
           ) : error ? (
             <div className="p-4 sm:p-8 text-center">
@@ -426,11 +420,8 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
       ) : (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-gray-800">
           {loading ? (
-            <div className="p-4 sm:p-8 flex justify-center items-center">
-              <div className="flex flex-col items-center">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-                <p className="mt-4 text-gray-600 dark:text-gray-300">{t('loadingBranches')}</p>
-              </div>
+            <div className="p-4 sm:p-6">
+              <BranchesSkeleton />
             </div>
           ) : error ? (
             <div className="p-4 sm:p-8 text-center">

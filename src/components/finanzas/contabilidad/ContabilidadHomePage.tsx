@@ -278,7 +278,7 @@ export function ContabilidadHomePage() {
         </div>
       )}
 
-      {/* Resumen Folios PMS */
+      {/* Resumen Folios PMS */}
       {!isLoading && foliosResumen.totalFolios > 0 && (
         <Card className="dark:bg-gray-800 dark:border-gray-700 border-blue-200 dark:border-blue-800">
           <CardHeader className="pb-3">

@@ -1,4 +1,7 @@
 import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import { config } from './config';
 import { buildCashDrawerBuffer } from './printing/escposBuffer';
 import { sendRawToPrinter } from './transports/rawSpooler';
@@ -160,54 +163,76 @@ async function listUsbDevices(): Promise<UsbDevice[]> {
 }
 
 /**
+ * Ejecuta un script PowerShell escribiéndolo a un archivo temporal .ps1.
+ * Esto evita todos los problemas de escaping que ocurren cuando cmd.exe
+ * interpreta el comando antes de pasarlo a PowerShell.
+ */
+function runPowerShellScript(script: string): Promise<string> {
+  return new Promise((resolve) => {
+    const { exec } = require('child_process');
+    const tmpFile = path.join(os.tmpdir(), `go-admin-ps-${Date.now()}-${Math.random().toString(36).slice(2)}.ps1`);
+
+    try {
+      fs.writeFileSync(tmpFile, script, 'utf8');
+    } catch (writeErr: any) {
+      console.error('[discovery] Error escribiendo script temporal:', writeErr.message);
+      return resolve('');
+    }
+
+    const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`;
+    exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string) => {
+      try { fs.unlinkSync(tmpFile); } catch {}
+      if (err) {
+        console.error('[discovery] Error ejecutando PowerShell:', err.message);
+        return resolve('');
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+/**
  * Fallback Windows: enumera impresoras USB via Win32_PnPEntity.
  * Consulta dispositivos cuya clase PnP es 'Printer' o 'USB' y cuyo nombre
  * sugiere impresora térmica. Esto detecta impresoras que libusb no ve
  * porque usan el driver usbprint.sys del spooler de Windows.
  */
-function listWindowsUsbPrinters(): Promise<{ vendorId: string; productId: string; name: string }[]> {
-  return new Promise((resolve) => {
-    const { exec } = require('child_process');
-    const cmd =
-      'powershell -NoProfile -Command "' +
-      'Get-CimInstance Win32_PnPEntity | ' +
-      "Where-Object { `$_.DeviceID -like 'USB\\VID_*' } | " +
-      'Select-Object Name, DeviceID, Class | ConvertTo-Json -Compress"';
+async function listWindowsUsbPrinters(): Promise<{ vendorId: string; productId: string; name: string }[]> {
+  const script = `
+Get-CimInstance Win32_PnPEntity |
+  Where-Object { $_.DeviceID -like 'USB\\VID_*' } |
+  Select-Object Name, DeviceID, Class |
+  ConvertTo-Json -Compress
+`.trim();
 
-    exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string) => {
-      if (err) {
-        console.error('[discovery] Error ejecutando WMI USB query:', err.message);
-        return resolve([]);
-      }
-      try {
-        const raw = stdout.trim();
-        if (!raw) {
-          console.log('[discovery] WMI USB: respuesta vacía');
-          return resolve([]);
-        }
-        const parsed = JSON.parse(raw);
-        const list = Array.isArray(parsed) ? parsed : [parsed];
-        console.log(`[discovery] WMI USB: ${list.length} dispositivos USB encontrados`);
-        const result: { vendorId: string; productId: string; name: string }[] = [];
+  const stdout = await runPowerShellScript(script);
+  const raw = stdout.trim();
+  if (!raw) {
+    console.log('[discovery] WMI USB: respuesta vacía');
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    const list = Array.isArray(parsed) ? parsed : [parsed];
+    console.log(`[discovery] WMI USB: ${list.length} dispositivos USB encontrados`);
+    const result: { vendorId: string; productId: string; name: string }[] = [];
 
-        for (const entry of list) {
-          const match = /VID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})/.exec(entry?.DeviceID || '');
-          if (!match) continue;
-          const name = entry?.Name || `USB ${match[1]}:${match[2]}`;
-          console.log(`[discovery] WMI USB: ${name} (${entry?.Class || '?'}) ${match[1]}:${match[2]}`);
-          result.push({
-            vendorId: `0x${match[1].toLowerCase()}`,
-            productId: `0x${match[2].toLowerCase()}`,
-            name,
-          });
-        }
-        resolve(result);
-      } catch (parseErr: any) {
-        console.error('[discovery] Error parseando WMI USB:', parseErr.message);
-        resolve([]);
-      }
-    });
-  });
+    for (const entry of list) {
+      const match = /VID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})/.exec(entry?.DeviceID || '');
+      if (!match) continue;
+      const name = entry?.Name || `USB ${match[1]}:${match[2]}`;
+      console.log(`[discovery] WMI USB: ${name} (${entry?.Class || '?'}) ${match[1]}:${match[2]}`);
+      result.push({
+        vendorId: `0x${match[1].toLowerCase()}`,
+        productId: `0x${match[2].toLowerCase()}`,
+        name,
+      });
+    }
+    return result;
+  } catch (parseErr: any) {
+    console.error('[discovery] Error parseando WMI USB:', parseErr.message);
+    return [];
+  }
 }
 
 /**
@@ -215,33 +240,26 @@ function listWindowsUsbPrinters(): Promise<{ vendorId: string; productId: string
  * Muchas impresoras USB térmicas se instalan como impresora de Windows
  * en un puerto USB virtual y no aparecen como dispositivo USB raw.
  */
-function listUsbPortPrinters(): Promise<{ name: string; portName: string }[]> {
-  return new Promise((resolve) => {
-    const { exec } = require('child_process');
-    const cmd =
-      'powershell -NoProfile -Command "' +
-      'Get-CimInstance Win32_Printer | ' +
-      "Where-Object { `$_.PortName -match '^USB' } | " +
-      'Select-Object Name, PortName | ConvertTo-Json -Compress"';
+async function listUsbPortPrinters(): Promise<{ name: string; portName: string }[]> {
+  const script = `
+Get-CimInstance Win32_Printer |
+  Where-Object { $_.PortName -match '^USB' } |
+  Select-Object Name, PortName |
+  ConvertTo-Json -Compress
+`.trim();
 
-    exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string) => {
-      if (err) {
-        console.error('[discovery] Error listando impresoras en puerto USB:', err.message);
-        return resolve([]);
-      }
-      try {
-        const raw = stdout.trim();
-        if (!raw) return resolve([]);
-        const parsed = JSON.parse(raw);
-        const list = Array.isArray(parsed) ? parsed : [parsed];
-        console.log(`[discovery] Impresoras en puerto USB: ${list.length}`);
-        resolve(list.map((e: any) => ({ name: e?.Name || '', portName: e?.PortName || '' })));
-      } catch (parseErr: any) {
-        console.error('[discovery] Error parseando impresoras puerto USB:', parseErr.message);
-        resolve([]);
-      }
-    });
-  });
+  const stdout = await runPowerShellScript(script);
+  const raw = stdout.trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    const list = Array.isArray(parsed) ? parsed : [parsed];
+    console.log(`[discovery] Impresoras en puerto USB: ${list.length}`);
+    return list.map((e: any) => ({ name: e?.Name || '', portName: e?.PortName || '' }));
+  } catch (parseErr: any) {
+    console.error('[discovery] Error parseando impresoras puerto USB:', parseErr.message);
+    return [];
+  }
 }
 
 /**
@@ -252,62 +270,56 @@ function listUsbPortPrinters(): Promise<{ name: string; portName: string }[]> {
 async function listBluetoothPrinters(): Promise<BluetoothDevice[]> {
   if (process.platform !== 'win32') return [];
 
-  return new Promise((resolve) => {
-    const { exec } = require('child_process');
-    const cmd =
-      'powershell -NoProfile -Command "' +
-      'Get-PnpDevice | ' +
-      "Where-Object { (`$_.Class -eq 'Bluetooth' -or `$_.Class -eq 'Printer') -and `$_.Status -eq 'OK' } | " +
-      'Select-Object FriendlyName, DeviceID, Status, Class | ConvertTo-Json -Compress"';
+  const script = `
+Get-PnpDevice |
+  Where-Object { ($_.Class -eq 'Bluetooth' -or $_.Class -eq 'Printer') -and $_.Status -eq 'OK' } |
+  Select-Object FriendlyName, DeviceID, Status, Class |
+  ConvertTo-Json -Compress
+`.trim();
 
-    exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string) => {
-      if (err) {
-        console.error('[discovery] Error listando Bluetooth:', err.message);
-        return resolve([]);
-      }
-      try {
-        const raw = stdout.trim();
-        if (!raw) return resolve([]);
-        const parsed = JSON.parse(raw);
-        const list = Array.isArray(parsed) ? parsed : [parsed];
-        console.log(`[discovery] Bluetooth: ${list.length} dispositivos encontrados`);
-        const result: BluetoothDevice[] = [];
+  const stdout = await runPowerShellScript(script);
+  const raw = stdout.trim();
+  if (!raw) return [];
 
-        for (const entry of list) {
-          const name = entry?.FriendlyName || 'Dispositivo desconocido';
-          const deviceId = entry?.DeviceID || '';
-          const deviceClass = entry?.Class || '';
+  try {
+    const parsed = JSON.parse(raw);
+    const list = Array.isArray(parsed) ? parsed : [parsed];
+    console.log(`[discovery] Bluetooth: ${list.length} dispositivos encontrados`);
+    const result: BluetoothDevice[] = [];
 
-          const isBtDevice = deviceClass === 'Bluetooth' || /BTHENUM|BTHLE/i.test(deviceId);
-          if (!isBtDevice && deviceClass !== 'Printer') continue;
+    for (const entry of list) {
+      const name = entry?.FriendlyName || 'Dispositivo desconocido';
+      const deviceId = entry?.DeviceID || '';
+      const deviceClass = entry?.Class || '';
 
-          console.log(`[discovery] Bluetooth/Printer: ${name} (${deviceClass}) ${deviceId}`);
+      const isBtDevice = deviceClass === 'Bluetooth' || /BTHENUM|BTHLE/i.test(deviceId);
+      if (!isBtDevice && deviceClass !== 'Printer') continue;
 
-          // Extraer MAC del DeviceID
-          const macMatch = /Dev_([0-9A-Fa-f]{12})/.exec(deviceId);
-          const macAddress = macMatch
-            ? macMatch[1].replace(/(.{2})/g, '$1:').slice(0, -1).toUpperCase()
-            : '';
+      console.log(`[discovery] Bluetooth/Printer: ${name} (${deviceClass}) ${deviceId}`);
 
-          // Impresora si la clase es Printer o el nombre lo sugiere
-          const isPrinter = deviceClass === 'Printer' || /printer|impresora|pos|thermal|receipt|ticket|80|58|tsc|xprinter|epson|star/i.test(name);
+      // Extraer MAC del DeviceID
+      const macMatch = /Dev_([0-9A-Fa-f]{12})/.exec(deviceId);
+      const macAddress = macMatch
+        ? macMatch[1].replace(/(.{2})/g, '$1:').slice(0, -1).toUpperCase()
+        : '';
 
-          result.push({
-            name,
-            macAddress,
-            isPaired: true,
-            isPrinter,
-          });
-        }
+      // Impresora si la clase es Printer o el nombre lo sugiere
+      const isPrinter = deviceClass === 'Printer' || /printer|impresora|pos|thermal|receipt|ticket|80|58|tsc|xprinter|epson|star/i.test(name);
 
-        // Impresoras primero
-        resolve(result.sort((a, b) => Number(b.isPrinter) - Number(a.isPrinter)));
-      } catch (parseErr) {
-        console.error('[discovery] Error parseando Bluetooth:', parseErr);
-        resolve([]);
-      }
-    });
-  });
+      result.push({
+        name,
+        macAddress,
+        isPaired: true,
+        isPrinter,
+      });
+    }
+
+    // Impresoras primero
+    return result.sort((a, b) => Number(b.isPrinter) - Number(a.isPrinter));
+  } catch (parseErr) {
+    console.error('[discovery] Error parseando Bluetooth:', parseErr);
+    return [];
+  }
 }
 
 /**
@@ -320,34 +332,31 @@ async function listWindowsUsbNames(): Promise<Map<string, string>> {
   const names = new Map<string, string>();
   if (process.platform !== 'win32') return names;
 
-  return new Promise((resolve) => {
-    const { exec } = require('child_process');
-    const cmd =
-      'powershell -NoProfile -Command "Get-CimInstance Win32_PnPEntity | ' +
-      'Where-Object { $_.DeviceID -like \'USB\\VID_*\' } | ' +
-      'Select-Object Name, DeviceID | ConvertTo-Json -Compress"';
+  const script = `
+Get-CimInstance Win32_PnPEntity |
+  Where-Object { $_.DeviceID -like 'USB\\VID_*' } |
+  Select-Object Name, DeviceID |
+  ConvertTo-Json -Compress
+`.trim();
 
-    exec(cmd, { timeout: 15000, windowsHide: true }, (err: Error | null, stdout: string) => {
-      if (err) return resolve(names);
-      try {
-        const raw = stdout.trim();
-        if (!raw) return resolve(names);
-        const parsed = JSON.parse(raw);
-        const list = Array.isArray(parsed) ? parsed : [parsed];
+  const stdout = await runPowerShellScript(script);
+  const raw = stdout.trim();
+  if (!raw) return names;
+  try {
+    const parsed = JSON.parse(raw);
+    const list = Array.isArray(parsed) ? parsed : [parsed];
 
-        for (const entry of list) {
-          const match = /USB\\VID_([0-9A-F]{4})&PID_([0-9A-F]{4})/i.exec(entry?.DeviceID || '');
-          if (!match || !entry?.Name) continue;
-          const key = `0x${match[1].toLowerCase()}:0x${match[2].toLowerCase()}`;
-          if (!names.has(key)) names.set(key, entry.Name);
-        }
-      } catch {
-        // Sin nombres legibles la lista sigue siendo util: los IDs son lo
-        // imprescindible para configurar la impresora.
-      }
-      resolve(names);
-    });
-  });
+    for (const entry of list) {
+      const match = /USB\\VID_([0-9A-F]{4})&PID_([0-9A-F]{4})/i.exec(entry?.DeviceID || '');
+      if (!match || !entry?.Name) continue;
+      const key = `0x${match[1].toLowerCase()}:0x${match[2].toLowerCase()}`;
+      if (!names.has(key)) names.set(key, entry.Name);
+    }
+  } catch {
+    // Sin nombres legibles la lista sigue siendo util: los IDs son lo
+    // imprescindible para configurar la impresora.
+  }
+  return names;
 }
 
 /**
@@ -382,29 +391,22 @@ async function listSystemPrinters(): Promise<SystemPrinter[]> {
 /**
  * Fallback Windows: lista impresoras con PowerShell (no requiere módulos nativos).
  */
-function listWindowsPrinters(): Promise<SystemPrinter[]> {
-  return new Promise((resolve, reject) => {
-    const { exec } = require('child_process');
-    const cmd =
-      'powershell -NoProfile -Command "Get-CimInstance Win32_Printer | Select-Object Name, Default | ConvertTo-Json -Compress"';
-    exec(cmd, { timeout: 15000, windowsHide: true }, (err: Error | null, stdout: string) => {
-      if (err) return reject(err);
-      try {
-        const raw = stdout.trim();
-        if (!raw) return resolve([]);
-        const parsed = JSON.parse(raw);
-        const list = Array.isArray(parsed) ? parsed : [parsed];
-        resolve(
-          list.map((p: any) => ({
-            name: p.Name || 'Desconocida',
-            isDefault: Boolean(p.Default),
-          }))
-        );
-      } catch (parseErr) {
-        reject(parseErr);
-      }
-    });
-  });
+async function listWindowsPrinters(): Promise<SystemPrinter[]> {
+  const script = `
+Get-CimInstance Win32_Printer |
+  Select-Object Name, Default |
+  ConvertTo-Json -Compress
+`.trim();
+
+  const stdout = await runPowerShellScript(script);
+  const raw = stdout.trim();
+  if (!raw) return [];
+  const parsed = JSON.parse(raw);
+  const list = Array.isArray(parsed) ? parsed : [parsed];
+  return list.map((p: any) => ({
+    name: p.Name || 'Desconocida',
+    isDefault: Boolean(p.Default),
+  }));
 }
 
 /**
@@ -548,20 +550,18 @@ export function startDiscoveryServer(): http.Server {
 
     if (url === '/debug-usb') {
       try {
-        const { exec } = require('child_process');
-        const cmd =
-          'powershell -NoProfile -Command "' +
-          'Get-CimInstance Win32_PnPEntity | ' +
-          "Where-Object { `$_.DeviceID -like 'USB\\VID_*' } | " +
-          'Select-Object Name, DeviceID, Class, Status | ConvertTo-Json -Compress"';
-        exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string, stderr: string) => {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            error: err?.message || null,
-            stderr: stderr || null,
-            raw: stdout.trim() || null,
-          }));
-        });
+        const script = `
+Get-CimInstance Win32_PnPEntity |
+  Where-Object { $_.DeviceID -like 'USB\\VID_*' } |
+  Select-Object Name, DeviceID, Class, Status |
+  ConvertTo-Json -Compress
+`.trim();
+        const stdout = await runPowerShellScript(script);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: null,
+          raw: stdout.trim() || null,
+        }));
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));

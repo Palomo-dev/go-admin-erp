@@ -145,6 +145,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   loadWithOfflineFallback(loadUrl);
 
   mainWindow.once('ready-to-show', () => {
+    closeSplash();
     if (!wasOpenedHidden()) {
       mainWindow?.show();
     }

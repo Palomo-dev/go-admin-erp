@@ -109,7 +109,10 @@ export async function startAgent(
   // Guardar config para reconexión automática
   agentConfig = { refreshToken, organizationId, organizationName, branchIds, branchNames };
 
-  const { data, error } = await getClient().auth.refreshSession({ refresh_token: refreshToken });
+  const { data, error } = await Promise.race([
+    getClient().auth.refreshSession({ refresh_token: refreshToken }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout restaurando sesión')), 10000)),
+  ]);
   if (error || !data.session) {
     throw new Error('No se pudo restaurar la sesión con el refresh token');
   }

@@ -51,6 +51,8 @@ if (!gotLock) {
     // Splash screen mientras carga
     if (!wasOpenedHidden()) {
       createSplashWindow();
+      // Safety: cerrar splash después de 15 segundos sin importar qué
+      setTimeout(() => closeSplash(), 15000);
     }
 
     const mainWindow = createMainWindow();
@@ -63,7 +65,7 @@ if (!gotLock) {
       mainWindow.webContents.send('agent:autostarted');
     }
 
-    // Cerrar splash y mostrar ventana principal
+    // closeSplash ya se llamó en ready-to-show; esto es fallback
     closeSplash();
     if (!wasOpenedHidden()) {
       mainWindow.show();

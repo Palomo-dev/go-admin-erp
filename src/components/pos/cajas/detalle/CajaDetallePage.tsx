@@ -411,6 +411,12 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                       <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(summary.returns_total)}</span>
                     </div>
                   )}
+                  {summary && summary.folio_consumptions_total > 0 && (
+                    <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400">Consumos de Habitaciones</span>
+                      <span className="font-medium text-indigo-600 dark:text-indigo-400">{formatCurrency(summary.folio_consumptions_total)}</span>
+                    </div>
+                  )}
                   <Separator />
                   {showExpected ? (
                     <div className="flex justify-between py-2">

@@ -335,7 +335,7 @@ export default function MesaDetallePage() {
     return nuevaSesion;
   };
 
-  const handleAddProducts = async (productos: ProductToAdd[]) => {
+  const handleAddProducts = async (productos: ProductToAdd[], chargeType?: 'room_charge' | 'direct_payment') => {
     try {
       // Asegurar que exista sesión antes de agregar productos
       const sesionActual = await asegurarSesion();
@@ -344,9 +344,11 @@ export default function MesaDetallePage() {
       
       // 🔗 INTEGRACIÓN POS → PMS: Si hay folio asociado, agregar items también al folio
       if (selectedRoom?.folio_id) {
-        console.log('Sincronizando items con folio:', selectedRoom.folio_id);
+        console.log('Sincronizando items con folio:', selectedRoom.folio_id, 'chargeType:', chargeType);
         
         const FoliosService = (await import('@/lib/services/foliosService')).default;
+        const now = new Date().toISOString();
+        const isDirectPayment = chargeType === 'direct_payment';
         
         for (const producto of productos) {
           await FoliosService.addFolioItem({
@@ -355,6 +357,22 @@ export default function MesaDetallePage() {
             description: producto.product_name,
             amount: producto.unit_price * producto.quantity,
             created_by: organization?.user?.id,
+            payment_status: isDirectPayment ? 'paid' : 'pending',
+            charge_type: chargeType || 'room_charge',
+            paid_at: isDirectPayment ? now : null,
+            payment_method: isDirectPayment ? 'pos' : null,
+          });
+        }
+        
+        // Si es pago directo, registrar payment en payments
+        if (isDirectPayment) {
+          const totalAmount = productos.reduce((sum, p) => sum + p.unit_price * p.quantity, 0);
+          await FoliosService.addPayment({
+            source: 'folio',
+            source_id: selectedRoom.folio_id,
+            method: 'pos',
+            amount: totalAmount,
+            status: 'completed',
           });
         }
         
@@ -365,7 +383,9 @@ export default function MesaDetallePage() {
       toast({
         title: 'Productos agregados',
         description: selectedRoom?.folio_id 
-          ? 'Los productos se han añadido al pedido y al folio de la habitación'
+          ? chargeType === 'direct_payment'
+            ? 'Los productos se han añadido al pedido y pagados directamente'
+            : 'Los productos se han añadido al pedido y al folio de la habitación'
           : 'Los productos se han añadido al pedido',
       });
     } catch (error) {
@@ -449,14 +469,19 @@ export default function MesaDetallePage() {
         await FoliosService.deleteFolioItem(item.id, selectedRoom.folio_id);
       }
       
-      // 3. Agregar items actuales de la venta
+      // 3. Agregar items actuales de la venta (preservando payment_status y charge_type)
       for (const saleItem of session.sale_items) {
+        const existingItem = posItems.find(pi => pi.description === (saleItem.product?.name || 'Producto'));
         await FoliosService.addFolioItem({
           folio_id: selectedRoom.folio_id,
           source: 'pos',
           description: saleItem.product?.name || 'Producto',
           amount: Number(saleItem.total),
           created_by: organization?.user?.id,
+          payment_status: existingItem?.payment_status || 'pending',
+          charge_type: existingItem?.charge_type || 'room_charge',
+          paid_at: existingItem?.paid_at || null,
+          payment_method: existingItem?.payment_method || null,
         });
       }
       
@@ -1642,6 +1667,7 @@ export default function MesaDetallePage() {
         onOpenChange={setShowAddProduct}
         onAddProducts={handleAddProducts}
         comensales={session?.customers || 1}
+        selectedRoom={selectedRoom ? { space_label: selectedRoom.space_label, folio_id: selectedRoom.folio_id } : null}
       />
 
       <PreCuentaDialog

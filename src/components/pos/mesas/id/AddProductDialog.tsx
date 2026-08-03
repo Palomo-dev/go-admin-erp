@@ -41,11 +41,12 @@ interface Category {
 interface AddProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddProducts: (products: ProductToAdd[]) => Promise<void>;
+  onAddProducts: (products: ProductToAdd[], chargeType?: 'room_charge' | 'direct_payment') => Promise<void>;
   comensales?: number;
   title?: string;
   subtitle?: string;
   submitLabel?: string;
+  selectedRoom?: { space_label: string; folio_id?: string } | null;
 }
 
 export function AddProductDialog({
@@ -56,8 +57,10 @@ export function AddProductDialog({
   title = 'Agregar Productos',
   subtitle,
   submitLabel = 'Agregar al Pedido',
+  selectedRoom,
 }: AddProductDialogProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [chargeType, setChargeType] = useState<'room_charge' | 'direct_payment'>('room_charge');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
@@ -254,7 +257,7 @@ export function AddProductDialog({
     setIsSubmitting(true);
     try {
       const products = Array.from(cart.values());
-      await onAddProducts(products);
+      await onAddProducts(products, selectedRoom?.folio_id ? chargeType : undefined);
 
       // Resetear
       setCart(new Map());
@@ -650,6 +653,47 @@ export function AddProductDialog({
 
             {/* Footer con total y botones */}
             <div className="border-t bg-white dark:bg-gray-800 p-4 space-y-3 shrink-0">
+              {/* Toggle: Cargar a Habitación vs Pagar Ahora */}
+              {selectedRoom?.folio_id && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span>Habitación: <strong>{selectedRoom.space_label}</strong></span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setChargeType('room_charge')}
+                      className={cn(
+                        'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
+                        chargeType === 'room_charge'
+                          ? 'bg-amber-500 text-white border-amber-500'
+                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                      )}
+                    >
+                      <span className="flex items-center justify-center gap-1.5">
+                        <span className={cn('h-2 w-2 rounded-full', chargeType === 'room_charge' ? 'bg-white' : 'bg-amber-400')} />
+                        Cargar a Habitación
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChargeType('direct_payment')}
+                      className={cn(
+                        'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
+                        chargeType === 'direct_payment'
+                          ? 'bg-green-500 text-white border-green-500'
+                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                      )}
+                    >
+                      <span className="flex items-center justify-center gap-1.5">
+                        <span className={cn('h-2 w-2 rounded-full', chargeType === 'direct_payment' ? 'bg-white' : 'bg-green-400')} />
+                        Pagar Ahora
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Total:</span>
                 <span className="text-xl font-bold text-blue-600">

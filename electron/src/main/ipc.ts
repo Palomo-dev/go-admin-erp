@@ -59,6 +59,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('printing:list', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/printers`));
   ipcMain.handle('printing:discover', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/discover`));
   ipcMain.handle('printing:usb', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/usb`));
+  ipcMain.handle('printing:bluetooth', () => fetchLocalJson(`http://127.0.0.1:${DISCOVERY_PORT}/bluetooth`));
 
   ipcMain.handle('printing:print-raw', async (_e, printerId: string, payload: unknown) => {
     try {
@@ -80,6 +81,20 @@ export function registerIpcHandlers(): void {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('printing:open-cash-drawer', async (_e, printerName?: string) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:${DISCOVERY_PORT}/open-cash-drawer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerName }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();

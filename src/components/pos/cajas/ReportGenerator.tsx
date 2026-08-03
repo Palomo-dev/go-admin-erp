@@ -144,6 +144,7 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
       <tr><td>Egresos Manuales</td><td class="amount-right">-${formatCurrency(summary.cash_out)}</td></tr>
       ${summary.change_total > 0 ? `<tr><td>Vuelto Entregado</td><td class="amount-right">-${formatCurrency(summary.change_total)}</td></tr>` : ''}
       ${summary.returns_total > 0 ? `<tr><td>Devoluciones</td><td class="amount-right">-${formatCurrency(summary.returns_total)}</td></tr>` : ''}
+      ${summary.folio_consumptions_total > 0 ? `<tr><td>Consumos de Habitaciones</td><td class="amount-right">${formatCurrency(summary.folio_consumptions_total)}</td></tr>` : ''}
       <tr class="total-row"><td>EFECTIVO ESPERADO EN CAJA</td><td class="amount-right">${blindMode ? '***' : formatCurrency(summary.expected_amount)}</td></tr>
     </table>
     ${session.status === 'closed' && summary.counted_amount !== undefined && !blindMode ? `
@@ -281,6 +282,7 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
     ${line('Egresos', '-' + formatCurrency(summary.cash_out))}
     ${summary.change_total > 0 ? line('Vuelto', '-' + formatCurrency(summary.change_total)) : ''}
     ${summary.returns_total > 0 ? line('Devoluciones', '-' + formatCurrency(summary.returns_total)) : ''}
+    ${summary.folio_consumptions_total > 0 ? line('Consumos Habitaciones', formatCurrency(summary.folio_consumptions_total)) : ''}
     ${divider}
     ${line('ESPERADO', blindMode ? '***' : formatCurrency(summary.expected_amount))}
   </table>

@@ -66,7 +66,7 @@ class TapeChartService {
     endDate: string,
     branchId?: number
   ): Promise<TapeChartData> {
-    // Get spaces filtered by branch_id (not organization_id)
+    // Get spaces filtered by branch_id or by branches of the organization
     let spacesQuery = supabase
       .from('spaces')
       .select(`
@@ -83,6 +83,20 @@ class TapeChartService {
 
     if (branchId) {
       spacesQuery = spacesQuery.eq('branch_id', branchId);
+    } else {
+      // No branch selected: filter by all branches of the organization
+      const { data: branchesData } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', organizationId);
+      
+      const branchIds = (branchesData || []).map(b => b.id);
+      if (branchIds.length > 0) {
+        spacesQuery = spacesQuery.in('branch_id', branchIds);
+      } else {
+        // No branches found, return empty result
+        return { spaces: [], reservations: [], blocks: [] };
+      }
     }
 
     const { data: spacesData, error: spacesError } = await spacesQuery;
@@ -214,6 +228,19 @@ class TapeChartService {
 
     if (branchId) {
       spacesQuery = spacesQuery.eq('branch_id', branchId);
+    } else {
+      // No branch selected: filter by all branches of the organization
+      const { data: branchesData } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', organizationId);
+      
+      const branchIds = (branchesData || []).map(b => b.id);
+      if (branchIds.length > 0) {
+        spacesQuery = spacesQuery.in('branch_id', branchIds);
+      } else {
+        return [];
+      }
     }
 
     const { data: spacesData } = await spacesQuery;

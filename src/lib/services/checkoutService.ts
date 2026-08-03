@@ -130,7 +130,7 @@ class CheckoutService {
           // Obtener items del folio
           const { data: folioItems } = await supabase
             .from('folio_items')
-            .select('description, amount, source, created_at')
+            .select('description, amount, source, created_at, payment_status, charge_type')
             .eq('folio_id', folio.id)
             .order('created_at', { ascending: true });
 
@@ -345,14 +345,31 @@ class CheckoutService {
 
     const { data: folioItems } = await supabase
       .from('folio_items')
-      .select('id, description, amount, product_id, quantity, unit_price, source')
+      .select('id, description, amount, product_id, quantity, unit_price, source, payment_status, charge_type')
       .eq('folio_id', folioId)
       .order('created_at', { ascending: true });
 
     if (!folioItems || folioItems.length === 0) return;
 
-    const subtotal = folioItems.reduce((sum, item) => sum + Number(item.amount), 0);
+    // Filtrar: solo items room_charge y paid (los direct_payment ya tienen su propia venta en POS)
+    const saleableItems = folioItems.filter(
+      (item: any) => item.charge_type === 'room_charge' || (!item.charge_type && item.payment_status !== 'paid')
+    );
+
+    if (saleableItems.length === 0) return;
+
+    const subtotal = saleableItems.reduce((sum, item) => sum + Number(item.amount), 0);
     const branchId = reservation.branch_id || getCurrentBranchId();
+
+    // Obtener el balance real del folio
+    const { data: folioData } = await supabase
+      .from('folios')
+      .select('balance')
+      .eq('id', folioId)
+      .single();
+
+    const folioBalance = Number(folioData?.balance || 0);
+    const isPaid = folioBalance <= 0;
 
     // Crear la venta
     const { data: sale, error: saleError } = await supabase
@@ -366,9 +383,9 @@ class CheckoutService {
         tax_total: 0,
         discount_total: 0,
         total: subtotal,
-        balance: 0,
-        status: 'paid',
-        payment_status: 'paid',
+        balance: isPaid ? 0 : folioBalance,
+        status: isPaid ? 'paid' : 'partial',
+        payment_status: isPaid ? 'paid' : 'partial',
         notes: `Checkout reserva ${reservationId.slice(0, 8)}`,
         sale_date: new Date().toISOString(),
       })
@@ -380,8 +397,8 @@ class CheckoutService {
       return;
     }
 
-    // Crear sale_items desde folio_items
-    const saleItems = folioItems.map((item: any) => ({
+    // Crear sale_items solo desde los items vendibles
+    const saleItems = saleableItems.map((item: any) => ({
       sale_id: sale.id,
       product_id: item.product_id || null,
       quantity: Number(item.quantity) || 1,
@@ -406,8 +423,8 @@ class CheckoutService {
       .update({ sale_id: sale.id })
       .eq('id', folioId);
 
-    // Generar factura si se solicitó
-    if (generateInvoice) {
+    // Generar factura si se solicitó o si hay balance pendiente
+    if (generateInvoice || !isPaid) {
       try {
         const { data: invoiceCount } = await supabase
           .from('invoice_sales')
@@ -430,8 +447,8 @@ class CheckoutService {
             subtotal,
             tax_total: 0,
             total: subtotal,
-            balance: 0,
-            status: 'paid',
+            balance: isPaid ? 0 : folioBalance,
+            status: isPaid ? 'paid' : 'partial',
             payment_method: 'folio',
             document_type: 'invoice',
             created_by: userId || null,

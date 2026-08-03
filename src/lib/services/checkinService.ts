@@ -65,6 +65,7 @@ class CheckinService {
             id,
             label,
             floor_zone,
+            status,
             space_types (
               name
             )
@@ -124,14 +125,22 @@ class CheckinService {
 
       const spacesData = spaces.map((rs: any) => {
         const space = rs.spaces;
-        const housekeepingStatus = housekeepingMap[space?.id] || 'pending';
+        const spaceStatus = space?.status || 'available';
+        const housekeepingStatus = housekeepingMap[space?.id];
+
+        // Si hay tarea de housekeeping, usar su estado
+        // Si no hay tarea y el espacio está disponible, considerarlo listo
+        const isReady = housekeepingStatus
+          ? housekeepingStatus === 'done'
+          : spaceStatus === 'available';
+
         return {
           id: space?.id || '',
           label: space?.label || '',
           space_type_name: space?.space_types?.name || '',
           floor_zone: space?.floor_zone || '',
-          housekeeping_status: housekeepingStatus,
-          is_ready: housekeepingStatus === 'done',
+          housekeeping_status: housekeepingStatus || (spaceStatus === 'available' ? 'done' : 'pending'),
+          is_ready: isReady,
         };
       });
 
@@ -299,15 +308,6 @@ class CheckinService {
    * Crear folio para la reserva si no existe
    */
   private async createFolioIfNeeded(reservationId: string): Promise<void> {
-    // Obtener organization_id de la reserva para establecer el parámetro de sesión
-    const { data: reservation } = await supabase
-      .from('reservations')
-      .select('id, organization_id')
-      .eq('id', reservationId)
-      .single();
-
-    if (!reservation) return;
-
     // Verificar si ya existe un folio
     const { data: existingFolio } = await supabase
       .from('folios')
@@ -316,18 +316,6 @@ class CheckinService {
       .maybeSingle();
 
     if (existingFolio) return;
-
-    // Configurar el organization_id en el contexto de Supabase para RLS
-    // set_config(setting_name, new_value, is_local)
-    const { error: configError } = await supabase.rpc('set_config', {
-      setting_name: 'app.current_org_id',
-      new_value: reservation.organization_id.toString(),
-      is_local: false
-    });
-
-    if (configError) {
-      console.error('Error configurando organization_id para RLS:', configError);
-    }
 
     // Crear folio con solo los campos que existen en la tabla
     const { error } = await supabase.from('folios').insert([

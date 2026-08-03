@@ -63,6 +63,15 @@ export function FoliosList({ folios, onViewDetails }: FoliosListProps) {
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
+                  {folio.balance > 0 ? (
+                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                      Saldo Pendiente
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                      Sin Saldo
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Folio #{folio.id.slice(0, 8)}

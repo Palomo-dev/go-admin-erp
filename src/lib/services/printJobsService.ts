@@ -792,4 +792,32 @@ export class PrintJobsService {
 
     return { enqueued: rows.length };
   }
+
+  /**
+   * Encola la apertura del cajón de dinero en la(s) impresora(s)
+   * asignada(s) a la estación 'cashier'. El agente local recibe el job
+   * y envía el comando ESC/POS de apertura (ESC p m t1 t2).
+   */
+  static async enqueueOpenCashDrawer(branchId: number): Promise<{ enqueued: number }> {
+    const orgId = getOrganizationId();
+    const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
+
+    if (printers.length === 0) return { enqueued: 0 };
+
+    const rows = printers.map((printer) => ({
+      organization_id: orgId,
+      branch_id: printer.branch_id || branchId,
+      printer_id: printer.id,
+      station: 'cashier',
+      job_type: 'open_cash_drawer' as const,
+      reference_id: null,
+      payload: {} as any,
+      status: 'pending' as const,
+    }));
+
+    const { error } = await supabase.from('print_jobs').insert(rows);
+    if (error) throw error;
+
+    return { enqueued: rows.length };
+  }
 }

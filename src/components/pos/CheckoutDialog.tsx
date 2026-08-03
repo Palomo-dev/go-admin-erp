@@ -15,6 +15,7 @@ import { POSService } from '@/lib/services/posService';
 import { supabase } from '@/lib/supabase/config';
 import { PrintService, BusinessInfo, CashierInfo, BranchInfo } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
+import { CashDrawerService } from '@/lib/services/cashDrawerService';
 import { toast } from 'sonner';
 import { Cart, PaymentMethod, CheckoutData, Sale, Currency, SaleItem } from './types';
 import { formatCurrency } from '@/utils/Utils';
@@ -759,6 +760,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         });
       } else {
         toast.warning('Esta venta no tiene sucursal asignada. No se encoló impresión física.');
+      }
+
+      // Abrir cajón de dinero si hay pagos en efectivo (best-effort, no bloquea)
+      const hasCashPayment = payments.some(p => p.amount > 0 && p.method === 'cash');
+      if (hasCashPayment && cart.branch_id) {
+        CashDrawerService.open(cart.branch_id).catch((err) => {
+          console.warn('[cashDrawer] No se pudo abrir el cajón:', err.message || err);
+        });
       }
 
       // Crear shipment si es delivery propio

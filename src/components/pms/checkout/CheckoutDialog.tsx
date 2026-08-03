@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   User,
   Calendar,
@@ -26,11 +27,15 @@ import {
   AlertTriangle,
   Info,
   XCircle,
+  CreditCard,
+  RefreshCw,
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { CheckoutReservation } from '@/lib/services/checkoutService';
-import { formatCurrency } from '@/utils/Utils';
+import { formatCurrency, cn } from '@/utils/Utils';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
+import { FolioPaymentDialog } from '@/components/pms/FolioPaymentDialog';
+import { FoliosService } from '@/lib/services/foliosService';
 
 interface CheckoutDialogProps {
   open: boolean;
@@ -58,6 +63,9 @@ export function CheckoutDialog({
   const [generateReceipt, setGenerateReceipt] = useState(false);
   const [sendToFactus, setSendToFactus] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [folioBalance, setFolioBalance] = useState(reservation?.folio?.balance || 0);
+  const [isRefreshingFolio, setIsRefreshingFolio] = useState(false);
 
   // Validación de fechas
   const [dateWarning, setDateWarning] = useState<{
@@ -108,11 +116,14 @@ export function CheckoutDialog({
 
     // Verificar si hay saldo pendiente
     if (reservation.folio && reservation.folio.balance > 0) {
+      setFolioBalance(reservation.folio.balance);
       setDateWarning({
-        type: 'error',
+        type: 'warning',
         title: 'Saldo Pendiente',
-        message: `El huésped tiene un saldo pendiente de ${formatCurrency(reservation.folio.balance)}. No se puede realizar el check-out hasta que se complete el pago.`,
+        message: `El huésped tiene un saldo pendiente de ${formatCurrency(reservation.folio.balance)}. Puede pagar ahora o dejar como deuda (cuenta por cobrar).`,
       });
+    } else {
+      setFolioBalance(0);
     }
   }, [reservation, open]);
 
@@ -156,11 +167,25 @@ export function CheckoutDialog({
     });
   };
 
+  const refreshFolioBalance = useCallback(async () => {
+    if (!reservation?.folio?.id) return;
+    setIsRefreshingFolio(true);
+    try {
+      const summary = await FoliosService.getFolioSummary(reservation.folio.id);
+      setFolioBalance(summary.balance);
+    } catch (error) {
+      console.error('Error refrescando folio:', error);
+    } finally {
+      setIsRefreshingFolio(false);
+    }
+  }, [reservation?.folio?.id]);
+
   if (!reservation) return null;
 
-  const hasPendingBalance = reservation.folio && reservation.folio.balance > 0;
+  const hasPendingBalance = folioBalance > 0;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -295,19 +320,38 @@ export function CheckoutDialog({
               </h3>
 
               {hasPendingBalance && (
-                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex flex-wrap items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-red-900 dark:text-red-100">
+                <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex flex-wrap items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-amber-900 dark:text-amber-100">
                       Saldo Pendiente
                     </p>
-                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                       Esta reserva tiene un saldo pendiente de{' '}
                       <span className="font-bold">
-                        {formatCurrency(reservation.folio.balance)}
+                        {formatCurrency(folioBalance)}
                       </span>
-                      . Asegúrese de liquidar antes de confirmar el check-out.
+                      . Puede pagar ahora o dejar como deuda al hacer checkout.
                     </p>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowPaymentDialog(true)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <CreditCard className="h-4 w-4 mr-1" />
+                        Pagar Ahora
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={refreshFolioBalance}
+                        disabled={isRefreshingFolio}
+                      >
+                        <RefreshCw className={cn('h-4 w-4 mr-1', isRefreshingFolio && 'animate-spin')} />
+                        Actualizar
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -348,19 +392,39 @@ export function CheckoutDialog({
                     Cargos ({reservation.folio.items.length})
                   </p>
                   <div className="max-h-48 overflow-y-auto space-y-2">
-                    {reservation.folio.items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center text-sm p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700"
-                      >
-                        <span className="text-gray-700 dark:text-gray-300">
-                          {item.description}
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {formatCurrency(item.amount)}
-                        </span>
-                      </div>
-                    ))}
+                    {reservation.folio.items.map((item, index) => {
+                      const isPaid = (item as any).payment_status === 'paid';
+                      const isDirectPayment = (item as any).charge_type === 'direct_payment';
+                      return (
+                        <div
+                          key={index}
+                          className={cn(
+                            'flex justify-between items-center text-sm p-2 rounded border',
+                            isPaid
+                              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                              : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              'h-2 w-2 rounded-full',
+                              isPaid ? 'bg-green-500' : 'bg-amber-400'
+                            )} />
+                            <span className="text-gray-700 dark:text-gray-300">
+                              {item.description}
+                            </span>
+                            {isDirectPayment && (
+                              <Badge variant="outline" className="text-[0.6rem] py-0 px-1">
+                                Pago directo
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {formatCurrency(item.amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -458,6 +522,11 @@ export function CheckoutDialog({
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Procesando...
               </>
+            ) : hasPendingBalance ? (
+              <>
+                <DoorOpen className="mr-2 h-4 w-4" />
+                Confirmar Check-out con Deuda
+              </>
             ) : (
               <>
                 <DoorOpen className="mr-2 h-4 w-4" />
@@ -468,5 +537,14 @@ export function CheckoutDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+      {/* Dialog de pago de folio */}
+      <FolioPaymentDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        folioId={reservation.folio?.id || null}
+        onPaymentComplete={refreshFolioBalance}
+      />
+    </>
   );
 }

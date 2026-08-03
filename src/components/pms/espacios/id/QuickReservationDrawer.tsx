@@ -218,7 +218,7 @@ export function QuickReservationDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-1/2 min-w-[400px] overflow-y-auto bg-white dark:bg-gray-900">
+      <SheetContent side="right" className="w-1/2 min-w-[400px] sm:max-w-none overflow-y-auto bg-white dark:bg-gray-900">
         <SheetHeader>
           <SheetTitle>Nueva Reserva Rápida</SheetTitle>
           <SheetDescription>

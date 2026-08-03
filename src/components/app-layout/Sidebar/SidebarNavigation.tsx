@@ -32,7 +32,6 @@ import {
   UserCog,
   Banknote,
   Clock,
-  Database,
   Globe,
   FileBarChart,
   Home,
@@ -403,18 +402,6 @@ const SidebarNavigationComponent = ({
           href: "/app/reportes", 
           icon: <FileBarChart size={18} />,
           moduleCode: 'reports',
-          submenu: [
-            { name: "Dashboard", href: "/app/reportes", icon: <Home size={16} /> },
-            { name: "Ventas", href: "/app/reportes/ventas", icon: <ShoppingCart size={16} /> },
-            { name: "Inventario", href: "/app/reportes/inventario", icon: <Package size={16} /> },
-            { name: "Finanzas", href: "/app/reportes/finanzas", icon: <DollarSign size={16} /> },
-            { name: "Hotelería", href: "/app/reportes/pms", icon: <BedDouble size={16} /> },
-            { name: "HRM", href: "/app/reportes/hrm", icon: <UserCog size={16} /> },
-            { name: "Auditoría", href: "/app/reportes/auditoria", icon: <Shield size={16} /> },
-            { name: "Personalizado", href: "/app/reportes/personalizados", icon: <Settings size={16} /> },
-            { name: "Programados", href: "/app/reportes/programados", icon: <Clock size={16} /> },
-            { name: "Ejecuciones", href: "/app/reportes/ejecuciones", icon: <Database size={16} /> },
-          ]
         },
         { 
           name: t('myOrganization'), 

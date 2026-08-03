@@ -30,6 +30,7 @@ export default function FoliosPage() {
 
   // Estado de filtros
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'with_balance' | 'without_balance'>('all');
 
   // Estado de dialog
   const [showDetailDialog, setShowDetailDialog] = useState(false);
@@ -71,8 +72,14 @@ export default function FoliosPage() {
       filtered = filtered.filter((folio) => folio.status === statusFilter);
     }
 
+    if (paymentStatusFilter === 'with_balance') {
+      filtered = filtered.filter((folio) => folio.balance > 0);
+    } else if (paymentStatusFilter === 'without_balance') {
+      filtered = filtered.filter((folio) => folio.balance <= 0);
+    }
+
     setFilteredFolios(filtered);
-  }, [folios, statusFilter]);
+  }, [folios, statusFilter, paymentStatusFilter]);
 
   // Handlers
   const handleViewDetails = (folio: Folio) => {
@@ -109,7 +116,7 @@ export default function FoliosPage() {
       <div className="flex-1 overflow-y-auto p-6">
         {/* Filtros */}
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Estado</Label>
               <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
@@ -123,11 +130,24 @@ export default function FoliosPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="payment-status">Saldo</Label>
+              <Select value={paymentStatusFilter} onValueChange={(value: any) => setPaymentStatusFilter(value)}>
+                <SelectTrigger id="payment-status" className="dark:bg-gray-900">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="with_balance">Con Saldo</SelectItem>
+                  <SelectItem value="without_balance">Sin Saldo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Total Folios
@@ -150,6 +170,14 @@ export default function FoliosPage() {
             </p>
             <p className="text-3xl font-bold text-gray-600 dark:text-gray-400 mt-2">
               {folios.filter(f => f.status === 'closed').length}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Saldo Pendiente Total
+            </p>
+            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-2">
+              ${folios.filter(f => f.balance > 0).reduce((sum, f) => sum + f.balance, 0).toLocaleString()}
             </p>
           </div>
         </div>

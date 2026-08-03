@@ -9,3 +9,4 @@ export { AddConsumptionDialog } from './AddConsumptionDialog';
 export { SpaceImageGallery } from './SpaceImageGallery';
 export { SpaceServicesChecklist } from './SpaceServicesChecklist';
 export { SpaceServicesBadges } from './SpaceServicesBadges';
+export { SpaceFolioSummary } from './SpaceFolioSummary';

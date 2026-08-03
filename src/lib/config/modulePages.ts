@@ -235,15 +235,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Configuración', href: '/app/integraciones/configuracion' },
   ],
   reports: [
-    { name: 'Dashboard', href: '/app/reportes' },
-    { name: 'Ventas', href: '/app/reportes/ventas' },
-    { name: 'Inventario', href: '/app/reportes/inventario' },
-    { name: 'Finanzas', href: '/app/reportes/finanzas' },
-    { name: 'Hotelería', href: '/app/reportes/pms' },
-    { name: 'HRM', href: '/app/reportes/hrm' },
-    { name: 'Auditoría', href: '/app/reportes/auditoria' },
-    { name: 'Personalizado', href: '/app/reportes/personalizados' },
-    { name: 'Programados', href: '/app/reportes/programados' },
+    { name: 'Reportes', href: '/app/reportes' },
   ],
 };
 

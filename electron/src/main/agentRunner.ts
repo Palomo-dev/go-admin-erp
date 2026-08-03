@@ -100,7 +100,7 @@ export async function startAgent(
   branchIds: number[],
   branchNames: string[],
 ): Promise<void> {
-  if (running) stopAgent();
+  stopAgent();
 
   saveConfig({ organizationId, organizationName, branchIds, branchNames });
   saveRefreshToken(refreshToken);

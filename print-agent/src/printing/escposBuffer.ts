@@ -82,3 +82,18 @@ export async function buildEscposBuffer(
 
   return adapter.getBuffer();
 }
+
+/**
+ * Comando ESC/POS para abrir el cajón de dinero (cash drawer).
+ * ESC p m t1 t2 — pulso en el pin 2 (m=0) o pin 5 (m=1), con duración t1*2ms y t2*2ms.
+ * Valores típicos: m=0, t1=100 (200ms), t2=100 (200ms).
+ */
+const CASH_DRAWER_CMD = Buffer.from([0x1B, 0x70, 0x00, 0x64, 0x64]);
+
+/**
+ * Genera un Buffer con el comando ESC/POS de apertura de cajón.
+ * No necesita payload ni paper: es un comando fijo de 5 bytes.
+ */
+export async function buildCashDrawerBuffer(): Promise<Buffer> {
+  return Promise.resolve(Buffer.from(CASH_DRAWER_CMD));
+}

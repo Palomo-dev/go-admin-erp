@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase/config';
 import FoliosService from './foliosService';
 import { stockMovementService } from './stockMovementService';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { CajasService } from '@/components/pos/cajas/CajasService';
+import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 
 export interface SpaceConsumption {
   id: string;
@@ -24,6 +26,14 @@ export interface AddConsumptionData {
   quantity: number;
   unit_price: number;
   notes?: string;
+  variant_data?: Record<string, string> | null;
+  modifiers?: Array<{
+    groupId: number;
+    groupName: string;
+    modifierId: number;
+    name: string;
+    extraPrice: number;
+  }> | null;
 }
 
 class SpaceConsumptionService {
@@ -165,6 +175,26 @@ class SpaceConsumptionService {
   }
 
   /**
+   * Validar si se requiere caja abierta para agregar consumos
+   */
+  async validateCashSession(): Promise<{ required: boolean; hasSession: boolean; sessionId: number | null }> {
+    try {
+      const config = await ConfiguracionService.getRequireCashSessionConfig();
+      if (!config.require_cash_session) {
+        return { required: false, hasSession: false, sessionId: null };
+      }
+      const activeSession = await CajasService.getActiveSession();
+      if (!activeSession) {
+        return { required: true, hasSession: false, sessionId: null };
+      }
+      return { required: true, hasSession: true, sessionId: activeSession.id };
+    } catch (error) {
+      console.error('Error validando caja:', error);
+      return { required: false, hasSession: false, sessionId: null };
+    }
+  }
+
+  /**
    * Agregar consumos al espacio (y al folio)
    */
   async addConsumptions(
@@ -173,6 +203,12 @@ class SpaceConsumptionService {
     userId: string
   ): Promise<void> {
     try {
+      // Validar caja abierta si es obligatoria
+      const cashValidation = await this.validateCashSession();
+      if (cashValidation.required && !cashValidation.hasSession) {
+        throw new Error('No hay caja abierta. Debe abrir una caja antes de agregar consumos. Vaya a POS → Cajas.');
+      }
+
       // Obtener reserva activa
       const activeReservation = await this.getActiveReservation(spaceId);
       
@@ -195,6 +231,9 @@ class SpaceConsumptionService {
           product_id: consumption.product_id,
           quantity: consumption.quantity,
           unit_price: consumption.unit_price,
+          variant_data: consumption.variant_data || null,
+          modifiers: consumption.modifiers || null,
+          cash_session_id: cashValidation.sessionId,
           created_by: userId,
         });
       }

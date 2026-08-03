@@ -3,7 +3,7 @@ import type { PaperSpec } from './printing/paper';
 import { getPaperSpec } from './printing/paper';
 import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket, printShipmentGuide, buildPlainTextShipmentGuide, printElectronicInvoice, buildPlainTextElectronicInvoice } from './printing/renderEscpos';
 import { buildSaleTicketHTML, buildKitchenTicketHTML, buildShipmentGuideHTML, buildElectronicInvoiceHTML } from './printing/renderHtml';
-import { buildEscposBuffer } from './printing/escposBuffer';
+import { buildEscposBuffer, buildCashDrawerBuffer } from './printing/escposBuffer';
 import { sendRawToPrinter } from './transports/rawSpooler';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
@@ -63,6 +63,12 @@ escpos.Bluetooth = tryRequire('escpos-bluetooth');
  * el print_job como 'error').
  */
 export async function printToDevice(printer: PrinterRow, jobType: PrintJobRow['job_type'], payload: PrintJobPayload): Promise<void> {
+  // El cajón de dinero no imprime texto: envía un comando ESC/POS fijo de 5 bytes
+  // (ESC p m t1 t2) directamente a la impresora, sin renderizar ticket.
+  if (jobType === 'open_cash_drawer') {
+    return sendCashDrawerCommand(printer);
+  }
+
   switch (printer.connection_type) {
     case 'network':
       return printViaNetwork(printer, jobType, payload);
@@ -348,4 +354,50 @@ async function printViaRawSpooler(printer: PrinterRow, jobType: PrintJobRow['job
 
   await sendRawToPrinter(printerName, buffer);
   console.log(`[printer] printViaRawSpooler: enviado a "${printerName}"`);
+}
+
+/**
+ * Envía el comando ESC/POS de apertura de cajón de dinero a la impresora.
+ * Soporta network (envía directo por socket), raw_spooler/usb (vía winspool),
+ * system (vía spooler RAW) y bluetooth (vía escpos.Bluetooth).
+ */
+async function sendCashDrawerCommand(printer: PrinterRow): Promise<void> {
+  const buffer = await buildCashDrawerBuffer();
+  console.log(`[printer] sendCashDrawerCommand: printer="${printer.name}", connection=${printer.connection_type}, ${buffer.length} bytes`);
+
+  if (printer.connection_type === 'network') {
+    if (!printer.ip_address) throw new Error(`Impresora "${printer.name}" no tiene ip_address configurada`);
+    const port = printer.port || 9100;
+    return new Promise((resolve, reject) => {
+      const device = new escpos.Network(printer.ip_address, port);
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        try { device.device.destroy(); } catch { /* ignore */ }
+        reject(new Error(`Timeout enviando comando cajón a ${printer.ip_address}:${port}`));
+      }, 5000);
+      device.open((err: any) => {
+        if (settled) return;
+        if (err) { settled = true; clearTimeout(timer); reject(new Error(`No se pudo conectar a ${printer.ip_address}:${port}`)); return; }
+        clearTimeout(timer);
+        try {
+          device.device.write(buffer, () => {
+            if (settled) return;
+            settled = true;
+            device.device.close(() => resolve());
+          });
+        } catch (e: any) {
+          if (settled) return;
+          settled = true;
+          reject(e);
+        }
+      });
+    });
+  }
+
+  // raw_spooler, usb, system → todos usan el spooler RAW de Windows
+  const printerName = printer.system_printer_name || printer.name;
+  await sendRawToPrinter(printerName, buffer);
+  console.log(`[printer] sendCashDrawerCommand: comando enviado a "${printerName}"`);
 }

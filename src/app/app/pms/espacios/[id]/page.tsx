@@ -31,12 +31,15 @@ import {
   SpaceBlocks,
   QuickReservationDrawer,
   SpaceImageGallery,
+  SpaceFolioSummary,
 } from '@/components/pms/espacios/id';
 import { AddProductDialog } from '@/components/pos/mesas/id/AddProductDialog';
 import type { ProductToAdd } from '@/components/pos/mesas/id/types';
 import { SpaceDialog } from '@/components/pms/espacios';
 import SpacesService, { type Space, type SpaceType } from '@/lib/services/spacesService';
 import SpaceConsumptionService from '@/lib/services/spaceConsumptionService';
+import { CajasService } from '@/components/pos/cajas/CajasService';
+import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 import reservationBlocksService, { ReservationBlock } from '@/lib/services/reservationBlocksService';
 import spaceImageService, { SpaceImage } from '@/lib/services/spaceImageService';
 import { supabase } from '@/lib/supabase/config';
@@ -300,6 +303,26 @@ export default function SpaceDetailPage() {
     });
   };
 
+  const handleOpenConsumptionDialog = async () => {
+    try {
+      const config = await ConfiguracionService.getRequireCashSessionConfig();
+      if (config.require_cash_session) {
+        const activeSession = await CajasService.getActiveSession();
+        if (!activeSession) {
+          toast({
+            title: 'No hay caja abierta',
+            description: 'Debe abrir una caja antes de agregar consumos. Vaya a POS → Cajas.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Error validando caja para consumos:', err);
+    }
+    setShowAddConsumptionDialog(true);
+  };
+
   const handleAddConsumption = async (products: ProductToAdd[]) => {
     try {
       // Obtener usuario autenticado
@@ -316,6 +339,8 @@ export default function SpaceDetailPage() {
         quantity: p.quantity,
         unit_price: p.unit_price,
         notes: p.notes,
+        variant_data: p.variant_data || null,
+        modifiers: p.modifiers || null,
       }));
 
       await SpaceConsumptionService.addConsumptions(
@@ -330,6 +355,7 @@ export default function SpaceDetailPage() {
       });
 
       setShowAddConsumptionDialog(false);
+      setServicesRefreshKey((k) => k + 1);
     } catch (error: any) {
       console.error('Error agregando consumos:', error);
       toast({
@@ -435,7 +461,7 @@ export default function SpaceDetailPage() {
         onAssignCleaning={handleAssignCleaning}
         onViewRevenue={handleViewRevenue}
         onNewReservation={() => setShowQuickReservationDrawer(true)}
-        onAddConsumption={() => setShowAddConsumptionDialog(true)}
+        onAddConsumption={handleOpenConsumptionDialog}
       />
 
       {/* Content */}
@@ -452,6 +478,11 @@ export default function SpaceDetailPage() {
               onImagesChange={refreshAfterEdit}
             />
             <SpaceBasicInfo space={space} servicesRefreshTrigger={servicesRefreshKey} />
+            <SpaceFolioSummary
+              spaceId={spaceId}
+              onAddConsumption={handleOpenConsumptionDialog}
+              refreshTrigger={servicesRefreshKey}
+            />
             <SpaceReservations reservations={reservations} />
           </div>
 

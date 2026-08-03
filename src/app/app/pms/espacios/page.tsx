@@ -43,7 +43,7 @@ import spaceServicesService, { type OrgServiceView, type SpaceServiceView } from
 export default function EspaciosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, selectedBranchId } = useBranch();
 
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [spaceTypes, setSpaceTypes] = useState<SpaceType[]>([]);
@@ -189,7 +189,7 @@ export default function EspaciosPage() {
       } else {
         result = await SpacesService.createSpace({
           ...data,
-          branch_id: organization!.id,
+          branch_id: selectedBranchId ?? branchFilter!,
         });
         toast({
           title: 'Éxito',

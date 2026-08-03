@@ -11,33 +11,36 @@ import type { Customer, Opportunity, CustomerInteraction } from "../types";
  * @returns {string} ID de la organización
  */
 export const getOrganizationId = (): string => {
+  if (typeof window === 'undefined') return "0";
+
   try {
-    // Buscar en todas las claves posibles
-    const orgIdFromProfile = typeof localStorage !== 'undefined' ? localStorage.getItem("profileOrg") : null;
-    const orgIdFromSelectedOrg = typeof localStorage !== 'undefined' ? localStorage.getItem("selectedOrganization") : null;
-    const orgIdFromSession = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem("organizationId") : null;
-    const orgIdFromSessionProfile = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem("profileOrg") : null;
-    
-    // Usar '2' como valor predeterminado, ya que los clientes en la base de datos tienen organization_id = 2
-    const fallbackId = "2";
-    
-    // Retornar el primer ID que encontremos
-    const organizationId = orgIdFromProfile || 
-                          orgIdFromSelectedOrg || 
-                          orgIdFromSession || 
-                          orgIdFromSessionProfile || 
-                          fallbackId;
-    
-    console.log(`ID de organización encontrado: ${organizationId} (fuente: ${orgIdFromProfile ? 'profileOrg' : 
-                                                                            orgIdFromSelectedOrg ? 'selectedOrganization' : 
-                                                                            orgIdFromSession ? 'organizationId' : 
-                                                                            orgIdFromSessionProfile ? 'sessionProfileOrg' : 
-                                                                            'fallback'})`);
-    return organizationId;
+    // 1. currentOrganizationId (raw ID string)
+    const rawId = localStorage.getItem("currentOrganizationId");
+    if (rawId) return rawId;
+
+    // 2. organizacionActiva (JSON object: { id, name, ... })
+    const orgActiva = localStorage.getItem("organizacionActiva");
+    if (orgActiva) {
+      const parsed = JSON.parse(orgActiva);
+      if (parsed?.id) return String(parsed.id);
+    }
+
+    // 3. selectedOrganization (JSON object: { id, name, ... })
+    const selectedOrg = localStorage.getItem("selectedOrganization");
+    if (selectedOrg) {
+      const parsed = JSON.parse(selectedOrg);
+      if (parsed?.id) return String(parsed.id);
+    }
+
+    // 4. sessionStorage fallback
+    const sessionOrgId = sessionStorage.getItem("organizationId");
+    if (sessionOrgId) return sessionOrgId;
+
+    console.warn('No se encontró organization_id en localStorage/sessionStorage');
+    return "0";
   } catch (error) {
     console.error('Error al obtener el ID de organización:', error);
-    // Usar el valor 2 como fallback
-    return "2";
+    return "0";
   }
 };
 

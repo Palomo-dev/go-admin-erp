@@ -1206,8 +1206,6 @@ export class POSService {
           salesperson_id: checkoutData.salesperson_id || null,
           commission_rate: checkoutData.commission_rate || 0,
           commission_type: checkoutData.commission_type || 'none',
-          commission_method: checkoutData.commission_method || 'percentage',
-          commission_amount: checkoutData.commission_amount || 0,
           delivery_fee: shippingFee > 0 ? shippingFee : 0,
           tip_amount: tipAmount > 0 ? tipAmount : null
         })

@@ -6,28 +6,43 @@ export class ImagenesService {
   static async obtenerImagenes(filters?: ImageFilter): Promise<SharedImage[]> {
     const organizationId = getOrganizationId();
 
+    // Consultar shared_images de la organización o públicas
     let query = supabase
       .from('shared_images')
       .select('*')
       .or(`organization_id.eq.${organizationId},is_public.eq.true`)
       .order('created_at', { ascending: false });
 
-    if (filters?.isPublic !== null && filters?.isPublic !== undefined) {
-      query = query.eq('is_public', filters.isPublic);
+    // En paralelo, consultar product_images de la organización
+    const { data: sharedData, error: sharedError } = await query;
+    if (sharedError) throw sharedError;
+
+    const { data: productImgsData, error: productImgsError } = await supabase
+      .from('product_images')
+      .select(`
+        id,
+        product_id,
+        storage_path,
+        is_primary,
+        alt_text,
+        created_at,
+        products!inner ( id, name, organization_id )
+      `)
+      .eq('products.organization_id', organizationId)
+      .order('created_at', { ascending: false });
+
+    if (productImgsError) {
+      console.error('Error cargando product_images:', productImgsError);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
-
-    // Obtener conteos de productos que usan cada imagen
-    const imagenesConConteos = await Promise.all(
-      (data || []).map(async (img) => {
+    // Procesar shared_images con conteos de productos
+    const sharedImagenes = await Promise.all(
+      (sharedData || []).map(async (img) => {
         const { count } = await supabase
           .from('product_images')
           .select('*', { count: 'exact', head: true })
           .eq('shared_image_id', img.id);
 
-        // Generar URL pública
         let publicUrl = '';
         if (img.storage_path) {
           const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
@@ -41,14 +56,60 @@ export class ImagenesService {
           ...img,
           products_count: count || 0,
           public_url: publicUrl,
-        };
+        } as SharedImage;
       })
     );
+
+    // Procesar product_images y convertirlas al formato SharedImage
+    const productImagenes: SharedImage[] = (productImgsData || []).map((pi: any) => {
+      const storagePath = pi.storage_path || '';
+      const bucket = (storagePath.startsWith('products/') || storagePath.startsWith('productos/')) ? 'product-images' : 'organization_images';
+      const { data: urlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(storagePath);
+
+      const fileName = storagePath.split('/').pop() || 'producto';
+      const productName = pi.products?.name || '';
+
+      return {
+        id: pi.id + 100000,
+        storage_path: storagePath,
+        file_name: pi.alt_text || fileName,
+        file_size: 0,
+        mime_type: 'image/jpeg',
+        dimensions: null,
+        organization_id: organizationId,
+        is_public: false,
+        tags: productName ? [productName] : [],
+        created_at: pi.created_at,
+        updated_at: pi.created_at,
+        products_count: 1,
+        public_url: urlData?.publicUrl || '',
+      } as SharedImage;
+    });
+
+    // Combinar ambas fuentes, evitando duplicados por storage_path
+    const allImagenes = [...sharedImagenes];
+    const existingPaths = new Set(sharedImagenes.map(img => img.storage_path));
+    for (const pImg of productImagenes) {
+      if (!existingPaths.has(pImg.storage_path)) {
+        allImagenes.push(pImg);
+        existingPaths.add(pImg.storage_path);
+      }
+    }
+
+    // Ordenar por created_at descendente
+    allImagenes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    // Aplicar filtro de visibilidad sobre el resultado combinado
+    if (filters?.isPublic !== null && filters?.isPublic !== undefined) {
+      return allImagenes.filter(img => img.is_public === filters.isPublic);
+    }
 
     // Aplicar filtro de búsqueda
     if (filters?.search) {
       const searchLower = filters.search.toLowerCase();
-      return imagenesConConteos.filter(img =>
+      return allImagenes.filter(img =>
         img.file_name.toLowerCase().includes(searchLower) ||
         img.tags?.some((tag: string) => tag.toLowerCase().includes(searchLower))
       );
@@ -56,12 +117,12 @@ export class ImagenesService {
 
     // Filtrar por tags
     if (filters?.tags && filters.tags.length > 0) {
-      return imagenesConConteos.filter(img =>
+      return allImagenes.filter(img =>
         filters.tags!.some(tag => img.tags?.includes(tag))
       );
     }
 
-    return imagenesConConteos;
+    return allImagenes;
   }
 
   static async obtenerStats(): Promise<ImagesStats> {
@@ -134,6 +195,23 @@ export class ImagenesService {
   }
 
   static async actualizarImagen(id: number, data: Partial<ImageFormData>): Promise<SharedImage> {
+    // IDs > 100000 vienen de product_images, no se pueden editar desde shared_images
+    if (id > 100000) {
+      const realId = id - 100000;
+      const { data: updated, error } = await supabase
+        .from('product_images')
+        .update({
+          alt_text: data.file_name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', realId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return updated as SharedImage;
+    }
+
     const { data: updated, error } = await supabase
       .from('shared_images')
       .update({
@@ -149,7 +227,36 @@ export class ImagenesService {
   }
 
   static async eliminarImagen(id: number): Promise<void> {
-    // Verificar si está en uso
+    // IDs > 100000 vienen de product_images
+    if (id > 100000) {
+      const realId = id - 100000;
+
+      // Obtener storage_path
+      const { data: img } = await supabase
+        .from('product_images')
+        .select('storage_path')
+        .eq('id', realId)
+        .single();
+
+      // Eliminar archivo de Storage
+      if (img?.storage_path) {
+        const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
+        await supabase.storage
+          .from(bucket)
+          .remove([img.storage_path]);
+      }
+
+      // Eliminar registro de product_images
+      const { error } = await supabase
+        .from('product_images')
+        .delete()
+        .eq('id', realId);
+
+      if (error) throw error;
+      return;
+    }
+
+    // Verificar si está en uso (shared_images)
     const { count } = await supabase
       .from('product_images')
       .select('*', { count: 'exact', head: true })

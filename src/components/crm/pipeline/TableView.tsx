@@ -275,7 +275,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
   // Función para editar oportunidad
   const editOpportunity = (id: string) => {
     // Navegar a la página de edición de oportunidad
-    router.push(`/app/crm/pipeline/edit-opportunity?id=${id}`);
+    router.push(`/app/crm/oportunidades/${id}/editar`);
   };
 
   // Función para eliminar oportunidad

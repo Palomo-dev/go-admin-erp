@@ -12,6 +12,9 @@ interface Nota {
   is_pinned: boolean;
   user_id: string;
   user_name?: string;
+  related_type: string;
+  related_id: string;
+  opportunity_name?: string;
 }
 
 interface NotasArchivosTabProps {
@@ -34,21 +37,45 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
         setLoading(true);
         setError(null);
         
-        // Obtener notas relacionadas con el cliente
-        const { data: notasData, error: notasError } = await supabase
+        // Obtener IDs de oportunidades del cliente
+        const { data: oppsData } = await supabase
+          .from('opportunities')
+          .select('id, name')
+          .eq('customer_id', clienteId)
+          .eq('organization_id', organizationId);
+        
+        const oppIds = (oppsData || []).map(o => o.id);
+        const oppNameMap: Record<string, string> = {};
+        (oppsData || []).forEach(o => { oppNameMap[o.id] = o.name; });
+        
+        // Notas del cliente
+        let query = supabase
           .from('notes')
           .select('*')
-          .eq('related_type', 'customer')
-          .eq('related_id', clienteId)
           .eq('organization_id', organizationId)
           .order('is_pinned', { ascending: false })
           .order('created_at', { ascending: false });
         
+        if (oppIds.length > 0) {
+          query = query.or(`related_type.eq.customer,related_type.eq.opportunity`)
+            .or(`related_id.eq.${clienteId},related_id.in.(${oppIds.join(',')})`);
+        } else {
+          query = query.eq('related_type', 'customer').eq('related_id', clienteId);
+        }
+        
+        const { data: notasData, error: notasError } = await query;
+        
         if (notasError) throw notasError;
         
         if (notasData) {
+          // Enriquecer notas con nombre de oportunidad
+          const notasEnriquecidas = notasData.map(note => ({
+            ...note,
+            opportunity_name: note.related_type === 'opportunity' ? oppNameMap[note.related_id] : undefined,
+          }));
+          
           // Recolectar IDs de usuarios únicos
-          const userIds = Array.from(new Set(notasData.map(note => note.user_id)));
+          const userIds = Array.from(new Set(notasEnriquecidas.map(note => note.user_id)));
           
           // Obtener información de los usuarios
           if (userIds.length > 0) {
@@ -68,7 +95,7 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
             setUsers(usersMap);
           }
           
-          setNotas(notasData);
+          setNotas(notasEnriquecidas);
         }
       } catch (err: any) {
         console.error('Error al cargar notas:', err);
@@ -320,6 +347,13 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
                     </button>
                   </div>
                 </div>
+                {nota.opportunity_name && (
+                  <div className="mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                      Oportunidad: {nota.opportunity_name}
+                    </span>
+                  </div>
+                )}
                 <div className="mt-3 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                   {nota.body}
                 </div>

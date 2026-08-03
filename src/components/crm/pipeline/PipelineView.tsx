@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/config";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -356,37 +355,8 @@ export default function PipelineView() {
     setCurrentPipelineId(pipelineId);
   };
 
-  // Estado para crear pipeline
+  // Estado para abrir el dialog de crear pipeline (controlado por PipelineHeader)
   const [isCreatePipelineOpen, setIsCreatePipelineOpen] = useState(false);
-  const [newPipelineName, setNewPipelineName] = useState("");
-  const [isCreatingPipeline, setIsCreatingPipeline] = useState(false);
-
-  const handleCreatePipeline = async () => {
-    if (!newPipelineName.trim() || !organizationId) return;
-
-    setIsCreatingPipeline(true);
-    try {
-      const { data, error } = await supabase
-        .from("pipelines")
-        .insert({
-          organization_id: organizationId,
-          name: newPipelineName.trim(),
-          is_default: false,
-        })
-        .select("id")
-        .single();
-
-      if (error) throw error;
-
-      setCurrentPipelineId(data.id);
-      setNewPipelineName("");
-      setIsCreatePipelineOpen(false);
-    } catch (error: any) {
-      console.error("Error al crear pipeline:", error);
-    } finally {
-      setIsCreatingPipeline(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -402,6 +372,8 @@ export default function PipelineView() {
       <PipelineHeader 
         currentPipelineId={currentPipelineId}
         onPipelineChange={handlePipelineChange}
+        externalCreateDialogOpen={isCreatePipelineOpen}
+        onExternalCreateDialogOpenChange={setIsCreatePipelineOpen}
       />
       
       <Tabs defaultValue="kanban" className="w-full px-3 sm:px-4 pt-4">
@@ -477,66 +449,6 @@ export default function PipelineView() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog para crear pipeline */}
-      <Dialog open={isCreatePipelineOpen} onOpenChange={setIsCreatePipelineOpen}>
-        <DialogContent className="sm:max-w-md mx-4">
-          <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">
-              Crear Pipeline
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-gray-400">
-              Crea un nuevo pipeline para gestionar tus oportunidades de venta.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="pipelineName" className="text-gray-900 dark:text-gray-100 font-medium">
-                Nombre del pipeline <span className="text-red-600">*</span>
-              </Label>
-              <Input
-                id="pipelineName"
-                value={newPipelineName}
-                onChange={(e) => setNewPipelineName(e.target.value)}
-                placeholder="Ej: Ventas Principales"
-                className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newPipelineName.trim()) {
-                    handleCreatePipeline();
-                  }
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsCreatePipelineOpen(false)}
-              disabled={isCreatingPipeline}
-              className="w-full sm:w-auto min-h-[44px]"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleCreatePipeline}
-              disabled={isCreatingPipeline || !newPipelineName.trim()}
-              className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700"
-            >
-              {isCreatingPipeline ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Creando...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear Pipeline
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

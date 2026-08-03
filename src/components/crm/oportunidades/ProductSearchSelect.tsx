@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatCurrency } from '@/utils/Utils';
-import Image from 'next/image';
+import { supabase } from '@/lib/supabase/config';
 
 interface Product {
   id: number;
@@ -22,6 +22,15 @@ interface ProductSearchSelectProps {
   selectedProductId: number;
   onSelect: (productId: number, product?: Product) => void;
   placeholder?: string;
+}
+
+function getProductImageUrl(storagePath: string): string {
+  if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+    return storagePath;
+  }
+  const bucket = (storagePath.startsWith('products/') || storagePath.startsWith('productos/')) ? 'product-images' : 'organization_images';
+  const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+  return data?.publicUrl || '';
 }
 
 export function ProductSearchSelect({
@@ -64,12 +73,15 @@ export function ProductSearchSelect({
               {/* Imagen del producto */}
               <div className="w-8 h-8 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0">
                 {selectedProduct.image ? (
-                  <Image
-                    src={selectedProduct.image}
+                  <img
+                    src={getProductImageUrl(selectedProduct.image)}
                     alt={selectedProduct.name}
-                    width={32}
-                    height={32}
-                    className="object-cover w-full h-full"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                    }}
                   />
                 ) : (
                   <Package className="h-4 w-4 text-gray-400" />
@@ -132,12 +144,15 @@ export function ProductSearchSelect({
                   {/* Imagen del producto */}
                   <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden shrink-0 border border-gray-200 dark:border-gray-700">
                     {product.image ? (
-                      <Image
-                        src={product.image}
+                      <img
+                        src={getProductImageUrl(product.image)}
                         alt={product.name}
-                        width={56}
-                        height={56}
-                        className="object-cover w-full h-full"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                        }}
                       />
                     ) : (
                       <ImageIcon className="h-7 w-7 text-gray-400" />

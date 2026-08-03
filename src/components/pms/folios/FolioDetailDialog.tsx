@@ -22,10 +22,12 @@ import {
   Receipt,
   Loader2,
   FileText,
+  Banknote,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import FoliosService, { type Folio, type FolioItem } from '@/lib/services/foliosService';
+import { FolioPaymentDialog } from '@/components/pms/FolioPaymentDialog';
 
 interface FolioDetailDialogProps {
   open: boolean;
@@ -49,7 +51,12 @@ export function FolioDetailDialog({
     balance: 0,
     itemCount: 0,
     paymentCount: 0,
+    totalPending: 0,
+    totalPaid: 0,
+    pendingCount: 0,
+    paidCount: 0,
   });
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   useEffect(() => {
     if (open && folioId) {
@@ -252,12 +259,26 @@ export function FolioDetailDialog({
                   <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   Items ({summary.itemCount})
                 </h3>
+                {summary.totalPending > 0 && folio?.status === 'open' && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowPaymentDialog(true)}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Banknote className="h-4 w-4 mr-1" />
+                    Pagar ${summary.totalPending.toLocaleString()}
+                  </Button>
+                )}
               </div>
 
               {folio.items && folio.items.length > 0 ? (
                 <div className="space-y-2">
                   {folio.items.map((item) => (
-                    <Card key={item.id} className="p-4">
+                    <Card key={item.id} className={`p-4 ${
+                      item.payment_status === 'pending'
+                        ? 'border-amber-200 dark:border-amber-800'
+                        : 'border-green-200 dark:border-green-800'
+                    }`}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -267,6 +288,20 @@ export function FolioDetailDialog({
                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {item.description}
                             </span>
+                            {item.payment_status === 'pending' ? (
+                              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs">
+                                ● Pendiente
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs">
+                                ● Pagado
+                              </Badge>
+                            )}
+                            {item.charge_type === 'direct_payment' && (
+                              <Badge variant="outline" className="text-xs text-blue-600 dark:text-blue-400">
+                                Pago directo
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             {format(new Date(item.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
@@ -366,6 +401,22 @@ export function FolioDetailDialog({
                     -${summary.payments.toLocaleString()}
                   </span>
                 </div>
+                {summary.totalPending > 0 && (
+                  <div className="flex items-center justify-between text-sm bg-amber-50 dark:bg-amber-900/20 -mx-2 px-2 py-1 rounded">
+                    <span className="text-amber-700 dark:text-amber-400">Pendiente por pagar:</span>
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                      ${summary.totalPending.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                {summary.totalPaid > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Items pagados:</span>
+                    <span className="font-semibold text-green-600 dark:text-green-400">
+                      ${summary.totalPaid.toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-2">
@@ -399,6 +450,18 @@ export function FolioDetailDialog({
           </div>
         ) : null}
       </DialogContent>
+
+      {folio && (
+        <FolioPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          folioId={folio.id}
+          onPaymentComplete={() => {
+            loadFolioDetails();
+            onUpdate?.();
+          }}
+        />
+      )}
     </Dialog>
   );
 }

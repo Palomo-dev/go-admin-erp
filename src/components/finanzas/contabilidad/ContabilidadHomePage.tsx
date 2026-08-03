@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, Loader2, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock } from 'lucide-react';
+import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, Loader2, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
-import { formatNumber } from '@/utils/Utils';
+import { formatNumber, formatCurrency } from '@/utils/Utils';
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 const MODULES = [
   {
@@ -92,6 +94,13 @@ const MODULES = [
 export function ContabilidadHomePage() {
   const [resumen, setResumen] = useState<ContabilidadResumen | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [foliosResumen, setFoliosResumen] = useState({
+    totalFolios: 0,
+    foliosAbiertos: 0,
+    saldoPendiente: 0,
+    totalItems: 0,
+    itemsPendientes: 0,
+  });
 
   useEffect(() => {
     loadResumen();
@@ -100,13 +109,66 @@ export function ContabilidadHomePage() {
   const loadResumen = async () => {
     try {
       setIsLoading(true);
-      const data = await ContabilidadService.obtenerResumen();
+      const [data, foliosData] = await Promise.all([
+        ContabilidadService.obtenerResumen(),
+        loadFoliosResumen(),
+      ]);
       setResumen(data);
+      setFoliosResumen(foliosData);
     } catch (error) {
       console.error('Error cargando resumen:', error);
       toast.error('Error al cargar el resumen');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadFoliosResumen = async () => {
+    const organizationId = getOrganizationId();
+    if (!organizationId) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+
+    try {
+      const { data: folios, error } = await supabase
+        .from('folios')
+        .select(`
+          id, status, balance,
+          reservations!inner (organization_id)
+        `)
+        .eq('reservations.organization_id', organizationId);
+
+      if (error || !folios) return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
+
+      const foliosAbiertos = folios.filter((f) => f.status === 'open');
+      const folioIds = foliosAbiertos.map((f) => f.id);
+
+      let itemsPendientes = 0;
+      let totalItems = 0;
+
+      if (folioIds.length > 0) {
+        const { data: items } = await supabase
+          .from('folio_items')
+          .select('id, payment_status, amount')
+          .in('folio_id', folioIds);
+
+        if (items) {
+          totalItems = items.length;
+          itemsPendientes = items
+            .filter((i) => i.payment_status === 'pending')
+            .reduce((sum, i) => sum + Number(i.amount), 0);
+        }
+      }
+
+      const saldoPendiente = foliosAbiertos.reduce((sum, f) => sum + Number(f.balance), 0);
+
+      return {
+        totalFolios: folios.length,
+        foliosAbiertos: foliosAbiertos.length,
+        saldoPendiente,
+        totalItems,
+        itemsPendientes,
+      };
+    } catch {
+      return { totalFolios: 0, foliosAbiertos: 0, saldoPendiente: 0, totalItems: 0, itemsPendientes: 0 };
     }
   };
 
@@ -214,6 +276,54 @@ export function ContabilidadHomePage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Resumen Folios PMS */
+      {!isLoading && foliosResumen.totalFolios > 0 && (
+        <Card className="dark:bg-gray-800 dark:border-gray-700 border-blue-200 dark:border-blue-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              Folios PMS - Resumen Contable
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Folios Abiertos</p>
+                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                  {foliosResumen.foliosAbiertos}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total Items</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                  {foliosResumen.totalItems}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Items Pendientes</p>
+                <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                  {formatCurrency(foliosResumen.itemsPendientes)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Saldo Total Pendiente</p>
+                <p className="text-xl font-bold text-red-600 dark:text-red-400">
+                  {formatCurrency(foliosResumen.saldoPendiente)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t dark:border-gray-700">
+              <Link href="/app/pms/folios">
+                <Button variant="outline" size="sm" className="dark:border-gray-600 dark:hover:bg-gray-700">
+                  <Receipt className="h-3.5 w-3.5 mr-1" />
+                  Ver Folios
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Módulos */}

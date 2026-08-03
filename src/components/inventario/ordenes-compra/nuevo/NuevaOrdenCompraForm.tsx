@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
@@ -12,13 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
 import { SearchSelectCombobox, type SearchSelectOption } from '../SearchSelectCombobox';
 import { Store } from 'lucide-react';
@@ -36,8 +30,7 @@ import {
   Send,
   Loader2, 
   Building2, 
-  Truck, 
-  Calendar,
+  Truck,
   Plus,
   Trash2,
   Package

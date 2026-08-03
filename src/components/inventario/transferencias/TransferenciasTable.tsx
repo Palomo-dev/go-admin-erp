@@ -1,9 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  useRouter,
-  usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -42,7 +40,6 @@ export function TransferenciasTable({
   onCancelar 
 }: TransferenciasTableProps) {
   const router = useRouter();
-  const pathname = usePathname();
 
   const handleVerDetalle = (id: number) => {
     router.push(`/app/inventario/transferencias/${id}`);

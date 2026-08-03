@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard, FileText, Pencil } from 'lucide-react';
+import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, ChevronRight, CreditCard, FileText, Pencil, Hotel } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -64,6 +64,7 @@ interface Factura {
   created_at?: string;
   tax_included?: boolean;
   payment_terms?: number;
+  pms_reservation_id?: string | null;
 }
 
 interface FacturasTableProps {
@@ -269,7 +270,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
         }
 
         // Ejecutar queries en paralelo para optimizar rendimiento
-        const [facturaResult, customersResult, paymentMethodsResult] = await Promise.all([
+        const [facturaResult, customersResult, paymentMethodsResult, salesResult] = await Promise.all([
           // Query 1: Obtener todas las facturas
           supabase
             .from('invoice_sales')
@@ -304,7 +305,13 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
           // Query 3: Obtener todos los métodos de pago
           supabase
             .from('payment_methods')
-            .select('code, name')
+            .select('code, name'),
+          
+          // Query 4: Obtener ventas vinculadas a reservas PMS
+          supabase
+            .from('sales')
+            .select('id, reservation_id')
+            .not('reservation_id', 'is', null)
         ]);
 
         if (facturaResult.error) {
@@ -323,6 +330,16 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
         if (paymentMethodsResult.data) {
           paymentMethodsResult.data.forEach(method => {
             paymentMethodsMap.set(method.code, method);
+          });
+        }
+
+        // Mapa de ventas con reserva PMS (sale_id -> reservation_id)
+        const pmsSalesMap = new Map<string, string>();
+        if (salesResult.data) {
+          salesResult.data.forEach((sale: any) => {
+            if (sale.reservation_id) {
+              pmsSalesMap.set(sale.id, sale.reservation_id);
+            }
           });
         }
 
@@ -367,7 +384,8 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
             notes: item.notes,
             created_at: item.created_at,
             tax_included: item.tax_included,
-            payment_terms: item.payment_terms
+            payment_terms: item.payment_terms,
+            pms_reservation_id: item.sale_id ? pmsSalesMap.get(item.sale_id) || null : null
           };
         });
 
@@ -485,6 +503,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
             <TableHead className="min-w-[100px] text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Saldo</TableHead>
             <TableHead className="min-w-[120px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Método</TableHead>
             <TableHead className="min-w-[100px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Estado</TableHead>
+            <TableHead className="min-w-[70px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">PMS</TableHead>
             <TableHead className="min-w-[90px] text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Fact. Elect.</TableHead>
             <TableHead className="w-16 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300"></TableHead>
           </TableRow>
@@ -541,6 +560,19 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                 <Badge className={`text-[10px] sm:text-xs px-2 py-0.5 ${getStatusColor(factura.status)}`}>
                   {getStatusText(factura.status)}
                 </Badge>
+              </TableCell>
+              <TableCell className="text-center">
+                {factura.pms_reservation_id ? (
+                  <button
+                    onClick={() => router.push(`/app/pms/calendario?reservation=${factura.pms_reservation_id}`)}
+                    title="Ver reserva en PMS"
+                    className="inline-flex items-center justify-center p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  >
+                    <Hotel className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </button>
+                ) : (
+                  <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                )}
               </TableCell>
               <TableCell>
                 <ElectronicInvoiceStatus

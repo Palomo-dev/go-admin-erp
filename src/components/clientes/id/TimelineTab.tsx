@@ -18,6 +18,16 @@ interface TimelineItem {
   paymentStatus?: string;
   originalStatus?: string;
   originalPaymentStatus?: string;
+  // Campos para reservas enriquecidas
+  checkin?: string;
+  checkout?: string;
+  spaces?: string[];
+  spaceTypes?: string[];
+  folioBalance?: number;
+  folioItemsCount?: number;
+  folioPendingItems?: number;
+  folioPendingAmount?: number;
+  reservationId?: string;
 }
 
 interface TimelineTabProps {
@@ -90,14 +100,59 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
         
         if (salesError) throw salesError;
         
-        // 2. Obtener reservas del cliente
+        // 2. Obtener reservas del cliente con espacios
         const { data: reservationsData, error: reservationsError } = await supabase
           .from('reservations')
-          .select('id, start_date, end_date, status, notes')
+          .select(`
+            id, start_date, end_date, checkin, checkout, status, notes, total_estimated,
+            reservation_spaces (
+              space_id,
+              spaces (
+                label,
+                space_types ( name )
+              )
+            )
+          `)
           .eq('customer_id', clienteId)
           .eq('organization_id', organizationId);
           
         if (reservationsError) throw reservationsError;
+
+        // 2b. Obtener folios de las reservas
+        const reservationIds = (reservationsData || []).map((r: any) => r.id);
+        let foliosMap: Record<string, any> = {};
+        let folioItemsMap: Record<string, any[]> = {};
+
+        if (reservationIds.length > 0) {
+          const { data: foliosData } = await supabase
+            .from('folios')
+            .select('id, reservation_id, balance, status')
+            .in('reservation_id', reservationIds);
+
+          if (foliosData) {
+            foliosData.forEach((f: any) => {
+              foliosMap[f.reservation_id] = f;
+            });
+
+            const folioIds = foliosData.map((f: any) => f.id);
+            if (folioIds.length > 0) {
+              const { data: folioItemsData } = await supabase
+                .from('folio_items')
+                .select('id, folio_id, description, amount, payment_status, source')
+                .in('folio_id', folioIds)
+                .order('created_at', { ascending: false });
+
+              if (folioItemsData) {
+                folioItemsData.forEach((item: any) => {
+                  if (!folioItemsMap[item.folio_id]) {
+                    folioItemsMap[item.folio_id] = [];
+                  }
+                  folioItemsMap[item.folio_id].push(item);
+                });
+              }
+            }
+          }
+        }
         
         // 3. Obtener actividades relacionadas con el cliente
         const { data: activitiesData, error: activitiesError } = await supabase
@@ -167,20 +222,39 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
             paymentStatus: traducirEstadoPago(sale.payment_status)
           })),
           
-          // Transformar reservas
-          ...(reservationsData || []).map(reservation => ({
-            id: `reservation-${reservation.id}`,
-            type: 'reservation' as const,
-            date: new Date(reservation.start_date),
-            title: `Reservación: ${formatDate(new Date(reservation.start_date))}`,
-            description: reservation.notes || `${formatDate(new Date(reservation.start_date))} - ${formatDate(new Date(reservation.end_date))}`,
-            icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-              </svg>
-            ),
-            status: traducirEstadoPago(reservation.status as string)
-          })),
+          // Transformar reservas con info de folio y espacios
+          ...(reservationsData || []).map((reservation: any) => {
+            const spaces = (reservation.reservation_spaces || []).map((rs: any) => rs.spaces?.label).filter(Boolean) as string[];
+            const spaceTypes = Array.from(new Set((reservation.reservation_spaces || []).map((rs: any) => rs.spaces?.space_types?.name).filter(Boolean))) as string[];
+            const folio = foliosMap[reservation.id];
+            const folioItems = folio ? (folioItemsMap[folio.id] || []) : [];
+            const pendingItems = folioItems.filter((i: any) => i.payment_status === 'pending');
+            const pendingAmount = pendingItems.reduce((sum: number, i: any) => sum + Number(i.amount), 0);
+
+            return {
+              id: `reservation-${reservation.id}`,
+              type: 'reservation' as const,
+              date: new Date(reservation.start_date),
+              title: `Reservación: ${formatDate(new Date(reservation.start_date))}`,
+              description: reservation.notes || `${formatDate(new Date(reservation.start_date))} - ${formatDate(new Date(reservation.end_date))}`,
+              icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                </svg>
+              ),
+              status: traducirEstadoPago(reservation.status as string),
+              originalStatus: reservation.status,
+              checkin: reservation.checkin,
+              checkout: reservation.checkout,
+              spaces,
+              spaceTypes,
+              folioBalance: folio ? Number(folio.balance) : undefined,
+              folioItemsCount: folioItems.length,
+              folioPendingItems: pendingItems.length,
+              folioPendingAmount: pendingAmount,
+              reservationId: reservation.id,
+            } as TimelineItem;
+          }),
           
           // Transformar actividades
           ...(allActivities).map(activity => ({
@@ -353,6 +427,69 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                         >
                           Pago: {item.paymentStatus}
                         </span>
+                      </div>
+                    )}
+
+                    {/* Info enriquecida para reservas: espacios, folio, consumos */}
+                    {item.type === 'reservation' && item.reservationId && (
+                      <div className="mt-3 space-y-2 border-t border-gray-200 dark:border-gray-600 pt-2">
+                        {/* Espacios ocupados */}
+                        {item.spaces && item.spaces.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Espacio(s):</span>
+                            {item.spaces.map((space, i) => (
+                              <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+                                {space}
+                                {item.spaceTypes?.[i] && <span className="ml-1 text-gray-400">· {item.spaceTypes[i]}</span>}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Fechas checkin / checkout */}
+                        {item.checkin && item.checkout && (
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>Check-in: <strong className="text-gray-700 dark:text-gray-300">{new Date(item.checkin).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</strong></span>
+                            <span>→</span>
+                            <span>Check-out: <strong className="text-gray-700 dark:text-gray-300">{new Date(item.checkout).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</strong></span>
+                          </div>
+                        )}
+
+                        {/* Folio info */}
+                        {item.folioItemsCount !== undefined && item.folioItemsCount > 0 && (
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium">
+                              Folio: {item.folioItemsCount} item(s)
+                            </span>
+                            {item.folioPendingItems! > 0 ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium">
+                                {item.folioPendingItems} pendiente(s) · {formatCurrency(item.folioPendingAmount || 0)}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
+                                Todo pagado
+                              </span>
+                            )}
+                            {item.folioBalance !== undefined && item.folioBalance > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium">
+                                Saldo: {formatCurrency(item.folioBalance)}
+                              </span>
+                            )}
+                            <a
+                              href={`/app/pms/folios?reservation=${item.reservationId}`}
+                              className="ml-auto text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              Ver folio →
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Reserva sin folio */}
+                        {item.folioItemsCount === 0 && (
+                          <div className="text-xs text-gray-400 dark:text-gray-500">
+                            Sin consumos registrados en folio
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

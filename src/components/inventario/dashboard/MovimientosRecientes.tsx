@@ -1,12 +1,14 @@
 'use client';
 
-import { FC } from 'react';
-import { cn, formatDate } from '@/utils/Utils';
-import { 
-  ArrowDownCircle, 
-  ArrowUpCircle, 
-  ArrowRightLeft, 
-  RotateCcw, 
+import {
+  FC } from 'react';
+import { cn,
+  formatDate } from '@/utils/Utils';
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ArrowRightLeft,
+  RotateCcw,
   Activity,
   Package
 } from 'lucide-react';
@@ -127,7 +129,7 @@ const MovimientosRecientes: FC<MovimientosRecientesProps> = ({ movements, isLoad
                 </div>
                 <Link 
                   href={`/app/inventario/productos/${movement.productId}`}
-                  className="font-medium text-sm text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 truncate block"
+                  className="font-medium text-sm text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 break-words whitespace-normal block"
                 >
                   {movement.productName}
                 </Link>

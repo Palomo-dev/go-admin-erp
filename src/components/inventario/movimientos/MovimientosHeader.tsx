@@ -2,12 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { 
-  ArrowRightLeft, 
-  Download, 
-  Package,
-  RefreshCw
-} from 'lucide-react';
+import { ArrowRightLeft, Download, Package, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 interface MovimientosHeaderProps {

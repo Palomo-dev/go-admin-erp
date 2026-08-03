@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import {
+  useRouter,
+  usePathname } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -9,15 +11,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+  } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Eye, 
-  Truck,
-  PackageCheck,
-  XCircle
-} from 'lucide-react';
+import { Eye, Truck, PackageCheck, XCircle } from 'lucide-react';
 import { InventoryTransfer } from './types';
 import { formatDate } from '@/utils/Utils';
 

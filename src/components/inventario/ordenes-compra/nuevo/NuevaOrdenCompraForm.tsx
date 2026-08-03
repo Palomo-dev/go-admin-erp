@@ -382,7 +382,7 @@ export function NuevaOrdenCompraForm() {
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-white truncate">{item.productName}</p>
+                                <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">{item.productName}</p>
                                 <p className="text-xs text-blue-600 dark:text-blue-400 font-mono">{item.sku}</p>
                               </div>
                             </div>

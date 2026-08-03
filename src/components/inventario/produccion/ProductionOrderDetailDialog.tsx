@@ -7,11 +7,12 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+  } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Factory, Loader2 } from 'lucide-react';
+import { Factory } from 'lucide-react';
 import type { ProductionOrder } from '@/lib/services/productionOrderService';
 import { ProductionOrderStatusBadge } from './ProductionOrderStatusBadge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProductionOrderDetailDialogProps {
   order: ProductionOrder | null;
@@ -41,8 +42,7 @@ export function ProductionOrderDetailDialog({
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-          </div>
+            <Skeleton className="h-6 w-8 mx-auto" /></div>
         ) : order ? (
           <div className="space-y-4">
             {/* Info general */}

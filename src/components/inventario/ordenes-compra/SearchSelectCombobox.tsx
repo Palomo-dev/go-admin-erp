@@ -81,11 +81,11 @@ export function SearchSelectCombobox({
         <div className="flex items-center gap-2 p-2.5 border rounded-lg bg-white dark:bg-gray-900 dark:border-gray-700">
           {icon && <span className="flex-shrink-0">{icon}</span>}
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900 dark:text-white truncate text-sm">
+            <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal text-sm">
               {selected.name}
             </p>
             {selected.subtitle && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                 {selected.subtitle}
               </p>
             )}
@@ -140,11 +140,11 @@ export function SearchSelectCombobox({
                 >
                   {icon && <span className="flex-shrink-0">{icon}</span>}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 dark:text-white truncate text-sm">
+                    <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal text-sm">
                       {option.name}
                     </p>
                     {option.subtitle && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                         {option.subtitle}
                       </p>
                     )}

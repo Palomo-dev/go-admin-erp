@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useRouter } from 'next/navigation';
 import { useOrganization, obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface NotasTabProps {
   producto: any;
@@ -63,7 +64,7 @@ interface File {
  * Pestaña para gestionar notas y documentos del producto
  */
 const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   const { organization } = useOrganization();
   
@@ -476,8 +477,7 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
         
         {loading ? (
           <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          </div>
+            <Skeleton className="h-8 w-8 mx-auto" /></div>
         ) : notas.length === 0 ? (
           <div className="p-8 text-center rounded-md border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
@@ -509,10 +509,10 @@ const NotasTab: React.FC<NotasTabProps> = ({ producto }) => {
                     )}
                   </div>
                   <div className="ml-1 overflow-hidden">
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{nota.user_name}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 break-words whitespace-normal">{nota.user_name}</p>
                     <div className="flex flex-col space-y-1 text-xs text-gray-500 dark:text-gray-400">
-                      <p className="truncate">{nota.user_role}</p>
-                      {nota.user_email && <p className="truncate">{nota.user_email}</p>}
+                      <p className="break-words whitespace-normal">{nota.user_role}</p>
+                      {nota.user_email && <p className="break-words whitespace-normal">{nota.user_email}</p>}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {formatDate(nota.created_at)}

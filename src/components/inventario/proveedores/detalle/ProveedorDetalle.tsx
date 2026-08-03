@@ -1,25 +1,52 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import {
+  useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { supplierService, type Supplier, type PurchaseOrderSummary, type PurchaseInvoiceSummary } from '@/lib/services/supplierService';
+import { supplierService,
+  type Supplier,
+  type PurchaseOrderSummary,
+  type PurchaseInvoiceSummary } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card,
+  CardContent,
+  CardHeader,
+  CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
-import { 
-  ArrowLeft, Loader2, Edit, Building2, User, Phone, Mail, FileText,
-  ShoppingCart, Receipt, Calendar, Plus, MapPin, Globe, CreditCard,
-  Landmark, Package, Star
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  } from '@/components/ui/table';
+import {
+  ArrowLeft,
+  Edit,
+  Building2,
+  User,
+  Phone,
+  Mail,
+  FileText,
+  ShoppingCart,
+  Receipt,
+  Calendar,
+  Plus,
+  MapPin,
+  Globe,
+  CreditCard,
+  Landmark,
+  Package,
+  Star
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import Link from 'next/link';
 import Image from 'next/image';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface ProductSupplierRelation {
   id: number;
@@ -128,9 +155,9 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando proveedor...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

@@ -1,28 +1,30 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTheme } from 'next-themes';
-import { useToast } from '@/components/ui/use-toast';
+
+import {
+  useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { format } from 'date-fns';
 import { 
-  stockService, 
-  type StockMovement, 
+  stockService,
+  type StockMovement,
   type MovementStats as MovementStatsType,
   type MovementFilters as MovementFiltersType
 } from '@/lib/services/stockService';
 import { 
-  MovimientosHeader, 
-  MovimientosStats, 
-  MovimientosFilters, 
+  MovimientosHeader,
+  MovimientosStats,
+  MovimientosFilters,
   MovimientosTable 
 } from '@/components/inventario/movimientos';
-import { Loader2 } from 'lucide-react';
+
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function MovimientosPage() {
-  const { theme } = useTheme();
+
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
   const { branchFilter } = useBranch();
@@ -259,9 +261,9 @@ export default function MovimientosPage() {
   // Loading inicial
   if (loadingOrg || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

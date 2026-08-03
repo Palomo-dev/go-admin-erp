@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import {
+  Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -12,21 +13,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+  } from '@/components/ui/table';
 import {
   DollarSign,
   Download,
   RefreshCw,
-  Loader2,
   Search,
   ChevronDown,
   ChevronRight,
   ChefHat,
-  TrendingUp,
+  TrendingUp
 } from 'lucide-react';
 import { CostoRecetasService, type RecetaCostoEntry } from './CostoRecetasService';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function CostoRecetasPage() {
   const { toast } = useToast();
@@ -179,8 +180,7 @@ export function CostoRecetasPage() {
 
         {loading ? (
           <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          </div>
+            <Skeleton className="h-8 w-8 mx-auto" /></div>
         ) : filteredData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
             <ChefHat className="h-12 w-12 mb-3 opacity-50" />

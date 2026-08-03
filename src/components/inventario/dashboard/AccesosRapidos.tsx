@@ -1,14 +1,15 @@
 'use client';
 
-import { FC } from 'react';
+import {
+  FC } from 'react';
 import { cn } from '@/utils/Utils';
 import Link from 'next/link';
-import { 
-  Package, 
-  FolderTree, 
-  ArrowRightLeft, 
-  ShoppingCart, 
-  Truck, 
+import {
+  Package,
+  FolderTree,
+  ArrowRightLeft,
+  ShoppingCart,
+  Truck,
   ClipboardList,
   Users,
   FileBarChart,
@@ -18,7 +19,7 @@ import {
   Image,
   BarChart3,
   Factory,
-  ChefHat,
+  ChefHat
 } from 'lucide-react';
 
 interface QuickAccessItem {

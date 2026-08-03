@@ -1,13 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  ClipboardList, 
-  FileEdit, 
-  CheckCircle2, 
-  XCircle
-} from 'lucide-react';
+import {
+  Card,
+  CardContent } from '@/components/ui/card';
+import { ClipboardList, FileEdit, CheckCircle2, XCircle } from 'lucide-react';
 import type { AdjustmentStats as AdjustmentStatsType } from '@/lib/services/adjustmentService';
 
 interface AjustesStatsProps {
@@ -60,10 +57,10 @@ export function AjustesStats({ stats, isLoading }: AjustesStatsProps) {
                 <stat.icon className={`h-5 w-5 ${stat.textColor}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                   {stat.title}
                 </p>
-                <p className={`text-lg font-semibold ${stat.textColor} truncate`}>
+                <p className={`text-lg font-semibold ${stat.textColor} break-words whitespace-normal`}>
                   {isLoading ? '...' : stat.value}
                 </p>
               </div>

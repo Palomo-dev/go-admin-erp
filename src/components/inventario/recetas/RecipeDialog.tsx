@@ -533,7 +533,7 @@ function IngredientRowCard({
           <div className="md:col-span-5 relative">
             {selectedProduct ? (
               <div className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-600">
-                <span className="text-sm font-medium dark:text-white truncate">
+                <span className="text-sm font-medium dark:text-white break-words whitespace-normal">
                   {formatProductDisplayName(selectedProduct)}
                 </span>
                 <button

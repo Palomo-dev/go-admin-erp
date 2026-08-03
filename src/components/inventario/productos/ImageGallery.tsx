@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ImageGalleryProps {
   productId: number;
@@ -214,8 +215,7 @@ export function ImageGallery({ productId, organizationId, readOnly = false }: Im
       
       {loading ? (
         <div className="flex items-center justify-center p-8">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-        </div>
+          <Skeleton className="h-6 w-8 mx-auto" /></div>
       ) : images.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md border-gray-300">
           <p className="mb-4 text-gray-500">No hay imágenes para este producto</p>

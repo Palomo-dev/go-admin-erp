@@ -632,7 +632,7 @@ export default function ImportarProductosPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -821,7 +821,7 @@ export default function ImportarProductosPage() {
                       <TableRow key={index}>
                         <TableCell>{row.row}</TableCell>
                         <TableCell className="font-mono text-sm">{row.sku}</TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={row.name}>{row.name}</TableCell>
+                        <TableCell className="max-w-[200px] break-words whitespace-normal" title={row.name}>{row.name}</TableCell>
                         <TableCell>{row.type || '-'}</TableCell>
                         <TableCell>{row.price ? `$${row.price.toLocaleString('es-CO')}` : '-'}</TableCell>
                         <TableCell>{row.stock || 0}</TableCell>

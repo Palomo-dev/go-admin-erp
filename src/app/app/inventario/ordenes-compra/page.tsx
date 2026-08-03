@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrder, type PurchaseOrderStats } from '@/lib/services/purchaseOrderService';
 import { describeSkippedItems } from '@/lib/services/stockMovementService';
-import { Loader2 } from 'lucide-react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import {
   OrdenesCompraFilters,
   OrdenesCompraTable
 } from '@/components/inventario/ordenes-compra';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function OrdenesCompraPage() {
   const router = useRouter();
@@ -217,15 +218,15 @@ export default function OrdenesCompraPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando órdenes de compra...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <OrdenesCompraHeader />
 
       <OrdenesCompraStats stats={stats} />

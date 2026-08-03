@@ -1,7 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle } from '@/components/ui/card';
 import { Package, FolderTree, Hash } from 'lucide-react';
 import { type Category } from '@/lib/services/categoryService';
 

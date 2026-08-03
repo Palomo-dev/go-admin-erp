@@ -253,36 +253,8 @@ export class CuentaPorCobrarDetailService {
         throw paymentError;
       }
 
-      // Actualizar balance de cuenta por cobrar
-      const { data: account, error: accountError } = await supabase
-        .from('accounts_receivable')
-        .select('balance')
-        .eq('id', accountId)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (accountError) {
-        console.error('Error al obtener cuenta:', accountError);
-        throw accountError;
-      }
-
-      const newBalance = parseFloat(account.balance) - amount;
-      const newStatus = newBalance <= 0 ? 'paid' : 'partial';
-
-      const { error: updateError } = await supabase
-        .from('accounts_receivable')
-        .update({
-          balance: newBalance,
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', accountId)
-        .eq('organization_id', organizationId);
-
-      if (updateError) {
-        console.error('Error al actualizar cuenta:', updateError);
-        throw updateError;
-      }
+      // El trigger update_accounts_receivable_on_payment (SECURITY DEFINER)
+      // actualiza automáticamente el balance y estado de la cuenta y la factura
 
     } catch (error) {
       console.error('Error en aplicarPago:', error);

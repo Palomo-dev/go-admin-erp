@@ -5,6 +5,7 @@ import { ArrowUpCircle, ArrowDownCircle, Clock, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
 import type { CashMovement } from './types';
@@ -60,9 +61,10 @@ export function MovimientosList({ sessionId, refreshTrigger }: MovimientosListPr
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent" />
-            <span className="ml-2 dark:text-gray-300">Cargando movimientos...</span>
+          <div className="py-8 space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-5/6" />
           </div>
         </CardContent>
       </Card>

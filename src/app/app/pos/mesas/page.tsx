@@ -42,6 +42,7 @@ import { CombinarMesasDialog } from '@/components/pos/mesas/CombinarMesasDialog'
 import { MoverPedidoDialog } from '@/components/pos/mesas/MoverPedidoDialog';
 import { MesasPagination } from '@/components/pos/mesas/MesasPagination';
 import { MesasService } from '@/components/pos/mesas/mesasService';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { MesasFloorMap } from '@/components/pos/mesas/MesasFloorMap';
 import { HistorialMesasDialog } from '@/components/pos/mesas/HistorialMesasDialog';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -437,8 +438,9 @@ export default function MesasPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={6} columns="1" />
       </div>
     );
   }

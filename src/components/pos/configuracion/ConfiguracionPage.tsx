@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   Settings,
   CreditCard,
@@ -16,7 +17,6 @@ import {
   RefreshCw,
   ArrowLeft,
   ChevronRight,
-  Loader2,
   DollarSign,
   Receipt,
   Calculator,
@@ -214,8 +214,9 @@ export function ConfiguracionPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

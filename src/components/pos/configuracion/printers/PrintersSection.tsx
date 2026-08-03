@@ -16,7 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Printer as PrinterIcon, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Printer as PrinterIcon, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   PrintersService,
   type Printer,
@@ -119,8 +120,10 @@ export function PrintersSection({ branches }: PrintersSectionProps) {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          <div className="py-8 space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-5/6" />
           </div>
         ) : printers.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-4">

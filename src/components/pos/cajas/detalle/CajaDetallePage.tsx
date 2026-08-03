@@ -22,6 +22,7 @@ import {
   Printer,
   EyeOff
 } from 'lucide-react';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -131,9 +132,10 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-3 text-lg dark:text-gray-300">Cargando sesión de caja...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

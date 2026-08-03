@@ -461,11 +461,11 @@ export function AddProductDialog({
 
                         {/* Información */}
                         <div className="p-2 sm:p-3 space-y-1">
-                          <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
+                          <h3 className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words whitespace-normal leading-tight">
                             {product.name}
                           </h3>
                           {product.description && (
-                            <p className="text-[0.6rem] text-gray-500 dark:text-gray-400 line-clamp-1 leading-tight">
+                            <p className="text-[0.6rem] text-gray-500 dark:text-gray-400 break-words whitespace-normal leading-tight">
                               {product.description}
                             </p>
                           )}
@@ -485,7 +485,7 @@ export function AddProductDialog({
                             </span>
                           </div>
                           {product.sku && (
-                            <div className="text-[0.6rem] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate text-center">
+                            <div className="text-[0.6rem] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded break-words whitespace-normal text-center">
                               {product.sku}
                             </div>
                           )}

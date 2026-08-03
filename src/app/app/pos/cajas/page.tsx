@@ -26,6 +26,7 @@ import { CajasService } from '@/components/pos/cajas/CajasService';
 import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
 import type { CashSession } from '@/components/pos/cajas/types';
 import { toast } from 'sonner';
+import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { supabase } from '@/lib/supabase/config';
 
 export default function CajasPage() {
@@ -192,13 +193,10 @@ export default function CajasPage() {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="container mx-auto max-w-7xl">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
-            <span className="ml-3 text-lg dark:text-gray-300">Cargando datos de caja...</span>
-          </div>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }
@@ -394,7 +392,7 @@ export default function CajasPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="dark:text-gray-400 text-gray-600">Sucursal</span>
-                      <span className="dark:text-white truncate ml-2">{(session as any).branch_name || `#${session.branch_id}`}</span>
+                      <span className="dark:text-white text-right break-words whitespace-normal min-w-0 flex-1 ml-2">{(session as any).branch_name || `#${session.branch_id}`}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="dark:text-gray-400 text-gray-600">Apertura</span>
@@ -429,9 +427,7 @@ export default function CajasPage() {
             </CardHeader>
             <CardContent>
               {historyLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent" />
-                </div>
+                <TableSkeleton rows={5} columns={8} />
               ) : historyData.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                   No hay sesiones registradas

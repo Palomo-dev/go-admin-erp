@@ -16,7 +16,6 @@ import {
   Percent,
   Save,
   X,
-  RefreshCw,
   Barcode,
   Package
 } from 'lucide-react';
@@ -26,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { POSService } from '@/lib/services/posService';
 import { Product, Cart, CartItem, CartItemModifier, Customer } from '@/components/pos/types';
 import { ProductSearch } from '@/components/pos/ProductSearch';
@@ -189,8 +189,9 @@ export function NuevaVentaPage() {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[500px]">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-[500px]">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
@@ -299,7 +300,7 @@ export function NuevaVentaPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                        <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">
                           {item.product?.name || 'Producto'}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">

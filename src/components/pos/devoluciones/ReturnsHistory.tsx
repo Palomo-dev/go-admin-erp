@@ -320,7 +320,7 @@ export function ReturnsHistory({ refreshTrigger }: ReturnsHistoryProps) {
                         </Badge>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
-                        <div className="max-w-xs truncate" title={returnItem.reason}>
+                        <div className="break-words whitespace-normal" title={returnItem.reason}>
                           {returnItem.reason}
                         </div>
                       </TableCell>

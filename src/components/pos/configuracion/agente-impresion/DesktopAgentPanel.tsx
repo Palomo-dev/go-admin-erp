@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Activity, Wifi, WifiOff, Printer, RefreshCw, Power, Monitor, Cpu, MapPin, Loader2 } from 'lucide-react';
 import { useDesktopAgent } from '@/hooks/useDesktopAgent';
 import { getDesktopBridge, isDesktop } from '@/lib/utils/desktop';
@@ -244,9 +245,9 @@ export function DesktopAgentPanel() {
             </CardHeader>
             <CardContent className="space-y-2">
               {branchesLoading ? (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Cargando sucursales...
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
                 </div>
               ) : branches.length === 0 ? (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -322,9 +323,9 @@ export function DesktopAgentPanel() {
             </CardHeader>
             <CardContent>
               {printersLoading && printers.length === 0 ? (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Detectando impresoras...
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
                 </div>
               ) : printers.length === 0 ? (
                 <p className="text-xs text-gray-500 dark:text-gray-400">

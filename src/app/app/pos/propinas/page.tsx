@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -16,6 +16,7 @@ import {
   type TipSummary
 } from '@/components/pos/propinas';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { toast } from 'sonner';
 
 export default function PropinasPage() {
@@ -99,8 +100,10 @@ export default function PropinasPage() {
 
   if (orgLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={5} columns="1" />
       </div>
     );
   }

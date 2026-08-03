@@ -62,7 +62,7 @@ export function PreCuentaDialog({
               <Receipt className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
             <div className="min-w-0 flex-1">
-              <span className="text-sm sm:text-lg truncate block">Pre-Cuenta - {tableName}</span>
+              <span className="text-sm sm:text-lg break-words whitespace-normal block">Pre-Cuenta - {tableName}</span>
               <p className="text-xs sm:text-sm font-normal text-gray-500 dark:text-gray-400 mt-0.5">
                 {preCuenta.items.length} productos
               </p>
@@ -83,7 +83,7 @@ export function PreCuentaDialog({
               <div key={item.id} className="p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-gray-900 dark:text-gray-100 line-clamp-2">
+                    <p className="font-medium text-sm text-gray-900 dark:text-gray-100 break-words whitespace-normal">
                       {item.product?.name || 'Producto'}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -113,7 +113,7 @@ export function PreCuentaDialog({
                       </p>
                     )}
                     {(typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes) && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 break-words whitespace-normal">
                         📝 {typeof item.notes === 'object' ? (item.notes as any)?.extra : item.notes}
                       </p>
                     )}

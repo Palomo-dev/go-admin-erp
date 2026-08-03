@@ -133,7 +133,7 @@ export function CategoryFilterBar({
                 cat.image_url ? 'bg-gradient-to-t from-black/70 via-black/10 to-transparent' : ''
               )}>
                 <span className={cn(
-                  'text-[0.65rem] font-semibold leading-tight line-clamp-2',
+                  'text-[0.65rem] font-semibold leading-tight break-words whitespace-normal',
                   cat.image_url ? 'text-white' : 'text-gray-800 dark:text-gray-100'
                 )} style={!cat.image_url ? { color } : undefined}>
                   {cat.name}

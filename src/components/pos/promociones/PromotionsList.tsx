@@ -208,7 +208,7 @@ export function PromotionsList({ promotions, loading, onRefresh }: PromotionsLis
                   <div>
                     <div className="font-medium dark:text-white">{promo.name}</div>
                     {promo.description && (
-                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
+                      <div className="text-sm text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                         {promo.description}
                       </div>
                     )}

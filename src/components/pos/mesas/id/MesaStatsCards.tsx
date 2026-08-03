@@ -87,7 +87,7 @@ export function MesaStatsCards({
             <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
               Total
             </p>
-            <p className="text-base sm:text-lg font-bold text-blue-900 dark:text-blue-100 truncate">
+            <p className="text-base sm:text-lg font-bold text-blue-900 dark:text-blue-100 break-words whitespace-normal">
               {formatCurrency(total)}
             </p>
           </div>
@@ -106,7 +106,7 @@ export function MesaStatsCards({
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Mesero
             </p>
-            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 break-words whitespace-normal">
               {serverName || 'Sin asignar'}
             </p>
           </div>

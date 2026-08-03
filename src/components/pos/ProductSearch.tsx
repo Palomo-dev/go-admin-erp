@@ -508,14 +508,14 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                     {/* Información del producto - RESPONSIVE */}
                     <div className="p-2 sm:p-2.5 md:p-3 space-y-1 sm:space-y-1.5">
                       <h3 className={cn(
-                        "font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 leading-tight",
+                        "font-semibold text-gray-900 dark:text-gray-100 break-words whitespace-normal leading-tight",
                         gridSize === 'large' ? "text-xs sm:text-sm" : "text-[0.7rem] sm:text-xs"
                       )}>
                         {product.name}
                       </h3>
                       
                       {gridSize === 'large' && product.description && (
-                        <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-500 dark:text-gray-400 line-clamp-1 leading-tight">
+                        <p className="text-[0.6rem] sm:text-[0.65rem] text-gray-500 dark:text-gray-400 break-words whitespace-normal leading-tight">
                           {product.description}
                         </p>
                       )}
@@ -541,7 +541,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                       )}
 
                       <div className="flex items-center justify-between text-[0.6rem] sm:text-[0.65rem] text-gray-500 dark:text-gray-400 gap-1">
-                        <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate">
+                        <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded break-words whitespace-normal">
                           {product.sku}
                         </span>
                       </div>

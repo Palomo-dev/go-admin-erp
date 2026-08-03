@@ -17,6 +17,7 @@ import {
   Wallet,
   EyeOff,
 } from 'lucide-react';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -194,13 +195,9 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="flex justify-center items-center h-64">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-3 text-lg dark:text-gray-300">Cargando...</span>
-          </div>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

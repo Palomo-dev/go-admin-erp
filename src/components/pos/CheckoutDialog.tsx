@@ -1301,7 +1301,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                   {cart.items.map((item) => (
                     <div key={item.id} className="flex justify-between items-start gap-2 text-xs sm:text-sm">
                       <div className="flex-1 min-w-0">
-                        <span className="dark:text-gray-100 text-gray-900 line-clamp-1">{item.product.name}</span>
+                        <span className="dark:text-gray-100 text-gray-900 break-words whitespace-normal">{item.product.name}</span>
                         <span className="dark:text-gray-400 text-gray-600 ml-1">
                           x{item.quantity}
                         </span>

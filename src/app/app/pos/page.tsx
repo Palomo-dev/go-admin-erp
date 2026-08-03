@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, Users, Package, Settings, RefreshCw, Clock, Plus, Receipt, Wallet, RotateCcw, ChefHat, BarChart3, LockOpen, Lock, DollarSign, TrendingUp, AlertCircle, Tag, Ticket, LayoutGrid, Banknote, Percent, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Users, Package, Settings, Clock, Plus, Receipt, Wallet, RotateCcw, ChefHat, BarChart3, LockOpen, Lock, DollarSign, TrendingUp, AlertCircle, Tag, Ticket, LayoutGrid, Banknote, Percent, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { useOrganization, getCurrentBranchIdWithFallback, getCurrentBranchId } f
 import { useBranch } from '@/lib/context/BranchContext';
 import { Product, Customer, Cart, Sale, CartItemModifier } from '@/components/pos/types';
 import { formatCurrency, cn } from '@/utils/Utils';
+import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { VentasService, DailySummary, CashSession } from '@/components/pos/ventas';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import KitchenService from '@/lib/services/kitchenService';
@@ -328,11 +329,10 @@ export default function POSPage() {
   // Estados de carga
   if (orgLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen dark:bg-gray-900 bg-gray-50">
-        <div className="text-center space-y-4">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto dark:text-blue-400 text-blue-600" />
-          <p className="dark:text-gray-400 text-gray-600">Cargando sistema POS...</p>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
@@ -368,10 +368,10 @@ export default function POSPage() {
                   <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 dark:text-blue-400 text-blue-600" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <CardTitle className="text-base sm:text-lg md:text-xl dark:text-white text-gray-900 truncate">
+                  <CardTitle className="text-base sm:text-lg md:text-xl dark:text-white text-gray-900 break-words whitespace-normal">
                     Sistema POS
                   </CardTitle>
-                  <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 truncate">
+                  <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 break-words whitespace-normal">
                     {organization?.name || 'Caja rápida / Venta'}
                   </p>
                 </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   reservasMesasService,
   ReservasHeader,
@@ -157,8 +157,10 @@ export default function ReservasMesasPage() {
 
   if (!organization) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-[calc(100vh-4rem)]">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

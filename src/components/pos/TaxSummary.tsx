@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calculator, Settings, ChevronDown, Check } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { POSService } from '@/lib/services/posService';
 import { Cart, CartItem } from './types';
 import { formatCurrency } from '@/utils/Utils';
@@ -242,8 +243,9 @@ export function TaxSummary({
             <span>Resumen</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-2 sm:p-3">
-          <div className="text-xs sm:text-sm dark:text-gray-400 text-gray-600">Cargando...</div>
+        <CardContent className="p-2 sm:p-3 space-y-2">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-3 w-3/4" />
         </CardContent>
       </Card>
     );
@@ -271,7 +273,7 @@ export function TaxSummary({
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-1.5 text-xs sm:text-sm dark:text-white text-gray-900">
             <Calculator className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-            <span className="truncate">Resumen</span>
+            <span className="break-words whitespace-normal">Resumen</span>
           </CardTitle>
           <Button
             variant="ghost"
@@ -402,7 +404,7 @@ export function TaxSummary({
                   {taxBreakdown.map((tax) => (
                     <div key={tax.taxId} className="flex justify-between items-start gap-2 text-xs">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1">
-                        <span className="dark:text-gray-400 text-gray-600 truncate" title={`${tax.name} (${tax.rate}%)`}>
+                        <span className="dark:text-gray-400 text-gray-600 break-words whitespace-normal" title={`${tax.name} (${tax.rate}%)`}>
                           {tax.name} ({tax.rate}%)
                         </span>
                         {taxIncluded && (

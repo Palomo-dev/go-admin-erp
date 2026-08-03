@@ -1,5 +1,25 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+
+async function getBranchIdWithFallback(organizationId: number): Promise<number> {
+  const branchId = getCurrentBranchId();
+  if (branchId !== null) return branchId;
+
+  const { data, error } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .order('is_main', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+  }
+
+  return data.id;
+}
 import { CuentaPorCobrarDetalle, PaymentRecord, AgingInfo, AccountActions } from './types';
 import { NotificationService } from '@/lib/services/notificationService';
 
@@ -205,10 +225,8 @@ export class CuentaPorCobrarDetailService {
   // Aplicar pago
   static async aplicarPago(accountId: string, amount: number, method: string, reference?: string, paymentDate?: string): Promise<void> {
     const organizationId = this.getOrganizationId();
-    const branchId = getCurrentBranchId();
+    const branchId = await getBranchIdWithFallback(organizationId);
     const createdBy = await getCurrentUserId();
-    
-    if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
     
     console.log('💰 DEBUG aplicarPago:', { accountId, amount, method, organizationId, branchId, createdBy, paymentDate });
     
@@ -227,7 +245,7 @@ export class CuentaPorCobrarDetailService {
           reference: reference,
           status: 'completed',
           currency: 'COP',
-          payment_date: paymentDate ? new Date(paymentDate + 'T12:00:00').toISOString() : new Date().toISOString()
+          payment_date: paymentDate ? new Date(paymentDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()
         });
 
       if (paymentError) {
@@ -235,36 +253,8 @@ export class CuentaPorCobrarDetailService {
         throw paymentError;
       }
 
-      // Actualizar balance de cuenta por cobrar
-      const { data: account, error: accountError } = await supabase
-        .from('accounts_receivable')
-        .select('balance')
-        .eq('id', accountId)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (accountError) {
-        console.error('Error al obtener cuenta:', accountError);
-        throw accountError;
-      }
-
-      const newBalance = parseFloat(account.balance) - amount;
-      const newStatus = newBalance <= 0 ? 'paid' : 'partial';
-
-      const { error: updateError } = await supabase
-        .from('accounts_receivable')
-        .update({
-          balance: newBalance,
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', accountId)
-        .eq('organization_id', organizationId);
-
-      if (updateError) {
-        console.error('Error al actualizar cuenta:', updateError);
-        throw updateError;
-      }
+      // El trigger update_accounts_receivable_on_payment (SECURITY DEFINER)
+      // actualiza automáticamente el balance y estado de la cuenta y la factura
 
     } catch (error) {
       console.error('Error en aplicarPago:', error);
@@ -423,7 +413,7 @@ export class CuentaPorCobrarDetailService {
           paid_amount: newPaidAmount,
           balance: newBalance,
           status: newStatus,
-          paid_at: newStatus === 'paid' ? (paymentDate ? new Date(paymentDate + 'T12:00:00').toISOString() : new Date().toISOString()) : null
+          paid_at: newStatus === 'paid' ? (paymentDate ? new Date(paymentDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()) : null
         })
         .eq('id', installmentId);
 

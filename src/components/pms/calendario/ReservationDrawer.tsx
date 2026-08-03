@@ -57,7 +57,9 @@ import {
   Users,
   FileText,
   MoreHorizontal,
+  Receipt,
 } from 'lucide-react';
+import { SpaceFolioSummary } from '@/components/pms/espacios/id/SpaceFolioSummary';
 import type { TapeChartReservation, TapeChartSpace } from '@/lib/services/tapeChartService';
 
 export interface ReservationDetails {
@@ -276,7 +278,7 @@ export function ReservationDrawer({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-1/2 min-w-[400px] sm:max-w-none overflow-y-auto bg-white dark:bg-gray-900">
           <SheetHeader className="space-y-1">
             <div className="flex items-center justify-between">
               <SheetTitle className="text-xl">
@@ -477,6 +479,17 @@ export function ReservationDrawer({
                   </div>
                 </div>
               )}
+            </div>
+
+            <Separator />
+
+            {/* Folio de Consumos */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Folio de Consumos
+              </h3>
+              <SpaceFolioSummary spaceId={reservation.spaceId} />
             </div>
 
             <Separator />

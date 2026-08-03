@@ -25,6 +25,14 @@ export interface Folio {
   payments?: Payment[];
 }
 
+export interface FolioItemModifier {
+  groupId: number;
+  groupName: string;
+  modifierId: number;
+  name: string;
+  extraPrice: number;
+}
+
 export interface FolioItem {
   id: string;
   folio_id: string;
@@ -35,6 +43,13 @@ export interface FolioItem {
   product_id?: number | null;
   quantity?: number | null;
   unit_price?: number | null;
+  variant_data?: Record<string, string> | null;
+  modifiers?: FolioItemModifier[] | null;
+  cash_session_id?: number | null;
+  payment_status?: 'pending' | 'paid';
+  charge_type?: 'room_charge' | 'direct_payment';
+  paid_at?: string | null;
+  payment_method?: string | null;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -66,6 +81,13 @@ export interface CreateFolioItemData {
   product_id?: number | null;
   quantity?: number | null;
   unit_price?: number | null;
+  variant_data?: Record<string, string> | null;
+  modifiers?: FolioItemModifier[] | null;
+  cash_session_id?: number | null;
+  payment_status?: 'pending' | 'paid';
+  charge_type?: 'room_charge' | 'direct_payment';
+  paid_at?: string | null;
+  payment_method?: string | null;
   created_by?: string;
 }
 
@@ -384,6 +406,72 @@ class FoliosService {
   }
 
   /**
+   * Marcar items del folio como pagados y registrar pago en payments
+   */
+  async payFolioItems(
+    folioId: string,
+    amount: number,
+    paymentMethod: string,
+    cashSessionId?: number | null,
+    createdBy?: string
+  ): Promise<void> {
+    try {
+      // 1. Registrar el pago en payments
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          source: 'folio',
+          source_id: folioId,
+          method: paymentMethod,
+          amount,
+          currency: 'USD',
+          status: 'completed',
+          created_by: createdBy || null,
+        });
+
+      if (paymentError) throw paymentError;
+
+      // 2. Obtener items pendientes ordenados por fecha (FIFO)
+      const { data: pendingItems, error: itemsError } = await supabase
+        .from('folio_items')
+        .select('id, amount')
+        .eq('folio_id', folioId)
+        .eq('payment_status', 'pending')
+        .order('created_at', { ascending: true });
+
+      if (itemsError) throw itemsError;
+
+      // 3. Marcar items como pagados hasta cubrir el monto del pago
+      let remaining = amount;
+      const now = new Date().toISOString();
+
+      for (const item of pendingItems || []) {
+        if (remaining <= 0) break;
+        remaining -= Number(item.amount);
+
+        const { error: updateError } = await supabase
+          .from('folio_items')
+          .update({
+            payment_status: 'paid',
+            paid_at: now,
+            payment_method: paymentMethod,
+          })
+          .eq('id', item.id);
+
+        if (updateError) {
+          console.error('Error marcando item como pagado:', updateError);
+        }
+      }
+
+      // 4. Actualizar balance del folio
+      await this.updateFolioBalance(folioId);
+    } catch (error) {
+      console.error('Error pagando items del folio:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Aplicar descuento al folio
    */
   async applyDiscount(folioId: string, amount: number, description: string, createdBy?: string): Promise<FolioItem> {
@@ -522,6 +610,10 @@ class FoliosService {
     balance: number;
     itemCount: number;
     paymentCount: number;
+    totalPending: number;
+    totalPaid: number;
+    pendingCount: number;
+    paidCount: number;
   }> {
     try {
       const folio = await this.getFolioById(folioId);
@@ -533,11 +625,24 @@ class FoliosService {
           balance: 0,
           itemCount: 0,
           paymentCount: 0,
+          totalPending: 0,
+          totalPaid: 0,
+          pendingCount: 0,
+          paidCount: 0,
         };
       }
 
       const subtotal = folio.items?.reduce((sum, item) => sum + Number(item.amount), 0) || 0;
       const payments = folio.payments?.reduce((sum, payment) => sum + Number(payment.amount || 0), 0) || 0;
+
+      const totalPending = folio.items
+        ?.filter(item => item.payment_status === 'pending')
+        .reduce((sum, item) => sum + Number(item.amount), 0) || 0;
+      const totalPaid = folio.items
+        ?.filter(item => item.payment_status === 'paid')
+        .reduce((sum, item) => sum + Number(item.amount), 0) || 0;
+      const pendingCount = folio.items?.filter(item => item.payment_status === 'pending').length || 0;
+      const paidCount = folio.items?.filter(item => item.payment_status === 'paid').length || 0;
 
       return {
         subtotal,
@@ -545,6 +650,10 @@ class FoliosService {
         balance: folio.balance,
         itemCount: folio.items?.length || 0,
         paymentCount: folio.payments?.length || 0,
+        totalPending,
+        totalPaid,
+        pendingCount,
+        paidCount,
       };
     } catch (error) {
       console.error('Error obteniendo resumen:', error);

@@ -498,6 +498,17 @@ export class CajasService {
       }
       const returnsTotal = (returnsData || []).reduce((sum, r) => sum + Number(r.total_refund), 0);
 
+      // Consultar consumos de habitaciones (folio_items) asociados a esta sesi\u00f3n de caja
+      const { data: folioItems, error: folioError } = await supabase
+        .from('folio_items')
+        .select('amount')
+        .eq('cash_session_id', sessionId);
+
+      if (folioError) {
+        console.warn('Error consultando folio_items de la sesi\u00f3n:', folioError);
+      }
+      const folioConsumptionsTotal = (folioItems || []).reduce((sum, item) => sum + Number(item.amount), 0);
+
       // Calcular movimientos manuales de caja
       const cashIn = movements
         .filter(m => m.type === 'in')
@@ -547,6 +558,7 @@ export class CajasService {
         difference: session.difference ? Number(session.difference) : undefined,
         change_total: changeTotal,
         returns_total: returnsTotal,
+        folio_consumptions_total: folioConsumptionsTotal,
         payments_by_method: incomeByMethod,
         income_by_method: incomeByMethod,
         expense_by_method: expenseByMethod,

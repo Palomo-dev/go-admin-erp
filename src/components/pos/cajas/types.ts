@@ -90,6 +90,8 @@ export interface CashSummary {
   change_total: number;
   /** Total de devoluciones procesadas durante la sesión */
   returns_total: number;
+  /** Total de consumos de habitaciones (folios PMS) durante la sesión */
+  folio_consumptions_total: number;
   /** @deprecated usar income_by_method / expense_by_method */
   payments_by_method?: Record<string, number>;
   income_by_method?: Record<string, number>;

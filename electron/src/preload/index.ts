@@ -25,6 +25,7 @@ try {
   listPrinters: () => ipcRenderer.invoke('printing:list'),
   discoverNetwork: () => ipcRenderer.invoke('printing:discover'),
   listUsbDevices: () => ipcRenderer.invoke('printing:usb'),
+  listBluetoothDevices: () => ipcRenderer.invoke('printing:bluetooth'),
   printRaw: (printerId: string, payload: unknown) =>
     ipcRenderer.invoke('printing:print-raw', printerId, payload),
   reprintJob: (jobId: string) => ipcRenderer.invoke('printing:reprint', jobId),

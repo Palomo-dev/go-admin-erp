@@ -27,6 +27,15 @@ export interface DesktopUsbDevice {
   name?: string;
   /** El dispositivo se declara de clase Impresora en el bus USB. */
   isPrinter: boolean;
+  /** true si fue detectado via PowerShell/WMI (no via libusb). */
+  viaWmi?: boolean;
+}
+
+export interface DesktopBluetoothDevice {
+  name: string;
+  macAddress: string;
+  isPaired: boolean;
+  isPrinter: boolean;
 }
 
 /** Respuesta del handler `printing:list` del proceso principal. */
@@ -42,6 +51,11 @@ export interface DesktopDiscoverResponse {
 /** Respuesta del endpoint `/usb` del agente (o su handler equivalente). */
 export interface DesktopUsbResponse {
   devices?: DesktopUsbDevice[];
+}
+
+/** Respuesta del endpoint `/bluetooth` del agente. */
+export interface DesktopBluetoothResponse {
+  devices?: DesktopBluetoothDevice[];
 }
 
 /** Respuesta al imprimir directamente via IPC. */
@@ -95,6 +109,7 @@ export interface GoAdminDesktopBridge {
   listPrinters?: () => Promise<DesktopPrintersResponse>;
   discoverNetwork?: () => Promise<DesktopDiscoverResponse>;
   listUsbDevices?: () => Promise<DesktopUsbResponse>;
+  listBluetoothDevices?: () => Promise<DesktopBluetoothResponse>;
   printRaw?: (printerId: string, payload: unknown) => Promise<DesktopPrintResult>;
   reprintJob?: (jobId: string) => Promise<DesktopPrintResult>;
   openCashDrawer?: (printerName?: string) => Promise<DesktopPrintResult>;

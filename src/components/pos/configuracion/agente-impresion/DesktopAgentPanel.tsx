@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Activity, Wifi, WifiOff, Printer, RefreshCw, Power, Monitor, Cpu, MapPin, Loader2 } from 'lucide-react';
+import { ArrowLeft, Activity, Wifi, WifiOff, Printer, RefreshCw, Power, Monitor, Cpu, MapPin, Loader2, Usb, Bluetooth, Network } from 'lucide-react';
 import { useDesktopAgent } from '@/hooks/useDesktopAgent';
-import { getDesktopBridge, isDesktop } from '@/lib/utils/desktop';
+import { getDesktopBridge, isDesktop, DesktopUsbDevice, DesktopBluetoothDevice, DesktopNetworkPrinter } from '@/lib/utils/desktop';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
@@ -25,6 +25,12 @@ export function DesktopAgentPanel() {
   const [version, setVersion] = useState<string | null>(null);
   const [printers, setPrinters] = useState<{ name: string; isDefault: boolean }[]>([]);
   const [printersLoading, setPrintersLoading] = useState(false);
+  const [usbDevices, setUsbDevices] = useState<DesktopUsbDevice[]>([]);
+  const [usbLoading, setUsbLoading] = useState(false);
+  const [bluetoothDevices, setBluetoothDevices] = useState<DesktopBluetoothDevice[]>([]);
+  const [bluetoothLoading, setBluetoothLoading] = useState(false);
+  const [networkPrinters, setNetworkPrinters] = useState<DesktopNetworkPrinter[]>([]);
+  const [networkLoading, setNetworkLoading] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [selectedBranchIds, setSelectedBranchIds] = useState<number[]>([]);
@@ -35,6 +41,8 @@ export function DesktopAgentPanel() {
     bridge?.version?.().then(setVersion).catch(() => {});
     bridge?.getAutoStart?.().then(setAutoStart).catch(() => {});
     loadPrinters();
+    loadUsbDevices();
+    loadBluetoothDevices();
     loadBranches();
   }, [isDesktopApp]);
 
@@ -71,6 +79,48 @@ export function DesktopAgentPanel() {
       console.error('[DesktopAgentPanel] Error listando impresoras:', err);
     } finally {
       setPrintersLoading(false);
+    }
+  }, []);
+
+  const loadUsbDevices = useCallback(async () => {
+    const bridge = getDesktopBridge();
+    if (!bridge?.listUsbDevices) return;
+    setUsbLoading(true);
+    try {
+      const result = await bridge.listUsbDevices();
+      if (result.devices) setUsbDevices(result.devices);
+    } catch (err) {
+      console.error('[DesktopAgentPanel] Error listando USB:', err);
+    } finally {
+      setUsbLoading(false);
+    }
+  }, []);
+
+  const loadBluetoothDevices = useCallback(async () => {
+    const bridge = getDesktopBridge();
+    if (!bridge?.listBluetoothDevices) return;
+    setBluetoothLoading(true);
+    try {
+      const result = await bridge.listBluetoothDevices();
+      if (result.devices) setBluetoothDevices(result.devices);
+    } catch (err) {
+      console.error('[DesktopAgentPanel] Error listando Bluetooth:', err);
+    } finally {
+      setBluetoothLoading(false);
+    }
+  }, []);
+
+  const loadNetworkPrinters = useCallback(async () => {
+    const bridge = getDesktopBridge();
+    if (!bridge?.discoverNetwork) return;
+    setNetworkLoading(true);
+    try {
+      const result = await bridge.discoverNetwork();
+      if (result.printers) setNetworkPrinters(result.printers);
+    } catch (err) {
+      console.error('[DesktopAgentPanel] Error escaneando red:', err);
+    } finally {
+      setNetworkLoading(false);
     }
   }, []);
 
@@ -342,6 +392,152 @@ export function DesktopAgentPanel() {
                         {p.name}
                       </span>
                       {p.isDefault && <Badge variant="outline" className="text-xs">Predeterminada</Badge>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Impresoras USB */}
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Usb className="h-4 w-4 text-gray-400" />
+                  Impresoras USB
+                </CardTitle>
+                <Button onClick={loadUsbDevices} variant="ghost" size="sm" disabled={usbLoading}>
+                  {usbLoading ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Activity className="h-3 w-3 mr-1" />
+                  )}
+                  Detectar
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {usbLoading && usbDevices.length === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Detectando dispositivos USB...
+                </div>
+              ) : usbDevices.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  No se detectaron dispositivos USB. Haz clic en "Detectar" para reintentar.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {usbDevices.map((d, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <span className="text-gray-900 dark:text-white flex items-center gap-2">
+                        <Usb className="h-3 w-3 text-gray-400" />
+                        {d.name || `${d.vendorId}:${d.productId}`}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {d.viaWmi && <Badge variant="outline" className="text-xs">WMI</Badge>}
+                        {d.isPrinter && <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950/30">Impresora</Badge>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Impresoras Bluetooth */}
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Bluetooth className="h-4 w-4 text-gray-400" />
+                  Dispositivos Bluetooth
+                </CardTitle>
+                <Button onClick={loadBluetoothDevices} variant="ghost" size="sm" disabled={bluetoothLoading}>
+                  {bluetoothLoading ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Activity className="h-3 w-3 mr-1" />
+                  )}
+                  Detectar
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {bluetoothLoading && bluetoothDevices.length === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Detectando dispositivos Bluetooth...
+                </div>
+              ) : bluetoothDevices.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  No se detectaron dispositivos Bluetooth. Asegúrate de que estén emparejados con el SO.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {bluetoothDevices.map((d, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <span className="text-gray-900 dark:text-white flex items-center gap-2">
+                        <Bluetooth className="h-3 w-3 text-gray-400" />
+                        {d.name}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {d.macAddress && <Badge variant="outline" className="text-xs font-mono">{d.macAddress}</Badge>}
+                        {d.isPrinter && <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950/30">Impresora</Badge>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Impresoras de red */}
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Network className="h-4 w-4 text-gray-400" />
+                  Impresoras de red
+                </CardTitle>
+                <Button onClick={loadNetworkPrinters} variant="ghost" size="sm" disabled={networkLoading}>
+                  {networkLoading ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Activity className="h-3 w-3 mr-1" />
+                  )}
+                  Escanear
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {networkLoading && networkPrinters.length === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Escaneando red local (puede tardar unos segundos)...
+                </div>
+              ) : networkPrinters.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  No se detectaron impresoras de red. Haz clic en "Escanear" para buscar.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {networkPrinters.map((p, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    >
+                      <span className="text-gray-900 dark:text-white flex items-center gap-2">
+                        <Network className="h-3 w-3 text-gray-400" />
+                        {p.ip}:{p.port}
+                      </span>
                     </li>
                   ))}
                 </ul>

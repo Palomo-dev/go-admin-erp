@@ -26,6 +26,23 @@ export interface UsbDevice {
    * destacar los candidatos reales entre todo lo que hay conectado al bus.
    */
   isPrinter: boolean;
+  /**
+   * true si el dispositivo fue detectado via PowerShell/WMI (no via libusb).
+   * Las impresoras USB instaladas como impresora de Windows (usbprint.sys)
+   * no aparecen via libusb pero si via Win32_PnPEntity.
+   */
+  viaWmi?: boolean;
+}
+
+export interface BluetoothDevice {
+  /** Nombre legible del dispositivo Bluetooth. */
+  name: string;
+  /** Dirección MAC del dispositivo. */
+  macAddress: string;
+  /** true si el dispositivo está emparejado con el SO. */
+  isPaired: boolean;
+  /** true si parece ser una impresora (por nombre o clase). */
+  isPrinter: boolean;
 }
 
 /** Clase USB 7 = Printer, segun la especificacion USB. */
@@ -51,6 +68,10 @@ function toHexId(value: number): string {
  * de conexion "Impresora del sistema", que imprime a traves del propio Windows.
  */
 async function listUsbDevices(): Promise<UsbDevice[]> {
+  const seen = new Set<string>();
+  const result: UsbDevice[] = [];
+
+  // --- 1. Escaneo libusb (dispositivos WinUSB/libusbK) ---
   const usbModule = (() => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -60,49 +81,161 @@ async function listUsbDevices(): Promise<UsbDevice[]> {
     }
   })();
 
-  if (!usbModule?.WebUSB) return [];
+  if (usbModule?.WebUSB) {
+    try {
+      const webusb = new usbModule.WebUSB({ allowAllDevices: true });
+      const devices = (await webusb.getDevices()) || [];
+      const names = await listWindowsUsbNames();
 
-  let devices: any[];
-  try {
-    const webusb = new usbModule.WebUSB({ allowAllDevices: true });
-    devices = (await webusb.getDevices()) || [];
-  } catch (err) {
-    console.error('[discovery] Error enumerando dispositivos USB:', err);
-    return [];
+      for (const device of devices) {
+        if (typeof device?.vendorId !== 'number' || typeof device?.productId !== 'number') continue;
+
+        const vendorId = toHexId(device.vendorId);
+        const productId = toHexId(device.productId);
+        const key = `${vendorId}:${productId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const interfaces = device.configuration?.interfaces || [];
+        const isPrinter = interfaces.some(
+          (iface: any) => iface?.alternate?.interfaceClass === USB_CLASS_PRINTER
+        );
+
+        result.push({
+          vendorId,
+          productId,
+          name: names.get(key) || device.productName || device.manufacturerName,
+          isPrinter,
+        });
+      }
+    } catch (err) {
+      console.error('[discovery] Error enumerando dispositivos USB via libusb:', err);
+    }
   }
 
-  const names = await listWindowsUsbNames();
-
-  const seen = new Set<string>();
-  const result: UsbDevice[] = [];
-
-  for (const device of devices) {
-    if (typeof device?.vendorId !== 'number' || typeof device?.productId !== 'number') continue;
-
-    const vendorId = toHexId(device.vendorId);
-    const productId = toHexId(device.productId);
-    const key = `${vendorId}:${productId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-
-    // La clase se declara casi siempre en la interfaz, no en el dispositivo.
-    const interfaces = device.configuration?.interfaces || [];
-    const isPrinter = interfaces.some(
-      (iface: any) => iface?.alternate?.interfaceClass === USB_CLASS_PRINTER
-    );
-
-    result.push({
-      vendorId,
-      productId,
-      // El nombre de Windows ("POS-80C") suele ser mas reconocible que el
-      // descriptor del dispositivo ("USB Printing Support").
-      name: names.get(key) || device.productName || device.manufacturerName,
-      isPrinter,
-    });
+  // --- 2. Fallback PowerShell: impresoras USB via usbprint.sys ---
+  // libusb no ve dispositivos del spooler de Windows. Win32_PnPEntity sí.
+  if (process.platform === 'win32') {
+    try {
+      const wmiPrinters = await listWindowsUsbPrinters();
+      for (const p of wmiPrinters) {
+        const key = `${p.vendorId}:${p.productId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push({
+          vendorId: p.vendorId,
+          productId: p.productId,
+          name: p.name,
+          isPrinter: true,
+          viaWmi: true,
+        });
+      }
+    } catch (err) {
+      console.error('[discovery] Error enumerando impresoras USB via WMI:', err);
+    }
   }
 
   // Las impresoras primero: es lo que el usuario viene a buscar.
   return result.sort((a, b) => Number(b.isPrinter) - Number(a.isPrinter));
+}
+
+/**
+ * Fallback Windows: enumera impresoras USB via Win32_PnPEntity.
+ * Consulta dispositivos cuya clase PnP es 'Printer' o 'USB' y cuyo nombre
+ * sugiere impresora térmica. Esto detecta impresoras que libusb no ve
+ * porque usan el driver usbprint.sys del spooler de Windows.
+ */
+function listWindowsUsbPrinters(): Promise<{ vendorId: string; productId: string; name: string }[]> {
+  return new Promise((resolve) => {
+    const { exec } = require('child_process');
+    const cmd =
+      'powershell -NoProfile -Command "' +
+      'Get-CimInstance Win32_PnPEntity | ' +
+      "Where-Object { $_.DeviceID -like 'USB\\VID_*' -and " +
+      "($_.Class -eq 'Printer' -or $_.Class -eq 'USB' -or $_.Name -match 'printer|POS|thermal|receipt|ticket|80|58') } | " +
+      'Select-Object Name, DeviceID | ConvertTo-Json -Compress"';
+
+    exec(cmd, { timeout: 15000, windowsHide: true }, (err: Error | null, stdout: string) => {
+      if (err) return resolve([]);
+      try {
+        const raw = stdout.trim();
+        if (!raw) return resolve([]);
+        const parsed = JSON.parse(raw);
+        const list = Array.isArray(parsed) ? parsed : [parsed];
+        const result: { vendorId: string; productId: string; name: string }[] = [];
+
+        for (const entry of list) {
+          const match = /USB\\VID_([0-9A-F]{4})&PID_([0-9A-F]{4})/i.exec(entry?.DeviceID || '');
+          if (!match) continue;
+          result.push({
+            vendorId: `0x${match[1].toLowerCase()}`,
+            productId: `0x${match[2].toLowerCase()}`,
+            name: entry?.Name || `USB ${match[1]}:${match[2]}`,
+          });
+        }
+        resolve(result);
+      } catch {
+        resolve([]);
+      }
+    });
+  });
+}
+
+/**
+ * Lista dispositivos Bluetooth emparejados en Windows via PowerShell.
+ * Usa Get-PnpDevice para enumerar dispositivos de clase Bluetooth.
+ * Filtra los que parecen impresoras por nombre.
+ */
+async function listBluetoothPrinters(): Promise<BluetoothDevice[]> {
+  if (process.platform !== 'win32') return [];
+
+  return new Promise((resolve) => {
+    const { exec } = require('child_process');
+    const cmd =
+      'powershell -NoProfile -Command "' +
+      'Get-PnpDevice -Class Bluetooth | ' +
+      "Where-Object { $_.Status -eq 'OK' } | " +
+      'Select-Object FriendlyName, DeviceID, Status | ConvertTo-Json -Compress"';
+
+    exec(cmd, { timeout: 15000, windowsHide: true }, (err: Error | null, stdout: string) => {
+      if (err) {
+        console.error('[discovery] Error listando Bluetooth:', err);
+        return resolve([]);
+      }
+      try {
+        const raw = stdout.trim();
+        if (!raw) return resolve([]);
+        const parsed = JSON.parse(raw);
+        const list = Array.isArray(parsed) ? parsed : [parsed];
+        const result: BluetoothDevice[] = [];
+
+        for (const entry of list) {
+          const name = entry?.FriendlyName || 'Dispositivo Bluetooth';
+          // Extraer MAC del DeviceID (formato varía: BTHENUM\Dev_XXXXXXXXXXXX)
+          const macMatch = /Dev_([0-9A-F]{12})/i.exec(entry?.DeviceID || '');
+          const macAddress = macMatch
+            ? macMatch[1].replace(/(.{2})/g, '$1:').slice(0, -1).toUpperCase()
+            : '';
+
+          // Detectar si parece impresora por nombre
+          const isPrinter = /printer|impresora|pos|thermal|receipt|ticket/i.test(name);
+
+          result.push({
+            name,
+            macAddress,
+            isPaired: true,
+            isPrinter,
+          });
+        }
+
+        // Impresoras primero
+        resolve(result.sort((a, b) => Number(b.isPrinter) - Number(a.isPrinter)));
+      } catch (parseErr) {
+        console.error('[discovery] Error parseando Bluetooth:', parseErr);
+        resolve([]);
+      }
+    });
+  });
 }
 
 /**
@@ -271,6 +404,7 @@ function probePort(ip: string, port: number, timeoutMs: number): Promise<boolean
  *   GET /printers      → lista impresoras del sistema operativo
  *   GET /discover      → escanea la red local en busca de impresoras (puerto 9100)
  *   GET /usb           → enumera dispositivos USB con su vendor_id/product_id
+ *   GET /bluetooth     → lista dispositivos Bluetooth emparejados
  */
 export function startDiscoveryServer(): http.Server {
   const server = http.createServer(async (req, res) => {
@@ -317,6 +451,18 @@ export function startDiscoveryServer(): http.Server {
     if (req.url === '/usb') {
       try {
         const devices = await listUsbDevices();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ devices }));
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    if (req.url === '/bluetooth') {
+      try {
+        const devices = await listBluetoothPrinters();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ devices }));
       } catch (err: any) {

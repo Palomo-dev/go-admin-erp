@@ -179,7 +179,9 @@ export function ComisionesList({ commissions, isLoading, onRefresh }: Comisiones
                         {formatCurrency(Number(c.base_amount))}
                       </td>
                       <td className="p-3 text-right text-sm text-gray-700 dark:text-gray-300">
-                        {Number(c.commission_rate)}%
+                        {(c as any).commission_method === 'fixed_amount'
+                          ? formatCurrency(Number(c.commission_rate))
+                          : `${Number(c.commission_rate)}%`}
                       </td>
                       <td className="p-3 text-right">
                         <span className="text-sm font-semibold text-gray-900 dark:text-white">

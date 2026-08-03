@@ -7,6 +7,10 @@ export interface TaxCalculationItem {
   quantity: number;
   unit_price: number;
   product_id: number;
+  discount_amount?: number;
+  tax_rate?: number;
+  tax_included?: boolean;
+  tax_code?: string | null;
 }
 
 export interface OrganizationTax {
@@ -46,15 +50,40 @@ export function calculateItemTaxes(
   organizationTaxes: OrganizationTax[],
   taxIncluded: boolean = false
 ): TaxResult[] {
-  const lineTotal = item.quantity * item.unit_price;
+  const lineTotal = item.quantity * item.unit_price - (item.discount_amount || 0);
   let baseImponible = lineTotal;
   const results: TaxResult[] = [];
 
-  // Si los impuestos están incluidos, calcular la base imponible ajustada
+  // Si el item tiene su propio tax_rate, usarlo directamente
+  const itemTaxRate = Number(item.tax_rate) || 0;
+  const itemTaxIncluded = item.tax_included ?? taxIncluded;
+
+  if (itemTaxRate > 0) {
+    if (itemTaxIncluded) {
+      baseImponible = lineTotal / (1 + (itemTaxRate / 100));
+      baseImponible = Math.round(baseImponible * 100) / 100;
+    }
+
+    const taxAmount = Math.round(baseImponible * (itemTaxRate / 100) * 100) / 100;
+    const taxId = item.tax_code || `TAX_${itemTaxRate}`;
+    const orgTax = organizationTaxes.find(t => t.id === item.tax_code || t.name === item.tax_code);
+    const taxName = orgTax?.name || item.tax_code || `Impuesto ${itemTaxRate}%`;
+
+    results.push({
+      taxId,
+      name: taxName,
+      rate: itemTaxRate,
+      baseAmount: baseImponible,
+      taxAmount
+    });
+
+    return results;
+  }
+
+  // Si el item no tiene tax_rate propio, usar impuestos de organización aplicados
   if (taxIncluded) {
     let sumaTasasIncluidas = 0;
     
-    // Calcular la suma de todas las tasas aplicadas
     organizationTaxes.forEach(tax => {
       const isApplied = appliedTaxes[tax.id];
       if (isApplied && tax.rate > 0) {
@@ -63,13 +92,11 @@ export function calculateItemTaxes(
     });
     
     if (sumaTasasIncluidas > 0) {
-      // Ajustar la base imponible usando la fórmula correcta
       baseImponible = lineTotal / (1 + (sumaTasasIncluidas / 100));
-      baseImponible = Math.round(baseImponible * 100) / 100; // Redondear a 2 decimales
+      baseImponible = Math.round(baseImponible * 100) / 100;
     }
   }
 
-  // Calcular cada impuesto aplicado
   organizationTaxes.forEach(tax => {
     const isApplied = appliedTaxes[tax.id];
     
@@ -110,8 +137,11 @@ export function calculateCartTaxes(
   let calculatedTotal = 0;
 
   items.forEach(item => {
-    const lineTotal = item.quantity * item.unit_price;
-    const itemTaxes = calculateItemTaxes(item, appliedTaxes, organizationTaxes, taxIncluded);
+    const lineTotal = item.quantity * item.unit_price - (item.discount_amount || 0);
+    // Usar tax_included del item si está definido, sino el global
+    const itemTaxIncluded = item.tax_included ?? taxIncluded;
+    const itemTaxRate = Number(item.tax_rate) || 0;
+    const itemTaxes = calculateItemTaxes(item, appliedTaxes, organizationTaxes, itemTaxIncluded);
     
     let itemTaxAmount = 0;
     
@@ -133,7 +163,7 @@ export function calculateCartTaxes(
     });
     
     // Calcular totales
-    if (taxIncluded) {
+    if (itemTaxIncluded) {
       // Si los impuestos están incluidos, el subtotal es la base imponible
       const itemSubtotal = itemTaxes.length > 0 ? itemTaxes[0].baseAmount : lineTotal;
       calculatedSubtotal += itemSubtotal;

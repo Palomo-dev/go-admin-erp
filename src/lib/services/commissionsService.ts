@@ -53,15 +53,28 @@ export interface CommissionStats {
 
 class CommissionsService {
   private getOrgId(): number {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('organizationId') : null;
-    return stored ? parseInt(stored, 10) : 0;
+    if (typeof window === 'undefined') return 0;
+    try {
+      const orgJson = localStorage.getItem('organizacionActiva') || sessionStorage.getItem('organizacionActiva');
+      if (orgJson) {
+        const parsed = JSON.parse(orgJson);
+        if (parsed?.id) return Number(parsed.id);
+      }
+      const simple = localStorage.getItem('currentOrganizationId') || sessionStorage.getItem('currentOrganizationId');
+      if (simple) return parseInt(simple, 10);
+    } catch {
+      // fallback
+    }
+    return 0;
   }
 
   async getCommissions(filters?: CommissionFilters): Promise<Commission[]> {
+    const orgId = this.getOrgId();
+
     let query = supabase
       .from('commissions')
       .select('*')
-      .eq('organization_id', this.getOrgId())
+      .eq('organization_id', orgId)
       .order('created_at', { ascending: false });
 
     if (filters?.status && filters.status !== 'all') {
@@ -172,10 +185,11 @@ class CommissionsService {
   }
 
   async getCommissionsByPayee(payeeId: string): Promise<Commission[]> {
+    const orgId = this.getOrgId();
     const { data, error } = await supabase
       .from('commissions')
       .select('*')
-      .eq('organization_id', this.getOrgId())
+      .eq('organization_id', orgId)
       .eq('payee_id', payeeId)
       .order('created_at', { ascending: false });
     if (error) throw error;

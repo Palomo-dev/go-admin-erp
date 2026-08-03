@@ -28,7 +28,7 @@ export interface Product {
   barcode?: string;
   status: 'active' | 'inactive' | 'deleted';
   image?: string;
-  tax_id?: number;
+  // tax_id legacy removido: los impuestos se gestionan via product_tax_relations
   price?: number; // Added for POS pricing
   cost?: number;
   stock_quantity?: number;
@@ -139,6 +139,8 @@ export interface Sale {
   salesperson_id?: string;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  commission_method?: 'percentage' | 'fixed_amount';
+  commission_amount?: number;
 }
 
 export interface SaleItem {
@@ -237,6 +239,8 @@ export interface CheckoutData {
   salesperson_id?: string;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  commission_method?: 'percentage' | 'fixed_amount';
+  commission_amount?: number;
   delivery_type?: 'pickup' | 'delivery_own' | 'delivery_third_party';
   delivery_info?: {
     address?: string;

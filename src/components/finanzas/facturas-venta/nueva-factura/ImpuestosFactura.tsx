@@ -79,88 +79,123 @@ export function ImpuestosFactura({
   
   // Procesar cada ítem para calcular subtotal, impuestos y total
   items.forEach((item, index) => {
-    const lineTotal = item.unit_price * item.qty;
+    const lineTotal = item.unit_price * item.qty - (item.discount_amount || 0);
     let baseImponible = lineTotal;
     let itemTaxAmount = 0;
     let itemTotal = lineTotal;
     let impuestosAplicados = false;
+    // Usar tax_included del item si está definido, sino usar el global
+    const itemTaxIncluded = item.tax_included ?? taxIncluded;
+    // Usar tax_rate del item si existe; si no, buscar en impuestos de organización aplicados
+    const itemTaxRate = Number(item.tax_rate) || 0;
+    const itemTaxCode = item.tax_code || null;
     
     console.log(`
 ========== ÍTEM #${index+1} (${item.product_name || 'Sin nombre'}) ==========`);
     console.log(`• Precio unitario: ${item.unit_price.toFixed(2)}`);
     console.log(`• Cantidad: ${item.qty}`);
     console.log(`• Total línea (bruto): ${lineTotal.toFixed(2)}`);
+    console.log(`• Impuesto del item: ${itemTaxRate}% (código: ${itemTaxCode || 'N/A'}, incluido: ${itemTaxIncluded})`);
 
-    // Calcular el factor total de impuestos para este ítem cuando están incluidos
-    let sumaTasasIncluidas = 0;
-    if (taxIncluded) {
+    // Si el item tiene su propio tax_rate, usarlo directamente
+    if (itemTaxRate > 0) {
+      if (itemTaxIncluded) {
+        // Impuesto incluido: ajustar la base imponible
+        baseImponible = lineTotal / (1 + (itemTaxRate / 100));
+        baseImponible = Math.round(baseImponible * 100) / 100;
+        console.log(`• Base imponible ajustada (con factor ${(1 + (itemTaxRate / 100)).toFixed(4)}): ${baseImponible.toFixed(2)}`);
+      }
+
+      const taxBase = baseImponible;
+      const taxAmount = Math.round(taxBase * (itemTaxRate / 100) * 100) / 100;
+
+      if (itemTaxIncluded) {
+        console.log(`• Impuesto (${itemTaxRate}%): ${taxAmount.toFixed(2)} (incluido en el precio)`);
+      } else {
+        console.log(`• Impuesto (${itemTaxRate}%): ${taxAmount.toFixed(2)} (añadido al precio)`);
+        itemTotal += taxAmount;
+        noIncluidos++;
+      }
+
+      impuestosAplicados = true;
+      itemTaxAmount = taxAmount;
+
+      // Agregar al desglose de impuestos aplicados
+      const taxKey = itemTaxCode || `TAX_${itemTaxRate}`;
+      // Buscar el nombre del impuesto en organizationTaxes
+      const orgTax = organizationTaxes.find(t => t.code === itemTaxCode);
+      const taxName = orgTax?.name || itemTaxCode || `Impuesto ${itemTaxRate}%`;
+
+      if (!appliedTaxTotals[taxKey]) {
+        appliedTaxTotals[taxKey] = {
+          rate: itemTaxRate,
+          base: 0,
+          amount: 0,
+          name: taxName,
+          included: itemTaxIncluded
+        };
+      }
+      appliedTaxTotals[taxKey].base += taxBase;
+      appliedTaxTotals[taxKey].amount += taxAmount;
+    } else {
+      // El item no tiene tax_rate propio: usar impuestos de organización aplicados (checkboxes)
+      let sumaTasasIncluidas = 0;
+      if (itemTaxIncluded) {
+        organizationTaxes.forEach(tax => {
+          const isApplied = appliedTaxes[tax.code] || (tax.is_default && applyDefaultTax);
+          if (isApplied && tax.rate > 0) {
+            sumaTasasIncluidas += tax.rate;
+          }
+        });
+        
+        if (sumaTasasIncluidas > 0) {
+          baseImponible = lineTotal / (1 + (sumaTasasIncluidas / 100));
+          baseImponible = Math.round(baseImponible * 100) / 100;
+          console.log(`• Base imponible ajustada (con factor ${(1 + (sumaTasasIncluidas / 100)).toFixed(4)}): ${baseImponible.toFixed(2)}`);
+        }
+      }
+
       organizationTaxes.forEach(tax => {
         const isApplied = appliedTaxes[tax.code] || (tax.is_default && applyDefaultTax);
-        if (isApplied && tax.rate > 0) {
-          sumaTasasIncluidas += tax.rate;
-        }
-      });
-      
-      if (sumaTasasIncluidas > 0) {
-        // Ajustar la base imponible si hay impuestos incluidos
-        baseImponible = lineTotal / (1 + (sumaTasasIncluidas / 100));
-        baseImponible = Math.round(baseImponible * 100) / 100; // Redondeamos a 2 decimales
-        console.log(`• Base imponible ajustada (con factor ${(1 + (sumaTasasIncluidas / 100)).toFixed(4)}): ${baseImponible.toFixed(2)}`);
-      }
-    }
-    
-    // Procesar cada impuesto que aplica al ítem
-    organizationTaxes.forEach(tax => {
-      const isApplied = appliedTaxes[tax.code] || (tax.is_default && applyDefaultTax);
-      
-      // Si este impuesto está seleccionado, lo aplicamos
-      if (isApplied) {
-        const taxKey = tax.code;
-        let taxBase = baseImponible;
-        let taxAmount = 0;
         
-        // Calcular el monto del impuesto
-        if (tax.rate !== 0) { // Verificar que la tasa no sea cero
-          taxAmount = taxBase * (tax.rate / 100);
-          taxAmount = Math.round(taxAmount * 100) / 100; // Redondear a 2 decimales
+        if (isApplied && tax.rate !== 0) {
+          const taxKey = tax.code;
+          const taxBase = baseImponible;
+          const taxAmount = Math.round(taxBase * (tax.rate / 100) * 100) / 100;
           
-          if (taxIncluded) {
+          if (itemTaxIncluded) {
             console.log(`• Impuesto ${tax.name} (${tax.rate}%): ${taxAmount.toFixed(2)} (incluido en el precio)`);
           } else {
             console.log(`• Impuesto ${tax.name} (${tax.rate}%): ${taxAmount.toFixed(2)} (añadido al precio)`);
-            // Si no está incluido, actualizamos el total del ítem
             itemTotal += taxAmount;
             noIncluidos++;
           }
           
           impuestosAplicados = true;
           
-          // Agregar o actualizar el total para este código de impuesto
           if (!appliedTaxTotals[taxKey]) {
             appliedTaxTotals[taxKey] = {
               rate: tax.rate,
               base: 0,
               amount: 0,
               name: tax.name,
-              included: taxIncluded
+              included: itemTaxIncluded
             };
           }
           
           appliedTaxTotals[taxKey].base += taxBase;
           appliedTaxTotals[taxKey].amount += taxAmount;
-          
-          // Acumular para los totales finales
           itemTaxAmount += taxAmount;
         }
-      }
-    });
+      });
+    }
     
     // Acumular totales para este ítem
     calculatedSubtotal += baseImponible;
     calculatedTaxTotal += itemTaxAmount;
     
-    if (taxIncluded) {
-      // Si los impuestos están incluidos, el total es el precio original
+    if (itemTaxIncluded) {
+      // Si los impuestos están incluidos, el total es el precio original menos descuento
       calculatedTotal += lineTotal;
       console.log(`• Total ítem (con impuestos incluidos): ${lineTotal.toFixed(2)}`);
     } else {
@@ -175,11 +210,6 @@ export function ImpuestosFactura({
     }
     
     console.log(`==================================================`);
-    
-    console.log(`Ítem #${index+1} (${item.product_name || 'Sin nombre'}) - SIN IMPUESTO:`);
-    console.log(`  • Precio unitario: ${item.unit_price.toFixed(2)}`);
-    console.log(`  • Cantidad: ${item.qty}`);
-    console.log(`  • Total línea: ${lineTotal.toFixed(2)}`);
   });
   
   // Mostrar resumen de cálculos
@@ -209,7 +239,7 @@ export function ImpuestosFactura({
   // Asegurar que el total sea calculado correctamente
   // En modo impuestos incluidos, el total debe ser igual al precio original
   // En modo impuestos no incluidos, el total debe ser subtotal + impuestos
-  const total = taxIncluded ? calculatedTotal : (calculatedSubtotal + calculatedTaxTotal);
+  const total = calculatedTotal;
   
   // Inicializar appliedTaxes cuando se cargan los impuestos de la organización
   useEffect(() => {

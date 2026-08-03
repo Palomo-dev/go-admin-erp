@@ -8,10 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Edit3, Package } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
-import type { Product } from './ProductSearchDialog';
+import type { UnifiedProduct } from '@/components/shared/product-search';
 
 // Tipo para productos seleccionados con cantidades y descuentos
-export interface SelectedProduct extends Product {
+export interface SelectedProduct extends UnifiedProduct {
   quantity: number;
   unit_cost: number; // Costo unitario (puede ser editado)
   discount_amount: number;

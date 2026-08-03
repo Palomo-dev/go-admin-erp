@@ -1,13 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/components/ui/use-toast';
-import { Plus, Trash2, Search, PackagePlus } from 'lucide-react';
-import { ProductoFormDialog } from '@/components/shared/form-dialogs';
+import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { ProductSearchDialog, type UnifiedProduct, type SelectedModifier } from '@/components/shared/product-search';
 import {
   Table,
   TableBody,
@@ -16,270 +13,80 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { InvoiceItem } from './NuevaFacturaForm';
-
-type Product = {
-  id: number;
-  name: string;
-  price: number;
-  sku: string;
-  description?: string;
-  tax_id?: string;
-  tax_code?: string;
-  tax_name?: string;
-  tax_rate?: number;
-  /** Si el producto rastrea inventario. Los que no, siempre se pueden vender. */
-  track_stock?: boolean;
-  /** Existencias disponibles en la sucursal de la factura. */
-  stock_qty?: number;
-  /** Rastrea inventario y no queda nada en la sucursal. */
-  is_out_of_stock?: boolean;
-};
+import { formatCurrency } from '@/utils/Utils';
 
 type ItemsFacturaProps = {
   items: InvoiceItem[];
   onItemsChange: (items: InvoiceItem[]) => void;
-  taxIncluded?: boolean; // Prop para saber si los impuestos están incluidos
-  /** Sucursal de la factura: el stock disponible depende de ella. */
+  taxIncluded?: boolean;
   branchId?: number;
 };
 
 export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId }: ItemsFacturaProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
-  const organizationId = getOrganizationId();
 
-  // Cargar productos al iniciar y cuando cambie la sucursal (el stock es por sucursal)
-  useEffect(() => {
-    if (organizationId) {
-      cargarProductos();
-    }
-  }, [organizationId, branchId]);
-
-  // Función para cargar productos
-  const cargarProductos = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Consultar productos con sus precios más recientes
-      const { data, error } = await supabase
-        .rpc('get_products_with_latest_prices', { org_id: organizationId });
-      
-      if (error) {
-        // Si falla la función RPC, intentamos con una consulta directa
-        console.warn('Fallback a consulta manual por error en RPC:', error);
-        
-        // Subconsulta para obtener los precios más recientes de cada producto
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select(`
-            id, name, sku, description,
-            product_prices!inner(price, effective_from)
-          `)
-          .eq('organization_id', organizationId)
-          .is('product_prices.effective_to', null)
-          .order('name', { ascending: true });
-          
-        if (productsError) throw productsError;
-        
-        // Formatear los datos para que tengan la estructura esperada
-        const formattedProducts = productsData?.map(product => ({
-          id: product.id,
-          name: product.name,
-          sku: product.sku,
-          price: product.product_prices[0]?.price || 0,
-          description: product.description,
-          // No tenemos información de impuestos en esta consulta fallback
-          tax_id: undefined,
-          tax_code: undefined,
-          tax_name: undefined,
-          tax_rate: undefined
-        })) || [];
-        
-        setProducts(await agregarDisponibilidad(formattedProducts));
-      } else {
-        // Si la función RPC funciona correctamente
-        setProducts(await agregarDisponibilidad(data || []));
-      }
-      
-    } catch (error) {
-      console.error('Error al cargar productos:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los productos. Intente nuevamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Completa cada producto con su disponibilidad en la sucursal de la factura.
-   *
-   * El RPC `get_products_with_latest_prices` no devuelve nada de inventario, por
-   * eso el selector permitia agregar productos agotados. Se consulta aparte y se
-   * mezcla, en vez de cambiar el RPC, que lo usan otras pantallas.
-   *
-   * El criterio de agotado es el mismo que aplica el POS: solo bloquea si el
-   * producto rastrea inventario Y no queda existencia.
-   */
-  const agregarDisponibilidad = async (lista: Product[]): Promise<Product[]> => {
-    if (lista.length === 0) return lista;
-
-    try {
-      const ids = lista.map(p => p.id);
-
-      const { data: productsMeta } = await supabase
-        .from('products')
-        .select('id, track_stock, is_parent')
-        .in('id', ids);
-
-      const trackMap = new Map((productsMeta || []).map((p: any) => [p.id, p.track_stock]));
-
-      // Un producto padre no tiene existencias propias: las lleva cada variante.
-      // Sin esto un padre con track_stock=true aparecia agotado aunque sus
-      // variantes tuvieran inventario, porque no existe fila suya en stock_levels.
-      const parentIds = (productsMeta || []).filter((p: any) => p.is_parent).map((p: any) => p.id);
-
-      const { data: variants } = parentIds.length > 0
-        ? await supabase.from('products').select('id, parent_product_id').in('parent_product_id', parentIds)
-        : { data: [] as any[] };
-
-      const { data: stockRows } = branchId
-        ? await supabase
-            .from('stock_levels')
-            .select('product_id, qty_on_hand')
-            .eq('branch_id', branchId)
-            .in('product_id', [...ids, ...(variants || []).map((v: any) => v.id)])
-        : { data: [] as any[] };
-
-      // Un producto puede tener varias filas de stock (una por lote): se suman.
-      const stockMap = new Map<number, number>();
-      for (const row of stockRows || []) {
-        stockMap.set(row.product_id, (stockMap.get(row.product_id) || 0) + (Number(row.qty_on_hand) || 0));
-      }
-
-      // Acumular en cada padre el stock de sus variantes.
-      const stockDeVariantes = new Map<number, number>();
-      for (const variant of (variants || []) as any[]) {
-        stockDeVariantes.set(
-          variant.parent_product_id,
-          (stockDeVariantes.get(variant.parent_product_id) || 0) + (stockMap.get(variant.id) || 0)
-        );
-      }
-
-      return lista.map(product => {
-        const track = trackMap.get(product.id) === true;
-        // Se suman ambos: un padre normal solo aporta variantes, y un producto
-        // simple (o un padre sin variantes) solo aporta su propia fila.
-        const qty = (stockMap.get(product.id) || 0) + (stockDeVariantes.get(product.id) || 0);
-        return {
-          ...product,
-          track_stock: track,
-          stock_qty: qty,
-          // Sin sucursal seleccionada no se puede afirmar que algo este agotado.
-          is_out_of_stock: Boolean(branchId) && track && qty <= 0,
-        };
-      });
-    } catch (error) {
-      // Si falla la consulta de stock se devuelven los productos sin marcar:
-      // es preferible permitir facturar que bloquear la pantalla completa.
-      console.error('No se pudo cargar la disponibilidad de los productos:', error);
-      return lista;
-    }
-  };
-
-  // Filtrar productos por búsqueda
-  const filteredProducts = searchTerm 
-    ? products.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : products;
-
-  // Agregar ítem a la factura
-  const agregarItem = (product: Product) => {
-    // Bloquear productos agotados (con control de inventario y stock <= 0)
-    if (product.is_out_of_stock) {
-      toast({
-        title: 'Producto agotado',
-        description: `"${product.name}" no tiene existencias disponibles.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // PRIMERO: Obtenemos el estado actual de taxIncluded para mayor claridad
+  // Agregar ítem directamente a la factura (producto simple o variante seleccionada)
+  const agregarItemDirecto = (product: UnifiedProduct, modifiers: SelectedModifier[] = []) => {
     const includeTax = taxIncluded;
-    console.log('Estado actual de taxIncluded al agregar item:', includeTax);
+    
+    // Precio base + extra de modificadores
+    const modifiersExtra = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+    const basePrice = (product.price || 0) + modifiersExtra;
     
     // Calcular el total_line según si el impuesto está incluido o no
-    let total_line = product.price; // Precio base por defecto
+    let total_line = basePrice;
     
     if (product.tax_rate) {
       if (includeTax) {
-        // Si hay impuesto y ESTÁ incluido, el precio ya incluye el impuesto
-        // El total es simplemente precio * cantidad (que en este caso es 1)
-        total_line = product.price;
-        console.log(`Agregando ítem con impuesto INCLUIDO - Precio: ${product.price}, Total: ${total_line}`);
+        total_line = basePrice;
       } else {
-        // Si hay impuesto y NO está incluido, lo añadimos al total_line
-        const taxAmount = product.price * (product.tax_rate / 100);
-        total_line = product.price + taxAmount;
-        console.log(`Agregando ítem con impuesto NO incluido - Precio: ${product.price}, Impuesto: ${taxAmount}, Total: ${total_line}`);
+        const taxAmount = basePrice * (product.tax_rate / 100);
+        total_line = basePrice + taxAmount;
       }
+    }
+
+    // Construir descripción con modificadores si los hay
+    let description = product.name;
+    if (modifiers.length > 0) {
+      const modNames = modifiers.map(m => m.name).join(', ');
+      description += ` (${modNames})`;
     }
     
     const newItem: InvoiceItem = {
-      // Nota: id será asignado por la base de datos al guardar
-      // invoice_sales_id y invoice_id serán asignados al guardar la factura
-      invoice_type: 'sale', // Predefinimos el tipo como venta
+      invoice_type: 'sale',
       product_id: product.id,
-      description: product.name,
+      description,
       qty: 1,
-      unit_price: product.price,
+      unit_price: basePrice,
       tax_code: product.tax_code || null,
       tax_rate: product.tax_rate || null,
-      tax_included: includeTax, // Usamos el valor del prop taxIncluded
+      tax_included: includeTax,
       total_line: total_line,
-      product_name: product.name,
+      product_name: description,
+      stock_qty: product.stock_qty ?? null,
+      track_stock: product.track_stock ?? false,
     };
     
-    console.log('Agregando item con impuesto incluido:', includeTax);
     onItemsChange([...items, newItem]);
-    setIsOpen(false);
+  };
+
+  // Manejar selección desde el ProductSearchDialog unificado
+  const handleProductSelect = (product: UnifiedProduct, modifiers: SelectedModifier[] = []) => {
+    agregarItemDirecto(product, modifiers);
   };
 
   // Agregar ítem manual
   const agregarItemManual = () => {
-    // Capturamos el estado actual de taxIncluded para mayor claridad
     const includeTax = taxIncluded;
-    console.log('Estado actual de taxIncluded al agregar item manual:', includeTax);
-    
     const newItem: InvoiceItem = {
-      // Nota: id será asignado por la base de datos al guardar
-      // invoice_sales_id y invoice_id serán asignados al guardar la factura
-      invoice_type: 'sale', // Predefinimos el tipo como venta
+      invoice_type: 'sale',
       description: '',
       qty: 1,
       unit_price: 0,
-      tax_included: includeTax, // Usamos el valor del prop taxIncluded
+      discount_amount: 0,
+      tax_included: includeTax,
       total_line: 0,
     };
-    
-    console.log('Agregando item manual con impuesto incluido:', includeTax);
     onItemsChange([...items, newItem]);
   };
 
@@ -296,27 +103,23 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
       updatedItems[index].tax_included = taxIncluded;
     }
 
-    // Recalcular total_line considerando si el impuesto está incluido o no
+    // Recalcular total_line considerando impuesto incluido/no incluido y descuento
     const item = updatedItems[index];
     const quantity = item.qty;
     const unitPrice = item.unit_price;
     const taxRate = item.tax_rate || 0;
+    const discount = item.discount_amount || 0;
+    
+    const lineBase = quantity * unitPrice - discount;
     
     if (item.tax_included) {
-      // Si el impuesto está incluido en el precio, el total es simplemente precio x cantidad
-      // El precio ya contiene el impuesto
-      item.total_line = quantity * unitPrice;
-      console.log(`Ítem ${index} con impuesto INCLUIDO - Total: ${item.total_line}`);
+      item.total_line = lineBase;
     } else {
-      // Si el impuesto NO está incluido, calculamos el total añadiendo el impuesto
-      // Solo si tiene una tasa de impuesto asignada
       if (taxRate > 0) {
-        const lineSubtotal = quantity * unitPrice;
-        const taxAmount = lineSubtotal * (taxRate / 100);
-        item.total_line = lineSubtotal + taxAmount;
-        console.log(`Ítem ${index} con impuesto NO incluido - Subtotal: ${lineSubtotal}, Impuesto: ${taxAmount}, Total: ${item.total_line}`);
+        const taxAmount = lineBase * (taxRate / 100);
+        item.total_line = lineBase + taxAmount;
       } else {
-        item.total_line = quantity * unitPrice;
+        item.total_line = lineBase;
       }
     }
     
@@ -329,157 +132,22 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
     onItemsChange(updatedItems);
   };
 
-  // Cuando el diálogo compartido crea un producto: recargar catálogo y agregarlo a la factura
-  const handleProductoCreado = async (product: { id: number; name: string; sku: string; price: number }) => {
-    await cargarProductos();
-    const includeTax = taxIncluded;
-    const newItem: InvoiceItem = {
-      invoice_type: 'sale',
-      product_id: product.id,
-      description: product.name,
-      qty: 1,
-      unit_price: product.price,
-      tax_code: null,
-      tax_rate: null,
-      tax_included: includeTax,
-      total_line: product.price,
-      product_name: product.name,
-    };
-    onItemsChange([...items, newItem]);
-  };
+  // IDs de productos ya seleccionados (para mostrar "✓ Seleccionado" en el diálogo)
+  const selectedProductIds = items
+    .filter(item => item.product_id != null)
+    .map(item => item.product_id as number);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2 mb-3">
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              variant="outline"
-              size="sm"
-              className="
-                w-full sm:w-auto
-                bg-white dark:bg-gray-800
-                border-gray-300 dark:border-gray-600
-                hover:bg-gray-50 dark:hover:bg-gray-700
-                text-gray-700 dark:text-gray-200
-              "
-            >
-              <Search className="h-4 w-4 mr-2" />
-              <span className="text-sm">Buscar Producto</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="
-            sm:max-w-2xl max-h-[80vh] overflow-y-auto
-            bg-white dark:bg-gray-800
-            border-gray-200 dark:border-gray-700
-          ">
-            <DialogHeader>
-              <DialogTitle className="text-gray-900 dark:text-gray-100">Buscar Producto</DialogTitle>
-            </DialogHeader>
-            
-            <div className="py-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Buscar por nombre o SKU"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="
-                    text-sm
-                    bg-white dark:bg-gray-900
-                    border-gray-300 dark:border-gray-600
-                    text-gray-900 dark:text-gray-100
-                    placeholder:text-gray-500 dark:placeholder:text-gray-400
-                  "
-                />
-              </div>
-              
-              <div className="max-h-72 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                      <TableHead className="text-gray-700 dark:text-gray-300">Nombre</TableHead>
-                      <TableHead className="text-gray-700 dark:text-gray-300">SKU</TableHead>
-                      <TableHead className="text-right text-gray-700 dark:text-gray-300">Disponible</TableHead>
-                      <TableHead className="text-right text-gray-700 dark:text-gray-300">Precio</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredProducts.map(product => (
-                      <TableRow
-                        key={product.id}
-                        className={`border-b border-gray-200 dark:border-gray-700 ${product.is_out_of_stock ? 'opacity-60' : ''}`}
-                      >
-                        <TableCell className="text-gray-900 dark:text-gray-100">
-                          <div className="flex items-center gap-2">
-                            <span>{product.name}</span>
-                            {product.is_out_of_stock && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                                Agotado
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-gray-700 dark:text-gray-300">{product.sku}</TableCell>
-                        <TableCell className="text-right text-gray-700 dark:text-gray-300">
-                          {product.track_stock
-                            ? <span className={product.is_out_of_stock ? 'text-red-600 dark:text-red-400 font-medium' : ''}>{product.stock_qty ?? 0}</span>
-                            : <span className="text-xs text-gray-400 dark:text-gray-500">Sin control</span>}
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100">
-                          ${product.price.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <Button 
-                            size="sm" 
-                            onClick={() => agregarItem(product)}
-                            disabled={product.is_out_of_stock}
-                            className="
-                              h-8 px-3
-                              bg-blue-600 hover:bg-blue-700
-                              dark:bg-blue-600 dark:hover:bg-blue-500
-                              text-white text-xs
-                            "
-                          >
-                            Agregar
-                            {product.tax_name && (
-                              <span className="ml-1 text-xs font-normal opacity-70">
-                                ({product.tax_name})
-                              </span>
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredProducts.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                          No se encontraron productos
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-        
-        <Button 
-          variant="outline"
-          size="sm"
-          onClick={() => setIsProductDialogOpen(true)}
-          className="
-            w-full sm:w-auto
-            bg-white dark:bg-gray-800
-            border-gray-300 dark:border-gray-600
-            hover:bg-gray-50 dark:hover:bg-gray-700
-            text-gray-700 dark:text-gray-200
-          "
-        >
-          <PackagePlus className="h-4 w-4 mr-2" />
-          <span className="text-sm">Nuevo Producto</span>
-        </Button>
+        <ProductSearchDialog
+          mode="sale"
+          currency="COP"
+          branchId={branchId}
+          onProductSelect={handleProductSelect}
+          selectedProductIds={selectedProductIds}
+          showCreateButton
+        />
 
         <Button 
           variant="outline"
@@ -496,13 +164,6 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           <Plus className="h-4 w-4 mr-2" />
           <span className="text-sm">Agregar Ítem Manual</span>
         </Button>
-
-        {/* Diálogo compartido: reutiliza el formulario COMPLETO de producto */}
-        <ProductoFormDialog
-          open={isProductDialogOpen}
-          onOpenChange={setIsProductDialogOpen}
-          onCreated={handleProductoCreado}
-        />
       </div>
       
       {/* Tabla de ítems */}
@@ -514,6 +175,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                 <TableHead className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Descripción</TableHead>
                 <TableHead className="text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Cantidad</TableHead>
                 <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Precio Unit.</TableHead>
+                <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Descuento</TableHead>
                 <TableHead className="text-center text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Impuesto</TableHead>
                 <TableHead className="text-right text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Total</TableHead>
                 <TableHead className="w-12"></TableHead>
@@ -522,7 +184,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           <TableBody>
             {items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
                   No hay ítems en la factura
                 </TableCell>
               </TableRow>
@@ -542,18 +204,29 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="number"
-                      min="1"
-                      className="
-                        text-center text-sm
-                        bg-white dark:bg-gray-900
-                        border-gray-300 dark:border-gray-600
-                        text-gray-900 dark:text-gray-100
-                      "
-                      value={item.qty}
-                      onChange={(e) => updateItem(index, 'qty', parseFloat(e.target.value) || 0)}
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="1"
+                        className={`text-center text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 ${
+                          item.track_stock && item.stock_qty != null && item.qty > item.stock_qty
+                            ? 'border-red-500 dark:border-red-500 text-red-600 dark:text-red-400'
+                            : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                        value={item.qty}
+                        onChange={(e) => updateItem(index, 'qty', parseFloat(e.target.value) || 0)}
+                      />
+                      {item.track_stock && item.stock_qty != null && item.qty > item.stock_qty && (
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-red-500 dark:text-red-400 pointer-events-none">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                        </span>
+                      )}
+                    </div>
+                    {item.track_stock && item.stock_qty != null && item.qty > item.stock_qty && (
+                      <p className="text-[10px] text-red-500 dark:text-red-400 mt-0.5 text-center">
+                        Stock: {item.stock_qty}
+                      </p>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Input
@@ -568,6 +241,22 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                       "
                       value={item.unit_price}
                       onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="
+                        text-right text-sm
+                        bg-white dark:bg-gray-900
+                        border-gray-300 dark:border-gray-600
+                        text-gray-900 dark:text-gray-100
+                      "
+                      value={item.discount_amount || 0}
+                      onChange={(e) => updateItem(index, 'discount_amount', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
                     />
                   </TableCell>
                   <TableCell className="text-center">
@@ -599,7 +288,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                     </div>
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium text-gray-900 dark:text-gray-100">
-                    ${item.total_line.toLocaleString()}
+                    {formatCurrency(item.total_line || 0, 'COP')}
                   </TableCell>
                   <TableCell>
                     <Button 
@@ -623,6 +312,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
         </Table>
         </div>
       </div>
+
     </div>
   );
 }

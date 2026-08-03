@@ -338,6 +338,7 @@ export class PedidosService {
             quantity: p.quantity,
             unit_price: p.unit_price,
             product_id: p.product_id,
+            discount_amount: (p as any).discount_amount || 0,
           };
 
           const itemTaxes = calculateItemTaxes(taxItem, effectiveApplied, effectiveOrgTaxes, effectiveTaxIncluded);
@@ -873,6 +874,11 @@ export class PedidosService {
       total: number;
       table_session_id?: string;
       driver_id?: string;
+      salesperson_id?: string;
+      commission_rate?: number;
+      commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+      commission_method?: 'percentage' | 'fixed_amount';
+      commission_amount?: number;
     }
   ): Promise<{ id: string; total: number; status: string }> {
     try {
@@ -1164,6 +1170,53 @@ export class PedidosService {
         }
       } catch (stockError) {
         console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
+      }
+
+      // 8. Crear registro de comisión si aplica
+      if (data.salesperson_id && data.commission_rate && data.commission_rate > 0 && data.commission_type && data.commission_type !== 'none') {
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', data.salesperson_id)
+            .single();
+
+          let salespersonName = 'N/A';
+          if (profileData) {
+            salespersonName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'N/A';
+          }
+
+          const baseAmount = data.subtotal > 0 ? data.subtotal : data.total;
+          const commissionAmount = data.commission_method === 'fixed_amount'
+            ? data.commission_rate
+            : Math.round(baseAmount * data.commission_rate / 100 * 100) / 100;
+
+          const { error: commissionInsertError } = await supabase
+            .from('commissions')
+            .insert({
+              organization_id: saleData.organization_id,
+              branch_id: saleData.branch_id,
+              commission_type: data.commission_type,
+              source_type: 'sale',
+              source_id: saleId,
+              payee_type: 'employee',
+              payee_id: data.salesperson_id,
+              payee_name: salespersonName,
+              base_amount: baseAmount,
+              commission_rate: data.commission_rate,
+              commission_amount: commissionAmount,
+              currency: baseCurrency.code,
+              status: 'accrued',
+              accrued_at: now,
+              created_by: userId || null,
+              metadata: { sale_id: saleId, commission_method: data.commission_method || 'percentage', source: 'mesa' },
+            });
+          if (commissionInsertError) {
+            console.error('Error al crear registro de comisión (mesa):', commissionInsertError);
+          }
+        } catch (commissionErr) {
+          console.error('Error al crear registro de comisión (mesa catch):', commissionErr);
+        }
       }
 
       return {

@@ -948,6 +948,11 @@ export default function MesaDetallePage() {
       tax_total: checkoutData.cart.tax_total,
       total: checkoutData.cart.total,
       table_session_id: session.id,
+      salesperson_id: checkoutData.salesperson_id,
+      commission_rate: checkoutData.commission_rate,
+      commission_type: checkoutData.commission_type,
+      commission_method: checkoutData.commission_method,
+      commission_amount: checkoutData.commission_amount,
     });
 
     // Retornar como Sale para compatibilidad con CheckoutDialog

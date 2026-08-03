@@ -245,31 +245,54 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const handlePrintInvoice = async () => {
     try {
       const data = await POSService.getInvoiceForCart(cart.id);
-      
+
+      // Obtener datos del negocio y sucursal desde la BD
+      const { business, branch: branchInfo } = await PrintService.getBusinessAndBranch(data.invoice.organization_id);
+
+      // Obtener datos del cajero
+      let cashierName: string | undefined;
+      let cashierEmail: string | undefined;
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const authUser = authData?.user;
+        if (authUser) {
+          cashierEmail = authUser.email;
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', authUser.id)
+            .maybeSingle();
+          const fullName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
+          if (fullName) cashierName = fullName;
+        }
+      } catch (e) {
+        console.warn('No se pudo obtener el cajero:', e);
+      }
+
       // Convertir datos de invoice a formato Sale para PrintService
       const saleData: Sale = {
         id: data.invoice.number,
         organization_id: data.invoice.organization_id,
-        branch_id: data.invoice.branch_id || 1, // Default branch si no existe
-        customer_id: data.customer.id,
+        branch_id: data.invoice.branch_id || 1,
+        customer_id: data.customer?.id,
         user_id: data.invoice.created_by || 'system',
         total: parseFloat(data.invoice.total),
         subtotal: parseFloat(data.invoice.subtotal),
         tax_total: parseFloat(data.invoice.tax_total),
         discount_total: 0,
-        balance: parseFloat(data.invoice.total), // Balance inicial igual al total
+        balance: parseFloat(data.invoice.balance || data.invoice.total),
         status: 'completed',
         payment_status: 'pending',
         sale_date: data.invoice.created_at,
         notes: data.invoice.notes,
         created_at: data.invoice.created_at,
-        updated_at: data.invoice.updated_at
-      };
-      
+        updated_at: data.invoice.updated_at,
+      } as any;
+
       // Convertir items de factura a formato SaleItem
       const saleItems: SaleItem[] = data.items.map(item => ({
         id: item.id,
-        sale_id: data.invoice.number, // Usar número de factura como sale_id
+        sale_id: data.invoice.number,
         product_id: item.product_id,
         quantity: parseFloat(item.qty),
         unit_price: parseFloat(item.unit_price),
@@ -278,15 +301,16 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         tax_amount: parseFloat(item.tax_amount || '0'),
         created_at: item.created_at || data.invoice.created_at,
         updated_at: item.updated_at || data.invoice.updated_at,
-        // Agregar propiedades personalizadas para PrintService
-        name: item.description || item.products?.name || 'Producto'
-      } as SaleItem & { name: string }));
-      
-      // Datos del cliente convertidos
-      const customerData: Customer = {
+        name: item.description || item.products?.name || 'Producto',
+        product_name: item.description || item.products?.name || 'Producto',
+        product: item.products ? { name: item.products.name, sku: item.products.sku } : undefined,
+      } as any));
+
+      // Datos del cliente
+      const customerData: Customer | undefined = data.customer ? {
         id: data.customer.id,
         organization_id: data.customer.organization_id,
-        full_name: `${data.customer.first_name} ${data.customer.last_name}`.trim(),
+        full_name: data.customer.full_name || `${data.customer.first_name || ''} ${data.customer.last_name || ''}`.trim(),
         email: data.customer.email || undefined,
         phone: data.customer.phone || undefined,
         doc_type: data.customer.identification_type,
@@ -295,25 +319,35 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         city: data.customer.city,
         country: data.customer.country,
         avatar_url: data.customer.avatar_url,
-        roles: [], // Default empty array
-        tags: [], // Default empty array
-        preferences: {}, // Default empty object
+        roles: [],
+        tags: [],
+        preferences: {},
         created_at: data.customer.created_at,
         updated_at: data.customer.updated_at
-      };
-      
-      // Imprimir usando PrintService
-      PrintService.smartPrint(
+      } : undefined;
+
+      // Pagos asociados a la factura
+      const payments = (data.invoice.pagos || []).map((p: any) => ({
+        id: p.id,
+        method: p.method || p.payment_method,
+        amount: parseFloat(p.amount)
+      }));
+
+      // Imprimir usando PrintService.printTicket con datos completos
+      PrintService.printTicket(
         saleData,
         saleItems,
-        customerData,
-        [], // No tenemos datos de pagos específicos
-        'Mi Empresa', // TODO: obtener nombre de la organización
-        'Dirección de la empresa' // TODO: obtener dirección de la organización
+        customerData as any,
+        payments,
+        business,
+        { name: cashierName || 'Sistema POS', email: cashierEmail },
+        branchInfo as any,
+        undefined,
+        undefined
       );
-      
+
       toast.success('Factura enviada a imprimir');
-      
+
     } catch (error: any) {
       console.error('Error imprimiendo factura:', error);
       toast.error('Error al imprimir factura', {

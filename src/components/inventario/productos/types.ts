@@ -21,6 +21,9 @@ export interface Producto {
   created_at?: string;
   updated_at?: string;
   parent_product_id?: number | string | null;
+  product_type?: 'product' | 'service';
+  brand?: string | null;
+  reference?: string | null;
   
   // Campos calculados basados en relaciones
   cost?: number; // Campo calculado del costo actual
@@ -34,6 +37,7 @@ export interface Producto {
   stock_levels?: StockLevel[];
   product_images?: ProductoImagen[];
   children?: Producto[]; // Productos hijos/variantes
+  product_tax_relations?: Array<{ tax_id: string; organization_taxes?: { id: string; name: string; rate: number } }>;
   
   // Campos adicionales
   tags?: Etiqueta[];

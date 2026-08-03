@@ -268,8 +268,43 @@ export class POSService {
       }
 
       // Obtener stock_levels por branch_id actual
+      // Para productos padre, el stock está en las variantes hijas, no en el padre.
       let stockMap: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
+      let variantStockMap: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
       if (productIds.length > 0 && currentBranchId) {
+        // Identificar productos padre para buscar stock de sus hijos
+        const parentIds = data?.filter((p: any) => p.is_parent).map((p: any) => p.id) || [];
+        let variantIds: number[] = [];
+        if (parentIds.length > 0) {
+          const { data: variants } = await supabase
+            .from('products')
+            .select('id, parent_product_id')
+            .in('parent_product_id', parentIds);
+          variantIds = (variants || []).map((v: any) => v.id);
+          // Mapear variant_id -> parent_product_id para acumular después
+          const variantToParent: Record<number, number> = {};
+          (variants || []).forEach((v: any) => {
+            variantToParent[v.id] = v.parent_product_id;
+          });
+          // Consultar stock de las variantes
+          if (variantIds.length > 0) {
+            const { data: variantStockData } = await supabase
+              .from('stock_levels')
+              .select('product_id, qty_on_hand, qty_reserved')
+              .in('product_id', variantIds)
+              .eq('branch_id', currentBranchId)
+              .is('lot_id', null);
+            (variantStockData || []).forEach((s: any) => {
+              const parentId = variantToParent[s.product_id];
+              if (!variantStockMap[parentId]) {
+                variantStockMap[parentId] = { qty_on_hand: 0, qty_reserved: 0 };
+              }
+              variantStockMap[parentId].qty_on_hand += Number(s.qty_on_hand) || 0;
+              variantStockMap[parentId].qty_reserved += Number(s.qty_reserved) || 0;
+            });
+          }
+        }
+        // Consultar stock de los productos de la página actual (incluye padres e hijos directos)
         const { data: stockData } = await supabase
           .from('stock_levels')
           .select('product_id, qty_on_hand, qty_reserved')
@@ -286,7 +321,10 @@ export class POSService {
 
       const products = data?.map((product: any) => {
         const stock = stockMap[product.id];
-        const stockQty = stock?.qty_on_hand ?? 0;
+        const variantStock = variantStockMap[product.id];
+        // Sumar stock propio + stock de variantes hijas
+        const stockQty = (stock?.qty_on_hand ?? 0) + (variantStock?.qty_on_hand ?? 0);
+        const reservedQty = (stock?.qty_reserved ?? 0) + (variantStock?.qty_reserved ?? 0);
         const isOutOfStock = product.track_stock === true && stockQty <= 0;
         return {
           ...product,
@@ -301,7 +339,7 @@ export class POSService {
           // Información de stock
           track_stock: product.track_stock,
           stock_quantity: stockQty,
-          qty_reserved: stock?.qty_reserved ?? 0,
+          qty_reserved: reservedQty,
           is_out_of_stock: isOutOfStock,
           // Mantener compatibilidad con código que use 'image'
           image: productImagesMap[product.id]?.[0]?.storage_path ? 
@@ -1168,6 +1206,8 @@ export class POSService {
           salesperson_id: checkoutData.salesperson_id || null,
           commission_rate: checkoutData.commission_rate || 0,
           commission_type: checkoutData.commission_type || 'none',
+          commission_method: checkoutData.commission_method || 'percentage',
+          commission_amount: checkoutData.commission_amount || 0,
           delivery_fee: shippingFee > 0 ? shippingFee : 0,
           tip_amount: tipAmount > 0 ? tipAmount : null
         })
@@ -1175,6 +1215,48 @@ export class POSService {
         .single();
 
       if (saleError) throw saleError;
+
+      // Crear registro de comisión si aplica
+      if (checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 && checkoutData.commission_type !== 'none') {
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', checkoutData.salesperson_id)
+            .single();
+
+          let salespersonName = 'N/A';
+          if (profileData) {
+            salespersonName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'N/A';
+          }
+
+          const { error: commissionInsertError } = await supabase
+            .from('commissions')
+            .insert({
+              organization_id: cart.organization_id,
+              branch_id: getCurrentBranchId(),
+              commission_type: checkoutData.commission_type,
+              source_type: 'sale',
+              source_id: saleData.id,
+              payee_type: 'employee',
+              payee_id: checkoutData.salesperson_id,
+              payee_name: salespersonName,
+              base_amount: cart.subtotal,
+              commission_rate: checkoutData.commission_rate,
+              commission_amount: checkoutData.commission_amount || 0,
+              currency: (await this.getBaseCurrency()).code,
+              status: 'accrued',
+              accrued_at: new Date().toISOString(),
+              created_by: (await supabase.auth.getUser()).data.user?.id,
+              metadata: { sale_id: saleData.id, commission_method: checkoutData.commission_method || 'percentage' },
+            });
+          if (commissionInsertError) {
+            console.error('Error al crear registro de comisión (POS):', commissionInsertError);
+          }
+        } catch (commissionErr) {
+          console.error('Error al crear registro de comisión (POS catch):', commissionErr);
+        }
+      }
 
       // Crear los items de venta
       const saleItems = cart.items.map(item => {
@@ -1623,7 +1705,7 @@ export class POSService {
         unit_code: data.unit_code,
         status: data.status,
         image: undefined, // TODO: Implementar desde product_images
-        tax_id: data.tax_id,
+        // tax_id legacy removido: los impuestos se consultan via product_tax_relations
         created_at: data.created_at,
         updated_at: data.updated_at,
         tag_id: data.tag_id,
@@ -1870,7 +1952,7 @@ export class POSService {
       // 3. Obtener factura con customer info (MISMA LÓGICA que la página que funciona)
       const { data: facturaData, error: facturaError } = await supabase
         .from('invoice_sales')
-        .select('*, customers(id, full_name, email, phone)')
+        .select('*, customers(id, organization_id, full_name, first_name, last_name, email, phone, identification_type, identification_number, address, city, country, avatar_url, created_at, updated_at)')
         .eq('number', invoiceNumber)
         .eq('organization_id', this.organizationId)
         .single();
@@ -2099,6 +2181,31 @@ export class POSService {
 
       if (updateARError) {
         throw new Error('Error al actualizar las cuentas por cobrar');
+      }
+
+      // 10.5: Devolver stock al anular la deuda
+      try {
+        const stockItems = (originalItems || []).map(item => ({
+          product_id: item.product_id,
+          quantity: Math.abs(parseFloat(item.qty)),
+          unit_price: parseFloat(item.unit_price) || 0,
+        })).filter(item => item.product_id && item.quantity > 0);
+
+        if (stockItems.length > 0) {
+          const stockResult = await stockMovementService.incrementOnPurchase(
+            this.organizationId,
+            originalInvoice.branch_id || getCurrentBranchIdWithFallback(),
+            creditNoteData.id,
+            stockItems,
+            'credit_note'
+          );
+          if (stockResult.errors.length > 0) {
+            console.warn('⚠️ Algunos items no devolvieron stock:', stockResult.errors);
+          }
+          console.log(`📦 Stock devuelto: ${stockItems.length - stockResult.skipped} items procesados`);
+        }
+      } catch (stockError) {
+        console.warn('⚠️ Error devolviendo stock (no bloquea la anulación):', stockError);
       }
 
       // 11. Actualizar el carrito (cambiar estado a cancelled)

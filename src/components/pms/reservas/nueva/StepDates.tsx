@@ -6,20 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Calendar, Users, Bed, Home, Mountain, Tent, Building } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import type { SpaceType } from '@/lib/services/spaceTypesService';
 
 interface StepDatesProps {
   checkin: string;
   checkout: string;
   occupantCount: number;
   selectedCategory: string | null;
-  categories: any[];
+  spaceTypes: SpaceType[];
   onCheckinChange: (date: string) => void;
   onCheckoutChange: (date: string) => void;
   onOccupantCountChange: (count: number) => void;
@@ -41,7 +35,7 @@ export function StepDates({
   checkout,
   occupantCount,
   selectedCategory,
-  categories,
+  spaceTypes,
   onCheckinChange,
   onCheckoutChange,
   onOccupantCountChange,
@@ -63,10 +57,8 @@ export function StepDates({
 
   const isValid = checkin && checkout && selectedCategory && nights > 0;
 
-  // Obtener fecha mínima (hoy)
   const today = new Date().toISOString().split('T')[0];
   
-  // Obtener fecha mínima de checkout (1 día después del checkin)
   const minCheckout = checkin
     ? new Date(new Date(checkin).getTime() + 24 * 60 * 60 * 1000)
         .toISOString()
@@ -84,7 +76,6 @@ export function StepDates({
         </p>
       </div>
 
-      {/* Fechas */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
           <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -142,26 +133,25 @@ export function StepDates({
         )}
       </Card>
 
-      {/* Categoría de espacio */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Tipo de Alojamiento
         </h3>
         
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {categories.map((category) => {
-            const isSelected = selectedCategory === category.code;
-            const icon = categoryIcons[category.code] || categoryIcons.default;
+          {spaceTypes.map((spaceType) => {
+            const isSelected = selectedCategory === spaceType.category_code;
+            const icon = categoryIcons[spaceType.category_code] || categoryIcons.default;
 
             return (
               <Card
-                key={category.code}
+                key={spaceType.id}
                 className={`p-4 cursor-pointer transition-all ${
                   isSelected
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
                     : 'hover:border-gray-400 dark:hover:border-gray-500'
                 }`}
-                onClick={() => onCategorySelect(category.code)}
+                onClick={() => onCategorySelect(spaceType.category_code)}
               >
                 <div className="flex flex-wrap items-start gap-3">
                   <div
@@ -175,11 +165,16 @@ export function StepDates({
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                      {category.display_name}
+                      {spaceType.name}
                     </h4>
-                    {category.settings?.max_nights && (
+                    {spaceType.capacity && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Máx: {category.settings.max_nights} noches
+                        Capacidad: {spaceType.capacity} personas
+                      </p>
+                    )}
+                    {spaceType.base_rate && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Tarifa base: ${spaceType.base_rate.toLocaleString('es-CO')}
                       </p>
                     )}
                   </div>
@@ -204,14 +199,13 @@ export function StepDates({
           })}
         </div>
 
-        {categories.length === 0 && (
+        {spaceTypes.length === 0 && (
           <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-            No hay categorías de espacios disponibles
+            No hay tipos de espacios disponibles para tu organización
           </p>
         )}
       </Card>
 
-      {/* Botones de navegación */}
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onBack}>
           Atrás

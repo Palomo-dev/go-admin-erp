@@ -17,7 +17,7 @@ import {
 } from '@/components/pms/reservas/nueva';
 import ReservationEditService from '@/lib/services/reservationEditService';
 import ReservationsService, { type Customer } from '@/lib/services/reservationsService';
-import SpaceCategoriesService from '@/lib/services/spaceCategoriesService';
+import SpaceTypesService from '@/lib/services/spaceTypesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 
 const STEPS = [
@@ -47,7 +47,7 @@ export default function EditarReservaPage() {
   const [checkout, setCheckout] = useState('');
   const [occupantCount, setOccupantCount] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [spaceTypes, setSpaceTypes] = useState<any[]>([]);
   const [selectedSpaces, setSelectedSpaces] = useState<string[]>([]);
   const [availableSpaces, setAvailableSpaces] = useState<any[]>([]);
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(false);
@@ -65,11 +65,11 @@ export default function EditarReservaPage() {
     }
   }, [reservationId]);
 
-  // Cargar categorías y métodos de pago
+  // Cargar tipos de espacio y métodos de pago
   useEffect(() => {
-    loadCategories();
+    loadSpaceTypes();
     loadPaymentMethods();
-  }, []);
+  }, [organization]);
 
   // Cargar espacios cuando cambian las fechas o categoría
   useEffect(() => {
@@ -142,15 +142,16 @@ export default function EditarReservaPage() {
     }
   };
 
-  const loadCategories = async () => {
+  const loadSpaceTypes = async () => {
+    if (!organization) return;
     try {
-      const data = await SpaceCategoriesService.getCategories();
-      setCategories(data.filter(c => c.is_bookable));
+      const data = await SpaceTypesService.getSpaceTypes(organization.id);
+      setSpaceTypes(data.filter((t: any) => t.is_active));
     } catch (error) {
-      console.error('Error cargando categorías:', error);
+      console.error('Error cargando tipos de espacio:', error);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las categorías',
+        description: 'No se pudieron cargar los tipos de espacio',
         variant: 'destructive',
       });
     }
@@ -339,19 +340,6 @@ export default function EditarReservaPage() {
     router.push(`/app/pms/reservas/${reservationId}`);
   };
 
-  const handleSearchCustomers = async (searchTerm: string) => {
-    if (!organization) return [];
-    return await ReservationsService.searchCustomers(organization.id, searchTerm);
-  };
-
-  const handleCreateCustomer = async (customerData: Partial<Customer>) => {
-    if (!organization) throw new Error('No organization');
-    return await ReservationsService.createCustomer({
-      ...customerData,
-      organization_id: organization.id,
-    } as Customer);
-  };
-
   const handleAddExtra = (extra: Omit<typeof extras[0], 'quantity'>) => {
     setExtras([...extras, { ...extra, quantity: 1 }]);
   };
@@ -451,8 +439,6 @@ export default function EditarReservaPage() {
               selectedCustomer={selectedCustomer}
               onCustomerSelect={setSelectedCustomer}
               onNext={nextStep}
-              onSearch={handleSearchCustomers}
-              onCreate={handleCreateCustomer}
             />
           )}
 
@@ -462,7 +448,7 @@ export default function EditarReservaPage() {
               checkout={checkout}
               occupantCount={occupantCount}
               selectedCategory={selectedCategory}
-              categories={categories}
+              spaceTypes={spaceTypes}
               onCheckinChange={setCheckin}
               onCheckoutChange={setCheckout}
               onOccupantCountChange={setOccupantCount}

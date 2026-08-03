@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   Plus,
   Search,
@@ -131,24 +131,28 @@ export default function GoalsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Total', value: stats.total, icon: <Target className="h-4 w-4" />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/20' },
-          { label: 'Activas', value: stats.active, icon: <Zap className="h-4 w-4" />, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
-          { label: 'Logradas', value: stats.achieved, icon: <CheckCircle className="h-4 w-4" />, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-950/20' },
-          { label: 'Propuestas', value: stats.proposals, icon: <FileText className="h-4 w-4" />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/20' },
-        ].map(s => (
-          <Card key={s.label} className={`${s.bg} border-0`}>
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className={s.color}>{s.icon}</span>
-                <span className="text-xs font-medium text-gray-500">{s.label}</span>
-              </div>
-              <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {loading ? (
+        <StatsSkeleton count={4} />
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Total', value: stats.total, icon: <Target className="h-4 w-4" />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/20' },
+            { label: 'Activas', value: stats.active, icon: <Zap className="h-4 w-4" />, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+            { label: 'Logradas', value: stats.achieved, icon: <CheckCircle className="h-4 w-4" />, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-950/20' },
+            { label: 'Propuestas', value: stats.proposals, icon: <FileText className="h-4 w-4" />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/20' },
+          ].map(s => (
+            <Card key={s.label} className={`${s.bg} border-0`}>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className={s.color}>{s.icon}</span>
+                  <span className="text-xs font-medium text-gray-500">{s.label}</span>
+                </div>
+                <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -157,7 +161,7 @@ export default function GoalsPage() {
           <Input placeholder="Buscar metas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 bg-white dark:bg-gray-800" />
         </div>
         <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setLoading(true); }}>
-          <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Tipo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los tipos</SelectItem>
             <SelectItem value="goal">Metas</SelectItem>
@@ -169,11 +173,7 @@ export default function GoalsPage() {
 
       {/* Goals Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-3/4 mb-3" /><Skeleton className="h-3 w-full mb-2" /><Skeleton className="h-2 w-full" /></CardContent></Card>
-          ))}
-        </div>
+        <CardListSkeleton cards={6} columns="3" />
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
@@ -195,7 +195,7 @@ export default function GoalsPage() {
                       {TYPE_ICONS[goal.type]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-base truncate">{goal.title}</CardTitle>
+                      <CardTitle className="text-base break-words whitespace-normal">{goal.title}</CardTitle>
                       <div className="flex gap-1.5 mt-1 flex-wrap">
                         <Badge className={`text-[10px] ${TYPE_COLORS[goal.type]}`}>{TYPE_LABELS[goal.type]}</Badge>
                         <Badge className={`text-[10px] ${STATUS_COLORS[goal.status]}`}>{STATUS_LABELS[goal.status]}</Badge>
@@ -205,7 +205,7 @@ export default function GoalsPage() {
                 </CardHeader>
                 <CardContent>
                   {goal.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{goal.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal mb-3">{goal.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                   )}
                   <div className="mb-3">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -216,13 +216,13 @@ export default function GoalsPage() {
                       <div className={`h-full rounded-full transition-all ${goal.progress >= 100 ? 'bg-green-500' : goal.progress >= 50 ? 'bg-blue-500' : 'bg-yellow-400'}`} style={{ width: `${Math.min(goal.progress, 100)}%` }} />
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                     {goal.projects?.name && (
-                      <span className="flex items-center gap-1"><FolderKanban className="h-3 w-3" />{goal.projects.name}</span>
+                      <span className="flex items-center gap-1 min-w-0 break-words whitespace-normal"><FolderKanban className="h-3 w-3 shrink-0" />{goal.projects.name}</span>
                     )}
                     {goal.target_date && (
-                      <span className={`flex items-center gap-1 ${daysLeft !== null && daysLeft < 0 && goal.status !== 'achieved' ? 'text-red-500' : ''}`}>
-                        <Calendar className="h-3 w-3" />{new Date(goal.target_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                      <span className={`flex items-center gap-1 min-w-0 break-words whitespace-normal ${daysLeft !== null && daysLeft < 0 && goal.status !== 'achieved' ? 'text-red-500' : ''}`}>
+                        <Calendar className="h-3 w-3 shrink-0" />{new Date(goal.target_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
                       </span>
                     )}
                   </div>

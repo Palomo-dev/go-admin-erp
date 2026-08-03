@@ -662,7 +662,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
             <GitBranch className="h-4 w-4 text-indigo-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[11px] text-indigo-500 dark:text-indigo-400 font-medium">Pertenece a</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{editTask.parent_task.title}</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-normal">{editTask.parent_task.title}</p>
             </div>
             {onOpenParent && (
               <Button
@@ -952,7 +952,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
                     >
                       {st.done && <Check className="h-3 w-3" />}
                     </button>
-                    <span className={cn('text-sm flex-1 truncate', st.done ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-300')}>{st.title}</span>
+                    <span className={cn('text-sm flex-1 min-w-0 break-words whitespace-normal', st.done ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-300')}>{st.title}</span>
                     {st.due_date && (
                       <span className="text-[10px] text-gray-400 flex-shrink-0 hidden sm:inline">
                         {new Date(st.due_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
@@ -1069,9 +1069,9 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
                   )}
                   <div className="flex-1 min-w-0">
                     {att.persisted && att.file_url ? (
-                      <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate block">{att.file_name}</a>
+                      <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline break-words whitespace-normal block">{att.file_name}</a>
                     ) : (
-                      <p className="text-sm text-gray-700 dark:text-gray-300 truncate">{att.file_name || att.file?.name}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-normal">{att.file_name || att.file?.name}</p>
                     )}
                     <p className="text-xs text-gray-400">{formatFileSize(att.file_size ?? att.file?.size ?? 0)}</p>
                   </div>
@@ -1127,7 +1127,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
               {dependencies.map((dep) => (
                 <div key={dep.taskId} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 group">
                   <Link2 className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" />
-                  <span className="text-sm flex-1 text-gray-700 dark:text-gray-300 truncate">{dep.title}</span>
+                  <span className="text-sm flex-1 min-w-0 text-gray-700 dark:text-gray-300 break-words whitespace-normal">{dep.title}</span>
                   <Badge variant="outline" className="text-[10px] px-1.5">{dep.type === 'blocks' ? 'Bloquea' : 'Relacionada'}</Badge>
                   <button
                     type="button"
@@ -1146,7 +1146,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
                   <SelectContent>
                     {existingTasks.filter(t => t.id !== editTask?.id && !dependencies.find(d => d.taskId === t.id)).map(t => (
                       <SelectItem key={t.id} value={t.id}>
-                        <span className="truncate">{t.title}</span>
+                        <span className="break-words whitespace-normal min-w-0">{t.title}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>

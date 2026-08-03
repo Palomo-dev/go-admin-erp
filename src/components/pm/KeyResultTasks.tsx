@@ -106,7 +106,7 @@ export function KeyResultTasks({ krId, krTitle, krDescription, users, onChanged 
       <RelatedTasksList tasks={tasks} loading={loading} show="none" emptyLabel="Sin tareas. Agrega o genera con IA para medir el avance." />
 
       {/* Alta de tarea */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Input
           placeholder="Nueva tarea del KR"
           value={title}
@@ -129,9 +129,9 @@ export function KeyResultTasks({ krId, krTitle, krDescription, users, onChanged 
         </Button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Select value={assignee} onValueChange={setAssignee}>
-          <SelectTrigger className="h-8 flex-1 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+          <SelectTrigger className="h-8 flex-1 min-w-0 text-xs bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
             <SelectValue placeholder="Responsable (opcional)" />
           </SelectTrigger>
           <SelectContent>

@@ -162,29 +162,29 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
   return (
     <div className="space-y-2">
       {/* Barra de acciones masivas */}
-      <div className="flex items-center gap-2 flex-wrap px-1">
+      <div className="flex flex-wrap items-center gap-2 px-1">
         <div className="flex items-center gap-2" onClick={toggleSelectAll} role="button">
           <Checkbox checked={allSelected} className="cursor-pointer" />
           <span className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer">Seleccionar todo</span>
         </div>
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="text-xs">{selectedIds.size} seleccionada(s)</Badge>
             <Select onValueChange={(v) => applyBulk({ status: v }, `Estado: ${TASK_STATUS_LABELS[v]}`)} disabled={applying}>
-              <SelectTrigger className="h-8 w-[130px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Estado" /></SelectTrigger>
               <SelectContent>
                 {Object.entries(TASK_STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select onValueChange={(v) => applyBulk({ priority: v }, `Prioridad: ${PRIORITY_LABELS[v]}`)} disabled={applying}>
-              <SelectTrigger className="h-8 w-[130px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Prioridad" /></SelectTrigger>
+              <SelectTrigger className="h-8 w-full sm:w-[130px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Prioridad" /></SelectTrigger>
               <SelectContent>
                 {Object.entries(PRIORITY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
               </SelectContent>
             </Select>
             {users.length > 0 && (
               <Select onValueChange={(v) => applyBulk({ assigned_to: v === 'none' ? null : v }, 'Responsable')} disabled={applying}>
-                <SelectTrigger className="h-8 w-[150px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Asignar a" /></SelectTrigger>
+                <SelectTrigger className="h-8 w-full sm:w-[150px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Asignar a" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin asignar</SelectItem>
                   {users.map(u => <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>)}
@@ -193,7 +193,7 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
             )}
             {projects.length > 0 && (
               <Select onValueChange={(v) => applyBulk({ project_id: v }, 'Proyecto')} disabled={applying}>
-                <SelectTrigger className="h-8 w-[150px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Mover a proyecto" /></SelectTrigger>
+                <SelectTrigger className="h-8 w-full sm:w-[150px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Mover a proyecto" /></SelectTrigger>
                 <SelectContent>
                   {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
@@ -202,21 +202,21 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
             <Input
               type="date" disabled={applying}
               onChange={(e) => { if (e.target.value) applyBulk({ due_date: e.target.value }, 'Fecha límite'); }}
-              className="h-8 w-[150px] text-xs bg-white dark:bg-gray-800"
+              className="h-8 w-full sm:w-[150px] text-xs bg-white dark:bg-gray-800"
               title="Fecha límite"
             />
             <Input
               type="number" min="0" step="0.5" disabled={applying}
               placeholder="Horas est."
               onBlur={(e) => { if (e.target.value) handleBulkEstimatedHours(e.target.value); e.target.value = ''; }}
-              className="h-8 w-[100px] text-xs bg-white dark:bg-gray-800"
+              className="h-8 w-full sm:w-[100px] text-xs bg-white dark:bg-gray-800"
               title="Horas estimadas"
             />
             <Input
               type="text" disabled={applying}
               placeholder="Agregar etiqueta..."
               onKeyDown={(e) => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value; if (v.trim()) handleBulkAddTag(v); (e.target as HTMLInputElement).value = ''; } }}
-              className="h-8 w-[160px] text-xs bg-white dark:bg-gray-800"
+              className="h-8 w-full sm:w-[160px] text-xs bg-white dark:bg-gray-800"
               title="Presionar Enter para agregar"
             />
             <Button variant="outline" size="sm" disabled={applying} onClick={() => applyBulk({ status: 'done' }, 'Marcar completadas')} className="h-8 text-xs">
@@ -266,8 +266,8 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
                 </button>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className={`text-sm font-medium text-gray-900 dark:text-white ${task.status === 'done' ? 'line-through' : ''}`}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className={`text-sm font-medium text-gray-900 dark:text-white break-words whitespace-normal ${task.status === 'done' ? 'line-through' : ''}`}>
                       {task.title}
                     </h4>
                     <Badge className={`text-[10px] ${TASK_STATUS_COLORS[task.status]}`}>
@@ -293,8 +293,8 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
                         title={`Pertenece a: ${task.parent_task.title}`}
                         className="inline-flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-full px-2 py-0.5 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
                       >
-                        <GitBranch className="h-2.5 w-2.5" />
-                        <span className="truncate max-w-[150px]">{task.parent_task.title}</span>
+                        <GitBranch className="h-2.5 w-2.5 shrink-0" />
+                        <span className="break-words max-w-full whitespace-normal">{task.parent_task.title}</span>
                       </button>
                     )}
                     {overdue && (
@@ -305,46 +305,49 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
                   </div>
 
                   {task.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{task.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words whitespace-normal">{task.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
                   )}
 
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">
                     {task.projects?.name && (
-                      <span className="flex items-center gap-1">
-                        <FolderKanban className="h-3 w-3" />{task.projects.name}
+                      <span className="flex items-center gap-1 min-w-0 break-words whitespace-normal">
+                        <FolderKanban className="h-3 w-3 shrink-0" />{task.projects.name}
                       </span>
                     )}
                     {task.due_date && (
-                      <span className={`flex items-center gap-1 ${overdue ? 'text-red-500' : ''}`}>
-                        <Calendar className="h-3 w-3" />
+                      <span className={`flex items-center gap-1 min-w-0 break-words whitespace-normal ${overdue ? 'text-red-500' : ''}`}>
+                        <Calendar className="h-3 w-3 shrink-0" />
                         {new Date(task.due_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </span>
                     )}
                     {task.estimated_hours && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                      <span className="flex items-center gap-1 min-w-0 break-words whitespace-normal">
+                        <Clock className="h-3 w-3 shrink-0" />
                         {task.actual_hours || 0}/{task.estimated_hours}h
                       </span>
                     )}
                     <TaskTimer taskId={task.id} variant="compact" providedRunning={runningTimers?.[task.id] ?? null} />
                     {assignee && (
-                      <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />{assignee}
+                      <span className="flex items-center gap-1 min-w-0 break-words whitespace-normal">
+                        <User className="h-3 w-3 shrink-0" />{assignee}
                       </span>
                     )}
                     {task.goals?.title && (
-                      <span className="flex items-center gap-1 text-emerald-500 dark:text-emerald-400">
-                        <Target className="h-3 w-3" />{task.goals.title}
+                      <span className="flex items-center gap-1 min-w-0 break-words whitespace-normal text-emerald-500 dark:text-emerald-400">
+                        <Target className="h-3 w-3 shrink-0" />{task.goals.title}
                       </span>
                     )}
                     {task.milestones?.title && (
-                      <span className="flex items-center gap-1">
-                        <Flag className="h-3 w-3" />{task.milestones.title}
+                      <span className="flex items-center gap-1 min-w-0 break-words whitespace-normal">
+                        <Flag className="h-3 w-3 shrink-0" />{task.milestones.title}
                       </span>
                     )}
                     {visibleTags.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Tag className="h-3 w-3" />{visibleTags.join(', ')}
+                      <span className="flex flex-wrap items-center gap-1 min-w-0">
+                        <Tag className="h-3 w-3 shrink-0" />
+                        {visibleTags.map((t, i) => (
+                          <span key={i} className="break-words whitespace-normal">{t}{i < visibleTags.length - 1 ? ', ' : ''}</span>
+                        ))}
                       </span>
                     )}
                   </div>

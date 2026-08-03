@@ -84,18 +84,18 @@ export function PMRecentActivity({ tasks, isLoading }: PMRecentActivityProps) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium text-gray-900 dark:text-white truncate ${task.status === 'done' ? 'line-through opacity-60' : ''}`}>
+                  <p className={`text-sm font-medium text-gray-900 dark:text-white break-words whitespace-normal ${task.status === 'done' ? 'line-through opacity-60' : ''}`}>
                     {task.title}
                   </p>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                     {task.projects?.name && (
-                      <span className="flex items-center gap-0.5">
-                        <FolderKanban className="h-3 w-3" />{task.projects.name}
+                      <span className="flex items-center gap-0.5 min-w-0 break-words whitespace-normal">
+                        <FolderKanban className="h-3 w-3 shrink-0" />{task.projects.name}
                       </span>
                     )}
                     {name && (
-                      <span className="flex items-center gap-0.5">
-                        <User className="h-3 w-3" />{name}
+                      <span className="flex items-center gap-0.5 min-w-0 break-words whitespace-normal">
+                        <User className="h-3 w-3 shrink-0" />{name}
                       </span>
                     )}
                     <Badge className={`text-[9px] py-0 px-1 ${TASK_STATUS_COLORS[task.status]}`}>

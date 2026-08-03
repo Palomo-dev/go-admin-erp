@@ -70,7 +70,7 @@ const navItems: QuickNavItem[] = [
 
 export function PMQuickNav() {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
       {navItems.map((item) => (
         <Link key={item.href} href={item.href}>
           <div className="group p-2.5 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer h-full">
@@ -96,7 +96,7 @@ export function PMQuickNav() {
 
 export function PMQuickActions() {
   return (
-    <div className="flex flex-wrap gap-2 overflow-x-auto pb-1">
+    <div className="flex flex-wrap gap-2 pb-1">
       <Link href="/app/pm/proyectos">
         <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="h-4 w-4 mr-1 sm:mr-2" />

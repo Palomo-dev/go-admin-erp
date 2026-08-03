@@ -1,5 +1,25 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+
+async function getBranchIdWithFallback(organizationId: number): Promise<number> {
+  const branchId = getCurrentBranchId();
+  if (branchId !== null) return branchId;
+
+  const { data, error } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .order('is_main', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+  }
+
+  return data.id;
+}
 import { CuentaPorCobrarDetalle, PaymentRecord, AgingInfo, AccountActions } from './types';
 import { NotificationService } from '@/lib/services/notificationService';
 
@@ -205,10 +225,8 @@ export class CuentaPorCobrarDetailService {
   // Aplicar pago
   static async aplicarPago(accountId: string, amount: number, method: string, reference?: string, paymentDate?: string): Promise<void> {
     const organizationId = this.getOrganizationId();
-    const branchId = getCurrentBranchId();
+    const branchId = await getBranchIdWithFallback(organizationId);
     const createdBy = await getCurrentUserId();
-    
-    if (!branchId) throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
     
     console.log('💰 DEBUG aplicarPago:', { accountId, amount, method, organizationId, branchId, createdBy, paymentDate });
     

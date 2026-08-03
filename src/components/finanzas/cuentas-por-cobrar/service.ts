@@ -3,6 +3,26 @@ import { obtenerOrganizacionActiva, getCurrentBranchId, getCurrentUserId } from 
 import { CuentaPorCobrar, FiltrosCuentasPorCobrar, AgingBucket, Recordatorio, Abono, EstadisticasCxC, ResultadoPaginado } from './types';
 import { parseLocalDate } from '@/utils/Utils';
 
+async function getBranchIdWithFallback(organizationId: number): Promise<number> {
+  const branchId = getCurrentBranchId();
+  if (branchId !== null) return branchId;
+
+  const { data, error } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .order('is_main', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
+  }
+
+  return data.id;
+}
+
 export class CuentasPorCobrarService {
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
@@ -302,12 +322,8 @@ export class CuentasPorCobrarService {
     const newBalance = currentBalance - abonoAmount;
 
     // Obtener branch_id y usuario actual desde el contexto del usuario
-    const currentBranchId = getCurrentBranchId();
+    const currentBranchId = await getBranchIdWithFallback(organizationId);
     const currentUserId = await getCurrentUserId();
-    
-    if (!currentBranchId) {
-      throw new Error('No se pudo obtener el branch_id. Seleccione una sucursal.');
-    }
     
     // Crear el registro de pago
     const { error: paymentError } = await supabase

@@ -134,6 +134,26 @@ async function listUsbDevices(): Promise<UsbDevice[]> {
     } catch (err) {
       console.error('[discovery] Error enumerando impresoras USB via WMI:', err);
     }
+
+    // --- 3. Impresoras en puertos USB virtuales (USB001, USB002...) ---
+    try {
+      const usbPortPrinters = await listUsbPortPrinters();
+      for (const p of usbPortPrinters) {
+        const key = `usbport:${p.name}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        console.log(`[discovery] Impresora puerto USB: ${p.name} (${p.portName})`);
+        result.push({
+          vendorId: '0x0000',
+          productId: '0x0000',
+          name: `${p.name} (${p.portName})`,
+          isPrinter: true,
+          viaWmi: true,
+        });
+      }
+    } catch (err) {
+      console.error('[discovery] Error enumerando impresoras puerto USB:', err);
+    }
   }
 
   // Las impresoras primero: es lo que el usuario viene a buscar.
@@ -152,30 +172,73 @@ function listWindowsUsbPrinters(): Promise<{ vendorId: string; productId: string
     const cmd =
       'powershell -NoProfile -Command "' +
       'Get-CimInstance Win32_PnPEntity | ' +
-      "Where-Object { $_.DeviceID -like 'USB\\VID_*' -and " +
-      "($_.Class -eq 'Printer' -or $_.Class -eq 'USB' -or $_.Name -match 'printer|POS|thermal|receipt|ticket|80|58') } | " +
-      'Select-Object Name, DeviceID | ConvertTo-Json -Compress"';
+      "Where-Object { `$_.DeviceID -like 'USB\\VID_*' } | " +
+      'Select-Object Name, DeviceID, Class | ConvertTo-Json -Compress"';
 
-    exec(cmd, { timeout: 15000, windowsHide: true }, (err: Error | null, stdout: string) => {
-      if (err) return resolve([]);
+    exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string) => {
+      if (err) {
+        console.error('[discovery] Error ejecutando WMI USB query:', err.message);
+        return resolve([]);
+      }
+      try {
+        const raw = stdout.trim();
+        if (!raw) {
+          console.log('[discovery] WMI USB: respuesta vacía');
+          return resolve([]);
+        }
+        const parsed = JSON.parse(raw);
+        const list = Array.isArray(parsed) ? parsed : [parsed];
+        console.log(`[discovery] WMI USB: ${list.length} dispositivos USB encontrados`);
+        const result: { vendorId: string; productId: string; name: string }[] = [];
+
+        for (const entry of list) {
+          const match = /VID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})/.exec(entry?.DeviceID || '');
+          if (!match) continue;
+          const name = entry?.Name || `USB ${match[1]}:${match[2]}`;
+          console.log(`[discovery] WMI USB: ${name} (${entry?.Class || '?'}) ${match[1]}:${match[2]}`);
+          result.push({
+            vendorId: `0x${match[1].toLowerCase()}`,
+            productId: `0x${match[2].toLowerCase()}`,
+            name,
+          });
+        }
+        resolve(result);
+      } catch (parseErr: any) {
+        console.error('[discovery] Error parseando WMI USB:', parseErr.message);
+        resolve([]);
+      }
+    });
+  });
+}
+
+/**
+ * Detecta impresoras instaladas en puertos USB (USB001, USB002, etc.).
+ * Muchas impresoras USB térmicas se instalan como impresora de Windows
+ * en un puerto USB virtual y no aparecen como dispositivo USB raw.
+ */
+function listUsbPortPrinters(): Promise<{ name: string; portName: string }[]> {
+  return new Promise((resolve) => {
+    const { exec } = require('child_process');
+    const cmd =
+      'powershell -NoProfile -Command "' +
+      'Get-CimInstance Win32_Printer | ' +
+      "Where-Object { `$_.PortName -match '^USB' } | " +
+      'Select-Object Name, PortName | ConvertTo-Json -Compress"';
+
+    exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string) => {
+      if (err) {
+        console.error('[discovery] Error listando impresoras en puerto USB:', err.message);
+        return resolve([]);
+      }
       try {
         const raw = stdout.trim();
         if (!raw) return resolve([]);
         const parsed = JSON.parse(raw);
         const list = Array.isArray(parsed) ? parsed : [parsed];
-        const result: { vendorId: string; productId: string; name: string }[] = [];
-
-        for (const entry of list) {
-          const match = /USB\\VID_([0-9A-F]{4})&PID_([0-9A-F]{4})/i.exec(entry?.DeviceID || '');
-          if (!match) continue;
-          result.push({
-            vendorId: `0x${match[1].toLowerCase()}`,
-            productId: `0x${match[2].toLowerCase()}`,
-            name: entry?.Name || `USB ${match[1]}:${match[2]}`,
-          });
-        }
-        resolve(result);
-      } catch {
+        console.log(`[discovery] Impresoras en puerto USB: ${list.length}`);
+        resolve(list.map((e: any) => ({ name: e?.Name || '', portName: e?.PortName || '' })));
+      } catch (parseErr: any) {
+        console.error('[discovery] Error parseando impresoras puerto USB:', parseErr.message);
         resolve([]);
       }
     });
@@ -194,13 +257,13 @@ async function listBluetoothPrinters(): Promise<BluetoothDevice[]> {
     const { exec } = require('child_process');
     const cmd =
       'powershell -NoProfile -Command "' +
-      'Get-PnpDevice -Class Bluetooth | ' +
-      "Where-Object { $_.Status -eq 'OK' } | " +
-      'Select-Object FriendlyName, DeviceID, Status | ConvertTo-Json -Compress"';
+      'Get-PnpDevice | ' +
+      "Where-Object { (`$_.Class -eq 'Bluetooth' -or `$_.Class -eq 'Printer') -and `$_.Status -eq 'OK' } | " +
+      'Select-Object FriendlyName, DeviceID, Status, Class | ConvertTo-Json -Compress"';
 
-    exec(cmd, { timeout: 15000, windowsHide: true }, (err: Error | null, stdout: string) => {
+    exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string) => {
       if (err) {
-        console.error('[discovery] Error listando Bluetooth:', err);
+        console.error('[discovery] Error listando Bluetooth:', err.message);
         return resolve([]);
       }
       try {
@@ -208,18 +271,27 @@ async function listBluetoothPrinters(): Promise<BluetoothDevice[]> {
         if (!raw) return resolve([]);
         const parsed = JSON.parse(raw);
         const list = Array.isArray(parsed) ? parsed : [parsed];
+        console.log(`[discovery] Bluetooth: ${list.length} dispositivos encontrados`);
         const result: BluetoothDevice[] = [];
 
         for (const entry of list) {
-          const name = entry?.FriendlyName || 'Dispositivo Bluetooth';
-          // Extraer MAC del DeviceID (formato varía: BTHENUM\Dev_XXXXXXXXXXXX)
-          const macMatch = /Dev_([0-9A-F]{12})/i.exec(entry?.DeviceID || '');
+          const name = entry?.FriendlyName || 'Dispositivo desconocido';
+          const deviceId = entry?.DeviceID || '';
+          const deviceClass = entry?.Class || '';
+
+          const isBtDevice = deviceClass === 'Bluetooth' || /BTHENUM|BTHLE/i.test(deviceId);
+          if (!isBtDevice && deviceClass !== 'Printer') continue;
+
+          console.log(`[discovery] Bluetooth/Printer: ${name} (${deviceClass}) ${deviceId}`);
+
+          // Extraer MAC del DeviceID
+          const macMatch = /Dev_([0-9A-Fa-f]{12})/.exec(deviceId);
           const macAddress = macMatch
             ? macMatch[1].replace(/(.{2})/g, '$1:').slice(0, -1).toUpperCase()
             : '';
 
-          // Detectar si parece impresora por nombre
-          const isPrinter = /printer|impresora|pos|thermal|receipt|ticket/i.test(name);
+          // Impresora si la clase es Printer o el nombre lo sugiere
+          const isPrinter = deviceClass === 'Printer' || /printer|impresora|pos|thermal|receipt|ticket|80|58|tsc|xprinter|epson|star/i.test(name);
 
           result.push({
             name,
@@ -419,13 +491,15 @@ export function startDiscoveryServer(): http.Server {
       return;
     }
 
-    if (req.url === '/health') {
+    const url = (req.url || '').split('?')[0].replace(/\/$/, '') || '/';
+
+    if (url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'ok', agent: config.agentName }));
       return;
     }
 
-    if (req.url === '/printers') {
+    if (url === '/printers') {
       try {
         const printers = await listSystemPrinters();
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -437,7 +511,7 @@ export function startDiscoveryServer(): http.Server {
       return;
     }
 
-    if (req.url === '/discover') {
+    if (url === '/discover') {
       try {
         const printers = await discoverNetworkPrinters();
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -449,7 +523,7 @@ export function startDiscoveryServer(): http.Server {
       return;
     }
 
-    if (req.url === '/usb') {
+    if (url === '/usb') {
       try {
         const devices = await listUsbDevices();
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -461,7 +535,7 @@ export function startDiscoveryServer(): http.Server {
       return;
     }
 
-    if (req.url === '/bluetooth') {
+    if (url === '/bluetooth') {
       try {
         const devices = await listBluetoothPrinters();
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -473,9 +547,32 @@ export function startDiscoveryServer(): http.Server {
       return;
     }
 
+    if (url === '/debug-usb') {
+      try {
+        const { exec } = require('child_process');
+        const cmd =
+          'powershell -NoProfile -Command "' +
+          'Get-CimInstance Win32_PnPEntity | ' +
+          "Where-Object { `$_.DeviceID -like 'USB\\VID_*' } | " +
+          'Select-Object Name, DeviceID, Class, Status | ConvertTo-Json -Compress"';
+        exec(cmd, { timeout: 15000, windowsHide: true, maxBuffer: 1024 * 1024 }, (err: Error | null, stdout: string, stderr: string) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error: err?.message || null,
+            stderr: stderr || null,
+            raw: stdout.trim() || null,
+          }));
+        });
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     // POST /open-cash-drawer — envía comando ESC/POS de apertura de cajón
     // Body: { "printerName": "POS-80C" } (opcional, usa default si no se pasa)
-    if (req.url === '/open-cash-drawer' && req.method === 'POST') {
+    if (url === '/open-cash-drawer' && req.method === 'POST') {
       let body = '';
       for await (const chunk of req) body += chunk;
       let printerName: string | undefined;
@@ -531,6 +628,8 @@ export function startDiscoveryServer(): http.Server {
     console.log(`[discovery]   GET /printers  - impresoras del sistema`);
     console.log(`[discovery]   GET /discover  - escanear red local (puerto 9100)`);
     console.log(`[discovery]   GET /usb       - dispositivos USB (vendor/product id)`);
+    console.log(`[discovery]   GET /bluetooth - dispositivos Bluetooth emparejados`);
+    console.log(`[discovery]   GET /debug-usb - diagnóstico raw de PowerShell USB`);
   });
 
   return server;

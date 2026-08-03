@@ -339,7 +339,8 @@ export class CuentasPorCobrarService {
         reference: abono.reference,
         status: 'completed',
         created_by: currentUserId,
-        created_at: abono.payment_date,
+        created_at: new Date().toISOString(),
+        payment_date: abono.payment_date ? new Date(abono.payment_date + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString(),
       });
 
     if (paymentError) {

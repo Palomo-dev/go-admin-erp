@@ -100,6 +100,7 @@ import type { AssistantContext } from '@/lib/services/aiAssistantService';
 
 // Importaciones estándar para evitar ChunkLoadError
 import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ModuleProvider, useModuleContext } from '@/lib/context/ModuleContext';
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
@@ -1405,8 +1406,10 @@ export const AppLayout = ({
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 overscroll-contain min-w-0">
           <div className="h-full min-w-0 w-full">
             {subscriptionChecked ? children : (
-              <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-full">
+                <PageHeaderSkeleton />
+                <StatsSkeleton count={4} />
+                <CardListSkeleton cards={3} columns="1" />
               </div>
             )}
           </div>

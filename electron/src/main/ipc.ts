@@ -88,6 +88,20 @@ export function registerIpcHandlers(): void {
     }
   });
 
+  ipcMain.handle('printing:open-cash-drawer', async (_e, printerName?: string) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:${DISCOVERY_PORT}/open-cash-drawer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerName }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+  });
+
   // ── Actualizaciones ──
   ipcMain.handle('app:version', () => app.getVersion());
   ipcMain.handle('update:state', () => getUpdateState());

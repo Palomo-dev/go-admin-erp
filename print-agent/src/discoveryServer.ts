@@ -1,5 +1,7 @@
 import http from 'http';
 import { config } from './config';
+import { buildCashDrawerBuffer } from './printing/escposBuffer';
+import { sendRawToPrinter } from './transports/rawSpooler';
 
 export interface SystemPrinter {
   name: string;
@@ -273,7 +275,7 @@ function probePort(ip: string, port: number, timeoutMs: number): Promise<boolean
 export function startDiscoveryServer(): http.Server {
   const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') {
@@ -320,6 +322,41 @@ export function startDiscoveryServer(): http.Server {
       } catch (err: any) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
+    // POST /open-cash-drawer — envía comando ESC/POS de apertura de cajón
+    // Body: { "printerName": "POS-80C" } (opcional, usa default si no se pasa)
+    if (req.url === '/open-cash-drawer' && req.method === 'POST') {
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      let printerName: string | undefined;
+      try {
+        const parsed = JSON.parse(body);
+        printerName = parsed.printerName;
+      } catch { /* body vacío o inválido, usar default */ }
+
+      try {
+        const buffer = await buildCashDrawerBuffer();
+        if (!printerName) {
+          const printers = await listSystemPrinters();
+          const defaultPrinter = printers.find(p => p.isDefault) || printers[0];
+          if (!defaultPrinter) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'No hay impresoras del sistema' }));
+            return;
+          }
+          printerName = defaultPrinter.name;
+        }
+        await sendRawToPrinter(printerName, buffer);
+        console.log(`[discovery] open-cash-drawer: comando enviado a "${printerName}"`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (err: any) {
+        console.error('[discovery] open-cash-drawer error:', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
       }
       return;
     }

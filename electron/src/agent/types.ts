@@ -42,7 +42,7 @@ export interface PrintJobRow {
   branch_id: number | null;
   printer_id: string;
   station: string | null;
-  job_type: 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket' | 'shipment_guide' | 'electronic_invoice';
+  job_type: 'kitchen_ticket' | 'pre_cuenta' | 'sale_ticket' | 'shipment_guide' | 'electronic_invoice' | 'open_cash_drawer';
   reference_id: string | null;
   payload: PrintJobPayload;
   status: 'pending' | 'sent' | 'printed' | 'error';

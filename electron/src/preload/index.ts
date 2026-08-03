@@ -28,6 +28,7 @@ try {
   printRaw: (printerId: string, payload: unknown) =>
     ipcRenderer.invoke('printing:print-raw', printerId, payload),
   reprintJob: (jobId: string) => ipcRenderer.invoke('printing:reprint', jobId),
+  openCashDrawer: (printerName?: string) => ipcRenderer.invoke('printing:open-cash-drawer', printerName),
 
   // Versión y actualizaciones
   version: () => ipcRenderer.invoke('app:version'),

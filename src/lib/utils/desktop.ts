@@ -97,6 +97,7 @@ export interface GoAdminDesktopBridge {
   listUsbDevices?: () => Promise<DesktopUsbResponse>;
   printRaw?: (printerId: string, payload: unknown) => Promise<DesktopPrintResult>;
   reprintJob?: (jobId: string) => Promise<DesktopPrintResult>;
+  openCashDrawer?: (printerName?: string) => Promise<DesktopPrintResult>;
 
   // Versión y actualizaciones
   version?: () => Promise<string>;

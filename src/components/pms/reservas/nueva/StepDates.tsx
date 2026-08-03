@@ -6,14 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Calendar, Users, Bed, Home, Mountain, Tent, Building } from 'lucide-react';
-import type { SpaceType } from '@/lib/services/spaceTypesService';
+
+interface SpaceCategory {
+  code: string;
+  display_name: string;
+  icon?: string | null;
+  settings?: Record<string, any>;
+  is_bookable?: boolean;
+}
 
 interface StepDatesProps {
   checkin: string;
   checkout: string;
   occupantCount: number;
   selectedCategory: string | null;
-  spaceTypes: SpaceType[];
+  categories: SpaceCategory[];
   onCheckinChange: (date: string) => void;
   onCheckoutChange: (date: string) => void;
   onOccupantCountChange: (count: number) => void;
@@ -35,7 +42,7 @@ export function StepDates({
   checkout,
   occupantCount,
   selectedCategory,
-  spaceTypes,
+  categories,
   onCheckinChange,
   onCheckoutChange,
   onOccupantCountChange,
@@ -139,19 +146,19 @@ export function StepDates({
         </h3>
         
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {spaceTypes.map((spaceType) => {
-            const isSelected = selectedCategory === spaceType.category_code;
-            const icon = categoryIcons[spaceType.category_code] || categoryIcons.default;
+          {categories.map((category) => {
+            const isSelected = selectedCategory === category.code;
+            const icon = categoryIcons[category.code] || categoryIcons.default;
 
             return (
               <Card
-                key={spaceType.id}
+                key={category.code}
                 className={`p-4 cursor-pointer transition-all ${
                   isSelected
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
                     : 'hover:border-gray-400 dark:hover:border-gray-500'
                 }`}
-                onClick={() => onCategorySelect(spaceType.category_code)}
+                onClick={() => onCategorySelect(category.code)}
               >
                 <div className="flex flex-wrap items-start gap-3">
                   <div
@@ -165,16 +172,11 @@ export function StepDates({
                   </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                      {spaceType.name}
+                      {category.display_name}
                     </h4>
-                    {spaceType.capacity && (
+                    {category.settings?.max_nights && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Capacidad: {spaceType.capacity} personas
-                      </p>
-                    )}
-                    {spaceType.base_rate && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        Tarifa base: ${spaceType.base_rate.toLocaleString('es-CO')}
+                        Máx: {category.settings.max_nights} noches
                       </p>
                     )}
                   </div>
@@ -199,7 +201,7 @@ export function StepDates({
           })}
         </div>
 
-        {spaceTypes.length === 0 && (
+        {categories.length === 0 && (
           <p className="text-center text-gray-500 dark:text-gray-400 py-8">
             No hay tipos de espacios disponibles para tu organización
           </p>

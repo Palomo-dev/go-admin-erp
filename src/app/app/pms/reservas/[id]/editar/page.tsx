@@ -18,6 +18,7 @@ import {
 import ReservationEditService from '@/lib/services/reservationEditService';
 import ReservationsService, { type Customer } from '@/lib/services/reservationsService';
 import SpaceTypesService from '@/lib/services/spaceTypesService';
+import SpaceCategoriesService from '@/lib/services/spaceCategoriesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 
 const STEPS = [
@@ -47,7 +48,7 @@ export default function EditarReservaPage() {
   const [checkout, setCheckout] = useState('');
   const [occupantCount, setOccupantCount] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [spaceTypes, setSpaceTypes] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [selectedSpaces, setSelectedSpaces] = useState<string[]>([]);
   const [availableSpaces, setAvailableSpaces] = useState<any[]>([]);
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(false);
@@ -65,9 +66,9 @@ export default function EditarReservaPage() {
     }
   }, [reservationId]);
 
-  // Cargar tipos de espacio y métodos de pago
+  // Cargar categorías con tipos de espacio de la organización y métodos de pago
   useEffect(() => {
-    loadSpaceTypes();
+    loadCategoriesForOrg();
     loadPaymentMethods();
   }, [organization]);
 
@@ -142,16 +143,20 @@ export default function EditarReservaPage() {
     }
   };
 
-  const loadSpaceTypes = async () => {
+  const loadCategoriesForOrg = async () => {
     if (!organization) return;
     try {
-      const data = await SpaceTypesService.getSpaceTypes(organization.id);
-      setSpaceTypes(data.filter((t: any) => t.is_active));
+      const [allCategories, orgSpaceTypes] = await Promise.all([
+        SpaceCategoriesService.getCategories(),
+        SpaceTypesService.getSpaceTypes(organization.id),
+      ]);
+      const orgCategoryCodes = new Set(orgSpaceTypes.filter((t: any) => t.is_active).map((t: any) => t.category_code));
+      setCategories(allCategories.filter(c => c.is_bookable && orgCategoryCodes.has(c.code)));
     } catch (error) {
-      console.error('Error cargando tipos de espacio:', error);
+      console.error('Error cargando categorías:', error);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar los tipos de espacio',
+        description: 'No se pudieron cargar los tipos de alojamiento',
         variant: 'destructive',
       });
     }
@@ -448,7 +453,7 @@ export default function EditarReservaPage() {
               checkout={checkout}
               occupantCount={occupantCount}
               selectedCategory={selectedCategory}
-              spaceTypes={spaceTypes}
+              categories={categories}
               onCheckinChange={setCheckin}
               onCheckoutChange={setCheckout}
               onOccupantCountChange={setOccupantCount}

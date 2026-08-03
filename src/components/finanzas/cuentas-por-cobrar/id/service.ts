@@ -365,11 +365,10 @@ export class CuentaPorCobrarDetailService {
         .select(`
           id,
           is_active,
-          payment_method:payment_methods (
-            id,
+          payment_method:payment_method_code (
             code,
             name,
-            type
+            requires_reference
           )
         `)
         .eq('organization_id', organizationId)

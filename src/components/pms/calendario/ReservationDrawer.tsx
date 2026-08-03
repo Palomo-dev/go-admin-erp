@@ -59,7 +59,7 @@ import {
   MoreHorizontal,
   Receipt,
 } from 'lucide-react';
-import { SpaceFolioSummary } from '@/components/pms/espacios/id/SpaceFolioSummary';
+import { DrawerFolioSummary } from '@/components/pms/calendario/DrawerFolioSummary';
 import type { TapeChartReservation, TapeChartSpace } from '@/lib/services/tapeChartService';
 
 export interface ReservationDetails {
@@ -489,7 +489,7 @@ export function ReservationDrawer({
                 <Receipt className="h-4 w-4" />
                 Folio de Consumos
               </h3>
-              <SpaceFolioSummary spaceId={reservation.spaceId} />
+              <DrawerFolioSummary spaceId={reservation.spaceId} />
             </div>
 
             <Separator />

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
 import { StatsSkeleton } from '@/components/common/PageSkeletons';
-import { ShoppingBag, Calendar, DollarSign, Home } from 'lucide-react';
+import { ShoppingBag, Calendar, DollarSign, Home, CalendarClock, CalendarX, Receipt } from 'lucide-react';
 
 interface HistorialItem {
   id: string;
@@ -44,6 +44,13 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
     webOrdersCanceladas: 0,
     ultimaWebOrder: null as Date | null,
     historial: [] as HistorialItem[],
+    // Nuevos stats de reservas y folios
+    reservasFuturas: 0,
+    reservasCanceladas: 0,
+    reservasNoShow: 0,
+    folioSaldoPendiente: 0,
+    folioItemsPendientes: 0,
+    proximaReserva: null as Date | null,
   });
 
   // Cargar datos para el resumen del cliente
@@ -66,12 +73,54 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
         // 2. Obtener total de reservas del cliente
         const { data: reservationsData, error: reservationsError } = await supabase
           .from('reservations')
-          .select('id, start_date, end_date')
+          .select('id, start_date, end_date, checkin, checkout, status')
           .eq('customer_id', clienteId)
           .eq('organization_id', organizationId)
           .order('start_date', { ascending: false });
           
         if (reservationsError) throw reservationsError;
+
+        // 2b. Obtener folios de las reservas para saldo pendiente
+        const reservationIds = (reservationsData || []).map((r: any) => r.id);
+        let folioSaldoPendiente = 0;
+        let folioItemsPendientes = 0;
+
+        if (reservationIds.length > 0) {
+          const { data: foliosData } = await supabase
+            .from('folios')
+            .select('id, balance, status')
+            .in('reservation_id', reservationIds)
+            .eq('status', 'open');
+
+          if (foliosData) {
+            const folioIds = foliosData.map((f: any) => f.id);
+            folioSaldoPendiente = foliosData.reduce((sum: number, f: any) => sum + Number(f.balance), 0);
+
+            if (folioIds.length > 0) {
+              const { data: folioItemsData } = await supabase
+                .from('folio_items')
+                .select('id, payment_status')
+                .in('folio_id', folioIds)
+                .eq('payment_status', 'pending');
+
+              if (folioItemsData) {
+                folioItemsPendientes = folioItemsData.length;
+              }
+            }
+          }
+        }
+
+        // 2c. Calcular stats de reservas por estado
+        const now = new Date();
+        const reservasFuturas = (reservationsData || []).filter((r: any) =>
+          new Date(r.checkin) > now && ['confirmed', 'tentative'].includes(r.status)
+        ).length;
+        const reservasCanceladas = (reservationsData || []).filter((r: any) => r.status === 'cancelled').length;
+        const reservasNoShow = (reservationsData || []).filter((r: any) => r.status === 'no_show').length;
+        const proximaReservaRaw = (reservationsData || [])
+          .filter((r: any) => new Date(r.checkin) > now && ['confirmed', 'tentative'].includes(r.status))
+          .sort((a: any, b: any) => new Date(a.checkin).getTime() - new Date(b.checkin).getTime());
+        const proximaReserva = proximaReservaRaw.length > 0 ? new Date(proximaReservaRaw[0].checkin) : null;
 
         // 3. Obtener pedidos web del cliente
         const { data: webOrdersData, error: webOrdersError } = await supabase
@@ -139,6 +188,12 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
           webOrdersCanceladas,
           ultimaWebOrder,
           historial,
+          reservasFuturas,
+          reservasCanceladas,
+          reservasNoShow,
+          folioSaldoPendiente,
+          folioItemsPendientes,
+          proximaReserva,
         });
 
       } catch (err: any) {
@@ -152,7 +207,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
     fetchResumenData();
   }, [clienteId, organizationId]);
 
-  // Preparar tarjetas de estadísticas — 4 KPIs compactos
+  // Preparar tarjetas de estadísticas — 6 KPIs compactos
   const estadisticas: EstadisticaCard[] = [
     {
       title: 'Compras',
@@ -180,6 +235,22 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
         ? `Último: ${stats.ultimaWebOrder.toLocaleDateString()}`
         : 'Sin pedidos web'
     },
+    {
+      title: 'Reservas Futuras',
+      value: stats.reservasFuturas,
+      icon: <CalendarClock className="h-5 w-5" />,
+      description: stats.proximaReserva
+        ? `Próxima: ${stats.proximaReserva.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`
+        : 'Sin reservas futuras'
+    },
+    {
+      title: 'Saldo Folios',
+      value: formatCurrency(stats.folioSaldoPendiente),
+      icon: <Receipt className="h-5 w-5" />,
+      description: stats.folioItemsPendientes > 0
+        ? `${stats.folioItemsPendientes} item(s) pendiente(s)`
+        : 'Sin saldo pendiente'
+    },
   ];
 
   // Mostrar estado de carga
@@ -204,8 +275,8 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
 
   return (
     <div className="space-y-6">
-      {/* Sección de KPIs — 2x2 en móvil, 4 en línea en desktop con mejor proporción */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+      {/* Sección de KPIs — 2x2 en móvil, 3x2 en tablet, 6 en línea en desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-5">
         {estadisticas.map((stat, index) => (
           <div 
             key={`stat-${index}`} 

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -42,24 +43,7 @@ export function ZonasList({
   isLoading,
 }: ZonasListProps) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[...Array(6)].map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse space-y-4">
-                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="flex gap-2">
-                  <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-                  <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <CardListSkeleton cards={6} columns="3" />;
   }
 
   if (zones.length === 0) {

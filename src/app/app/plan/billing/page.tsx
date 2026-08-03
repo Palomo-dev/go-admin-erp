@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import BillingTab from '@/components/subscription/BillingTab';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function BillingPage() {
   const router = useRouter();
@@ -60,8 +61,9 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-800 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

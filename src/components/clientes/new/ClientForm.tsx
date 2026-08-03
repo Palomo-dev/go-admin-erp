@@ -16,6 +16,7 @@ import { CompanyContactsManager } from '@/components/clientes/CompanyContactsMan
 import LocationSelector, { type LocationData } from '@/components/common/LocationSelector';
 import { cn } from '@/utils/Utils';
 import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera, ChevronDown } from 'lucide-react';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 
 interface ClientFormProps {
@@ -665,12 +666,11 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     setDuplicateClient(null);
   };
   
-  // Mostrar spinner mientras se cargan los datos en modo edición
+  // Mostrar skeleton mientras se cargan los datos en modo edición
   if (loadingData) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
-        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando datos del cliente...</p>
+      <div className="min-h-[400px] bg-gray-50 dark:bg-gray-900 p-4">
+        <DetailSkeleton />
       </div>
     );
   }

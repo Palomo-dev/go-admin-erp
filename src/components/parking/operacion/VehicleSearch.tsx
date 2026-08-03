@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, QrCode, CreditCard, Car, LogOut, LogIn, Clock, Loader2 } from 'lucide-react';
+import { Search, QrCode, CreditCard, Car, LogOut, LogIn, Clock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatDate } from '@/utils/Utils';
 
 export interface SearchResult {
@@ -131,7 +132,7 @@ export function VehicleSearch({
                 className="bg-gray-50 dark:bg-gray-900 border-gray-300 dark:border-gray-600 pr-10"
               />
               {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
+                <Skeleton className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full" />
               )}
             </div>
           </div>
@@ -140,9 +141,10 @@ export function VehicleSearch({
           {showResults && searchQuery.length >= 2 && (
             <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto">
               {isSearching ? (
-                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                  Buscando...
+                <div className="p-2 space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full rounded-md" />
+                  ))}
                 </div>
               ) : searchResults.length > 0 ? (
                 <>

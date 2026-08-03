@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { Clock, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import type { HousekeepingStats } from '@/lib/services/housekeepingService';
 
@@ -43,16 +44,7 @@ export function HousekeepingStats({ stats, isLoading }: HousekeepingStatsProps) 
   ];
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="p-6 animate-pulse">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-2" />
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-12" />
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={4} />;
   }
 
   return (

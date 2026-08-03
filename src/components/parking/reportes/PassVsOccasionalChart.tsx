@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Users, UserCheck } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { PassVsOccasional } from '@/lib/services/parkingReportService';
@@ -34,7 +35,7 @@ export function PassVsOccasionalChart({ data, isLoading }: PassVsOccasionalChart
       <CardContent>
         {isLoading ? (
           <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
+            <Skeleton className="h-32 w-full" />
           </div>
         ) : (
           <div className="space-y-6">

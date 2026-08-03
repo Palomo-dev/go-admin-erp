@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Car, Bike, Truck, Plus, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import ParkingService, { type ParkingZone } from '@/lib/services/parkingService';
@@ -252,9 +253,9 @@ export function NewEntryDialog({
                   ⚠️ No se encontró una sucursal configurada. No puedes crear espacios de parqueo sin una sucursal.
                 </div>
               ) : isLoadingSpaces ? (
-                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Cargando espacios...
+                <div className="flex flex-wrap items-center gap-2">
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-4 w-32" />
                 </div>
               ) : parkingSpaces.length > 0 || showNewSpaceForm ? (
                 <>

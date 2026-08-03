@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import {
   Table,
   TableBody,
@@ -49,9 +50,7 @@ export function TopPlatesTable({ data, isLoading }: TopPlatesTableProps) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
-          </div>
+          <TableSkeleton rows={5} columns={4} />
         ) : data.length === 0 ? (
           <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
             No hay datos disponibles

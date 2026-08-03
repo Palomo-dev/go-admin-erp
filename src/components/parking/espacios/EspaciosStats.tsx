@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import {
   ParkingSquare,
   CheckCircle,
@@ -56,21 +57,7 @@ export function EspaciosStats({ stats, isLoading }: EspaciosStatsProps) {
   ];
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-4">
-              <div className="animate-pulse space-y-2">
-                <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-12" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={5} />;
   }
 
   return (

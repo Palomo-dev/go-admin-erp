@@ -20,7 +20,7 @@ import {
   SpaceState,
   ImportedSpace,
 } from '@/components/parking/espacios';
-import { Loader2, Building2 } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 
 const defaultFilters: SpaceFilters = {
   search: '',

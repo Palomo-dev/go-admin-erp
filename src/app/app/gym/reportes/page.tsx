@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { format, subDays } from 'date-fns';
 import {
   ReportsHeader,
@@ -149,8 +149,9 @@ export default function ReportesPage() {
       />
 
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+        <div className="space-y-4">
+          <StatsSkeleton count={4} />
+          <CardListSkeleton cards={4} columns="2" />
         </div>
       ) : !stats ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">

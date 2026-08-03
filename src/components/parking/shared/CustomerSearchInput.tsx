@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, User, Mail, Phone, X, UserPlus, Loader2 } from 'lucide-react';
+import { Search, User, Mail, Phone, X } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -144,9 +145,10 @@ export function CustomerSearchInput({
         <ScrollArea className="h-64">
           <div className="p-2">
             {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Buscando...</span>
+              <div className="space-y-2 p-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded-md" />
+                ))}
               </div>
             ) : customers.length > 0 ? (
               <div className="space-y-1">

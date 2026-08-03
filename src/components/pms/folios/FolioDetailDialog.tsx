@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import {
   User,
   Calendar,
@@ -20,7 +21,6 @@ import {
   Trash2,
   CreditCard,
   Receipt,
-  Loader2,
   FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -185,8 +185,8 @@ export function FolioDetailDialog({
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+          <div className="py-4">
+            <DetailSkeleton />
           </div>
         ) : folio ? (
           <div className="space-y-6">

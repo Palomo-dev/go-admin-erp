@@ -14,10 +14,10 @@ import {
   MessageCircle,
   Activity,
   TrendingUp,
-  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { supabase } from '@/lib/supabase/config';
 import type { CommCreditsStatus, CommUsageLog } from '@/lib/services/integrations/twilio/twilioTypes';
 
@@ -123,8 +123,9 @@ export default function TwilioConfigPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={6} columns="3" />
       </div>
     );
   }

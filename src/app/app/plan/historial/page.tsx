@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { CalendarIcon, CreditCardIcon, CheckCircleIcon, XCircleIcon, ClockIcon, UsersIcon, Building2Icon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeaderSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 
 interface AddonHistory {
   id: string;
@@ -271,11 +272,9 @@ export default function HistorialPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-          <p className="mt-2">Cargando historial de suscripciones...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <TableSkeleton rows={5} columns={6} />
       </div>
     );
   }

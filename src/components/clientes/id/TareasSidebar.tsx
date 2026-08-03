@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -193,9 +194,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
     return (
       <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
         <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">Tareas</h3>
-        <div className="flex justify-center py-4">
-          <div className="loading loading-spinner loading-sm"></div>
-        </div>
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

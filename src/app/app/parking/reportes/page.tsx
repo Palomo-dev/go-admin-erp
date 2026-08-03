@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, BarChart3, AlertCircle } from 'lucide-react';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { BarChart3, AlertCircle } from 'lucide-react';
 import parkingReportService, {
   type ReportSummary,
   type OccupancyByHour,
@@ -179,8 +180,10 @@ export default function ReportesPage() {
   // Loading state
   if (orgLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="p-4 sm:p-6 space-y-4">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

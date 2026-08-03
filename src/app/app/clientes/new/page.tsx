@@ -5,7 +5,8 @@ import { useSession } from '@/lib/hooks/useSession';
 import { getUserOrganization } from '@/lib/supabase/config';
 import { ClientForm } from '@/components/clientes/new/ClientForm';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, Loader2 } from 'lucide-react';
+import { ArrowLeft, UserPlus } from 'lucide-react';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -68,9 +69,9 @@ export default function NewClientPage() {
   
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
-        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando formulario...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

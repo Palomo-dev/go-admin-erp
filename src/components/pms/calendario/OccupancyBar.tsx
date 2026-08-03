@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
 import type { OccupancyData } from '@/lib/services/tapeChartService';
 
@@ -15,7 +16,7 @@ export function OccupancyBar({ data, isLoading = false }: OccupancyBarProps) {
       <div className="flex flex-wrap items-center gap-1 px-4 py-2 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mr-2">Ocupación:</span>
         {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="w-8 h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <Skeleton key={i} className="w-8 h-6 rounded" />
         ))}
       </div>
     );

@@ -1,5 +1,6 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import type { NotificacionesKPIs as KPIsType } from '@/lib/services/notificacionesDashboardService';
 
 interface NotificacionesKPIsProps {
@@ -22,7 +23,7 @@ export function NotificacionesKPIs({ kpis, isLoading }: NotificacionesKPIsProps)
         <div key={key} className={`rounded-lg border px-3 py-2 ${color}`}>
           <p className="text-xs font-medium opacity-70">{label}</p>
           {isLoading ? (
-            <div className="h-6 w-10 bg-current opacity-10 rounded animate-pulse mt-1" />
+            <Skeleton className="h-6 w-10 rounded mt-1" />
           ) : (
             <p className="text-lg font-bold">{kpis ? kpis[key] : 0}</p>
           )}

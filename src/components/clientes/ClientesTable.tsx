@@ -1,5 +1,6 @@
 import React from 'react';
-import { MoreHorizontal, Loader2, Building2, User } from 'lucide-react';
+import { MoreHorizontal, Building2, User } from 'lucide-react';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,7 +72,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
     
     try {
       return format(new Date(dateString), 'dd MMM yyyy', { locale: es });
-    } catch (error) {
+    } catch {
       return 'Fecha inválida';
     }
   };
@@ -103,8 +104,6 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
 
   // Calcular información de paginación
   const totalPages = Math.ceil(count / pageSize);
-  const startItem = page * pageSize + 1;
-  const endItem = Math.min((page + 1) * pageSize, count);
 
   // Funciones de selección
   const isAllSelected = customers.length > 0 && customers.every(c => selectedIds.includes(c.id));
@@ -130,12 +129,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   };
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-        <span className="mt-2 text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={10} />;
   }
 
   return (

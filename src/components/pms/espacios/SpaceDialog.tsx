@@ -7,13 +7,13 @@ import {
   Bath, Flame, Wind, Phone, Laptop, Waves, Dumbbell, Coffee, PawPrint, Circle,
   Sparkles, Wand2,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import spaceImageService, { SpaceImage } from '@/lib/services/spaceImageService';
 import spaceServicesService, { OrgServiceView } from '@/lib/services/spaceServicesService';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -568,10 +568,10 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
                   <SectionTitle icon={Settings2} label="Servicios" />
                   {servicesLoading ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 py-1">
-                      {[1, 2, 3, 4, 5, 6].map((i) => (
+                      {Array.from({ length: 6 }).map((_, i) => (
                         <div key={i} className="flex flex-wrap items-center gap-2 px-2.5 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
-                          <div className="h-4 w-4 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
-                          <div className="h-3 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" style={{ width: `${50 + i * 10}px` }} />
+                          <Skeleton className="h-4 w-4 rounded" />
+                          <Skeleton className="h-3 w-20 rounded" />
                         </div>
                       ))}
                     </div>

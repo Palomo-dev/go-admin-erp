@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, LogIn, RefreshCw, QrCode, Building2, Search, Filter, AlertTriangle } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Users, LogIn, RefreshCw, QrCode, Building2, Search, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { PageHeader } from '@/components/gym/shared';
+
 import { 
   CheckinSearch, 
   CheckinResult, 
@@ -33,8 +34,7 @@ import {
 } from '@/lib/services/gymCheckinService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+
 import Link from 'next/link';
 
 export default function GymCheckinPage() {
@@ -74,7 +74,7 @@ export default function GymCheckinPage() {
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const [branchFilter, setBranchFilter] = useState<string>('all');
-  const [methodFilter, setMethodFilter] = useState<string>('all');
+  const [methodFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -288,8 +288,9 @@ export default function GymCheckinPage() {
 
   if (orgLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

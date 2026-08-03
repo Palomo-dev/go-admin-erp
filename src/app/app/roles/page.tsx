@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useOrganization } from '@/lib/hooks/useOrganization'
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons'
 import RolesManagement from '@/components/admin/RolesManagement'
 import RoleAssignment from '@/components/admin/RoleAssignment'
 import PermissionsManagement from '@/components/admin/PermissionsManagement'
 import RoleAnalytics from '@/components/admin/RoleAnalytics'
 import JobPositionsManagement from '@/components/admin/JobPositionsManagement'
-import { Shield, Users, Key, BarChart3, Loader2, Briefcase } from 'lucide-react'
+import { Shield, Users, Key, BarChart3, Briefcase } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function RolesAdminPage() {
@@ -16,11 +17,9 @@ export default function RolesAdminPage() {
 
   if (isLoading || !organization) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto" />
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Cargando...</p>
-        </div>
+      <div className="p-4 sm:p-6 min-h-screen bg-gray-50 dark:bg-gray-900 space-y-4">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     )
   }

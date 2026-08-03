@@ -16,7 +16,7 @@ import HousekeepingService, {
 } from '@/lib/services/housekeepingService';
 import SpacesService, { type Space } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { Loader2 } from 'lucide-react';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function HousekeepingPage() {
   const { toast } = useToast();
@@ -199,11 +199,10 @@ export default function HousekeepingPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Cargando tareas...</p>
-        </div>
+      <div className="p-4 sm:p-6 space-y-4">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={6} columns="3" />
       </div>
     );
   }

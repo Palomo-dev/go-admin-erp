@@ -1,7 +1,8 @@
 'use client';
 
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { Settings, Loader2 } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Settings } from 'lucide-react';
 import RolesConfigurationSettings from '@/components/admin/RolesConfigurationSettings';
 
 export default function ConfiguracionPage() {
@@ -9,11 +10,9 @@ export default function ConfiguracionPage() {
 
   if (isLoading || !organization) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto" />
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Cargando...</p>
-        </div>
+      <div className="p-4 sm:p-6 min-h-screen bg-gray-50 dark:bg-gray-900 space-y-4">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

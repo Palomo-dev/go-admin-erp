@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { 
-  Loader2, 
   Calendar, 
   Users, 
   Clock, 
@@ -417,9 +417,7 @@ export default function ClasesPage() {
       )}
 
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-        </div>
+        <CardListSkeleton cards={6} columns="3" />
       ) : viewMode === 'calendar' ? (
         <ClassCalendarView
           classes={classes}

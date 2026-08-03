@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -139,8 +139,9 @@ export default function AjustesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex justify-center items-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="p-4 sm:p-6 space-y-4 min-h-screen bg-gray-50 dark:bg-gray-900">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LogIn, ChevronRight, User, DoorOpen } from 'lucide-react';
@@ -32,7 +33,6 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
 };
 
 function ArrivalItem({ arrival, onCheckIn }: { arrival: TodayArrival; onCheckIn?: (id: string) => void }) {
-  const router = useRouter();
   const status = statusConfig[arrival.status] || { label: arrival.status, variant: 'secondary' as const };
 
   return (
@@ -76,22 +76,6 @@ function ArrivalItem({ arrival, onCheckIn }: { arrival: TodayArrival; onCheckIn?
   );
 }
 
-function ArrivalSkeleton() {
-  return (
-    <div className="flex flex-wrap items-center gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
-      <div className="flex-1 space-y-2">
-        <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-4 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-      </div>
-      <div className="space-y-2">
-        <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-      </div>
-    </div>
-  );
-}
-
 export function ArrivalsCard({ arrivals, isLoading = false, onCheckIn }: ArrivalsCardProps) {
   const router = useRouter();
 
@@ -121,11 +105,7 @@ export function ArrivalsCard({ arrivals, isLoading = false, onCheckIn }: Arrival
       </CardHeader>
       <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
         {isLoading ? (
-          <>
-            <ArrivalSkeleton />
-            <ArrivalSkeleton />
-            <ArrivalSkeleton />
-          </>
+          <CardListSkeleton cards={3} columns="1" />
         ) : arrivals.length === 0 ? (
           <div className="text-center py-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 mb-3">

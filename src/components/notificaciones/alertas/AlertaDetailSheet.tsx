@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Separator } from '@/components/ui/separator';
 import {
   AlertTriangle, CheckCircle2, Eye, EyeOff, XCircle,
@@ -151,8 +152,8 @@ export function AlertaDetailSheet({
         <Separator />
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <div className="py-4">
+            <DetailSkeleton />
           </div>
         ) : (
           <div className="py-4 space-y-5">

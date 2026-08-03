@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Progress } from '@/components/ui/progress';
 import { MapPin } from 'lucide-react';
 import { ParkingZone, SpaceStats } from './types';
@@ -23,14 +24,7 @@ export function ZoneAvailability({ zones, stats, isLoading }: ZoneAvailabilityPr
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="space-y-2">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            ))}
-          </div>
+          <CardListSkeleton cards={3} columns="1" />
         </CardContent>
       </Card>
     );

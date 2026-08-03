@@ -30,10 +30,10 @@ import {
   Truck,
   Clock,
   DollarSign,
-  Loader2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ParkingRateDialog, type ParkingRate } from './ParkingRateDialog';
 
 interface ParkingRatesTabProps {
@@ -198,8 +198,8 @@ export function ParkingRatesTab({ organizationId }: ParkingRatesTabProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="py-4">
+        <CardListSkeleton cards={4} columns="2" />
       </div>
     );
   }

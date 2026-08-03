@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 
 // Interfaces para el componente
 interface Nota {
@@ -216,10 +217,8 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
   // Mostrar estado de carga
   if (loading) {
     return (
-      <div className="w-full py-8">
-        <div className="w-full flex justify-center">
-          <div className="loading loading-spinner loading-md text-primary"></div>
-        </div>
+      <div className="py-4">
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

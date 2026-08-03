@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -18,8 +19,7 @@ import {
   getMemberships, 
   Membership,
   freezeMembership,
-  unfreezeMembership,
-  renewMembership
+  unfreezeMembership
 } from '@/lib/services/gymService';
 
 export default function GymMembresiasPage() {
@@ -159,21 +159,7 @@ export default function GymMembresiasPage() {
       />
 
       {/* Loading */}
-      {isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="animate-pulse bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <div className="flex flex-wrap items-center gap-3 mb-3">
-                <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {isLoading && <CardListSkeleton cards={4} columns="2" />}
 
       {/* Empty state */}
       {!isLoading && filteredMemberships.length === 0 && (

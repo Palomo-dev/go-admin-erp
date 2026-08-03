@@ -19,11 +19,11 @@ import {
   XCircle,
   Clock,
   Award,
-  Loader2,
   Star
 } from 'lucide-react';
 import { Instructor, getInstructorStats, getClasses, GymClass } from '@/lib/services/gymService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 
 interface InstructorPerformanceDialogProps {
   open: boolean;
@@ -152,8 +152,8 @@ export function InstructorPerformanceDialog({ open, onOpenChange, instructor }: 
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+          <div className="py-4">
+            <CardListSkeleton cards={3} columns="1" />
           </div>
         ) : metrics ? (
           <div className="space-y-6">

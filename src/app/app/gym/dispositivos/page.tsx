@@ -51,6 +51,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
+import { PageHeaderSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import {
   Plus,
   RefreshCw,
@@ -296,8 +297,9 @@ export default function GymDispositivosPage() {
 
   if (orgLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <TableSkeleton rows={5} columns={6} />
       </div>
     );
   }
@@ -451,9 +453,7 @@ export default function GymDispositivosPage() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-            </div>
+            <TableSkeleton rows={5} columns={6} />
           ) : filteredDevices.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <Cpu className="h-12 w-12 mx-auto mb-4 opacity-50" />

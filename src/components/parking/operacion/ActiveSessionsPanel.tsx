@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -158,9 +159,7 @@ export function ActiveSessionsPanel({
       <CardContent>
         <ScrollArea className="h-[400px] pr-4">
           {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-            </div>
+            <CardListSkeleton cards={3} columns="1" />
           ) : sessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-gray-500 dark:text-gray-400">
               <Car className="h-8 w-8 mb-2 opacity-50" />

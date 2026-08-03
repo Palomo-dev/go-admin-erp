@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -113,20 +114,6 @@ function ReservationItem({
   );
 }
 
-function ReservationSkeleton() {
-  return (
-    <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
-      <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded" />
-      <div className="flex-1 space-y-2">
-        <div className="h-4 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-4 w-full sm:w-48 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-3 w-full sm:w-64 bg-gray-200 dark:bg-gray-700 rounded" />
-      </div>
-      <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-    </div>
-  );
-}
-
 export function UnassignedList({
   reservations,
   selectedIds,
@@ -163,11 +150,7 @@ export function UnassignedList({
       </CardHeader>
       <CardContent className="space-y-3 max-h-[600px] overflow-y-auto">
         {isLoading ? (
-          <>
-            <ReservationSkeleton />
-            <ReservationSkeleton />
-            <ReservationSkeleton />
-          </>
+          <CardListSkeleton cards={3} columns="1" />
         ) : reservations.length === 0 ? (
           <div className="text-center py-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 mb-3">

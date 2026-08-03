@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from 'lucide-react';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -195,13 +196,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
 
   // Mostrar estado de carga
   if (loading) {
-    return (
-      <div className="w-full py-8">
-        <div className="w-full flex justify-center">
-          <div className="loading loading-spinner loading-md text-primary"></div>
-        </div>
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={4} />;
   }
 
   // Mostrar error si existe

@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { Loader2, Building2 } from 'lucide-react';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -214,11 +215,10 @@ export default function ParkingDashboardPage() {
 
   if (isLoading && !stats) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Cargando dashboard...</p>
-        </div>
+      <div className="p-4 sm:p-6 space-y-4">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={6} columns="3" />
       </div>
     );
   }

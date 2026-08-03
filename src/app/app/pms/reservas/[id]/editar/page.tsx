@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, ArrowLeft } from 'lucide-react';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import {
   StepCustomer,
@@ -378,11 +379,9 @@ export default function EditarReservaPage() {
 
   if (isLoadingData) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Cargando datos de la reserva...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

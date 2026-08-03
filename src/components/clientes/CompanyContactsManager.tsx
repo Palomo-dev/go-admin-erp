@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import {
   User,
@@ -419,8 +421,8 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <div className="py-4">
+          <CardListSkeleton cards={3} columns="1" />
         </div>
       ) : contacts.length === 0 ? (
         <Card className="bg-gray-50 dark:bg-gray-800/50 border-dashed border-gray-300 dark:border-gray-600">
@@ -713,7 +715,7 @@ function AddContactModal({
                       autoFocus
                     />
                     {searching && (
-                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
+                      <Skeleton className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full" />
                     )}
                   </div>
                 </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -133,38 +134,9 @@ function GroupCard({
   );
 }
 
-function GroupSkeleton() {
-  return (
-    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <CardContent className="p-4">
-        <div className="animate-pulse space-y-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <div className="h-5 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded" />
-              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-            </div>
-            <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-            <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-          </div>
-          <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function GroupsList({ groups, onView, onEdit, onDelete, isLoading = false }: GroupsListProps) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <GroupSkeleton />
-        <GroupSkeleton />
-        <GroupSkeleton />
-      </div>
-    );
+    return <CardListSkeleton cards={3} columns="3" />;
   }
 
   if (groups.length === 0) {

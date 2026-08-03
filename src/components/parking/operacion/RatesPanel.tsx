@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Car, Bike, Truck } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
@@ -83,9 +84,7 @@ export function RatesPanel({ rates, isLoading }: RatesPanelProps) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-          </div>
+          <CardListSkeleton cards={3} columns="1" />
         ) : rates.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-gray-500 dark:text-gray-400">
             <DollarSign className="h-8 w-8 mb-2 opacity-50" />

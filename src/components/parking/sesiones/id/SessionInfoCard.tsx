@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
   Car,
@@ -9,7 +10,6 @@ import {
   Truck,
   Clock,
   MapPin,
-  CreditCard,
   Calendar,
   Timer,
   DollarSign,
@@ -88,9 +88,9 @@ export function SessionInfoCard({ session, isLoading }: SessionInfoCardProps) {
           <CardTitle className="text-lg">Información de la Sesión</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-6 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-full rounded-md" />
             ))}
           </div>
         </CardContent>

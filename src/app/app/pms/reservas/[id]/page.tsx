@@ -14,6 +14,7 @@ import {
   PaymentsTab,
   NotesTab,
 } from '@/components/pms/reservas/id';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -166,8 +167,9 @@ export default function ReservationDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

@@ -7,8 +7,9 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Bell, ExternalLink, Loader2, User, DollarSign, Hotel, Package,
+  Bell, ExternalLink, User, DollarSign, Hotel, Package,
   ClipboardList, CreditCard, UserPlus, Calendar, AlertTriangle,
   MapPin, Hash, Clock, TrendingDown, Building2, Mail,
 } from 'lucide-react';
@@ -402,9 +403,13 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
 
           {/* Datos reales de tablas relacionadas */}
           {loadingRelated && (
-            <div className="flex flex-wrap items-center justify-center gap-2 py-6 text-gray-400 dark:text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Cargando información del recurso...</span>
+            <div className="py-4 space-y-3">
+              <Skeleton className="h-4 w-1/3" />
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-4 w-full" />
+                ))}
+              </div>
             </div>
           )}
 

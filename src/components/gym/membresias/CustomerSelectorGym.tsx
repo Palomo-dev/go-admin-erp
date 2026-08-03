@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { supabase } from '@/lib/supabase/config';
 import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
@@ -263,11 +264,10 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
                 <ScrollArea className="h-64">
                   <div className="space-y-2 pr-4">
                     {isLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="flex flex-wrap items-center gap-2 text-sm dark:text-gray-400 text-gray-600">
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                          <span>Buscando...</span>
-                        </div>
+                      <div className="space-y-2 py-4 px-2">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <Skeleton key={i} className="h-10 w-full" />
+                        ))}
                       </div>
                     ) : customers.length === 0 && searchTerm ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">

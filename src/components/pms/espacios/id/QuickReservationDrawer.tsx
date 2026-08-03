@@ -24,6 +24,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Search, Plus, Loader2, X, DollarSign, User, AlertTriangle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import type { Space } from '@/lib/services/spacesService';
@@ -298,7 +299,7 @@ export function QuickReservationDrawer({
                   className="pr-8"
                 />
                 {isSearching && (
-                  <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
+                  <Skeleton className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full" />
                 )}
               </div>
               <Button
@@ -584,7 +585,7 @@ export function QuickReservationDrawer({
                 disabled={isLoadingPaymentMethods || paymentMethods.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={isLoadingPaymentMethods ? "Cargando..." : "Seleccionar método"} />
+                  <SelectValue placeholder={isLoadingPaymentMethods ? <Skeleton className="h-4 w-32" /> : "Seleccionar método"} />
                 </SelectTrigger>
                 <SelectContent>
                   {paymentMethods.map((method) => (

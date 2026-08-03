@@ -2,14 +2,13 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { 
   Calendar, 
-  Clock, 
-  CreditCard, 
   CheckCircle, 
   Snowflake,
-  TrendingUp,
   DollarSign,
   Activity
 } from 'lucide-react';
@@ -72,16 +71,10 @@ export function MembershipSummary({
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-full sm:w-40" />
+          <Skeleton className="h-6 w-full sm:w-40 rounded" />
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="animate-pulse">
-                <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-              </div>
-            ))}
-          </div>
+          <StatsSkeleton count={4} />
         </CardContent>
       </Card>
     );

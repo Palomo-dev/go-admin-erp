@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { ShoppingBag, Calendar, DollarSign, Home } from 'lucide-react';
 
 interface HistorialItem {
@@ -184,10 +185,8 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
   // Mostrar estado de carga
   if (loading) {
     return (
-      <div className="w-full py-8">
-        <div className="w-full flex justify-center">
-          <div className="loading loading-spinner loading-md text-primary"></div>
-        </div>
+      <div className="py-4">
+        <StatsSkeleton count={4} />
       </div>
     );
   }

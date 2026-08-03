@@ -4,10 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/lib/hooks/useSession";
 import { supabase } from "@/lib/supabase/config";
 import { useOrganization } from "@/lib/hooks/useOrganization";
+import { PageHeaderSkeleton, FilterBarSkeleton, TableSkeleton } from "@/components/common/PageSkeletons";
 import ClientesTable from "@/components/clientes/ClientesTable";
 import ClientesFilter from "@/components/clientes/ClientesFilter";
 import ClientesActions from "@/components/clientes/ClientesActions";
-import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, DollarSign, ShoppingCart, AlertTriangle, RefreshCw, Trash2, Tag, Download, X, Loader2, Tags, UserPlus, UserMinus, ChevronDown } from "lucide-react";
@@ -690,9 +690,10 @@ export default function ClientesPage() {
 
   if (isLoading && !organizationId) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
-        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando clientes...</p>
+      <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen min-w-0">
+        <PageHeaderSkeleton />
+        <FilterBarSkeleton />
+        <TableSkeleton rows={5} columns={10} />
       </div>
     );
   }
@@ -961,10 +962,7 @@ export default function ClientesPage() {
               isLoading={isLoading && !!organizationId}
             />
           ) : isLoading ? (
-            <div className="flex flex-col items-center justify-center h-64 space-y-3">
-              <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
-            </div>
+            <TableSkeleton rows={5} columns={10} />
           ) : (
             <div className="p-8 text-center">
               <Users className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />

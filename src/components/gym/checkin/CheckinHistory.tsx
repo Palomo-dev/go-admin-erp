@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
@@ -18,17 +19,7 @@ export function CheckinHistory({ checkins, isLoading }: CheckinHistoryProps) {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Check-ins de Hoy
         </h3>
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="animate-pulse flex flex-wrap items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-              <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

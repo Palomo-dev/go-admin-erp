@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import {
   DollarSign,
   Car,
@@ -64,6 +65,10 @@ export function ReportesSummary({ summary, isLoading }: ReportesSummaryProps) {
     },
   ];
 
+  if (isLoading) {
+    return <StatsSkeleton count={6} />;
+  }
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       {stats.map((stat, index) => (
@@ -72,12 +77,7 @@ export function ReportesSummary({ summary, isLoading }: ReportesSummaryProps) {
           className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
         >
           <CardContent className="p-4">
-            {isLoading ? (
-              <div className="animate-pulse">
-                <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            ) : (
+            {
               <div className="flex flex-wrap items-center gap-3">
                 <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                   <stat.icon className={`h-5 w-5 ${stat.textColor}`} />
@@ -87,7 +87,7 @@ export function ReportesSummary({ summary, isLoading }: ReportesSummaryProps) {
                   <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
                 </div>
               </div>
-            )}
+            }
           </CardContent>
         </Card>
       ))}

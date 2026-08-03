@@ -17,7 +17,7 @@ import {
   type Payment,
   type SessionNote,
 } from '@/components/parking/sesiones/id';
-import { Loader2 } from 'lucide-react';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface ParkingSession {
   id: string;
@@ -380,11 +380,9 @@ export default function SessionDetailPage() {
 
   if (isLoading && !session) {
     return (
-      <div className="p-6">
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-          <p className="mt-2 text-gray-500 dark:text-gray-400">Cargando sesión...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

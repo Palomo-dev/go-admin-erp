@@ -1,7 +1,8 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Ban, Wrench, User, Calendar, Clock } from 'lucide-react';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
+import { Wrench, User, Calendar, Clock } from 'lucide-react';
 import { BlockStats } from '@/lib/services/reservationBlocksService';
 
 interface BlocksStatsProps {
@@ -38,17 +39,7 @@ export function BlocksStats({ stats, isLoading }: BlocksStatsProps) {
   ];
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={4} />;
   }
 
   return (

@@ -179,7 +179,7 @@ export function ExitDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <LogOut className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
@@ -200,7 +200,7 @@ export function ExitDialog({
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
               <span>{session.vehicle_type}</span>
               <span>•</span>
               <span>Entrada: {formatDate(session.entry_at)}</span>
@@ -210,7 +210,7 @@ export function ExitDialog({
           {/* Tiempo y tarifa */}
           <div className="grid grid-cols-2 gap-4">
             <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+              <div className="flex flex-wrap items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
                 <Clock className="h-4 w-4" />
                 <span className="text-xs font-medium">Tiempo</span>
               </div>
@@ -219,7 +219,7 @@ export function ExitDialog({
               </p>
             </div>
             <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1">
+              <div className="flex flex-wrap items-center gap-2 text-green-600 dark:text-green-400 mb-1">
                 <DollarSign className="h-4 w-4" />
                 <span className="text-xs font-medium">Total</span>
               </div>
@@ -235,7 +235,7 @@ export function ExitDialog({
 
               {/* Opciones especiales */}
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <input
                     type="checkbox"
                     id="lostTicket"
@@ -246,13 +246,13 @@ export function ExitDialog({
                     }}
                     className="rounded border-gray-300 dark:border-gray-600"
                   />
-                  <Label htmlFor="lostTicket" className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  <Label htmlFor="lostTicket" className="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                     <AlertTriangle className="h-4 w-4 text-yellow-500" />
                     Pérdida de Ticket (+{formatCurrency(50000)})
                   </Label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <input
                     type="checkbox"
                     id="exception"
@@ -285,7 +285,7 @@ export function ExitDialog({
                   <Separator />
 
                   {/* Opción de crédito */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="checkbox"
                       id="isCredit"
@@ -293,7 +293,7 @@ export function ExitDialog({
                       onChange={(e) => setIsCredit(e.target.checked)}
                       className="rounded border-gray-300 dark:border-gray-600"
                     />
-                    <Label htmlFor="isCredit" className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <Label htmlFor="isCredit" className="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                       <Calendar className="h-4 w-4 text-orange-500" />
                       Registrar como crédito (cuenta por cobrar)
                     </Label>
@@ -324,7 +324,7 @@ export function ExitDialog({
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <Label className="text-gray-700 dark:text-gray-300 flex flex-wrap items-center gap-2">
                         <CreditCard className="h-4 w-4" />
                         Método de Pago
                       </Label>
@@ -336,7 +336,7 @@ export function ExitDialog({
                           <SelectContent>
                             {paymentMethods.map((pm) => (
                               <SelectItem key={pm.payment_method_code} value={pm.payment_method_code}>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                   {METHOD_ICONS[pm.payment_method_code] || <CreditCard className="h-4 w-4" />}
                                   {pm.payment_method?.name || pm.payment_method_code}
                                 </div>
@@ -351,19 +351,19 @@ export function ExitDialog({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="cash">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Banknote className="h-4 w-4" />
                                 Efectivo
                               </div>
                             </SelectItem>
                             <SelectItem value="card">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <CreditCard className="h-4 w-4" />
                                 Tarjeta
                               </div>
                             </SelectItem>
                             <SelectItem value="transfer">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Receipt className="h-4 w-4" />
                                 Transferencia
                               </div>
@@ -376,7 +376,7 @@ export function ExitDialog({
 
                   {/* Opción de facturación */}
                   {hasInvoicing && (
-                    <div className="flex items-center gap-2 pt-2">
+                    <div className="flex flex-wrap items-center gap-2 pt-2">
                       <input
                         type="checkbox"
                         id="generateInvoice"
@@ -384,7 +384,7 @@ export function ExitDialog({
                         onChange={(e) => setGenerateInvoice(e.target.checked)}
                         className="rounded border-gray-300 dark:border-gray-600"
                       />
-                      <Label htmlFor="generateInvoice" className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                      <Label htmlFor="generateInvoice" className="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                         <FileText className="h-4 w-4 text-blue-500" />
                         Generar factura de venta
                       </Label>

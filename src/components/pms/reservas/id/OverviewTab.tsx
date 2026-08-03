@@ -33,7 +33,7 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Información del Huésped */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
           <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Información del Huésped
         </h3>
@@ -46,8 +46,8 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-gray-400" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Mail className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
               <p className="text-gray-900 dark:text-gray-100">{reservation.customer.email}</p>
@@ -55,8 +55,8 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
           </div>
 
           {reservation.customer.phone && (
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-gray-400" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Phone className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Teléfono</p>
                 <p className="text-gray-900 dark:text-gray-100">{reservation.customer.phone}</p>
@@ -64,8 +64,8 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-gray-400" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Ocupantes</p>
               <p className="text-gray-900 dark:text-gray-100">
@@ -78,7 +78,7 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
 
       {/* Detalles de la Estancia */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
           <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Detalles de la Estancia
         </h3>
@@ -116,7 +116,7 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
 
       {/* Espacios Asignados */}
       <Card className="p-6 lg:col-span-2">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
           <DoorOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Espacios Asignados
         </h3>
@@ -129,7 +129,7 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
           ) : (
             reservation.spaces.map((space) => (
               <Card key={space.id} className="p-4 bg-gray-50 dark:bg-gray-800">
-                <div className="flex items-start gap-3">
+                <div className="flex flex-wrap items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
                     <DoorOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
@@ -154,7 +154,7 @@ export function OverviewTab({ reservation, nights }: OverviewTabProps) {
       {/* Extras/Servicios */}
       {reservation.metadata?.extras && reservation.metadata.extras.length > 0 && (
         <Card className="p-6 lg:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
             <Tag className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Servicios Adicionales
           </h3>

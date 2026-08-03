@@ -87,7 +87,7 @@ export function ArrivalsTable({
     return (
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
         <div className="p-8 text-center">
-          <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <Calendar className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
           <p className="text-gray-500 dark:text-gray-400">
             No hay llegadas programadas para hoy
           </p>
@@ -130,7 +130,7 @@ export function ArrivalsTable({
                 </TableCell>
 
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
                       <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
@@ -158,9 +158,9 @@ export function ArrivalsTable({
                     {arrival.spaces.map((space) => (
                       <div
                         key={space.id}
-                        className="flex items-center gap-2 text-sm"
+                        className="flex flex-wrap items-center gap-2 text-sm"
                       >
-                        <DoorOpen className="h-4 w-4 text-gray-400" />
+                        <DoorOpen className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                         <span className="font-medium text-gray-900 dark:text-gray-100">
                           {space.label}
                         </span>
@@ -200,8 +200,8 @@ export function ArrivalsTable({
                 </TableCell>
 
                 <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4 text-gray-400" />
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <span className="text-gray-900 dark:text-gray-100">
                       {arrival.occupant_count}
                     </span>

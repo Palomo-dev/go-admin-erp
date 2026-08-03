@@ -107,7 +107,7 @@ export function OrderCard({ order, onStatusChange, onEdit, onDelete, onViewPhoto
     <Card className="p-5 hover:shadow-md transition-shadow duration-200">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <Badge className={priorityInfo.color}>{priorityInfo.label}</Badge>
             <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
           </div>
@@ -170,7 +170,7 @@ export function OrderCard({ order, onStatusChange, onEdit, onDelete, onViewPhoto
 
       <div className="space-y-2 text-sm">
         {order.spaces && (
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <MapPin className="h-4 w-4 flex-shrink-0" />
             <span>
               {order.spaces.name}
@@ -181,20 +181,20 @@ export function OrderCard({ order, onStatusChange, onEdit, onDelete, onViewPhoto
         )}
 
         {order.assigned_user && (
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <User className="h-4 w-4 flex-shrink-0" />
             <span>Asignado a: {order.assigned_user.email}</span>
           </div>
         )}
 
         {order.cost_estimate && (
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <DollarSign className="h-4 w-4 flex-shrink-0" />
             <span>Costo estimado: ${order.cost_estimate.toLocaleString()}</span>
           </div>
         )}
 
-        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
           <Calendar className="h-4 w-4 flex-shrink-0" />
           <span>
             Reportado: {format(new Date(order.created_at), 'dd MMM yyyy', { locale: es })}
@@ -202,7 +202,7 @@ export function OrderCard({ order, onStatusChange, onEdit, onDelete, onViewPhoto
         </div>
 
         {order.resolved_at && (
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
             <span>
               Resuelto: {format(new Date(order.resolved_at), 'dd MMM yyyy', { locale: es })}

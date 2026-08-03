@@ -72,7 +72,7 @@ function EventItem({ event }: { event: CalendarEvent }) {
   const Icon = config.icon;
 
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="flex flex-wrap items-center gap-3 py-2">
       <div className={cn('p-1.5 rounded', config.bgColor)}>
         <Icon className={cn('h-3.5 w-3.5', config.color)} />
       </div>
@@ -95,7 +95,7 @@ function EventItem({ event }: { event: CalendarEvent }) {
 
 function EventSkeleton() {
   return (
-    <div className="flex items-center gap-3 py-2 animate-pulse">
+    <div className="flex flex-wrap items-center gap-3 py-2 animate-pulse">
       <div className="h-7 w-7 bg-gray-200 dark:bg-gray-700 rounded" />
       <div className="flex-1 space-y-1">
         <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -121,8 +121,8 @@ export function MiniCalendar({ events, isLoading = false }: MiniCalendarProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-          <Calendar className="h-5 w-5 text-blue-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+          <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Esta Semana
           {events.length > 0 && (
             <Badge variant="secondary" className="ml-2">

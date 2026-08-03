@@ -54,7 +54,7 @@ export function LogDetailSheet({ open, onOpenChange, log, onRetry }: LogDetailSh
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md bg-white dark:bg-gray-900 overflow-y-auto">
         <SheetHeader className="pb-4 border-b border-gray-200 dark:border-gray-800">
-          <SheetTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+          <SheetTitle className="text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <StatusIcon className={cn('h-5 w-5',
               log.status === 'success' ? 'text-green-500' :
               log.status === 'fail' ? 'text-red-500' :
@@ -69,7 +69,7 @@ export function LogDetailSheet({ open, onOpenChange, log, onRetry }: LogDetailSh
 
         <div className="mt-4 space-y-5">
           {/* Status */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Badge className={cn('text-xs px-2 py-0.5', statusOpt?.color)}>
               {statusOpt?.label || log.status}
             </Badge>
@@ -100,14 +100,14 @@ export function LogDetailSheet({ open, onOpenChange, log, onRetry }: LogDetailSh
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">Log ID</span>
-                <button onClick={() => copyToClipboard(log.id)} className="flex items-center gap-1 text-xs font-mono text-gray-700 dark:text-gray-300 hover:text-blue-600">
+                <button onClick={() => copyToClipboard(log.id)} className="flex flex-wrap items-center gap-1 text-xs font-mono text-gray-700 dark:text-gray-300 hover:text-blue-600">
                   {log.id.substring(0, 12)}...
                   <Copy className="h-3 w-3" />
                 </button>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500 dark:text-gray-400">Notification ID</span>
-                <button onClick={() => copyToClipboard(log.notification_id)} className="flex items-center gap-1 text-xs font-mono text-gray-700 dark:text-gray-300 hover:text-blue-600">
+                <button onClick={() => copyToClipboard(log.notification_id)} className="flex flex-wrap items-center gap-1 text-xs font-mono text-gray-700 dark:text-gray-300 hover:text-blue-600">
                   {log.notification_id.substring(0, 12)}...
                   <Copy className="h-3 w-3" />
                 </button>

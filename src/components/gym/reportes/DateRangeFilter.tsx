@@ -199,7 +199,7 @@ export function DateRangeFilter({ dateRange, onDateRangeChange }: DateRangeFilte
         <PopoverContent className="w-auto p-0" align="end">
           <div className="p-3 border-b">
             <p className="text-sm font-medium">Seleccionar rango de fechas</p>
-            <p className="text-xs text-gray-500">{formatDateRange()}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{formatDateRange()}</p>
           </div>
           <div className="flex">
             <Calendar

@@ -28,7 +28,7 @@ export function SesionesHeader({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/app/parking">
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <ArrowLeft className="h-5 w-5" />
@@ -47,7 +47,7 @@ export function SesionesHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
           <Button
             variant="outline"
             onClick={onRefresh}

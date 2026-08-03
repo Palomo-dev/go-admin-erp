@@ -338,7 +338,7 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
       <SheetContent side="right" className="sm:max-w-md w-full overflow-y-auto bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
         {/* Header */}
         <SheetHeader className="pb-4">
-          <div className="flex items-start gap-3">
+          <div className="flex flex-wrap items-start gap-3">
             <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 mt-0.5">
               <TypeIcon className="h-5 w-5" />
             </div>
@@ -389,7 +389,7 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-2">Datos de la notificación</span>
               <div className="space-y-2">
                 {extraPayload.map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between text-xs gap-2">
+                  <div key={key} className="flex flex-wrap items-center justify-between text-xs gap-2">
                     <span className="text-gray-500 dark:text-gray-400">{payloadKeyLabels[key] || key.replace(/_/g, ' ')}</span>
                     <span className="font-medium text-gray-900 dark:text-white text-right">{formatVal(key, value)}</span>
                   </div>
@@ -402,7 +402,7 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
 
           {/* Datos reales de tablas relacionadas */}
           {loadingRelated && (
-            <div className="flex items-center justify-center gap-2 py-6 text-gray-400">
+            <div className="flex flex-wrap items-center justify-center gap-2 py-6 text-gray-400 dark:text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Cargando información del recurso...</span>
             </div>
@@ -410,7 +410,7 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
 
           {relatedData && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="h-1 w-1 rounded-full bg-blue-500" />
                 <span className="text-sm font-semibold text-gray-900 dark:text-white">{relatedData.label}</span>
               </div>
@@ -418,7 +418,7 @@ export function NotificationDetailSheet({ notification, open, onOpenChange, onNa
                 {relatedData.fields.map((field, idx) => {
                   const FieldIcon = field.icon;
                   return (
-                    <div key={idx} className="flex items-center gap-3 px-3.5 py-2.5">
+                    <div key={idx} className="flex flex-wrap items-center gap-3 px-3.5 py-2.5">
                       <FieldIcon className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                       <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[100px]">{field.label}</span>
                       <span className="text-xs font-medium text-gray-900 dark:text-white ml-auto text-right">{field.value}</span>

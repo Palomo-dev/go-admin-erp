@@ -35,7 +35,7 @@ interface StatItemProps {
 
 function StatItem({ icon, label, value, subValue, color }: StatItemProps) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+    <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
       <div className={cn("p-2 rounded-lg", color || "bg-blue-100 dark:bg-blue-900/30")}>
         {icon}
       </div>
@@ -72,7 +72,7 @@ export function MembershipSummary({
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-40" />
+          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-full sm:w-40" />
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -91,8 +91,8 @@ export function MembershipSummary({
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <Activity className="h-5 w-5 text-blue-600" />
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Resumen de Membresía
           </CardTitle>
           <Badge className={getMembershipStatusColor(membership.status)}>

@@ -219,11 +219,11 @@ export function AgendaView({
                       isTodayGroup && 'bg-blue-50 dark:bg-blue-900/20'
                     )}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       {isExpanded ? (
-                        <ChevronDown className="h-5 w-5 text-gray-400" />
+                        <ChevronDown className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                       ) : (
-                        <ChevronRight className="h-5 w-5 text-gray-400" />
+                        <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                       )}
                       <span className={cn(
                         'font-semibold capitalize',
@@ -245,7 +245,7 @@ export function AgendaView({
                           key={`${event.id || event.source_id}-${index}`}
                           className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
                         >
-                          <div className="flex items-start gap-4">
+                          <div className="flex flex-wrap items-start gap-4">
                             {/* Hora */}
                             <div className="flex-shrink-0 w-16 text-center">
                               {event.all_day ? (
@@ -274,7 +274,7 @@ export function AgendaView({
 
                             {/* Contenido */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
+                              <div className="flex flex-wrap items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                   <button
                                     onClick={() => onEventClick(event)}
@@ -305,7 +305,7 @@ export function AgendaView({
                                     )}
 
                                     {getDuration(event) && (
-                                      <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                      <span className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1">
                                         <Clock className="h-3 w-3" />
                                         {getDuration(event)}
                                       </span>
@@ -315,25 +315,25 @@ export function AgendaView({
                                   {/* Detalles adicionales */}
                                   <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
                                     {event.location && (
-                                      <span className="flex items-center gap-1">
+                                      <span className="flex flex-wrap items-center gap-1">
                                         <MapPin className="h-3 w-3" />
                                         {event.location}
                                       </span>
                                     )}
                                     {event.assigned_to && (
-                                      <span className="flex items-center gap-1">
+                                      <span className="flex flex-wrap items-center gap-1">
                                         <User className="h-3 w-3" />
                                         Asignado
                                       </span>
                                     )}
                                     {event.branch_id && (
-                                      <span className="flex items-center gap-1">
+                                      <span className="flex flex-wrap items-center gap-1">
                                         <Building2 className="h-3 w-3" />
                                         Sucursal
                                       </span>
                                     )}
                                     {event.customer_id && (
-                                      <span className="flex items-center gap-1">
+                                      <span className="flex flex-wrap items-center gap-1">
                                         <Users className="h-3 w-3" />
                                         Cliente
                                       </span>
@@ -348,7 +348,7 @@ export function AgendaView({
                                       <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuContent align="end" className="w-full sm:w-48">
                                     <DropdownMenuItem onClick={() => onEventClick(event)}>
                                       <Calendar className="h-4 w-4 mr-2" />
                                       Ver detalle
@@ -384,11 +384,11 @@ export function AgendaView({
                                         {onUpdateStatus && (
                                           <>
                                             <DropdownMenuItem onClick={() => onUpdateStatus(event.id || event.source_id, 'confirmed')}>
-                                              <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                                              <CheckCircle className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
                                               Marcar confirmado
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => onUpdateStatus(event.id || event.source_id, 'tentative')}>
-                                              <HelpCircle className="h-4 w-4 mr-2 text-yellow-600" />
+                                              <HelpCircle className="h-4 w-4 mr-2 text-yellow-600 dark:text-yellow-400" />
                                               Marcar tentativo
                                             </DropdownMenuItem>
                                           </>

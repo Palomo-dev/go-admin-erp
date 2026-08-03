@@ -34,7 +34,7 @@ export function EspaciosHeader({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
             <ParkingSquare className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
@@ -48,7 +48,7 @@ export function EspaciosHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
           <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg p-1">
             <Button
               variant={viewMode === 'grid' ? 'default' : 'ghost'}

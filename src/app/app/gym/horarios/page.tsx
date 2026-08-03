@@ -274,12 +274,12 @@ export default function HorariosPage() {
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600"
+              className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600"
             >
               <Filter className="h-4 w-4" />
               Filtros
               {hasActiveFilters && (
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+                <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 text-xs px-2 py-0.5 rounded-full">
                   Activos
                 </span>
               )}
@@ -295,7 +295,7 @@ export default function HorariosPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Filtro por Sede */}
               <div className="space-y-1.5">
-                <Label className="text-xs text-gray-500">Sede</Label>
+                <Label className="text-xs text-gray-500 dark:text-gray-400">Sede</Label>
                 <Select value={branchFilter} onValueChange={setBranchFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todas las sedes" />
@@ -313,7 +313,7 @@ export default function HorariosPage() {
 
               {/* Filtro por Tipo */}
               <div className="space-y-1.5">
-                <Label className="text-xs text-gray-500">Tipo de clase</Label>
+                <Label className="text-xs text-gray-500 dark:text-gray-400">Tipo de clase</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todos los tipos" />
@@ -330,7 +330,7 @@ export default function HorariosPage() {
 
               {/* Filtro por Instructor */}
               <div className="space-y-1.5">
-                <Label className="text-xs text-gray-500">Instructor</Label>
+                <Label className="text-xs text-gray-500 dark:text-gray-400">Instructor</Label>
                 <Select value={instructorFilter} onValueChange={setInstructorFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todos los instructores" />
@@ -352,7 +352,7 @@ export default function HorariosPage() {
 
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
       ) : (
         <WeeklyCalendar

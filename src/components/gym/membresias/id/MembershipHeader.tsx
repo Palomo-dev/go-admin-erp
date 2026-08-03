@@ -22,7 +22,7 @@ export function MembershipHeader({ membership }: MembershipHeaderProps) {
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         {/* Info del cliente */}
-        <div className="flex items-start gap-4">
+        <div className="flex flex-wrap items-start gap-4">
           <div className={cn(
             "p-4 rounded-full",
             membership.status === 'active' ? "bg-green-100 dark:bg-green-900/30" :
@@ -38,7 +38,7 @@ export function MembershipHeader({ membership }: MembershipHeaderProps) {
           </div>
           
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {customer?.first_name} {customer?.last_name}
               </h2>
@@ -49,19 +49,19 @@ export function MembershipHeader({ membership }: MembershipHeaderProps) {
             
             <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
               {customer?.identification_number && (
-                <p className="flex items-center gap-2">
+                <p className="flex flex-wrap items-center gap-2">
                   <Hash className="h-4 w-4" />
                   {customer.identification_number}
                 </p>
               )}
               {customer?.phone && (
-                <p className="flex items-center gap-2">
+                <p className="flex flex-wrap items-center gap-2">
                   <Phone className="h-4 w-4" />
                   {customer.phone}
                 </p>
               )}
               {customer?.email && (
-                <p className="flex items-center gap-2">
+                <p className="flex flex-wrap items-center gap-2">
                   <Mail className="h-4 w-4" />
                   {customer.email}
                 </p>

@@ -328,7 +328,7 @@ export function DeviceSessions() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <Shield className="h-5 w-5" /> 
           Sesiones de dispositivos
         </CardTitle>
@@ -342,14 +342,14 @@ export function DeviceSessions() {
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-start gap-3">
+                <div className="flex flex-wrap items-start gap-3">
                   <div className="rounded-full p-2 bg-gray-100 dark:bg-gray-700">
                     <div className="h-5 w-5 bg-gray-200 dark:bg-gray-600 rounded animate-pulse" />
                   </div>
                   <div>
-                    <div className="h-5 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
-                    <div className="h-3 w-32 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse mb-1" />
-                    <div className="h-3 w-48 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse" />
+                    <div className="h-5 w-full sm:w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                    <div className="h-3 w-full sm:w-32 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse mb-1" />
+                    <div className="h-3 w-full sm:w-48 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse" />
                   </div>
                 </div>
                 <div className="flex mt-3 md:mt-0 gap-2">
@@ -381,13 +381,13 @@ export function DeviceSessions() {
                   className={`flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg
                     ${session.current ? 'bg-muted/30' : ''}`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex flex-wrap items-start gap-3">
                     <div className={`rounded-full p-2 ${session.is_trusted ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
                       {getDeviceIcon(session.device_type)}
                     </div>
                     
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h4 className="font-medium">{session.device_name}</h4>
                         {session.current && (
                           <Badge variant="outline" className="text-xs">
@@ -395,7 +395,7 @@ export function DeviceSessions() {
                           </Badge>
                         )}
                         {session.is_trusted && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200 text-xs">
+                          <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/30 text-green-800 hover:bg-green-200 text-xs">
                             <ShieldCheck className="h-3 w-3 mr-1" /> Confiable
                           </Badge>
                         )}
@@ -464,7 +464,7 @@ export function DeviceSessions() {
                 <p className="text-sm text-muted-foreground">
                   Mostrando {Math.min((currentPage - 1) * pageSize + 1, sessions.length)} a {Math.min(currentPage * pageSize, sessions.length)} de {sessions.length} dispositivos
                 </p>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <Button
                     variant="outline"
                     size="sm"

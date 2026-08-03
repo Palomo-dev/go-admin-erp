@@ -49,11 +49,11 @@ export function EspaciosFilters({
         placeholder="Buscar por etiqueta o tipo..."
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="w-64"
+        className="w-full sm:w-64"
       />
 
       <Select value={statusFilter} onValueChange={(v: any) => onStatusChange(v)}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>
         <SelectContent>
@@ -68,7 +68,7 @@ export function EspaciosFilters({
       </Select>
 
       <Select value={zoneFilter} onValueChange={onZoneChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Zona" />
         </SelectTrigger>
         <SelectContent>
@@ -83,7 +83,7 @@ export function EspaciosFilters({
 
       {spaceTypes.length > 0 && (
         <Select value={typeFilter} onValueChange={onTypeChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -99,7 +99,7 @@ export function EspaciosFilters({
 
       {orgServices.length > 0 && onServiceChange && (
         <Select value={serviceFilter} onValueChange={onServiceChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Servicio" />
           </SelectTrigger>
           <SelectContent>

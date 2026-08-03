@@ -27,7 +27,7 @@ export function PlanesFilters({ filters, onFiltersChange }: PlanesFiltersProps) 
     <div className="flex flex-col sm:flex-row gap-3">
       {/* Búsqueda */}
       <div className="relative flex-1 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
         <Input
           placeholder="Buscar por nombre o descripción..."
           value={filters.search}
@@ -43,7 +43,7 @@ export function PlanesFilters({ filters, onFiltersChange }: PlanesFiltersProps) 
           onFiltersChange({ ...filters, status: value })
         }
       >
-        <SelectTrigger className="w-40 dark:bg-gray-800 dark:border-gray-700">
+        <SelectTrigger className="w-full sm:w-40 dark:bg-gray-800 dark:border-gray-700">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>
         <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -60,7 +60,7 @@ export function PlanesFilters({ filters, onFiltersChange }: PlanesFiltersProps) 
           onFiltersChange({ ...filters, vehicleType: value })
         }
       >
-        <SelectTrigger className="w-44 dark:bg-gray-800 dark:border-gray-700">
+        <SelectTrigger className="w-full sm:w-44 dark:bg-gray-800 dark:border-gray-700">
           <SelectValue placeholder="Tipo vehículo" />
         </SelectTrigger>
         <SelectContent className="dark:bg-gray-800 dark:border-gray-700">

@@ -159,7 +159,7 @@ export function TripAdvisorPublicWidget({
 
   if (isLoading) {
     return (
-      <div className={cn('animate-pulse rounded-lg', isDark ? 'bg-gray-800' : 'bg-gray-100', 'h-16', className)} />
+      <div className={cn('animate-pulse rounded-lg', isDark ? 'bg-gray-800' : 'bg-gray-100 dark:bg-gray-800', 'h-16', className)} />
     );
   }
 
@@ -174,13 +174,13 @@ export function TripAdvisorPublicWidget({
         rel="noopener noreferrer"
         className={cn(
           'inline-flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity hover:opacity-90 no-underline',
-          isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 shadow-sm border border-gray-200',
+          isDark ? 'bg-gray-900 text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700',
           className,
         )}
       >
         <OllieLogo size={20} dark={isDark} />
         <BubbleRating rating={rating} size="sm" />
-        <span className={cn('text-xs', isDark ? 'text-gray-300' : 'text-gray-500')}>
+        <span className={cn('text-xs', isDark ? 'text-gray-300' : 'text-gray-500 dark:text-gray-400')}>
           {numReviews} reseñas
         </span>
       </a>
@@ -192,11 +192,11 @@ export function TripAdvisorPublicWidget({
     return (
       <div className={cn(
         'rounded-xl p-4 max-w-sm',
-        isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 shadow-md border border-gray-100',
+        isDark ? 'bg-gray-900 text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-md border border-gray-100 dark:border-gray-800',
         className,
       )}>
         {/* Header */}
-        <div className="flex items-center gap-2.5 mb-3">
+        <div className="flex flex-wrap items-center gap-2.5 mb-3">
           <OllieLogo size={28} dark={isDark} />
           <div>
             <p className="text-xs font-medium" style={{ color: isDark ? '#84E9BD' : '#00AA6C' }}>
@@ -207,16 +207,16 @@ export function TripAdvisorPublicWidget({
         </div>
 
         {/* Rating text */}
-        <div className="flex items-baseline gap-2 mb-2">
+        <div className="flex flex-wrap items-baseline gap-2 mb-2">
           <span className="text-2xl font-bold">{rating.toFixed(1)}</span>
-          <span className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-500')}>
+          <span className={cn('text-sm', isDark ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400')}>
             de 5 · {numReviews.toLocaleString()} reseñas
           </span>
         </div>
 
         {/* Ranking */}
         {details.ranking_data?.ranking_string && (
-          <p className={cn('text-xs mb-3', isDark ? 'text-gray-400' : 'text-gray-500')}>
+          <p className={cn('text-xs mb-3', isDark ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400')}>
             {details.ranking_data.ranking_string}
           </p>
         )}
@@ -242,34 +242,34 @@ export function TripAdvisorPublicWidget({
   return (
     <div className={cn(
       'rounded-xl p-5 max-w-md',
-      isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900 shadow-md border border-gray-100',
+      isDark ? 'bg-gray-900 text-white' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-md border border-gray-100 dark:border-gray-800',
       className,
     )}>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <OllieLogo size={32} dark={isDark} />
         <div>
           <p className="text-sm font-semibold" style={{ color: isDark ? '#84E9BD' : '#00AA6C' }}>
             TripAdvisor
           </p>
-          <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>
+          <p className={cn('text-xs', isDark ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400')}>
             {details.name}
           </p>
         </div>
       </div>
 
       {/* Rating */}
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex flex-wrap items-center gap-3 mb-3">
         <BubbleRating rating={rating} size="md" />
         <span className="text-xl font-bold">{rating.toFixed(1)}</span>
-        <span className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-500')}>
+        <span className={cn('text-sm', isDark ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400')}>
           ({numReviews.toLocaleString()} reseñas)
         </span>
       </div>
 
       {/* Ranking */}
       {details.ranking_data?.ranking_string && (
-        <p className={cn('text-xs mb-4', isDark ? 'text-gray-400' : 'text-gray-500')}>
+        <p className={cn('text-xs mb-4', isDark ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400')}>
           {details.ranking_data.ranking_string}
         </p>
       )}
@@ -277,7 +277,7 @@ export function TripAdvisorPublicWidget({
       {/* Reseñas destacadas */}
       {showReviews && reviews.length > 0 && (
         <div className="space-y-3 mb-4">
-          <h4 className={cn('text-xs font-medium uppercase tracking-wider', isDark ? 'text-gray-400' : 'text-gray-500')}>
+          <h4 className={cn('text-xs font-medium uppercase tracking-wider', isDark ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400')}>
             Reseñas recientes
           </h4>
           {reviews.map((review) => (
@@ -285,15 +285,15 @@ export function TripAdvisorPublicWidget({
               key={review.id}
               className={cn(
                 'p-3 rounded-lg',
-                isDark ? 'bg-gray-800' : 'bg-gray-50',
+                isDark ? 'bg-gray-800' : 'bg-gray-50 dark:bg-gray-900',
               )}
             >
-              <div className="flex items-start gap-2">
-                <Quote className={cn('h-3.5 w-3.5 mt-0.5 shrink-0', isDark ? 'text-gray-600' : 'text-gray-300')} />
+              <div className="flex flex-wrap items-start gap-2">
+                <Quote className={cn('h-3.5 w-3.5 mt-0.5 shrink-0', isDark ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300')} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
                     <BubbleRating rating={review.rating} size="sm" />
-                    <span className={cn('text-[10px]', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                    <span className={cn('text-[10px]', isDark ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-500')}>
                       {formatReviewDate(review.published_date)}
                     </span>
                   </div>
@@ -301,12 +301,12 @@ export function TripAdvisorPublicWidget({
                     <p className="text-xs font-medium mb-0.5">{review.title}</p>
                   )}
                   {review.text && (
-                    <p className={cn('text-xs line-clamp-3', isDark ? 'text-gray-300' : 'text-gray-600')}>
+                    <p className={cn('text-xs line-clamp-3', isDark ? 'text-gray-300' : 'text-gray-600 dark:text-gray-400')}>
                       {review.text}
                     </p>
                   )}
                   {review.user?.username && (
-                    <p className={cn('text-[10px] mt-1', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                    <p className={cn('text-[10px] mt-1', isDark ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-500')}>
                       — {review.user.username}
                       {review.user.user_location?.name ? `, ${review.user.user_location.name}` : ''}
                     </p>
@@ -333,7 +333,7 @@ export function TripAdvisorPublicWidget({
       </a>
 
       {/* Attribution (obligatorio) */}
-      <p className={cn('text-[9px] mt-3', isDark ? 'text-gray-600' : 'text-gray-300')}>
+      <p className={cn('text-[9px] mt-3', isDark ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300')}>
         Powered by TripAdvisor. Content displayed in accordance with TripAdvisor Display Requirements.
       </p>
     </div>

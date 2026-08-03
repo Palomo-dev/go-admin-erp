@@ -242,7 +242,7 @@ export default function ExportacionesPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                 <FileDown className="h-6 w-6 text-blue-500" />
                 Exportaciones
               </h1>
@@ -250,7 +250,7 @@ export default function ExportacionesPage() {
                 Historial de exportaciones del timeline de auditoría
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 onClick={() => loadExports(true)}
@@ -277,7 +277,7 @@ export default function ExportacionesPage() {
         {/* Búsqueda */}
         <div className="mb-6">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar exportaciones..."
               value={searchText}

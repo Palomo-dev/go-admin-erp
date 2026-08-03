@@ -43,7 +43,7 @@ import spaceServicesService, { type OrgServiceView, type SpaceServiceView } from
 export default function EspaciosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, selectedBranchId } = useBranch();
 
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [spaceTypes, setSpaceTypes] = useState<SpaceType[]>([]);
@@ -189,7 +189,7 @@ export default function EspaciosPage() {
       } else {
         result = await SpacesService.createSpace({
           ...data,
-          branch_id: organization!.id,
+          branch_id: selectedBranchId ?? branchFilter!,
         });
         toast({
           title: 'Éxito',
@@ -463,8 +463,8 @@ export default function EspaciosPage() {
                 {/* Espacios sin zona */}
                 {paginatedSpaces.filter(s => !s.floor_zone).length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                      <Layers className="h-5 w-5 text-gray-500" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
+                      <Layers className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                       Sin zona
                       <Badge variant="secondary" className="ml-2">
                         {filteredSpaces.filter(s => !s.floor_zone).length} {filteredSpaces.filter(s => !s.floor_zone).length === 1 ? 'espacio' : 'espacios'}
@@ -490,7 +490,7 @@ export default function EspaciosPage() {
 
                   return (
                     <div key={zona}>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
                         <Layers className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         {zona}
                         <Badge variant="secondary" className="ml-2">
@@ -585,19 +585,19 @@ export default function EspaciosPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-green-500" />
                       Baja
                     </span>
                   </SelectItem>
                   <SelectItem value="med">
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-yellow-500" />
                       Media
                     </span>
                   </SelectItem>
                   <SelectItem value="high">
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-red-500" />
                       Alta
                     </span>

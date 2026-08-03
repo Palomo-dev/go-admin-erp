@@ -86,8 +86,8 @@ export function StepDates({
 
       {/* Fechas */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-blue-600" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Fechas de Estadía
         </h3>
         
@@ -120,8 +120,8 @@ export function StepDates({
 
           <div>
             <Label htmlFor="occupants">Ocupantes</Label>
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-gray-400" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Users className="h-5 w-5 text-gray-400 dark:text-gray-500" />
               <Input
                 id="occupants"
                 type="number"
@@ -163,7 +163,7 @@ export function StepDates({
                 }`}
                 onClick={() => onCategorySelect(category.code)}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex flex-wrap items-start gap-3">
                   <div
                     className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                       isSelected

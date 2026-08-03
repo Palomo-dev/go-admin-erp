@@ -388,7 +388,7 @@ export function EventModal({
         <DialogContent className="sm:max-w-[700px] lg:max-w-[800px] max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
           <DialogHeader>
             <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2">
+              <DialogTitle className="flex flex-wrap items-center gap-2">
                 {mode === 'create' ? (
                   'Nuevo Evento'
                 ) : (
@@ -661,7 +661,7 @@ export function EventModal({
                   variant="outline"
                   size="sm"
                   onClick={() => onNavigateToSource(event)}
-                  className="text-blue-600"
+                  className="text-blue-600 dark:text-blue-400"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Ver en módulo
@@ -669,7 +669,7 @@ export function EventModal({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" onClick={onClose}>
                 {isEditing ? 'Cancelar' : 'Cerrar'}
               </Button>

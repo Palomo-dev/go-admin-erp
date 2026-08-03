@@ -182,8 +182,8 @@ export default function ConfiguracionPage() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-6">
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-96" />
+          <Skeleton className="h-8 w-full sm:w-64 mb-2" />
+          <Skeleton className="h-4 w-full sm:w-96" />
         </div>
         <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           {[...Array(4)].map((_, i) => (
@@ -217,7 +217,7 @@ export default function ConfiguracionPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                 <Settings className="h-6 w-6 text-blue-500" />
                 Configuración del Timeline
               </h1>
@@ -225,7 +225,7 @@ export default function ConfiguracionPage() {
                 Ajusta la privacidad, fuentes visibles, retención y rendimiento del módulo.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Importar/Exportar */}
               <Button
                 variant="outline"

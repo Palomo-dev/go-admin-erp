@@ -87,7 +87,7 @@ export function ImportCanalesDialog({ open, onOpenChange, onImport }: ImportCana
 
         <div className="space-y-4 py-2">
           <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center">
-            <FileJson className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+            <FileJson className="h-8 w-8 mx-auto mb-2 text-gray-400 dark:text-gray-500" />
             <input ref={fileRef} type="file" accept=".json" onChange={handleFile} className="hidden" />
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
               <Upload className="h-4 w-4 mr-2" /> Seleccionar JSON
@@ -95,7 +95,7 @@ export function ImportCanalesDialog({ open, onOpenChange, onImport }: ImportCana
           </div>
 
           {error && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="flex flex-wrap items-start gap-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
               <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
             </div>

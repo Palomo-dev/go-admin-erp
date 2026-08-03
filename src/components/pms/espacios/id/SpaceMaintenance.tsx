@@ -119,7 +119,7 @@ export function SpaceMaintenance({ orders, onUpdateStatus }: SpaceMaintenancePro
                   className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-start gap-2">
+                    <div className="flex flex-wrap items-start gap-2">
                       <StatusIcon className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
                       <div>
                         <p className="font-medium text-gray-900 dark:text-gray-100">
@@ -249,7 +249,7 @@ export function SpaceMaintenance({ orders, onUpdateStatus }: SpaceMaintenancePro
 
       {orders.length === 0 && (
         <div className="text-center py-8">
-          <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <Wrench className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
           <p className="text-gray-500 dark:text-gray-400">
             No hay órdenes de mantenimiento
           </p>

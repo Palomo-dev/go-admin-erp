@@ -128,17 +128,17 @@ export default function NotificacionesSection({
     return (
       <div>
         <div className="mb-6">
-          <div className="h-7 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
-          <div className="h-4 w-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          <div className="h-7 w-full sm:w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+          <div className="h-4 w-full sm:w-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         </div>
         <div className="space-y-6">
           <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4" />
+            <div className="h-5 w-full sm:w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4" />
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex items-center justify-between py-3">
                 <div>
-                  <div className="h-4 w-36 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-1" />
-                  <div className="h-3 w-56 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse" />
+                  <div className="h-4 w-full sm:w-36 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-1" />
+                  <div className="h-3 w-full sm:w-56 bg-gray-100 dark:bg-gray-700/50 rounded animate-pulse" />
                 </div>
                 <div className="h-6 w-11 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
               </div>

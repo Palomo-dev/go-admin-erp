@@ -22,7 +22,7 @@ export function PlantillaFilters({ filters, onChange }: PlantillaFiltersProps) {
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Buscar por nombre o asunto..."
             value={filters.search}
@@ -47,7 +47,7 @@ export function PlantillaFilters({ filters, onChange }: PlantillaFiltersProps) {
             variant="ghost"
             size="sm"
             onClick={() => onChange(DEFAULT_TEMPLATE_FILTERS)}
-            className="text-gray-500 hover:text-red-500"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-500"
           >
             <X className="h-4 w-4 mr-1" />
             Limpiar

@@ -134,11 +134,11 @@ export function PlanDialog({ open, onOpenChange, plan, onSave }: PlanDialogProps
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="general" className="flex items-center gap-2">
+              <TabsTrigger value="general" className="flex flex-wrap items-center gap-2">
                 <Settings className="h-4 w-4" />
                 General
               </TabsTrigger>
-              <TabsTrigger value="access" className="flex items-center gap-2">
+              <TabsTrigger value="access" className="flex flex-wrap items-center gap-2">
                 <Shield className="h-4 w-4" />
                 Reglas de Acceso
               </TabsTrigger>

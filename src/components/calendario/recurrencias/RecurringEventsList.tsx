@@ -71,8 +71,8 @@ export function RecurringEventsList({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-full sm:w-64" />
+          <Skeleton className="h-10 w-full sm:w-32" />
         </div>
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-32 w-full" />
@@ -88,7 +88,7 @@ export function RecurringEventsList({
         <div className="flex flex-1 gap-3 w-full sm:w-auto">
           {/* Búsqueda */}
           <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <Input
               placeholder="Buscar eventos..."
               value={searchQuery}
@@ -99,7 +99,7 @@ export function RecurringEventsList({
 
           {/* Filtro de estado */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-full sm:w-[140px]">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
@@ -114,7 +114,7 @@ export function RecurringEventsList({
 
           {/* Ordenar por */}
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[150px] hidden sm:flex">
+            <SelectTrigger className="w-full sm:w-[150px] hidden sm:flex">
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
             <SelectContent>

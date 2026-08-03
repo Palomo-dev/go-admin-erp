@@ -102,7 +102,7 @@ export function CheckinStats({ stats, isLoading }: CheckinStatsProps) {
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="pt-4">
-              <div className="animate-pulse flex items-center gap-3">
+              <div className="animate-pulse flex flex-wrap items-center gap-3">
                 <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg" />
                 <div className="space-y-2">
                   <div className="h-6 w-12 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -128,7 +128,7 @@ export function CheckinStats({ stats, isLoading }: CheckinStatsProps) {
             className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
           >
             <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className={`h-10 w-10 rounded-lg ${colors.bg} flex items-center justify-center`}>
                   <Icon className={`h-5 w-5 ${colors.icon}`} />
                 </div>
@@ -152,7 +152,7 @@ export function CheckinStats({ stats, isLoading }: CheckinStatsProps) {
           {stats.expiringToday > 0 && (
             <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
               <CardContent className="pt-4">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
                     <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                   </div>

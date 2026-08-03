@@ -89,7 +89,7 @@ export function ImportPreview({
                     {row.isValid ? (
                       <Check className="h-4 w-4 text-green-500" />
                     ) : (
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-wrap items-center gap-1">
                         <X className="h-4 w-4 text-red-500" />
                         <span className="text-xs text-red-500" title={row.errors.join(', ')}>
                           {row.errors.length}
@@ -121,7 +121,7 @@ export function ImportPreview({
       {/* Errores detallados */}
       {stats.invalid > 0 && (
         <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-red-500" />
             <span className="font-medium text-red-700 dark:text-red-400">
               Filas con errores ({stats.invalid})
@@ -137,7 +137,7 @@ export function ImportPreview({
                 </li>
               ))}
             {stats.invalid > 5 && (
-              <li className="text-gray-500">...y {stats.invalid - 5} más</li>
+              <li className="text-gray-500 dark:text-gray-400">...y {stats.invalid - 5} más</li>
             )}
           </ul>
         </div>

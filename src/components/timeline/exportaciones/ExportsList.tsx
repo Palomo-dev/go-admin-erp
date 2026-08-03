@@ -36,7 +36,7 @@ export function ExportsList({
   if (exports.length === 0) {
     return (
       <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <FileDown className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+        <FileDown className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
           No hay exportaciones
         </h3>

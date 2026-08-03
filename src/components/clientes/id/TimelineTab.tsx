@@ -102,11 +102,38 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
         // 3. Obtener actividades relacionadas con el cliente
         const { data: activitiesData, error: activitiesError } = await supabase
           .from('activities')
-          .select('id, activity_type, notes, occurred_at, related_type')
+          .select('id, activity_type, notes, occurred_at, related_type, related_id')
           .eq('related_id', clienteId)
           .eq('organization_id', organizationId);
           
         if (activitiesError) throw activitiesError;
+        
+        // 3b. Obtener IDs de oportunidades del cliente y sus actividades
+        const { data: oppsData } = await supabase
+          .from('opportunities')
+          .select('id, name')
+          .eq('customer_id', clienteId)
+          .eq('organization_id', organizationId);
+        
+        const oppIds = (oppsData || []).map(o => o.id);
+        const oppNameMap: Record<string, string> = {};
+        (oppsData || []).forEach(o => { oppNameMap[o.id] = o.name; });
+        
+        let oppActivities: any[] = [];
+        if (oppIds.length > 0) {
+          const { data: oppActsData, error: oppActsError } = await supabase
+            .from('activities')
+            .select('id, activity_type, notes, occurred_at, related_type, related_id')
+            .eq('related_type', 'opportunity')
+            .in('related_id', oppIds)
+            .eq('organization_id', organizationId);
+          
+          if (oppActsError) throw oppActsError;
+          oppActivities = oppActsData || [];
+        }
+        
+        // Combinar actividades del cliente y de oportunidades
+        const allActivities = [...(activitiesData || []), ...oppActivities];
         
         // 4. Obtener pedidos web del cliente
         const { data: webOrdersData, error: webOrdersError } = await supabase
@@ -156,11 +183,11 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
           })),
           
           // Transformar actividades
-          ...(activitiesData || []).map(activity => ({
+          ...(allActivities).map(activity => ({
             id: `activity-${activity.id}`,
             type: 'activity' as const,
             date: new Date(activity.occurred_at),
-            title: `Actividad: ${activity.activity_type}`,
+            title: `Actividad: ${activity.activity_type}${activity.related_type === 'opportunity' && oppNameMap[activity.related_id] ? ` — ${oppNameMap[activity.related_id]}` : ''}`,
             description: activity.notes || 'Sin detalles',
             icon: (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

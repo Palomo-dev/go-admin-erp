@@ -65,7 +65,7 @@ export function ZonasList({
   if (zones.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <MapPin className="h-12 w-12 text-gray-400 mb-4" />
+        <MapPin className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">
           No hay zonas
         </h3>
@@ -87,7 +87,7 @@ export function ZonasList({
         >
           <CardContent className="p-6">
             <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className={`p-2 rounded-lg ${
                   zone.is_vip 
                     ? 'bg-yellow-100 dark:bg-yellow-900/30' 
@@ -128,7 +128,7 @@ export function ZonasList({
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => onDelete(zone)}
-                    className="text-red-600"
+                    className="text-red-600 dark:text-red-400"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Eliminar
@@ -138,13 +138,13 @@ export function ZonasList({
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-1.5 text-gray-600 dark:text-gray-300">
                   <Users className="h-4 w-4" />
                   <span>Capacidad: {zone.capacity}</span>
                 </div>
                 {zone.spaces_count !== undefined && (
-                  <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                  <div className="flex flex-wrap items-center gap-1.5 text-gray-600 dark:text-gray-300">
                     <Car className="h-4 w-4" />
                     <span>{zone.spaces_count} espacios</span>
                   </div>

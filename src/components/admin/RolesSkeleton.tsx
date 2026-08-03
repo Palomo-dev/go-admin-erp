@@ -6,8 +6,8 @@ export function RolesListSkeleton() {
     <div className="space-y-4">
       {/* Header Skeleton */}
       <div className="flex items-center justify-between">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-10 w-full sm:w-64" />
+        <Skeleton className="h-10 w-full sm:w-32" />
       </div>
 
       {/* Search Bar Skeleton */}
@@ -20,8 +20,8 @@ export function RolesListSkeleton() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1 space-y-2">
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-6 w-full sm:w-32" />
+                  <Skeleton className="h-4 w-full sm:w-48" />
                 </div>
                 <Skeleton className="h-8 w-8 rounded-full" />
               </div>
@@ -50,8 +50,8 @@ export function AssignmentsSkeleton() {
     <div className="space-y-4">
       {/* Header Skeleton */}
       <div className="flex items-center justify-between">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-10 w-full sm:w-64" />
+        <Skeleton className="h-10 w-full sm:w-32" />
       </div>
 
       {/* Filters Skeleton */}
@@ -70,8 +70,8 @@ export function AssignmentsSkeleton() {
                 <div className="flex items-center space-x-4 flex-1">
                   <Skeleton className="h-10 w-10 rounded-full" />
                   <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-4 w-full sm:w-48" />
+                    <Skeleton className="h-3 w-full sm:w-32" />
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -91,7 +91,7 @@ export function PermissionsSkeleton() {
   return (
     <div className="space-y-4">
       {/* Header Skeleton */}
-      <Skeleton className="h-10 w-64" />
+      <Skeleton className="h-10 w-full sm:w-64" />
 
       {/* Search Skeleton */}
       <Skeleton className="h-10 w-full" />
@@ -99,13 +99,13 @@ export function PermissionsSkeleton() {
       {/* Permissions Matrix Skeleton */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-6 w-full sm:w-48" />
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="space-y-2">
-                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-full sm:w-32" />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {[1, 2, 3, 4].map((j) => (
                     <Skeleton key={j} className="h-10 w-full" />
@@ -125,8 +125,8 @@ export function JobPositionsSkeleton() {
     <div className="space-y-4">
       {/* Header Skeleton */}
       <div className="flex items-center justify-between">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-10 w-full sm:w-64" />
+        <Skeleton className="h-10 w-full sm:w-32" />
       </div>
 
       {/* Search Skeleton */}
@@ -141,8 +141,8 @@ export function JobPositionsSkeleton() {
                 <div className="flex items-center space-x-3 flex-1">
                   <Skeleton className="h-10 w-10 rounded-lg" />
                   <div className="space-y-2 flex-1">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-5 w-full sm:w-32" />
+                    <Skeleton className="h-4 w-full sm:w-48" />
                   </div>
                 </div>
               </div>
@@ -172,14 +172,14 @@ export function AnalyticsSkeleton() {
     <div className="space-y-6">
       {/* Header Skeleton */}
       <div className="flex items-center justify-between">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-10 w-full sm:w-64" />
+        <Skeleton className="h-10 w-full sm:w-32" />
       </div>
 
       {/* Filters Skeleton */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-6 w-full sm:w-48" />
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -203,7 +203,7 @@ export function AnalyticsSkeleton() {
                 <div className="ml-4 flex-1 space-y-2">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-8 w-16" />
-                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="h-3 w-full sm:w-32" />
                 </div>
               </div>
             </CardContent>
@@ -216,14 +216,14 @@ export function AnalyticsSkeleton() {
         {[1, 2].map((i) => (
           <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-6 w-full sm:w-48" />
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {[1, 2, 3, 4, 5].map((j) => (
                   <div key={j} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-full sm:w-32" />
                       <Skeleton className="h-4 w-24" />
                     </div>
                     <Skeleton className="h-2 w-full" />

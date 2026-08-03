@@ -36,8 +36,8 @@ export function OccupancyStats({
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <ParkingCircle className="h-5 w-5 text-blue-600" />
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+          <ParkingCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Ocupación Actual
         </CardTitle>
       </CardHeader>
@@ -65,7 +65,7 @@ export function OccupancyStats({
 
           {/* Desglose */}
           <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
               <div>
                 <p className="text-2xl font-bold text-green-700 dark:text-green-400">{freeSpaces}</p>
@@ -73,7 +73,7 @@ export function OccupancyStats({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
               <Car className="h-5 w-5 text-red-600 dark:text-red-400" />
               <div>
                 <p className="text-2xl font-bold text-red-700 dark:text-red-400">{occupiedSpaces}</p>
@@ -81,7 +81,7 @@ export function OccupancyStats({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+            <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
               <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               <div>
                 <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{reservedSpaces}</p>
@@ -89,7 +89,7 @@ export function OccupancyStats({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
               <ParkingCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <div>
                 <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{totalSpaces}</p>

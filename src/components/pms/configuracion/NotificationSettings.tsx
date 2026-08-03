@@ -17,8 +17,8 @@ export function NotificationSettings({ settings, onChange }: NotificationSetting
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Bell className="h-5 w-5 text-purple-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+          <Bell className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           Notificaciones
         </CardTitle>
         <CardDescription>
@@ -62,7 +62,7 @@ export function NotificationSettings({ settings, onChange }: NotificationSetting
               max="7"
               value={settings.reminderDaysBefore}
               onChange={(e) => onChange('reminderDaysBefore', parseInt(e.target.value) || 1)}
-              className="w-32"
+              className="w-full sm:w-32"
             />
           </div>
         )}

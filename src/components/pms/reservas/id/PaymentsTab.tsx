@@ -194,8 +194,8 @@ export function PaymentsTab({ payments, onAddPayment }: PaymentsTabProps) {
                 <TableRow key={payment.id}>
                   <TableCell>{formatDate(payment.created_at)}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-gray-400" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       {paymentMethods.find(m => m.code === payment.method)?.name || PAYMENT_METHODS[payment.method] || payment.method}
                     </div>
                   </TableCell>
@@ -205,12 +205,12 @@ export function PaymentsTab({ payments, onAddPayment }: PaymentsTabProps) {
                   </TableCell>
                   <TableCell>
                     {payment.status === 'completed' ? (
-                      <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <div className="flex flex-wrap items-center gap-1 text-green-600 dark:text-green-400">
                         <CheckCircle className="h-4 w-4" />
                         <span className="text-sm">Completado</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                      <div className="flex flex-wrap items-center gap-1 text-red-600 dark:text-red-400">
                         <XCircle className="h-4 w-4" />
                         <span className="text-sm">Fallido</span>
                       </div>

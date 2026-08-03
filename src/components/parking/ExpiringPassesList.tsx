@@ -33,7 +33,7 @@ export function ExpiringPassesList({
   const getUrgencyBadge = (days: number) => {
     if (days <= 7) {
       return (
-        <Badge variant="destructive" className="flex items-center gap-1">
+        <Badge variant="destructive" className="flex flex-wrap items-center gap-1">
           <AlertTriangle className="h-3 w-3" />
           {days} días
         </Badge>
@@ -64,8 +64,8 @@ export function ExpiringPassesList({
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-purple-600" />
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+            <CreditCard className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             Abonados por Vencer
           </CardTitle>
         </div>
@@ -81,7 +81,7 @@ export function ExpiringPassesList({
           )}>
             <p className={cn(
               'text-xl font-bold',
-              expiringIn7Days > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500'
+              expiringIn7Days > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'
             )}>
               {expiringIn7Days}
             </p>
@@ -95,7 +95,7 @@ export function ExpiringPassesList({
           )}>
             <p className={cn(
               'text-xl font-bold',
-              expiringIn15Days > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500'
+              expiringIn15Days > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-gray-400'
             )}>
               {expiringIn15Days}
             </p>
@@ -133,11 +133,11 @@ export function ExpiringPassesList({
                   <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                     {pass.vehicle_plate}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <User className="h-3 w-3" />
                     <span className="truncate">{pass.customer_name}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <Calendar className="h-3 w-3" />
                     <span>{pass.plan_name} • Vence {formatDate(pass.end_date)}</span>
                   </div>

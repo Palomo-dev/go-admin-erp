@@ -218,8 +218,8 @@ export function ExceptionsPanel({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-orange-600" />
+            <DialogTitle className="flex flex-wrap items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               Excepciones de "{eventTitle}"
             </DialogTitle>
           </DialogHeader>
@@ -345,14 +345,14 @@ export function ExceptionsPanel({
                           'dark:border-gray-700 bg-white dark:bg-gray-800'
                         )}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           {exception.exception_type === 'cancelled' ? (
                             <XCircle className="h-5 w-5 text-red-500" />
                           ) : (
                             <Edit3 className="h-5 w-5 text-blue-500" />
                           )}
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium text-gray-900 dark:text-white">
                                 {format(parseISO(exception.original_date), "d 'de' MMMM yyyy", { locale: es })}
                               </span>
@@ -361,7 +361,7 @@ export function ExceptionsPanel({
                               </Badge>
                             </div>
                             {exception.exception_type === 'modified' && exception.new_start_at && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 Nuevo horario: {format(new Date(exception.new_start_at), 'HH:mm')}
                                 {exception.new_end_at && ` - ${format(new Date(exception.new_end_at), 'HH:mm')}`}
@@ -371,7 +371,7 @@ export function ExceptionsPanel({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -384,7 +384,7 @@ export function ExceptionsPanel({
                             variant="ghost"
                             size="sm"
                             onClick={() => confirmDelete(exception)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

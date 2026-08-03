@@ -61,7 +61,7 @@ export function HousekeepingKanban({
             <div
               className={`p-4 rounded-t-lg border-2 ${column.color} flex items-center justify-between`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Icon className={`h-5 w-5 ${column.textColor}`} />
                 <h3 className={`font-semibold ${column.textColor}`}>
                   {column.title}

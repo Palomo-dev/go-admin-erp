@@ -53,7 +53,7 @@ export function ClassCard({
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
               <h3 className="font-semibold text-gray-900 dark:text-white">
                 {gymClass.title}
               </h3>
@@ -113,24 +113,24 @@ export function ClassCard({
         )}
 
         <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <Calendar className="h-4 w-4" />
             <span>{formatDate(gymClass.start_at)}</span>
           </div>
 
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <Clock className="h-4 w-4" />
             <span>{formatTime(startTime)} - {formatTime(endTime)}</span>
-            <span className="text-gray-400">({gymClass.duration_minutes || 60} min)</span>
+            <span className="text-gray-400 dark:text-gray-500">({gymClass.duration_minutes || 60} min)</span>
           </div>
 
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
             <Users className="h-4 w-4" />
             <span>Capacidad: {gymClass.capacity} personas</span>
           </div>
 
           {(gymClass.room || gymClass.location) && (
-            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
               <MapPin className="h-4 w-4" />
               <span>{gymClass.room || gymClass.location}</span>
             </div>

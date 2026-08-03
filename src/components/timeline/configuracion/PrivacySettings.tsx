@@ -16,7 +16,7 @@ export function PrivacySettings({ settings, onChange }: PrivacySettingsProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
           <Shield className="h-5 w-5 text-blue-500" />
           Privacidad y Seguridad
         </CardTitle>
@@ -27,8 +27,8 @@ export function PrivacySettings({ settings, onChange }: PrivacySettingsProps) {
       <CardContent className="space-y-6">
         {/* Mostrar payload completo */}
         <div className="flex items-center justify-between">
-          <div className="flex items-start gap-3">
-            <Eye className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <Eye className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="space-y-1">
               <Label htmlFor="showFullPayload" className="text-sm font-medium cursor-pointer">
                 Mostrar payload completo
@@ -47,8 +47,8 @@ export function PrivacySettings({ settings, onChange }: PrivacySettingsProps) {
 
         {/* Ocultar datos sensibles */}
         <div className="flex items-center justify-between">
-          <div className="flex items-start gap-3">
-            <EyeOff className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <EyeOff className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="space-y-1">
               <Label htmlFor="hideSensitiveData" className="text-sm font-medium cursor-pointer">
                 Ocultar datos sensibles
@@ -67,8 +67,8 @@ export function PrivacySettings({ settings, onChange }: PrivacySettingsProps) {
 
         {/* Enmascarar nombres de actores */}
         <div className="flex items-center justify-between">
-          <div className="flex items-start gap-3">
-            <User className="h-5 w-5 text-gray-400 mt-0.5" />
+          <div className="flex flex-wrap items-start gap-3">
+            <User className="h-5 w-5 text-gray-400 dark:text-gray-500 mt-0.5" />
             <div className="space-y-1">
               <Label htmlFor="maskActorNames" className="text-sm font-medium cursor-pointer">
                 Enmascarar nombres de usuarios

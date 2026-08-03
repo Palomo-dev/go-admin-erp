@@ -38,8 +38,8 @@ export function StepSettings({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <Settings className="h-5 w-5 text-blue-600" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+          <Settings className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Configuración de la Conexión
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -51,8 +51,8 @@ export function StepSettings({
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="connection_name" className="flex items-center gap-2">
-              <Tag className="h-4 w-4 text-gray-500" />
+            <Label htmlFor="connection_name" className="flex flex-wrap items-center gap-2">
+              <Tag className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Nombre de la Conexión *
             </Label>
             <Input
@@ -62,7 +62,7 @@ export function StepSettings({
               placeholder={`Ej: ${provider?.name || 'Proveedor'} - ${connector?.name || 'Conector'}`}
               className="max-w-md"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Un nombre descriptivo para identificar esta conexión
             </p>
           </div>
@@ -72,15 +72,15 @@ export function StepSettings({
       {/* Settings específicos según el proveedor */}
       <Card>
         <CardContent className="p-4 space-y-6">
-          <h4 className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-            <FileText className="h-4 w-4 text-gray-500" />
+          <h4 className="font-medium text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             Configuración Adicional
           </h4>
 
           {/* ID Externo / Merchant ID */}
           <div className="space-y-2">
-            <Label htmlFor="external_id" className="flex items-center gap-2">
-              <Hash className="h-4 w-4 text-gray-500" />
+            <Label htmlFor="external_id" className="flex flex-wrap items-center gap-2">
+              <Hash className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               ID de Comercio / Merchant ID
             </Label>
             <Input
@@ -90,15 +90,15 @@ export function StepSettings({
               placeholder="Ej: merchant_123456"
               className="max-w-md"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Identificador proporcionado por {provider?.name || 'el proveedor'}
             </p>
           </div>
 
           {/* Store ID / Tienda */}
           <div className="space-y-2">
-            <Label htmlFor="store_id" className="flex items-center gap-2">
-              <Hash className="h-4 w-4 text-gray-500" />
+            <Label htmlFor="store_id" className="flex flex-wrap items-center gap-2">
+              <Hash className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               ID de Tienda / Store ID (opcional)
             </Label>
             <Input
@@ -108,7 +108,7 @@ export function StepSettings({
               placeholder="Ej: store_001"
               className="max-w-md"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Identificador de tienda si aplica
             </p>
           </div>
@@ -116,8 +116,8 @@ export function StepSettings({
           {/* Webhook URL (solo lectura, se genera automáticamente) */}
           {connector?.capabilities?.webhooks && (
             <div className="space-y-2">
-              <Label htmlFor="webhook_url" className="flex items-center gap-2">
-                <ExternalLink className="h-4 w-4 text-gray-500" />
+              <Label htmlFor="webhook_url" className="flex flex-wrap items-center gap-2">
+                <ExternalLink className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 URL de Webhook
               </Label>
               <Input
@@ -129,7 +129,7 @@ export function StepSettings({
                 readOnly
                 className="max-w-lg bg-gray-50 dark:bg-gray-800"
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Configura esta URL en el panel de {provider?.name || 'el proveedor'} para recibir notificaciones
               </p>
             </div>
@@ -162,7 +162,7 @@ export function StepSettings({
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="auto_sync">Sincronización automática</Label>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Sincronizar datos automáticamente según programación
                 </p>
               </div>
@@ -177,7 +177,7 @@ export function StepSettings({
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="notifications">Notificaciones de errores</Label>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Recibir alertas cuando ocurran errores de conexión
                 </p>
               </div>
@@ -192,7 +192,7 @@ export function StepSettings({
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="verbose_logs">Logs detallados</Label>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Registrar eventos detallados para depuración
                 </p>
               </div>

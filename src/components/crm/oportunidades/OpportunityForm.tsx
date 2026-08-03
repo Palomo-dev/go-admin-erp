@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/search-select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from '@/components/ui/use-toast';
@@ -33,8 +34,10 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 interface OpportunityFormProps {
   opportunity?: Opportunity;
   initialPipelineId?: string;
+  initialStageId?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
+  hideHeader?: boolean;
 }
 
 interface ProductLine {
@@ -60,7 +63,7 @@ interface CustomLine {
   unit_price: number;
 }
 
-export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onCancel }: OpportunityFormProps) {
+export function OpportunityForm({ opportunity, initialPipelineId, initialStageId, onSuccess, onCancel, hideHeader }: OpportunityFormProps) {
   const router = useRouter();
   const isEditing = !!opportunity;
 
@@ -76,7 +79,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
 
   // Form state - usar initialPipelineId si se proporciona
   const [pipelineId, setPipelineId] = useState(opportunity?.pipeline_id || initialPipelineId || '');
-  const [stageId, setStageId] = useState(opportunity?.stage_id || '');
+  const [stageId, setStageId] = useState(opportunity?.stage_id || initialStageId || '');
   const [customerId, setCustomerId] = useState(opportunity?.customer_id || '');
   const [name, setName] = useState(opportunity?.name || '');
   const [amount, setAmount] = useState(opportunity?.amount?.toString() || '');
@@ -130,7 +133,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
 
   useEffect(() => {
     if (opportunity?.id) {
-      loadOpportunityProducts();
+      loadOpportunityRelations();
     }
   }, [opportunity?.id]);
 
@@ -182,9 +185,10 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
     }
   };
 
-  const loadOpportunityProducts = async () => {
+  const loadOpportunityRelations = async () => {
     if (!opportunity?.id) return;
     try {
+      // Cargar productos
       const productsData = await opportunitiesService.getOpportunityProducts(opportunity.id);
       setProductLines(
         productsData.map((p) => ({
@@ -195,8 +199,31 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
           unit_price: p.unit_price,
         }))
       );
+
+      // Cargar espacios
+      const spacesData = await opportunitiesService.getOpportunitySpaces(opportunity.id);
+      setSpaceLines(
+        spacesData.map((s: any) => ({
+          id: s.id,
+          space_id: s.space_id,
+          space_name: s.space?.label || 'Espacio',
+          nights: s.nights,
+          unit_price: s.unit_price,
+        }))
+      );
+
+      // Cargar conceptos personalizados
+      const customData = await opportunitiesService.getOpportunityCustomLines(opportunity.id);
+      setCustomLines(
+        customData.map((c) => ({
+          id: c.id,
+          concept: c.concept,
+          quantity: c.quantity,
+          unit_price: c.unit_price,
+        }))
+      );
     } catch (error) {
-      console.error('Error cargando productos:', error);
+      console.error('Error cargando relaciones:', error);
     }
   };
 
@@ -309,9 +336,30 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
           salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : null,
           commission_rate: commissionRate || 0,
           commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
+          products: productLines
+            .filter((p) => p.product_id > 0)
+            .map((p) => ({
+              product_id: p.product_id,
+              quantity: p.quantity,
+              unit_price: p.unit_price,
+            })),
+          spaces: spaceLines
+            .filter((s) => s.space_id !== '')
+            .map((s) => ({
+              space_id: s.space_id,
+              nights: s.nights,
+              unit_price: s.unit_price,
+            })),
+          customLines: customLines
+            .filter((c) => c.concept.trim() !== '')
+            .map((c) => ({
+              concept: c.concept,
+              quantity: c.quantity,
+              unit_price: c.unit_price,
+            })),
         });
         toast({
-          title: 'Éxito',
+          title: 'Exito',
           description: 'Oportunidad actualizada correctamente',
         });
       } else {
@@ -334,6 +382,20 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
               product_id: p.product_id,
               quantity: p.quantity,
               unit_price: p.unit_price,
+            })),
+          spaces: spaceLines
+            .filter((s) => s.space_id !== '')
+            .map((s) => ({
+              space_id: s.space_id,
+              nights: s.nights,
+              unit_price: s.unit_price,
+            })),
+          customLines: customLines
+            .filter((c) => c.concept.trim() !== '')
+            .map((c) => ({
+              concept: c.concept,
+              quantity: c.quantity,
+              unit_price: c.unit_price,
             })),
         };
         await opportunitiesService.createOpportunity(input);
@@ -379,20 +441,22 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={handleCancel}
-          className="text-gray-600 dark:text-gray-400"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {isEditing ? 'Editar Oportunidad' : 'Nueva Oportunidad'}
-        </h1>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center gap-4">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleCancel}
+            className="text-gray-600 dark:text-gray-400"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {isEditing ? 'Editar Oportunidad' : 'Nueva Oportunidad'}
+          </h1>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Información principal */}
@@ -547,19 +611,16 @@ export function OpportunityForm({ opportunity, initialPipelineId, onSuccess, onC
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
                 Comisionista
               </Label>
-              <Select value={salespersonId} onValueChange={setSalespersonId}>
-                <SelectTrigger className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
-                  <SelectValue placeholder="Seleccionar comisionista" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <SelectItem value="__none__">Sin asignar</SelectItem>
-                  {organizationMembers.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchSelect
+                options={organizationMembers.map((m) => ({ value: m.id, label: m.name }))}
+                value={salespersonId}
+                onValueChange={setSalespersonId}
+                placeholder="Seleccionar comisionista"
+                searchPlaceholder="Buscar comisionista..."
+                noneLabel="Sin asignar"
+                noneValue="__none__"
+                className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
+              />
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">

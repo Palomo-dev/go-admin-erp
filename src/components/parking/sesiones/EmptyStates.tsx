@@ -23,7 +23,7 @@ export function EmptyState({
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col items-center justify-center min-h-[400px] bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
-        {icon || <Building2 className="h-16 w-16 text-gray-400 mb-4" />}
+        {icon || <Building2 className="h-16 w-16 text-gray-400 dark:text-gray-500 mb-4" />}
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
           {title}
         </h2>

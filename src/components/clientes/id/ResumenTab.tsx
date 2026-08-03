@@ -253,7 +253,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
               };
               return (
                 <div key={item.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 sm:px-4 py-2">
-                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                     {iconMap[item.tipo]}
                     <div className="min-w-0">
                       <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">{item.titulo}</span>

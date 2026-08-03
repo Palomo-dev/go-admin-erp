@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchSelect } from '@/components/ui/search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
@@ -1133,24 +1134,16 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             <Label htmlFor="salesperson" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
               Vendedor
             </Label>
-            <Select value={salespersonId} onValueChange={setSalespersonId}>
-              <SelectTrigger className="
-                w-full text-sm
-                bg-white dark:bg-gray-900
-                border-gray-300 dark:border-gray-600
-                text-gray-900 dark:text-gray-100
-              ">
-                <SelectValue placeholder="Seleccionar vendedor" />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <SelectItem value="__none__" className="text-gray-900 dark:text-gray-100">Sin asignar</SelectItem>
-                {organizationMembers.map((member) => (
-                  <SelectItem key={member.id} value={member.id} className="text-gray-900 dark:text-gray-100">
-                    {member.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchSelect
+              options={organizationMembers.map((m) => ({ value: m.id, label: m.name }))}
+              value={salespersonId}
+              onValueChange={setSalespersonId}
+              placeholder="Seleccionar vendedor"
+              searchPlaceholder="Buscar vendedor..."
+              noneLabel="Sin asignar"
+              noneValue="__none__"
+              className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-300 dark:border-gray-600"
+            />
           </div>
           <div>
             <Label htmlFor="commission-rate" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">

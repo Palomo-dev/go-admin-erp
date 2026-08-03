@@ -109,8 +109,8 @@ export function StepConfirm({
 
       {/* Cliente */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <User className="h-5 w-5 text-blue-600" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
+          <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Cliente
         </h3>
         <div className="space-y-2">
@@ -149,8 +149,8 @@ export function StepConfirm({
 
       {/* Fechas */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-blue-600" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Fechas de Estadía
         </h3>
         <div className="space-y-3">
@@ -176,8 +176,8 @@ export function StepConfirm({
 
       {/* Espacios */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <DoorOpen className="h-5 w-5 text-blue-600" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
+          <DoorOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Espacios Seleccionados
         </h3>
         <div className="space-y-3">
@@ -237,8 +237,8 @@ export function StepConfirm({
 
       {/* Pago */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <CreditCard className="h-5 w-5 text-blue-600" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
+          <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Pago
         </h3>
         <div className="space-y-3">

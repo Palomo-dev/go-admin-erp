@@ -164,7 +164,7 @@ export function CheckoutDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-xl">
             <DoorOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             Check-out - {reservation.code}
           </DialogTitle>
@@ -216,8 +216,8 @@ export function CheckoutDialog({
 
           {/* Información del Huésped */}
           <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <User className="h-5 w-5 text-gray-400" />
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <User className="h-5 w-5 text-gray-400 dark:text-gray-500" />
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                 Información del Huésped
               </h3>
@@ -240,7 +240,7 @@ export function CheckoutDialog({
 
           {/* Detalles de la Reserva */}
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
               <Calendar className="h-5 w-5" />
               Detalles de la Reserva
             </h3>
@@ -260,8 +260,8 @@ export function CheckoutDialog({
             </div>
 
             <div className="mt-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <DoorOpen className="h-4 w-4 text-gray-400" />
+              <div className="flex flex-wrap items-center gap-2">
+                <DoorOpen className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Espacios Asignados:
                 </p>
@@ -289,13 +289,13 @@ export function CheckoutDialog({
           {/* Detalle del Folio */}
           {reservation.folio ? (
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex flex-wrap items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Resumen del Folio
               </h3>
 
               {hasPendingBalance && (
-                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
+                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex flex-wrap items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-red-900 dark:text-red-100">
@@ -367,7 +367,7 @@ export function CheckoutDialog({
             </div>
           ) : (
             <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-center">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+              <FileText className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
               <p className="text-gray-500 dark:text-gray-400">
                 No hay folio asociado a esta reserva
               </p>
@@ -390,9 +390,9 @@ export function CheckoutDialog({
                 />
                 <Label
                   htmlFor="generateInvoice"
-                  className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                  className="text-sm font-normal cursor-pointer flex flex-wrap items-center gap-2"
                 >
-                  <FileCheck className="h-4 w-4 text-gray-400" />
+                  <FileCheck className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   Generar Factura
                 </Label>
               </div>
@@ -404,9 +404,9 @@ export function CheckoutDialog({
                 />
                 <Label
                   htmlFor="generateReceipt"
-                  className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                  className="text-sm font-normal cursor-pointer flex flex-wrap items-center gap-2"
                 >
-                  <Receipt className="h-4 w-4 text-gray-400" />
+                  <Receipt className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   Generar Recibo de Pago
                 </Label>
               </div>

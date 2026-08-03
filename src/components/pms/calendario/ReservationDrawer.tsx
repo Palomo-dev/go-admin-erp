@@ -291,7 +291,7 @@ export function ReservationDrawer({
           <div className="mt-6 space-y-6">
             {/* Customer Info */}
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
                 <User className="h-4 w-4" />
                 Cliente
               </h3>
@@ -316,7 +316,7 @@ export function ReservationDrawer({
 
             {/* Space and Dates */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 Espacio y Fechas
               </h3>
@@ -342,7 +342,7 @@ export function ReservationDrawer({
                     <p className="font-medium">
                       {spaces.find(s => s.id === reservation.spaceId)?.label || reservation.spaceName || 'Sin asignar'}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {spaces.find(s => s.id === reservation.spaceId)?.spaceTypeName}
                     </p>
                   </div>
@@ -382,7 +382,7 @@ export function ReservationDrawer({
                         {format(new Date(reservation.checkin + 'T00:00:00'), 'dd MMM yyyy', { locale: es })}
                       </p>
                       {reservation.actualCheckinAt && (
-                        <p className="text-xs text-green-600">
+                        <p className="text-xs text-green-600 dark:text-green-400">
                           Registrado: {format(new Date(reservation.actualCheckinAt), 'HH:mm')}
                         </p>
                       )}
@@ -422,7 +422,7 @@ export function ReservationDrawer({
                         {format(new Date(reservation.checkout + 'T00:00:00'), 'dd MMM yyyy', { locale: es })}
                       </p>
                       {reservation.actualCheckoutAt && (
-                        <p className="text-xs text-green-600">
+                        <p className="text-xs text-green-600 dark:text-green-400">
                           Registrado: {format(new Date(reservation.actualCheckoutAt), 'HH:mm')}
                         </p>
                       )}
@@ -434,7 +434,7 @@ export function ReservationDrawer({
               {/* Nights & Occupancy */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
+                  <Label className="flex flex-wrap items-center gap-2">
                     <Clock className="h-4 w-4" />
                     Noches
                   </Label>
@@ -444,7 +444,7 @@ export function ReservationDrawer({
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
+                  <Label className="flex flex-wrap items-center gap-2">
                     <Users className="h-4 w-4" />
                     Ocupantes
                   </Label>
@@ -466,7 +466,7 @@ export function ReservationDrawer({
               {/* Total */}
               {reservation.totalEstimated && (
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
+                  <Label className="flex flex-wrap items-center gap-2">
                     <DollarSign className="h-4 w-4" />
                     Total estimado
                   </Label>
@@ -501,7 +501,7 @@ export function ReservationDrawer({
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+              <Label className="flex flex-wrap items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Notas
               </Label>

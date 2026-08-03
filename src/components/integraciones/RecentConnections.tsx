@@ -65,7 +65,7 @@ export function RecentConnections({ connections, loading, onViewConnection }: Re
     return (
       <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Link2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Conexiones Recientes
           </CardTitle>
@@ -74,10 +74,10 @@ export function RecentConnections({ connections, loading, onViewConnection }: Re
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    <div className="h-4 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
                     <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
                   </div>
                   <div className="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
@@ -94,7 +94,7 @@ export function RecentConnections({ connections, loading, onViewConnection }: Re
     return (
       <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Link2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Conexiones Recientes
           </CardTitle>
@@ -124,7 +124,7 @@ export function RecentConnections({ connections, loading, onViewConnection }: Re
   return (
     <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
           <Link2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Conexiones Recientes
         </CardTitle>
@@ -153,7 +153,7 @@ export function RecentConnections({ connections, loading, onViewConnection }: Re
                 )}
                 onClick={() => onViewConnection?.(connection.id)}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className={cn(
                     'flex items-center justify-center w-10 h-10 rounded-lg text-lg font-bold',
                     categoryColors[category] || 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
@@ -161,7 +161,7 @@ export function RecentConnections({ connections, loading, onViewConnection }: Re
                     {(provider?.name || connector?.name || 'I')[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-gray-900 dark:text-white truncate">
                         {connection.name}
                       </span>
@@ -175,7 +175,7 @@ export function RecentConnections({ connections, loading, onViewConnection }: Re
                       {provider?.name || connector?.name || 'Proveedor desconocido'}
                     </p>
                   </div>
-                  <Badge className={cn('shrink-0 flex items-center gap-1', status.color)}>
+                  <Badge className={cn('shrink-0 flex flex-wrap items-center gap-1', status.color)}>
                     {status.icon}
                     {status.label}
                   </Badge>

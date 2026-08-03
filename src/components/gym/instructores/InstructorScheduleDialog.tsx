@@ -142,14 +142,14 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[900px] max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex flex-wrap items-center gap-2">
             Horario de {instructor.profiles?.first_name} {instructor.profiles?.last_name}
           </DialogTitle>
         </DialogHeader>
 
         {/* Navegación de semana */}
         <div className="flex items-center justify-between py-2 border-b">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={goToToday}>Hoy</Button>
             <Button variant="ghost" size="icon" onClick={previousWeek}>
               <ChevronLeft className="h-4 w-4" />
@@ -159,7 +159,7 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
             </Button>
             <span className="text-lg font-semibold capitalize">{formatMonthYear()}</span>
           </div>
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-4 text-sm">
             <Badge variant="outline" className="font-normal">
               {weeklyStats.totalClasses} clases
             </Badge>
@@ -171,14 +171,14 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
 
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : (
           <div className="flex-1 overflow-auto">
             <div className="min-w-[800px]">
               {/* Header de días */}
               <div className="grid grid-cols-8 border-b sticky top-0 bg-white dark:bg-gray-800 z-10">
-                <div className="p-2 text-center text-sm font-medium text-gray-500 border-r" style={{ width: 60 }}>
+                <div className="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400 border-r" style={{ width: 60 }}>
                   Hora
                 </div>
                 {weekDays.map((day, idx) => (
@@ -186,7 +186,7 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
                     key={idx} 
                     className={`p-2 text-center border-r ${isToday(day) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                   >
-                    <div className="text-xs text-gray-500 uppercase">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">
                       {day.toLocaleDateString('es-ES', { weekday: 'short' })}
                     </div>
                     <div className={`text-lg font-semibold ${isToday(day) ? 'text-blue-600' : 'text-gray-900 dark:text-white'}`}>
@@ -199,7 +199,7 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
               {/* Grid de horas */}
               {hours.map((hour) => (
                 <div key={hour} className="grid grid-cols-8 border-b">
-                  <div className="p-2 text-center text-sm text-gray-500 border-r" style={{ width: 60, minHeight: 60 }}>
+                  <div className="p-2 text-center text-sm text-gray-500 dark:text-gray-400 border-r" style={{ width: 60, minHeight: 60 }}>
                     {hour}:00
                   </div>
                   {weekDays.map((day, idx) => {
@@ -215,11 +215,11 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
                             className="p-1 rounded text-xs bg-blue-100 dark:bg-blue-900/50 border-l-2 border-blue-600 mb-1"
                           >
                             <p className="font-medium text-blue-900 dark:text-blue-100 truncate">{gymClass.title}</p>
-                            <div className="flex items-center gap-1 text-blue-700 dark:text-blue-300">
+                            <div className="flex flex-wrap items-center gap-1 text-blue-700 dark:text-blue-300">
                               <Clock className="h-3 w-3" />
                               {gymClass.duration_minutes}min
                             </div>
-                            <div className="flex items-center gap-1 text-blue-700 dark:text-blue-300">
+                            <div className="flex flex-wrap items-center gap-1 text-blue-700 dark:text-blue-300">
                               <Users className="h-3 w-3" />
                               {gymClass.reservations_count || 0}/{gymClass.capacity}
                             </div>

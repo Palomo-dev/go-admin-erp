@@ -67,8 +67,8 @@ export function MembershipQRDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px] bg-white dark:bg-gray-800">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <QrCode className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <QrCode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Código de Acceso
           </DialogTitle>
         </DialogHeader>
@@ -89,7 +89,7 @@ export function MembershipQRDialog({
 
           {/* QR Code */}
           <div className="flex justify-center">
-            <div className="p-4 bg-white rounded-lg border-2 border-gray-200">
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700">
               <QRCodeSVG 
                 value={accessCode}
                 size={180}
@@ -104,7 +104,7 @@ export function MembershipQRDialog({
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
               Código de acceso
             </p>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <span className="font-mono text-2xl font-bold tracking-wider text-gray-900 dark:text-white">
                 {accessCode}
               </span>
@@ -112,7 +112,7 @@ export function MembershipQRDialog({
                 size="sm"
                 variant="ghost"
                 onClick={handleCopyCode}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700"
               >
                 <Copy className="h-4 w-4" />
               </Button>
@@ -147,7 +147,7 @@ export function MembershipQRDialog({
           {onRegenerateCode && (
             <Button
               variant="ghost"
-              className="w-full text-gray-500"
+              className="w-full text-gray-500 dark:text-gray-400"
               onClick={() => onRegenerateCode(membership)}
             >
               <RefreshCw className="h-4 w-4 mr-2" />

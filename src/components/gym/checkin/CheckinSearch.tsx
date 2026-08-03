@@ -32,7 +32,7 @@ export function CheckinSearch({ onSearch, onScanQR, isLoading }: CheckinSearchPr
     <div className="space-y-4">
       <form onSubmit={handleSubmit} className="flex gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
           <Input
             type="text"
             placeholder="Documento, teléfono, código o nombre..."

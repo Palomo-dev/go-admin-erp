@@ -104,12 +104,12 @@ export function PassCard({
       <div className="p-4">
         {/* Header con placa y acciones */}
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="font-bold text-lg text-gray-900 dark:text-white">
                   {displayPlate}
                 </p>
@@ -200,8 +200,8 @@ export function PassCard({
 
         {/* Info del cliente */}
         <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-gray-400" />
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <User className="h-4 w-4 text-gray-400 dark:text-gray-500" />
             <span className="text-gray-700 dark:text-gray-300 font-medium">
               {pass.customer?.full_name || 'Sin cliente asignado'}
             </span>
@@ -214,7 +214,7 @@ export function PassCard({
         </div>
 
         {/* Fechas */}
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
           <Calendar className="h-4 w-4" />
           <span>
             {formatDate(pass.start_date)} → {formatDate(pass.end_date)}
@@ -223,7 +223,7 @@ export function PassCard({
 
         {/* Footer con estado y precio */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge className={cn('text-xs border', statusConfig.className)}>
               {statusConfig.label}
             </Badge>

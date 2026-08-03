@@ -58,7 +58,7 @@ export function ClassesFilters({
   return (
     <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
       <div className="relative flex-1 min-w-[200px]">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
         <Input
           placeholder="Buscar clase..."
           value={searchTerm}
@@ -68,7 +68,7 @@ export function ClassesFilters({
       </div>
 
       <Select value={typeFilter} onValueChange={onTypeChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Tipo" />
         </SelectTrigger>
         <SelectContent>
@@ -81,7 +81,7 @@ export function ClassesFilters({
       </Select>
 
       <Select value={statusFilter} onValueChange={onStatusChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>
         <SelectContent>

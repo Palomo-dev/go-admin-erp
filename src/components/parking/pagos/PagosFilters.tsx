@@ -32,7 +32,7 @@ export function PagosFilters({ filters, onFiltersChange, paymentMethods }: Pagos
     <div className="flex flex-col lg:flex-row gap-3">
       {/* Búsqueda */}
       <div className="relative flex-1 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
         <Input
           placeholder="Buscar por placa, cliente, referencia..."
           value={filters.search}
@@ -42,8 +42,8 @@ export function PagosFilters({ filters, onFiltersChange, paymentMethods }: Pagos
       </div>
 
       {/* Fecha inicio */}
-      <div className="relative w-40">
-        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      <div className="relative w-full sm:w-40">
+        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
         <Input
           type="date"
           value={filters.startDate}
@@ -53,8 +53,8 @@ export function PagosFilters({ filters, onFiltersChange, paymentMethods }: Pagos
       </div>
 
       {/* Fecha fin */}
-      <div className="relative w-40">
-        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      <div className="relative w-full sm:w-40">
+        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
         <Input
           type="date"
           value={filters.endDate}
@@ -70,7 +70,7 @@ export function PagosFilters({ filters, onFiltersChange, paymentMethods }: Pagos
           onFiltersChange({ ...filters, source: value })
         }
       >
-        <SelectTrigger className="w-40 dark:bg-gray-800 dark:border-gray-700">
+        <SelectTrigger className="w-full sm:w-40 dark:bg-gray-800 dark:border-gray-700">
           <SelectValue placeholder="Origen" />
         </SelectTrigger>
         <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -87,7 +87,7 @@ export function PagosFilters({ filters, onFiltersChange, paymentMethods }: Pagos
           onFiltersChange({ ...filters, status: value })
         }
       >
-        <SelectTrigger className="w-40 dark:bg-gray-800 dark:border-gray-700">
+        <SelectTrigger className="w-full sm:w-40 dark:bg-gray-800 dark:border-gray-700">
           <SelectValue placeholder="Estado" />
         </SelectTrigger>
         <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -103,7 +103,7 @@ export function PagosFilters({ filters, onFiltersChange, paymentMethods }: Pagos
         value={filters.method}
         onValueChange={(value) => onFiltersChange({ ...filters, method: value })}
       >
-        <SelectTrigger className="w-44 dark:bg-gray-800 dark:border-gray-700">
+        <SelectTrigger className="w-full sm:w-44 dark:bg-gray-800 dark:border-gray-700">
           <SelectValue placeholder="Método" />
         </SelectTrigger>
         <SelectContent className="dark:bg-gray-800 dark:border-gray-700">

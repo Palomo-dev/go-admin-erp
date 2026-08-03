@@ -68,7 +68,7 @@ export function SpaceGrid({
 
           return (
             <div key={zone.id}>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 <h3 className="font-semibold text-gray-900 dark:text-white">
                   {zone.name}
                 </h3>

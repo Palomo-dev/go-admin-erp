@@ -200,7 +200,7 @@ export function ParkingSessionDrawer({
       <SheetContent className="sm:max-w-[450px] overflow-y-auto">
         <SheetHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-xl font-bold flex items-center gap-2">
+            <SheetTitle className="text-xl font-bold flex flex-wrap items-center gap-2">
               <Car className="h-5 w-5" />
               {session.vehicle_plate}
             </SheetTitle>
@@ -208,14 +208,14 @@ export function ParkingSessionDrawer({
               {statusLabels[session.status]}
             </Badge>
           </div>
-          <p className="text-sm text-gray-500 capitalize">{session.vehicle_type}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{session.vehicle_type}</p>
         </SheetHeader>
 
         <div className="space-y-6 py-4">
 
           {/* Fechas y Horas */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
               <Calendar className="h-4 w-4" />
               Tiempo de Estadía
             </div>
@@ -246,7 +246,7 @@ export function ParkingSessionDrawer({
               <Separator className="my-2" />
 
               <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                <div className="flex flex-wrap items-center gap-2 text-blue-600 dark:text-blue-400">
                   <Timer className="h-4 w-4" />
                   <span className="font-medium">Duración:</span>
                 </div>
@@ -261,7 +261,7 @@ export function ParkingSessionDrawer({
 
           {/* Tarifa y Cobro */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
               <DollarSign className="h-4 w-4" />
               Información de Cobro
             </div>
@@ -300,7 +300,7 @@ export function ParkingSessionDrawer({
 
           {/* Acciones */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-500">Acciones</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Acciones</p>
             
             <div className="grid grid-cols-2 gap-3">
               {session.status === 'open' && (

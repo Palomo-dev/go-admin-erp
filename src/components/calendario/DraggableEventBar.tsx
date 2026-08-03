@@ -144,7 +144,7 @@ export function DraggableEventBar({
       
       {/* Content */}
       <div className="p-1.5 h-full flex flex-col overflow-hidden text-white">
-        <div className="flex items-start justify-between gap-1">
+        <div className="flex flex-wrap items-start justify-between gap-1">
           <span className="text-xs font-semibold truncate drop-shadow-sm flex-1">
             {event.title}
           </span>

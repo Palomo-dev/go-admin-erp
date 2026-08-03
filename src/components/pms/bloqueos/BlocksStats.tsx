@@ -56,7 +56,7 @@ export function BlocksStats({ stats, isLoading }: BlocksStatsProps) {
       {statCards.map((stat) => (
         <Card key={stat.title}>
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.color}`}>
                 <stat.icon className="h-5 w-5" />
               </div>

@@ -231,7 +231,7 @@ export function RateDialog({
             <div className="space-y-2">
               <Label>Precio por Noche *</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
                   $
                 </span>
                 <Input
@@ -261,7 +261,7 @@ export function RateDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {PRIORITY_OPTIONS.find(p => p.value === priority)?.description || 'Selecciona una prioridad'}
               </p>
             </div>

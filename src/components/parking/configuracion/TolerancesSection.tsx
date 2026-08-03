@@ -24,7 +24,7 @@ export function TolerancesSection({ tolerances, onChange }: TolerancesSectionPro
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg text-gray-900 dark:text-white">
           <Timer className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Tolerancias y Tiempos
         </CardTitle>

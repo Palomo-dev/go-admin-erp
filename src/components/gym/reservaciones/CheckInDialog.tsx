@@ -106,8 +106,8 @@ export function CheckInDialog({ open, onOpenChange, reservation, onCheckInComple
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5 text-green-600" />
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
             Check-in de Clase
           </DialogTitle>
           <DialogDescription>
@@ -133,18 +133,18 @@ export function CheckInDialog({ open, onOpenChange, reservation, onCheckInComple
                 <p className="font-medium text-gray-900 dark:text-white">{gymClass.title}</p>
                 <Badge variant="outline">{getClassTypeLabel(gymClass.class_type)}</Badge>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex flex-wrap items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   {formatDate(gymClass.start_at)}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <Clock className="h-4 w-4" />
                   {formatTime(gymClass.start_at)} - {formatTime(gymClass.end_at)}
                 </div>
               </div>
               {gymClass.room && (
-                <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex flex-wrap items-center gap-1 text-sm text-gray-600 dark:text-gray-400">
                   <MapPin className="h-4 w-4" />
                   {gymClass.room}
                 </div>
@@ -171,7 +171,7 @@ export function CheckInDialog({ open, onOpenChange, reservation, onCheckInComple
           {/* Hora actual */}
           <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <p className="text-sm text-gray-600 dark:text-gray-400">Hora de check-in</p>
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
               {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </p>
           </div>

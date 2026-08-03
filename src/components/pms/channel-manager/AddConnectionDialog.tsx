@@ -134,7 +134,7 @@ export function AddConnectionDialog({
               <SelectContent>
                 {CHANNEL_PROVIDERS.map(provider => (
                   <SelectItem key={provider.id} value={provider.id}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <div
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: provider.color }}

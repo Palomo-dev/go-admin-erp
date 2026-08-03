@@ -51,7 +51,7 @@ export function EntityTimelineTabs({
             key={tab.id}
             value={tab.id}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all',
+              'flex flex-wrap items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all',
               'data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700',
               'data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400'
             )}

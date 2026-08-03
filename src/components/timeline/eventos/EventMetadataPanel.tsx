@@ -100,7 +100,7 @@ export function EventMetadataPanel({ event }: EventMetadataPanelProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
           <Info className="h-5 w-5 text-blue-500" />
           Metadatos
         </CardTitle>
@@ -113,8 +113,8 @@ export function EventMetadataPanel({ event }: EventMetadataPanelProps) {
               key={item.label}
               className="flex items-start justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
             >
-              <div className="flex items-start gap-2 min-w-0 flex-1">
-                <item.icon className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="flex flex-wrap items-start gap-2 min-w-0 flex-1">
+                <item.icon className="h-4 w-4 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs text-gray-500 dark:text-gray-400">{item.label}</p>
                   <p className="text-sm font-mono text-gray-900 dark:text-white truncate" title={item.value}>
@@ -152,8 +152,8 @@ export function EventMetadataPanel({ event }: EventMetadataPanelProps) {
         {/* User Agent */}
         {(userAgent || browserInfo) && (
           <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Monitor className="h-4 w-4 text-gray-400" />
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <Monitor className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               <p className="text-xs text-gray-500 dark:text-gray-400">User Agent / Browser</p>
             </div>
             <p className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">

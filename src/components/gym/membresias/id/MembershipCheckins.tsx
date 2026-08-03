@@ -71,7 +71,7 @@ export function MembershipCheckins({
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-40" />
+          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-full sm:w-40" />
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -94,8 +94,8 @@ export function MembershipCheckins({
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <LogIn className="h-5 w-5 text-blue-600" />
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
+            <LogIn className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Historial de Check-ins
           </CardTitle>
           <Badge variant="outline" className="text-xs">
@@ -104,12 +104,12 @@ export function MembershipCheckins({
         </div>
         
         {/* Mini estadísticas */}
-        <div className="flex items-center gap-4 mt-2 text-xs">
-          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-4 mt-2 text-xs">
+          <div className="flex flex-wrap items-center gap-1 text-gray-500 dark:text-gray-400">
             <Clock className="h-3 w-3" />
             <span>Hoy: <strong className="text-gray-900 dark:text-white">{todayCheckins}</strong></span>
           </div>
-          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-1 text-gray-500 dark:text-gray-400">
             <span>Esta semana: <strong className="text-gray-900 dark:text-white">{weekCheckins}</strong></span>
           </div>
         </div>
@@ -134,7 +134,7 @@ export function MembershipCheckins({
                 <div 
                   key={checkin.id}
                   className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg transition-colors",
+                    "flex flex-wrap items-center gap-3 p-3 rounded-lg transition-colors",
                     isSuccess 
                       ? "bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-900"
                       : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
@@ -154,7 +154,7 @@ export function MembershipCheckins({
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className={cn(
                         "font-medium text-sm",
                         isSuccess 

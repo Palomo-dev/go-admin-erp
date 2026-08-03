@@ -177,7 +177,7 @@ export default function GymPlanesPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                   <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
@@ -190,7 +190,7 @@ export default function GymPlanesPage() {
           </Card>
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                   <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
@@ -203,7 +203,7 @@ export default function GymPlanesPage() {
           </Card>
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
                   <CreditCard className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 </div>
@@ -216,7 +216,7 @@ export default function GymPlanesPage() {
           </Card>
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                   <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -232,13 +232,13 @@ export default function GymPlanesPage() {
 
       {/* Filters */}
       {!isLoading && plans.length > 0 && (
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             <span className="text-sm text-gray-600 dark:text-gray-400">Filtrar:</span>
           </div>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-            <SelectTrigger className="w-40 bg-white dark:bg-gray-800">
+            <SelectTrigger className="w-full sm:w-40 bg-white dark:bg-gray-800">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -255,7 +255,7 @@ export default function GymPlanesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map(i => (
               <div key={i} className="animate-pulse bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex flex-wrap items-center gap-3 mb-4">
                   <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg" />
                   <div className="space-y-2">
                     <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" />
@@ -271,7 +271,7 @@ export default function GymPlanesPage() {
         {/* Empty state */}
         {!isLoading && plans.length === 0 && (
           <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <CreditCard className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               No hay planes creados
             </h3>

@@ -130,7 +130,7 @@ export function AlertaDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
         <SheetHeader className="pb-4">
-          <div className="flex items-start gap-3">
+          <div className="flex flex-wrap items-start gap-3">
             <div className={cn('p-2.5 rounded-xl', sev.color)}>
               <SevIcon className="h-5 w-5" />
             </div>
@@ -203,7 +203,7 @@ export function AlertaDetailSheet({
 
             {/* Notas internas */}
             <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex flex-wrap items-center gap-1">
                 <StickyNote className="h-3.5 w-3.5" /> Notas internas
               </p>
               {notes.length > 0 ? (
@@ -211,14 +211,14 @@ export function AlertaDetailSheet({
                   {notes.map((n, i) => (
                     <div key={i} className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-2 border border-yellow-200 dark:border-yellow-800 text-xs">
                       <p className="text-gray-700 dark:text-gray-300">{n.text}</p>
-                      <p className="text-gray-400 mt-1">
+                      <p className="text-gray-400 dark:text-gray-500 mt-1">
                         {new Date(n.at).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 mb-3">Sin notas</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Sin notas</p>
               )}
               <div className="flex gap-2">
                 <Input
@@ -243,7 +243,7 @@ export function AlertaDetailSheet({
             {/* Reenviar por canal */}
             {channels.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex flex-wrap items-center gap-1">
                   <Send className="h-3.5 w-3.5" /> Reenviar por canal
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -304,7 +304,7 @@ export function AlertaDetailSheet({
                 variant="ghost"
                 onClick={() => handleAction('ignored')}
                 disabled={!!actionLoading}
-                className="text-gray-500"
+                className="text-gray-500 dark:text-gray-400"
               >
                 {actionLoading === 'ignored' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <XCircle className="h-4 w-4 mr-1" />}
                 Ignorar
@@ -331,8 +331,8 @@ export function AlertaDetailSheet({
 
 function InfoRow({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <Icon className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <Icon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
       <span className="text-gray-500 dark:text-gray-400 w-24 flex-shrink-0">{label}</span>
       <span className="text-gray-700 dark:text-gray-300 font-medium truncate">{value}</span>
     </div>

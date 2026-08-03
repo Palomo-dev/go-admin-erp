@@ -48,7 +48,7 @@ function ReservationItem({
 
   return (
     <div className={cn(
-      'flex items-center gap-4 p-4 rounded-lg border transition-colors',
+      'flex flex-wrap items-center gap-4 p-4 rounded-lg border transition-colors',
       isSelected 
         ? 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/30' 
         : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800',
@@ -60,7 +60,7 @@ function ReservationItem({
       />
       
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
           <span className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
             {reservation.code}
           </span>
@@ -75,21 +75,21 @@ function ReservationItem({
           )}
         </div>
         
-        <div className="flex items-center gap-1 text-sm text-gray-900 dark:text-white">
-          <User className="h-3.5 w-3.5 text-gray-400" />
+        <div className="flex flex-wrap items-center gap-1 text-sm text-gray-900 dark:text-white">
+          <User className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
           <span className="truncate">{reservation.customerName}</span>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1">
+          <span className="flex flex-wrap items-center gap-1">
             <Calendar className="h-3 w-3" />
             {formatDate(reservation.checkin)} - {formatDate(reservation.checkout)}
           </span>
-          <span className="flex items-center gap-1">
+          <span className="flex flex-wrap items-center gap-1">
             <Moon className="h-3 w-3" />
             {reservation.nights} noche(s)
           </span>
-          <span className="flex items-center gap-1">
+          <span className="flex flex-wrap items-center gap-1">
             <Users className="h-3 w-3" />
             {reservation.occupantCount} huésped(es)
           </span>
@@ -115,12 +115,12 @@ function ReservationItem({
 
 function ReservationSkeleton() {
   return (
-    <div className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
+    <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
       <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded" />
       <div className="flex-1 space-y-2">
-        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-3 w-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-4 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-4 w-full sm:w-48 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-3 w-full sm:w-64 bg-gray-200 dark:bg-gray-700 rounded" />
       </div>
       <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
     </div>
@@ -141,8 +141,8 @@ export function UnassignedList({
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
+          <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+            <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             Reservas Sin Asignar
             {reservations.length > 0 && (
               <Badge variant="secondary" className="ml-2">

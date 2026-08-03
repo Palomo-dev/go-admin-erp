@@ -223,10 +223,10 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
               <button
                 onClick={() => { setTargetType('all'); setSelectedUserIds([]); }}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all',
+                  'flex-1 flex flex-wrap items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all',
                   targetType === 'all'
                     ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                    : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-gray-300',
+                    : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300',
                 )}
               >
                 <Users className="h-3.5 w-3.5" /> Toda la organización
@@ -234,10 +234,10 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
               <button
                 onClick={() => setTargetType('specific')}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all',
+                  'flex-1 flex flex-wrap items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all',
                   targetType === 'specific'
                     ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                    : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-gray-300',
+                    : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300',
                 )}
               >
                 <User className="h-3.5 w-3.5" /> Seleccionar personas
@@ -249,7 +249,7 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
                 {/* Filtros por rol y cargo */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
-                    <Shield className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                    <Shield className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
                     <select
                       value={filterRole}
                       onChange={(e) => setFilterRole(e.target.value)}
@@ -262,7 +262,7 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
                     </select>
                   </div>
                   <div className="relative">
-                    <Briefcase className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                    <Briefcase className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
                     <select
                       value={filterJob}
                       onChange={(e) => setFilterJob(e.target.value)}
@@ -278,7 +278,7 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
 
                 {/* Búsqueda */}
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                  <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
                   <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -289,7 +289,7 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
 
                 {/* Seleccionar / deseleccionar todos */}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {filteredMembers.length} persona{filteredMembers.length !== 1 ? 's' : ''} encontrada{filteredMembers.length !== 1 ? 's' : ''}
                   </span>
                   <button
@@ -303,7 +303,7 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
                 {/* Lista de miembros */}
                 <div className="max-h-36 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-100 dark:divide-gray-800">
                   {filteredMembers.length === 0 ? (
-                    <p className="text-xs text-gray-400 p-3 text-center">No se encontraron miembros</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 p-3 text-center">No se encontraron miembros</p>
                   ) : (
                     filteredMembers.map((m) => {
                       const selected = selectedUserIds.includes(m.user_id);
@@ -311,7 +311,7 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
                         <label
                           key={m.user_id}
                           className={cn(
-                            'flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors',
+                            'flex flex-wrap items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors',
                             selected && 'bg-blue-50/50 dark:bg-blue-950/20',
                           )}
                         >
@@ -319,11 +319,11 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
                             type="checkbox"
                             checked={selected}
                             onChange={() => toggleUser(m.user_id)}
-                            className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400 focus:ring-blue-500"
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{m.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{m.email}</p>
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{m.email}</p>
                           </div>
                           <div className="flex gap-1 flex-shrink-0">
                             {m.role_name && (
@@ -358,7 +358,7 @@ export function CreateAlertDialog({ open, onOpenChange, onSubmit }: CreateAlertD
                         </button>
                       </Badge>
                     ))}
-                    <span className="text-[10px] text-gray-400 self-center ml-1">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 self-center ml-1">
                       {selectedMembers.length} seleccionado{selectedMembers.length !== 1 ? 's' : ''}
                     </span>
                   </div>

@@ -47,13 +47,13 @@ export function SpaceTypeCard({
 
   return (
     <Card className="p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-start gap-2 mb-2">
+          <div className="flex flex-wrap items-start gap-2 mb-2">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                   {spaceType.name}
                 </h3>
@@ -86,18 +86,18 @@ export function SpaceTypeCard({
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                 <DollarSign className="h-4 w-4" />
                 <span className="font-medium">{formatCurrency(Number(spaceType.base_rate))}</span>
               </div>
               
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                 <Users className="h-4 w-4" />
                 <span>{spaceType.capacity} {spaceType.capacity === 1 ? 'persona' : 'personas'}</span>
               </div>
 
               {spaceType.area_sqm && (
-                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                   <MapPin className="h-4 w-4" />
                   <span>{spaceType.area_sqm} m²</span>
                 </div>

@@ -17,8 +17,8 @@ export function ReservationSettings({ settings, onChange }: ReservationSettingsP
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <CalendarCheck className="h-5 w-5 text-green-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+          <CalendarCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
           Reservas
         </CardTitle>
         <CardDescription>
@@ -65,7 +65,7 @@ export function ReservationSettings({ settings, onChange }: ReservationSettingsP
               max="100"
               value={settings.depositPercentage}
               onChange={(e) => onChange('depositPercentage', parseInt(e.target.value) || 0)}
-              className="w-32"
+              className="w-full sm:w-32"
             />
           </div>
         )}
@@ -78,7 +78,7 @@ export function ReservationSettings({ settings, onChange }: ReservationSettingsP
             min="0"
             value={settings.cancellationPolicyDays}
             onChange={(e) => onChange('cancellationPolicyDays', parseInt(e.target.value) || 0)}
-            className="w-32"
+            className="w-full sm:w-32"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Días antes del check-in para cancelar sin penalización
@@ -111,7 +111,7 @@ export function ReservationSettings({ settings, onChange }: ReservationSettingsP
               max="50"
               value={settings.overbookingPercentage}
               onChange={(e) => onChange('overbookingPercentage', parseInt(e.target.value) || 0)}
-              className="w-32"
+              className="w-full sm:w-32"
             />
           </div>
         )}

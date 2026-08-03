@@ -116,12 +116,12 @@ export function PassesTable({
               >
                 {/* Placa / Cliente */}
                 <TableCell>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                       <Car className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-bold text-gray-900 dark:text-white">
                           {displayPlate}
                         </span>
@@ -131,7 +131,7 @@ export function PassesTable({
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="flex flex-wrap items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                         <User className="h-3 w-3" />
                         <span>{pass.customer?.full_name || 'Sin cliente'}</span>
                       </div>
@@ -152,7 +152,7 @@ export function PassesTable({
                     <span className="text-gray-700 dark:text-gray-300">
                       {formatDate(pass.start_date)}
                     </span>
-                    <span className="mx-1 text-gray-400">→</span>
+                    <span className="mx-1 text-gray-400 dark:text-gray-500">→</span>
                     <span className="text-gray-700 dark:text-gray-300">
                       {formatDate(pass.end_date)}
                     </span>

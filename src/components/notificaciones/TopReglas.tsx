@@ -34,7 +34,7 @@ export function TopReglas({ rules, isLoading, onToggleRule }: TopReglasProps) {
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <Zap className="h-5 w-5 text-blue-500" />
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Top Reglas</h2>
       </div>
@@ -49,7 +49,7 @@ export function TopReglas({ rules, isLoading, onToggleRule }: TopReglasProps) {
           {rules.map(rule => (
             <div
               key={rule.id}
-              className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -60,22 +60,22 @@ export function TopReglas({ rules, isLoading, onToggleRule }: TopReglasProps) {
                     {rule.severity}
                   </Badge>
                   {!rule.active && (
-                    <Badge variant="outline" className="text-xs text-gray-400">Inactiva</Badge>
+                    <Badge variant="outline" className="text-xs text-gray-400 dark:text-gray-500">Inactiva</Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs py-0 h-5">{rule.source_module}</Badge>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     Canales: {rule.channels.join(', ') || 'ninguno'}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                 <div className="text-right">
                   <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
                     {rule.fire_count ?? 0}
                   </p>
-                  <p className="text-xs text-gray-400">disparos</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">disparos</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -86,7 +86,7 @@ export function TopReglas({ rules, isLoading, onToggleRule }: TopReglasProps) {
                   {rule.active ? (
                     <ToggleRight className="h-5 w-5 text-green-500" />
                   ) : (
-                    <ToggleLeft className="h-5 w-5 text-gray-400" />
+                    <ToggleLeft className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   )}
                 </Button>
               </div>

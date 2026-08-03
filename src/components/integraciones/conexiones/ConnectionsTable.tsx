@@ -49,10 +49,10 @@ function LoadingSkeleton() {
       {[1, 2, 3, 4, 5].map((i) => (
         <TableRow key={i}>
           <TableCell>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Skeleton className="h-10 w-10 rounded-lg" />
               <div className="space-y-2">
-                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-full sm:w-32" />
                 <Skeleton className="h-3 w-24" />
               </div>
             </div>
@@ -143,7 +143,7 @@ export function ConnectionsTable({
                 >
                   {/* Conexión (Proveedor + Nombre) */}
                   <TableCell>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
                         {provider?.name?.[0]?.toUpperCase() || 'C'}
                       </div>
@@ -169,7 +169,7 @@ export function ConnectionsTable({
                         size="sm"
                       />
                       {connection.error_count_24h > 0 && (
-                        <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                        <div className="flex flex-wrap items-center gap-1 text-xs text-red-600 dark:text-red-400">
                           <AlertTriangle className="h-3 w-3" />
                           {connection.error_count_24h} errores (24h)
                         </div>
@@ -194,12 +194,12 @@ export function ConnectionsTable({
                   {/* Sucursal */}
                   <TableCell>
                     {branch ? (
-                      <div className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
-                        <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                      <div className="flex flex-wrap items-center gap-1 text-sm text-gray-700 dark:text-gray-300">
+                        <Building2 className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                         {branch.name}
                       </div>
                     ) : (
-                      <span className="text-sm text-gray-400">—</span>
+                      <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
                     )}
                   </TableCell>
 

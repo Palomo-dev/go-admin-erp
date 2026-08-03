@@ -24,7 +24,7 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+          <CardTitle className="text-lg flex flex-wrap items-center gap-2 text-gray-900 dark:text-white">
             <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
             Ingresos por Período
           </CardTitle>
@@ -36,14 +36,14 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-64 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400">Cargando...</div>
+            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
           </div>
         ) : data.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-gray-400">
+          <div className="h-64 flex items-center justify-center text-gray-400 dark:text-gray-500">
             No hay datos para el período seleccionado
           </div>
         ) : (
-          <div className="h-64 flex items-end gap-2 overflow-x-auto pb-6">
+          <div className="h-64 flex flex-wrap items-end gap-2 overflow-x-auto pb-6">
             {data.map((item, index) => {
               const height = (item.revenue / maxRevenue) * 100;
 

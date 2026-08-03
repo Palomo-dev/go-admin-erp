@@ -105,14 +105,14 @@ export function SessionInfoCard({ session, isLoading }: SessionInfoCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2">
           <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Información de la Sesión
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             {getVehicleIcon(session.vehicle_type)}
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Vehículo</p>
@@ -125,7 +125,7 @@ export function SessionInfoCard({ session, isLoading }: SessionInfoCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <MapPin className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Espacio</p>
@@ -140,7 +140,7 @@ export function SessionInfoCard({ session, isLoading }: SessionInfoCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Entrada</p>
@@ -153,7 +153,7 @@ export function SessionInfoCard({ session, isLoading }: SessionInfoCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Salida</p>
@@ -168,7 +168,7 @@ export function SessionInfoCard({ session, isLoading }: SessionInfoCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <Timer className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Duración</p>
@@ -185,7 +185,7 @@ export function SessionInfoCard({ session, isLoading }: SessionInfoCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400">Monto</p>

@@ -164,8 +164,8 @@ export function TripAdvisorContentPanel({
     return (
       <Card className={cn('overflow-hidden', className)}>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-          <span className="ml-2 text-sm text-gray-500">Cargando TripAdvisor...</span>
+          <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" />
+          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Cargando TripAdvisor...</span>
         </CardContent>
       </Card>
     );
@@ -180,7 +180,7 @@ export function TripAdvisorContentPanel({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-base font-semibold flex flex-wrap items-center gap-2">
               {/* Ollie Logo */}
               <svg width={20} height={20} viewBox="0 0 24 24" fill="none" className="shrink-0">
                 <circle cx="12" cy="12" r="12" className="fill-[#00AA6C] dark:fill-[#84E9BD]" />
@@ -206,7 +206,7 @@ export function TripAdvisorContentPanel({
               {locationDetails?.name || locationName}
             </h3>
             {locationDetails?.address_obj?.address_string && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-1 mt-0.5">
                 <MapPin className="h-3 w-3 shrink-0" />
                 {locationDetails.address_obj.address_string}
               </p>

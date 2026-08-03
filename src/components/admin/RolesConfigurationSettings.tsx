@@ -233,7 +233,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
             Gestiona las políticas y comportamiento del sistema de roles y permisos
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -259,7 +259,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
       {hasChanges && (
         <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
@@ -306,7 +306,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
       {/* Regla de Precedencia */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <CardTitle className="text-gray-900 dark:text-white">
               Regla de Precedencia
@@ -317,7 +317,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="flex flex-wrap items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
@@ -337,7 +337,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
       {/* Políticas de Permisos */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Settings className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <CardTitle className="text-gray-900 dark:text-white">
               Políticas de Permisos
@@ -435,7 +435,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={`p-2 rounded-lg ${config.allowEditSystemPermissions ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
                 <CheckCircle2 className={`h-5 w-5 ${config.allowEditSystemPermissions ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
               </div>
@@ -449,7 +449,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={`p-2 rounded-lg ${config.allowDuplicateSystemRoles ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
                 <CheckCircle2 className={`h-5 w-5 ${config.allowDuplicateSystemRoles ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
               </div>
@@ -463,7 +463,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={`p-2 rounded-lg ${config.strictMode ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
                 <Shield className={`h-5 w-5 ${config.strictMode ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`} />
               </div>
@@ -477,7 +477,7 @@ export default function RolesConfigurationSettings({ organizationId }: RolesConf
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className={`p-2 rounded-lg ${config.inheritFromRole ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
                 <CheckCircle2 className={`h-5 w-5 ${config.inheritFromRole ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400'}`} />
               </div>

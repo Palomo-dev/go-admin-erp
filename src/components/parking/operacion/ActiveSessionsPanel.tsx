@@ -78,7 +78,7 @@ function SessionRow({
       onClick={onSelect}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className={cn(
             "p-2 rounded-lg",
             session.is_pass_holder 
@@ -93,7 +93,7 @@ function SessionRow({
             )} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-gray-900 dark:text-white">
                 {session.vehicle_plate}
               </span>
@@ -112,9 +112,9 @@ function SessionRow({
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-right">
-            <div className="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-white">
+            <div className="flex flex-wrap items-center gap-1 text-sm font-medium text-gray-900 dark:text-white">
               <Clock className="h-3 w-3" />
               {duration}
             </div>
@@ -146,7 +146,7 @@ export function ActiveSessionsPanel({
     <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 h-full">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Sesiones Activas
           </CardTitle>

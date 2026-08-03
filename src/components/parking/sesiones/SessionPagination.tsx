@@ -34,7 +34,7 @@ export function SessionPagination({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <span>Mostrando</span>
           <Select
             value={pageSize.toString()}
@@ -55,13 +55,13 @@ export function SessionPagination({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <span>
             {startItem} - {endItem} de {totalItems}
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <Button
             variant="outline"
             size="icon"
@@ -81,7 +81,7 @@ export function SessionPagination({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
-          <div className="flex items-center gap-1 px-2">
+          <div className="flex flex-wrap items-center gap-1 px-2">
             <span className="text-sm text-gray-600 dark:text-gray-400">
               Página <strong>{currentPage}</strong> de <strong>{totalPages}</strong>
             </span>

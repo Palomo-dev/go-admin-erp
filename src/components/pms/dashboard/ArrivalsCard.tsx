@@ -36,9 +36,9 @@ function ArrivalItem({ arrival, onCheckIn }: { arrival: TodayArrival; onCheckIn?
   const status = statusConfig[arrival.status] || { label: arrival.status, variant: 'secondary' as const };
 
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+    <div className="flex flex-wrap items-center gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
           <span className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
             {arrival.code}
           </span>
@@ -46,11 +46,11 @@ function ArrivalItem({ arrival, onCheckIn }: { arrival: TodayArrival; onCheckIn?
             {status.label}
           </Badge>
         </div>
-        <div className="flex items-center gap-1 text-sm text-gray-900 dark:text-white">
-          <User className="h-3.5 w-3.5 text-gray-400" />
+        <div className="flex flex-wrap items-center gap-1 text-sm text-gray-900 dark:text-white">
+          <User className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
           <span className="truncate">{arrival.customerName}</span>
         </div>
-        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <div className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
           <DoorOpen className="h-3 w-3" />
           <span>{arrival.spaces.join(', ') || 'Sin asignar'}</span>
         </div>
@@ -78,10 +78,10 @@ function ArrivalItem({ arrival, onCheckIn }: { arrival: TodayArrival; onCheckIn?
 
 function ArrivalSkeleton() {
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
+    <div className="flex flex-wrap items-center gap-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
       <div className="flex-1 space-y-2">
         <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-4 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded" />
         <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
       </div>
       <div className="space-y-2">
@@ -99,8 +99,8 @@ export function ArrivalsCard({ arrivals, isLoading = false, onCheckIn }: Arrival
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-            <LogIn className="h-5 w-5 text-green-600" />
+          <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+            <LogIn className="h-5 w-5 text-green-600 dark:text-green-400" />
             Llegadas Hoy
             {arrivals.length > 0 && (
               <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
@@ -129,7 +129,7 @@ export function ArrivalsCard({ arrivals, isLoading = false, onCheckIn }: Arrival
         ) : arrivals.length === 0 ? (
           <div className="text-center py-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 mb-3">
-              <LogIn className="h-6 w-6 text-gray-400" />
+              <LogIn className="h-6 w-6 text-gray-400 dark:text-gray-500" />
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               No hay llegadas programadas para hoy

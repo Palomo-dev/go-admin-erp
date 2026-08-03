@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId as getOrgId } from '@/lib/hooks/useOrganization';
 import {
   Opportunity,
   OpportunityFilters,
@@ -11,15 +12,18 @@ import {
   Activity,
   ForecastData,
   OpportunityProduct,
+  OpportunityCustomLine,
+  OpportunityTask,
+  OpportunityNote,
+  CustomerDetails,
 } from './types';
 
 class OpportunitiesService {
   private getOrganizationId(): number {
     if (typeof window === 'undefined') {
-      return 2; // Default para SSR
+      return 0;
     }
-    const orgId = localStorage.getItem('currentOrganizationId');
-    return orgId ? Number(orgId) : 2;
+    return getOrgId();
   }
 
   async getPipelines(): Promise<Pipeline[]> {
@@ -229,6 +233,32 @@ class OpportunitiesService {
       await supabase.from('opportunity_products').insert(productsToInsert);
     }
 
+    // Agregar espacios si existen
+    if (input.spaces && input.spaces.length > 0) {
+      const spacesToInsert = input.spaces.map((s) => ({
+        opportunity_id: data.id,
+        space_id: s.space_id,
+        nights: s.nights,
+        unit_price: s.unit_price,
+        total_price: s.nights * s.unit_price,
+      }));
+
+      await supabase.from('opportunity_spaces').insert(spacesToInsert);
+    }
+
+    // Agregar conceptos personalizados si existen
+    if (input.customLines && input.customLines.length > 0) {
+      const customToInsert = input.customLines.map((c) => ({
+        opportunity_id: data.id,
+        concept: c.concept,
+        quantity: c.quantity,
+        unit_price: c.unit_price,
+        total_price: c.quantity * c.unit_price,
+      }));
+
+      await supabase.from('opportunity_custom_lines').insert(customToInsert);
+    }
+
     return data;
   }
 
@@ -257,12 +287,60 @@ class OpportunitiesService {
       .single();
 
     if (error) throw error;
+
+    // Sincronizar productos: eliminar los existentes y insertar los nuevos
+    if (input.products !== undefined) {
+      await supabase.from('opportunity_products').delete().eq('opportunity_id', id);
+      if (input.products.length > 0) {
+        const productsToInsert = input.products.map((p) => ({
+          opportunity_id: id,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          unit_price: p.unit_price,
+          total_price: p.quantity * p.unit_price,
+        }));
+        await supabase.from('opportunity_products').insert(productsToInsert);
+      }
+    }
+
+    // Sincronizar espacios
+    if (input.spaces !== undefined) {
+      await supabase.from('opportunity_spaces').delete().eq('opportunity_id', id);
+      if (input.spaces.length > 0) {
+        const spacesToInsert = input.spaces.map((s) => ({
+          opportunity_id: id,
+          space_id: s.space_id,
+          nights: s.nights,
+          unit_price: s.unit_price,
+          total_price: s.nights * s.unit_price,
+        }));
+        await supabase.from('opportunity_spaces').insert(spacesToInsert);
+      }
+    }
+
+    // Sincronizar conceptos personalizados
+    if (input.customLines !== undefined) {
+      await supabase.from('opportunity_custom_lines').delete().eq('opportunity_id', id);
+      if (input.customLines.length > 0) {
+        const customToInsert = input.customLines.map((c) => ({
+          opportunity_id: id,
+          concept: c.concept,
+          quantity: c.quantity,
+          unit_price: c.unit_price,
+          total_price: c.quantity * c.unit_price,
+        }));
+        await supabase.from('opportunity_custom_lines').insert(customToInsert);
+      }
+    }
+
     return data;
   }
 
   async deleteOpportunity(id: string): Promise<void> {
-    // Primero eliminar productos asociados
+    // Eliminar registros asociados
     await supabase.from('opportunity_products').delete().eq('opportunity_id', id);
+    await supabase.from('opportunity_spaces').delete().eq('opportunity_id', id);
+    await supabase.from('opportunity_custom_lines').delete().eq('opportunity_id', id);
 
     const { error } = await supabase.from('opportunities').delete().eq('id', id);
 
@@ -594,6 +672,228 @@ class OpportunitiesService {
       .eq('id', spaceLineId);
 
     if (error) throw error;
+  }
+
+  async getOpportunityCustomLines(opportunityId: string): Promise<OpportunityCustomLine[]> {
+    const { data, error } = await supabase
+      .from('opportunity_custom_lines')
+      .select('*')
+      .eq('opportunity_id', opportunityId);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  // ============== TAREAS ==============
+
+  async getOpportunityTasks(opportunityId: string): Promise<OpportunityTask[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        assigned_user:assigned_to (
+          id,
+          email
+        )
+      `)
+      .eq('related_to_id', opportunityId)
+      .eq('related_to_type', 'opportunity')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async createTask(
+    opportunityId: string,
+    title: string,
+    options?: {
+      description?: string;
+      due_date?: string;
+      priority?: string;
+      assigned_to?: string;
+    }
+  ): Promise<OpportunityTask> {
+    const { data: userData } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        organization_id: this.getOrganizationId(),
+        title,
+        description: options?.description || null,
+        due_date: options?.due_date || null,
+        priority: options?.priority || 'medium',
+        assigned_to: options?.assigned_to || null,
+        related_to_id: opportunityId,
+        related_to_type: 'opportunity',
+        created_by: userData.user?.id || null,
+        status: 'open',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async updateTask(taskId: string, updates: Partial<OpportunityTask>): Promise<void> {
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.due_date !== undefined) updateData.due_date = updates.due_date;
+    if (updates.priority !== undefined) updateData.priority = updates.priority;
+    if (updates.assigned_to !== undefined) updateData.assigned_to = updates.assigned_to;
+    if (updates.status !== undefined) {
+      updateData.status = updates.status;
+      if (updates.status === 'done' || updates.status === 'completed') {
+        updateData.completed_at = new Date().toISOString();
+      }
+    }
+
+    const { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
+    if (error) throw error;
+  }
+
+  async deleteTask(taskId: string): Promise<void> {
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+    if (error) throw error;
+  }
+
+  // ============== NOTAS ==============
+
+  async getOpportunityNotes(opportunityId: string): Promise<OpportunityNote[]> {
+    const { data, error } = await supabase
+      .from('notes')
+      .select(`
+        *,
+        user:user_id (
+          id,
+          email
+        )
+      `)
+      .eq('related_type', 'opportunity')
+      .eq('related_id', opportunityId)
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async createNote(opportunityId: string, body: string): Promise<OpportunityNote> {
+    const { data: userData } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({
+        organization_id: this.getOrganizationId(),
+        user_id: userData.user?.id,
+        body,
+        related_type: 'opportunity',
+        related_id: opportunityId,
+        is_pinned: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteNote(noteId: string): Promise<void> {
+    const { error } = await supabase.from('notes').delete().eq('id', noteId);
+    if (error) throw error;
+  }
+
+  async toggleNotePin(noteId: string, isPinned: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('notes')
+      .update({ is_pinned: !isPinned, updated_at: new Date().toISOString() })
+      .eq('id', noteId);
+    if (error) throw error;
+  }
+
+  // ============== CLIENTE DETALLADO ==============
+
+  async getCustomerDetails(customerId: string): Promise<CustomerDetails | null> {
+    const { data, error } = await supabase
+      .from('customers')
+      .select(`
+        id, full_name, email, phone, avatar_url, organization_id,
+        identification_type, identification_number, address, city,
+        company_name, customer_type, tags, roles, notes
+      `)
+      .eq('id', customerId)
+      .single();
+
+    if (error) {
+      console.warn('Advertencia obteniendo detalles del cliente:', error.message);
+      return null;
+    }
+    return data;
+  }
+
+  // ============== TIMELINE ==============
+
+  async getOpportunityTimeline(opportunityId: string): Promise<
+    {
+      id: string;
+      type: 'activity' | 'task' | 'note' | 'stage_change';
+      date: string;
+      title: string;
+      description: string | null;
+      metadata?: Record<string, unknown>;
+    }[]
+  > {
+    const [tasks, notes, activities] = await Promise.all([
+      this.getOpportunityTasks(opportunityId),
+      this.getOpportunityNotes(opportunityId),
+      this.getOpportunityActivities(opportunityId),
+    ]);
+
+    const timeline: {
+      id: string;
+      type: 'activity' | 'task' | 'note' | 'stage_change';
+      date: string;
+      title: string;
+      description: string | null;
+      metadata?: Record<string, unknown>;
+    }[] = [];
+
+    activities.forEach((a) => {
+      timeline.push({
+        id: `activity-${a.id}`,
+        type: 'activity',
+        date: a.occurred_at,
+        title: `Actividad: ${a.activity_type}`,
+        description: a.notes,
+      });
+    });
+
+    tasks.forEach((t) => {
+      timeline.push({
+        id: `task-${t.id}`,
+        type: 'task',
+        date: t.created_at,
+        title: `Tarea: ${t.title}`,
+        description: t.description,
+        metadata: { status: t.status, priority: t.priority },
+      });
+    });
+
+    notes.forEach((n) => {
+      timeline.push({
+        id: `note-${n.id}`,
+        type: 'note',
+        date: n.created_at,
+        title: 'Nota',
+        description: n.body,
+      });
+    });
+
+    timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return timeline;
   }
 }
 

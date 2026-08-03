@@ -132,14 +132,14 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
         <span className="mt-2 text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 min-w-0">
       {customers.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
@@ -148,8 +148,8 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs sm:text-sm">
+          <div className="overflow-x-auto relative">
+            <table className="w-full text-xs sm:text-sm table-auto">
               <thead className="bg-gray-50 dark:bg-gray-900/50 text-left">
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="px-3 sm:px-4 py-3 w-12">
@@ -185,7 +185,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       />
                     </td>
                     <td className="px-3 sm:px-4 py-3">
-                      <div className="flex items-center gap-3 min-w-[120px] sm:min-w-0">
+                      <div className="flex flex-wrap items-center gap-3 min-w-0">
                         {/* Avatar del cliente */}
                         <div className="flex-shrink-0">
                           {customer.avatar_url ? (
@@ -202,9 +202,9 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                            <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm break-words min-w-0">
                               {customer.full_name}
                             </span>
                             {customer.customer_type === 'company' ? (
@@ -221,16 +221,16 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                           </div>
                           {/* Mostrar contacto principal para empresas */}
                           {customer.customer_type === 'company' && customer.primary_contact_name && (
-                            <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 break-words min-w-0">
                               Contacto: {customer.primary_contact_name}{customer.primary_contact_position ? ` (${customer.primary_contact_position})` : ''}
                             </span>
                           )}
                           {/* Mostrar contacto en móvil */}
                           <div className="sm:hidden flex flex-col mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {customer.email && <span className="truncate">{customer.email}</span>}
-                            {customer.phone && <span>{customer.phone}</span>}
+                            {customer.email && <span className="break-words min-w-0">{customer.email}</span>}
+                            {customer.phone && <span className="break-words min-w-0">{customer.phone}</span>}
                           </div>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="flex flex-wrap gap-1 mt-1 min-w-0">
                             {customer.roles?.slice(0, 1).map(role => (
                               <Badge 
                                 key={role} 
@@ -245,14 +245,14 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 hidden sm:table-cell">
-                      <div className="flex flex-col">
+                      <div className="flex flex-col min-w-0">
                         {customer.email && (
-                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px]">
+                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
                             {customer.email}
                           </span>
                         )}
                         {customer.phone && (
-                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
                             {customer.phone}
                           </span>
                         )}
@@ -260,30 +260,30 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                     </td>
                     <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
                       {customer.doc_type && customer.doc_number ? (
-                        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                        <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
                           {customer.doc_type}: {customer.doc_number}
                         </span>
                       ) : (
-                        <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
+                        <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 break-words min-w-0">
                           No registrado
                         </span>
                       )}
                     </td>
                     <td className="px-3 sm:px-4 py-3 hidden xl:table-cell">
                       {customer.municipality_name ? (
-                        <div className="flex flex-col">
-                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
                             {customer.municipality_name}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
+                        <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 break-words min-w-0">
                           --
                         </span>
                       )}
                     </td>
                     <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 min-w-0">
                         {customer.tags?.length ? (
                           customer.tags.slice(0, 2).map(tag => (
                             <Badge 
@@ -295,7 +295,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                             </Badge>
                           ))
                         ) : (
-                          <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
+                          <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 break-words min-w-0">
                             --
                           </span>
                         )}
@@ -310,12 +310,12 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3">
-                      <div className="flex flex-col min-w-[100px]">
-                        <span className={`text-xs sm:text-sm font-semibold ${getARStatusClass(customer.ar_status, customer.days_overdue)}`}>
+                      <div className="flex flex-col min-w-0">
+                        <span className={`text-xs sm:text-sm font-semibold break-words min-w-0 ${getARStatusClass(customer.ar_status, customer.days_overdue)}`}>
                           {formatCurrency(Number(customer.balance || 0))}
                         </span>
                         {(customer.balance || 0) > 0 && (
-                          <div className="flex items-center mt-1">
+                          <div className="flex items-center mt-1 min-w-0">
                             <Badge 
                               variant={customer.days_overdue && customer.days_overdue > 30 ? "destructive" : customer.days_overdue && customer.days_overdue > 0 ? "outline" : "secondary"}
                               className={`text-xs font-medium ${
@@ -334,17 +334,17 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
-                      <div className="flex flex-col">
-                        <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 break-words min-w-0">
                           {formatCurrency(Number(customer.total_sales || 0))}
                         </span>
-                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 break-words min-w-0">
                           {Number(customer.sales_count || 0)} {Number(customer.sales_count) === 1 ? 'compra' : 'compras'}
                         </span>
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
-                      <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
                         {customer.last_purchase_date ? 
                           formatDate(customer.last_purchase_date) : 
                           'Sin compras'
@@ -363,7 +363,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                             <span className="sr-only">Abrir menú</span>
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-48">
+                        <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-full sm:w-48">
                           <DropdownMenuLabel className="text-gray-900 dark:text-gray-100 font-semibold">Acciones</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => window.location.href = `/app/clientes/${customer.id}`} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                             Ver detalles

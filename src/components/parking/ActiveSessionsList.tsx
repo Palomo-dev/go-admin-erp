@@ -49,15 +49,15 @@ export function ActiveSessionsList({ sessions, atRiskCount }: ActiveSessionsList
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Sesiones Activas
             <Badge variant="secondary" className="ml-2">
               {sessions.length}
             </Badge>
           </CardTitle>
           {atRiskCount > 0 && (
-            <Badge variant="destructive" className="flex items-center gap-1">
+            <Badge variant="destructive" className="flex flex-wrap items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
               {atRiskCount} en riesgo
             </Badge>
@@ -82,7 +82,7 @@ export function ActiveSessionsList({ sessions, atRiskCount }: ActiveSessionsList
                     : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
                 )}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className={cn(
                     'p-2 rounded-full',
                     session.is_at_risk
@@ -95,12 +95,12 @@ export function ActiveSessionsList({ sessions, atRiskCount }: ActiveSessionsList
                     <p className="font-semibold text-gray-900 dark:text-gray-100">
                       {session.vehicle_plate}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                       <span>Entrada: {formatTime(session.entry_at)}</span>
                       {session.space_label && (
                         <>
                           <span>•</span>
-                          <span className="flex items-center gap-1">
+                          <span className="flex flex-wrap items-center gap-1">
                             <MapPin className="h-3 w-3" />
                             {session.space_label}
                           </span>
@@ -110,7 +110,7 @@ export function ActiveSessionsList({ sessions, atRiskCount }: ActiveSessionsList
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="text-right">
                     <p className={cn(
                       'font-semibold',

@@ -31,7 +31,7 @@ export function ChannelManagerHeader({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
               <Radio className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
             </div>
@@ -123,13 +123,13 @@ export function ChannelManagerHeader({
               {stats.channels_used.length > 0 ? stats.channels_used.map(ch => (
                 <Badge key={ch} variant="secondary" className="text-xs capitalize">{ch}</Badge>
               )) : (
-                <span className="text-sm text-gray-400">Ninguno</span>
+                <span className="text-sm text-gray-400 dark:text-gray-500">Ninguno</span>
               )}
             </div>
           </div>
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Errores de Sync</p>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-wrap items-center gap-2 mt-1">
               <p className={`text-lg sm:text-2xl font-bold ${stats.sync_errors > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                 {stats.sync_errors}
               </p>

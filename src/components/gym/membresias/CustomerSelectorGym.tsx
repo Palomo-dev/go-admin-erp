@@ -167,8 +167,8 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
       {selectedCustomer ? (
         <Card className="dark:bg-gradient-to-r dark:from-blue-900/20 dark:to-purple-900/10 dark:border-blue-500/30 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 border shadow-sm">
           <CardContent className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-wrap items-start gap-3 min-w-0 flex-1">
                 <UserAvatar 
                   name={getDisplayName(selectedCustomer)} 
                   size="md" 
@@ -181,21 +181,21 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
                   
                   <div className="mt-1 space-y-1">
                     {selectedCustomer.email && (
-                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
+                      <div className="flex flex-wrap items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
                         <Mail className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{selectedCustomer.email}</span>
                       </div>
                     )}
                     
                     {selectedCustomer.phone && (
-                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
+                      <div className="flex flex-wrap items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
                         <Phone className="h-3.5 w-3.5 shrink-0" />
                         <span>{selectedCustomer.phone}</span>
                       </div>
                     )}
                     
                     {selectedCustomer.identification_number && (
-                      <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
+                      <div className="flex flex-wrap items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
                         <CreditCard className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{selectedCustomer.identification_number}</span>
                       </div>
@@ -224,7 +224,7 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
                 variant="outline"
                 className="w-full justify-start text-left h-auto p-3 sm:p-4 dark:border-gray-700 dark:hover:bg-gray-800/50 dark:hover:border-blue-500/50 border-gray-300 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
               >
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                   <div className="p-1.5 sm:p-2 rounded-full dark:bg-blue-500/20 bg-blue-100 shrink-0">
                     <User className="h-4 w-4 sm:h-5 sm:w-5 dark:text-blue-400 text-blue-600" />
                   </div>
@@ -242,7 +242,7 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
                 </div>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-96 p-0 dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200" align="start">
+            <PopoverContent className="w-full sm:w-96 p-0 dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200" align="start">
               <div className="p-4 space-y-4">
                 <div className="space-y-2">
                   <h4 className="font-semibold dark:text-white text-gray-900">Buscar Cliente</h4>
@@ -264,7 +264,7 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
                   <div className="space-y-2 pr-4">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="flex items-center gap-2 text-sm dark:text-gray-400 text-gray-600">
+                        <div className="flex flex-wrap items-center gap-2 text-sm dark:text-gray-400 text-gray-600">
                           <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                           <span>Buscando...</span>
                         </div>
@@ -277,8 +277,8 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
                       </div>
                     ) : customers.length > 0 ? (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 px-1">
-                          <User className="h-3.5 w-3.5 text-blue-600" />
+                        <div className="flex flex-wrap items-center gap-2 px-1">
+                          <User className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                           <p className="text-xs font-semibold dark:text-gray-400 text-gray-600">
                             CLIENTES ({customers.length})
                           </p>
@@ -286,7 +286,7 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
                         {customers.map((customer) => (
                           <div
                             key={customer.id}
-                            className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-gray-800 hover:bg-gray-50 dark:hover:border-blue-500/30 hover:border-blue-200 border border-transparent"
+                            className="flex flex-wrap items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 dark:hover:bg-gray-800 hover:bg-gray-50 dark:hover:border-blue-500/30 hover:border-blue-200 border border-transparent"
                             onClick={() => handleSelectCustomer(customer)}
                           >
                             <UserAvatar 
@@ -300,13 +300,13 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
                               </p>
                               <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 {customer.identification_number && (
-                                  <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
+                                  <div className="flex flex-wrap items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
                                     <CreditCard className="h-3 w-3" />
                                     <span>{customer.identification_number}</span>
                                   </div>
                                 )}
                                 {customer.phone && (
-                                  <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
+                                  <div className="flex flex-wrap items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
                                     <Phone className="h-3 w-3" />
                                     <span>{customer.phone}</span>
                                   </div>
@@ -349,7 +349,7 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800 bg-white border-gray-200">
           <DialogHeader className="pb-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 rounded-lg dark:bg-blue-600/20 bg-blue-100">
                 <UserPlus className="h-6 w-6 dark:text-blue-400 text-blue-600" />
               </div>
@@ -442,7 +442,7 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
 
           {/* Roles del Cliente */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
+            <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex flex-wrap items-center gap-2">
               <User className="h-4 w-4" />
               Roles del Cliente
             </h3>
@@ -468,7 +468,7 @@ export function CustomerSelectorGym({ selectedCustomer, onCustomerSelect, classN
 
           {/* Responsabilidad Fiscal DIAN */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex items-center gap-2">
+            <h3 className="text-sm font-medium dark:text-gray-300 text-gray-700 flex flex-wrap items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Responsabilidad Fiscal (DIAN)
             </h3>

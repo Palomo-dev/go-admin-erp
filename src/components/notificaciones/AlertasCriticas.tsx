@@ -41,7 +41,7 @@ export function AlertasCriticas({ alerts, isLoading, onAcknowledge }: AlertasCri
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <ShieldAlert className="h-5 w-5 text-red-500" />
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Alertas Críticas</h2>
         {alerts.length > 0 && (
@@ -66,7 +66,7 @@ export function AlertasCriticas({ alerts, isLoading, onAcknowledge }: AlertasCri
             return (
               <div
                 key={alert.id}
-                className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="flex flex-wrap items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
                 <SevIcon className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -80,9 +80,9 @@ export function AlertasCriticas({ alerts, isLoading, onAcknowledge }: AlertasCri
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                     {alert.message}
                   </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Clock className="h-3 w-3 text-gray-400" />
-                    <span className="text-xs text-gray-400">{formatDate(alert.created_at)}</span>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <Clock className="h-3 w-3 text-gray-400 dark:text-gray-500" />
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(alert.created_at)}</span>
                     <Badge variant="outline" className="text-xs py-0 h-5">
                       {alert.source_module}
                     </Badge>

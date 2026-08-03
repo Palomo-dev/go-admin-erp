@@ -88,7 +88,7 @@ export function InstructorCard({
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div className="flex items-start gap-4">
+          <div className="flex flex-wrap items-start gap-4">
             <Avatar className="h-16 w-16">
               <AvatarImage src={instructor.profiles?.avatar_url} />
               <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 text-lg">
@@ -97,7 +97,7 @@ export function InstructorCard({
             </Avatar>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                   {instructor.profiles?.first_name} {instructor.profiles?.last_name}
                 </h3>
@@ -113,7 +113,7 @@ export function InstructorCard({
 
               {/* Cargo/Posición de HRM */}
               {instructor.position && (
-                <div className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400">
+                <div className="flex flex-wrap items-center gap-1 text-sm text-blue-600 dark:text-blue-400">
                   <Briefcase className="h-3 w-3" />
                   <span>{instructor.position.name}</span>
                 </div>
@@ -165,7 +165,7 @@ export function InstructorCard({
           </div>
           {instructor.hourly_rate && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+              <span className="text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-1">
                 <DollarSign className="h-3 w-3" />
                 Tarifa/hora:
               </span>
@@ -184,7 +184,7 @@ export function InstructorCard({
         {/* Estadísticas */}
         <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-blue-600 dark:text-blue-400">
+            <div className="flex flex-wrap items-center justify-center gap-1 text-blue-600 dark:text-blue-400">
               <Calendar className="h-4 w-4" />
               <span className="font-semibold">{isLoadingStats ? '-' : stats?.totalClasses || 0}</span>
             </div>
@@ -192,14 +192,14 @@ export function InstructorCard({
           </div>
 
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-green-600 dark:text-green-400">
+            <div className="flex flex-wrap items-center justify-center gap-1 text-green-600 dark:text-green-400">
               <span className="font-semibold">{isLoadingStats ? '-' : stats?.completedClasses || 0}</span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Completadas</p>
           </div>
 
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-purple-600 dark:text-purple-400">
+            <div className="flex flex-wrap items-center justify-center gap-1 text-purple-600 dark:text-purple-400">
               <Users className="h-4 w-4" />
               <span className="font-semibold">{isLoadingStats ? '-' : stats?.totalAttendance || 0}</span>
             </div>

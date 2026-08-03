@@ -60,7 +60,7 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -68,12 +68,12 @@ export default function BillingPage() {
 
   if (error || !orgId) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow text-center">
-          <p className="text-red-600">{error || 'Error cargando la organización'}</p>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow text-center">
+          <p className="text-red-600 dark:text-red-400">{error || 'Error cargando la organización'}</p>
           <button
             onClick={() => router.push('/app/plan')}
-            className="mt-4 text-blue-600 hover:text-blue-800"
+            className="mt-4 text-blue-600 dark:text-blue-400 hover:text-blue-800"
           >
             Volver al plan
           </button>
@@ -83,19 +83,19 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-800">
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.push('/app/plan')}
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
+            className="inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 mb-4"
           >
             <ArrowLeftIcon className="h-4 w-4 mr-1" />
             Volver al Plan
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Facturación y Pagos</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Facturación y Pagos</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Gestiona tus métodos de pago y revisa tu historial de facturas para {organizationName}
           </p>
         </div>

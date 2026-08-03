@@ -41,7 +41,7 @@ export function SessionNotes({ notes, isLoading, onAddNote }: SessionNotesProps)
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex flex-wrap items-center gap-2">
             <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Notas
           </CardTitle>
@@ -60,7 +60,7 @@ export function SessionNotes({ notes, isLoading, onAddNote }: SessionNotesProps)
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg flex flex-wrap items-center gap-2">
           <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           Notas
         </CardTitle>
@@ -121,7 +121,7 @@ export function SessionNotes({ notes, isLoading, onAddNote }: SessionNotesProps)
                 <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
                   {note.content}
                 </p>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     {new Date(note.created_at).toLocaleString('es-ES', {
                       dateStyle: 'short',

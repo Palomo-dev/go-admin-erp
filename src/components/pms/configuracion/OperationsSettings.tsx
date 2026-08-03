@@ -16,8 +16,8 @@ export function OperationsSettings({ settings, onChange }: OperationsSettingsPro
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Wrench className="h-5 w-5 text-orange-600" />
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+          <Wrench className="h-5 w-5 text-orange-600 dark:text-orange-400" />
           Operaciones
         </CardTitle>
         <CardDescription>
@@ -27,7 +27,7 @@ export function OperationsSettings({ settings, onChange }: OperationsSettingsPro
       <CardContent className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label className="flex items-center gap-2">
+            <Label className="flex flex-wrap items-center gap-2">
               <Sparkles className="h-4 w-4" />
               Asignación automática de limpieza
             </Label>

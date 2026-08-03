@@ -382,7 +382,7 @@ export default function SessionDetailPage() {
     return (
       <div className="p-6">
         <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           <p className="mt-2 text-gray-500 dark:text-gray-400">Cargando sesión...</p>
         </div>
       </div>

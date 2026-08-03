@@ -71,7 +71,7 @@ export function SessionDetailHeader({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/app/parking/sesiones">
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <ArrowLeft className="h-5 w-5" />
@@ -81,7 +81,7 @@ export function SessionDetailHeader({
             {session ? getVehicleIcon(session.vehicle_type) : <Car className="h-5 w-5" />}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {session?.vehicle_plate || 'Cargando...'}
               </h1>
@@ -95,7 +95,7 @@ export function SessionDetailHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
           <Button
             variant="outline"
             onClick={onRefresh}

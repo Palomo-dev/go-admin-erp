@@ -255,7 +255,7 @@ export function PlantillaEditorDialog({
           {/* Variables */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
+              <Label className="text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-1">
                 <Variable className="h-3.5 w-3.5" /> Variables disponibles
               </Label>
               <button
@@ -269,7 +269,7 @@ export function PlantillaEditorDialog({
             {/* Variables activas */}
             <div className="flex flex-wrap gap-1.5 min-h-[28px]">
               {variables.length === 0 && (
-                <span className="text-xs text-gray-400">Agrega variables haciendo clic en las sugeridas</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Agrega variables haciendo clic en las sugeridas</span>
               )}
               {variables.map((v) => (
                 <Badge key={v} variant="secondary" className="text-xs gap-1 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300">
@@ -297,7 +297,7 @@ export function PlantillaEditorDialog({
                           className={cn(
                             'px-2 py-0.5 rounded text-[11px] border transition-all',
                             variables.includes(v.name)
-                              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 border-blue-200 dark:border-blue-800 opacity-50 cursor-default'
+                              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 opacity-50 cursor-default'
                               : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-400 hover:text-blue-600 cursor-pointer'
                           )}
                         >
@@ -329,7 +329,7 @@ export function PlantillaEditorDialog({
 
           {/* Toggle editor/preview + botón plantilla base */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant={!showPreview ? 'default' : 'outline'}
                 size="sm"
@@ -358,7 +358,7 @@ export function PlantillaEditorDialog({
             <div className="space-y-3">
               {needsHtml && previewHtml ? (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900">
-                  <p className="text-xs text-gray-400 mb-2">HTML Preview</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">HTML Preview</p>
                   <div
                     className="prose prose-sm dark:prose-invert max-w-none text-sm"
                     dangerouslySetInnerHTML={{ __html: previewHtml }}
@@ -366,7 +366,7 @@ export function PlantillaEditorDialog({
                 </div>
               ) : (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
-                  <p className="text-xs text-gray-400 mb-2">Text Preview</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Text Preview</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                     {previewText}
                   </p>

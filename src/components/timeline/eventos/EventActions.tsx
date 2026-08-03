@@ -114,7 +114,7 @@ export function EventActions({
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
           <Eye className="h-5 w-5 text-blue-500" />
           Acciones
         </CardTitle>

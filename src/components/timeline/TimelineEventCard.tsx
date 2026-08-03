@@ -69,7 +69,7 @@ export function TimelineEventCard({
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200 group">
       <div className="p-4">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-wrap items-start gap-4">
           {/* Timeline indicator */}
           <div className="flex flex-col items-center">
             <div className={cn(
@@ -83,7 +83,7 @@ export function TimelineEventCard({
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Header row */}
-            <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
               <div className="flex flex-wrap items-center gap-2">
                 {/* Módulo badge */}
                 <Badge 
@@ -117,7 +117,7 @@ export function TimelineEventCard({
                       </TooltipTrigger>
                       <TooltipContent>
                         <p className="text-xs">Ver eventos relacionados</p>
-                        <p className="text-xs text-gray-400 font-mono">{event.correlation_id}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 font-mono">{event.correlation_id}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -151,7 +151,7 @@ export function TimelineEventCard({
               </p>
               
               {/* Entity ID */}
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   ID: 
                 </span>
@@ -165,7 +165,7 @@ export function TimelineEventCard({
                     <TooltipTrigger asChild>
                       <button 
                         onClick={() => handleCopyId(event.entity_id)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                       >
                         <Copy className="h-3 w-3" />
                       </button>
@@ -197,10 +197,10 @@ export function TimelineEventCard({
 
             {/* Footer row */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                 {/* Actor */}
                 {(event.actor_id || actorName) && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     <User className="h-3 w-3" />
                     <span>{actorName || event.actor_id?.substring(0, 8) || 'Sistema'}</span>
                   </div>

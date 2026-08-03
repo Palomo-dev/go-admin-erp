@@ -21,7 +21,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex flex-wrap items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
             Próximos a vencer
           </CardTitle>
@@ -29,7 +29,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
         <CardContent>
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="animate-pulse flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
+              <div key={i} className="animate-pulse flex flex-wrap items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
                 <div className="flex-1 space-y-2">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
@@ -46,7 +46,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex flex-wrap items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-yellow-500" />
             Próximos a vencer
             <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
@@ -77,7 +77,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
                 <Link
                   key={membership.id}
                   href={`/app/gym/membresias/${membership.id}`}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="flex flex-wrap items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 dark:text-white truncate">
@@ -103,7 +103,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
                     </p>
                   </div>
                   
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                  <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 </Link>
               );
             })}

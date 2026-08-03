@@ -48,8 +48,8 @@ export function CheckinMethodsCard({ settings, onChange }: CheckinMethodsCardPro
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <QrCode className="h-5 w-5 text-blue-600" />
+        <div className="flex flex-wrap items-center gap-2">
+          <QrCode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           <CardTitle className="text-lg">Métodos de Check-in</CardTitle>
         </div>
         <CardDescription>
@@ -61,9 +61,9 @@ export function CheckinMethodsCard({ settings, onChange }: CheckinMethodsCardPro
           const Icon = method.icon;
           return (
             <div key={method.key} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <Icon className="h-4 w-4 text-blue-600" />
+                  <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="space-y-0.5">
                   <Label>{method.label}</Label>

@@ -280,7 +280,7 @@ export function PassFormDialog({
             <Label className="dark:text-gray-200">Cliente *</Label>
             {selectedCustomer ? (
               <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
                     <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
@@ -288,15 +288,15 @@ export function PassFormDialog({
                     <p className="font-semibold text-gray-900 dark:text-white">
                       {selectedCustomer.full_name}
                     </p>
-                    <div className="flex items-center gap-3 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-3 mt-0.5">
                       {selectedCustomer.email && (
-                        <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                           <Mail className="h-3 w-3" />
                           {selectedCustomer.email}
                         </span>
                       )}
                       {selectedCustomer.phone && (
-                        <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="flex flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                           <Phone className="h-3 w-3" />
                           {selectedCustomer.phone}
                         </span>
@@ -325,7 +325,7 @@ export function PassFormDialog({
                     variant="outline"
                     className="w-full justify-start text-left h-auto p-3 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30">
                         <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
@@ -337,17 +337,17 @@ export function PassFormDialog({
                           Buscar por nombre, email o teléfono
                         </p>
                       </div>
-                      <Search className="h-4 w-4 text-gray-400" />
+                      <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     </div>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent 
-                  className="w-96 p-0 dark:bg-gray-900 dark:border-gray-700" 
+                  className="w-full sm:w-96 p-0 dark:bg-gray-900 dark:border-gray-700" 
                   align="start"
                 >
                   <div className="p-4 space-y-3">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <Input
                         placeholder="Nombre, email o teléfono..."
                         value={customerSearch}
@@ -366,7 +366,7 @@ export function PassFormDialog({
                       {isSearching ? (
                         <div className="flex items-center justify-center py-8">
                           <Loader2 className="h-5 w-5 animate-spin text-blue-500 mr-2" />
-                          <span className="text-sm text-gray-500">Buscando...</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">Buscando...</span>
                         </div>
                       ) : customers.length === 0 && customerSearch.length >= 2 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -388,7 +388,7 @@ export function PassFormDialog({
                             <button
                               key={customer.id}
                               type="button"
-                              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                              className="w-full flex flex-wrap items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
                               onClick={() => {
                                 handleSelectCustomer(customer);
                                 setShowCustomerPopover(false);
@@ -401,15 +401,15 @@ export function PassFormDialog({
                                 <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
                                   {customer.full_name}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                                   {customer.email && (
-                                    <span className="flex items-center gap-1 truncate">
+                                    <span className="flex flex-wrap items-center gap-1 truncate">
                                       <Mail className="h-3 w-3" />
                                       {customer.email}
                                     </span>
                                   )}
                                   {customer.phone && (
-                                    <span className="flex items-center gap-1">
+                                    <span className="flex flex-wrap items-center gap-1">
                                       <Phone className="h-3 w-3" />
                                       {customer.phone}
                                     </span>
@@ -439,7 +439,7 @@ export function PassFormDialog({
                   <SelectItem key={type.id} value={type.id}>
                     <div className="flex items-center justify-between w-full">
                       <span>{type.name}</span>
-                      <span className="ml-2 text-sm text-gray-500">
+                      <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
                         {formatCurrency(type.price)} / {type.duration_days} días
                       </span>
                     </div>
@@ -495,8 +495,8 @@ export function PassFormDialog({
                 key={index}
                 className="p-3 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
               >
-                <div className="flex items-center gap-2 mb-3">
-                  <Car className="h-4 w-4 text-gray-400" />
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <Car className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <span className="text-sm font-medium dark:text-gray-300">
                     Vehículo {index + 1}
                   </span>

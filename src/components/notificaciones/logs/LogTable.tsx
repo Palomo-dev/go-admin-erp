@@ -104,8 +104,8 @@ export function LogTable({ logs, total, page, onPageChange, onViewDetail, onRetr
                     </Badge>
                   </td>
                   <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-1.5">
-                      <ChannelIcon className="h-3.5 w-3.5 text-gray-400" />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <ChannelIcon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                       <span className="text-gray-700 dark:text-gray-300">{channel}</span>
                     </div>
                   </td>
@@ -126,12 +126,12 @@ export function LogTable({ logs, total, page, onPageChange, onViewDetail, onRetr
                     <span className="text-gray-500 dark:text-gray-400">{formatDate(log.delivered_at)}</span>
                   </td>
                   <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onViewDetail(log)}
-                        className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600"
+                        className="h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-blue-600"
                       >
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
@@ -140,7 +140,7 @@ export function LogTable({ logs, total, page, onPageChange, onViewDetail, onRetr
                           variant="ghost"
                           size="sm"
                           onClick={() => onRetry(log)}
-                          className="h-6 w-6 p-0 text-gray-400 hover:text-amber-600"
+                          className="h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-amber-600"
                           title="Reintentar"
                         >
                           <RotateCw className="h-3.5 w-3.5" />
@@ -161,7 +161,7 @@ export function LogTable({ logs, total, page, onPageChange, onViewDetail, onRetr
           <span className="text-xs text-gray-500 dark:text-gray-400">
             Página {page} de {totalPages} ({total} registros)
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <Button
               variant="outline"
               size="sm"

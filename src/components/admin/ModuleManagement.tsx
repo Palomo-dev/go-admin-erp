@@ -138,9 +138,9 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
   const getStatusBadge = (status: string, module: Module) => {
     switch (status) {
       case 'core':
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-800"><Crown className="h-3 w-3 mr-1" />Core</Badge>;
+        return <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-800"><Crown className="h-3 w-3 mr-1" />Core</Badge>;
       case 'active':
-        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle2 className="h-3 w-3 mr-1" />Activo</Badge>;
+        return <Badge variant="default" className="bg-green-100 dark:bg-green-900/30 text-green-800"><CheckCircle2 className="h-3 w-3 mr-1" />Activo</Badge>;
       case 'available':
         return <Badge variant="outline">Disponible</Badge>;
       case 'limit_reached':
@@ -154,11 +154,11 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
     return (
       <div className="space-y-4">
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
           <div className="space-y-3">
-            <div className="h-20 bg-gray-200 rounded"></div>
-            <div className="h-20 bg-gray-200 rounded"></div>
-            <div className="h-20 bg-gray-200 rounded"></div>
+            <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
         </div>
       </div>
@@ -193,7 +193,7 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
       {/* Información del Plan */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <CreditCard className="h-5 w-5" />
             Plan Actual: {orgStatus.plan?.name || 'Sin Plan'}
           </CardTitle>
@@ -204,22 +204,22 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {orgStatus.paid_modules_count}
               </div>
-              <div className="text-sm text-blue-600">Módulos Activos</div>
+              <div className="text-sm text-blue-600 dark:text-blue-400">Módulos Activos</div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {orgStatus.max_modules_allowed}
               </div>
-              <div className="text-sm text-green-600">Módulos Permitidos</div>
+              <div className="text-sm text-green-600 dark:text-green-400">Módulos Permitidos</div>
             </div>
             <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {orgStatus.max_modules_allowed - orgStatus.paid_modules_count}
               </div>
-              <div className="text-sm text-purple-600">Módulos Disponibles</div>
+              <div className="text-sm text-purple-600 dark:text-purple-400">Módulos Disponibles</div>
             </div>
           </div>
 
@@ -265,7 +265,7 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
                 <Card key={module.code} className={`relative ${!canToggle && !isActive ? 'opacity-60' : ''}`}>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {getModuleIcon(module.code)}
                         <CardTitle className="text-lg">{module.name}</CardTitle>
                       </div>
@@ -289,7 +289,7 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
                       </div>
                     )}
                     {!isAdmin && (
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {isActive ? 'Módulo activo' : 'Módulo no disponible'}
                       </div>
                     )}
@@ -316,11 +316,11 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
                 <Card key={module.code} className="border-blue-200">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {getModuleIcon(module.code)}
                         <CardTitle className="text-lg">{module.name}</CardTitle>
                       </div>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-800">
                         <Crown className="h-3 w-3 mr-1" />Core
                       </Badge>
                     </div>
@@ -329,7 +329,7 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
                       <CheckCircle2 className="h-4 w-4" />
                       Siempre activo
                     </div>

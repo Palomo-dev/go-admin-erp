@@ -146,7 +146,7 @@ export function PaymentStatus({
     <Card className={`${config.bgColor} border ${config.borderColor}`}>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex flex-wrap items-center gap-2">
             <Icon className={`h-5 w-5 ${config.color}`} />
             {config.title}
           </CardTitle>

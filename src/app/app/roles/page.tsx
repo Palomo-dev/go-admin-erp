@@ -48,38 +48,38 @@ export default function RolesAdminPage() {
       {/* Contenido con Tabs */}
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-            <TabsTrigger 
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <TabsTrigger
               value="roles"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Shield className="h-4 w-4 mr-2" />
               Roles
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="assignments"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Users className="h-4 w-4 mr-2" />
               Asignación
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="permissions"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Key className="h-4 w-4 mr-2" />
               Permisos
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="positions"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Briefcase className="h-4 w-4 mr-2" />
               Cargos
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="analytics"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Analíticas

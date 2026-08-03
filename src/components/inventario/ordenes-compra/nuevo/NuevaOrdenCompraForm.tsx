@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -62,6 +63,7 @@ export function NuevaOrdenCompraForm() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Datos de selectores
   const [suppliers, setSuppliers] = useState<SearchSelectOption[]>([]);
@@ -76,15 +78,20 @@ export function NuevaOrdenCompraForm() {
   // Cargar datos iniciales
   useEffect(() => {
     const loadData = async () => {
-      const organizationId = getOrganizationId();
-      const [suppliersData, branchesData, productsData] = await Promise.all([
-        purchaseOrderService.getSuppliers(organizationId),
-        purchaseOrderService.getBranches(organizationId),
-        purchaseOrderService.getProducts(organizationId)
-      ]);
-      setSuppliers(suppliersData);
-      setBranches(branchesData);
-      setProducts(productsData);
+      setIsLoading(true);
+      try {
+        const organizationId = getOrganizationId();
+        const [suppliersData, branchesData, productsData] = await Promise.all([
+          purchaseOrderService.getSuppliers(organizationId),
+          purchaseOrderService.getBranches(organizationId),
+          purchaseOrderService.getProducts(organizationId)
+        ]);
+        setSuppliers(suppliersData);
+        setBranches(branchesData);
+        setProducts(productsData);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
   }, []);
@@ -207,6 +214,19 @@ export function NuevaOrdenCompraForm() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <Skeleton className="h-64 w-full lg:col-span-2" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

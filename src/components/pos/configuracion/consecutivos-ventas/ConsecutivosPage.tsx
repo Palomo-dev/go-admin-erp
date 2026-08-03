@@ -330,19 +330,19 @@ export function ConsecutivosPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing} className="shrink-0">
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
-          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+          <Button variant="outline" onClick={() => setShowImportDialog(true)} className="w-full sm:w-auto">
             <Upload className="h-4 w-4 mr-2" />
             Importar
           </Button>
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Exportar
           </Button>
-          <Button onClick={openModalNuevo} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button onClick={openModalNuevo} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Consecutivo
           </Button>

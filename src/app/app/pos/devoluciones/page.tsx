@@ -106,28 +106,28 @@ export default function DevolucionesPage() {
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-0">
             <Tabs value={activeView} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 dark:bg-gray-700">
-                <TabsTrigger 
-                  value="search" 
+              <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 dark:bg-gray-700">
+                <TabsTrigger
+                  value="search"
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
-                  <Package className="h-4 w-4" />
-                  <span>Buscar Ticket</span>
+                  <Package className="h-4 w-4 shrink-0" />
+                  <span className="break-words whitespace-normal text-left">Buscar Ticket</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="process" 
+                <TabsTrigger
+                  value="process"
                   disabled={!selectedSale}
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
-                  <ArrowLeftRight className="h-4 w-4" />
-                  <span>Procesar Devolución</span>
+                  <ArrowLeftRight className="h-4 w-4 shrink-0" />
+                  <span className="break-words whitespace-normal text-left">Procesar Devolución</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="history" 
+                <TabsTrigger
+                  value="history"
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
-                  <History className="h-4 w-4" />
-                  <span>Historial</span>
+                  <History className="h-4 w-4 shrink-0" />
+                  <span className="break-words whitespace-normal text-left">Historial</span>
                 </TabsTrigger>
               </TabsList>
 

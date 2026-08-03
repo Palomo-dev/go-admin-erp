@@ -23,14 +23,15 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Search, Plus, Loader2, X, DollarSign, User, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, Plus, Loader2, X, DollarSign, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import Image from 'next/image';
 import type { Space } from '@/lib/services/spacesService';
-import ReservationsService, { type Customer } from '@/lib/services/reservationsService';
+import ReservationsService from '@/lib/services/reservationsService';
 import organizationService from '@/lib/services/organizationService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { CustomerSelector } from '@/components/pos/CustomerSelector';
+import type { Customer as POSCustomer } from '@/components/pos/types';
 
 interface QuickReservationDrawerProps {
   open: boolean;
@@ -48,10 +49,7 @@ export function QuickReservationDrawer({
   const { organization } = useOrganization();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<POSCustomer | null>(null);
   
   // Métodos de pago
   const [paymentMethods, setPaymentMethods] = useState<Array<{
@@ -104,37 +102,6 @@ export function QuickReservationDrawer({
     loadPaymentMethods();
   }, [organization, open]);
 
-  // Buscar clientes en tiempo real
-  useEffect(() => {
-    const searchCustomers = async () => {
-      if (!organization || !searchTerm.trim()) {
-        setCustomers([]);
-        return;
-      }
-
-      setIsSearching(true);
-      try {
-        const results = await ReservationsService.searchCustomers(organization.id, searchTerm);
-        setCustomers(results);
-      } catch (error: any) {
-        console.error('Error buscando clientes:', error);
-        setCustomers([]);
-        toast({
-          title: 'Error al buscar clientes',
-          description: error?.message || 'No se pudo completar la búsqueda',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
-    const debounce = setTimeout(() => {
-      searchCustomers();
-    }, 300);
-
-    return () => clearTimeout(debounce);
-  }, [searchTerm, organization]);
   
   // Agregar extra
   const handleAddExtra = () => {
@@ -219,9 +186,7 @@ export function QuickReservationDrawer({
       onOpenChange(false);
       
       // Reset form
-      setSearchTerm('');
       setSelectedCustomer(null);
-      setCustomers([]);
       setExtras([]);
       setDepositAmount('');
       setDepositMethod(paymentMethods.length > 0 ? paymentMethods[0].code : '');
@@ -246,27 +211,15 @@ export function QuickReservationDrawer({
     }
   };
 
-  const handleNewCustomer = () => {
-    // TODO: Abrir dialog para crear nuevo cliente
-    toast({
-      title: 'Próximamente',
-      description: 'Crear nuevo cliente estará disponible pronto',
-    });
-  };
-
   const calculateNights = () => {
     const diffTime = Math.abs(checkout.getTime() - checkin.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  };
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[500px] sm:w-[600px] overflow-y-auto bg-white dark:bg-gray-900">
+      <SheetContent side="right" className="w-full sm:w-[500px] lg:w-[600px] overflow-y-auto bg-white dark:bg-gray-900">
         <SheetHeader>
           <SheetTitle>Nueva Reserva Rápida</SheetTitle>
           <SheetDescription>
@@ -288,118 +241,11 @@ export function QuickReservationDrawer({
 
           {/* Cliente */}
           <div className="space-y-2">
-            <Label htmlFor="customer">Cliente *</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Input
-                  id="customer"
-                  placeholder="Buscar por nombre, email o teléfono..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-8"
-                />
-                {isSearching && (
-                  <Skeleton className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full" />
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={handleNewCustomer}
-                title="Nuevo Cliente"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Lista de clientes */}
-            {customers.length > 0 && (
-              <div className="border rounded-lg max-h-40 overflow-y-auto">
-                {customers.map((customer) => (
-                  <button
-                    key={customer.id}
-                    type="button"
-                    className={`w-full text-left p-3 hover:bg-gray-100 dark:hover:bg-gray-800 border-b last:border-b-0 ${
-                      selectedCustomer?.id === customer.id
-                        ? 'bg-blue-50 dark:bg-blue-900/20'
-                        : ''
-                    }`}
-                    onClick={() => {
-                      setSelectedCustomer(customer);
-                      setSearchTerm(''); // Limpiar búsqueda
-                      setCustomers([]); // Limpiar resultados
-                    }}
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      {/* Avatar del cliente */}
-                      <div className="flex-shrink-0">
-                        {customer.avatar_url ? (
-                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                            <Image
-                              src={customer.avatar_url}
-                              alt={`${customer.first_name} ${customer.last_name}`}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                            <span className="text-white text-sm font-semibold">
-                              {getInitials(customer.first_name, customer.last_name)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Información del cliente */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{`${customer.first_name} ${customer.last_name}`}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {customer.email || customer.phone}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {selectedCustomer && (
-              <div className="p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Avatar del cliente seleccionado */}
-                  <div className="flex-shrink-0">
-                    {selectedCustomer.avatar_url ? (
-                      <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 ring-2 ring-blue-500">
-                        <Image
-                          src={selectedCustomer.avatar_url}
-                          alt={`${selectedCustomer.first_name} ${selectedCustomer.last_name}`}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center ring-2 ring-blue-500">
-                        <span className="text-white text-base font-semibold">
-                          {getInitials(selectedCustomer.first_name, selectedCustomer.last_name)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Información del cliente */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium">
-                      {`${selectedCustomer.first_name} ${selectedCustomer.last_name}`}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {selectedCustomer.email || selectedCustomer.phone}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+            <Label>Cliente *</Label>
+            <CustomerSelector
+              selectedCustomer={selectedCustomer || undefined}
+              onCustomerSelect={(customer) => setSelectedCustomer(customer || null)}
+            />
           </div>
 
           {/* Fechas */}

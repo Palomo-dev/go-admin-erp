@@ -46,21 +46,15 @@ export const loadCustomersWithOpportunities = async (pipelineId: string): Promis
     const organizationId = getOrganizationId();
     console.log(`Usando organizationId: ${organizationId} para cargar clientes y oportunidades del pipeline: ${pipelineId}`);
     
-    // Cargar clientes - sin filtro de organization_id para diagnosticar
+    // Cargar clientes filtrados por organization_id
     const { data: customersData, error: customersError } = await supabase
       .from("customers")
-      .select("*");
+      .select("*")
+      .eq("organization_id", organizationId);
     
     if (customersError) {
       console.error("Error de Supabase al cargar clientes:", JSON.stringify(customersError));
       throw customersError;
-    }
-    
-    // Verificar si hay datos y mostrar la primera fila para diagnóstico
-    if (customersData && customersData.length > 0) {
-      console.log('Primer cliente cargado:', JSON.stringify(customersData[0]));
-    } else {
-      console.log('No se encontraron clientes en la tabla');
     }
 
     // Cargar oportunidades

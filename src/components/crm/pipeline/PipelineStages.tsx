@@ -15,6 +15,8 @@ import { handleStageChangeAutomation } from "./OpportunityAutomations";
 import { BarChart3, Calendar, DollarSign, Settings, Plus, GripVertical, Trash2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
+import { OpportunityDrawer } from "./OpportunityDrawer";
+import CreateOpportunityDialog from "./modals/CreateOpportunityDialog";
 
 interface Stage {
   id: string;
@@ -68,6 +70,14 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   
   // Estado para drag & drop de etapas
   const [isDraggingStage, setIsDraggingStage] = useState(false);
+
+  // Estado para el drawer de detalle de oportunidad
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Estado para el dialog de crear oportunidad
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDialogStageId, setCreateDialogStageId] = useState<string | undefined>(undefined);
 
   // Ref para scroll horizontal con click sostenido
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -256,7 +266,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       let query = supabase
         .from('opportunities')
         .select(`
-          id, name, stage_id, customer_id, amount, currency, expected_close_date, status,
+          id, name, stage_id, customer_id, amount, currency, expected_close_date, status, created_at,
           customer:customers!customer_id(id, full_name, email)
         `)
         .eq('pipeline_id', pipelineId)
@@ -808,9 +818,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   // Mostrar esqueletos mientras se cargan los datos
   if (loading) {
     return (
-      <div className="flex flex-wrap gap-6 p-6 overflow-x-auto bg-white/5 dark:bg-black/5 rounded-lg">
+      <div className="flex gap-3 sm:gap-6 p-3 sm:p-6 overflow-x-auto bg-white/5 dark:bg-black/5 rounded-lg">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="flex-shrink-0 w-72 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-blue-100 dark:border-blue-900">
+          <div key={i} className="flex-1 min-w-[200px] sm:min-w-[240px] bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-blue-100 dark:border-blue-900">
             <Skeleton className="h-10 w-full mb-4 bg-blue-100 dark:bg-blue-900/30" />
             <div className="px-3 py-2 mb-3 bg-blue-50 dark:bg-blue-900/20 rounded">
               <Skeleton className="h-6 w-full bg-blue-100 dark:bg-blue-900/30" />
@@ -871,7 +881,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             <div 
               ref={stagesProvided.innerRef}
               {...stagesProvided.droppableProps}
-              className="flex gap-3 sm:gap-6 p-3 sm:p-6 min-h-[calc(100vh-10rem)] bg-gray-50 dark:bg-gray-900 transition-colors duration-200 min-w-min"
+              className="flex gap-3 sm:gap-6 p-3 sm:p-6 min-h-[calc(100vh-10rem)] bg-gray-50 dark:bg-gray-900 transition-colors duration-200 w-full min-w-fit"
             >
               {stages.map((stage, stageIndex) => (
                 <Draggable key={stage.id} draggableId={`stage-${stage.id}`} index={stageIndex}>
@@ -879,7 +889,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                     <div 
                       ref={stageDragProvided.innerRef}
                       {...stageDragProvided.draggableProps}
-                      className={`flex-shrink-0 w-[280px] sm:w-72 bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200 border ${stageDragSnapshot.isDragging ? 'border-blue-500 shadow-lg' : 'border-gray-200 dark:border-gray-700'}`}
+                      className={`flex-1 min-w-[200px] sm:min-w-[240px] bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-all duration-200 border ${stageDragSnapshot.isDragging ? 'border-blue-500 shadow-lg' : 'border-gray-200 dark:border-gray-700'}`}
                     >
                       <div 
                         className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800 rounded-t-lg"
@@ -905,6 +915,16 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                           <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-800">
                             {getOpportunitiesByStage(stage.id).length}
                           </Badge>
+                          <button
+                            onClick={() => {
+                              setCreateDialogStageId(stage.id);
+                              setCreateDialogOpen(true);
+                            }}
+                            className="p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400"
+                            title="Crear oportunidad en esta etapa"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
                           <button 
                             onClick={() => handleOpenEditStage(stage)}
                             className="p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400"
@@ -951,6 +971,10 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                                     ref={oppDragProvided.innerRef}
                                     {...oppDragProvided.draggableProps}
                                     {...oppDragProvided.dragHandleProps}
+                                    onClick={() => {
+                                      setSelectedOpportunity(opportunity);
+                                      setDrawerOpen(true);
+                                    }}
                                     className={`p-3 mb-2 cursor-pointer transition-all duration-200 shadow-sm hover:shadow ${opportunity.status === 'won' 
                                       ? 'border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' 
                                       : opportunity.status === 'lost'
@@ -996,6 +1020,17 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                               </Draggable>
                             ))}
                             {oppDropProvided.placeholder}
+                            <button
+                              onClick={() => {
+                                setCreateDialogStageId(stage.id);
+                                setCreateDialogOpen(true);
+                              }}
+                              className="w-full mt-1 py-2 flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all"
+                              title="Crear oportunidad en esta etapa"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              <span>Nueva oportunidad</span>
+                            </button>
                           </div>
                         )}
                       </Droppable>
@@ -1006,7 +1041,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
               {stagesProvided.placeholder}
               
               {/* Botón para agregar nueva etapa */}
-              <div className="flex-shrink-0 w-[280px] sm:w-72">
+              <div className="flex-shrink-0 min-w-[200px] sm:min-w-[240px]">
                 <Button
                   variant="outline"
                   onClick={handleOpenCreateStage}
@@ -1037,6 +1072,22 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         stageName={stageToDelete?.name || ""}
         opportunityCount={stageToDelete ? getOpportunitiesByStage(stageToDelete.id).length : 0}
         onConfirm={handleConfirmDeleteStage}
+      />
+
+      {/* Drawer de detalle de oportunidad */}
+      <OpportunityDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        opportunity={selectedOpportunity}
+      />
+
+      {/* Dialog para crear oportunidad desde una etapa */}
+      <CreateOpportunityDialog
+        isOpen={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        pipelineId={pipelineId}
+        stageId={createDialogStageId}
+        onSuccess={() => loadOpportunities()}
       />
     </DragDropContext>
   );

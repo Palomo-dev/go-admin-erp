@@ -75,6 +75,42 @@ export interface OpportunityProduct {
   };
 }
 
+export interface OpportunitySpace {
+  id: string;
+  opportunity_id: string;
+  space_id: string;
+  nights: number;
+  unit_price: number;
+  total_price: number;
+  checkin_date?: string | null;
+  checkout_date?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relación
+  space?: {
+    id: string;
+    label: string;
+    floor_zone?: string;
+    status: string;
+    space_types?: {
+      name: string;
+      base_rate: number;
+    };
+  };
+}
+
+export interface OpportunityCustomLine {
+  id: string;
+  opportunity_id: string;
+  concept: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Activity {
   id: string;
   organization_id: number;
@@ -87,6 +123,60 @@ export interface Activity {
   created_at: string;
   updated_at: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface OpportunityTask {
+  id: string;
+  organization_id: number;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  assigned_to: string | null;
+  priority: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  related_to_id: string | null;
+  related_to_type: string | null;
+  completed_at: string | null;
+  tags: string[] | null;
+  assigned_user?: {
+    id: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+  };
+}
+
+export interface OpportunityNote {
+  id: string;
+  organization_id: number;
+  user_id: string;
+  body: string;
+  related_type: string | null;
+  related_id: string | null;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+  };
+}
+
+export interface CustomerDetails extends Customer {
+  identification_type?: string;
+  identification_number?: string;
+  address?: string;
+  city?: string;
+  company_name?: string;
+  customer_type?: string;
+  tags?: string[];
+  roles?: string[];
+  notes?: string;
 }
 
 export interface OpportunityFilters {
@@ -137,6 +227,16 @@ export interface CreateOpportunityInput {
     quantity: number;
     unit_price: number;
   }[];
+  spaces?: {
+    space_id: string;
+    nights: number;
+    unit_price: number;
+  }[];
+  customLines?: {
+    concept: string;
+    quantity: number;
+    unit_price: number;
+  }[];
 }
 
 export interface UpdateOpportunityInput {
@@ -151,4 +251,19 @@ export interface UpdateOpportunityInput {
   salesperson_id?: string | null;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  products?: {
+    product_id: number;
+    quantity: number;
+    unit_price: number;
+  }[];
+  spaces?: {
+    space_id: string;
+    nights: number;
+    unit_price: number;
+  }[];
+  customLines?: {
+    concept: string;
+    quantity: number;
+    unit_price: number;
+  }[];
 }

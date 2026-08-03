@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlusCircle, SlidersHorizontal, Plus, Loader2, LayoutGrid } from "lucide-react";
+import CreateOpportunityDialog from "./modals/CreateOpportunityDialog";
+import { useOrganization } from "@/lib/hooks/useOrganization";
 import { Switch } from "@/components/ui/switch";
 import { 
   DropdownMenu, 
@@ -34,61 +36,29 @@ interface Pipeline {
 interface PipelineHeaderProps {
   currentPipelineId: string;
   onPipelineChange: (pipelineId: string) => void;
+  externalCreateDialogOpen?: boolean;
+  onExternalCreateDialogOpenChange?: (open: boolean) => void;
 }
 
 export default function PipelineHeader({ 
   currentPipelineId, 
   onPipelineChange,
+  externalCreateDialogOpen,
+  onExternalCreateDialogOpenChange,
 }: PipelineHeaderProps) {
   const router = useRouter();
+  const { organization } = useOrganization();
+  const organizationId = organization?.id ?? null;
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [currentPipeline, setCurrentPipeline] = useState<Pipeline | null>(null);
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
   
-  // Estado para crear nuevo pipeline
-  const [isCreatePipelineOpen, setIsCreatePipelineOpen] = useState(false);
+  // Estado para crear nuevo pipeline (controlable externamente)
+  const [internalCreateOpen, setInternalCreateOpen] = useState(false);
+  const isCreatePipelineOpen = externalCreateDialogOpen ?? internalCreateOpen;
+  const setIsCreatePipelineOpen = onExternalCreateDialogOpenChange ?? setInternalCreateOpen;
   const [newPipelineName, setNewPipelineName] = useState("");
   const [isCreatingPipeline, setIsCreatingPipeline] = useState(false);
-  
-  // Obtener el ID de la organización del localStorage con múltiples opciones de clave
-  useEffect(() => {
-    // Lista de posibles claves donde podría estar almacenado el ID de la organización
-    const possibleKeys = [
-      "currentOrganizationId",
-      "organizationId", 
-      "selectedOrganizationId",
-      "orgId",
-      "organization_id"
-    ];
-    
-    // Buscar en localStorage
-    for (const key of possibleKeys) {
-      const orgId = localStorage.getItem(key);
-      if (orgId) {
-        // Organización encontrada en localStorage
-        setOrganizationId(Number(orgId));
-        return;
-      }
-    }
-    
-    // Si no está en localStorage, buscar en sessionStorage
-    for (const key of possibleKeys) {
-      const orgId = sessionStorage.getItem(key);
-      if (orgId) {
-        // Organización encontrada en sessionStorage
-        setOrganizationId(Number(orgId));
-        return;
-      }
-    }
-    
-    // Si no se encuentra, usar un valor predeterminado para desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      // Usando ID de organización predeterminado para desarrollo
-      setOrganizationId(2); // Valor predeterminado para desarrollo
-    } else {
-      // No se pudo encontrar el ID de organización en el almacenamiento local
-    }
-  }, []);
+  const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
   
   // Cargar los pipelines de la organización cuando tengamos el ID
   useEffect(() => {
@@ -336,7 +306,7 @@ export default function PipelineHeader({
           </DropdownMenu>
         
         <Button 
-          onClick={() => router.push(`/app/crm/oportunidades/nuevo?pipeline=${currentPipelineId}`)} 
+          onClick={() => setCreateOpportunityOpen(true)}
           size="sm" 
           className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm"
         >
@@ -345,6 +315,12 @@ export default function PipelineHeader({
           <span className="sm:hidden">Nueva</span>
         </Button>
       </div>
+
+      <CreateOpportunityDialog
+        isOpen={createOpportunityOpen}
+        onClose={() => setCreateOpportunityOpen(false)}
+        pipelineId={currentPipelineId}
+      />
       
       {/* Diálogo para crear nuevo pipeline */}
       <Dialog open={isCreatePipelineOpen} onOpenChange={setIsCreatePipelineOpen}>

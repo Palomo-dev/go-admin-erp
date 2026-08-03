@@ -17,6 +17,7 @@ import CuentasTab from '@/components/clientes/id/CuentasTab';
 import NotasArchivosTab from '@/components/clientes/id/NotasArchivosTab';
 import TareasSidebar from '@/components/clientes/id/TareasSidebar';
 import InfoTab from '@/components/clientes/id/InfoTab';
+import OportunidadesTab from '@/components/clientes/id/OportunidadesTab';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 
 // Interfaz para los datos del cliente
@@ -147,6 +148,7 @@ export default function PerfilCliente() {
             <TabsList className="mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 rounded-lg">
               <TabsTrigger value="resumen" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Resumen</TabsTrigger>
               <TabsTrigger value="info" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Información</TabsTrigger>
+              <TabsTrigger value="oportunidades" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Oportunidades</TabsTrigger>
               <TabsTrigger value="timeline" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Timeline</TabsTrigger>
               <TabsTrigger value="cuentas" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Cuentas por cobrar</TabsTrigger>
               <TabsTrigger value="notas" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Notas y archivos</TabsTrigger>
@@ -161,6 +163,10 @@ export default function PerfilCliente() {
             
             <TabsContent value="info">
               <InfoTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+            </TabsContent>
+            
+            <TabsContent value="oportunidades">
+              <OportunidadesTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
             
             <TabsContent value="timeline">

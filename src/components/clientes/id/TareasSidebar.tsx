@@ -39,8 +39,17 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
         setLoading(true);
         setError(null);
         
-        // Obtener todas las tareas relacionadas con el cliente usando customer_id
-        const { data: tareasData, error: tareasError } = await supabase
+        // Obtener IDs de oportunidades del cliente
+        const { data: oppsData } = await supabase
+          .from('opportunities')
+          .select('id')
+          .eq('customer_id', clienteId)
+          .eq('organization_id', organizationId);
+        
+        const oppIds = (oppsData || []).map(o => o.id);
+        
+        // Query 1: Tareas del cliente por customer_id
+        const { data: customerTasks, error: customerTasksError } = await supabase
           .from('tasks')
           .select('*')
           .eq('customer_id', clienteId)
@@ -48,7 +57,30 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
           .order('due_date', { ascending: true })
           .order('priority', { ascending: false });
         
-        if (tareasError) throw tareasError;
+        if (customerTasksError) throw customerTasksError;
+        
+        let allTasks = customerTasks || [];
+        
+        // Query 2: Tareas de las oportunidades del cliente
+        if (oppIds.length > 0) {
+          const { data: oppTasks, error: oppTasksError } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('related_to_type', 'opportunity')
+            .in('related_to_id', oppIds)
+            .eq('organization_id', organizationId)
+            .order('due_date', { ascending: true })
+            .order('priority', { ascending: false });
+          
+          if (oppTasksError) throw oppTasksError;
+          
+          // Merge y deduplicar por id
+          const taskMap = new Map<string, any>();
+          [...allTasks, ...(oppTasks || [])].forEach(t => taskMap.set(t.id, t));
+          allTasks = Array.from(taskMap.values());
+        }
+        
+        const tareasData = allTasks;
         
         if (tareasData) {
           // Separar tareas por estado

@@ -56,7 +56,7 @@ export const clientesReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, customer_type, city, segment')
+        .select('id, customer_type, city')
         .eq('organization_id', orgId);
 
       if (error) throw error;

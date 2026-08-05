@@ -137,7 +137,7 @@ export function ReportesChatSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-[480px] p-0 flex flex-col">
+      <SheetContent side="right" className="w-full sm:max-w-[480px] p-0 flex flex-col bg-white dark:bg-gray-900">
         <SheetHeader className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-blue-600" />

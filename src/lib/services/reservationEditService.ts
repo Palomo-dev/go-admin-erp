@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { type Customer } from './reservationsService';
+import ReservationExtrasService from './reservationExtrasService';
 
 export interface ReservationEditData {
   id: string;
@@ -170,7 +171,6 @@ class ReservationEditService {
         notes: data.notes,
         total_estimated: data.totalEstimated,
         metadata: {
-          extras: data.extras,
           category: data.category,
         },
         updated_at: new Date().toISOString(),
@@ -202,6 +202,21 @@ class ReservationEditService {
         .insert(spacesToInsert);
 
       if (insertSpacesError) throw insertSpacesError;
+    }
+
+    // 3. Sincronizar extras en tabla relacional
+    await ReservationExtrasService.deleteByReservationId(data.reservationId);
+    if (data.extras && data.extras.length > 0) {
+      await ReservationExtrasService.createForReservation(
+        data.reservationId,
+        data.extras.map((e: any) => ({
+          organization_service_id: e.organization_service_id || null,
+          name: e.name,
+          description: e.description,
+          unit_price: e.price,
+          quantity: e.quantity || 1,
+        }))
+      );
     }
   }
 

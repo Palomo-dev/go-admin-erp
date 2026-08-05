@@ -19,6 +19,8 @@ export interface OrgService {
   custom_icon: string | null;
   custom_category: string | null;
   is_active: boolean;
+  price: number;
+  linked_product_id: number | null;
   created_at: string;
   // Joined
   service?: GlobalService | null;
@@ -33,6 +35,9 @@ export interface OrgServiceView {
   is_active: boolean;
   is_custom: boolean;
   service_id: string | null;
+  price: number;
+  linked_product_id: number | null;
+  linked_product_name?: string | null;
 }
 
 export interface SpaceServiceRow {
@@ -102,7 +107,22 @@ const spaceServicesService = {
     // 2. Registros de organization_services para esta org
     const { data: orgRows, error } = await supabase
       .from('organization_services')
-      .select('*')
+      .select(`
+        id,
+        organization_id,
+        service_id,
+        custom_name,
+        custom_icon,
+        custom_category,
+        is_active,
+        price,
+        linked_product_id,
+        created_at,
+        products!linked_product_id (
+          id,
+          name
+        )
+      `)
       .eq('organization_id', organizationId);
 
     if (error) {
@@ -113,7 +133,7 @@ const spaceServicesService = {
     const orgMap = new Map<string, OrgService>();
     const customServices: OrgServiceView[] = [];
 
-    for (const row of (orgRows || []) as OrgService[]) {
+    for (const row of (orgRows || []) as any[]) {
       if (row.service_id) {
         orgMap.set(row.service_id, row);
       } else {
@@ -126,6 +146,9 @@ const spaceServicesService = {
           is_active: row.is_active,
           is_custom: true,
           service_id: null,
+          price: parseFloat(row.price) || 0,
+          linked_product_id: row.linked_product_id || null,
+          linked_product_name: row.products?.name || null,
         });
       }
     }
@@ -141,6 +164,9 @@ const spaceServicesService = {
         is_active: override ? override.is_active : true, // activo por defecto si no hay override
         is_custom: false,
         service_id: gs.id,
+        price: override ? (parseFloat(override.price) || 0) : 0,
+        linked_product_id: override?.linked_product_id || null,
+        linked_product_name: (override as any)?.products?.name || null,
       };
     });
 
@@ -273,6 +299,37 @@ const spaceServicesService = {
       .eq('id', orgServiceId);
 
     return !error;
+  },
+
+  /**
+   * Actualizar configuración de un servicio: precio y producto vinculado del POS
+   */
+  async updateServiceConfig(
+    orgServiceId: string,
+    data: { price?: number; linked_product_id?: number | null }
+  ): Promise<boolean> {
+    const updates: Record<string, any> = {};
+    if (data.price !== undefined) updates.price = data.price;
+    if (data.linked_product_id !== undefined) updates.linked_product_id = data.linked_product_id;
+
+    const { error } = await supabase
+      .from('organization_services')
+      .update(updates)
+      .eq('id', orgServiceId);
+
+    if (error) {
+      console.error('Error updating service config:', error);
+      return false;
+    }
+    return true;
+  },
+
+  /**
+   * Obtener servicios activos con precio > 0 (para usar como extras en reservas)
+   */
+  async getActiveServicesForExtras(organizationId: number): Promise<OrgServiceView[]> {
+    const all = await this.getActiveOrgServices(organizationId);
+    return all.filter((s) => s.is_active);
   },
 
   /**

@@ -15,6 +15,7 @@ import { getReportesVisibles } from '@/lib/services/reportes/reportesCatalogo';
 import { resolverPeriodo } from '@/lib/services/reportes/periodosService';
 import { ejecutarReporte, ejecutarCierre } from '@/lib/services/reportes/reportesEngine';
 import { pdfExportService, type OrganizationInfo } from '@/lib/services/reportes/pdfExportService';
+import { ReportesChatSheet } from '@/components/reportes/chat/ReportesChatSheet';
 import type { PeriodoCierre, ReportDefinition, ReportData } from '@/lib/services/reportes/types';
 
 export default function ReportesPage() {
@@ -162,25 +163,16 @@ export default function ReportesPage() {
         onExportPDF={handleExportIndividual}
       />
 
-      {/* Fase 6: Chat IA Sheet */}
-      {chatOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setChatOpen(false)}>
-          <div
-            className="absolute right-0 top-0 h-full w-full sm:w-[420px] bg-white dark:bg-gray-900 p-6 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Asistente IA de Reportes</h3>
-              <button onClick={() => setChatOpen(false)} className="text-gray-400 hover:text-gray-600">
-                ✕
-              </button>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              El agente IA estará disponible en Fase 6.
-            </p>
-          </div>
-        </div>
-      )}
+      <ReportesChatSheet
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        organizationId={orgId}
+        organizationName={organization?.name}
+        userName="Usuario"
+        userRole="admin"
+        periodoActual={periodo}
+        modulosActivos={moduleCodes}
+      />
     </div>
   );
 }

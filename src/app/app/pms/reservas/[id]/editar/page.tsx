@@ -490,6 +490,7 @@ export default function EditarReservaPage() {
               onNext={nextStep}
               onBack={prevStep}
               onSkip={nextStep}
+              organizationId={organization?.id}
             />
           )}
 

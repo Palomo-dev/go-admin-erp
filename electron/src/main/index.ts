@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, session } from 'electron';
 import * as path from 'path';
 import { createMainWindow, getMainWindow, createSplashWindow, closeSplash } from './windows/mainWindow';
 import { createTray, destroyTray } from './tray';
@@ -46,6 +46,11 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     initCrashReporter();
     initOfflineManager();
+
+    // ── Optimizaciones de rendimiento ──
+    // Desactivar spellcheck para reducir overhead en inputs
+    session.defaultSession.setSpellCheckerEnabled(false);
+
     registerIpcHandlers();
 
     // Splash screen mientras carga

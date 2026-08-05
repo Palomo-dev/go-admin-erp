@@ -17,6 +17,7 @@ import {
   ReservationDrawer,
   type ReservationDetails,
 } from '@/components/pms/calendario';
+import { NuevaReservaDialog } from '@/components/pms/reservas/nueva';
 
 export default function CalendarioPage() {
   const router = useRouter();
@@ -42,6 +43,12 @@ export default function CalendarioPage() {
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<ReservationDetails | null>(null);
+
+  // Nueva reserva dialog state
+  const [showNuevaReservaDialog, setShowNuevaReservaDialog] = useState(false);
+  const [dialogSpaceId, setDialogSpaceId] = useState<string | null>(null);
+  const [dialogCheckin, setDialogCheckin] = useState<string | null>(null);
+  const [dialogCheckout, setDialogCheckout] = useState<string | null>(null);
 
   const dates = useMemo(() => {
     return TapeChartService.generateDateRange(
@@ -114,7 +121,6 @@ export default function CalendarioPage() {
   };
 
   const handleCellClick = (spaceId: string, date: string) => {
-    // Check for conflicts before navigating
     const conflict = TapeChartService.checkConflicts(
       chartData.reservations,
       chartData.blocks,
@@ -124,12 +130,14 @@ export default function CalendarioPage() {
     );
 
     if (!conflict.hasConflict) {
-      router.push(`/app/pms/reservas/nueva?space_id=${spaceId}&checkin=${date}`);
+      setDialogSpaceId(spaceId);
+      setDialogCheckin(date);
+      setDialogCheckout(null);
+      setShowNuevaReservaDialog(true);
     }
   };
 
   const handleCreateReservation = (spaceId: string, checkin: string, checkout: string) => {
-    // Check for conflicts before navigating
     const conflict = TapeChartService.checkConflicts(
       chartData.reservations,
       chartData.blocks,
@@ -139,7 +147,10 @@ export default function CalendarioPage() {
     );
 
     if (!conflict.hasConflict) {
-      router.push(`/app/pms/reservas/nueva?space_id=${spaceId}&checkin=${checkin}&checkout=${checkout}`);
+      setDialogSpaceId(spaceId);
+      setDialogCheckin(checkin);
+      setDialogCheckout(checkout);
+      setShowNuevaReservaDialog(true);
     }
   };
 
@@ -163,7 +174,10 @@ export default function CalendarioPage() {
   };
 
   const handleNewReservation = () => {
-    router.push('/app/pms/reservas/nueva');
+    setDialogSpaceId(null);
+    setDialogCheckin(null);
+    setDialogCheckout(null);
+    setShowNuevaReservaDialog(true);
   };
 
   const handleNewBlock = () => {
@@ -395,6 +409,19 @@ export default function CalendarioPage() {
         <OccupancyBar data={occupancyData} isLoading={isLoading} />
         <TapeChartLegend />
       </div>
+
+      {/* Nueva Reserva Dialog */}
+      <NuevaReservaDialog
+        open={showNuevaReservaDialog}
+        onOpenChange={setShowNuevaReservaDialog}
+        preselectedSpaceId={dialogSpaceId}
+        preselectedCheckin={dialogCheckin}
+        preselectedCheckout={dialogCheckout}
+        onSuccess={async () => {
+          setShowNuevaReservaDialog(false);
+          await loadData();
+        }}
+      />
 
       {/* Reservation Drawer */}
       <ReservationDrawer

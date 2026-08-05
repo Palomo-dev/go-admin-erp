@@ -166,6 +166,115 @@ class CheckinService {
   }
 
   /**
+   * Obtener una reserva individual con todos los datos para check-in
+   */
+  async getReservationForCheckin(reservationId: string): Promise<CheckinReservation | null> {
+    const { data: reservation, error } = await supabase
+      .from('reservations')
+      .select(`
+        id,
+        customer_id,
+        checkin,
+        checkout,
+        occupant_count,
+        total_estimated,
+        status,
+        metadata,
+        customers (
+          id,
+          first_name,
+          last_name,
+          email,
+          phone
+        ),
+        reservation_spaces (
+          space_id,
+          spaces (
+            id,
+            label,
+            floor_zone,
+            status,
+            space_types (
+              name
+            )
+          )
+        )
+      `)
+      .eq('id', reservationId)
+      .single();
+
+    if (error || !reservation) return null;
+
+    // Obtener estados de housekeeping
+    const spaceIds = (reservation.reservation_spaces || [])
+      .map((rs: any) => rs.spaces?.id)
+      .filter(Boolean);
+
+    let housekeepingMap: Record<string, string> = {};
+    if (spaceIds.length > 0) {
+      const { data: housekeepingData } = await supabase
+        .from('housekeeping_tasks')
+        .select('space_id, status, task_date')
+        .in('space_id', spaceIds)
+        .order('task_date', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      housekeepingMap = (housekeepingData || []).reduce((acc: any, task: any) => {
+        if (!acc[task.space_id]) {
+          acc[task.space_id] = task.status;
+        }
+        return acc;
+      }, {});
+    }
+
+    const customer = reservation.customers;
+    const spaces = reservation.reservation_spaces || [];
+
+    const checkinDate = new Date(reservation.checkin + 'T00:00:00');
+    const checkoutDate = new Date(reservation.checkout + 'T00:00:00');
+    const nights = Math.ceil(
+      (checkoutDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    const spacesData = spaces.map((rs: any) => {
+      const space = rs.spaces;
+      const spaceStatus = space?.status || 'available';
+      const housekeepingStatus = housekeepingMap[space?.id];
+      const isReady = housekeepingStatus
+        ? housekeepingStatus === 'done'
+        : spaceStatus === 'available';
+
+      return {
+        id: space?.id || '',
+        label: space?.label || '',
+        space_type_name: space?.space_types?.name || '',
+        floor_zone: space?.floor_zone || '',
+        housekeeping_status: housekeepingStatus || (spaceStatus === 'available' ? 'done' : 'pending'),
+        is_ready: isReady,
+      };
+    });
+
+    return {
+      id: reservation.id,
+      code: reservation.id.substring(0, 8).toUpperCase(),
+      customer_name: customer
+        ? `${customer.first_name} ${customer.last_name}`
+        : 'N/A',
+      customer_email: customer?.email || '',
+      customer_phone: customer?.phone || '',
+      customer_id: customer?.id || '',
+      checkin: reservation.checkin,
+      checkout: reservation.checkout,
+      nights,
+      occupant_count: reservation.occupant_count,
+      total_estimated: parseFloat(reservation.total_estimated) || 0,
+      status: reservation.status,
+      spaces: spacesData,
+      metadata: reservation.metadata || {},
+    };
+  }
+
+  /**
    * Obtener reservas con llegada para hoy (método de conveniencia)
    */
   async getTodayArrivals(organizationId: number): Promise<CheckinReservation[]> {
@@ -224,6 +333,7 @@ class CheckinService {
     originCountry?: string;
     destinationCity?: string;
     destinationCountry?: string;
+    updateCheckinDate?: boolean;
   }): Promise<void> {
     const { 
       reservationId, 
@@ -238,6 +348,7 @@ class CheckinService {
       originCountry,
       destinationCity,
       destinationCountry,
+      updateCheckinDate,
     } = data;
 
     // Obtener la reserva para actualizar el customer
@@ -267,6 +378,7 @@ class CheckinService {
     }
 
     // Actualizar estado de la reserva con campos de auditoría y metadata
+    const todayStr = new Date().toISOString().split('T')[0];
     const updateData: any = {
       status: 'checked_in',
       updated_at: new Date().toISOString(),
@@ -274,6 +386,11 @@ class CheckinService {
       actual_checkin_at: new Date().toISOString(),
       checkin_by: userId || null,
       checkin_notes: notes || null,
+      // Si es check-in anticipado y el usuario confirmó, actualizar fechas
+      ...(updateCheckinDate ? {
+        checkin: todayStr,
+        start_date: todayStr,
+      } : {}),
       // Metadata adicional
       metadata: {
         ...(reservation?.metadata || {}),
@@ -296,6 +413,14 @@ class CheckinService {
       .eq('id', reservationId);
 
     if (error) throw error;
+
+    // Si es check-in anticipado, actualizar también reservation_spaces
+    if (updateCheckinDate) {
+      await supabase
+        .from('reservation_spaces')
+        .update({ checkin: todayStr })
+        .eq('reservation_id', reservationId);
+    }
 
     // Actualizar estado de los espacios a "occupied"
     await this.updateSpaceStatus(reservationId, 'occupied');

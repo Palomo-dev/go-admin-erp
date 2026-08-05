@@ -17,6 +17,7 @@ import {
 } from '@/components/pms/reservas/nueva';
 import ReservationEditService from '@/lib/services/reservationEditService';
 import ReservationsService, { type Customer } from '@/lib/services/reservationsService';
+import SpaceTypesService from '@/lib/services/spaceTypesService';
 import SpaceCategoriesService from '@/lib/services/spaceCategoriesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 
@@ -65,11 +66,11 @@ export default function EditarReservaPage() {
     }
   }, [reservationId]);
 
-  // Cargar categorías y métodos de pago
+  // Cargar categorías con tipos de espacio de la organización y métodos de pago
   useEffect(() => {
-    loadCategories();
+    loadCategoriesForOrg();
     loadPaymentMethods();
-  }, []);
+  }, [organization]);
 
   // Cargar espacios cuando cambian las fechas o categoría
   useEffect(() => {
@@ -142,15 +143,20 @@ export default function EditarReservaPage() {
     }
   };
 
-  const loadCategories = async () => {
+  const loadCategoriesForOrg = async () => {
+    if (!organization) return;
     try {
-      const data = await SpaceCategoriesService.getCategories();
-      setCategories(data.filter(c => c.is_bookable));
+      const [allCategories, orgSpaceTypes] = await Promise.all([
+        SpaceCategoriesService.getCategories(),
+        SpaceTypesService.getSpaceTypes(organization.id),
+      ]);
+      const orgCategoryCodes = new Set(orgSpaceTypes.filter((t: any) => t.is_active).map((t: any) => t.category_code));
+      setCategories(allCategories.filter(c => c.is_bookable && orgCategoryCodes.has(c.code)));
     } catch (error) {
       console.error('Error cargando categorías:', error);
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las categorías',
+        description: 'No se pudieron cargar los tipos de alojamiento',
         variant: 'destructive',
       });
     }
@@ -339,19 +345,6 @@ export default function EditarReservaPage() {
     router.push(`/app/pms/reservas/${reservationId}`);
   };
 
-  const handleSearchCustomers = async (searchTerm: string) => {
-    if (!organization) return [];
-    return await ReservationsService.searchCustomers(organization.id, searchTerm);
-  };
-
-  const handleCreateCustomer = async (customerData: Partial<Customer>) => {
-    if (!organization) throw new Error('No organization');
-    return await ReservationsService.createCustomer({
-      ...customerData,
-      organization_id: organization.id,
-    } as Customer);
-  };
-
   const handleAddExtra = (extra: Omit<typeof extras[0], 'quantity'>) => {
     setExtras([...extras, { ...extra, quantity: 1 }]);
   };
@@ -451,8 +444,6 @@ export default function EditarReservaPage() {
               selectedCustomer={selectedCustomer}
               onCustomerSelect={setSelectedCustomer}
               onNext={nextStep}
-              onSearch={handleSearchCustomers}
-              onCreate={handleCreateCustomer}
             />
           )}
 
@@ -499,6 +490,7 @@ export default function EditarReservaPage() {
               onNext={nextStep}
               onBack={prevStep}
               onSkip={nextStep}
+              organizationId={organization?.id}
             />
           )}
 

@@ -14,10 +14,17 @@ interface Space {
   capacity?: number;
   isAvailable?: boolean;
   hasConflict?: boolean;
+  space_type_id?: string;
   space_types?: {
+    id?: string;
     name: string;
     base_rate?: number;
   };
+}
+
+interface SpaceTypeRate {
+  dailyRate: number;
+  rateSource: 'tarifa' | 'base_rate';
 }
 
 interface StepSpacesProps {
@@ -28,6 +35,7 @@ interface StepSpacesProps {
   onSpaceToggle: (spaceId: string) => void;
   onNext: () => void;
   onBack: () => void;
+  spaceTypeRates?: Record<string, SpaceTypeRate>;
 }
 
 export function StepSpaces({
@@ -38,11 +46,19 @@ export function StepSpaces({
   onSpaceToggle,
   onNext,
   onBack,
+  spaceTypeRates,
 }: StepSpacesProps) {
   const isValid = selectedSpaces.length > 0;
 
-  const calculateTotal = (basePrice: number) => {
-    return (basePrice * nights).toFixed(2);
+  const getSpaceRate = (space: Space): SpaceTypeRate => {
+    const typeId = space.space_type_id || space.space_types?.id;
+    if (typeId && spaceTypeRates?.[typeId]) {
+      return spaceTypeRates[typeId];
+    }
+    return {
+      dailyRate: space.space_types?.base_rate || 0,
+      rateSource: 'base_rate',
+    };
   };
 
   // Agrupar espacios por zona
@@ -116,9 +132,10 @@ export function StepSpaces({
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {spaces.map((space) => {
                   const isSelected = selectedSpaces.includes(space.id);
-                  const isAvailable = space.isAvailable !== false; // Default true si no está definido
-                  const basePrice = space.space_types?.base_rate || 0;
-                  const total = calculateTotal(basePrice);
+                  const isAvailable = space.isAvailable !== false;
+                  const rateInfo = getSpaceRate(space);
+                  const dailyRate = rateInfo.dailyRate;
+                  const total = (dailyRate * nights).toFixed(2);
 
                   return (
                     <Card
@@ -172,12 +189,19 @@ export function StepSpaces({
                         </div>
                       )}
 
-                      {basePrice > 0 && (
+                      {dailyRate > 0 && (
                         <div className="pt-2 border-t dark:border-gray-700">
                           <div className="flex justify-between items-center">
-                            <span className={`text-sm ${!isAvailable ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-400'}`}>
-                              ${basePrice} × {nights} noche{nights !== 1 ? 's' : ''}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-sm ${!isAvailable ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-400'}`}>
+                                ${dailyRate.toFixed(2)} × {nights} noche{nights !== 1 ? 's' : ''}
+                              </span>
+                              {rateInfo.rateSource === 'tarifa' && (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 border-green-300 dark:border-green-700 text-green-600 dark:text-green-400">
+                                  Tarifa especial
+                                </Badge>
+                              )}
+                            </div>
                             <span className={`text-lg font-bold ${!isAvailable ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}>
                               ${total}
                             </span>

@@ -124,19 +124,25 @@ export default function ServiciosPage() {
     }
   };
 
-  const handleSave = async (data: { name: string; icon: string; category: string }) => {
+  const handleSave = async (data: { name: string; icon: string; category: string; price?: number; linked_product_id?: number | null }) => {
     if (!organization?.id) return;
     setIsSaving(true);
     try {
       if (editItem) {
-        const ok = await spaceServicesService.updateCustomService(editItem.org_service_id, data);
+        const ok = await spaceServicesService.updateCustomService(editItem.org_service_id, { name: data.name, icon: data.icon, category: data.category });
+        if (ok && data.price !== undefined) {
+          await spaceServicesService.updateServiceConfig(editItem.org_service_id, { price: data.price, linked_product_id: data.linked_product_id });
+        }
         if (ok) {
           toast({ title: 'Actualizado', description: `"${data.name}" actualizado` });
         } else {
           throw new Error('Error al actualizar');
         }
       } else {
-        const id = await spaceServicesService.createCustomService(organization.id, data);
+        const id = await spaceServicesService.createCustomService(organization.id, { name: data.name, icon: data.icon, category: data.category });
+        if (id && data.price !== undefined) {
+          await spaceServicesService.updateServiceConfig(id, { price: data.price, linked_product_id: data.linked_product_id });
+        }
         if (id) {
           toast({ title: 'Creado', description: `"${data.name}" creado exitosamente` });
         } else {
@@ -192,6 +198,7 @@ export default function ServiciosPage() {
             onToggle={handleToggle}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onConfig={handleEdit}
           />
         </div>
       </div>
@@ -202,6 +209,7 @@ export default function ServiciosPage() {
         editItem={editItem}
         isSaving={isSaving}
         onSave={handleSave}
+        organizationId={organization?.id}
       />
     </div>
   );

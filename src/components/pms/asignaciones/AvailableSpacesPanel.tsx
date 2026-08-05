@@ -36,6 +36,13 @@ const statusColors: Record<string, string> = {
   out_of_order: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
+const spaceStatusLabel: Record<string, string> = {
+  occupied: 'Ocupada ahora',
+  cleaning: 'En limpieza',
+  maintenance: 'En mantenimiento',
+  out_of_order: 'Fuera de servicio',
+};
+
 function SpaceCard({ 
   space, 
   isSelected, 
@@ -68,7 +75,7 @@ function SpaceCard({
               <Check className="h-3 w-3 text-white" />
             </div>
           ) : (
-            <Badge className={statusColors[space.status] || statusColors.available}>
+            <Badge className={statusColors.available}>
               Disponible
             </Badge>
           )
@@ -79,7 +86,7 @@ function SpaceCard({
           </Badge>
         )}
       </div>
-      
+
       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
         <span className="flex flex-wrap items-center gap-1">
           <Users className="h-3 w-3" />
@@ -89,6 +96,12 @@ function SpaceCard({
           <span className="flex flex-wrap items-center gap-1">
             <MapPin className="h-3 w-3" />
             {space.floorZone}
+          </span>
+        )}
+        {space.isAvailable && space.status !== 'available' && (
+          <span className="flex flex-wrap items-center gap-1 text-yellow-600 dark:text-yellow-400">
+            <AlertCircle className="h-3 w-3" />
+            {spaceStatusLabel[space.status] || space.status}
           </span>
         )}
       </div>

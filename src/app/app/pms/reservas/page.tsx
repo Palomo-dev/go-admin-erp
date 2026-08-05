@@ -426,6 +426,7 @@ export default function ReservasPage() {
         originCountry: data.originCountry,
         destinationCity: data.destinationCity,
         destinationCountry: data.destinationCountry,
+        updateCheckinDate: data.updateCheckinDate,
       });
 
       console.log('Check-in realizado exitosamente');
@@ -475,6 +476,7 @@ export default function ReservasPage() {
         notes: data.notes,
         generateInvoice: data.generateInvoice,
         generateReceipt: data.generateReceipt,
+        updateCheckoutDate: data.updateCheckoutDate,
       });
 
       console.log('Check-out realizado exitosamente');

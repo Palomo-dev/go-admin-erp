@@ -1,4 +1,4 @@
-import { app, session, protocol, net } from 'electron';
+import { app, protocol } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -47,59 +47,12 @@ export function initOfflineManager(): void {
     return new Response('Not found in cache', { status: 404 });
   });
 
-  // Cachear respuestas de assets estáticos de Next.js
-  session.defaultSession.webRequest.onCompleted(async (details) => {
-    if (!net.online) return;
-    if (details.statusCode !== 200) return;
-
-    const url = details.url;
-    // Solo cachear assets de Next.js (_next/static/) y el HTML principal
-    if (shouldCache(url)) {
-      try {
-        await cacheResponse(url);
-      } catch (err) {
-        // Silenciar errores de cache individual
-      }
-    }
-  });
+  // Nota: No interceptamos webRequest.onCompleted para cachear assets.
+  // Electron ya tiene un cache HTTP persistente integrado (Chromium cache)
+  // que maneja _next/static/ correctamente. Re-descargar assets con net.fetch()
+  // duplicaba el tráfico y ralentizaba la carga inicial.
 
   console.log('[offline-manager] Inicializado en', shellDirPath);
-}
-
-/**
- * Determina si una URL debe ser cacheada.
- */
-function shouldCache(url: string): boolean {
-  return (
-    url.includes('/_next/static/') ||
-    url.endsWith('.js') ||
-    url.endsWith('.css') ||
-    url.endsWith('.woff') ||
-    url.endsWith('.woff2') ||
-    url.endsWith('.ttf') ||
-    url.endsWith('.ico') ||
-    url.endsWith('.png') ||
-    url.endsWith('.svg')
-  );
-}
-
-/**
- * Descarga y cachea una respuesta a disco.
- */
-async function cacheResponse(url: string): Promise<void> {
-  try {
-    const response = await net.fetch(url);
-    if (!response.ok) return;
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const fileName = hashUrl(url);
-    const ext = getExtensionFromUrl(url);
-    const filePath = path.join(assetsDirPath, `${fileName}${ext}`);
-
-    fs.writeFileSync(filePath, buffer);
-  } catch {
-    // Silenciar errores individuales
-  }
 }
 
 /**

@@ -1,4 +1,5 @@
 import { createClient, type Provider } from '@supabase/supabase-js'
+import { isAppOnline, getCachedResponse, setCachedResponse, queueAction } from '@/lib/utils/offlineCache'
 
 // Extrae la referencia del proyecto de la URL de Supabase
 export const getProjectRef = () => {
@@ -241,20 +242,17 @@ export const createSupabaseClient = () => {
         // ── Offline cache solo en desktop app ──
         const isDesktopApp = typeof window !== 'undefined' && 'goAdminDesktop' in window;
         if (isDesktopApp && !isAuthRequest) {
-          const { isAppOnline, getCachedResponse, setCachedResponse, queueAction } = await import('@/lib/utils/offlineCache');
           const online = isAppOnline();
 
           // GET: servir de cache si estamos offline
           if (method === 'GET' && !online) {
             const cached = await getCachedResponse(urlString, method);
             if (cached) {
-              console.log(`[offline] Sirviendo desde cache: ${method} ${urlString.substring(0, 80)}`);
               return new Response(cached.data, {
                 status: cached.status,
                 headers: { 'Content-Type': 'application/json', 'X-Offline-Cache': 'true' },
               });
             }
-            // Sin cache: devolver respuesta vacía para que Supabase no crashee
             return new Response(JSON.stringify({ data: null, error: { message: 'Offline: no cached data' } }), {
               status: 503,
               headers: { 'Content-Type': 'application/json' },
@@ -272,7 +270,6 @@ export const createSupabaseClient = () => {
               }
             }
             await queueAction({ url: urlString, method, headers, body: bodyStr });
-            console.log(`[offline] Acción encolada: ${method} ${urlString.substring(0, 80)}`);
             window.dispatchEvent(new CustomEvent('goadmin:action-queued'));
             return new Response(JSON.stringify({ data: null, error: null, offline: true, queued: true }), {
               status: 202,
@@ -293,14 +290,13 @@ export const createSupabaseClient = () => {
                 return attemptFetch(retriesLeft - 1, delay * 2);
               }
 
-              // Cachear respuestas GET exitosas en desktop app
+              // Cachear respuestas GET exitosas en desktop app (background, sin bloquear)
               if (isDesktopApp && method === 'GET' && response.ok && !isAuthRequest) {
                 try {
-                  const { setCachedResponse } = await import('@/lib/utils/offlineCache');
                   const cloned = response.clone();
                   const text = await cloned.text();
                   if (text && text.length > 0) {
-                    await setCachedResponse(urlString, method, text, response.status);
+                    setCachedResponse(urlString, method, text, response.status);
                   }
                 } catch {
                   // Silenciar errores de cache
@@ -319,10 +315,8 @@ export const createSupabaseClient = () => {
               // Último intento fallido: intentar cache para GET en desktop
               if (isDesktopApp && method === 'GET' && !isAuthRequest) {
                 try {
-                  const { getCachedResponse } = await import('@/lib/utils/offlineCache');
                   const cached = await getCachedResponse(urlString, method);
                   if (cached) {
-                    console.log(`[offline] Fetch falló, sirviendo cache: ${urlString.substring(0, 80)}`);
                     return new Response(cached.data, {
                       status: cached.status,
                       headers: { 'Content-Type': 'application/json', 'X-Offline-Cache': 'true' },

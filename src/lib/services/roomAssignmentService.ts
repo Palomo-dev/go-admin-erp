@@ -56,6 +56,9 @@ class RoomAssignmentService {
         space_types (
           id,
           name
+        ),
+        reservation_spaces (
+          space_id
         )
       `)
       .eq('organization_id', organizationId)
@@ -69,7 +72,12 @@ class RoomAssignmentService {
       throw error;
     }
 
-    return (data || []).map((r: any) => {
+    // Filtrar reservas que ya tienen espacios asignados via reservation_spaces
+    const trulyUnassigned = (data || []).filter((r: any) => {
+      return !r.reservation_spaces || r.reservation_spaces.length === 0;
+    });
+
+    return trulyUnassigned.map((r: any) => {
       const checkin = new Date(r.checkin);
       const checkout = new Date(r.checkout);
       const nights = Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24));
@@ -99,6 +107,17 @@ class RoomAssignmentService {
     checkout: string,
     spaceTypeId?: string | null
   ): Promise<AvailableSpace[]> {
+    // Get all branch IDs for this organization
+    const { data: branchesData } = await supabase
+      .from('branches')
+      .select('id')
+      .eq('organization_id', organizationId);
+
+    const branchIds = (branchesData || []).map(b => b.id);
+    if (branchIds.length === 0) {
+      return [];
+    }
+
     let query = supabase
       .from('spaces')
       .select(`
@@ -113,7 +132,7 @@ class RoomAssignmentService {
           capacity
         )
       `)
-      .eq('branch_id', organizationId);
+      .in('branch_id', branchIds);
 
     if (spaceTypeId) {
       query = query.eq('space_type_id', spaceTypeId);
@@ -126,14 +145,31 @@ class RoomAssignmentService {
       throw spacesError;
     }
 
-    // Get reservations that overlap with the date range
+    // Get reservations that overlap with the date range (direct space_id)
     const { data: reservationsData } = await supabase
       .from('reservations')
-      .select('space_id, checkin, checkout')
+      .select('id, space_id, checkin, checkout')
       .eq('organization_id', organizationId)
       .not('status', 'eq', 'cancelled')
       .not('space_id', 'is', null)
       .or(`checkin.lt.${checkout},checkout.gt.${checkin}`);
+
+    // Get reservations with spaces via reservation_spaces (overlap)
+    const { data: rsReservationsData } = await supabase
+      .from('reservation_spaces')
+      .select(`
+        space_id,
+        reservations!inner (
+          id,
+          status,
+          checkin,
+          checkout
+        )
+      `)
+      .eq('reservations.organization_id', organizationId)
+      .neq('reservations.status', 'cancelled')
+      .lt('reservations.checkin', checkout)
+      .gt('reservations.checkout', checkin);
 
     // Get blocks that overlap with the date range
     const { data: blocksData } = await supabase
@@ -145,7 +181,7 @@ class RoomAssignmentService {
     const occupiedSpaceIds = new Set<string>();
     const conflictReasons: Record<string, string> = {};
 
-    // Check reservation conflicts
+    // Check direct reservation conflicts
     (reservationsData || []).forEach((r: any) => {
       if (r.space_id) {
         const resCheckin = new Date(r.checkin);
@@ -157,6 +193,14 @@ class RoomAssignmentService {
           occupiedSpaceIds.add(r.space_id);
           conflictReasons[r.space_id] = 'Reserva existente';
         }
+      }
+    });
+
+    // Check reservation_spaces conflicts
+    (rsReservationsData || []).forEach((rs: any) => {
+      if (rs.space_id) {
+        occupiedSpaceIds.add(rs.space_id);
+        conflictReasons[rs.space_id] = 'Reserva existente';
       }
     });
 

@@ -71,6 +71,8 @@ export interface CheckinData {
   destinationCountry: string;
   // Firma
   signatureData: string;
+  // Check-in anticipado
+  updateCheckinDate: boolean;
 }
 
 export function CheckinDialog({
@@ -106,6 +108,9 @@ export function CheckinDialog({
   const [originCountry, setOriginCountry] = useState('Colombia');
   const [destinationCity, setDestinationCity] = useState('');
   const [destinationCountry, setDestinationCountry] = useState('Colombia');
+
+  // Estado para check-in anticipado
+  const [updateCheckinDate, setUpdateCheckinDate] = useState(false);
 
   // Validación de fechas
   const [dateWarning, setDateWarning] = useState<{
@@ -284,6 +289,7 @@ export function CheckinDialog({
         destinationCity,
         destinationCountry,
         signatureData,
+        updateCheckinDate,
       });
 
       // Reset form
@@ -298,6 +304,7 @@ export function CheckinDialog({
       setOriginCountry('Colombia');
       setDestinationCity('');
       setDestinationCountry('Colombia');
+      setUpdateCheckinDate(false);
       clearSignature();
       onOpenChange(false);
     } catch (error) {
@@ -376,6 +383,19 @@ export function CheckinDialog({
                   : 'text-blue-700 dark:text-blue-300'
               }>
                 {dateWarning.message}
+                {dateWarning.type === 'warning' && dateWarning.title === 'Check-in Anticipado' && (
+                  <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={updateCheckinDate}
+                      onChange={(e) => setUpdateCheckinDate(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">
+                      Actualizar fecha de check-in a hoy
+                    </span>
+                  </label>
+                )}
               </AlertDescription>
             </Alert>
           )}

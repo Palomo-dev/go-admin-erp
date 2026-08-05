@@ -1,4 +1,4 @@
-import { app, Notification } from 'electron';
+import { app, Notification, powerSaveBlocker } from 'electron';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import WebSocket from 'ws';
 import os from 'os';
@@ -38,6 +38,8 @@ const processedIds = new Set<string>();
 const timers: NodeJS.Timeout[] = [];
 let reconnectTimer: NodeJS.Timeout | null = null;
 let reconnectAttempts = 0;
+let powerSaveBlockerId: number | null = null;
+let consecutivePollFailures = 0;
 let agentConfig: { refreshToken: string; organizationId: number; organizationName: string; branchIds: number[]; branchNames: string[] } | null = null;
 
 function showNotification(title: string, body: string): void {
@@ -109,7 +111,10 @@ export async function startAgent(
   // Guardar config para reconexión automática
   agentConfig = { refreshToken, organizationId, organizationName, branchIds, branchNames };
 
-  const { data, error } = await getClient().auth.refreshSession({ refresh_token: refreshToken });
+  const { data, error } = await Promise.race([
+    getClient().auth.refreshSession({ refresh_token: refreshToken }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout restaurando sesión')), 10000)),
+  ]);
   if (error || !data.session) {
     throw new Error('No se pudo restaurar la sesión con el refresh token');
   }
@@ -182,7 +187,7 @@ export async function startAgent(
     if (processing) return;
     processing = true;
     try {
-      const { data } = await client
+      const { data, error } = await client
         .from('print_jobs')
         .select('*')
         .eq('organization_id', organizationId)
@@ -191,8 +196,18 @@ export async function startAgent(
         .order('created_at', { ascending: true })
         .limit(20);
 
+      if (error) throw error;
+      consecutivePollFailures = 0;
+
       for (const job of data || []) {
         await processJob(job);
+      }
+    } catch (err) {
+      consecutivePollFailures++;
+      console.error(`[agent] Error en polling (${consecutivePollFailures}):`, err);
+      if (consecutivePollFailures >= 3) {
+        consecutivePollFailures = 0;
+        scheduleReconnect();
       }
     } finally {
       processing = false;
@@ -214,7 +229,18 @@ export async function startAgent(
         showNotification('Go Admin Desktop', 'Conexión perdida, reconectando...');
         scheduleReconnect();
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`[agent] Canal realtime branch ${branchId}: ${status}, reconectando...`);
+          scheduleReconnect();
+        }
+      });
+  }
+
+  // Evita que Windows suspenda el proceso cuando la ventana está en la bandeja.
+  // Sin esto, el OS congela timers y WebSocket y los jobs quedan en pending.
+  if (powerSaveBlockerId === null) {
+    powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension');
   }
 
   startDiscoveryServer();
@@ -237,6 +263,13 @@ export function stopAgent(): void {
     reconnectTimer = null;
   }
   reconnectAttempts = 0;
+  consecutivePollFailures = 0;
+  if (powerSaveBlockerId !== null) {
+    if (powerSaveBlocker.isStarted(powerSaveBlockerId)) {
+      powerSaveBlocker.stop(powerSaveBlockerId);
+    }
+    powerSaveBlockerId = null;
+  }
   if (supabase) {
     supabase.removeAllChannels();
     supabase = null;

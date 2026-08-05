@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import ReservationExtrasService from './reservationExtrasService';
 
 export interface ReservationDetail {
   id: string;
@@ -40,6 +41,16 @@ export interface ReservationDetail {
     status: string;
     reference: string;
     created_at: string;
+  }>;
+  extras: Array<{
+    id: string;
+    name: string;
+    description?: string | null;
+    unit_price: number;
+    quantity: number;
+    total: number;
+    is_complimentary: boolean;
+    organization_service_id: string | null;
   }>;
 }
 
@@ -84,6 +95,9 @@ class ReservationDetailService {
       .eq('source_id', reservationId)
       .order('created_at', { ascending: false });
 
+    // Obtener extras desde tabla relacional
+    const extrasData = await ReservationExtrasService.getByReservationId(reservationId);
+
     return {
       id: data.id,
       organization_id: data.organization_id,
@@ -111,6 +125,16 @@ class ReservationDetailService {
         },
       })),
       payments: paymentsData || [],
+      extras: extrasData.map((e) => ({
+        id: e.id,
+        name: e.name,
+        description: e.description,
+        unit_price: e.unit_price,
+        quantity: e.quantity,
+        total: e.total,
+        is_complimentary: e.is_complimentary,
+        organization_service_id: e.organization_service_id,
+      })),
     };
   }
 

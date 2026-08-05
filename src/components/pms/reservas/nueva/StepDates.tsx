@@ -6,20 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Calendar, Users, Bed, Home, Mountain, Tent, Building } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
+interface SpaceCategory {
+  code: string;
+  display_name: string;
+  icon?: string | null;
+  settings?: Record<string, any>;
+  is_bookable?: boolean;
+}
 
 interface StepDatesProps {
   checkin: string;
   checkout: string;
   occupantCount: number;
   selectedCategory: string | null;
-  categories: any[];
+  categories: SpaceCategory[];
   onCheckinChange: (date: string) => void;
   onCheckoutChange: (date: string) => void;
   onOccupantCountChange: (count: number) => void;
@@ -63,10 +64,8 @@ export function StepDates({
 
   const isValid = checkin && checkout && selectedCategory && nights > 0;
 
-  // Obtener fecha mínima (hoy)
   const today = new Date().toISOString().split('T')[0];
   
-  // Obtener fecha mínima de checkout (1 día después del checkin)
   const minCheckout = checkin
     ? new Date(new Date(checkin).getTime() + 24 * 60 * 60 * 1000)
         .toISOString()
@@ -84,7 +83,6 @@ export function StepDates({
         </p>
       </div>
 
-      {/* Fechas */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex flex-wrap items-center gap-2">
           <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -142,7 +140,6 @@ export function StepDates({
         )}
       </Card>
 
-      {/* Categoría de espacio */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Tipo de Alojamiento
@@ -206,12 +203,11 @@ export function StepDates({
 
         {categories.length === 0 && (
           <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-            No hay categorías de espacios disponibles
+            No hay tipos de espacios disponibles para tu organización
           </p>
         )}
       </Card>
 
-      {/* Botones de navegación */}
       <div className="flex justify-between pt-4">
         <Button variant="outline" onClick={onBack}>
           Atrás

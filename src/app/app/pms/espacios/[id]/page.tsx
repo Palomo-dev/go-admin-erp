@@ -46,6 +46,7 @@ import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { RefreshCw } from 'lucide-react';
 import { TripAdvisorContentPanel } from '@/components/integraciones/tripadvisor';
+import ReservationExtrasService from '@/lib/services/reservationExtrasService';
 
 export default function SpaceDetailPage() {
   const params = useParams();
@@ -72,6 +73,7 @@ export default function SpaceDetailPage() {
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
   const [showQuickReservationDrawer, setShowQuickReservationDrawer] = useState(false);
   const [showAddConsumptionDialog, setShowAddConsumptionDialog] = useState(false);
+  const [includedProductIds, setIncludedProductIds] = useState<Set<number>>(new Set());
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [cleaningNotes, setCleaningNotes] = useState('');
   const [cleaningDate, setCleaningDate] = useState(new Date().toISOString().split('T')[0]);
@@ -320,6 +322,23 @@ export default function SpaceDetailPage() {
     } catch (err) {
       console.warn('Error validando caja para consumos:', err);
     }
+
+    // Cargar productos incluidos en la reserva activa
+    try {
+      const activeReservation = reservations.find(
+        (r) => r.status === 'confirmed' || r.status === 'checked_in' || r.status === 'pending'
+      );
+      if (activeReservation?.id) {
+        const ids = await ReservationExtrasService.getIncludedProductIds(activeReservation.id);
+        setIncludedProductIds(ids);
+      } else {
+        setIncludedProductIds(new Set());
+      }
+    } catch (err) {
+      console.warn('Error cargando productos incluidos:', err);
+      setIncludedProductIds(new Set());
+    }
+
     setShowAddConsumptionDialog(true);
   };
 
@@ -662,6 +681,7 @@ export default function SpaceDetailPage() {
           title="Agregar Consumos"
           subtitle={space.label}
           submitLabel="Agregar al Folio"
+          includedProductIds={includedProductIds}
         />
       )}
     </div>

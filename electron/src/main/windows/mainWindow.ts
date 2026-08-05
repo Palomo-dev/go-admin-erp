@@ -111,11 +111,14 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     title: APP_NAME,
     icon: path.join(__dirname, '..', '..', '..', 'build', 'icon.ico'),
     autoHideMenuBar: true,
+    backgroundColor: '#1e3a8a',
     webPreferences: {
       preload: path.join(__dirname, '..', '..', 'preload', 'index.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      spellcheck: false,
+      backgroundThrottling: false,
     },
   });
 
@@ -145,6 +148,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   loadWithOfflineFallback(loadUrl);
 
   mainWindow.once('ready-to-show', () => {
+    closeSplash();
     if (!wasOpenedHidden()) {
       mainWindow?.show();
     }

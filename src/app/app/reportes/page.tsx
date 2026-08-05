@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useActiveModules } from '@/hooks/useActiveModules';
 import { useToast } from '@/components/ui/use-toast';
@@ -16,6 +16,7 @@ import { resolverPeriodo } from '@/lib/services/reportes/periodosService';
 import { ejecutarReporte, ejecutarCierre } from '@/lib/services/reportes/reportesEngine';
 import { pdfExportService, type OrganizationInfo } from '@/lib/services/reportes/pdfExportService';
 import { ReportesChatSheet } from '@/components/reportes/chat/ReportesChatSheet';
+import { registrarCierreConsolidado, obtenerHistorialCierres, type CierreHistorico } from '@/lib/services/reportes/reportExecutionService';
 import type { PeriodoCierre, ReportDefinition, ReportData } from '@/lib/services/reportes/types';
 
 export default function ReportesPage() {
@@ -32,6 +33,7 @@ export default function ReportesPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedReporte, setSelectedReporte] = useState<ReportDefinition | null>(null);
   const [globalKPIs, setGlobalKPIs] = useState<ReportData[]>([]);
+  const [cierresHistorial, setCierresHistorial] = useState<CierreHistorico[]>([]);
 
   const orgId = organization?.id ?? null;
   const moduleCodes = useMemo(
@@ -99,6 +101,22 @@ export default function ReportesPage() {
         reportes: resultados,
         org: orgInfo,
       });
+
+      // Fase 7: registrar cierre en report_executions
+      const registro = await registrarCierreConsolidado({
+        organizationId: orgId,
+        periodo,
+        modulos: moduleCodes,
+        reportes: resultados,
+      });
+      if (!registro.success) {
+        console.warn('No se pudo registrar el cierre en historial:', registro.error);
+      } else {
+        // Actualizar historial en UI
+        const historial = await obtenerHistorialCierres(orgId);
+        setCierresHistorial(historial);
+      }
+
       toast({ title: 'PDF del cierre generado', description: `${resultados.length} reportes incluidos` });
     } catch (err) {
       toast({ title: 'Error al generar el cierre', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
@@ -115,6 +133,12 @@ export default function ReportesPage() {
       toast({ title: 'Error al generar PDF', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
     }
   }, [orgInfo, toast]);
+
+  // Cargar historial de cierres al montar
+  useEffect(() => {
+    if (!orgId) return;
+    obtenerHistorialCierres(orgId).then(setCierresHistorial);
+  }, [orgId]);
 
   if (!orgId) {
     return (
@@ -151,8 +175,41 @@ export default function ReportesPage() {
               />
             ))}
           </div>
+
+          {/* Fase 7: Historial de cierres anteriores */}
+          {cierresHistorial.length > 0 && (
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-900">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                Cierres anteriores
+              </h3>
+              <div className="space-y-2">
+                {cierresHistorial.map((cierre) => {
+                  const params = cierre.params as { periodo?: PeriodoCierre };
+                  const etiqueta = params?.periodo?.etiqueta ?? cierre.report_id;
+                  const fecha = new Date(cierre.created_at).toLocaleString('es-CO', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                  });
+                  return (
+                    <div
+                      key={cierre.id}
+                      className="flex items-center justify-between py-2 px-3 rounded-md border border-gray-100 dark:border-gray-800 text-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{etiqueta}</span>
+                        <span className="text-xs text-gray-400">{fecha}</span>
+                      </div>
+                      <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        {cierre.status}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
-      )}
+      )
 
       <ReporteSheet
         open={sheetOpen}

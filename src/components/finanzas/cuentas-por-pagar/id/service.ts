@@ -296,7 +296,7 @@ export class CuentaPorPagarDetailService {
         reference: reference,
         status: 'completed',
         currency: 'COP',
-        payment_date: paymentDate ? new Date(paymentDate + 'T12:00:00').toISOString() : new Date().toISOString()
+        payment_date: paymentDate ? new Date(paymentDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()
       };
 
       if (bankAccountId) {
@@ -377,7 +377,7 @@ export class CuentaPorPagarDetailService {
           paid_amount: newPaidAmount,
           balance: Math.max(0, newBalance),
           status: newStatus,
-          paid_at: newStatus === 'paid' ? (paymentDate ? new Date(paymentDate + 'T12:00:00').toISOString() : new Date().toISOString()) : null,
+          paid_at: newStatus === 'paid' ? (paymentDate ? new Date(paymentDate + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()) : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', installmentId);

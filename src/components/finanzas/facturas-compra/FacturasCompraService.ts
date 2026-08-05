@@ -767,7 +767,7 @@ export class FacturasCompraService {
           currency: factura.currency || 'COP',
           reference: pagoData.reference || null,
           status: 'completed',
-          payment_date: pagoData.payment_date ? new Date(pagoData.payment_date + 'T12:00:00').toISOString() : new Date().toISOString()
+          payment_date: pagoData.payment_date ? new Date(pagoData.payment_date + 'T' + new Date().toTimeString().split(' ')[0]).toISOString() : new Date().toISOString()
         })
         .select()
         .single();

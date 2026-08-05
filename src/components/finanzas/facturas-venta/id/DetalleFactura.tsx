@@ -310,7 +310,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   // Función para marcar la factura como pagada totalmente
   const marcarComoPagada = async () => {
     try {
-      const fechaPagoISO = new Date(fechaMarcarPagada + 'T12:00:00').toISOString();
+      const fechaPagoISO = new Date(fechaMarcarPagada + 'T' + new Date().toTimeString().split(' ')[0]).toISOString();
       
       // Verificar si la factura ya tiene un sale_id asociado
       if (!facturaActual.sale_id) {

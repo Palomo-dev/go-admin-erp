@@ -205,7 +205,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
           currency: factura.currency || 'COP',
           reference: referencia || null,
           status: 'completed',
-          payment_date: new Date(fechaPago + 'T12:00:00').toISOString()
+          payment_date: new Date(fechaPago + 'T' + new Date().toTimeString().split(' ')[0]).toISOString()
         });
 
       if (paymentError) {

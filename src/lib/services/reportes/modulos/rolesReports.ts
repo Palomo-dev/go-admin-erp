@@ -25,7 +25,7 @@ export const rolesReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('organization_members')
-        .select('id, role_id, status, roles!inner(name)')
+        .select('id, role_id, is_active, roles!inner(name)')
         .eq('organization_id', orgId);
 
       if (error) throw error;

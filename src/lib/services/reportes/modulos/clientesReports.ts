@@ -4,6 +4,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import { getBranchFilter } from '@/lib/hooks/useOrganization';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -23,26 +24,107 @@ export const clientesReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data, error } = await supabase.rpc('fn_reporte_clientes_crecimiento', {
-        p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
-      });
-      if (error) throw error;
+      const branchFilter = getBranchFilter();
 
-      const d = data ?? {};
+      // Conteo total exacto (sin límite de 1000)
+      const baseEq: Record<string, unknown> = { organization_id: orgId };
+      if (branchFilter !== null) baseEq.branch_id = branchFilter;
+
+      const { count: totalAcumulado } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true })
+        .match(baseEq)
+        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+
+      // Nuevos en el período seleccionado
+      const { count: nuevosEnPeriodo } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true })
+        .match(baseEq)
+        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
+        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+
+      // Desglose mensual: últimos 12 meses hasta la fecha fin del período
+      const fechaFin = new Date(`${periodo.fechaFin}T23:59:59Z`);
+      const fechaInicio12m = new Date(fechaFin);
+      fechaInicio12m.setMonth(fechaInicio12m.getMonth() - 11);
+      fechaInicio12m.setDate(1);
+      fechaInicio12m.setHours(0, 0, 0, 0);
+
+      const isoInicio12m = fechaInicio12m.toISOString();
+      const isoFin = fechaFin.toISOString();
+
+      // Paginar clientes para construir el desglose mensual
+      const porMes: Record<string, number> = {};
+      let offset = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: pageData, error: pageErr } = await supabase
+          .from('customers')
+          .select('created_at')
+          .match(baseEq)
+          .gte('created_at', isoInicio12m)
+          .lte('created_at', isoFin)
+          .range(offset, offset + pageSize - 1);
+        if (pageErr) throw pageErr;
+        const rows = pageData ?? [];
+        for (const c of rows as Record<string, unknown>[]) {
+          const fecha = new Date(String(c.created_at));
+          const mesKey = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-01`;
+          porMes[mesKey] = (porMes[mesKey] ?? 0) + 1;
+        }
+        hasMore = rows.length === pageSize;
+        offset += pageSize;
+      }
+
+      // Construir filas con acumulado y crecimiento
+      const mesesOrdenados = Object.entries(porMes).sort((a, b) => a[0].localeCompare(b[0]));
+      let acumuladoAntes = (totalAcumulado ?? 0) - mesesOrdenados.reduce((s, [, n]) => s + n, 0);
+      if (acumuladoAntes < 0) acumuladoAntes = 0;
+
+      const filas: Record<string, unknown>[] = [];
+      let nuevoAcumulado = acumuladoAntes;
+      for (const [mesKey, nuevos] of mesesOrdenados) {
+        nuevoAcumulado += nuevos;
+        const crecimiento = nuevoAcumulado > 0
+          ? Math.round((nuevos / (nuevoAcumulado - nuevos)) * 1000) / 10
+          : 0;
+        filas.push({
+          mes: mesKey,
+          nuevos,
+          acumulado: nuevoAcumulado,
+          crecimiento: isFinite(crecimiento) ? crecimiento : 0,
+        });
+      }
+
+      // KPIs
+      const promedioMensual = filas.length > 0
+        ? Math.round(filas.reduce((s, f) => s + Number(f.nuevos), 0) / filas.length)
+        : 0;
+      const nuevosMesAnterior = filas.length >= 2 ? Number(filas[filas.length - 2].nuevos) : 0;
+      const nuevosMesActual = filas.length >= 1 ? Number(filas[filas.length - 1].nuevos) : 0;
+      const tasaCrecimiento = nuevosMesAnterior > 0
+        ? Math.round(((nuevosMesActual - nuevosMesAnterior) / nuevosMesAnterior) * 1000) / 10
+        : 0;
 
       return buildReportData(
         'clientes-crecimiento', 'Crecimiento de Clientes', 'clientes', periodo,
         [
-          { titulo: 'Total Clientes', valor: d.total_acumulado ?? 0, formato: 'numero' },
-          { titulo: 'Nuevos', valor: d.nuevos_en_periodo ?? 0, formato: 'numero' },
+          { titulo: 'Total Clientes', valor: totalAcumulado ?? 0, formato: 'numero' },
+          { titulo: 'Nuevos en Período', valor: nuevosEnPeriodo ?? 0, formato: 'numero' },
+          { titulo: 'Promedio Mensual', valor: promedioMensual, formato: 'numero' },
+          { titulo: 'Tasa de Crecimiento', valor: isFinite(tasaCrecimiento) ? tasaCrecimiento : 0, formato: 'porcentaje' },
         ],
         [
           { key: 'mes', titulo: 'Mes', tipo: 'fecha' },
           { key: 'nuevos', titulo: 'Nuevos', tipo: 'numero', alinear: 'right' },
+          { key: 'acumulado', titulo: 'Acumulado', tipo: 'numero', alinear: 'right' },
+          { key: 'crecimiento', titulo: 'Crecimiento', tipo: 'porcentaje', alinear: 'right' },
         ],
-        d.por_mes ?? [],
+        filas.reverse(),
+        { nuevos: filas.reduce((s, f) => s + Number(f.nuevos), 0) },
       );
     },
   },
@@ -54,33 +136,44 @@ export const clientesReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, customer_type, city')
-        .eq('organization_id', orgId);
+      const branchFilter = getBranchFilter();
 
-      if (error) throw error;
+      // Conteos exactos con head:true (evita el límite de 1000 filas)
+      const baseEq = { 'organization_id': orgId } as Record<string, unknown>;
+      if (branchFilter !== null) baseEq['branch_id'] = branchFilter;
 
-      const clientes = data ?? [];
-      const porTipo: Record<string, number> = {};
-      clientes.forEach((c: Record<string, unknown>) => {
-        const t = String(c.customer_type ?? 'unknown');
-        porTipo[t] = (porTipo[t] ?? 0) + 1;
-      });
+      const [totalRes, personRes, companyRes] = await Promise.all([
+        supabase.from('customers').select('*', { count: 'exact', head: true }).match(baseEq),
+        supabase.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'person' }),
+        supabase.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'company' }),
+      ]);
 
-      const filas = Object.entries(porTipo).map(([tipo, cantidad]) => ({ tipo, cantidad }));
+      const total = totalRes.count ?? 0;
+      const personCount = personRes.count ?? 0;
+      const companyCount = companyRes.count ?? 0;
+
+      // Construir tabla: solo Persona y Empresa
+      const pct = (n: number) => total > 0 ? Math.round((n / total) * 1000) / 10 : 0;
+
+      const filas = [
+        { tipo: 'Persona', cantidad: personCount, porcentaje: pct(personCount) },
+        { tipo: 'Empresa', cantidad: companyCount, porcentaje: pct(companyCount) },
+      ];
 
       return buildReportData(
         'clientes-tipo', 'Clientes por Tipo', 'clientes', periodo,
         [
-          { titulo: 'Total Clientes', valor: clientes.length, formato: 'numero' },
+          { titulo: 'Total Clientes', valor: total, formato: 'numero' },
+          { titulo: 'Personas', valor: personCount, formato: 'numero' },
+          { titulo: 'Empresas', valor: companyCount, formato: 'numero' },
         ],
         [
           { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
           { key: 'cantidad', titulo: 'Cantidad', tipo: 'numero', alinear: 'right' },
+          { key: 'porcentaje', titulo: '%', tipo: 'porcentaje', alinear: 'right' },
         ],
         filas,
-        { cantidad: clientes.length },
+        { cantidad: total },
       );
     },
   },
@@ -94,7 +187,7 @@ export const clientesReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('sales')
-        .select('customer_id, total')
+        .select('customer_id, total, customers!inner(first_name, last_name, customer_type, company_name)')
         .eq('organization_id', orgId)
         .gte('sale_date', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('sale_date', `${periodo.fechaFin}T23:59:59Z`)
@@ -104,16 +197,29 @@ export const clientesReports: ReportDefinition[] = [
       if (error) throw error;
 
       const ventas = data ?? [];
-      const porCliente: Record<string, { total: number; num: number }> = {};
+      const porCliente: Record<string, { total: number; num: number; nombre: string; tipo: string }> = {};
       ventas.forEach((v: Record<string, unknown>) => {
         const id = String(v.customer_id ?? '');
-        if (!porCliente[id]) porCliente[id] = { total: 0, num: 0 };
+        if (!porCliente[id]) {
+          const c = v.customers as Record<string, unknown> | null;
+          const tipo = String(c?.customer_type ?? 'persona');
+          const nombre = tipo === 'empresa'
+            ? String(c?.company_name ?? '—')
+            : `${c?.first_name ?? ''} ${c?.last_name ?? ''}`.trim() || '—';
+          porCliente[id] = { total: 0, num: 0, nombre, tipo };
+        }
         porCliente[id].total += Number(v.total ?? 0);
         porCliente[id].num++;
       });
 
       const filas = Object.entries(porCliente)
-        .map(([cliente_id, v]) => ({ cliente_id, total: v.total, num_ventas: v.num }))
+        .map(([cliente_id, v]) => ({
+          cliente_id,
+          nombre: v.nombre,
+          tipo: v.tipo === 'empresa' ? 'Empresa' : 'Persona',
+          total: v.total,
+          num_ventas: v.num,
+        }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 20);
 
@@ -124,7 +230,8 @@ export const clientesReports: ReportDefinition[] = [
           { titulo: 'Total Ventas', valor: filas.reduce((s, f) => s + f.total, 0), formato: 'moneda' },
         ],
         [
-          { key: 'cliente_id', titulo: 'Cliente', tipo: 'texto' },
+          { key: 'nombre', titulo: 'Cliente', tipo: 'texto' },
+          { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
           { key: 'total', titulo: 'Total Compras', tipo: 'moneda', alinear: 'right' },
           { key: 'num_ventas', titulo: 'N° Compras', tipo: 'numero', alinear: 'right' },
         ],

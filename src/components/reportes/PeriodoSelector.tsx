@@ -1,10 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -12,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
 import type { TipoCierre, PeriodoCierre } from '@/lib/services/reportes/types';
 import { resolverPeriodo, periodoAnterior, periodoSiguiente } from '@/lib/services/reportes/periodosService';
 
@@ -32,15 +30,16 @@ interface PeriodoSelectorProps {
 }
 
 export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
-  const [customOpen, setCustomOpen] = useState(false);
+  const [isCustom, setIsCustom] = useState(periodo.tipo === 'personalizado');
   const [customFrom, setCustomFrom] = useState(periodo.fechaInicio);
   const [customTo, setCustomTo] = useState(periodo.fechaFin);
 
   const handleTipoChange = (tipo: string) => {
     if (tipo === 'personalizado') {
-      setCustomOpen(true);
+      setIsCustom(true);
       return;
     }
+    setIsCustom(false);
     const nuevo = resolverPeriodo(tipo as TipoCierre);
     onChange(nuevo);
   };
@@ -53,7 +52,11 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
       fechaFin: customTo,
       etiqueta: `${customFrom} → ${customTo}`,
     });
-    setCustomOpen(false);
+    setIsCustom(false);
+  };
+
+  const handleCustomCancel = () => {
+    setIsCustom(false);
   };
 
   const handlePrev = () => onChange(periodoAnterior(periodo));
@@ -68,22 +71,46 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
         <ChevronLeft className="h-4 w-4" />
       </Button>
 
-      <Select value={periodo.tipo} onValueChange={handleTipoChange}>
-        <SelectTrigger className="w-[160px] h-9">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-gray-400" />
-            <SelectValue />
-          </div>
-        </SelectTrigger>
-        <SelectContent>
-          {OPCIONES.map((op) => (
-            <SelectItem key={op.value} value={op.value}>
-              {op.label}
-            </SelectItem>
-          ))}
-          <SelectItem value="personalizado">Personalizado</SelectItem>
-        </SelectContent>
-      </Select>
+      {isCustom ? (
+        <div className="flex items-center gap-1">
+          <Input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="h-9 w-[140px]"
+          />
+          <span className="text-xs text-gray-400">→</span>
+          <Input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="h-9 w-[140px]"
+          />
+          <Button variant="default" size="icon" onClick={handleCustomApply} className="h-9 w-9 bg-blue-600 hover:bg-blue-700">
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={handleCustomCancel} className="h-9 w-9">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <Select value={periodo.tipo} onValueChange={handleTipoChange}>
+          <SelectTrigger className="w-[160px] h-9">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-gray-400" />
+              <SelectValue />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            {OPCIONES.map((op) => (
+              <SelectItem key={op.value} value={op.value}>
+                {op.label}
+              </SelectItem>
+            ))}
+            <SelectItem value="personalizado">Personalizado</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
 
       <Button variant="outline" size="icon" onClick={handleNext} className="h-9 w-9">
         <ChevronRight className="h-4 w-4" />
@@ -92,30 +119,6 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
       <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline-block min-w-[120px]">
         {periodo.etiqueta}
       </span>
-
-      <Popover open={customOpen} onOpenChange={setCustomOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="hidden">
-            <CalendarDays className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80" align="start">
-          <div className="space-y-3 p-2">
-            <p className="text-sm font-medium">Rango personalizado</p>
-            <div className="space-y-2">
-              <Label htmlFor="from">Fecha inicio</Label>
-              <Input id="from" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="to">Fecha fin</Label>
-              <Input id="to" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
-            </div>
-            <Button size="sm" className="w-full" onClick={handleCustomApply}>
-              Aplicar
-            </Button>
-          </div>
-        </PopoverContent>
-      </Popover>
     </div>
   );
 }

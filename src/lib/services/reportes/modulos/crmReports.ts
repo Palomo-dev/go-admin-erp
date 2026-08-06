@@ -133,7 +133,7 @@ export const crmReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('activities')
-        .select('type, status, created_at')
+        .select('activity_type, created_at')
         .eq('organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
@@ -143,7 +143,7 @@ export const crmReports: ReportDefinition[] = [
       const acts = data ?? [];
       const porTipo: Record<string, number> = {};
       acts.forEach((a: Record<string, unknown>) => {
-        const t = String(a.type ?? 'unknown');
+        const t = String(a.activity_type ?? 'unknown');
         porTipo[t] = (porTipo[t] ?? 0) + 1;
       });
 
@@ -173,7 +173,7 @@ export const crmReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('campaigns')
-        .select('id, name, status, budget, created_at')
+        .select('id, name, status, channel, created_at')
         .eq('organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
@@ -186,12 +186,11 @@ export const crmReports: ReportDefinition[] = [
         'crm-campanas', 'Campañas', 'crm', periodo,
         [
           { titulo: 'Total Campañas', valor: camps.length, formato: 'numero' },
-          { titulo: 'Presupuesto Total', valor: camps.reduce((s: number, c: Record<string, unknown>) => s + Number(c.budget ?? 0), 0), formato: 'moneda' },
         ],
         [
           { key: 'name', titulo: 'Campaña', tipo: 'texto' },
           { key: 'status', titulo: 'Estado', tipo: 'texto' },
-          { key: 'budget', titulo: 'Presupuesto', tipo: 'moneda', alinear: 'right' },
+          { key: 'channel', titulo: 'Canal', tipo: 'texto' },
         ],
         camps,
       );

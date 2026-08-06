@@ -25,7 +25,7 @@ export const transporteReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('shipments')
-        .select('id, status, carrier, created_at')
+        .select('id, status, carrier_id, created_at')
         .eq('organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
@@ -65,25 +65,25 @@ export const transporteReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('shipments')
-        .select('id, driver_id, status, delivered_at, created_at')
+        .select('id, created_by, status, delivered_at, created_at')
         .eq('organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`)
-        .not('driver_id', 'is', null);
+        .not('created_by', 'is', null);
 
       if (error) throw error;
 
       const envios = data ?? [];
       const porConductor: Record<string, { total: number; entregados: number }> = {};
       envios.forEach((e: Record<string, unknown>) => {
-        const id = String(e.driver_id ?? '');
+        const id = String(e.created_by ?? '');
         if (!porConductor[id]) porConductor[id] = { total: 0, entregados: 0 };
         porConductor[id].total++;
         if (e.status === 'delivered') porConductor[id].entregados++;
       });
 
-      const filas = Object.entries(porConductor).map(([driver_id, v]) => ({
-        driver_id,
+      const filas = Object.entries(porConductor).map(([conductor_id, v]) => ({
+        conductor_id,
         total: v.total,
         entregados: v.entregados,
         tasa_entrega: v.total > 0 ? Math.round((v.entregados / v.total) * 100) : 0,
@@ -96,7 +96,7 @@ export const transporteReports: ReportDefinition[] = [
           { titulo: 'Total Envíos', valor: envios.length, formato: 'numero' },
         ],
         [
-          { key: 'driver_id', titulo: 'Conductor', tipo: 'texto' },
+          { key: 'conductor_id', titulo: 'Conductor', tipo: 'texto' },
           { key: 'total', titulo: 'Envíos', tipo: 'numero', alinear: 'right' },
           { key: 'entregados', titulo: 'Entregados', tipo: 'numero', alinear: 'right' },
           { key: 'tasa_entrega', titulo: 'Tasa %', tipo: 'porcentaje', alinear: 'right' },
@@ -115,25 +115,25 @@ export const transporteReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('shipments')
-        .select('id, route_id, total_cost, created_at')
+        .select('id, delivery_city, total_cost, created_at')
         .eq('organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`)
-        .not('route_id', 'is', null);
+        .not('delivery_city', 'is', null);
 
       if (error) throw error;
 
       const envios = data ?? [];
       const porRuta: Record<string, { envios: number; costo: number }> = {};
       envios.forEach((e: Record<string, unknown>) => {
-        const id = String(e.route_id ?? '');
+        const id = String(e.delivery_city ?? '');
         if (!porRuta[id]) porRuta[id] = { envios: 0, costo: 0 };
         porRuta[id].envios++;
         porRuta[id].costo += Number(e.total_cost ?? 0);
       });
 
-      const filas = Object.entries(porRuta).map(([route_id, v]) => ({
-        route_id, envios: v.envios, costo: v.costo,
+      const filas = Object.entries(porRuta).map(([ciudad, v]) => ({
+        ciudad, envios: v.envios, costo: v.costo,
       }));
 
       return buildReportData(
@@ -143,7 +143,7 @@ export const transporteReports: ReportDefinition[] = [
           { titulo: 'Total Costo', valor: filas.reduce((s, f) => s + f.costo, 0), formato: 'moneda' },
         ],
         [
-          { key: 'route_id', titulo: 'Ruta', tipo: 'texto' },
+          { key: 'ciudad', titulo: 'Ciudad Destino', tipo: 'texto' },
           { key: 'envios', titulo: 'Envíos', tipo: 'numero', alinear: 'right' },
           { key: 'costo', titulo: 'Costo Total', tipo: 'moneda', alinear: 'right' },
         ],

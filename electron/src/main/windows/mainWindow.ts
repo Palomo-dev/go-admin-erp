@@ -119,6 +119,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
       sandbox: false,
       spellcheck: false,
       backgroundThrottling: false,
+      zoomFactor: 0.75,
     },
   });
 
@@ -138,6 +139,22 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     // Auto-abrir DevTools en dev
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
+
+  // ── Atajos de zoom para el usuario (Ctrl++ / Ctrl+- / Ctrl+0) ──
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.type !== 'keyDown') return;
+    const ctrl = input.control || input.meta;
+    if (!ctrl) return;
+    if (input.key === '=' || input.key === '+') {
+      const current = mainWindow?.webContents.getZoomFactor() ?? 0.9;
+      mainWindow?.webContents.setZoomFactor(Math.min(current + 0.1, 2.0));
+    } else if (input.key === '-') {
+      const current = mainWindow?.webContents.getZoomFactor() ?? 0.9;
+      mainWindow?.webContents.setZoomFactor(Math.max(current - 0.1, 0.5));
+    } else if (input.key === '0') {
+      mainWindow?.webContents.setZoomFactor(0.75);
+    }
+  });
 
   // En dev, ignorar errores de certificado (localhost)
   if (!app.isPackaged) {

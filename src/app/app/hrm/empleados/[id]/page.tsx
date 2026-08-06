@@ -1,5 +1,7 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -265,8 +267,9 @@ export default function EmpleadoDetailPage() {
   // Loading state
   if (orgLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }
@@ -407,8 +410,10 @@ export default function EmpleadoDetailPage() {
             </CardHeader>
             <CardContent>
               {tabsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                <div className="py-8 space-y-3">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-full" />
                 </div>
               ) : shifts.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -468,8 +473,10 @@ export default function EmpleadoDetailPage() {
             </CardHeader>
             <CardContent>
               {tabsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                <div className="py-8 space-y-3">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-full" />
                 </div>
               ) : attendance.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -528,8 +535,10 @@ export default function EmpleadoDetailPage() {
             </CardHeader>
             <CardContent>
               {tabsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                <div className="py-8 space-y-3">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-full" />
                 </div>
               ) : leaves.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -588,8 +597,10 @@ export default function EmpleadoDetailPage() {
             </CardHeader>
             <CardContent>
               {tabsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                <div className="py-8 space-y-3">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-full" />
                 </div>
               ) : payrollSlips.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -649,8 +660,10 @@ export default function EmpleadoDetailPage() {
             </CardHeader>
             <CardContent>
               {tabsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                <div className="py-8 space-y-3">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-full" />
                 </div>
               ) : loans.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">

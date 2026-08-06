@@ -253,6 +253,10 @@ export default function JobPositionPermissionsManager({
         }))
       );
       toast.success('Acceso actualizado correctamente');
+
+      // Notificar a AppLayout para que recargue jobPositionVisiblePages
+      window.dispatchEvent(new Event('modules-updated'));
+      onPermissionsUpdated?.();
     } catch (error) {
       // Revertir estado local en caso de error
       setModuleAccess(prevModuleAccess);

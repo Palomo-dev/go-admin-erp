@@ -18,6 +18,7 @@ interface PaymentMethodCardProps {
   stripeCustomerId: string | null;
   organizationId: number;
   onPaymentMethodUpdated?: () => void;
+  initialPaymentMethods?: PaymentMethod[];
 }
 
 const brandLogos: Record<string, string> = {
@@ -33,17 +34,18 @@ const brandLogos: Record<string, string> = {
 export default function PaymentMethodCard({ 
   stripeCustomerId,
   organizationId,
-  onPaymentMethodUpdated 
+  onPaymentMethodUpdated,
+  initialPaymentMethods
 }: PaymentMethodCardProps) {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods || []);
+  const [loading, setLoading] = useState(!initialPaymentMethods || initialPaymentMethods.length === 0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const t = useTranslations('org.paymentMethod');
 
   useEffect(() => {
-    if (stripeCustomerId) {
+    if (stripeCustomerId && (!initialPaymentMethods || initialPaymentMethods.length === 0)) {
       loadPaymentMethods();
     } else {
       setLoading(false);

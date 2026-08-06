@@ -298,16 +298,15 @@ export const permissionService = {
     
     if (orgError) throw orgError;
 
-    const accessibleModules: string[] = [];
-    
-    for (const orgModule of orgModules || []) {
-      const canAccess = await this.canAccessModule(userId, organizationId, orgModule.module_code);
-      if (canAccess) {
-        accessibleModules.push(orgModule.module_code);
-      }
-    }
+    // Paralelizar verificación de acceso para todos los módulos
+    const accessResults = await Promise.all(
+      (orgModules || []).map(async (orgModule) => {
+        const canAccess = await this.canAccessModule(userId, organizationId, orgModule.module_code);
+        return canAccess ? orgModule.module_code : null;
+      })
+    );
 
-    return accessibleModules;
+    return accessResults.filter((code): code is string => code !== null);
   },
 
   /**

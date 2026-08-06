@@ -110,40 +110,32 @@ export const moduleManagementService = {
    * Obtener el estado de módulos de una organización
    */
   async getOrganizationModuleStatus(organizationId: number, supabaseClient = supabase): Promise<OrganizationModuleStatus> {
-    // Obtener información de la organización
-    const { data: orgData, error: orgError } = await supabaseClient
-      .from('organizations')
-      .select('id, name')
-      .eq('id', organizationId)
-      .single();
+    // Consultas paralelas: org data, plan RPC, subscription metadata, active modules, all modules
+    const [
+      orgRes, planRes, subscriptionRes, activeModulesRes, allModulesRes
+    ] = await Promise.all([
+      supabaseClient.from('organizations').select('id, name').eq('id', organizationId).single(),
+      supabaseClient.rpc('get_current_plan', { org_id: organizationId }),
+      supabaseClient.from('subscriptions').select('metadata').eq('organization_id', organizationId).single(),
+      supabaseClient.from('organization_modules')
+        .select('module_code, is_active, modules!inner(*)')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true),
+      supabaseClient.from('modules').select('*').order('rank', { ascending: true }),
+    ]);
 
-    if (orgError) {
-      throw orgError;
-    }
+    if (orgRes.error) throw orgRes.error;
+    if (planRes.error) throw planRes.error;
 
-    // Usar la función get_current_plan para obtener el plan actual
-    const { data: planData, error: planError } = await supabaseClient
-      .rpc('get_current_plan', { org_id: organizationId });
-
-    if (planError) {
-      throw planError;
-    }
-
-    // Extraer el plan de la respuesta de la función
-    const planInfo = planData?.[0];
+    const planInfo = planRes.data?.[0];
     if (!planInfo) {
       throw new Error('No se pudo obtener el plan actual de la organización');
     }
 
-    // Obtener metadata de la suscripción para límites personalizados (Enterprise)
-    const { data: subscriptionData } = await supabaseClient
-      .from('subscriptions')
-      .select('metadata')
-      .eq('organization_id', organizationId)
-      .single();
+    if (activeModulesRes.error) throw activeModulesRes.error;
 
     // Extraer límites personalizados de la metadata si existen
-    const customConfig = subscriptionData?.metadata?.custom_config;
+    const customConfig = subscriptionRes.data?.metadata?.custom_config;
     const customMaxModules = customConfig?.total_available_modules || customConfig?.modules_count;
     const customMaxBranches = customConfig?.branches_count;
 
@@ -154,33 +146,18 @@ export const moduleManagementService = {
       price_usd_month: planInfo.price_usd_month,
       price_usd_year: planInfo.price_usd_year,
       trial_days: planInfo.trial_days,
-      // Usar límite personalizado si existe, sino el del plan base
       max_modules: customMaxModules || planInfo.max_modules,
       max_branches: customMaxBranches || planInfo.max_branches,
       features: planInfo.features,
       is_active: true
     };
 
-    // Obtener módulos activos de la organización
-    const { data: activeModules, error: activeError } = await supabaseClient
-      .from('organization_modules')
-      .select(`
-        module_code,
-        is_active,
-        modules!inner(*)
-      `)
-      .eq('organization_id', organizationId)
-      .eq('is_active', true);
-
-    if (activeError) throw activeError;
-
-    // Obtener todos los módulos disponibles
-    const allModules = await this.getAllModules(supabaseClient);
+    const allModules = allModulesRes.data || [];
     const coreModules = allModules.filter(m => m.is_core);
     const paidModules = allModules.filter(m => !m.is_core);
 
     // Calcular estadísticas
-    const activeModuleCodes = activeModules?.map(am => am.module_code) || [];
+    const activeModuleCodes = activeModulesRes.data?.map(am => am.module_code) || [];
     const activePaidModules = activeModuleCodes.filter(code => 
       paidModules.some(m => m.code === code)
     );
@@ -196,7 +173,7 @@ export const moduleManagementService = {
 
     return {
       organization_id: organizationId,
-      organization_name: orgData?.name || 'Unknown',
+      organization_name: orgRes.data?.name || 'Unknown',
       plan,
       active_modules_count: activeModuleCodes.length,
       paid_modules_count: paidModulesCount,
@@ -470,31 +447,22 @@ export const moduleManagementService = {
    * Los módulos core siempre están incluidos independientemente de su estado de activación
    */
   async getActiveModules(organizationId: number, supabaseClient = supabase): Promise<Module[]> {
-    // Primero obtener todos los módulos core
-    const { data: coreModules, error: coreError } = await supabaseClient
-      .from('modules')
-      .select('*')
-      .eq('is_core', true)
-      .eq('is_active', true);
+    // Consultas paralelas: módulos core y módulos pagados activos
+    const [coreRes, activeRes] = await Promise.all([
+      supabaseClient.from('modules').select('*').eq('is_core', true).eq('is_active', true),
+      supabaseClient.from('organization_modules')
+        .select('module_code, modules!inner(*)')
+        .eq('organization_id', organizationId)
+        .eq('is_active', true),
+    ]);
 
-    if (coreError) throw coreError;
+    if (coreRes.error) throw coreRes.error;
+    if (activeRes.error) throw activeRes.error;
 
-    // Luego obtener módulos pagados activos
-    const { data: activeModules, error: activeError } = await supabaseClient
-      .from('organization_modules')
-      .select(`
-        module_code,
-        modules!inner(*)
-      `)
-      .eq('organization_id', organizationId)
-      .eq('is_active', true);
-
-    if (activeError) throw activeError;
-
-    const paidModules = activeModules?.map(item => item.modules).filter(Boolean) || [];
+    const paidModules = activeRes.data?.map(item => item.modules).filter(Boolean) || [];
     
     // Combinar módulos core y pagados, evitando duplicados
-    const allModules = [...(coreModules || []), ...paidModules];
+    const allModules = [...(coreRes.data || []), ...paidModules];
     const uniqueModules = allModules.filter((module, index, self) => 
       index === self.findIndex(m => m.code === module.code)
     );

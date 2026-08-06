@@ -33,7 +33,9 @@ import {
   ExternalLink,
   ChevronDown,
   CheckCheck,
-  X
+  X,
+  Layers,
+  SlidersHorizontal
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
@@ -365,6 +367,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
               <TableHead className="w-[60px] sm:w-[80px] text-xs sm:text-sm dark:text-gray-300">Imagen</TableHead>
               <TableHead className="hidden md:table-cell w-[80px] sm:w-[100px] text-xs sm:text-sm dark:text-gray-300">Código</TableHead>
               <TableHead className="text-xs sm:text-sm dark:text-gray-300">Nombre</TableHead>
+              <TableHead className="hidden md:table-cell text-xs sm:text-sm dark:text-gray-300">Atributos</TableHead>
               <TableHead className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">Categoría</TableHead>
               <TableHead className="text-right text-xs sm:text-sm dark:text-gray-300">Precio</TableHead>
               <TableHead className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">Costo</TableHead>
@@ -423,6 +426,22 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 <TableCell className="hidden md:table-cell font-mono text-xs sm:text-sm dark:text-gray-300">{producto.sku}</TableCell>
                 <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
                   <div className="max-w-[150px] sm:max-w-none truncate">{producto.name}</div>
+                </TableCell>
+                <TableCell className="hidden md:table-cell text-xs sm:text-sm">
+                  <div className="flex flex-wrap gap-1">
+                    {producto.is_parent && producto.children && producto.children.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                        <Layers className="h-2.5 w-2.5" />
+                        {producto.children.length} {producto.children.length === 1 ? 'variante' : 'variantes'}
+                      </span>
+                    )}
+                    {(producto.modifier_groups_count ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                        <SlidersHorizontal className="h-2.5 w-2.5" />
+                        {producto.modifier_groups_count} {producto.modifier_groups_count === 1 ? 'modificador' : 'modificadores'}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">{producto.category?.name || '-'}</TableCell>
                 <TableCell className="text-right text-xs sm:text-sm dark:text-gray-300">

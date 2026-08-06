@@ -147,19 +147,20 @@ export const chatReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
-        .from('conversation_tags')
-        .select('tag_id, conversation_id, conversations!inner(created_at)')
-        .eq('conversations.organization_id', orgId)
-        .gte('conversations.created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('conversations.created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .from('conversation_tag_relations')
+        .select('tag_id, conversation_id, conversation_tags(name)')
+        .eq('organization_id', orgId)
+        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
+        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
 
       if (error) throw error;
 
       const tags = data ?? [];
       const porTag: Record<string, number> = {};
       tags.forEach((t: Record<string, unknown>) => {
-        const id = String(t.tag_id ?? 'unknown');
-        porTag[id] = (porTag[id] ?? 0) + 1;
+        const tag = t.conversation_tags as Record<string, unknown> | null;
+        const nombre = String(tag?.name ?? t.tag_id ?? 'unknown');
+        porTag[nombre] = (porTag[nombre] ?? 0) + 1;
       });
 
       const filas = Object.entries(porTag).map(([tag, cantidad]) => ({ tag, cantidad }));

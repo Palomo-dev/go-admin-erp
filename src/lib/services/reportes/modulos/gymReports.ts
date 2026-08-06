@@ -24,16 +24,23 @@ export const gymReports: ReportDefinition[] = [
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
-        .from('gym_memberships')
-        .select('id, status, plan_name, monthly_fee, start_date, end_date')
+        .from('memberships')
+        .select('id, status, start_date, end_date, membership_plans(name, price)')
         .eq('organization_id', orgId);
 
       if (error) throw error;
 
-      const membresias = data ?? [];
+      const membresias = (data ?? []).map((m: Record<string, unknown>) => {
+        const plan = m.membership_plans as Record<string, unknown> | null;
+        return {
+          ...m,
+          plan_name: plan?.name ?? 'Sin plan',
+          monthly_fee: Number(plan?.price ?? 0),
+        };
+      });
       const activas = membresias.filter((m: Record<string, unknown>) => m.status === 'active');
       const nuevas = membresias.filter((m: Record<string, unknown>) => {
-        const start = String(m.start_date ?? '');
+        const start = String(m.start_date ?? '').split('T')[0];
         return start >= periodo.fechaInicio && start <= periodo.fechaFin;
       });
       const mrr = activas.reduce((s: number, m: Record<string, unknown>) => s + Number(m.monthly_fee ?? 0), 0);
@@ -48,7 +55,7 @@ export const gymReports: ReportDefinition[] = [
         [
           { key: 'plan_name', titulo: 'Plan', tipo: 'texto' },
           { key: 'status', titulo: 'Estado', tipo: 'texto' },
-          { key: 'monthly_fee', titulo: 'Cuota Mensual', tipo: 'moneda', alinear: 'right' },
+          { key: 'monthly_fee', titulo: 'Cuota', tipo: 'moneda', alinear: 'right' },
           { key: 'start_date', titulo: 'Inicio', tipo: 'fecha' },
         ],
         membresias,
@@ -58,40 +65,40 @@ export const gymReports: ReportDefinition[] = [
   {
     id: 'gym-asistencia',
     modulo: 'gym',
-    titulo: 'Asistencia',
-    descripcion: 'Check-ins por día, hora y plan',
+    titulo: 'Actividad de Membresías',
+    descripcion: 'Eventos de membresías por día (altas, renovaciones, cancelaciones)',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
-        .from('gym_check_ins')
-        .select('id, member_id, check_in_time')
+        .from('membership_events')
+        .select('id, membership_id, event_type, created_at')
         .eq('organization_id', orgId)
-        .gte('check_in_time', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('check_in_time', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
+        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
 
       if (error) throw error;
 
-      const checkins = data ?? [];
+      const eventos = data ?? [];
       const porDia: Record<string, number> = {};
-      checkins.forEach((c: Record<string, unknown>) => {
-        const dia = String(c.check_in_time ?? '').split('T')[0];
+      eventos.forEach((c: Record<string, unknown>) => {
+        const dia = String(c.created_at ?? '').split('T')[0];
         porDia[dia] = (porDia[dia] ?? 0) + 1;
       });
 
       const filas = Object.entries(porDia).map(([dia, cantidad]) => ({ dia, cantidad }));
 
       return buildReportData(
-        'gym-asistencia', 'Asistencia', 'gym', periodo,
+        'gym-asistencia', 'Actividad de Membresías', 'gym', periodo,
         [
-          { titulo: 'Total Check-ins', valor: checkins.length, formato: 'numero' },
+          { titulo: 'Total Eventos', valor: eventos.length, formato: 'numero' },
         ],
         [
           { key: 'dia', titulo: 'Día', tipo: 'fecha' },
-          { key: 'cantidad', titulo: 'Check-ins', tipo: 'numero', alinear: 'right' },
+          { key: 'cantidad', titulo: 'Eventos', tipo: 'numero', alinear: 'right' },
         ],
         filas,
-        { cantidad: checkins.length },
+        { cantidad: eventos.length },
       );
     },
   },
@@ -104,7 +111,7 @@ export const gymReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
-        .from('gym_memberships')
+        .from('memberships')
         .select('id, status, start_date, end_date')
         .eq('organization_id', orgId);
 

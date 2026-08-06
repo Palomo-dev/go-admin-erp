@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { ReportData, ReporteColumna } from '@/lib/services/reportes/types';
+import { ReportePagination } from './ReportePagination';
 
 const moneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 const numero = new Intl.NumberFormat('es-CO');
@@ -12,20 +13,18 @@ function formatCelda(valor: unknown, tipo: ReporteColumna['tipo']): string {
   if (tipo === 'porcentaje') return `${valor}%`;
   if (tipo === 'numero') return numero.format(Number(valor) || 0);
   if (tipo === 'fecha') {
-    const d = new Date(String(valor));
+    const str = String(valor);
+    const d = new Date(str.includes('T') ? str : `${str}T00:00:00`);
     return d.toLocaleDateString('es-CO');
   }
   return String(valor);
 }
-
-const PAGE_SIZES = [25, 50, 100];
 
 export function ReporteTabla({ data }: { data: ReportData }) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
 
   const { filas, columnas, totales } = data;
-  const totalPages = Math.ceil(filas.length / pageSize);
   const start = page * pageSize;
   const visibleRows = useMemo(() => filas.slice(start, start + pageSize), [filas, start, pageSize]);
 
@@ -93,39 +92,13 @@ export function ReporteTabla({ data }: { data: ReportData }) {
         </table>
       </div>
 
-      {filas.length > PAGE_SIZES[0] && (
-        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-          <span>
-            {start + 1}–{Math.min(start + pageSize, filas.length)} de {filas.length}
-          </span>
-          <div className="flex items-center gap-2">
-            <select
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
-              className="rounded border border-gray-200 dark:border-gray-700 bg-transparent px-2 py-1 text-sm"
-            >
-              {PAGE_SIZES.map((s) => (
-                <option key={s} value={s}>{s} por página</option>
-              ))}
-            </select>
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-40"
-            >
-              ◀
-            </button>
-            <span>{page + 1} / {totalPages}</span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-40"
-            >
-              ▶
-            </button>
-          </div>
-        </div>
-      )}
+      <ReportePagination
+        page={page}
+        pageSize={pageSize}
+        total={filas.length}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setPageSize(size); setPage(0); }}
+      />
     </div>
   );
 }

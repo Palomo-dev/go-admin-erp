@@ -8,5 +8,6 @@ export { ReporteTabla } from './ReporteTabla';
 export { ReporteKPIs } from './ReporteKPIs';
 export { ReporteEmpty } from './ReporteEmpty';
 export { ReportesSkeleton } from './ReportesSkeleton';
+export { ReportePagination } from './ReportePagination';
 export { ReportesChatSheet } from './chat/ReportesChatSheet';
 export { ChatMessage } from './chat/ChatMessage';

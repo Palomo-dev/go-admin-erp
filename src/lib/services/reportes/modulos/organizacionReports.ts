@@ -25,7 +25,7 @@ export const organizacionReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('organization_members')
-        .select('id, user_id, role_id, status, created_at')
+        .select('id, user_id, role_id, is_active, created_at')
         .eq('organization_id', orgId);
 
       if (error) throw error;
@@ -33,7 +33,7 @@ export const organizacionReports: ReportDefinition[] = [
       const miembros = data ?? [];
       const porEstado: Record<string, number> = {};
       miembros.forEach((m: Record<string, unknown>) => {
-        const st = String(m.status ?? 'unknown');
+        const st = m.is_active ? 'activo' : 'inactivo';
         porEstado[st] = (porEstado[st] ?? 0) + 1;
       });
 
@@ -120,21 +120,21 @@ export const organizacionReports: ReportDefinition[] = [
         .select('module_code, is_active')
         .eq('organization_id', orgId);
 
-      const { data: sessions } = await supabase
-        .from('user_sessions')
+      const { data: eventos } = await supabase
+        .from('ops_audit_log')
         .select('id, created_at')
         .eq('organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
 
       const modulosActivos = (modules ?? []).filter((m: Record<string, unknown>) => m.is_active).length;
-      const totalSesiones = sessions?.length ?? 0;
+      const totalEventos = eventos?.length ?? 0;
 
       return buildReportData(
         'org-uso-sistema', 'Uso del Sistema', 'organizations', periodo,
         [
           { titulo: 'Módulos Activos', valor: modulosActivos, formato: 'numero' },
-          { titulo: 'Sesiones', valor: totalSesiones, formato: 'numero' },
+          { titulo: 'Eventos de Actividad', valor: totalEventos, formato: 'numero' },
         ],
         [
           { key: 'metrica', titulo: 'Métrica', tipo: 'texto' },
@@ -142,7 +142,7 @@ export const organizacionReports: ReportDefinition[] = [
         ],
         [
           { metrica: 'Módulos Activos', valor: modulosActivos },
-          { metrica: 'Sesiones del Período', valor: totalSesiones },
+          { metrica: 'Eventos de Actividad del Período', valor: totalEventos },
         ],
       );
     },

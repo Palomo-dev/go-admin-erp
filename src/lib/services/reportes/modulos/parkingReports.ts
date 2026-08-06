@@ -23,12 +23,20 @@ export const parkingReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data, error } = await supabase
-        .from('parking_sessions')
-        .select('id, space_id, check_in, check_out, status')
-        .eq('organization_id', orgId)
-        .gte('check_in', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('check_in', `${periodo.fechaFin}T23:59:59Z`);
+      const { data: orgBranches } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', orgId);
+      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
+
+      const { data, error } = branchIds.length > 0
+        ? await supabase
+            .from('parking_sessions')
+            .select('id, parking_space_id, entry_at, exit_at, status')
+            .in('branch_id', branchIds)
+            .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
+            .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`)
+        : { data: [], error: null };
 
       if (error) throw error;
 
@@ -63,17 +71,25 @@ export const parkingReports: ReportDefinition[] = [
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data, error } = await supabase
-        .from('parking_sessions')
-        .select('id, total_amount, payment_status, check_in')
-        .eq('organization_id', orgId)
-        .gte('check_in', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('check_in', `${periodo.fechaFin}T23:59:59Z`);
+      const { data: orgBranches } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', orgId);
+      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
+
+      const { data, error } = branchIds.length > 0
+        ? await supabase
+            .from('parking_sessions')
+            .select('id, amount, status, entry_at')
+            .in('branch_id', branchIds)
+            .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
+            .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`)
+        : { data: [], error: null };
 
       if (error) throw error;
 
       const sesiones = data ?? [];
-      const total = sesiones.reduce((s: number, r: Record<string, unknown>) => s + Number(r.total_amount ?? 0), 0);
+      const total = sesiones.reduce((s: number, r: Record<string, unknown>) => s + Number(r.amount ?? 0), 0);
 
       return buildReportData(
         'parking-ingresos', 'Ingresos de Parking', 'parking', periodo,
@@ -83,11 +99,11 @@ export const parkingReports: ReportDefinition[] = [
         ],
         [
           { key: 'id', titulo: 'Sesión', tipo: 'texto' },
-          { key: 'total_amount', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
-          { key: 'payment_status', titulo: 'Estado Pago', tipo: 'texto' },
+          { key: 'amount', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
+          { key: 'status', titulo: 'Estado', tipo: 'texto' },
         ],
         sesiones,
-        { total_amount: total },
+        { amount: total },
       );
     },
   },
@@ -99,29 +115,37 @@ export const parkingReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data, error } = await supabase
-        .from('parking_sessions')
-        .select('space_id, check_in, check_out')
-        .eq('organization_id', orgId)
-        .gte('check_in', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('check_in', `${periodo.fechaFin}T23:59:59Z`)
-        .not('check_out', 'is', null);
+      const { data: orgBranches } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', orgId);
+      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
+
+      const { data, error } = branchIds.length > 0
+        ? await supabase
+            .from('parking_sessions')
+            .select('parking_space_id, entry_at, exit_at')
+            .in('branch_id', branchIds)
+            .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
+            .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`)
+            .not('exit_at', 'is', null)
+        : { data: [], error: null };
 
       if (error) throw error;
 
       const sesiones = data ?? [];
       const porEspacio: Record<string, { sesiones: number; tiempoMs: number }> = {};
       sesiones.forEach((s: Record<string, unknown>) => {
-        const id = String(s.space_id ?? '');
+        const id = String(s.parking_space_id ?? '');
         if (!porEspacio[id]) porEspacio[id] = { sesiones: 0, tiempoMs: 0 };
         porEspacio[id].sesiones++;
-        const ci = new Date(String(s.check_in)).getTime();
-        const co = new Date(String(s.check_out)).getTime();
+        const ci = new Date(String(s.entry_at)).getTime();
+        const co = new Date(String(s.exit_at)).getTime();
         porEspacio[id].tiempoMs += co - ci;
       });
 
-      const filas = Object.entries(porEspacio).map(([space_id, v]) => ({
-        space_id,
+      const filas = Object.entries(porEspacio).map(([parking_space_id, v]) => ({
+        espacio: parking_space_id,
         sesiones: v.sesiones,
         tiempo_promedio_horas: Math.round((v.tiempoMs / v.sesiones / 3600000) * 100) / 100,
       }));
@@ -133,7 +157,7 @@ export const parkingReports: ReportDefinition[] = [
           { titulo: 'Total Sesiones', valor: sesiones.length, formato: 'numero' },
         ],
         [
-          { key: 'space_id', titulo: 'Espacio', tipo: 'texto' },
+          { key: 'espacio', titulo: 'Espacio', tipo: 'texto' },
           { key: 'sesiones', titulo: 'Sesiones', tipo: 'numero', alinear: 'right' },
           { key: 'tiempo_promedio_horas', titulo: 'Tiempo Prom. (h)', tipo: 'numero', alinear: 'right' },
         ],

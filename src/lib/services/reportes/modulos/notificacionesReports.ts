@@ -105,7 +105,7 @@ export const notificacionesReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('notifications')
-        .select('id, module, created_at')
+        .select('id, payload, created_at')
         .eq('organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
@@ -115,7 +115,8 @@ export const notificacionesReports: ReportDefinition[] = [
       const notifs = data ?? [];
       const porModulo: Record<string, number> = {};
       notifs.forEach((n: Record<string, unknown>) => {
-        const mod = String(n.module ?? 'unknown');
+        const payload = n.payload as Record<string, unknown> | null;
+        const mod = String(payload?.module ?? payload?.modulo ?? 'general');
         porModulo[mod] = (porModulo[mod] ?? 0) + 1;
       });
 

@@ -40,7 +40,7 @@ export function ResumenFactura({
   return (
     <Card className="dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
       <CardHeader className="pb-3 sm:pb-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white">Resumen</CardTitle>
           {hasActiveTaxes && (
             <Badge 

@@ -8,13 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { Save, TestTube, Loader2, ArrowLeft, ShieldCheck, FileText, Info, Download, Edit, Check } from 'lucide-react';
+import { Save, TestTube, Loader2, ArrowLeft, ShieldCheck, FileText, Info, Download, Edit, Check, Zap } from 'lucide-react';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import Link from 'next/link';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 import { electronicInvoicingConfigService } from '@/lib/services/electronicInvoicingConfigService';
-import { Zap, Loader2 as Loader2Icon } from 'lucide-react';
+
 
 export default function ConfiguracionFacturacionElectronicaPage() {
   const { toast } = useToast();
@@ -501,10 +501,10 @@ export default function ConfiguracionFacturacionElectronicaPage() {
                         {seq.is_active ? 'Activo' : 'Inactivo'}
                       </span>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
+                        <p className="text-sm font-medium break-words whitespace-normal min-w-0">
                           {seq.prefix} - {DOCUMENT_TYPE_LABELS[seq.document_type] || seq.document_type}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className="text-xs text-gray-500 break-words whitespace-normal min-w-0">
                           ID Factus: {seq.factus_numbering_range_id} | Res: {seq.resolution_number || 'N/A'} | {seq.range_start || '?'} - {seq.range_end || '?'} | Actual: {seq.current_number}
                         </p>
                       </div>
@@ -526,7 +526,7 @@ export default function ConfiguracionFacturacionElectronicaPage() {
           {/* Formulario de edición (solo visible cuando se edita un rango) */}
           {editingRangeId !== null && (
             <div className="border border-blue-200 rounded-lg p-4 space-y-4 bg-blue-50/30">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between">
                 <h4 className="text-sm font-medium flex items-center gap-2">
                   <Edit className="h-4 w-4 text-blue-500" />
                   Editando: {range.prefix} - {DOCUMENT_TYPE_LABELS[range.documentType] || range.documentType}

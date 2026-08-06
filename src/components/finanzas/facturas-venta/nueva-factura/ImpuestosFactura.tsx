@@ -469,7 +469,7 @@ export function ImpuestosFactura({
                 const isChecked = isDefault ? applyDefaultTax : !!appliedTaxes[tax.code];
                 
                 return (
-                  <div key={tax.id} className="flex items-center justify-between gap-2">
+                  <div key={tax.id} className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1">
                       <input 
                         type="checkbox" 

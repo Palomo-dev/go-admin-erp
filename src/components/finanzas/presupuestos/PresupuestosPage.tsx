@@ -72,8 +72,8 @@ export function PresupuestosPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex flex-wrap items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-xl">
             <Target className="h-6 w-6 text-cyan-600" />

@@ -96,7 +96,7 @@ export function EditarFacturaCompra({ facturaId }: EditarFacturaCompraProps) {
     return (
       <div className="container mx-auto p-4 space-y-6">
         {/* Header skeleton */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <div className="flex items-center space-x-3">
             <Skeleton className="h-10 w-20" />
             <div>

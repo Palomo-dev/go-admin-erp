@@ -344,7 +344,7 @@ FACT-002,,2024-01-16,2024-02-16,COP,50000,9500,59500,Segunda factura,Producto 2,
           {/* Vista previa de datos */}
           {parsedData.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between">
                 <Label>Vista previa ({parsedData.length} facturas)</Label>
                 <Badge variant="outline" className="text-green-600">
                   <CheckCircle className="h-3 w-3 mr-1" />

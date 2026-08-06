@@ -56,7 +56,7 @@ export function FlujoProyectadoChart({ data, isLoading, currencyCode = 'COP' }: 
   return (
     <Card className="dark:bg-gray-800/50">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
             Flujo de Caja Proyectado (6 meses)
           </CardTitle>

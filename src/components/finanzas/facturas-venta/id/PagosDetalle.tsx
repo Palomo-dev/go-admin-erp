@@ -94,7 +94,7 @@ export function PagosDetalle({ pagos }: PagosDetalleProps) {
                 </TableCell>
                 <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">{getPaymentMethodName(pago.method)}</TableCell>
                 <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3 hidden md:table-cell">
-                  <span className="max-w-[150px] truncate block">{pago.reference || 'N/A'}</span>
+                  <span className="break-words whitespace-normal min-w-0 block">{pago.reference || 'N/A'}</span>
                 </TableCell>
                 <TableCell className="text-right font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 py-2 sm:py-3">
                   <div className="flex flex-col items-end">

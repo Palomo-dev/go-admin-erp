@@ -423,7 +423,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                   {eInvoiceJob.cufe && (
                     <div className="text-right">
                       <p className="text-sm text-gray-500 dark:text-gray-400">CUFE</p>
-                      <p className="font-mono text-xs text-gray-900 dark:text-white max-w-[200px] truncate">
+                      <p className="font-mono text-xs text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                         {eInvoiceJob.cufe}
                       </p>
                     </div>

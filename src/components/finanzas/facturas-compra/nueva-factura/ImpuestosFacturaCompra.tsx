@@ -184,7 +184,7 @@ export function ImpuestosFacturaCompra({
   return (
     <Card className={`dark:bg-gray-800/50 dark:border-gray-700 border-gray-200 ${className}`}>
       <CardHeader className="pb-2 sm:pb-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-white">
             <Calculator className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Impuestos</span>
@@ -222,7 +222,7 @@ export function ImpuestosFacturaCompra({
                   <div className="space-y-2">
                     <h5 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Impuestos Aplicables:</h5>
                     {organizationTaxes.map(tax => (
-                      <div key={tax.id} className="flex items-center justify-between gap-2">
+                      <div key={tax.id} className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <Checkbox
                             id={`tax-${tax.id}`}
@@ -232,7 +232,7 @@ export function ImpuestosFacturaCompra({
                           />
                           <label 
                             htmlFor={`tax-${tax.id}`} 
-                            className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer truncate"
+                            className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer break-words whitespace-normal min-w-0"
                           >
                             {tax.name}
                           </label>

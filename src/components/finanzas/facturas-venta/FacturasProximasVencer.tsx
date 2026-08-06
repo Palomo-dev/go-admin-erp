@@ -187,10 +187,10 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
                 >
                   {/* Información de la factura */}
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">
+                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 break-words whitespace-normal min-w-0">
                       {factura.number}
                     </div>
-                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words whitespace-normal min-w-0 mt-0.5">
                       {factura.customer_name}
                     </div>
                     <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 mt-1">

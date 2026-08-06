@@ -145,7 +145,7 @@ export function JobsTable({
                 <TableCell className="font-medium">
                   {job.invoice?.number || job.invoice_id.substring(0, 8)}
                 </TableCell>
-                <TableCell className="max-w-[200px] truncate">
+                <TableCell className="break-words whitespace-normal min-w-0">
                   {getCustomerName(job)}
                 </TableCell>
                 <TableCell>

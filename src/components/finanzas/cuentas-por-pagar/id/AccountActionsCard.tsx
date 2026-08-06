@@ -211,7 +211,7 @@ export function AccountActionsCard({ account, actions, onUpdate }: AccountAction
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <Edit className="h-5 w-5 text-blue-600 dark:text-blue-400" />

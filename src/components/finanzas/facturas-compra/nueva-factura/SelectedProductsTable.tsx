@@ -90,7 +90,7 @@ export function SelectedProductsTable({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <CardTitle className="text-sm sm:text-base flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    <span className="font-medium text-gray-900 dark:text-white truncate">
+                    <span className="font-medium text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                       {product.name}
                     </span>
                     {isManualItem(product) ? (
@@ -191,7 +191,7 @@ export function SelectedProductsTable({
                     className="h-8 sm:h-9 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                   {product.unit_cost !== product.cost && (
-                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">
                       Orig: {formatCurrency(product.cost, currency)}
                     </p>
                   )}
@@ -225,7 +225,7 @@ export function SelectedProductsTable({
                   <div className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
                     {formatCurrency(calculateLineTotal(product), currency)}
                   </div>
-                  <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
+                  <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">
                     {product.quantity} × {formatCurrency(product.unit_cost, currency)}
                     {product.discount_amount > 0 && ` - ${formatCurrency(product.discount_amount, currency)}`}
                   </div>

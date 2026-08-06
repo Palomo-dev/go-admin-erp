@@ -188,7 +188,7 @@ Notas: ${transfer.notes || 'N/A'}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 {/* From Account */}
                 <div className="flex-1 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                   <div className="flex items-center gap-2 mb-2">

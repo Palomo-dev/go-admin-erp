@@ -378,7 +378,7 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
                   Factura de Compra
                 </h4>
                 <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between">
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">
                         {account.invoice_number}

@@ -72,7 +72,7 @@ function TopList({ title, icon, items, isLoading, currencyCode = 'COP', colorSch
             
             return (
               <div key={item.id} className="space-y-1">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between">
                   <div className="flex items-center gap-2">
                     {index === 0 && (
                       <Crown className="h-4 w-4 text-yellow-500" />

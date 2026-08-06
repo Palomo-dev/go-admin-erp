@@ -127,7 +127,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div className="flex items-center gap-4">
           <Skeleton className="h-10 w-10 rounded-full" />
           <div>
@@ -143,7 +143,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
   if (!account) return null;
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -265,7 +265,7 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
       {/* Balance Card */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Saldo Actual</p>
               <p className={`text-3xl font-bold ${

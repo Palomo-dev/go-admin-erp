@@ -295,7 +295,7 @@ export function EgresosPage() {
                     <TableCell className="text-right font-semibold text-red-600 dark:text-red-400">
                       {formatCurrency(movement.amount)}
                     </TableCell>
-                    <TableCell className="text-gray-500 dark:text-gray-400 max-w-[200px] truncate">
+                    <TableCell className="text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">
                       {movement.notes || '-'}
                     </TableCell>
                     <TableCell className="text-right">

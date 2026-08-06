@@ -73,7 +73,7 @@ export function AlertasCard({ alertas, isLoading, maxItems = 5 }: AlertasCardPro
   return (
     <Card className="dark:bg-gray-800/50">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Bell className="h-5 w-5 text-blue-500" />
             Alertas y Notificaciones

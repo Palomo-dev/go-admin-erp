@@ -59,7 +59,7 @@ export function AgingChart({ data, isLoading, currencyCode = 'COP' }: AgingChart
   return (
     <Card className="dark:bg-gray-800/50">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
             Antigüedad de Cartera (CxC)
           </CardTitle>

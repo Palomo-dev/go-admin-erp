@@ -61,16 +61,18 @@ export function ActivosFijosPage() {
   };
 
   if (isLoading) {
-    return <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    return   <PageHeaderSkeleton />
-    return   <StatsSkeleton count={4} />
-    return   <CardListSkeleton cards={3} columns="1" />
-    return </div>;
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex flex-wrap items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-xl">
             <Package className="h-6 w-6 text-teal-600" />

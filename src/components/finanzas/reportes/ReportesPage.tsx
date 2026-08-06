@@ -171,7 +171,7 @@ export function ReportesPage() {
         {/* P&G Card */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
@@ -215,7 +215,7 @@ export function ReportesPage() {
         {/* Cash Flow Card */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <Wallet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
@@ -265,7 +265,7 @@ export function ReportesPage() {
         {/* Cartera Card */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
                 <CreditCard className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
@@ -309,7 +309,7 @@ export function ReportesPage() {
         {/* Taxes Card */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                 <Receipt className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
@@ -349,7 +349,7 @@ export function ReportesPage() {
         {/* Cash Card */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                 <PiggyBank className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
@@ -397,7 +397,7 @@ export function ReportesPage() {
         {/* Bank Card */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between">
               <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
                 <Building2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               </div>

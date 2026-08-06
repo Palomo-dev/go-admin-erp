@@ -91,11 +91,11 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                         return (
                           <div className="flex flex-col">
                             <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
-                            <span className="line-clamp-2">{item.description}</span>
+                            <span className="break-words whitespace-normal min-w-0">{item.description}</span>
                           </div>
                         );
                       }
-                      return <span className="line-clamp-2">{item.description}</span>;
+                      return <span className="break-words whitespace-normal min-w-0">{item.description}</span>;
                     })()}
                   </div>
                 </TableCell>

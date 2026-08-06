@@ -232,7 +232,7 @@ export function CuentasPorPagarTable({
                         <div className="flex-1 min-w-0">
                           <button
                             onClick={() => router.push(`/app/finanzas/cuentas-por-pagar/${cuenta.id}`)}
-                            className="text-sm sm:text-base font-medium text-blue-600 dark:text-blue-400 hover:underline truncate cursor-pointer text-left"
+                            className="text-sm sm:text-base font-medium text-blue-600 dark:text-blue-400 hover:underline break-words whitespace-normal min-w-0 cursor-pointer text-left"
                           >
                             {cuenta.supplier?.name || 'Sin nombre'}
                           </button>
@@ -257,10 +257,10 @@ export function CuentasPorPagarTable({
                             {cuenta.supplier?.email && (
                               <a
                                 href={`mailto:${cuenta.supplier.email}`}
-                                className="inline-flex items-center text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 truncate max-w-[120px]"
+                                className="inline-flex items-center text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 break-words whitespace-normal min-w-0"
                               >
                                 <Mail className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 flex-shrink-0" />
-                                <span className="truncate">{cuenta.supplier.email}</span>
+                                <span className="break-words whitespace-normal min-w-0">{cuenta.supplier.email}</span>
                               </a>
                             )}
                           </div>

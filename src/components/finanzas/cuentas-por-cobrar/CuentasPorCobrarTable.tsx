@@ -251,7 +251,7 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                         {cuenta.customer_email && (
                           <div className="flex items-center text-[10px] text-gray-600 dark:text-gray-400">
                             <Mail className="h-2.5 w-2.5 mr-1" />
-                            <span className="truncate">{cuenta.customer_email}</span>
+                            <span className="break-words whitespace-normal min-w-0">{cuenta.customer_email}</span>
                           </div>
                         )}
                         {cuenta.customer_phone && (
@@ -330,7 +330,7 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                           {cuenta.customer_email && (
                             <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
                               <Mail className="h-2.5 w-2.5 mr-1" />
-                              <span className="truncate max-w-[150px]">{cuenta.customer_email}</span>
+                              <span className="break-words whitespace-normal min-w-0">{cuenta.customer_email}</span>
                             </div>
                           )}
                           {cuenta.customer_phone && (

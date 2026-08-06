@@ -103,7 +103,7 @@ export function ResumenCuentasPorPagar({ resumen }: ResumenCuentasPorPagarProps)
         {widgets.map((widget, index) => (
           <Card key={index} className="relative overflow-hidden dark:bg-gray-800/50 dark:border-gray-700 border-gray-200">
             <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`p-1.5 sm:p-2 rounded-lg ${getColorClasses(widget.color, 'bg')} bg-opacity-10`}>
                     <widget.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${getColorClasses(widget.color, 'text')}`} />

@@ -124,8 +124,8 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                 <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Total por Pagar</p>
-                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">Total por Pagar</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                   {formatCurrency(total)}
                 </p>
               </div>
@@ -140,8 +140,8 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                 <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 dark:text-red-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Vencidas</p>
-                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">Vencidas</p>
+                <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                   {formatCurrency(montoVencidas)}
                 </p>
                 <p className="text-[10px] sm:text-xs text-red-500">{vencidas.length} facturas</p>
@@ -157,7 +157,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                 <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Críticas ≤3d</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">Críticas ≤3d</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
                   {criticas.length}
                 </p>
@@ -173,7 +173,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">Próximas ≤7d</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">Próximas ≤7d</p>
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white">
                   {proximas.length}
                 </p>
@@ -186,10 +186,10 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
       {/* Lista de Facturas */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-2 sm:pb-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
               <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 flex-shrink-0" />
-              <span className="truncate">Facturas Próximas a Vencer</span>
+              <span className="break-words whitespace-normal min-w-0">Facturas Próximas a Vencer</span>
               {facturas.length > 0 && (
                 <span className="text-xs sm:text-sm font-normal text-gray-500 flex-shrink-0">({facturas.length})</span>
               )}
@@ -238,10 +238,10 @@ export function FacturasProximasVencer({ diasLimite = 15 }: FacturasProximasVenc
                       </div>
                       
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                           {factura.number_ext}
                         </p>
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">
                           {factura.supplier?.name}
                         </p>
                         <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500">

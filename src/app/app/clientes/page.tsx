@@ -10,7 +10,7 @@ import ClientesFilter from "@/components/clientes/ClientesFilter";
 import ClientesActions from "@/components/clientes/ClientesActions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, ShoppingCart, AlertTriangle, RefreshCw, Trash2, Tag, Download, X, Loader2, Tags, UserPlus, UserMinus, ChevronDown } from "lucide-react";
+import { Users, DollarSign, ShoppingCart, AlertTriangle, RefreshCw, Trash2, Tag, Download, X, Loader2, Tags, UserPlus, UserMinus, ChevronDown, CheckCircle, AlertCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,19 +19,44 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 interface Customer {
   id: string;
   full_name: string;
+  first_name?: string;
+  last_name?: string;
+  company_name?: string;
+  trade_name?: string;
+  customer_type?: string;
   email?: string;
   phone?: string;
   doc_type?: string;
   doc_number?: string;
+  identification_type?: string;
+  identification_number?: string;
+  dv?: number | string;
+  address?: string;
+  city?: string;
+  notes?: string;
   fiscal_municipality_id?: string;
   municipality_name?: string;
   roles?: string[];
   tags?: string[];
+  preferences?: any;
+  avatar_url?: string;
+  fiscal_responsibilities?: string[];
+  parent_customer_id?: string;
   is_active?: boolean;
   last_purchase_date?: string;
   balance?: number;
@@ -471,27 +496,57 @@ export default function ClientesPage() {
     if (organizationId) loadCustomers(organizationId, searchQuery || undefined);
   };
 
-  // Función para exportar a CSV
+  // Función para exportar a CSV con todos los campos reales
   const handleExportCSV = () => {
     if (!filteredCustomers.length) return;
     
+    const headers = [
+      "Tipo de Cliente", "Nombre", "Apellido", "Razón Social", "Nombre Comercial",
+      "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento",
+      "DV", "Dirección", "Ciudad", "Notas", "Etiquetas", "Roles",
+      "Preferencias", "URL Avatar", "Responsabilidades Fiscales",
+      "Saldo CxC", "Última Compra", "Total Ventas", "N° Ventas"
+    ];
+    
+    const escapeCSV = (val: any) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    };
+    
     const csvContent = [
-      // Headers
-      ["ID", "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento", "Municipio", "Roles", "Etiquetas", "Saldo CxC", "Última Compra"].join(","),
-      // Rows
-      ...filteredCustomers.map(customer => [
-        customer.id,
-        customer.full_name,
-        customer.email || "",
-        customer.phone || "",
-        customer.doc_type || "",
-        customer.doc_number || "",
-        customer.municipality_name || "",
-        (customer.roles || []).join(";"),
-        (customer.tags || []).join(";"),
-        customer.balance || 0,
-        customer.last_purchase_date || ""
-      ].join(","))
+      headers.join(","),
+      ...filteredCustomers.map(customer => {
+        const c = customer as any;
+        return [
+          escapeCSV(c.customer_type || 'person'),
+          escapeCSV(c.first_name || ''),
+          escapeCSV(c.last_name || ''),
+          escapeCSV(c.company_name || ''),
+          escapeCSV(c.trade_name || ''),
+          escapeCSV(c.full_name || ''),
+          escapeCSV(c.email || ''),
+          escapeCSV(c.phone || ''),
+          escapeCSV(c.doc_type || c.identification_type || ''),
+          escapeCSV(c.doc_number || c.identification_number || ''),
+          escapeCSV(c.dv || ''),
+          escapeCSV(c.address || ''),
+          escapeCSV(c.city || ''),
+          escapeCSV(c.notes || ''),
+          escapeCSV((c.tags || []).join(';')),
+          escapeCSV((c.roles || []).join(';')),
+          escapeCSV(c.preferences ? JSON.stringify(c.preferences) : ''),
+          escapeCSV(c.avatar_url || ''),
+          escapeCSV((c.fiscal_responsibilities || []).join(';')),
+          escapeCSV(c.balance || 0),
+          escapeCSV(c.last_purchase_date || ''),
+          escapeCSV(c.total_sales || 0),
+          escapeCSV(c.sales_count || 0)
+        ].join(",");
+      })
     ].join("\n");
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -539,21 +594,53 @@ export default function ClientesPage() {
     
     const selectedCustomers = filteredCustomers.filter(c => selectedIds.includes(c.id));
     
+    const headers = [
+      "Tipo de Cliente", "Nombre", "Apellido", "Razón Social", "Nombre Comercial",
+      "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento",
+      "DV", "Dirección", "Ciudad", "Notas", "Etiquetas", "Roles",
+      "Preferencias", "URL Avatar", "Responsabilidades Fiscales",
+      "Saldo CxC", "Última Compra", "Total Ventas", "N° Ventas"
+    ];
+    
+    const escapeCSV = (val: any) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    };
+    
     const csvContent = [
-      ["ID", "Nombre Completo", "Email", "Teléfono", "Tipo Documento", "Número Documento", "Municipio", "Roles", "Etiquetas", "Saldo CxC", "Última Compra"].join(","),
-      ...selectedCustomers.map(customer => [
-        customer.id,
-        customer.full_name,
-        customer.email || "",
-        customer.phone || "",
-        customer.doc_type || "",
-        customer.doc_number || "",
-        customer.municipality_name || "",
-        (customer.roles || []).join(";"),
-        (customer.tags || []).join(";"),
-        customer.balance || 0,
-        customer.last_purchase_date || ""
-      ].join(","))
+      headers.join(","),
+      ...selectedCustomers.map(customer => {
+        const c = customer as any;
+        return [
+          escapeCSV(c.customer_type || 'person'),
+          escapeCSV(c.first_name || ''),
+          escapeCSV(c.last_name || ''),
+          escapeCSV(c.company_name || ''),
+          escapeCSV(c.trade_name || ''),
+          escapeCSV(c.full_name || ''),
+          escapeCSV(c.email || ''),
+          escapeCSV(c.phone || ''),
+          escapeCSV(c.doc_type || c.identification_type || ''),
+          escapeCSV(c.doc_number || c.identification_number || ''),
+          escapeCSV(c.dv || ''),
+          escapeCSV(c.address || ''),
+          escapeCSV(c.city || ''),
+          escapeCSV(c.notes || ''),
+          escapeCSV((c.tags || []).join(';')),
+          escapeCSV((c.roles || []).join(';')),
+          escapeCSV(c.preferences ? JSON.stringify(c.preferences) : ''),
+          escapeCSV(c.avatar_url || ''),
+          escapeCSV((c.fiscal_responsibilities || []).join(';')),
+          escapeCSV(c.balance || 0),
+          escapeCSV(c.last_purchase_date || ''),
+          escapeCSV(c.total_sales || 0),
+          escapeCSV(c.sales_count || 0)
+        ].join(",");
+      })
     ].join("\n");
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -570,30 +657,48 @@ export default function ClientesPage() {
     toast.success(`${selectedIds.length} cliente(s) exportado(s)`);
   };
 
-  const handleBulkAddTag = async () => {
+  // Estado para diálogo de etiquetas
+  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  const [tagDialogMode, setTagDialogMode] = useState<'add' | 'remove'>('add');
+  const [tagInputValue, setTagInputValue] = useState('');
+  const [tagDialogStatus, setTagDialogStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  const openTagDialog = (mode: 'add' | 'remove') => {
     if (selectedIds.length === 0) return;
-    
-    const newTag = prompt('Ingresa la etiqueta a agregar:');
-    if (!newTag || !newTag.trim()) return;
+    setTagDialogMode(mode);
+    setTagInputValue('');
+    setTagDialogStatus(null);
+    setIsTagDialogOpen(true);
+  };
+
+  const handleBulkAddTag = async () => {
+    if (selectedIds.length === 0 || !tagInputValue.trim()) return;
     
     setIsBulkLoading(true);
+    setTagDialogStatus({ type: 'info', message: 'Procesando...' });
     try {
       for (const customerId of selectedIds) {
         const customer = customers.find(c => c.id === customerId);
         const currentTags = customer?.tags || [];
-        if (!currentTags.includes(newTag.trim())) {
+        if (!currentTags.includes(tagInputValue.trim())) {
           await supabase
             .from('customers')
-            .update({ tags: [...currentTags, newTag.trim()] })
+            .update({ tags: [...currentTags, tagInputValue.trim()] })
             .eq('id', customerId);
         }
       }
       
-      toast.success(`Etiqueta "${newTag.trim()}" agregada a ${selectedIds.length} cliente(s)`);
+      setTagDialogStatus({ type: 'success', message: `Etiqueta "${tagInputValue.trim()}" agregada a ${selectedIds.length} cliente(s)` });
+      toast.success(`Etiqueta "${tagInputValue.trim()}" agregada a ${selectedIds.length} cliente(s)`);
       setSelectedIds([]);
       if (organizationId) await loadCustomers(organizationId);
+      setTimeout(() => {
+        setIsTagDialogOpen(false);
+        setTagDialogStatus(null);
+      }, 2000);
     } catch (err: any) {
       console.error('Error agregando etiqueta:', err);
+      setTagDialogStatus({ type: 'error', message: err.message || 'Error al agregar etiqueta' });
       toast.error(err.message || 'Error al agregar etiqueta');
     } finally {
       setIsBulkLoading(false);
@@ -601,29 +706,33 @@ export default function ClientesPage() {
   };
 
   const handleBulkRemoveTag = async () => {
-    if (selectedIds.length === 0) return;
-    
-    const tagToRemove = prompt('Ingresa la etiqueta a quitar:');
-    if (!tagToRemove || !tagToRemove.trim()) return;
+    if (selectedIds.length === 0 || !tagInputValue.trim()) return;
     
     setIsBulkLoading(true);
+    setTagDialogStatus({ type: 'info', message: 'Procesando...' });
     try {
       for (const customerId of selectedIds) {
         const customer = customers.find(c => c.id === customerId);
         const currentTags = customer?.tags || [];
-        if (currentTags.includes(tagToRemove.trim())) {
+        if (currentTags.includes(tagInputValue.trim())) {
           await supabase
             .from('customers')
-            .update({ tags: currentTags.filter(t => t !== tagToRemove.trim()) })
+            .update({ tags: currentTags.filter(t => t !== tagInputValue.trim()) })
             .eq('id', customerId);
         }
       }
       
-      toast.success(`Etiqueta "${tagToRemove.trim()}" removida de ${selectedIds.length} cliente(s)`);
+      setTagDialogStatus({ type: 'success', message: `Etiqueta "${tagInputValue.trim()}" removida de ${selectedIds.length} cliente(s)` });
+      toast.success(`Etiqueta "${tagInputValue.trim()}" removida de ${selectedIds.length} cliente(s)`);
       setSelectedIds([]);
       if (organizationId) await loadCustomers(organizationId);
+      setTimeout(() => {
+        setIsTagDialogOpen(false);
+        setTagDialogStatus(null);
+      }, 2000);
     } catch (err: any) {
       console.error('Error removiendo etiqueta:', err);
+      setTagDialogStatus({ type: 'error', message: err.message || 'Error al remover etiqueta' });
       toast.error(err.message || 'Error al remover etiqueta');
     } finally {
       setIsBulkLoading(false);
@@ -859,7 +968,7 @@ export default function ClientesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleBulkAddTag}
+                  onClick={() => openTagDialog('add')}
                   disabled={isBulkLoading}
                   className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
                 >
@@ -869,7 +978,7 @@ export default function ClientesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleBulkRemoveTag}
+                  onClick={() => openTagDialog('remove')}
                   disabled={isBulkLoading}
                   className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
                 >
@@ -987,6 +1096,77 @@ export default function ClientesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Diálogo de etiquetar / quitar etiqueta */}
+      <Dialog open={isTagDialogOpen} onOpenChange={(open) => { if (!isBulkLoading) { setIsTagDialogOpen(open); if (!open) setTagDialogStatus(null); } }}>
+        <DialogContent className="sm:max-w-[425px] mx-4">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-gray-100">
+              {tagDialogMode === 'add' ? 'Etiquetar clientes' : 'Quitar etiqueta'}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
+              {tagDialogMode === 'add'
+                ? `Aplica una etiqueta a los ${selectedIds.length} clientes seleccionados.`
+                : `Quita una etiqueta de los ${selectedIds.length} clientes seleccionados.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="bulk-tag" className="text-gray-900 dark:text-gray-100">Etiqueta</Label>
+              <Input
+                id="bulk-tag"
+                value={tagInputValue}
+                onChange={(e) => setTagInputValue(e.target.value)}
+                placeholder="Nombre de etiqueta"
+                disabled={isBulkLoading}
+                className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && tagInputValue.trim()) {
+                    tagDialogMode === 'add' ? handleBulkAddTag() : handleBulkRemoveTag();
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {tagDialogStatus && (
+            <div className={`flex items-center p-3 rounded-md text-sm ${
+              tagDialogStatus.type === 'success' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+              tagDialogStatus.type === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+              'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+            }`}>
+              {tagDialogStatus.type === 'success' ? <CheckCircle className="h-4 w-4 mr-2" /> :
+               tagDialogStatus.type === 'error' ? <AlertCircle className="h-4 w-4 mr-2" /> :
+               <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {tagDialogStatus.message}
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsTagDialogOpen(false)}
+              disabled={isBulkLoading}
+              className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => tagDialogMode === 'add' ? handleBulkAddTag() : handleBulkRemoveTag()}
+              disabled={!tagInputValue.trim() || isBulkLoading}
+              className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
+            >
+              {isBulkLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : tagDialogMode === 'add' ? 'Aplicar etiqueta' : 'Quitar etiqueta'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -111,11 +111,15 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     title: APP_NAME,
     icon: path.join(__dirname, '..', '..', '..', 'build', 'icon.ico'),
     autoHideMenuBar: true,
+    backgroundColor: '#1e3a8a',
     webPreferences: {
       preload: path.join(__dirname, '..', '..', 'preload', 'index.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      spellcheck: false,
+      backgroundThrottling: false,
+      zoomFactor: 0.75,
     },
   });
 
@@ -136,6 +140,22 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
 
+  // ── Atajos de zoom para el usuario (Ctrl++ / Ctrl+- / Ctrl+0) ──
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.type !== 'keyDown') return;
+    const ctrl = input.control || input.meta;
+    if (!ctrl) return;
+    if (input.key === '=' || input.key === '+') {
+      const current = mainWindow?.webContents.getZoomFactor() ?? 0.9;
+      mainWindow?.webContents.setZoomFactor(Math.min(current + 0.1, 2.0));
+    } else if (input.key === '-') {
+      const current = mainWindow?.webContents.getZoomFactor() ?? 0.9;
+      mainWindow?.webContents.setZoomFactor(Math.max(current - 0.1, 0.5));
+    } else if (input.key === '0') {
+      mainWindow?.webContents.setZoomFactor(0.75);
+    }
+  });
+
   // En dev, ignorar errores de certificado (localhost)
   if (!app.isPackaged) {
     mainWindow.webContents.session.setCertificateVerifyProc((_req, cb) => cb(0));
@@ -145,6 +165,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   loadWithOfflineFallback(loadUrl);
 
   mainWindow.once('ready-to-show', () => {
+    closeSplash();
     if (!wasOpenedHidden()) {
       mainWindow?.show();
     }

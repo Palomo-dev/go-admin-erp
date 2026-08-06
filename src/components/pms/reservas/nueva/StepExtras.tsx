@@ -1,11 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Plus, Minus, Coffee, Utensils, Wifi, Car, X } from 'lucide-react';
+import { Plus, Minus, X, Loader2, Sparkles, Link2 } from 'lucide-react';
+import spaceServicesService, { OrgServiceView } from '@/lib/services/spaceServicesService';
+
+const iconMap: Record<string, React.ReactNode> = {
+  sparkles: <Sparkles className="h-4 w-4" />,
+  link: <Link2 className="h-4 w-4" />,
+  plus: <Plus className="h-4 w-4" />,
+};
 
 interface Extra {
   id: string;
@@ -14,6 +21,7 @@ interface Extra {
   price: number;
   quantity: number;
   icon?: string;
+  organization_service_id?: string | null;
 }
 
 interface StepExtrasProps {
@@ -24,22 +32,8 @@ interface StepExtrasProps {
   onNext: () => void;
   onBack: () => void;
   onSkip: () => void;
+  organizationId?: number;
 }
-
-const COMMON_EXTRAS = [
-  { id: 'breakfast', name: 'Desayuno', price: 15, icon: 'coffee', description: 'Desayuno continental' },
-  { id: 'lunch', name: 'Almuerzo', price: 20, icon: 'utensils', description: 'Almuerzo buffet' },
-  { id: 'dinner', name: 'Cena', price: 25, icon: 'utensils', description: 'Cena 3 tiempos' },
-  { id: 'wifi', name: 'WiFi Premium', price: 10, icon: 'wifi', description: 'Internet de alta velocidad' },
-  { id: 'parking', name: 'Parqueadero', price: 12, icon: 'car', description: 'Por noche' },
-];
-
-const iconMap: Record<string, React.ReactNode> = {
-  coffee: <Coffee className="h-5 w-5" />,
-  utensils: <Utensils className="h-5 w-5" />,
-  wifi: <Wifi className="h-5 w-5" />,
-  car: <Car className="h-5 w-5" />,
-};
 
 export function StepExtras({
   extras,
@@ -49,16 +43,32 @@ export function StepExtras({
   onNext,
   onBack,
   onSkip,
+  organizationId,
 }: StepExtrasProps) {
+  const [availableServices, setAvailableServices] = useState<OrgServiceView[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+
   const totalExtras = extras.reduce((sum, extra) => sum + extra.price * extra.quantity, 0);
 
-  const handleAddExtra = (extraData: typeof COMMON_EXTRAS[0]) => {
+  useEffect(() => {
+    if (organizationId) {
+      setIsLoadingServices(true);
+      spaceServicesService
+        .getActiveServicesForExtras(organizationId)
+        .then((services) => setAvailableServices(services))
+        .catch((err) => console.error('Error cargando servicios:', err))
+        .finally(() => setIsLoadingServices(false));
+    }
+  }, [organizationId]);
+
+  const handleAddService = (svc: OrgServiceView) => {
     onAddExtra({
-      id: extraData.id,
-      name: extraData.name,
-      description: extraData.description,
-      price: extraData.price,
-      icon: extraData.icon,
+      id: svc.org_service_id,
+      name: svc.name,
+      description: svc.linked_product_name ? `Vinculado: ${svc.linked_product_name}` : undefined,
+      price: svc.price,
+      icon: svc.icon || undefined,
+      organization_service_id: svc.org_service_id,
     });
   };
 
@@ -142,56 +152,79 @@ export function StepExtras({
         </Card>
       )}
 
-      {/* Servicios comunes */}
+      {/* Servicios de la organización */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Servicios Disponibles
         </h3>
 
-        <div className="grid sm:grid-cols-2 gap-3">
-          {COMMON_EXTRAS.map((extra) => {
-            const added = isExtraAdded(extra.id);
+        {isLoadingServices ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
+            <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Cargando servicios...</span>
+          </div>
+        ) : availableServices.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">No hay servicios activos configurados</p>
+            <p className="text-xs mt-1">Configura servicios en PMS &gt; Servicios</p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-3">
+            {availableServices.map((svc) => {
+              const added = isExtraAdded(svc.org_service_id);
 
-            return (
-              <Card
-                key={extra.id}
-                className={`p-4 cursor-pointer transition-all ${
-                  added
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                    : 'hover:border-gray-400 dark:hover:border-gray-500'
-                }`}
-                onClick={() => !added && handleAddExtra(extra)}
-              >
-                <div className="flex flex-wrap items-start gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      added
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
-                    }`}
-                  >
-                    {iconMap[extra.icon || ''] || <Plus className="h-5 w-5" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-                          {extra.name}
-                        </h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {extra.description}
-                        </p>
+              return (
+                <Card
+                  key={svc.org_service_id}
+                  className={`p-4 cursor-pointer transition-all ${
+                    added
+                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                      : 'hover:border-gray-400 dark:hover:border-gray-500'
+                  }`}
+                  onClick={() => !added && handleAddService(svc)}
+                >
+                  <div className="flex flex-wrap items-start gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        added
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      <Plus className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                            {svc.name}
+                          </h4>
+                          <div className="flex items-center gap-1 mt-1">
+                            {svc.linked_product_id && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 gap-0.5">
+                                <Link2 className="h-2.5 w-2.5" />
+                                POS
+                              </Badge>
+                            )}
+                            {svc.is_custom && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400">
+                                personalizado
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-bold text-blue-600 dark:text-blue-400">
+                          {svc.price > 0 ? `$${svc.price.toFixed(2)}` : 'Cortesía'}
+                        </span>
                       </div>
-                      <span className="font-bold text-blue-600 dark:text-blue-400">
-                        ${extra.price}
-                      </span>
                     </div>
                   </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       {/* Botones de navegación */}

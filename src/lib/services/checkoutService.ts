@@ -51,6 +51,7 @@ export interface CheckoutData {
   notes?: string;
   generateInvoice: boolean;
   generateReceipt: boolean;
+  updateCheckoutDate?: boolean;
 }
 
 class CheckoutService {
@@ -193,6 +194,119 @@ class CheckoutService {
   }
 
   /**
+   * Obtener una reserva individual con todos los datos para check-out
+   */
+  async getReservationForCheckout(reservationId: string): Promise<CheckoutReservation | null> {
+    const { data: reservation, error } = await supabase
+      .from('reservations')
+      .select(`
+        id,
+        customer_id,
+        checkin,
+        checkout,
+        occupant_count,
+        total_estimated,
+        status,
+        metadata,
+        customers (
+          id,
+          first_name,
+          last_name,
+          email,
+          phone
+        ),
+        reservation_spaces (
+          space_id,
+          spaces (
+            id,
+            label,
+            floor_zone,
+            space_types (
+              name
+            )
+          )
+        )
+      `)
+      .eq('id', reservationId)
+      .single();
+
+    if (error || !reservation) return null;
+
+    // Establecer parámetro de sesión para RLS de folios
+    const orgId = reservation.metadata?.organization_id || await this.getOrganizationIdFromReservation(reservationId);
+    if (orgId) {
+      await supabase.rpc('set_session_org_id', { org_id: orgId });
+    }
+
+    // Obtener folio
+    let folioData = null;
+    const { data: folio } = await supabase
+      .from('folios')
+      .select('id, balance, status')
+      .eq('reservation_id', reservation.id)
+      .maybeSingle();
+
+    if (folio) {
+      const { data: folioItems } = await supabase
+        .from('folio_items')
+        .select('description, amount, source, created_at, payment_status, charge_type')
+        .eq('folio_id', folio.id)
+        .order('created_at', { ascending: true });
+
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('source', 'folio')
+        .eq('source_id', folio.id);
+
+      const totalCharges = (folioItems || []).reduce((sum, item) => sum + Number(item.amount), 0);
+      const totalPayments = (payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+
+      folioData = {
+        id: folio.id,
+        balance: Number(folio.balance),
+        total_charges: totalCharges,
+        total_payments: totalPayments,
+        items: folioItems || [],
+      };
+    }
+
+    const customer = reservation.customers || {};
+    const spaces = (reservation.reservation_spaces || []).map((rs: any) => ({
+      id: rs.spaces?.id || '',
+      label: rs.spaces?.label || '',
+      space_type_name: rs.spaces?.space_types?.name || '',
+      floor_zone: rs.spaces?.floor_zone || '',
+      housekeeping_status: 'pending',
+      is_ready: false,
+    }));
+
+    const checkin = new Date(reservation.checkin);
+    const checkout = new Date(reservation.checkout);
+    const nights = Math.ceil(
+      (checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    return {
+      id: reservation.id,
+      code: reservation.metadata?.code || `RES-${reservation.id.slice(0, 8)}`,
+      customer_name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
+      customer_email: customer.email || '',
+      customer_phone: customer.phone || '',
+      customer_id: reservation.customer_id,
+      checkin: reservation.checkin,
+      checkout: reservation.checkout,
+      nights,
+      occupant_count: reservation.occupant_count || 1,
+      total_estimated: Number(reservation.total_estimated || 0),
+      status: reservation.status,
+      spaces,
+      folio: folioData,
+      metadata: reservation.metadata || {},
+    };
+  }
+
+  /**
    * Obtener estadísticas de salidas
    */
   async getStats(
@@ -253,7 +367,7 @@ class CheckoutService {
    * Realizar checkout de una reserva
    */
   async performCheckout(data: CheckoutData): Promise<void> {
-    const { reservationId, userId, notes, generateInvoice, generateReceipt } = data;
+    const { reservationId, userId, notes, generateInvoice, generateReceipt, updateCheckoutDate } = data;
 
     // Obtener metadata actual de la reserva
     const { data: currentReservation } = await supabase
@@ -263,11 +377,17 @@ class CheckoutService {
       .single();
 
     // Actualizar estado de la reserva con campos de auditoría
+    const todayStr = new Date().toISOString().split('T')[0];
     const { error: reservationError } = await supabase
       .from('reservations')
       .update({
         status: 'checked_out',
         updated_at: new Date().toISOString(),
+        // Si es check-out anticipado y el usuario confirmó, actualizar fechas
+        ...(updateCheckoutDate ? {
+          checkout: todayStr,
+          end_date: todayStr,
+        } : {}),
         // Campos de auditoría
         actual_checkout_at: new Date().toISOString(),
         checkout_by: userId || null,
@@ -280,6 +400,14 @@ class CheckoutService {
       .eq('id', reservationId);
 
     if (reservationError) throw reservationError;
+
+    // Si es check-out anticipado, actualizar también reservation_spaces
+    if (updateCheckoutDate) {
+      await supabase
+        .from('reservation_spaces')
+        .update({ checkout: todayStr })
+        .eq('reservation_id', reservationId);
+    }
 
     // Cerrar el folio
     const { data: folio, error: folioQueryError } = await supabase

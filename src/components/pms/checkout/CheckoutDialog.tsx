@@ -50,6 +50,7 @@ export interface CheckoutDialogData {
   generateInvoice: boolean;
   generateReceipt: boolean;
   sendToFactus: boolean;
+  updateCheckoutDate: boolean;
 }
 
 export function CheckoutDialog({
@@ -62,6 +63,7 @@ export function CheckoutDialog({
   const [generateInvoice, setGenerateInvoice] = useState(false);
   const [generateReceipt, setGenerateReceipt] = useState(false);
   const [sendToFactus, setSendToFactus] = useState(false);
+  const [updateCheckoutDate, setUpdateCheckoutDate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [folioBalance, setFolioBalance] = useState(reservation?.folio?.balance || 0);
@@ -134,6 +136,7 @@ export function CheckoutDialog({
       setGenerateInvoice(false);
       setGenerateReceipt(false);
       setSendToFactus(false);
+      setUpdateCheckoutDate(false);
       setIsSubmitting(false);
     }
   }, [open]);
@@ -149,6 +152,7 @@ export function CheckoutDialog({
         generateInvoice,
         generateReceipt,
         sendToFactus: generateInvoice && sendToFactus,
+        updateCheckoutDate,
       });
       onOpenChange(false);
     } catch (error) {
@@ -235,6 +239,19 @@ export function CheckoutDialog({
                   : 'text-blue-700 dark:text-blue-300'
               }>
                 {dateWarning.message}
+                {dateWarning.type === 'warning' && dateWarning.title === 'Check-out Anticipado' && (
+                  <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={updateCheckoutDate}
+                      onChange={(e) => setUpdateCheckoutDate(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">
+                      Actualizar fecha de check-out a hoy
+                    </span>
+                  </label>
+                )}
               </AlertDescription>
             </Alert>
           )}

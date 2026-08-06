@@ -110,6 +110,7 @@ export default function CheckinPage() {
         originCountry: data.originCountry,
         destinationCity: data.destinationCity,
         destinationCountry: data.destinationCountry,
+        updateCheckinDate: data.updateCheckinDate,
       });
 
       console.log('Check-in realizado exitosamente');

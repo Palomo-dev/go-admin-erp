@@ -61,6 +61,11 @@ import {
 } from 'lucide-react';
 import { DrawerFolioSummary } from '@/components/pms/calendario/DrawerFolioSummary';
 import type { TapeChartReservation, TapeChartSpace } from '@/lib/services/tapeChartService';
+import { CheckinDialog, type CheckinData } from '@/components/pms/checkin/CheckinDialog';
+import { CheckoutDialog, type CheckoutDialogData } from '@/components/pms/checkout/CheckoutDialog';
+import CheckinService, { type CheckinReservation } from '@/lib/services/checkinService';
+import CheckoutService, { type CheckoutReservation } from '@/lib/services/checkoutService';
+import { supabase } from '@/lib/supabase/config';
 
 export interface ReservationDetails {
   id: string;
@@ -128,6 +133,12 @@ export function ReservationDrawer({
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [showCheckinDialog, setShowCheckinDialog] = useState(false);
+  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+  const [checkinReservation, setCheckinReservation] = useState<CheckinReservation | null>(null);
+  const [checkoutReservation, setCheckoutReservation] = useState<CheckoutReservation | null>(null);
+  const [isLoadingCheckinData, setIsLoadingCheckinData] = useState(false);
+  const [isLoadingCheckoutData, setIsLoadingCheckoutData] = useState(false);
   
   // Form state
   const [checkin, setCheckin] = useState<Date | undefined>();
@@ -206,37 +217,93 @@ export function ReservationDrawer({
   const handleCheckin = async () => {
     if (!reservation) return;
     
+    setIsLoadingCheckinData(true);
     try {
-      await onCheckin(reservation.id);
-      toast({
-        title: 'Check-in realizado',
-        description: 'El huésped ha sido registrado correctamente',
-      });
+      const data = await CheckinService.getReservationForCheckin(reservation.id);
+      setCheckinReservation(data);
+      setShowCheckinDialog(true);
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'No se pudo realizar el check-in',
+        description: 'No se pudieron cargar los datos del check-in',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoadingCheckinData(false);
     }
+  };
+
+  const handleConfirmCheckin = async (data: CheckinData) => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    await CheckinService.performCheckin({
+      reservationId: data.reservationId,
+      userId: user?.id,
+      notes: data.notes,
+      depositAmount: data.depositAmount,
+      signatureData: data.signatureData,
+      identificationType: data.identificationType,
+      identificationNumber: data.identificationNumber,
+      nationality: data.nationality,
+      originCity: data.originCity,
+      originCountry: data.originCountry,
+      destinationCity: data.destinationCity,
+      destinationCountry: data.destinationCountry,
+      updateCheckinDate: data.updateCheckinDate,
+    });
+
+    if (data.depositAmount > 0) {
+      await CheckinService.registerDeposit({
+        reservationId: data.reservationId,
+        amount: data.depositAmount,
+        method: data.depositMethod,
+        reference: data.depositReference,
+      });
+    }
+
+    await onCheckin(data.reservationId);
+    toast({
+      title: 'Check-in realizado',
+      description: 'El huésped ha sido registrado correctamente',
+    });
   };
 
   const handleCheckout = async () => {
     if (!reservation) return;
     
+    setIsLoadingCheckoutData(true);
     try {
-      await onCheckout(reservation.id);
-      toast({
-        title: 'Check-out realizado',
-        description: 'El huésped ha sido dado de baja correctamente',
-      });
+      const data = await CheckoutService.getReservationForCheckout(reservation.id);
+      setCheckoutReservation(data);
+      setShowCheckoutDialog(true);
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'No se pudo realizar el check-out',
+        description: 'No se pudieron cargar los datos del check-out',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoadingCheckoutData(false);
     }
+  };
+
+  const handleConfirmCheckout = async (data: CheckoutDialogData) => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    await CheckoutService.performCheckout({
+      reservationId: data.reservationId,
+      userId: user?.id,
+      notes: data.notes,
+      generateInvoice: data.generateInvoice,
+      generateReceipt: data.generateReceipt,
+      updateCheckoutDate: data.updateCheckoutDate,
+    });
+
+    await onCheckout(data.reservationId);
+    toast({
+      title: 'Check-out realizado',
+      description: 'El huésped ha sido dado de baja correctamente',
+    });
   };
 
   const handleCreateBlock = async () => {
@@ -547,20 +614,20 @@ export function ReservationDrawer({
                 <Button
                   variant="outline"
                   className="w-full"
-                  disabled={!canCheckin}
+                  disabled={!canCheckin || isLoadingCheckinData}
                   onClick={handleCheckin}
                 >
                   <LogIn className="h-4 w-4 mr-2" />
-                  Check-in
+                  {isLoadingCheckinData ? 'Cargando...' : 'Check-in'}
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full"
-                  disabled={!canCheckout}
+                  disabled={!canCheckout || isLoadingCheckoutData}
                   onClick={handleCheckout}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Check-out
+                  {isLoadingCheckoutData ? 'Cargando...' : 'Check-out'}
                 </Button>
               </div>
 
@@ -669,6 +736,22 @@ export function ReservationDrawer({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Check-in Dialog (compartido con /pms/checkin) */}
+      <CheckinDialog
+        open={showCheckinDialog}
+        onOpenChange={setShowCheckinDialog}
+        reservation={checkinReservation}
+        onConfirm={handleConfirmCheckin}
+      />
+
+      {/* Check-out Dialog (compartido con /pms/checkout) */}
+      <CheckoutDialog
+        open={showCheckoutDialog}
+        onOpenChange={setShowCheckoutDialog}
+        reservation={checkoutReservation}
+        onConfirm={handleConfirmCheckout}
+      />
 
       {/* Block Dialog */}
       <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>

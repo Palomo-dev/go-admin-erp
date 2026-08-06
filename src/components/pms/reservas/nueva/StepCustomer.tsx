@@ -1,112 +1,38 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Plus, User, Mail, Phone, IdCard, CreditCard, Building2 } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { supabase } from '@/lib/supabase/config';
-import type { Customer } from '@/lib/services/reservationsService';
-import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
+import { CustomerSelector } from '@/components/pos/CustomerSelector';
+import type { Customer as ReservationCustomer } from '@/lib/services/reservationsService';
+import type { Customer as POSCustomer } from '@/components/pos/types';
 
 interface StepCustomerProps {
-  selectedCustomer: Customer | null;
-  onCustomerSelect: (customer: Customer) => void;
+  selectedCustomer: ReservationCustomer | null;
+  onCustomerSelect: (customer: ReservationCustomer | null) => void;
   onNext: () => void;
-  onSearch: (term: string) => Promise<Customer[]>;
-  onCreate: (data: Partial<Customer>) => Promise<Customer>;
+}
+
+function mapPOSCustomerToReservation(posCustomer: POSCustomer | undefined): ReservationCustomer | null {
+  if (!posCustomer) return null;
+  const nameParts = (posCustomer.full_name || '').split(' ');
+  return {
+    id: posCustomer.id,
+    organization_id: posCustomer.organization_id,
+    first_name: nameParts[0] || '',
+    last_name: nameParts.slice(1).join(' ') || '',
+    email: posCustomer.email || undefined,
+    phone: posCustomer.phone || undefined,
+    avatar_url: (posCustomer as any).avatar_url || undefined,
+  };
 }
 
 export function StepCustomer({
   selectedCustomer,
   onCustomerSelect,
   onNext,
-  onSearch,
-  onCreate,
 }: StepCustomerProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<Customer[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showNewForm, setShowNewForm] = useState(false);
-  const [newCustomerData, setNewCustomerData] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    identification_type: 'CC',
-    identification_number: '',
-  });
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(['cliente', 'huesped']);
-  const [selectedFiscal, setSelectedFiscal] = useState<string[]>(['R-99-PN']);
-  const [municipalityId, setMunicipalityId] = useState('aa4b6637-0060-41bb-9459-bc95f9789e08');
-  const [customerRoles, setCustomerRoles] = useState<{code: string; label: string}[]>([]);
-  const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
-
-  useEffect(() => {
-    async function loadCatalogs() {
-      const [rolesRes, fiscalRes] = await Promise.all([
-        supabase.from('customer_roles').select('code, label').order('sort_order'),
-        supabase.from('dian_fiscal_responsibilities').select('code, description').order('sort_order'),
-      ]);
-      if (rolesRes.data) setCustomerRoles(rolesRes.data);
-      if (fiscalRes.data) setFiscalOptions(fiscalRes.data);
-    }
-    loadCatalogs();
-  }, []);
-
-  // Búsqueda automática con debounce
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (searchTerm.trim().length >= 2) {
-        handleSearch();
-      } else {
-        setSearchResults([]);
-      }
-    }, 500);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
-
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
-    
-    setIsSearching(true);
-    try {
-      const results = await onSearch(searchTerm);
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Error buscando clientes:', error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleCreateCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const customer = await onCreate({
-        first_name: newCustomerData.first_name,
-        last_name: newCustomerData.last_name,
-        email: newCustomerData.email || null,
-        phone: newCustomerData.phone || null,
-        identification_type: newCustomerData.identification_type,
-        identification_number: newCustomerData.identification_number || null,
-        roles: selectedRoles,
-        fiscal_responsibilities: selectedFiscal,
-        fiscal_municipality_id: municipalityId,
-      } as any);
-      onCustomerSelect(customer);
-      setShowNewForm(false);
-      setSelectedRoles(['cliente', 'huesped']);
-      setSelectedFiscal(['R-99-PN']);
-      setMunicipalityId('aa4b6637-0060-41bb-9459-bc95f9789e08');
-    } catch (error) {
-      console.error('Error creando cliente:', error);
-    }
+  const handleCustomerSelect = (posCustomer?: POSCustomer) => {
+    onCustomerSelect(mapPOSCustomerToReservation(posCustomer));
   };
 
   return (
@@ -120,283 +46,26 @@ export function StepCustomer({
         </p>
       </div>
 
-      {/* Cliente seleccionado */}
-      {selectedCustomer && (
-        <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-          <div className="flex items-start justify-between">
-            <div className="flex flex-wrap items-start gap-3">
-              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
-                {selectedCustomer.first_name[0]}{selectedCustomer.last_name[0]}
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                  {selectedCustomer.first_name} {selectedCustomer.last_name}
-                </h3>
-                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  {selectedCustomer.email && (
-                    <div className="flex flex-wrap items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      {selectedCustomer.email}
-                    </div>
-                  )}
-                  {selectedCustomer.phone && (
-                    <div className="flex flex-wrap items-center gap-1">
-                      <Phone className="h-3 w-3" />
-                      {selectedCustomer.phone}
-                    </div>
-                  )}
-                  {selectedCustomer.document_number && (
-                    <div className="flex flex-wrap items-center gap-1">
-                      <IdCard className="h-3 w-3" />
-                      {selectedCustomer.document_type}: {selectedCustomer.document_number}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onCustomerSelect(null as any)}
-            >
-              Cambiar
-            </Button>
-          </div>
-        </Card>
-      )}
+      <CustomerSelector
+        selectedCustomer={selectedCustomer ? {
+          id: selectedCustomer.id,
+          organization_id: selectedCustomer.organization_id,
+          full_name: `${selectedCustomer.first_name} ${selectedCustomer.last_name}`.trim(),
+          email: selectedCustomer.email || '',
+          phone: selectedCustomer.phone || '',
+          doc_type: (selectedCustomer as any).doc_type || (selectedCustomer as any).identification_type || '',
+          doc_number: (selectedCustomer as any).doc_number || (selectedCustomer as any).identification_number || '',
+          address: selectedCustomer.address || '',
+          country: selectedCustomer.country || 'Colombia',
+          roles: [],
+          tags: [],
+          preferences: {},
+          created_at: selectedCustomer.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as POSCustomer : undefined}
+        onCustomerSelect={handleCustomerSelect}
+      />
 
-      {/* Búsqueda de cliente */}
-      {!selectedCustomer && !showNewForm && (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <Input
-                placeholder="Escribe para buscar por nombre, email, teléfono... (mín. 2 caracteres)"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              {isSearching && (
-                <Skeleton className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full" />
-              )}
-            </div>
-          </div>
-
-          {/* Resultados de búsqueda */}
-          {searchTerm.trim().length >= 2 && !isSearching && (
-            <>
-              {searchResults.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {searchResults.length} resultado(s) encontrado(s)
-                  </p>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {searchResults.map((customer) => (
-                      <Card
-                        key={customer.id}
-                        className="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                        onClick={() => onCustomerSelect(customer)}
-                      >
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                            <User className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                              {customer.first_name} {customer.last_name}
-                            </h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {customer.email || customer.phone || 'Sin contacto'}
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <Card className="p-4 bg-gray-50 dark:bg-gray-800">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                    No se encontraron clientes con "{searchTerm}"
-                  </p>
-                </Card>
-              )}
-            </>
-          )}
-
-          {/* Botón crear nuevo */}
-          <div className="text-center pt-4 border-t dark:border-gray-700">
-            <Button
-              variant="outline"
-              onClick={() => setShowNewForm(true)}
-              className="w-full"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Nuevo Cliente
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Formulario nuevo cliente */}
-      {!selectedCustomer && showNewForm && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Nuevo Cliente
-          </h3>
-          <form onSubmit={handleCreateCustomer} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="first_name">Nombre *</Label>
-                <Input
-                  id="first_name"
-                  value={newCustomerData.first_name}
-                  onChange={(e) =>
-                    setNewCustomerData({ ...newCustomerData, first_name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="last_name">Apellido *</Label>
-                <Input
-                  id="last_name"
-                  value={newCustomerData.last_name}
-                  onChange={(e) =>
-                    setNewCustomerData({ ...newCustomerData, last_name: e.target.value })
-                  }
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={newCustomerData.email}
-                onChange={(e) =>
-                  setNewCustomerData({ ...newCustomerData, email: e.target.value })
-                }
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="phone">Teléfono</Label>
-              <Input
-                id="phone"
-                value={newCustomerData.phone}
-                onChange={(e) =>
-                  setNewCustomerData({ ...newCustomerData, phone: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="identification_type">Tipo Doc.</Label>
-                <select
-                  id="identification_type"
-                  value={newCustomerData.identification_type}
-                  onChange={(e) =>
-                    setNewCustomerData({ ...newCustomerData, identification_type: e.target.value })
-                  }
-                  className="h-10 w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
-                >
-                  <option value="CC">Cédula</option>
-                  <option value="CE">Cédula Extranjería</option>
-                  <option value="NIT">NIT</option>
-                  <option value="PAS">Pasaporte</option>
-                </select>
-              </div>
-              <div>
-                <Label htmlFor="identification_number">Número Doc.</Label>
-                <Input
-                  id="identification_number"
-                  value={newCustomerData.identification_number}
-                  onChange={(e) =>
-                    setNewCustomerData({ ...newCustomerData, identification_number: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Roles del Cliente */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium flex flex-wrap items-center gap-1">
-                <User className="h-3.5 w-3.5" /> Roles
-              </Label>
-              <div className="flex flex-wrap gap-1.5">
-                {customerRoles.map((role) => (
-                  <div
-                    key={role.code}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border cursor-pointer transition-all text-xs ${
-                      selectedRoles.includes(role.code)
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
-                    }`}
-                    onClick={() => setSelectedRoles(prev =>
-                      prev.includes(role.code) ? prev.filter(r => r !== role.code) : [...prev, role.code]
-                    )}
-                  >
-                    <Checkbox checked={selectedRoles.includes(role.code)} className="pointer-events-none h-3 w-3" />
-                    <span>{role.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Resp. Fiscal */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium flex flex-wrap items-center gap-1">
-                <CreditCard className="h-3.5 w-3.5" /> Resp. Fiscal
-              </Label>
-              <div className="flex flex-wrap gap-1.5">
-                {fiscalOptions.map((fiscal) => (
-                  <div
-                    key={fiscal.code}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border cursor-pointer transition-all text-xs ${
-                      selectedFiscal.includes(fiscal.code)
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                        : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
-                    }`}
-                    onClick={() => setSelectedFiscal(prev =>
-                      prev.includes(fiscal.code) ? prev.filter(f => f !== fiscal.code) : [...prev, fiscal.code]
-                    )}
-                  >
-                    <Checkbox checked={selectedFiscal.includes(fiscal.code)} className="pointer-events-none h-3 w-3" />
-                    <span>{fiscal.code}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Municipio */}
-            <MunicipalitySearch
-              value={municipalityId}
-              onChange={setMunicipalityId}
-              compact
-            />
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowNewForm(false)}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" className="flex-1">
-                Crear Cliente
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {/* Botón continuar */}
       {selectedCustomer && (
         <div className="flex justify-end pt-4">
           <Button onClick={onNext} size="lg">

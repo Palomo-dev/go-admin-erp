@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import ReservationExtrasService from './reservationExtrasService';
 
 export type ReservationStatus = 'tentative' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show';
 
@@ -62,6 +63,14 @@ export interface CreateReservationData {
   metadata?: Record<string, any>;
   payment_method?: string;
   payment_amount?: number;
+  extras?: Array<{
+    organization_service_id?: string | null;
+    name: string;
+    description?: string;
+    unit_price: number;
+    quantity: number;
+    is_complimentary?: boolean;
+  }>;
 }
 
 class ReservationsService {
@@ -280,7 +289,16 @@ class ReservationsService {
       throw spacesError;
     }
 
-    // 3. Crear pago inicial si se proporcionó
+    // 3. Guardar extras en tabla relacional reservation_extras
+    if (reservationData.extras && reservationData.extras.length > 0) {
+      try {
+        await ReservationExtrasService.createForReservation(reservation.id, reservationData.extras);
+      } catch (extrasError) {
+        console.error('Error guardando extras (no bloquea la reserva):', extrasError);
+      }
+    }
+
+    // 4. Crear pago inicial si se proporcionó
     if (reservationData.payment_method && reservationData.payment_amount && reservationData.payment_amount > 0) {
       // Obtener la moneda base de la organización
       const currency = await this.getBaseCurrency(reservationData.organization_id);

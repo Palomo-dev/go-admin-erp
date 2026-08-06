@@ -23,11 +23,15 @@ export const pmsReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data: spaces } = await supabase
-        .from('spaces')
-        .select('id, status')
-        .eq('organization_id', orgId)
-        .eq('space_type', 'room');
+      const { data: orgBranches } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', orgId);
+      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
+
+      const { data: spaces } = branchIds.length > 0
+        ? await supabase.from('spaces').select('id, status').in('branch_id', branchIds)
+        : { data: [] };
 
       const { data: reservations } = await supabase
         .from('reservations')
@@ -74,8 +78,8 @@ export const pmsReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const { data, error } = await supabase
         .from('folios')
-        .select('id, folio_type, total_amount, created_at')
-        .eq('organization_id', orgId)
+        .select('id, balance, status, created_at, reservations!inner(organization_id)')
+        .eq('reservations.organization_id', orgId)
         .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
 
@@ -84,8 +88,8 @@ export const pmsReports: ReportDefinition[] = [
       const folios = data ?? [];
       const porTipo: Record<string, number> = {};
       folios.forEach((f: Record<string, unknown>) => {
-        const t = String(f.folio_type ?? 'unknown');
-        porTipo[t] = (porTipo[t] ?? 0) + Number(f.total_amount ?? 0);
+        const t = String(f.status ?? 'unknown');
+        porTipo[t] = (porTipo[t] ?? 0) + Number(f.balance ?? 0);
       });
 
       const filas = Object.entries(porTipo).map(([tipo, monto]) => ({ tipo, monto }));
@@ -93,14 +97,14 @@ export const pmsReports: ReportDefinition[] = [
       return buildReportData(
         'pms-ingresos', 'Ingresos Hoteleros', 'pms_hotel', periodo,
         [
-          { titulo: 'Total Ingresos', valor: folios.reduce((s: number, f: Record<string, unknown>) => s + Number(f.total_amount ?? 0), 0), formato: 'moneda' },
+          { titulo: 'Total Ingresos', valor: folios.reduce((s: number, f: Record<string, unknown>) => s + Number(f.balance ?? 0), 0), formato: 'moneda' },
         ],
         [
           { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
           { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
         ],
         filas,
-        { monto: folios.reduce((s: number, f: Record<string, unknown>) => s + Number(f.total_amount ?? 0), 0) },
+        { monto: folios.reduce((s: number, f: Record<string, unknown>) => s + Number(f.balance ?? 0), 0) },
       );
     },
   },
@@ -112,12 +116,25 @@ export const pmsReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data, error } = await supabase
-        .from('housekeeping_tasks')
-        .select('id, status, assigned_to, created_at, completed_at')
-        .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+      const { data: orgBranches } = await supabase
+        .from('branches')
+        .select('id')
+        .eq('organization_id', orgId);
+      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
+
+      const { data: orgSpaces } = branchIds.length > 0
+        ? await supabase.from('spaces').select('id').in('branch_id', branchIds)
+        : { data: [] };
+      const spaceIds = (orgSpaces ?? []).map((s: Record<string, unknown>) => s.id);
+
+      const { data, error } = spaceIds.length > 0
+        ? await supabase
+            .from('housekeeping_tasks')
+            .select('id, status, assigned_to, task_date, created_at')
+            .in('space_id', spaceIds)
+            .gte('task_date', periodo.fechaInicio)
+            .lte('task_date', periodo.fechaFin)
+        : { data: [], error: null };
 
       if (error) throw error;
 

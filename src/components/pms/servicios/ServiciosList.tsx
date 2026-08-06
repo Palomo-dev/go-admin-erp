@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
-import { MoreVertical, Pencil, Trash2, Loader2, Sparkles, Globe } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, Loader2, Sparkles, Globe, Settings2, Link2 } from 'lucide-react';
 import { OrgServiceView, SERVICE_CATEGORIES } from '@/lib/services/spaceServicesService';
 
 interface ServiciosListProps {
@@ -18,10 +18,11 @@ interface ServiciosListProps {
   onToggle: (service: OrgServiceView) => void;
   onEdit: (service: OrgServiceView) => void;
   onDelete: (service: OrgServiceView) => void;
+  onConfig?: (service: OrgServiceView) => void;
 }
 
 export function ServiciosList({
-  services, isLoading, togglingId, onToggle, onEdit, onDelete,
+  services, isLoading, togglingId, onToggle, onEdit, onDelete, onConfig,
 }: ServiciosListProps) {
   if (isLoading) {
     return (
@@ -87,6 +88,17 @@ export function ServiciosList({
                     >
                       {service.is_custom ? 'personalizado' : 'estándar'}
                     </Badge>
+                    {service.price > 0 && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-300 dark:border-green-700 text-green-600 dark:text-green-400">
+                        ${service.price.toFixed(2)}
+                      </Badge>
+                    )}
+                    {service.linked_product_id && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 gap-0.5">
+                        <Link2 className="h-2.5 w-2.5" />
+                        {service.linked_product_name || 'Producto vinculado'}
+                      </Badge>
+                    )}
                   </div>
                   {service.icon && (
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
@@ -111,24 +123,31 @@ export function ServiciosList({
                   </span>
                 </div>
 
-                {/* Acciones (solo custom) */}
-                {service.is_custom && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
-                      <DropdownMenuItem onClick={() => onEdit(service)} className="gap-2 text-xs">
-                        <Pencil className="h-3.5 w-3.5" /> Editar
+                {/* Acciones */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
+                    {onConfig && (
+                      <DropdownMenuItem onClick={() => onConfig(service)} className="gap-2 text-xs">
+                        <Settings2 className="h-3.5 w-3.5" /> Configurar precio y producto
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onDelete(service)} className="gap-2 text-xs text-red-600 dark:text-red-400">
-                        <Trash2 className="h-3.5 w-3.5" /> Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                    )}
+                    {service.is_custom && (
+                      <>
+                        <DropdownMenuItem onClick={() => onEdit(service)} className="gap-2 text-xs">
+                          <Pencil className="h-3.5 w-3.5" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete(service)} className="gap-2 text-xs text-red-600 dark:text-red-400">
+                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))}
           </div>

@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon } from 'lucide-react';
+import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon, Check } from 'lucide-react';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { Product, ProductToAdd, SelectedProductModifier } from './types';
@@ -47,6 +47,7 @@ interface AddProductDialogProps {
   subtitle?: string;
   submitLabel?: string;
   selectedRoom?: { space_label: string; folio_id?: string } | null;
+  includedProductIds?: Set<number>;
 }
 
 export function AddProductDialog({
@@ -58,6 +59,7 @@ export function AddProductDialog({
   subtitle,
   submitLabel = 'Agregar al Pedido',
   selectedRoom,
+  includedProductIds,
 }: AddProductDialogProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [chargeType, setChargeType] = useState<'room_charge' | 'direct_payment'>('room_charge');
@@ -391,6 +393,7 @@ export function AddProductDialog({
                     const inCart = cart.has(product.id);
                     const hasVariants = product.has_variants && product.variant_count > 0;
                     const hasModifiersOnly = !hasVariants && product.has_modifiers;
+                    const isIncluded = includedProductIds?.has(product.id) ?? false;
 
                     return (
                       <div
@@ -458,6 +461,11 @@ export function AddProductDialog({
                           {inCart && (
                             <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold z-10">
                               {cart.get(product.id)?.quantity}
+                            </div>
+                          )}
+                          {isIncluded && !inCart && (
+                            <div className="absolute top-2 right-2 bg-green-600 text-white rounded-full px-2 py-0.5 text-[0.6rem] font-bold z-10 flex items-center gap-0.5">
+                              <Check className="h-2.5 w-2.5" /> Incluido
                             </div>
                           )}
                         </div>

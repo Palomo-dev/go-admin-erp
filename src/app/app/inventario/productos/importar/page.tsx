@@ -41,11 +41,23 @@ interface ImportRow {
   barcode?: string;
   description?: string;
   price?: number;
+  comparePrice?: number;
   cost?: number;
   stock?: number;
+  minLevel?: number;
   taxName?: string;
   brand?: string;
   reference?: string;
+  supplier?: string;
+  trackStock?: boolean;
+  tags?: string;
+  notes?: string;
+  imageUrls?: string;
+  parentSku?: string;
+  variantData?: string;
+  isParent?: boolean;
+  station?: string;
+  statusValue?: string;
   status: 'pending' | 'success' | 'error';
   error?: string;
 }
@@ -101,6 +113,7 @@ export default function ImportarProductosPage() {
   const [stats, setStats] = useState<ImportStats>({ total: 0, success: 0, errors: 0, pending: 0 });
   const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'complete'>('upload');
   const [importMode, setImportMode] = useState<'create_only' | 'update_only' | 'create_and_update'>('create_and_update');
+  const [isExporting, setIsExporting] = useState(false);
   const stockFileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,11 +153,14 @@ export default function ImportarProductosPage() {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rawData: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-      // Buscar fila de encabezados (contiene "Código" o "Tipo")
+      // Buscar fila de encabezados (contiene "Código", "SKU" o "Nombre")
       let headerRow = -1;
       for (let i = 0; i < Math.min(10, rawData.length); i++) {
         const row = rawData[i];
-        if (row && row.some(cell => String(cell || '').toLowerCase().includes('código') || String(cell || '').toLowerCase().includes('codigo'))) {
+        if (row && row.some(cell => {
+          const c = String(cell || '').toLowerCase().trim();
+          return c === 'código' || c === 'codigo' || c === 'sku' || c === 'nombre' || c === 'name';
+        })) {
           headerRow = i;
           break;
         }
@@ -153,7 +169,7 @@ export default function ImportarProductosPage() {
       if (headerRow === -1) {
         toast({
           title: 'Estructura no reconocida',
-          description: 'No se encontró la fila de encabezados con "Código"',
+          description: 'No se encontró la fila de encabezados (debe contener "Código", "SKU" o "Nombre")',
           variant: 'destructive',
         });
         return;
@@ -164,17 +180,32 @@ export default function ImportarProductosPage() {
       const codeIdx = headers.findIndex((h: string) => h === 'código' || h === 'codigo' || h === 'sku');
       const nameIdx = headers.findIndex((h: string) => h === 'nombre' || h === 'name' || h === 'producto');
       const unitIdx = headers.findIndex((h: string) => h === 'unidad' || h === 'unit' || h === 'unidad de medida');
-      const priceIdx = headers.findIndex((h: string) => h === 'precios' || h === 'precio' || h === 'price');
+      const priceIdx = headers.findIndex((h: string) => h === 'precios' || h === 'precio' || h === 'price' || h === 'precio de venta');
       const taxIdx = headers.findIndex((h: string) => h === 'impuestos' || h === 'impuesto' || h === 'tax');
-      const stockIdx = headers.findIndex((h: string) => h === 'stock' || h === 'cantidad' || h === 'inventario');
+      const stockIdx = headers.findIndex((h: string) => h === 'stock' || h === 'cantidad' || h === 'inventario' || h === 'stock total');
       const stateIdx = headers.findIndex((h: string) => h === 'estado' || h === 'state' || h === 'status');
       const brandIdx = headers.findIndex((h: string) => h === 'marca' || h === 'brand');
       const referenceIdx = headers.findIndex((h: string) => h === 'referencia' || h === 'reference' || h === 'ref');
+      const categoryIdx = headers.findIndex((h: string) => h === 'categoría' || h === 'categoria' || h === 'category' || h === 'categoría' || h === 'categoria');
+      const barcodeIdx = headers.findIndex((h: string) => h === 'código de barras' || h === 'codigo de barras' || h === 'barcode');
+      const descriptionIdx = headers.findIndex((h: string) => h === 'descripción' || h === 'descripcion' || h === 'description' || h === 'descripción');
+      const comparePriceIdx = headers.findIndex((h: string) => h === 'precio de comparación' || h === 'precio comparacion' || h === 'compare price' || h === 'compare_price');
+      const costIdx = headers.findIndex((h: string) => h === 'costo' || h === 'cost' || h === 'costo de adquisición' || h === 'costo de adquisicion');
+      const minLevelIdx = headers.findIndex((h: string) => h === 'stock mínimo' || h === 'stock minimo' || h === 'min level' || h === 'min_level');
+      const supplierIdx = headers.findIndex((h: string) => h === 'proveedor' || h === 'supplier' || h === 'proveedor principal');
+      const trackStockIdx = headers.findIndex((h: string) => h === 'rastrear inventario' || h === 'track stock' || h === 'track_stock' || h === 'rastrear stock');
+      const tagsIdx = headers.findIndex((h: string) => h === 'etiquetas' || h === 'tags' || h === 'etiqueta');
+      const notesIdx = headers.findIndex((h: string) => h === 'notas' || h === 'notes' || h === 'nota');
+      const imagesIdx = headers.findIndex((h: string) => h === 'urls de imágenes' || h === 'urls de imagenes' || h === 'images' || h === 'imágenes' || h === 'imagenes' || h === 'url de imágenes');
+      const parentSkuIdx = headers.findIndex((h: string) => h === 'sku padre' || h === 'parent sku' || h === 'parent_sku' || h === 'producto padre');
+      const variantDataIdx = headers.findIndex((h: string) => h === 'datos de variante' || h === 'variant data' || h === 'variant_data' || h === 'variante');
+      const isParentIdx = headers.findIndex((h: string) => h === 'es producto padre' || h === 'is parent' || h === 'is_parent' || h === 'producto padre');
+      const stationIdx = headers.findIndex((h: string) => h === 'estación' || h === 'estacion' || h === 'station');
 
       if (codeIdx === -1 || nameIdx === -1) {
         toast({
           title: 'Columnas requeridas',
-          description: 'El archivo debe contener las columnas "Código" y "Nombre"',
+          description: 'El archivo debe contener las columnas "Código/SKU" y "Nombre"',
           variant: 'destructive',
         });
         return;
@@ -207,18 +238,52 @@ export default function ImportarProductosPage() {
         const taxName = taxIdx !== -1 ? String(row[taxIdx] || '').trim() : undefined;
         const brand = brandIdx !== -1 ? String(row[brandIdx] || '').trim() : undefined;
         const reference = referenceIdx !== -1 ? String(row[referenceIdx] || '').trim() : undefined;
+        const category = categoryIdx !== -1 ? String(row[categoryIdx] || '').trim() : undefined;
+        const barcode = barcodeIdx !== -1 ? String(row[barcodeIdx] || '').trim() : undefined;
+        const description = descriptionIdx !== -1 ? String(row[descriptionIdx] || '').trim() : undefined;
+        const comparePrice = comparePriceIdx !== -1 ? Number(row[comparePriceIdx]) || undefined : undefined;
+        const cost = costIdx !== -1 ? Number(row[costIdx]) || undefined : undefined;
+        const minLevel = minLevelIdx !== -1 ? Number(row[minLevelIdx]) || 0 : 0;
+        const supplier = supplierIdx !== -1 ? String(row[supplierIdx] || '').trim() : undefined;
+        const trackStockRaw = trackStockIdx !== -1 ? String(row[trackStockIdx] || '').trim().toLowerCase() : '';
+        const trackStock = trackStockIdx !== -1 ? (trackStockRaw === 'true' || trackStockRaw === 'si' || trackStockRaw === '1' || trackStockRaw === 'verdadero') : undefined;
+        const tags = tagsIdx !== -1 ? String(row[tagsIdx] || '').trim() : undefined;
+        const notes = notesIdx !== -1 ? String(row[notesIdx] || '').trim() : undefined;
+        const imageUrls = imagesIdx !== -1 ? String(row[imagesIdx] || '').trim() : undefined;
+        const parentSku = parentSkuIdx !== -1 ? String(row[parentSkuIdx] || '').trim() : undefined;
+        const variantData = variantDataIdx !== -1 ? String(row[variantDataIdx] || '').trim() : undefined;
+        const isParentRaw = isParentIdx !== -1 ? String(row[isParentIdx] || '').trim().toLowerCase() : '';
+        const isParent = isParentIdx !== -1 ? (isParentRaw === 'true' || isParentRaw === 'si' || isParentRaw === '1') : undefined;
+        const station = stationIdx !== -1 ? String(row[stationIdx] || '').trim() : undefined;
+        const statusValue = stateIdx !== -1 ? String(row[stateIdx] || '').trim().toLowerCase() : undefined;
 
         rows.push({
           row: i + 1,
           sku,
           name,
           type,
+          category,
           unit: unit || 'unidad',
+          barcode: barcode || undefined,
+          description: description || undefined,
           price,
+          comparePrice,
+          cost,
           stock,
+          minLevel,
           taxName,
           brand: brand || undefined,
           reference: reference || undefined,
+          supplier: supplier || undefined,
+          trackStock,
+          tags: tags || undefined,
+          notes: notes || undefined,
+          imageUrls: imageUrls || undefined,
+          parentSku: parentSku || undefined,
+          variantData: variantData || undefined,
+          isParent,
+          station: station || undefined,
+          statusValue: statusValue || undefined,
           status: 'pending',
         });
       }
@@ -365,6 +430,39 @@ export default function ImportarProductosPage() {
       if (t.name.toLowerCase().includes('0%')) taxMap.set('iva 0%', t.id);
     }
 
+    // Obtener categorías de la organización para mapear por nombre
+    const { data: orgCategories } = await supabase
+      .from('categories')
+      .select('id, name')
+      .eq('organization_id', orgId);
+
+    const categoryMap = new Map<string, number>();
+    for (const c of orgCategories || []) {
+      categoryMap.set(c.name.toLowerCase().trim(), c.id);
+    }
+
+    // Obtener proveedores de la organización para mapear por nombre
+    const { data: orgSuppliers } = await supabase
+      .from('suppliers')
+      .select('id, name')
+      .eq('organization_id', orgId);
+
+    const supplierMap = new Map<string, number>();
+    for (const s of orgSuppliers || []) {
+      supplierMap.set(s.name.toLowerCase().trim(), s.id);
+    }
+
+    // Obtener etiquetas existentes de la organización
+    const { data: orgTags } = await supabase
+      .from('product_tags')
+      .select('id, name')
+      .eq('organization_id', orgId);
+
+    const tagMap = new Map<string, number>();
+    for (const t of orgTags || []) {
+      tagMap.set(t.name.toLowerCase().trim(), t.id);
+    }
+
     const updatedRows = [...previewData];
     let successCount = 0;
     let errorCount = 0;
@@ -381,8 +479,21 @@ export default function ImportarProductosPage() {
 
     let skippedCount = 0;
 
-    for (let i = 0; i < updatedRows.length; i++) {
-      const row = updatedRows[i];
+    // Ordenar filas: productos padre primero, luego variantes, luego el resto
+    // Esto asegura que los productos padre existan antes de que se procesen sus variantes
+    const sortedIndices = updatedRows
+      .map((row, idx) => ({ row, idx }))
+      .sort((a, b) => {
+        const aIsParent = a.row.isParent === true ? 0 : 1;
+        const bIsParent = b.row.isParent === true ? 0 : 1;
+        if (aIsParent !== bIsParent) return aIsParent - bIsParent;
+        const aHasParentSku = a.row.parentSku ? 1 : 0;
+        const bHasParentSku = b.row.parentSku ? 1 : 0;
+        return aHasParentSku - bHasParentSku;
+      });
+
+    for (let s = 0; s < sortedIndices.length; s++) {
+      const { row, idx: i } = sortedIndices[s];
 
       try {
         const existingProductId = existingProductsMap.get(row.sku);
@@ -434,6 +545,64 @@ export default function ImportarProductosPage() {
           }
         }
 
+        // Mapear categoría por nombre
+        let categoryId: number | null = null;
+        if (row.category) {
+          categoryId = categoryMap.get(row.category.toLowerCase().trim()) || null;
+        }
+
+        // Mapear proveedor por nombre
+        let supplierId: number | null = null;
+        if (row.supplier) {
+          supplierId = supplierMap.get(row.supplier.toLowerCase().trim()) || null;
+        }
+
+        // Mapear SKU del producto padre a ID
+        let parentProductId: number | null = null;
+        if (row.parentSku) {
+          parentProductId = existingProductsMap.get(row.parentSku) || null;
+          // Si no se encuentra en el mapa, intentar buscarlo en la BD
+          if (!parentProductId) {
+            const { data: parentProduct } = await supabase
+              .from('products')
+              .select('id')
+              .eq('organization_id', orgId)
+              .eq('sku', row.parentSku)
+              .maybeSingle();
+            if (parentProduct) {
+              parentProductId = parentProduct.id;
+              existingProductsMap.set(row.parentSku, parentProduct.id);
+            }
+          }
+        }
+
+        // Parsear datos de variante (JSON)
+        let variantDataParsed: Record<string, any> | null = null;
+        if (row.variantData) {
+          try {
+            variantDataParsed = JSON.parse(row.variantData);
+          } catch {
+            // Si no es JSON válido, intentar formato simple "color:azul,talla:M"
+            const attributes: Record<string, string> = {};
+            const pairs = row.variantData.split(',');
+            for (const pair of pairs) {
+              const [key, value] = pair.split(':').map(s => s.trim());
+              if (key && value) attributes[key] = value;
+            }
+            if (Object.keys(attributes).length > 0) {
+              variantDataParsed = attributes;
+            }
+          }
+        }
+
+        // Determinar track_stock
+        const shouldTrackStock = row.trackStock !== undefined
+          ? row.trackStock
+          : (productType === 'product');
+
+        // Determinar estado
+        const productStatus = row.statusValue === 'inactive' || row.statusValue === 'inactivo' ? 'inactive' : 'active';
+
         let productId: number;
 
         // Usar upsert nativo de Supabase: INSERT si no existe, UPDATE si ya existe
@@ -443,13 +612,19 @@ export default function ImportarProductosPage() {
             organization_id: orgId,
             sku: row.sku,
             name: row.name,
+            description: row.description || null,
+            category_id: categoryId,
             unit_code: mapUnitCode(row.unit),
-            status: 'active',
-            is_parent: false,
-            track_stock: productType === 'product',
+            barcode: row.barcode || null,
+            status: productStatus,
+            is_parent: row.isParent ?? false,
+            parent_product_id: parentProductId,
+            variant_data: variantDataParsed || {},
+            track_stock: shouldTrackStock,
             product_type: productType,
             brand: row.brand || null,
             reference: row.reference || null,
+            station: row.station && row.station.toLowerCase() !== 'none' ? row.station : null,
           }, { onConflict: 'organization_id,sku' })
           .select()
           .single();
@@ -486,11 +661,15 @@ export default function ImportarProductosPage() {
         if (row.price && row.price > 0) {
           if (wasInsert) {
             // Producto nuevo: insertar precio
-            await supabase.from('product_prices').insert({
+            const priceData: any = {
               product_id: productId,
               price: row.price,
               effective_from: new Date().toISOString(),
-            });
+            };
+            if (row.comparePrice && row.comparePrice > 0) {
+              priceData.compare_price = row.comparePrice;
+            }
+            await supabase.from('product_prices').insert(priceData);
           } else {
             // Producto existente: verificar si hay precio vigente
             const { data: existingPrice } = await supabase
@@ -503,22 +682,29 @@ export default function ImportarProductosPage() {
               .maybeSingle();
 
             if (!existingPrice) {
-              // No hay precio vigente → insertar
-              await supabase.from('product_prices').insert({
+              const priceData: any = {
                 product_id: productId,
                 price: row.price,
                 effective_from: new Date().toISOString(),
-              });
+              };
+              if (row.comparePrice && row.comparePrice > 0) {
+                priceData.compare_price = row.comparePrice;
+              }
+              await supabase.from('product_prices').insert(priceData);
             } else if (existingPrice.price !== row.price) {
               // Precio diferente → cerrar el anterior y crear uno nuevo
               await supabase.from('product_prices')
                 .update({ effective_to: new Date().toISOString() })
                 .eq('id', existingPrice.id);
-              await supabase.from('product_prices').insert({
+              const priceData: any = {
                 product_id: productId,
                 price: row.price,
                 effective_from: new Date().toISOString(),
-              });
+              };
+              if (row.comparePrice && row.comparePrice > 0) {
+                priceData.compare_price = row.comparePrice;
+              }
+              await supabase.from('product_prices').insert(priceData);
             }
           }
         }
@@ -526,7 +712,7 @@ export default function ImportarProductosPage() {
         // Determinar stock: priorizar archivo de saldos, luego columna Stock del archivo principal
         const stockRow = stockMap.get(row.sku);
         const finalStock = stockRow ? stockRow.stock : (row.stock || 0);
-        const finalCost = stockRow?.unitCost;
+        const finalCost = stockRow?.unitCost || row.cost;
 
         // Insertar costo si existe (solo si no hay costo vigente o es diferente)
         if (finalCost && finalCost > 0) {
@@ -571,8 +757,94 @@ export default function ImportarProductosPage() {
             product_id: productId,
             branch_id: branchId,
             qty_on_hand: finalStock,
+            min_level: row.minLevel || 0,
             avg_cost: finalCost || 0,
           });
+        }
+
+        // Insertar relación con proveedor (solo para productos nuevos)
+        if (supplierId && wasInsert) {
+          await supabase.from('product_suppliers').insert({
+            product_id: productId,
+            supplier_id: supplierId,
+            cost: finalCost || 0,
+            is_preferred: true,
+          });
+        }
+
+        // Insertar notas (solo para productos nuevos)
+        if (row.notes && wasInsert) {
+          await supabase.from('product_notes').insert({
+            product_id: productId,
+            content: row.notes,
+            organization_id: orgId,
+            user_id: null,
+          });
+        }
+
+        // Procesar etiquetas (solo para productos nuevos)
+        if (row.tags && wasInsert) {
+          const tagNames = row.tags.split(';').map(t => t.trim()).filter(Boolean);
+          for (const tagName of tagNames) {
+            const tagKey = tagName.toLowerCase().trim();
+            let tagId = tagMap.get(tagKey);
+
+            // Si la etiqueta no existe, crearla
+            if (!tagId) {
+              const { data: newTag, error: tagError } = await supabase
+                .from('product_tags')
+                .insert({
+                  organization_id: orgId,
+                  name: tagName,
+                })
+                .select('id')
+                .single();
+
+              if (!tagError && newTag) {
+                tagId = newTag.id;
+                tagMap.set(tagKey, tagId);
+              }
+            }
+
+            if (tagId) {
+              await supabase.from('product_tag_relations').insert({
+                product_id: productId,
+                tag_id: tagId,
+              });
+            }
+          }
+        }
+
+        // Procesar URLs de imágenes (solo para productos nuevos)
+        if (row.imageUrls && wasInsert) {
+          const urls = row.imageUrls.split(';').map(u => u.trim()).filter(Boolean);
+          for (let imgIdx = 0; imgIdx < urls.length; imgIdx++) {
+            const url = urls[imgIdx];
+            // Descargar la imagen y subirla al storage de Supabase
+            try {
+              const response = await fetch(url);
+              if (!response.ok) continue;
+              const blob = await response.blob();
+              const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
+              const fileName = `${productId}_${Date.now()}_${imgIdx}.${ext}`;
+              const storagePath = `products/${orgId}/${fileName}`;
+
+              const { error: uploadError } = await supabase.storage
+                .from('product-images')
+                .upload(storagePath, blob);
+
+              if (!uploadError) {
+                await supabase.from('product_images').insert({
+                  product_id: productId,
+                  storage_path: storagePath,
+                  display_order: imgIdx,
+                  is_primary: imgIdx === 0,
+                });
+              }
+            } catch {
+              // Si falla la descarga de una imagen, continuar con la siguiente
+            }
+          }
         }
 
         updatedRows[i] = { ...row, status: 'success' };
@@ -604,11 +876,178 @@ export default function ImportarProductosPage() {
     });
   };
 
+  const exportProducts = async () => {
+    if (!organization?.id) {
+      toast({ title: 'Error', description: 'No hay organización seleccionada', variant: 'destructive' });
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const orgId = organization.id;
+      const headers = ['SKU', 'Nombre', 'Tipo', 'Descripción', 'Categoría', 'Unidad', 'Código de Barras', 'Marca', 'Referencia', 'Proveedor', 'Precio de Venta', 'Precio de Comparación', 'Costo', 'Impuesto', 'Rastrear Inventario', 'Stock Total', 'Stock Mínimo', 'Etiquetas', 'Notas', 'URLs de Imágenes', 'SKU Padre', 'Datos de Variante', 'Es Producto Padre', 'Estación', 'Estado'];
+
+      // Paginar para traer todos los productos
+      const PAGE_SIZE = 1000;
+      let allProducts: any[] = [];
+
+      for (let page = 0; ; page++) {
+        const desde = page * PAGE_SIZE;
+        const hasta = desde + PAGE_SIZE - 1;
+        const { data: pageData, error } = await supabase
+          .from('products')
+          .select(`
+            *,
+            categories(id, name),
+            parent:products!parent_product_id(sku),
+            product_prices(id, price, compare_price, effective_from, effective_to),
+            product_costs(id, cost, effective_from, effective_to),
+            stock_levels(branch_id, qty_on_hand, qty_reserved),
+            product_images(id, storage_path, is_primary),
+            product_suppliers(suppliers(id, name))
+          `)
+          .eq('organization_id', orgId)
+          .range(desde, hasta)
+          .order('id', { ascending: true });
+
+        if (error) throw error;
+        if (!pageData || pageData.length === 0) break;
+        allProducts = allProducts.concat(pageData);
+        if (pageData.length < PAGE_SIZE) break;
+      }
+
+      if (allProducts.length === 0) {
+        toast({ title: 'Sin productos', description: 'No hay productos para exportar' });
+        setIsExporting(false);
+        return;
+      }
+
+      const escapeCsv = (val: any): string => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const rows = allProducts.map((p: any) => {
+        // Precio vigente
+        let price = '';
+        let comparePrice = '';
+        if (p.product_prices && p.product_prices.length > 0) {
+          const valid = p.product_prices
+            .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
+            .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+          if (valid.length > 0) {
+            price = valid[0].price ?? '';
+            comparePrice = valid[0].compare_price ?? '';
+          }
+        }
+
+        // Costo vigente
+        let cost = '';
+        if (p.product_costs && p.product_costs.length > 0) {
+          const validCosts = p.product_costs
+            .filter((pc: any) => !pc.effective_to || new Date(pc.effective_to) > new Date())
+            .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+          if (validCosts.length > 0) {
+            cost = validCosts[0].cost ?? '';
+          }
+        }
+
+        // Stock total
+        let stockTotal = '0';
+        if (p.track_stock !== false && p.stock_levels && p.stock_levels.length > 0) {
+          stockTotal = String(p.stock_levels.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0) - (sl.qty_reserved || 0), 0));
+        }
+
+        // Imágenes
+        let imageUrls = '';
+        if (p.product_images && p.product_images.length > 0) {
+          imageUrls = p.product_images.map((img: any) => img.storage_path || '').filter(Boolean).join(';');
+        }
+
+        // Proveedor
+        let supplier = '';
+        if (p.product_suppliers && p.product_suppliers.length > 0) {
+          supplier = p.product_suppliers.map((ps: any) => ps.suppliers?.name || '').filter(Boolean).join(';');
+        }
+
+        // Etiquetas
+        let tags = '';
+        if (p.tags && Array.isArray(p.tags)) {
+          tags = p.tags.join(';');
+        }
+
+        // Datos de variante
+        let variantData = '';
+        if (p.variant_data) {
+          variantData = typeof p.variant_data === 'string' ? p.variant_data : JSON.stringify(p.variant_data);
+        }
+
+        // SKU padre
+        let parentSku = '';
+        if (p.parent && p.parent.sku) {
+          parentSku = p.parent.sku;
+        }
+
+        return [
+          escapeCsv(p.sku),
+          escapeCsv(p.name),
+          escapeCsv(p.type || 'Producto'),
+          escapeCsv(p.description),
+          escapeCsv(p.categories?.name),
+          escapeCsv(p.unit_code || 'UND'),
+          escapeCsv(p.barcode),
+          escapeCsv(p.brand),
+          escapeCsv(p.reference),
+          escapeCsv(supplier),
+          escapeCsv(price),
+          escapeCsv(comparePrice),
+          escapeCsv(cost),
+          escapeCsv(p.tax_name || ''),
+          escapeCsv(p.track_stock !== false ? 'true' : 'false'),
+          escapeCsv(stockTotal),
+          escapeCsv(p.min_stock_level ?? '0'),
+          escapeCsv(tags),
+          escapeCsv(p.notes),
+          escapeCsv(imageUrls),
+          escapeCsv(parentSku),
+          escapeCsv(variantData),
+          escapeCsv(p.is_parent ? 'true' : 'false'),
+          escapeCsv(p.station || 'none'),
+          escapeCsv(p.status || 'active'),
+        ].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `export_productos_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+
+      toast({ title: 'Exportación completada', description: `${allProducts.length} productos exportados` });
+    } catch (error: any) {
+      console.error('Error exportando productos:', error);
+      toast({ title: 'Error', description: error.message || 'Error al exportar productos', variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const downloadTemplate = () => {
-    const csvContent = 'SKU,Nombre,Categoría,Unidad,Código de Barras,Descripción,Precio,Costo\n' +
-      'PROD-001,Producto Ejemplo,Categoría A,UND,7501234567890,Descripción del producto,100.00,50.00\n' +
-      'PROD-002,Otro Producto,Categoría B,KG,,Otra descripción,200.00,80.00';
-    
+    const headers = 'SKU,Nombre,Tipo,Descripción,Categoría,Unidad,Código de Barras,Marca,Referencia,Proveedor,Precio de Venta,Precio de Comparación,Costo,Impuesto,Rastrear Inventario,Stock Total,Stock Mínimo,Etiquetas,Notas,URLs de Imágenes,SKU Padre,Datos de Variante,Es Producto Padre,Estación,Estado';
+
+    const example1 = 'PROD-001,Camiseta Polo,Producto,Camiseta de algodón premium,Ropa,UND,7501234567890,Nike,REF-001,Distribuidor SA,100.00,150.00,50.00,IVA 19%,true,0,5,nuevo;oferta,Producto de temporada,,,true,none,active';
+    const example2 = 'PROD-001-AZUL-M,Camiseta Polo Azul M,Producto,,Ropa,UND,,Nike,REF-001,,120.00,,60.00,IVA 19%,true,50,5,,,,PROD-001,"{""color"":""azul"",""talla"":""M""}",false,none,active';
+    const example3 = 'PROD-001-ROJO-L,Camiseta Polo Rojo L,Producto,,Ropa,UND,,Nike,REF-001,,120.00,,60.00,IVA 19%,true,30,5,,,,PROD-001,"{""color"":""rojo"",""talla"":""L""}",false,none,active';
+    const example4 = 'SERV-001,Instalación Profesional,Servicio,Servicio de instalación a domicilio,,SV,,,,,,,,,IVA 19%,false,0,0,,,,,,,false,none,active';
+    const example5 = 'PROD-002,Café Premium 500g,Producto,Café 100% arábica,Bebidas,GR,7701234567890,Café del Valle,CAFE-500,Distribuidor Café,35.00,45.00,20.00,IVA 5%,true,100,10,orgánico;premium,Café de origen,,https://ejemplo.com/cafe1.jpg;https://ejemplo.com/cafe2.jpg,,false,kitchen,active';
+
+    const csvContent = `${headers}\n${example1}\n${example2}\n${example3}\n${example4}\n${example5}`;
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -653,10 +1092,16 @@ export default function ImportarProductosPage() {
           </p>
         </div>
 
-        <Button variant="outline" onClick={downloadTemplate}>
-          <Download className="h-4 w-4 mr-2" />
-          Descargar Plantilla
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportProducts} disabled={isExporting}>
+            {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            {isExporting ? 'Exportando...' : 'Exportar Productos'}
+          </Button>
+          <Button variant="outline" onClick={downloadTemplate}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Descargar Plantilla
+          </Button>
+        </div>
       </div>
 
       {/* Step: Upload */}
@@ -696,18 +1141,38 @@ export default function ImportarProductosPage() {
 
               <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2">
-                  Columnas detectadas (Siigo):
+                  Columnas soportadas:
                 </h4>
                 <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
-                  <li>• <strong>Tipo</strong> - Producto o Servicio</li>
-                  <li>• <strong>Código</strong> - SKU del producto (requerido)</li>
+                  <li>• <strong>SKU</strong> - Código único del producto (requerido)</li>
                   <li>• <strong>Nombre</strong> - Nombre del producto (requerido)</li>
-                  <li>• <strong>Unidad</strong> - Unidad de medida</li>
-                  <li>• <strong>Precios</strong> - Precio de venta</li>
-                  <li>• <strong>Impuestos</strong> - Ej: "IVA 19%"</li>
-                  <li>• <strong>Stock</strong> - Cantidad en inventario</li>
-                  <li>• <strong>Estado</strong> - Active/Inactive</li>
+                  <li>• <strong>Tipo</strong> - Producto o Servicio</li>
+                  <li>• <strong>Descripción</strong> - Descripción del producto</li>
+                  <li>• <strong>Categoría</strong> - Nombre de la categoría</li>
+                  <li>• <strong>Unidad</strong> - Unidad de medida (UND, KG, LT, etc.)</li>
+                  <li>• <strong>Código de Barras</strong> - EAN/UPC</li>
+                  <li>• <strong>Marca</strong> - Marca del producto</li>
+                  <li>• <strong>Referencia</strong> - Referencia del proveedor</li>
+                  <li>• <strong>Proveedor</strong> - Nombre del proveedor</li>
+                  <li>• <strong>Precio de Venta</strong> - Precio actual</li>
+                  <li>• <strong>Precio de Comparación</strong> - Precio anterior (para descuentos)</li>
+                  <li>• <strong>Costo</strong> - Costo de adquisición</li>
+                  <li>• <strong>Impuesto</strong> - Ej: "IVA 19%"</li>
+                  <li>• <strong>Rastrear Inventario</strong> - true/false</li>
+                  <li>• <strong>Stock Total</strong> - Cantidad para sucursal principal</li>
+                  <li>• <strong>Stock Mínimo</strong> - Nivel mínimo de stock</li>
+                  <li>• <strong>Etiquetas</strong> - Separadas por punto y coma (;)</li>
+                  <li>• <strong>Notas</strong> - Notas internas del producto</li>
+                  <li>• <strong>URLs de Imágenes</strong> - Separadas por punto y coma (;)</li>
+                  <li>• <strong>SKU Padre</strong> - SKU del producto padre (para variantes)</li>
+                  <li>• <strong>Datos de Variante</strong> - JSON o formato "color:azul,talla:M"</li>
+                  <li>• <strong>Es Producto Padre</strong> - true/false</li>
+                  <li>• <strong>Estación</strong> - kitchen, bar, none</li>
+                  <li>• <strong>Estado</strong> - active/inactive</li>
                 </ul>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                  También compatible con archivos de Siigo ("Gestión de productos y servicios").
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -808,11 +1273,16 @@ export default function ImportarProductosPage() {
                       <TableHead>SKU</TableHead>
                       <TableHead>Nombre</TableHead>
                       <TableHead>Tipo</TableHead>
+                      <TableHead>Categoría</TableHead>
                       <TableHead>Precio</TableHead>
+                      <TableHead>Costo</TableHead>
                       <TableHead>Stock</TableHead>
                       <TableHead>Imp.</TableHead>
                       <TableHead>Marca</TableHead>
                       <TableHead>Ref.</TableHead>
+                      <TableHead>Proveedor</TableHead>
+                      <TableHead>Etiquetas</TableHead>
+                      <TableHead>Variante</TableHead>
                       <TableHead className="w-24">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -823,11 +1293,16 @@ export default function ImportarProductosPage() {
                         <TableCell className="font-mono text-sm">{row.sku}</TableCell>
                         <TableCell className="max-w-[200px] break-words whitespace-normal" title={row.name}>{row.name}</TableCell>
                         <TableCell>{row.type || '-'}</TableCell>
+                        <TableCell className="text-sm text-gray-500">{row.category || '-'}</TableCell>
                         <TableCell>{row.price ? `$${row.price.toLocaleString('es-CO')}` : '-'}</TableCell>
+                        <TableCell>{row.cost ? `$${row.cost.toLocaleString('es-CO')}` : '-'}</TableCell>
                         <TableCell>{row.stock || 0}</TableCell>
                         <TableCell>{row.taxName || '-'}</TableCell>
                         <TableCell className="text-sm text-gray-500">{row.brand || '-'}</TableCell>
                         <TableCell className="text-sm text-gray-500">{row.reference || '-'}</TableCell>
+                        <TableCell className="text-sm text-gray-500">{row.supplier || '-'}</TableCell>
+                        <TableCell className="text-sm text-gray-500 max-w-[120px] truncate" title={row.tags}>{row.tags || '-'}</TableCell>
+                        <TableCell className="text-sm text-gray-500 max-w-[120px] truncate" title={row.variantData}>{row.variantData || (row.parentSku ? `Hijo de ${row.parentSku}` : '-')}</TableCell>
                         <TableCell>
                           {row.status === 'pending' && (
                             <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">

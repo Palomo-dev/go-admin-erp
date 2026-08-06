@@ -49,8 +49,19 @@ import {
   Building2,
   GripVertical,
   Zap,
-  Settings
+  Settings,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Link from "next/link";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 
@@ -68,6 +79,7 @@ interface SortableRowProps {
   handleToggleActive: (method: OrganizationPaymentMethod) => void;
   handleToggleWebsite: (method: OrganizationPaymentMethod) => void;
   onEdit: (method: OrganizationPaymentMethod) => void;
+  onDelete: (method: OrganizationPaymentMethod) => void;
   isLoading: boolean;
 }
 
@@ -81,6 +93,7 @@ function SortableRow({
   handleToggleActive,
   handleToggleWebsite,
   onEdit,
+  onDelete,
   isLoading,
 }: SortableRowProps) {
   const {
@@ -262,6 +275,19 @@ function SortableRow({
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </DropdownMenuItem>
+            {!method.payment_method?.is_system && (
+              <>
+                <DropdownMenuSeparator className="dark:bg-gray-700" />
+                <DropdownMenuItem 
+                  onClick={() => onDelete(method)}
+                  disabled={isLoading}
+                  className="text-red-600 dark:text-red-400 dark:focus:bg-red-900/20 dark:focus:text-red-300"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </DropdownMenuItem>
+              </>
+            )}
             {GATEWAY_METHODS.includes(method.payment_method_code.toLowerCase()) && (
               <>
                 <DropdownMenuSeparator className="dark:bg-gray-700" />
@@ -305,6 +331,8 @@ export default function PaymentMethodsList({
   const { toast } = useToast();
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [updatingWebsite, setUpdatingWebsite] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<OrganizationPaymentMethod | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Estado local para actualizaciones optimistas
   const [localOrgMethods, setLocalOrgMethods] = useState<OrganizationPaymentMethod[]>(orgPaymentMethods);
@@ -471,6 +499,47 @@ export default function PaymentMethodsList({
     }
   };
 
+  // Función para eliminar un método de pago personalizado
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      // 1. Eliminar la vinculación de la organización
+      const { error: orgError } = await supabase
+        .from('organization_payment_methods')
+        .delete()
+        .eq('id', deleteTarget.id);
+      if (orgError) throw orgError;
+
+      // 2. Eliminar el método de pago personalizado (si no es del sistema)
+      if (!deleteTarget.payment_method?.is_system) {
+        const { error: methodError } = await supabase
+          .from('payment_methods')
+          .delete()
+          .eq('code', deleteTarget.payment_method_code);
+        if (methodError) console.warn('No se pudo eliminar el método de la tabla global:', methodError.message);
+      }
+
+      // Actualizar estado local
+      setLocalOrgMethods(prev => prev.filter(m => m.id !== deleteTarget.id));
+
+      toast({
+        title: 'Método eliminado',
+        description: `El método "${deleteTarget.payment_method?.name}" ha sido eliminado.`,
+      });
+      setDeleteTarget(null);
+    } catch (error: any) {
+      console.error('Error al eliminar método de pago:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar el método de pago: ' + error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Función para obtener el icono según el tipo de método de pago
   const getPaymentIcon = (code: string) => {
     const lowerCode = code.toLowerCase();
@@ -607,6 +676,7 @@ export default function PaymentMethodsList({
                       handleToggleActive={handleToggleActive}
                       handleToggleWebsite={handleToggleWebsite}
                       onEdit={onEdit}
+                      onDelete={setDeleteTarget}
                       isLoading={isLoading}
                     />
                   ))
@@ -616,6 +686,30 @@ export default function PaymentMethodsList({
           </Table>
         </DndContext>
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-gray-100">¿Eliminar método de pago?</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
+              Estás a punto de eliminar <strong>{deleteTarget?.payment_method?.name}</strong> ({deleteTarget?.payment_method_code}).
+              Esta acción no se puede deshacer. El método dejará de estar disponible para tu organización.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600" disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-600 dark:hover:bg-red-700"
+            >
+              {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

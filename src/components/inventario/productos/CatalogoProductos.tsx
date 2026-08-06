@@ -151,55 +151,56 @@ const CatalogoProductos: React.FC = () => {
         }
 
         // Consulta 2: Datos relacionados en paralelo (precios, costos, stock, imagenes, children)
+        // PostgREST limita cada respuesta a 1000 filas, así que paginamos por lotes de IDs
         const productIds = mainProductsData.map((p: any) => p.id);
+        const BATCH_SIZE = 200;
 
-        const [pricesRes, costsRes, stockRes, imagesRes, childrenRes] = await Promise.all([
-          supabase.from('product_prices')
-            .select('id, product_id, price, compare_price, effective_from, effective_to')
-            .in('product_id', productIds),
-          supabase.from('product_costs')
-            .select('id, product_id, cost, effective_from, effective_to')
-            .in('product_id', productIds),
-          supabase.from('stock_levels')
-            .select('product_id, branch_id, qty_on_hand, qty_reserved, avg_cost')
-            .in('product_id', productIds),
-          supabase.from('product_images')
-            .select('id, product_id, storage_path, is_primary')
-            .in('product_id', productIds),
-          supabase.from('products')
-            .select(`id, uuid, sku, name, parent_product_id, product_type, brand, reference,
-              status, category_id, track_stock, categories(id, name),
-              stock_levels(branch_id, qty_on_hand, qty_reserved)`)
-            .in('parent_product_id', productIds),
+        const batchedFetch = async (table: string, select: string, column: string) => {
+          const allData: any[] = [];
+          for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
+            const batch = productIds.slice(i, i + BATCH_SIZE);
+            const { data, error } = await supabase.from(table).select(select).in(column, batch);
+            if (error) throw error;
+            if (data) allData.push(...data);
+          }
+          return allData;
+        };
+
+        const [pricesData, costsData, stockData, imagesData, childrenData] = await Promise.all([
+          batchedFetch('product_prices', 'id, product_id, price, compare_price, effective_from, effective_to', 'product_id'),
+          batchedFetch('product_costs', 'id, product_id, cost, effective_from, effective_to', 'product_id'),
+          batchedFetch('stock_levels', 'product_id, branch_id, qty_on_hand, qty_reserved, avg_cost', 'product_id'),
+          batchedFetch('product_images', 'id, product_id, storage_path, is_primary', 'product_id'),
+          batchedFetch('products', 'id, uuid, sku, name, parent_product_id, product_type, brand, reference, status, category_id, track_stock, categories(id, name), stock_levels(branch_id, qty_on_hand, qty_reserved)', 'parent_product_id'),
         ]);
 
         // Mapear datos relacionados por product_id
         const pricesMap = new Map<number, any[]>();
-        (pricesRes.data || []).forEach((p: any) => {
+        pricesData.forEach((p: any) => {
           if (!pricesMap.has(p.product_id)) pricesMap.set(p.product_id, []);
           pricesMap.get(p.product_id)!.push(p);
         });
 
         const costsMap = new Map<number, any[]>();
-        (costsRes.data || []).forEach((c: any) => {
+        costsData.forEach((c: any) => {
           if (!costsMap.has(c.product_id)) costsMap.set(c.product_id, []);
           costsMap.get(c.product_id)!.push(c);
         });
 
         const stockMap = new Map<number, any[]>();
-        (stockRes.data || []).forEach((s: any) => {
+        stockData.forEach((s: any) => {
           if (!stockMap.has(s.product_id)) stockMap.set(s.product_id, []);
           stockMap.get(s.product_id)!.push(s);
         });
 
         const imagesMap = new Map<number, any[]>();
-        (imagesRes.data || []).forEach((img: any) => {
+        imagesData.forEach((img: any) => {
           if (!imagesMap.has(img.product_id)) imagesMap.set(img.product_id, []);
           imagesMap.get(img.product_id)!.push(img);
         });
 
         const childrenMap = new Map<number, any[]>();
-        (childrenRes.data || []).forEach((child: any) => {
+        childrenData.forEach((child: any) => {
           const parentId = child.parent_product_id;
           if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
           childrenMap.get(parentId)!.push(child);

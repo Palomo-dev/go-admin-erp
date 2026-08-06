@@ -36,16 +36,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Bypass temporal: extraer userId de las cookies manualmente
-    const cookieHeader = request.headers.get('cookie') || '';
-    const userIdMatch = cookieHeader.match(/sb-user-id=([^;]+)/);
-    const userId = userIdMatch ? decodeURIComponent(userIdMatch[1]) : null;
-    
-    console.log('🔍 API payment-methods - userId from cookie:', userId);
-    
-    // Si no hay userId en cookies, usar un valor por defecto para debug
-    const effectiveUserId = userId || '00000000-0000-0000-0000-000000000000';
-    
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get('organizationId');
 
@@ -56,37 +46,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('🔍 API payment-methods - session:', effectiveUserId, 'orgId:', organizationId);
-
-    // Bypass temporal: permitir acceso sin verificar membership
-    // ya que el middleware ya verifica autenticación
-    console.log('🔍 API payment-methods - BYPASS activado');
-
     // Obtener stripe_customer_id
     const supabase = createSupabaseClient();
     const { data: subscriptions, error: subError } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select('stripe_customer_id')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(1);
 
-    console.log('🔍 API payment-methods - subscriptions:', subscriptions, 'error:', subError);
-    
     const subscription = subscriptions?.[0];
-    console.log('🔍 API payment-methods - selected subscription:', subscription);
 
     if (!subscription?.stripe_customer_id) {
-      console.log('🔍 API payment-methods - No stripe_customer_id found');
       return NextResponse.json({
         success: true,
         paymentMethods: []
       });
     }
 
-    console.log('🔍 API payment-methods - Calling getCustomerPaymentMethods with:', subscription.stripe_customer_id);
     const result = await getCustomerPaymentMethods(subscription.stripe_customer_id);
-    console.log('🔍 API payment-methods - getCustomerPaymentMethods result:', result);
 
     return NextResponse.json({
       success: true,

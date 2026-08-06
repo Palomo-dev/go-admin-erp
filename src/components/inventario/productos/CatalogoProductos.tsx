@@ -166,13 +166,21 @@ const CatalogoProductos: React.FC = () => {
           return allData;
         };
 
-        const [pricesData, costsData, stockData, imagesData, childrenData] = await Promise.all([
+        const [pricesData, costsData, stockData, imagesData, childrenData, modifiersData] = await Promise.all([
           batchedFetch('product_prices', 'id, product_id, price, compare_price, effective_from, effective_to', 'product_id'),
           batchedFetch('product_costs', 'id, product_id, cost, effective_from, effective_to', 'product_id'),
           batchedFetch('stock_levels', 'product_id, branch_id, qty_on_hand, qty_reserved, avg_cost', 'product_id'),
           batchedFetch('product_images', 'id, product_id, storage_path, is_primary', 'product_id'),
           batchedFetch('products', 'id, uuid, sku, name, parent_product_id, product_type, brand, reference, status, category_id, track_stock, categories(id, name), stock_levels(branch_id, qty_on_hand, qty_reserved)', 'parent_product_id'),
+          batchedFetch('product_modifier_groups', 'id, product_id', 'product_id'),
         ]);
+
+        // Mapear cantidad de grupos de modificadores por product_id
+        const modifiersCountMap = new Map<number, number>();
+        modifiersData.forEach((mg: any) => {
+          const pid = mg.product_id;
+          modifiersCountMap.set(pid, (modifiersCountMap.get(pid) ?? 0) + 1);
+        });
 
         // Mapear datos relacionados por product_id
         const pricesMap = new Map<number, any[]>();
@@ -214,6 +222,7 @@ const CatalogoProductos: React.FC = () => {
           stock_levels: stockMap.get(product.id) || [],
           product_images: imagesMap.get(product.id) || [],
           children: childrenMap.get(product.id) || [],
+          modifier_groups_count: modifiersCountMap.get(product.id) ?? 0,
         }));
         
         // Procesar y formatear los datos obtenidos
@@ -321,7 +330,8 @@ const CatalogoProductos: React.FC = () => {
             stock: stockTotal,
             stock_branch: stockBranch,
             image_url: imagePath,
-            variants: variants
+            variants: variants,
+            modifier_groups_count: product.modifier_groups_count ?? 0,
           };
         });
 

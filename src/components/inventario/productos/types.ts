@@ -45,6 +45,8 @@ export interface Producto {
   serial_numbers?: NumeroSerie[];
   initial_stock?: number; // Stock inicial (solo para creación)
   selected_branch_id?: number; // Sucursal para el stock inicial
+  is_parent?: boolean; // Indica si es producto padre con variantes
+  modifier_groups_count?: number; // Cantidad de grupos de modificadores
 }
 
 export interface Categoria {

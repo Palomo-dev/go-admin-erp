@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { DocumentTextIcon, ClockIcon } from '@heroicons/react/24/outline';
@@ -33,8 +34,13 @@ export default function PlanPage() {
         
         // Get user ID
         const userId = session.user.id;
-        const currentOrgId = localStorage.getItem('currentOrganizationId');
+        const currentOrgId = getOrganizationId().toString();
         
+        if (!currentOrgId || currentOrgId === '0') {
+          setError('No se encontró la organización actual');
+          return;
+        }
+
         // Get user's organization and role from organization_members
         const { data: memberData, error: memberError } = await supabase
           .from('organization_members')
@@ -50,7 +56,7 @@ export default function PlanPage() {
             )
           `)
           .eq('user_id', userId)
-          .eq('organization_id', currentOrgId || '')
+          .eq('organization_id', currentOrgId)
           .single();
 
         if (memberError) {

@@ -42,11 +42,12 @@ import {
 import Link from 'next/link';
 import { useActiveModules } from '@/hooks/useActiveModules';
 import { useModuleContext } from '@/lib/context/ModuleContext';
-import { moduleManagementService, type Module } from '@/lib/services/moduleManagementService';
+import { moduleManagementService, type Module, type OrganizationModuleStatus } from '@/lib/services/moduleManagementService';
 import { MODULE_PAGES, getModulePages, type ModulePage } from '@/lib/config/modulePages';
 import { ModulesSkeleton } from '@/components/organization/OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 const moduleIcons: Record<string, React.ComponentType<any>> = {
   'organizations': Building2,
@@ -103,6 +104,8 @@ export default function ModulesMarketplacePage() {
     refreshModules,
     loading: modulesLoading
   } = useActiveModules(organizationId || undefined);
+  // Estado local para organizationStatus (cargado en paralelo con todo lo demás)
+  const [localOrgStatus, setLocalOrgStatus] = useState<OrganizationModuleStatus | null>(null);
 
   // Sincronizar estado optimista con datos reales (solo en carga inicial)
   useEffect(() => {
@@ -114,27 +117,33 @@ export default function ModulesMarketplacePage() {
 
   const moduleContext = useModuleContext();
 
-  // Obtener organizationId del localStorage
+  // Obtener organizationId y cargar todos los módulos disponibles en paralelo
   useEffect(() => {
-    const orgData = localStorage.getItem('organizacionActiva');
-    if (orgData) {
-      try {
-        const org = JSON.parse(orgData);
-        setOrganizationId(org.id);
-      } catch (error) {
-        console.error('Error parsing organization data:', error);
-        setError(t('common.errorLoadingOrgInfo'));
-      }
+    const orgId = getOrganizationId();
+    if (!orgId || orgId === 0) {
+      setError(t('common.errorLoadingOrgInfo'));
+      setLoading(false);
+      return;
     }
-  }, []);
+    setOrganizationId(orgId);
 
-  // Cargar todos los módulos disponibles
-  useEffect(() => {
+    // Cargar todo en paralelo: módulos, páginas activas, estado de organización y módulos activos
     const loadAllModules = async () => {
       try {
-        setLoading(true);
-        const modules = await moduleManagementService.getAllModules();
+        const [modules, pages, orgStatus, activeMods] = await Promise.all([
+          moduleManagementService.getAllModules(),
+          moduleManagementService.getActiveModulePages(orgId),
+          moduleManagementService.getOrganizationModuleStatus(orgId),
+          moduleManagementService.getActiveModules(orgId),
+        ]);
         setAllModules(modules);
+        setActiveModulePages(pages);
+        setLocalOrgStatus(orgStatus);
+        // Inicializar estado optimista inmediatamente sin esperar al hook
+        if (!initialLoadComplete) {
+          setOptimisticActiveModules(new Set(activeMods.map(m => m.code)));
+          setInitialLoadComplete(true);
+        }
       } catch (err) {
         console.error('Error loading modules:', err);
         setError(t('modules.errorLoadingModules'));
@@ -145,20 +154,6 @@ export default function ModulesMarketplacePage() {
 
     loadAllModules();
   }, []);
-
-  // Cargar páginas activas cuando cambia organizationId
-  useEffect(() => {
-    if (!organizationId) return;
-    const loadActivePages = async () => {
-      try {
-        const pages = await moduleManagementService.getActiveModulePages(organizationId);
-        setActiveModulePages(pages);
-      } catch (err) {
-        console.error('Error loading module pages:', err);
-      }
-    };
-    loadActivePages();
-  }, [organizationId]);
 
   const handleToggleModule = useCallback(async (moduleCode: string, isActive: boolean) => {
     if (!organizationId) return;
@@ -353,7 +348,7 @@ export default function ModulesMarketplacePage() {
     
     if (isActive) return true;
     
-    const plan = organizationStatus?.plan;
+    const plan = (localOrgStatus || organizationStatus)?.plan;
     if (!plan) return false;
     
     // Contar módulos activos usando estado optimista
@@ -363,10 +358,11 @@ export default function ModulesMarketplacePage() {
     }).length;
     
     return activeCount < plan.max_modules;
-  }, [optimisticActiveModules, organizationStatus, allModules]);
+  }, [optimisticActiveModules, localOrgStatus, organizationStatus, allModules]);
 
   // Solo mostrar skeleton en carga inicial, NO en toggle de módulos
-  const showInitialLoader = (loading || modulesLoading) && !initialLoadComplete;
+  // No bloquear por modulesLoading del hook - ya cargamos localmente
+  const showInitialLoader = loading && !initialLoadComplete;
   
   if (showInitialLoader) {
     return (
@@ -419,27 +415,27 @@ export default function ModulesMarketplacePage() {
         </div>
       </div>
 
-      {/* Plan Status */}
-      {organizationStatus?.plan && (
+      {/* Plan Status - usar localOrgStatus si está disponible, sino el del hook */}
+      {(localOrgStatus || organizationStatus)?.plan && (
         <Card className="dark:bg-gray-900 dark:border-gray-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 dark:text-white">
               <Crown className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
-              {organizationStatus.plan.name}
+              {(localOrgStatus || organizationStatus)!.plan.name}
             </CardTitle>
             <CardDescription className="dark:text-gray-400">
-              {t('modules.usage', { total: totalActiveCount, max: organizationStatus.plan.max_modules, core: coreCount, additional: additionalActiveCount })}
+              {t('modules.usage', { total: totalActiveCount, max: (localOrgStatus || organizationStatus)!.plan.max_modules, core: coreCount, additional: additionalActiveCount })}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <Progress 
-                value={(totalActiveCount / organizationStatus.plan.max_modules) * 100} 
+                value={(totalActiveCount / (localOrgStatus || organizationStatus)!.plan.max_modules) * 100} 
                 className="h-2"
               />
               <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
                 <span>{t('modules.activeModules', { count: totalActiveCount, core: coreCount })}</span>
-                <span>{t('modules.availableAdditional', { count: organizationStatus.plan.max_modules - totalActiveCount })}</span>
+                <span>{t('modules.availableAdditional', { count: (localOrgStatus || organizationStatus)!.plan.max_modules - totalActiveCount })}</span>
               </div>
             </div>
           </CardContent>
@@ -640,7 +636,7 @@ export default function ModulesMarketplacePage() {
       </div>
 
       {/* Upgrade Plan CTA - Solo mostrar si hay módulos que podrían activarse */}
-      {organizationStatus?.plan && totalActiveCount >= organizationStatus.plan.max_modules && paidModules.some(m => !optimisticActiveModules.has(m.code)) && (
+      {(localOrgStatus || organizationStatus)?.plan && totalActiveCount >= (localOrgStatus || organizationStatus)!.plan.max_modules && paidModules.some(m => !optimisticActiveModules.has(m.code)) && (
         <Card className="border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">

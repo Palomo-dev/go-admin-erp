@@ -236,6 +236,62 @@ export default function ClientesPage() {
         console.warn("Error obteniendo historial de compras:", purchasesError);
         // Continuamos sin datos de historial en lugar de fallar toda la carga
       }
+
+      // Consulta para folios pagados de reservas del cliente
+      // Primero obtener reservas de los clientes
+      const { data: customerReservations } = await supabase
+        .from('reservations')
+        .select('id, customer_id, checkin')
+        .in('customer_id', customerIds)
+        .eq('organization_id', orgId);
+
+      const reservationCustomerMap = new Map<string, string[]>();
+      if (customerReservations) {
+        for (const r of customerReservations) {
+          const cid = r.customer_id?.toString();
+          if (!cid) continue;
+          if (!reservationCustomerMap.has(cid)) {
+            reservationCustomerMap.set(cid, []);
+          }
+          reservationCustomerMap.get(cid)!.push(r.id);
+        }
+      }
+
+      // Obtener folios cerrados (pagados) de esas reservas
+      const allReservationIds = customerReservations?.map((r: any) => r.id) || [];
+      let paidFoliosData: any[] = [];
+      if (allReservationIds.length > 0) {
+        const { data: foliosData } = await supabase
+          .from('folios')
+          .select('id, reservation_id, balance, status, created_at')
+          .in('reservation_id', allReservationIds)
+          .eq('status', 'closed');
+
+        if (foliosData) {
+          // Para cada folio cerrado, obtener el total de items (suma de amounts)
+          const folioIds = foliosData.map(f => f.id);
+          if (folioIds.length > 0) {
+            const { data: folioItems } = await supabase
+              .from('folio_items')
+              .select('folio_id, amount')
+              .in('folio_id', folioIds);
+
+            const folioTotalMap = new Map<string, number>();
+            if (folioItems) {
+              for (const fi of folioItems) {
+                const fid = fi.folio_id;
+                const amt = Number(fi.amount) || 0;
+                folioTotalMap.set(fid, (folioTotalMap.get(fid) || 0) + amt);
+              }
+            }
+
+            paidFoliosData = foliosData.map(f => ({
+              ...f,
+              total: folioTotalMap.get(f.id) || 0,
+            }));
+          }
+        }
+      }
       
       // Crear mapas para almacenar los datos procesados por cliente
       const balanceMap = new Map();
@@ -317,7 +373,40 @@ export default function ClientesPage() {
           }
         });
       }
-      
+
+      // Procesar folios pagados de reservas - contar como compras
+      if (paidFoliosData.length > 0) {
+        // Mapear reservation_id -> customer_id
+        const reservationToCustomer = new Map<string, string>();
+        if (customerReservations) {
+          for (const r of customerReservations) {
+            reservationToCustomer.set(r.id, r.customer_id?.toString() || '');
+          }
+        }
+
+        for (const folio of paidFoliosData) {
+          const customerId = reservationToCustomer.get(folio.reservation_id);
+          if (!customerId) continue;
+
+          // Contar como compra
+          const currentCount = salesCountMap.get(customerId) || 0;
+          salesCountMap.set(customerId, currentCount + 1);
+
+          // Sumar el total al total_sales
+          const folioTotal = Number(folio.total) || 0;
+          const currentTotal = totalSalesMap.get(customerId) || 0;
+          totalSalesMap.set(customerId, currentTotal + folioTotal);
+
+          // Actualizar última fecha de compra
+          if (folio.created_at) {
+            const currentDate = lastPurchaseMap.get(customerId);
+            if (!currentDate || new Date(folio.created_at) > new Date(currentDate)) {
+              lastPurchaseMap.set(customerId, folio.created_at);
+            }
+          }
+        }
+      }
+
       // Obtener nombres de municipios para todos los clientes
       const municipalityIds = customersData
         .map((c: any) => c.fiscal_municipality_id)

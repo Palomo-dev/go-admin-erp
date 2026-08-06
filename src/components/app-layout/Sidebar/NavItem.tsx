@@ -270,7 +270,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className={`
-                  inline-flex items-center justify-center ${collapsed ? 'lg:mr-0' : 'mr-3'} transition-all duration-200 p-1.5 rounded-lg
+                  inline-flex items-center justify-center ${collapsed ? 'mr-3 lg:mr-0' : 'mr-3'} transition-all duration-200 p-1.5 rounded-lg
                   ${isActive 
                     ? 'text-white bg-blue-600 dark:bg-blue-600 dark:text-white' 
                     : 'text-blue-500 dark:text-blue-400/70 bg-blue-50 dark:bg-blue-500/10'}
@@ -284,7 +284,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
             </Tooltip>
           ) : (
             <span className={`
-              inline-flex items-center justify-center mr-2.5 transition-all duration-200 p-1.5 rounded-lg
+              inline-flex items-center justify-center mr-3 lg:mr-2.5 transition-all duration-200 p-1.5 rounded-lg
               ${isActive 
                 ? 'text-white bg-blue-600 dark:bg-blue-600 dark:text-white' 
                 : 'text-blue-500 dark:text-blue-400/70 bg-blue-50 dark:bg-blue-500/10'}
@@ -293,7 +293,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
             </span>
           )}
           {!collapsed && <span>{item.name}</span>}
-          {collapsed && <span className="lg:hidden">{item.name}</span>}
+          {collapsed && <span className="ml-1 lg:hidden lg:ml-0">{item.name}</span>}
         </Link>
         )}
       </div>

@@ -170,6 +170,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
   const [showBuyUsersModal, setShowBuyUsersModal] = useState(false);
   const [showBuyBranchesModal, setShowBuyBranchesModal] = useState(false);
   const [activeAddons, setActiveAddons] = useState<{ extraUsers: number; extraBranches: number }>({ extraUsers: 0, extraBranches: 0 });
+  const [initialPaymentMethods, setInitialPaymentMethods] = useState<any[]>([]);
   
   useEffect(() => {
     if (orgId) {
@@ -182,7 +183,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       setLoading(true);
       setError(null);
 
-      // Obtener información de la organización
+      // Consulta 1: Obtener información de la organización (necesaria primero)
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .select('name')
@@ -192,25 +193,95 @@ export default function PlanTab({ orgId }: PlanTabProps) {
       if (orgError) throw orgError;
       setOrganizationName(orgData.name);
 
-      // Usar la función RPC get_current_plan para obtener el plan actual (mismo método que usa el módulo de módulos)
-      const { data: planData, error: planError } = await supabase
-        .rpc('get_current_plan', { org_id: orgId });
+      // Consultas paralelas: todos los datos independientes a la vez
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
 
-      // También obtener los datos de Stripe de la tabla subscriptions
-      const { data: stripeData, error: stripeError } = await supabase
-        .from('subscriptions')
-        .select('stripe_subscription_id, stripe_customer_id, cancel_at_period_end, canceled_at, metadata, billing_period')
-        .eq('organization_id', orgId)
-        .single();
+      const [
+        plansRes, allModulesRes, orgModulesRes, planRes, stripeRes,
+        branchRes, memberRes, aiSettingsRes, aiConsumedRes, addonsRes,
+        paymentMethodsRes
+      ] = await Promise.all([
+        // Planes disponibles
+        supabase.from('plans').select('*').eq('is_active', true).order('price_usd_month', { ascending: true }),
+        // Todos los módulos
+        supabase.from('modules').select('*').eq('is_active', true).order('rank', { ascending: true }),
+        // Módulos de la organización
+        supabase.from('organization_modules').select('*, modules(*)').eq('organization_id', orgId).eq('is_active', true),
+        // Plan actual via RPC
+        supabase.rpc('get_current_plan', { org_id: orgId }),
+        // Datos de Stripe
+        supabase.from('subscriptions').select('stripe_subscription_id, stripe_customer_id, cancel_at_period_end, canceled_at, metadata, billing_period').eq('organization_id', orgId).single(),
+        // Conteo de sucursales (head=true para no traer datos, solo count)
+        supabase.from('branches').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('is_active', true),
+        // Conteo de miembros
+        supabase.from('organization_members').select('*', { count: 'exact', head: true }).eq('organization_id', orgId).eq('is_active', true),
+        // Créditos de IA
+        supabase.from('ai_settings').select('credits_remaining, purchased_credits').eq('organization_id', orgId).single(),
+        // Consumo de IA del mes
+        supabase.rpc('get_ai_credits_consumed', { p_org_id: orgId, p_since: startOfMonth.toISOString() }),
+        // Addons activos
+        supabase.from('subscription_addons').select('addon_type, quantity').eq('organization_id', orgId).eq('status', 'active'),
+        // Métodos de pago (Stripe API call en paralelo)
+        fetch(`/api/subscriptions/payment-methods?organizationId=${orgId}`).then(r => r.json()).catch(() => ({ paymentMethods: [] })),
+      ]);
 
+      // Procesar métodos de pago precargados
+      setInitialPaymentMethods(paymentMethodsRes?.paymentMethods || []);
 
-      if (planError) {
-        console.error('Error loading plan via RPC:', planError);
+      // Procesar planes
+      if (plansRes.error) throw plansRes.error;
+      const parsedPlans = (plansRes.data || []).map((plan: any) => ({
+        ...plan,
+        price_usd_month: parseFloat(plan.price_usd_month) || 0,
+        price_usd_year: parseFloat(plan.price_usd_year) || 0
+      }));
+      setAvailablePlans(parsedPlans);
+
+      // Procesar módulos
+      if (allModulesRes.error) throw allModulesRes.error;
+      setAllModules(allModulesRes.data || []);
+
+      // Procesar módulos de la organización
+      if (orgModulesRes.error) {
+        console.error('Error loading organization modules:', orgModulesRes.error);
+      }
+      const validModules = (orgModulesRes.data || []).filter((om: any) => om.modules !== null);
+      setOrganizationModules(validModules);
+
+      // Procesar conteos
+      if (branchRes.error) {
+        console.error('Error loading branches:', branchRes.error);
+      } else {
+        setBranchCount(branchRes.count || 0);
+      }
+
+      if (memberRes.error) {
+        console.error('Error loading members:', memberRes.error);
+      } else {
+        setMemberCount(memberRes.count || 0);
+      }
+
+      // Procesar addons
+      const extraUsers = (addonsRes.data || [])
+        .filter((a: any) => a.addon_type === 'extra_users')
+        .reduce((sum: number, a: any) => sum + a.quantity, 0);
+      const extraBranches = (addonsRes.data || [])
+        .filter((a: any) => a.addon_type === 'extra_branches')
+        .reduce((sum: number, a: any) => sum + a.quantity, 0);
+      setActiveAddons({ extraUsers, extraBranches });
+
+      // Procesar datos del plan
+      const planData = planRes.data;
+      const stripeData = stripeRes.data;
+
+      if (planRes.error) {
+        console.error('Error loading plan via RPC:', planRes.error);
       } else if (planData && planData.length > 0) {
         const currentPlanData = planData[0];
-        // Construir objeto de suscripción compatible con la interfaz existente
         const subscriptionData: Subscription = {
-          id: currentPlanData.subscription_id ? 1 : 0, // ID temporal si no hay suscripción real
+          id: currentPlanData.subscription_id ? 1 : 0,
           organization_id: orgId,
           plan_id: currentPlanData.plan_id,
           status: currentPlanData.subscription_status || 'active',
@@ -240,117 +311,27 @@ export default function PlanTab({ orgId }: PlanTabProps) {
             is_active: true
           }
         };
-        
-        // Siempre mostrar la suscripción si get_current_plan devuelve datos
-        // La función RPC siempre devuelve un plan (free por defecto si no hay suscripción)
         setSubscription(subscriptionData);
       }
 
-      // Obtener todos los planes disponibles
-      const { data: plansData, error: plansError } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('price_usd_month', { ascending: true });
-
-      if (plansError) throw plansError;
-      // Parsear los precios a números (vienen como strings de la DB)
-      const parsedPlans = (plansData || []).map((plan: any) => ({
-        ...plan,
-        price_usd_month: parseFloat(plan.price_usd_month) || 0,
-        price_usd_year: parseFloat(plan.price_usd_year) || 0
-      }));
-      setAvailablePlans(parsedPlans);
-
-      // Obtener módulos de la organización con left join para evitar errores
-      const { data: orgModulesData, error: orgModulesError } = await supabase
-        .from('organization_modules')
-        .select(`
-          *,
-          modules(*)
-        `)
-        .eq('organization_id', orgId)
-        .eq('is_active', true);
-
-      if (orgModulesError) {
-        console.error('Error loading organization modules:', orgModulesError);
-      }
-      
-      // Filtrar solo los que tienen datos de módulo válidos
-      const validModules = (orgModulesData || []).filter((om: any) => om.modules !== null);
-      setOrganizationModules(validModules);
-
-      // Obtener todos los módulos para comparar
-      const { data: allModulesData, error: allModulesError } = await supabase
-        .from('modules')
-        .select('*')
-        .eq('is_active', true)
-        .order('rank', { ascending: true });
-
-      if (allModulesError) throw allModulesError;
-      setAllModules(allModulesData || []);
-
-      // Obtener conteo de sucursales activas
-      const { data: branchData, error: branchError } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('is_active', true);
-
-      if (branchError) {
-        console.error('Error loading branches:', branchError);
-      } else {
-        setBranchCount(branchData?.length || 0);
-      }
-
-      // Obtener conteo de miembros activos
-      const { data: memberData, error: memberError } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('is_active', true);
-
-      if (memberError) {
-        console.error('Error loading members:', memberError);
-      } else {
-        setMemberCount(memberData?.length || 0);
-      }
-
-      // Obtener créditos de IA
-      const { data: aiSettingsData, error: aiSettingsError } = await supabase
-        .from('ai_settings')
-        .select('credits_remaining, purchased_credits')
-        .eq('organization_id', orgId)
-        .single();
-
-      // Obtener consumo real del mes actual via RPC (server-side SUM)
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-      const { data: totalConsumedRpc } = await supabase.rpc('get_ai_credits_consumed', {
-        p_org_id: orgId,
-        p_since: startOfMonth.toISOString()
-      });
-      const totalConsumed = totalConsumedRpc || 0;
-
-      // Obtener créditos mensuales: primero de metadata (Enterprise), luego de plan
+      // Procesar créditos de IA
+      const totalConsumed = aiConsumedRes.data || 0;
       const currentPlanId = planData?.[0]?.plan_id;
-      const planFromList = (plansData || []).find((p: any) => p.id === currentPlanId);
+      const planFromList = (plansRes.data || []).find((p: any) => p.id === currentPlanId);
       const customConfig = stripeData?.metadata?.custom_config;
       
-      // Prioridad: 1) metadata.custom_config.ai_credits 2) plan.ai_credits_monthly 3) features.ai_credits_month
       const aiCreditsFromMetadata = customConfig?.ai_credits || customConfig?.aiCredits;
       const planMonthlyCredits = aiCreditsFromMetadata ?? 
                                  planFromList?.ai_credits_monthly ?? 
                                  planData?.[0]?.features?.ai_credits_month ?? 
-                                 10000; // Default
+                                 10000;
 
-      if (!aiSettingsError && aiSettingsData) {
+      if (!aiSettingsRes.error && aiSettingsRes.data) {
         setAiCredits({
-          remaining: aiSettingsData.credits_remaining || 0,
+          remaining: aiSettingsRes.data.credits_remaining || 0,
           monthly: planMonthlyCredits,
           consumed: totalConsumed,
-          purchased: aiSettingsData.purchased_credits || 0
+          purchased: aiSettingsRes.data.purchased_credits || 0
         });
       } else {
         setAiCredits({
@@ -360,21 +341,6 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           purchased: 0
         });
       }
-
-      // Obtener addons activos
-      const { data: addonsData } = await supabase
-        .from('subscription_addons')
-        .select('addon_type, quantity')
-        .eq('organization_id', orgId)
-        .eq('status', 'active');
-
-      const extraUsers = (addonsData || [])
-        .filter((a: any) => a.addon_type === 'extra_users')
-        .reduce((sum: number, a: any) => sum + a.quantity, 0);
-      const extraBranches = (addonsData || [])
-        .filter((a: any) => a.addon_type === 'extra_branches')
-        .reduce((sum: number, a: any) => sum + a.quantity, 0);
-      setActiveAddons({ extraUsers, extraBranches });
 
     } catch (err: any) {
       console.error('Error loading plan data:', err);
@@ -957,6 +923,7 @@ export default function PlanTab({ orgId }: PlanTabProps) {
           stripeCustomerId={subscription.stripe_customer_id || null}
           organizationId={orgId}
           onPaymentMethodUpdated={loadPlanData}
+          initialPaymentMethods={initialPaymentMethods}
         />
       )}
 

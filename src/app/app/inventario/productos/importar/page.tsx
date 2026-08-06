@@ -58,6 +58,7 @@ interface ImportRow {
   isParent?: boolean;
   station?: string;
   statusValue?: string;
+  modifiers?: string;
   status: 'pending' | 'success' | 'error';
   error?: string;
 }
@@ -201,6 +202,7 @@ export default function ImportarProductosPage() {
       const variantDataIdx = headers.findIndex((h: string) => h === 'datos de variante' || h === 'variant data' || h === 'variant_data' || h === 'variante');
       const isParentIdx = headers.findIndex((h: string) => h === 'es producto padre' || h === 'is parent' || h === 'is_parent' || h === 'producto padre');
       const stationIdx = headers.findIndex((h: string) => h === 'estación' || h === 'estacion' || h === 'station');
+      const modifiersIdx = headers.findIndex((h: string) => h === 'modificadores' || h === 'modifiers' || h === 'modificador');
 
       if (codeIdx === -1 || nameIdx === -1) {
         toast({
@@ -255,6 +257,7 @@ export default function ImportarProductosPage() {
         const isParentRaw = isParentIdx !== -1 ? String(row[isParentIdx] || '').trim().toLowerCase() : '';
         const isParent = isParentIdx !== -1 ? (isParentRaw === 'true' || isParentRaw === 'si' || isParentRaw === '1') : undefined;
         const station = stationIdx !== -1 ? String(row[stationIdx] || '').trim() : undefined;
+        const modifiers = modifiersIdx !== -1 ? String(row[modifiersIdx] || '').trim() : undefined;
         const statusValue = stateIdx !== -1 ? String(row[stateIdx] || '').trim().toLowerCase() : undefined;
 
         rows.push({
@@ -283,9 +286,45 @@ export default function ImportarProductosPage() {
           variantData: variantData || undefined,
           isParent,
           station: station || undefined,
+          modifiers: modifiers || undefined,
           statusValue: statusValue || undefined,
           status: 'pending',
         });
+      }
+
+      // Auto-detectar variantes por prefijo de SKU
+      // Si PROD-134-KMR-V1 empieza con PROD-134-KMR + separador, es variante hija
+      const allSkus = new Set(rows.map(r => r.sku));
+      let autoVariantCount = 0;
+      for (const row of rows) {
+        if (row.parentSku || row.isParent !== undefined) continue;
+
+        // Buscar si este SKU es variante de otro (empieza con otro SKU + separador)
+        const parts = row.sku.split(/[-_]/);
+        for (let i = parts.length - 1; i > 0; i--) {
+          const candidateParent = parts.slice(0, i).join('-');
+          if (allSkus.has(candidateParent) && candidateParent !== row.sku) {
+            row.parentSku = candidateParent;
+            row.isParent = false;
+            autoVariantCount++;
+            break;
+          }
+          const candidateParentUnderscore = parts.slice(0, i).join('_');
+          if (allSkus.has(candidateParentUnderscore) && candidateParentUnderscore !== row.sku) {
+            row.parentSku = candidateParentUnderscore;
+            row.isParent = false;
+            autoVariantCount++;
+            break;
+          }
+        }
+      }
+
+      // Marcar padres: si algun producto tiene variantes hijas, marcarlo como is_parent
+      const parentSkus = new Set(rows.filter(r => r.parentSku).map(r => r.parentSku!));
+      for (const row of rows) {
+        if (parentSkus.has(row.sku) && row.isParent === undefined) {
+          row.isParent = true;
+        }
       }
 
       setPreviewData(rows);
@@ -294,6 +333,12 @@ export default function ImportarProductosPage() {
         toast({
           title: 'SKUs duplicados detectados',
           description: `Se omitieron ${duplicateCount} filas con SKU duplicado. Solo se importa la primera ocurrencia de cada SKU.`,
+        });
+      }
+      if (autoVariantCount > 0) {
+        toast({
+          title: 'Variantes detectadas automáticamente',
+          description: `Se detectaron ${autoVariantCount} variantes por prefijo de SKU y se vincularon a sus productos padre.`,
         });
       }
       setStep('preview');
@@ -815,9 +860,26 @@ export default function ImportarProductosPage() {
           }
         }
 
-        // Procesar URLs de imágenes (solo para productos nuevos)
-        if (row.imageUrls && wasInsert) {
+        // Procesar URLs de imágenes
+        if (row.imageUrls) {
           const urls = row.imageUrls.split(';').map(u => u.trim()).filter(Boolean);
+          
+          // Si el producto ya existia, eliminar imagenes anteriores
+          if (!wasInsert) {
+            const { data: existingImages } = await supabase
+              .from('product_images')
+              .select('id, storage_path')
+              .eq('product_id', productId);
+            if (existingImages && existingImages.length > 0) {
+              for (const ei of existingImages) {
+                if (ei.storage_path) {
+                  await supabase.storage.from('product-images').remove([ei.storage_path]);
+                }
+              }
+              await supabase.from('product_images').delete().eq('product_id', productId);
+            }
+          }
+
           for (let imgIdx = 0; imgIdx < urls.length; imgIdx++) {
             const url = urls[imgIdx];
             // Descargar la imagen y subirla al storage de Supabase
@@ -843,6 +905,78 @@ export default function ImportarProductosPage() {
               }
             } catch {
               // Si falla la descarga de una imagen, continuar con la siguiente
+            }
+          }
+        }
+
+        // Procesar modificadores (solo para productos nuevos o si ya existen, limpiar y recrear)
+        if (row.modifiers) {
+          // Parsear formato: Grupo|modo|min|max|requerido|opcion1=precio,opcion2=precio; Grupo2|...
+          const groups = row.modifiers.split(';').map(g => g.trim()).filter(Boolean);
+          for (const groupStr of groups) {
+            const parts = groupStr.split('|');
+            if (parts.length < 2) continue;
+            const groupName = parts[0].trim();
+            const selectionMode = parts[1]?.trim() || 'single';
+            const minSelections = parseInt(parts[2]?.trim() || '0', 10) || 0;
+            const maxSelections = parts[3]?.trim() ? parseInt(parts[3].trim(), 10) : null;
+            const required = parts[4]?.trim().toLowerCase() === 'true' || parts[4]?.trim().toLowerCase() === 'si';
+            const optionsStr = parts.slice(5).join('|').trim();
+            const options = optionsStr.split(',').map(o => o.trim()).filter(Boolean);
+
+            if (!groupName || options.length === 0) continue;
+
+            // Si el producto ya existia, eliminar grupos anteriores con sus modificadores
+            if (!wasInsert) {
+              const { data: existingGroups } = await supabase
+                .from('product_modifier_groups')
+                .select('id')
+                .eq('product_id', productId);
+              if (existingGroups && existingGroups.length > 0) {
+                for (const eg of existingGroups) {
+                  await supabase.from('product_modifiers').delete().eq('group_id', eg.id);
+                }
+                await supabase.from('product_modifier_groups').delete().in('id', existingGroups.map(g => g.id));
+              }
+            }
+
+            // Crear grupo de modificador
+            const { data: modGroup, error: modGroupError } = await supabase
+              .from('product_modifier_groups')
+              .insert({
+                organization_id: orgId,
+                product_id: productId,
+                name: groupName,
+                selection_mode: selectionMode,
+                min_selections: minSelections,
+                max_selections: maxSelections,
+                required,
+                display_order: 0,
+              })
+              .select('id')
+              .single();
+
+            if (modGroupError || !modGroup) continue;
+
+            // Crear opciones del modificador
+            for (let optIdx = 0; optIdx < options.length; optIdx++) {
+              const optStr = options[optIdx];
+              const eqIdx = optStr.indexOf('=');
+              let optName = optStr;
+              let optPrice = 0;
+              if (eqIdx !== -1) {
+                optName = optStr.substring(0, eqIdx).trim();
+                optPrice = parseFloat(optStr.substring(eqIdx + 1).trim()) || 0;
+              }
+              if (!optName) continue;
+
+              await supabase.from('product_modifiers').insert({
+                group_id: modGroup.id,
+                name: optName,
+                extra_price: optPrice,
+                is_active: true,
+                display_order: optIdx,
+              });
             }
           }
         }
@@ -885,7 +1019,7 @@ export default function ImportarProductosPage() {
     setIsExporting(true);
     try {
       const orgId = organization.id;
-      const headers = ['SKU', 'Nombre', 'Tipo', 'Descripción', 'Categoría', 'Unidad', 'Código de Barras', 'Marca', 'Referencia', 'Proveedor', 'Precio de Venta', 'Precio de Comparación', 'Costo', 'Impuesto', 'Rastrear Inventario', 'Stock Total', 'Stock Mínimo', 'Etiquetas', 'Notas', 'URLs de Imágenes', 'SKU Padre', 'Datos de Variante', 'Es Producto Padre', 'Estación', 'Estado'];
+      const headers = ['SKU', 'Nombre', 'Tipo', 'Descripción', 'Categoría', 'Unidad', 'Código de Barras', 'Marca', 'Referencia', 'Proveedor', 'Precio de Venta', 'Precio de Comparación', 'Costo', 'Impuesto', 'Rastrear Inventario', 'Stock Total', 'Stock Mínimo', 'Etiquetas', 'Notas', 'URLs de Imágenes', 'SKU Padre', 'Datos de Variante', 'Es Producto Padre', 'Estación', 'Modificadores', 'Estado'];
 
       // Paginar para traer todos los productos
       const PAGE_SIZE = 1000;
@@ -904,7 +1038,8 @@ export default function ImportarProductosPage() {
             product_costs(id, cost, effective_from, effective_to),
             stock_levels(branch_id, qty_on_hand, qty_reserved),
             product_images(id, storage_path, is_primary),
-            product_suppliers(suppliers(id, name))
+            product_suppliers(suppliers(id, name)),
+            product_modifier_groups(id, name, selection_mode, min_selections, max_selections, required, display_order, product_modifiers(id, name, extra_price, is_active, display_order))
           `)
           .eq('organization_id', orgId)
           .range(desde, hasta)
@@ -962,10 +1097,15 @@ export default function ImportarProductosPage() {
           stockTotal = String(p.stock_levels.reduce((sum: number, sl: any) => sum + (sl.qty_on_hand || 0) - (sl.qty_reserved || 0), 0));
         }
 
-        // Imágenes
+        // Imágenes - exportar URLs públicas completas
         let imageUrls = '';
         if (p.product_images && p.product_images.length > 0) {
-          imageUrls = p.product_images.map((img: any) => img.storage_path || '').filter(Boolean).join(';');
+          imageUrls = p.product_images.map((img: any) => {
+            const path = img.storage_path || '';
+            if (!path) return '';
+            const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(path);
+            return urlData?.publicUrl || '';
+          }).filter(Boolean).join(';');
         }
 
         // Proveedor
@@ -990,6 +1130,19 @@ export default function ImportarProductosPage() {
         let parentSku = '';
         if (p.parent && p.parent.sku) {
           parentSku = p.parent.sku;
+        }
+
+        // Modificadores
+        let modifiersStr = '';
+        if (p.product_modifier_groups && p.product_modifier_groups.length > 0) {
+          const groups = p.product_modifier_groups.map((mg: any) => {
+            const opts = (mg.product_modifiers || [])
+              .filter((m: any) => m.is_active)
+              .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+              .map((m: any) => `${m.name}=${m.extra_price ?? 0}`);
+            return `${mg.name}|${mg.selection_mode || 'single'}|${mg.min_selections ?? 0}|${mg.max_selections ?? ''}|${mg.required ? 'true' : 'false'}|${opts.join(',')}`;
+          });
+          modifiersStr = groups.join('; ');
         }
 
         return [
@@ -1017,6 +1170,7 @@ export default function ImportarProductosPage() {
           escapeCsv(variantData),
           escapeCsv(p.is_parent ? 'true' : 'false'),
           escapeCsv(p.station || 'none'),
+          escapeCsv(modifiersStr),
           escapeCsv(p.status || 'active'),
         ].join(',');
       });
@@ -1038,13 +1192,13 @@ export default function ImportarProductosPage() {
   };
 
   const downloadTemplate = () => {
-    const headers = 'SKU,Nombre,Tipo,Descripción,Categoría,Unidad,Código de Barras,Marca,Referencia,Proveedor,Precio de Venta,Precio de Comparación,Costo,Impuesto,Rastrear Inventario,Stock Total,Stock Mínimo,Etiquetas,Notas,URLs de Imágenes,SKU Padre,Datos de Variante,Es Producto Padre,Estación,Estado';
+    const headers = 'SKU,Nombre,Tipo,Descripción,Categoría,Unidad,Código de Barras,Marca,Referencia,Proveedor,Precio de Venta,Precio de Comparación,Costo,Impuesto,Rastrear Inventario,Stock Total,Stock Mínimo,Etiquetas,Notas,URLs de Imágenes,SKU Padre,Datos de Variante,Es Producto Padre,Estación,Modificadores,Estado';
 
-    const example1 = 'PROD-001,Camiseta Polo,Producto,Camiseta de algodón premium,Ropa,UND,7501234567890,Nike,REF-001,Distribuidor SA,100.00,150.00,50.00,IVA 19%,true,0,5,nuevo;oferta,Producto de temporada,,,true,none,active';
-    const example2 = 'PROD-001-AZUL-M,Camiseta Polo Azul M,Producto,,Ropa,UND,,Nike,REF-001,,120.00,,60.00,IVA 19%,true,50,5,,,,PROD-001,"{""color"":""azul"",""talla"":""M""}",false,none,active';
-    const example3 = 'PROD-001-ROJO-L,Camiseta Polo Rojo L,Producto,,Ropa,UND,,Nike,REF-001,,120.00,,60.00,IVA 19%,true,30,5,,,,PROD-001,"{""color"":""rojo"",""talla"":""L""}",false,none,active';
-    const example4 = 'SERV-001,Instalación Profesional,Servicio,Servicio de instalación a domicilio,,SV,,,,,,,,,IVA 19%,false,0,0,,,,,,,false,none,active';
-    const example5 = 'PROD-002,Café Premium 500g,Producto,Café 100% arábica,Bebidas,GR,7701234567890,Café del Valle,CAFE-500,Distribuidor Café,35.00,45.00,20.00,IVA 5%,true,100,10,orgánico;premium,Café de origen,,https://ejemplo.com/cafe1.jpg;https://ejemplo.com/cafe2.jpg,,false,kitchen,active';
+    const example1 = 'PROD-001,Camiseta Polo,Producto,Camiseta de algodón premium,Ropa,UND,7501234567890,Nike,REF-001,Distribuidor SA,100.00,150.00,50.00,IVA 19%,true,0,5,nuevo;oferta,Producto de temporada,,,true,none,,active';
+    const example2 = 'PROD-001-AZUL-M,Camiseta Polo Azul M,Producto,,Ropa,UND,,Nike,REF-001,,120.00,,60.00,IVA 19%,true,50,5,,,,PROD-001,"{""color"":""azul"",""talla"":""M""}",false,none,,active';
+    const example3 = 'PROD-001-ROJO-L,Camiseta Polo Rojo L,Producto,,Ropa,UND,,Nike,REF-001,,120.00,,60.00,IVA 19%,true,30,5,,,,PROD-001,"{""color"":""rojo"",""talla"":""L""}",false,none,,active';
+    const example4 = 'SERV-001,Instalación Profesional,Servicio,Servicio de instalación a domicilio,,SV,,,,,,,,,IVA 19%,false,0,0,,,,,,,false,none,,active';
+    const example5 = 'PROD-002,Café Premium 500g,Producto,Café 100% arábica,Bebidas,GR,7701234567890,Café del Valle,CAFE-500,Distribuidor Café,35.00,45.00,20.00,IVA 5%,true,100,10,orgánico;premium,Café de origen,,https://ejemplo.com/cafe1.jpg;https://ejemplo.com/cafe2.jpg,,false,kitchen,Tamaños|single|1|1|true|Pequeño=0,Mediano=5,Grande=10; Leche|multiple|0|2|false|Entera=0,Deslactosada=0,Almendras=1,active';
 
     const csvContent = `${headers}\n${example1}\n${example2}\n${example3}\n${example4}\n${example5}`;
 
@@ -1168,6 +1322,7 @@ export default function ImportarProductosPage() {
                   <li>• <strong>Datos de Variante</strong> - JSON o formato "color:azul,talla:M"</li>
                   <li>• <strong>Es Producto Padre</strong> - true/false</li>
                   <li>• <strong>Estación</strong> - kitchen, bar, none</li>
+                  <li>• <strong>Modificadores</strong> - Formato: Grupo|modo|min|max|requerido|opcion1=precio,opcion2=precio; Grupo2|... (separar grupos con ;)</li>
                   <li>• <strong>Estado</strong> - active/inactive</li>
                 </ul>
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
@@ -1277,12 +1432,15 @@ export default function ImportarProductosPage() {
                       <TableHead>Precio</TableHead>
                       <TableHead>Costo</TableHead>
                       <TableHead>Stock</TableHead>
+                      <TableHead>Track Stock</TableHead>
                       <TableHead>Imp.</TableHead>
                       <TableHead>Marca</TableHead>
                       <TableHead>Ref.</TableHead>
                       <TableHead>Proveedor</TableHead>
                       <TableHead>Etiquetas</TableHead>
-                      <TableHead>Variante</TableHead>
+                      <TableHead>Es Padre</TableHead>
+                      <TableHead>Variante de</TableHead>
+                      <TableHead>Modificadores</TableHead>
                       <TableHead className="w-24">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1297,12 +1455,29 @@ export default function ImportarProductosPage() {
                         <TableCell>{row.price ? `$${row.price.toLocaleString('es-CO')}` : '-'}</TableCell>
                         <TableCell>{row.cost ? `$${row.cost.toLocaleString('es-CO')}` : '-'}</TableCell>
                         <TableCell>{row.stock || 0}</TableCell>
+                        <TableCell className="text-sm">
+                          {row.trackStock === true ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">Sí</Badge>
+                          ) : row.trackStock === false ? (
+                            <span className="text-gray-400">No</span>
+                          ) : (
+                            <span className="text-gray-400">Auto</span>
+                          )}
+                        </TableCell>
                         <TableCell>{row.taxName || '-'}</TableCell>
                         <TableCell className="text-sm text-gray-500">{row.brand || '-'}</TableCell>
                         <TableCell className="text-sm text-gray-500">{row.reference || '-'}</TableCell>
                         <TableCell className="text-sm text-gray-500">{row.supplier || '-'}</TableCell>
                         <TableCell className="text-sm text-gray-500 max-w-[120px] truncate" title={row.tags}>{row.tags || '-'}</TableCell>
-                        <TableCell className="text-sm text-gray-500 max-w-[120px] truncate" title={row.variantData}>{row.variantData || (row.parentSku ? `Hijo de ${row.parentSku}` : '-')}</TableCell>
+                        <TableCell className="text-sm">
+                          {row.isParent ? (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Sí</Badge>
+                          ) : row.isParent === false ? (
+                            <span className="text-gray-400">No</span>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500 font-mono">{row.parentSku || '-'}</TableCell>
+                        <TableCell className="text-sm text-gray-500 max-w-[200px] truncate" title={row.modifiers}>{row.modifiers || '-'}</TableCell>
                         <TableCell>
                           {row.status === 'pending' && (
                             <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">

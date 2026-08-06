@@ -80,21 +80,24 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
           
         if (reservationsError) throw reservationsError;
 
-        // 2b. Obtener folios de las reservas para saldo pendiente
+        // 2b. Obtener folios de las reservas para saldo pendiente y total pagado
         const reservationIds = (reservationsData || []).map((r: any) => r.id);
         let folioSaldoPendiente = 0;
         let folioItemsPendientes = 0;
+        let foliosPagadosCount = 0;
+        let foliosPagadosMonto = 0;
 
         if (reservationIds.length > 0) {
-          const { data: foliosData } = await supabase
+          // Folios abiertos (saldo pendiente)
+          const { data: foliosOpenData } = await supabase
             .from('folios')
             .select('id, balance, status')
             .in('reservation_id', reservationIds)
             .eq('status', 'open');
 
-          if (foliosData) {
-            const folioIds = foliosData.map((f: any) => f.id);
-            folioSaldoPendiente = foliosData.reduce((sum: number, f: any) => sum + Number(f.balance), 0);
+          if (foliosOpenData) {
+            const folioIds = foliosOpenData.map((f: any) => f.id);
+            folioSaldoPendiente = foliosOpenData.reduce((sum: number, f: any) => sum + Number(f.balance), 0);
 
             if (folioIds.length > 0) {
               const { data: folioItemsData } = await supabase
@@ -107,6 +110,33 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
                 folioItemsPendientes = folioItemsData.length;
               }
             }
+          }
+
+          // Folios cerrados (pagados) - contar como compras
+          const { data: foliosClosedData } = await supabase
+            .from('folios')
+            .select('id, reservation_id, balance, status, created_at')
+            .in('reservation_id', reservationIds)
+            .eq('status', 'closed');
+
+          if (foliosClosedData && foliosClosedData.length > 0) {
+            const closedFolioIds = foliosClosedData.map((f: any) => f.id);
+            const { data: closedFolioItems } = await supabase
+              .from('folio_items')
+              .select('folio_id, amount')
+              .in('folio_id', closedFolioIds);
+
+            const folioTotalMap = new Map<string, number>();
+            if (closedFolioItems) {
+              for (const fi of closedFolioItems) {
+                const fid = fi.folio_id;
+                const amt = Number(fi.amount) || 0;
+                folioTotalMap.set(fid, (folioTotalMap.get(fid) || 0) + amt);
+              }
+            }
+
+            foliosPagadosCount = foliosClosedData.length;
+            foliosPagadosMonto = foliosClosedData.reduce((sum: number, f: any) => sum + (folioTotalMap.get(f.id) || 0), 0);
           }
         }
 
@@ -132,13 +162,13 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
         
         if (webOrdersError) throw webOrdersError;
 
-        // 4. Calcular estadísticas — web orders pagadas cuentan como compras
+        // 4. Calcular estadísticas — web orders pagadas y folios pagados cuentan como compras
         const paidWebOrders = (webOrdersData || []).filter(o => o.status === 'paid' || o.status === 'delivered');
-        const totalCompras = (salesData?.length || 0) + paidWebOrders.length;
+        const totalCompras = (salesData?.length || 0) + paidWebOrders.length + foliosPagadosCount;
         const totalEstadias = reservationsData?.length || 0;
         const montoVentas = salesData?.reduce((sum, sale) => sum + (parseFloat(sale.total) || 0), 0) || 0;
         const montoWebPaid = paidWebOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
-        const montoTotalGastado = montoVentas + montoWebPaid;
+        const montoTotalGastado = montoVentas + montoWebPaid + foliosPagadosMonto;
         
         const ultimaCompraRaw = [
           ...(salesData || []).map(s => new Date(s.sale_date)),

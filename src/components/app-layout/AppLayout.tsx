@@ -687,11 +687,12 @@ export const AppLayout = ({
       // Luego recargar desde DB para confirmar (solo si no hay detail)
       if (!customEvent.detail && orgId) {
         loadActiveModuleCodes(orgId);
+        loadJobPositionAccess();
       }
     };
     window.addEventListener('modules-updated', handleModulesRefresh as EventListener);
     return () => window.removeEventListener('modules-updated', handleModulesRefresh as EventListener);
-  }, [orgId, loadActiveModuleCodes]);
+  }, [orgId, loadActiveModuleCodes, loadJobPositionAccess]);
 
   // Verificar estado de suscripción: redirigir si está cancelada
   useEffect(() => {

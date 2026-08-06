@@ -271,6 +271,8 @@ const routeToModuleMap: Record<string, string> = {
   '/app/organizacion': 'organizations',
   '/app/branding': 'branding',
   '/app/organizacion/sucursales': 'branches',
+  '/app/clientes': 'clientes',
+  '/app/roles': 'roles',
   '/app/pos': 'pos',
   '/app/inventario': 'inventory',
   '/app/pms': 'pms_hotel',
@@ -694,7 +696,7 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
 
     // Verificar acceso a módulos para rutas protegidas
     // Excluir rutas core que siempre deben ser accesibles
-    const coreRoutes = ['/app/inicio', '/app/clientes', '/app/organizacion', '/app/roles', '/app/plan'];
+    const coreRoutes = ['/app/inicio', '/app/plan'];
     const isCorePath = coreRoutes.some(r => pathname === r || pathname.startsWith(r + '/'));
     
     if (pathname.startsWith('/app/') && !isCorePath) {

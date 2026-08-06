@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { ShoppingCart, Users, Package, Settings, RefreshCw, Clock, Plus, Receipt, Wallet, RotateCcw, ChefHat, BarChart3, LockOpen, Lock, DollarSign, TrendingUp, AlertCircle, Tag, Ticket, LayoutGrid, Banknote, Percent, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Users, Settings, Clock, LockOpen, Lock, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import { CustomerSelector } from '@/components/pos/CustomerSelector';
 import { CartView } from '@/components/pos/CartView';
@@ -425,57 +423,6 @@ export default function POSPage() {
                   </Badge>
                 </div>
 
-                {/* Accesos rápidos */}
-                <div className="hidden md:flex items-center gap-2">
-                  <Link href="/app/pos/ventas">
-                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
-                      <Receipt className="h-4 w-4 mr-1" />
-                      Ventas
-                    </Button>
-                  </Link>
-                  <Link href="/app/pos/cajas">
-                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
-                      <Wallet className="h-4 w-4 mr-1" />
-                      Caja
-                    </Button>
-                  </Link>
-                  <Link href="/app/pos/mesas">
-                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
-                      <LayoutGrid className="h-4 w-4 mr-1" />
-                      Mesas
-                    </Button>
-                  </Link>
-                  <Link href="/app/pos/comandas">
-                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
-                      <ChefHat className="h-4 w-4 mr-1" />
-                      Cocina
-                    </Button>
-                  </Link>
-                  <Link href="/app/pos/propinas">
-                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
-                      <Banknote className="h-4 w-4 mr-1" />
-                      Propinas
-                    </Button>
-                  </Link>
-                  <Link href="/app/pos/cargos-servicio">
-                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
-                      <Percent className="h-4 w-4 mr-1" />
-                      Cargos
-                    </Button>
-                  </Link>
-                  <Link href="/app/pos/reportes">
-                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
-                      <BarChart3 className="h-4 w-4 mr-1" />
-                      Reportes
-                    </Button>
-                  </Link>
-                  <Link href="/app/pos/configuracion">
-                    <Button variant="ghost" size="sm" className="text-xs dark:text-gray-400 dark:hover:text-white">
-                      <Settings className="h-4 w-4 mr-1" />
-                      Config
-                    </Button>
-                  </Link>
-                </div>
               </div>
             </div>
           </CardHeader>

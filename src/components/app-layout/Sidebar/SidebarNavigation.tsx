@@ -384,7 +384,7 @@ const SidebarNavigationComponent = ({
     {
       title: t('sectionOrganization'),
       items: [
-        { name: t('clients'), href: "/app/clientes", icon: <Users size={18} /> },
+        { name: t('clients'), href: "/app/clientes", icon: <Users size={18} />, moduleCode: 'clientes' },
         { 
           name: t('calendar'), 
           href: "/app/calendario", 
@@ -407,6 +407,7 @@ const SidebarNavigationComponent = ({
           name: t('myOrganization'), 
           href: "/app/organizacion", 
           icon: <Building2 size={18} />,
+          moduleCode: 'organizations',
           submenu: [
             { name: "Información", href: "/app/organizacion/informacion", icon: <Building2 size={16} /> },
             { name: "Sitio Web", href: "/app/organizacion/branding", icon: <Palette size={16} /> },
@@ -423,6 +424,7 @@ const SidebarNavigationComponent = ({
           name: t('roles'), 
           href: "/app/roles", 
           icon: <Shield size={18} />,
+          moduleCode: 'roles',
           submenu: [
             { name: "Gestión de Roles", href: "/app/roles", icon: <Shield size={16} /> },
             { name: "Configuración", href: "/app/roles/configuracion", icon: <Settings size={16} /> }

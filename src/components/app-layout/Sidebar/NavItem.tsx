@@ -113,22 +113,23 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
             <div 
               onClick={handleMobileClick}
               className={`
-                flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium w-full min-h-[44px]
+                flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium w-full min-h-[44px]
                 ${isActive 
                   ? 'bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-blue-300 font-semibold' 
-                  : 'text-gray-700 hover:bg-blue-50/50 hover:text-blue-600 active:bg-blue-100 dark:text-gray-300 dark:hover:bg-gray-700/50 dark:active:bg-gray-700'
-                }
+                  : 'text-gray-700 hover:bg-blue-50/50 hover:text-blue-600 active:bg-blue-100 dark:text-gray-300 dark:hover:bg-gray-700/50 dark:active:bg-gray-700'}
                 transition-all duration-200 cursor-pointer
               `}
             >
               <div className="flex items-center flex-grow">
                 <span className={`
-                    inline-block mr-3 transition-colors duration-200
-                    ${isActive ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}
+                    inline-flex items-center justify-center mr-3 transition-all duration-200 p-1.5 rounded-lg
+                    ${isActive 
+                      ? 'text-white bg-blue-600 dark:bg-blue-600 dark:text-white' 
+                      : 'text-blue-500 dark:text-blue-400/70 bg-blue-50 dark:bg-blue-500/10'}
                   `}>
                   {item.icon}
                 </span>
-                <span>{item.name}</span>
+                <span className="ml-1">{item.name}</span>
               </div>
               <ChevronDown 
                 size={16} 
@@ -149,13 +150,13 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
                     onClick={handleNavigation}
                     onMouseEnter={() => handlePrefetch(subItem.href)}
                     className={`
-                      flex items-center px-3 py-1.5 text-sm rounded-md min-h-[40px]
+                      flex items-center px-3 py-1.5 text-sm rounded-lg min-h-[40px]
                       ${isSubItemActive(subItem.href)
                         ? 'bg-blue-50 text-blue-700 font-medium dark:bg-blue-900/20 dark:text-blue-200'
                         : 'text-gray-600 hover:text-blue-600 active:bg-blue-50 dark:text-gray-400 dark:hover:text-gray-200 dark:active:bg-gray-700'}
                     `}
                   >
-                    <span className="mr-2.5 text-gray-500 dark:text-gray-400">
+                    <span className="mr-2.5 text-blue-500 dark:text-blue-400/70">
                       {subItem.icon || getSubmenuIcon(subItem.name)}
                     </span>
                     <span className="truncate">{subItem.name}</span>
@@ -171,7 +172,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
               <DropdownMenuTrigger asChild>
                 <div 
                   className={`
-                    flex items-center justify-between ${collapsed ? 'lg:justify-center' : ''} px-3 py-2 rounded-md text-sm font-medium w-full
+                    flex items-center justify-between ${collapsed ? 'lg:justify-center' : ''} px-3 py-2 rounded-lg text-sm font-medium w-full
                     ${isActive 
                       ? 'bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-blue-300 font-semibold' 
                       : 'text-gray-700 hover:bg-blue-100 hover:text-blue-600 dark:text-gray-300 dark:hover:bg-gray-700/70 dark:hover:text-blue-300'}
@@ -183,8 +184,10 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className={`
-                            inline-block ${collapsed ? 'lg:mr-0' : 'mr-3'} transition-colors duration-200
-                            ${isActive ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}
+                            inline-flex items-center justify-center ${collapsed ? 'lg:mr-0' : 'mr-3'} transition-all duration-200 p-1.5 rounded-lg
+                            ${isActive 
+                              ? 'text-white bg-blue-600 dark:bg-blue-600 dark:text-white' 
+                              : 'text-blue-500 dark:text-blue-400/70 bg-blue-50 dark:bg-blue-500/10'}
                           `}>
                             {item.icon}
                           </span>
@@ -195,8 +198,10 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
                       </Tooltip>
                     ) : (
                       <span className={`
-                        inline-block mr-3 transition-colors duration-200
-                        ${isActive ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}
+                        inline-flex items-center justify-center mr-2.5 transition-all duration-200 p-1.5 rounded-lg
+                        ${isActive 
+                          ? 'text-white bg-blue-600 dark:bg-blue-600 dark:text-white' 
+                          : 'text-blue-500 dark:text-blue-400/70 bg-blue-50 dark:bg-blue-500/10'}
                       `}>
                         {item.icon}
                       </span>
@@ -218,7 +223,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
                 align="start"
                 sideOffset={10}
                 alignOffset={0}
-                className="w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-md py-1.5"
+                className="w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-lg py-1.5"
               >
                 {item.submenu.map((subItem, subIdx) => (
                   <DropdownMenuItem key={subIdx} asChild>
@@ -234,7 +239,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
                           : 'text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-gray-200'}
                       `}
                     >
-                      <span className="mr-2.5 text-gray-500 dark:text-gray-400">
+                      <span className="mr-2.5 text-blue-500 dark:text-blue-400/70">
                         {subItem.icon || getSubmenuIcon(subItem.name)}
                       </span>
                       <span className="truncate">{subItem.name}</span>
@@ -253,7 +258,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
           onClick={handleNavigation}
           onMouseEnter={() => handlePrefetch(item.href)}
           className={`
-            flex items-center ${collapsed ? 'lg:justify-center' : ''} px-3 py-2 rounded-md text-sm font-medium min-h-[44px]
+            flex items-center ${collapsed ? 'lg:justify-center' : ''} px-3 py-2 rounded-lg text-sm font-medium min-h-[44px]
             ${isActive 
               ? 'bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-blue-300 font-semibold' 
               : 'text-gray-700 hover:bg-blue-50/50 hover:text-blue-600 active:bg-blue-100 dark:text-gray-300 dark:hover:bg-gray-700/50 dark:active:bg-gray-700'}
@@ -265,8 +270,10 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className={`
-                  inline-block ${collapsed ? 'lg:mr-0' : 'mr-3'} transition-colors duration-200
-                  ${isActive ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}
+                  inline-flex items-center justify-center ${collapsed ? 'lg:mr-0' : 'mr-3'} transition-all duration-200 p-1.5 rounded-lg
+                  ${isActive 
+                    ? 'text-white bg-blue-600 dark:bg-blue-600 dark:text-white' 
+                    : 'text-blue-500 dark:text-blue-400/70 bg-blue-50 dark:bg-blue-500/10'}
                 `}>
                   {item.icon}
                 </span>
@@ -277,8 +284,10 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
             </Tooltip>
           ) : (
             <span className={`
-              inline-block mr-3 transition-colors duration-200
-              ${isActive ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}
+              inline-flex items-center justify-center mr-2.5 transition-all duration-200 p-1.5 rounded-lg
+              ${isActive 
+                ? 'text-white bg-blue-600 dark:bg-blue-600 dark:text-white' 
+                : 'text-blue-500 dark:text-blue-400/70 bg-blue-50 dark:bg-blue-500/10'}
             `}>
               {item.icon}
             </span>

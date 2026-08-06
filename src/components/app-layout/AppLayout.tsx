@@ -314,6 +314,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     name: "Organización", 
     href: "/app/organizacion", 
     icon: <Building2 size={18} />,
+    moduleCode: 'organizations',
     submenu: [
       { name: "Información", href: "/app/organizacion/informacion", icon: <Building2 size={16} /> },
       { name: "Sitio Web", href: "/app/organizacion/branding", icon: <Palette size={16} /> },
@@ -328,8 +329,9 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
   },
   { 
     name: "Administración", 
-    href: "/app/admin", 
+    href: "/app/roles", 
     icon: <Settings size={18} />,
+    moduleCode: 'roles',
     submenu: [
       { name: "Roles y Permisos", href: "/app/roles", icon: <Shield size={16} /> },
       { name: "Configuración", href: "/app/roles/configuracion", icon: <Settings size={16} /> }

@@ -10,6 +10,9 @@ export interface ModulePage {
 }
 
 export const MODULE_PAGES: Record<string, ModulePage[]> = {
+  clientes: [
+    { name: 'Clientes', href: '/app/clientes' },
+  ],
   crm: [
     { name: 'Dashboard', href: '/app/crm' },
     { name: 'Clientes', href: '/app/crm/clientes' },
@@ -261,6 +264,8 @@ export const MODULE_HREF_TO_CODE: Record<string, string> = {
   '/app/calendario': 'calendar',
   '/app/organizacion': 'organizations',
   '/app/admin': 'roles',
+  '/app/roles': 'roles',
+  '/app/clientes': 'clientes',
   '/app/gym': 'gym',
   '/app/parking': 'parking',
   '/app/transporte': 'transport',

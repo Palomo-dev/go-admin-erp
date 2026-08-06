@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { Save, TestTube, Loader2, ArrowLeft, ShieldCheck, FileText, Info, Download, Edit, Check } from 'lucide-react';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import Link from 'next/link';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
@@ -305,8 +306,8 @@ export default function ConfiguracionFacturacionElectronicaPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <DetailSkeleton />
       </div>
     );
   }

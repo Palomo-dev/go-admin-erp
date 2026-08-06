@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+
 import InstagramChannelService, { 
   InstagramChannel, 
   InstagramCredentials, 
@@ -18,6 +18,7 @@ import {
   InstagramEventsCard,
   InstagramWebhookCard
 } from '@/components/chat/channels/instagram/id';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function InstagramChannelPage() {
   const params = useParams();
@@ -159,10 +160,10 @@ export default function InstagramChannelPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <DetailSkeleton />
+  </div>
+);
   }
 
   if (!channel) {

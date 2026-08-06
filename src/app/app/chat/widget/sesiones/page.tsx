@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Wifi } from 'lucide-react';
+import { Wifi } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import WidgetSessionsService, { WidgetSession, SessionFilters, SessionStats } from '@/lib/services/widgetSessionsService';
@@ -13,6 +13,7 @@ import {
   SessionsPagination,
 } from '@/components/chat/widget/sesiones';
 import { ChatNavTabs } from '@/components/chat/ChatNavTabs';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function WidgetSessionsPage() {
   const { toast } = useToast();
@@ -160,13 +161,12 @@ export default function WidgetSessionsPage() {
 
   if (isLoading && sessions.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando sesiones...</p>
-        </div>
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <PageHeaderSkeleton />
+    <StatsSkeleton count={4} />
+    <CardListSkeleton cards={3} columns="1" />
+  </div>
+);
   }
 
   return (

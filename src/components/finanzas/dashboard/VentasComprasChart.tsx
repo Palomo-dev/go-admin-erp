@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
 import { formatCurrency } from '@/utils/Utils';
 import type { VentasComprasData } from './FinanzasDashboardService';
@@ -22,9 +23,7 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400">Cargando...</div>
-          </div>
+          <Skeleton className="h-64 w-full" />
         </CardContent>
       </Card>
     );
@@ -95,7 +94,7 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
                       title={`Compras: ${formatCurrency(item.compras, currencyCode)}`}
                     />
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate w-full text-center">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal w-full text-center min-w-0">
                     {item.fecha}
                   </span>
                 </div>

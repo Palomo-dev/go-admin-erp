@@ -122,14 +122,14 @@ export function AlertasCard({ alertas, isLoading, maxItems = 5 }: AlertasCardPro
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                        <span className="font-medium text-sm text-gray-900 dark:text-white break-words whitespace-normal">
                           {alerta.titulo}
                         </span>
                         <Badge className={cn('text-xs', colors.badge)}>
                           {alerta.prioridad}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 break-words whitespace-normal">
                         {alerta.descripcion}
                       </p>
                     </div>

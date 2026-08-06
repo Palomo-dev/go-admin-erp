@@ -95,7 +95,7 @@ const BranchSelector = memo(({ className = '' }: BranchSelectorProps) => {
           {shortLabel}
         </span>
         {/* Desktop: nombre completo */}
-        <span className="hidden md:inline text-xs font-medium text-gray-700 dark:text-gray-300 max-w-[140px] truncate">
+        <span className="hidden md:inline text-xs font-medium text-gray-700 dark:text-gray-300 max-w-[140px] break-words whitespace-normal">
           {label}
         </span>
         <ChevronDown size={14} className="text-gray-500 flex-shrink-0" />

@@ -13,11 +13,11 @@ import {
   Phone,
   MapPin,
   FileText,
-  Loader2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { CustomerFoliosSection } from '@/components/crm/clientes/CustomerFoliosSection';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface CustomerData {
   id: string;
@@ -64,8 +64,8 @@ export default function ClienteDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <DetailSkeleton />
       </div>
     );
   }

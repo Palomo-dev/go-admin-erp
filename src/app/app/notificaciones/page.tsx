@@ -12,7 +12,11 @@ import {
   type NotificationChannel,
   type NotificationRow,
 } from '@/lib/services/notificacionesDashboardService';
-import { Loader2 } from 'lucide-react';
+import {
+  PageHeaderSkeleton,
+  StatsSkeleton,
+  CardListSkeleton,
+} from '@/components/common/PageSkeletons';
 import {
   NotificacionesHeader,
   NotificacionesKPIs,
@@ -174,8 +178,10 @@ export default function NotificacionesPage() {
   // Loading mientras verifica rol
   if (checkingRole) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
@@ -183,8 +189,10 @@ export default function NotificacionesPage() {
   // Si no es admin, no renderizar el dashboard (ya fue redirigido)
   if (!isAdmin) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

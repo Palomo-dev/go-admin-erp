@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { FileText, Loader2, Check, Copy, Trash2, ArrowLeft, Edit, Calendar, User, Link as LinkIcon } from 'lucide-react';
+import {FileText, Check, Copy, Trash2, ArrowLeft, Edit, Calendar, User, Link as LinkIcon} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Separator } from '@/components/ui/separator';
 import { ContabilidadService, JournalEntry } from '../ContabilidadService';
 import { formatCurrency } from '@/utils/Utils';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface AsientoDetailPageProps {
   entryId: number;
@@ -93,8 +94,8 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
 
   if (isLoading) {
     return (
-      <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <DetailSkeleton />
       </div>
     );
   }

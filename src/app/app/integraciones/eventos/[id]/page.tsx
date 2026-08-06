@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
   IntegrationEvent,
 } from '@/lib/services/integrationsService';
 import { EventDetail } from '@/components/integraciones/eventos/id';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function EventoDetallePage() {
   const params = useParams();
@@ -83,14 +84,10 @@ export default function EventoDetallePage() {
   // Estado de carga
   if (loading) {
     return (
-      <div className="h-full bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center">
-        <div className="p-4 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600 dark:text-green-400" />
-        </div>
-        <p className="text-lg font-medium text-gray-900 dark:text-white">Cargando evento...</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Por favor espera un momento</p>
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <DetailSkeleton />
+  </div>
+);
   }
 
   // Estado de error

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Loader2, Package } from 'lucide-react';
+import {Plus, Edit, Trash2, Package} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { FixedAssetService, FixedAsset, ASSET_TYPES, DEPRECIATION_METHODS } from './FixedAssetService';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
@@ -60,7 +61,11 @@ export function ActivosFijosPage() {
   };
 
   if (isLoading) {
-    return <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
+    return <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    return   <PageHeaderSkeleton />
+    return   <StatsSkeleton count={4} />
+    return   <CardListSkeleton cards={3} columns="1" />
+    return </div>;
   }
 
   return (

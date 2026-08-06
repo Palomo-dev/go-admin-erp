@@ -3,7 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, Loader2, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
+import {
+  StatsSkeleton,
+} from '@/components/common/PageSkeletons';
+import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
@@ -222,8 +225,8 @@ export function ContabilidadHomePage() {
 
       {/* Resumen */}
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <div className="py-8">
+          <StatsSkeleton count={4} />
         </div>
       ) : resumen && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import {
-  ArrowLeft,
+import {ArrowLeft,
   BarChart3,
   Download,
   RefreshCw,
-  Loader2,
   TrendingUp,
   TrendingDown,
   Wallet,
@@ -22,8 +20,7 @@ import {
   AlertTriangle,
   CheckCircle,
   DollarSign,
-  Percent,
-} from 'lucide-react';
+  Percent} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -40,6 +37,7 @@ import {
   ReportSummary,
   DateRange,
 } from '@/lib/services/reportesFinancierosService';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 type RangeOption = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
@@ -117,8 +115,10 @@ export function ReportesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

@@ -77,7 +77,7 @@ function TopList({ title, icon, items, isLoading, currencyCode = 'COP', colorSch
                     {index === 0 && (
                       <Crown className="h-4 w-4 text-yellow-500" />
                     )}
-                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px]">
+                    <span className="text-sm text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
                       {item.nombre}
                     </span>
                   </div>

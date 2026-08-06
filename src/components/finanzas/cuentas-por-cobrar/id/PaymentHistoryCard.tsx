@@ -99,7 +99,10 @@ export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: Paym
   };
 
   const formatDate = (dateString: string) => {
-    return parseLocalDate(dateString).toLocaleDateString('es-CO', {
+    const date = dateString.includes('T') || dateString.includes(':')
+      ? new Date(dateString)
+      : new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('es-CO', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

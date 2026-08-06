@@ -410,10 +410,10 @@ const SubMenuPanelComponent = ({
                 )}
                 
                 <span className={`
-                  flex-shrink-0 transition-colors
+                  flex-shrink-0 inline-flex items-center justify-center p-1.5 rounded-lg transition-all duration-200
                   ${isActive
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-gray-500 group-hover:text-blue-500 dark:text-gray-400 dark:group-hover:text-blue-400'
+                    ? 'text-white bg-blue-600 dark:bg-blue-600 dark:text-white'
+                    : 'text-blue-500 bg-blue-50 dark:text-blue-400/70 dark:bg-blue-500/10 group-hover:bg-blue-100 dark:group-hover:bg-blue-500/20'
                   }
                 `}>
                   {subItem.icon || getSubmenuIcon(subItem.name)}

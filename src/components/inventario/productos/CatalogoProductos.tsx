@@ -83,42 +83,15 @@ const CatalogoProductos: React.FC = () => {
         const organizationId = organization.id;
         const branchId = branch_id;
 
-        // Obtener solo productos principales (no variantes)
+        // Consulta 1: Productos principales con solo categories (ligero)
         let mainProductsQuery = supabase
           .from('products')
           .select(`
-            *,
-            categories(id, name),
-            children:products(
-              *,
-              categories(id, name),
-              stock_levels(branch_id, qty_on_hand, qty_reserved)
-            ),
-            product_prices(
-              id, 
-              price,
-              compare_price,
-              effective_from, 
-              effective_to
-            ),
-            product_costs(
-              id,
-              cost,
-              effective_from,
-              effective_to
-            ),
-            stock_levels(
-              branch_id,
-              qty_on_hand,
-              qty_reserved,
-              avg_cost,
-              branches(id, name)
-            ),
-            product_images(
-              id, 
-              storage_path, 
-              is_primary
-            )
+            id, uuid, organization_id, sku, name, description, category_id, unit_code,
+            barcode, status, track_stock, parent_product_id, is_parent,
+            product_type, brand, reference, variant_data, station,
+            tax_id, is_composite, production_type, created_at, updated_at,
+            categories(id, name)
           `)
           .eq('organization_id', organizationId)
           .is('parent_product_id', null); // Solo productos principales
@@ -149,7 +122,7 @@ const CatalogoProductos: React.FC = () => {
         
         // El proyecto de Supabase limita cada respuesta a 1000 filas (config "Max Rows" de PostgREST),
         // sin importar el .limit() del cliente. Para traer TODOS los productos hay que paginar con .range().
-        const PAGE_SIZE = 1000;
+        const PAGE_SIZE = 200;
         let mainProductsData: any[] = [];
         for (let page = 0; ; page++) {
           const desde = page * PAGE_SIZE;
@@ -176,6 +149,71 @@ const CatalogoProductos: React.FC = () => {
           setLoading(false);
           return;
         }
+
+        // Consulta 2: Datos relacionados en paralelo (precios, costos, stock, imagenes, children)
+        const productIds = mainProductsData.map((p: any) => p.id);
+
+        const [pricesRes, costsRes, stockRes, imagesRes, childrenRes] = await Promise.all([
+          supabase.from('product_prices')
+            .select('id, product_id, price, compare_price, effective_from, effective_to')
+            .in('product_id', productIds),
+          supabase.from('product_costs')
+            .select('id, product_id, cost, effective_from, effective_to')
+            .in('product_id', productIds),
+          supabase.from('stock_levels')
+            .select('product_id, branch_id, qty_on_hand, qty_reserved, avg_cost')
+            .in('product_id', productIds),
+          supabase.from('product_images')
+            .select('id, product_id, storage_path, is_primary')
+            .in('product_id', productIds),
+          supabase.from('products')
+            .select(`id, uuid, sku, name, parent_product_id, product_type, brand, reference,
+              status, category_id, track_stock, categories(id, name),
+              stock_levels(branch_id, qty_on_hand, qty_reserved)`)
+            .in('parent_product_id', productIds),
+        ]);
+
+        // Mapear datos relacionados por product_id
+        const pricesMap = new Map<number, any[]>();
+        (pricesRes.data || []).forEach((p: any) => {
+          if (!pricesMap.has(p.product_id)) pricesMap.set(p.product_id, []);
+          pricesMap.get(p.product_id)!.push(p);
+        });
+
+        const costsMap = new Map<number, any[]>();
+        (costsRes.data || []).forEach((c: any) => {
+          if (!costsMap.has(c.product_id)) costsMap.set(c.product_id, []);
+          costsMap.get(c.product_id)!.push(c);
+        });
+
+        const stockMap = new Map<number, any[]>();
+        (stockRes.data || []).forEach((s: any) => {
+          if (!stockMap.has(s.product_id)) stockMap.set(s.product_id, []);
+          stockMap.get(s.product_id)!.push(s);
+        });
+
+        const imagesMap = new Map<number, any[]>();
+        (imagesRes.data || []).forEach((img: any) => {
+          if (!imagesMap.has(img.product_id)) imagesMap.set(img.product_id, []);
+          imagesMap.get(img.product_id)!.push(img);
+        });
+
+        const childrenMap = new Map<number, any[]>();
+        (childrenRes.data || []).forEach((child: any) => {
+          const parentId = child.parent_product_id;
+          if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
+          childrenMap.get(parentId)!.push(child);
+        });
+
+        // Añadir datos relacionados a cada producto
+        mainProductsData = mainProductsData.map((product: any) => ({
+          ...product,
+          product_prices: pricesMap.get(product.id) || [],
+          product_costs: costsMap.get(product.id) || [],
+          stock_levels: stockMap.get(product.id) || [],
+          product_images: imagesMap.get(product.id) || [],
+          children: childrenMap.get(product.id) || [],
+        }));
         
         // Procesar y formatear los datos obtenidos
         const processedProducts = mainProductsData.map((product: any) => {
@@ -610,12 +648,149 @@ const CatalogoProductos: React.FC = () => {
     </div>
   );
 
+  const handleExportar = async () => {
+    if (productos.length === 0) {
+      toast({ title: 'Sin productos', description: 'No hay productos para exportar.' });
+      return;
+    }
+
+    if (!organization?.id) {
+      toast({ title: 'Error', description: 'No hay organización seleccionada.' });
+      return;
+    }
+
+    const productIds = productos.map(p => Number(p.id)).filter(id => !isNaN(id));
+
+    const { data: modGroups } = await supabase
+      .from('product_modifier_groups')
+      .select('id, product_id, name, selection_mode, min_selections, max_selections, required, product_modifiers(id, name, extra_price, is_active, display_order)')
+      .in('product_id', productIds);
+
+    const modifiersMap = new Map<number, string>();
+    if (modGroups) {
+      for (const mg of modGroups as any[]) {
+        const opts = (mg.product_modifiers || [])
+          .filter((m: any) => m.is_active)
+          .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+          .map((m: any) => `${m.name}=${m.extra_price ?? 0}`);
+        const groupStr = `${mg.name}|${mg.selection_mode || 'single'}|${mg.min_selections ?? 0}|${mg.max_selections ?? ''}|${mg.required ? 'true' : 'false'}|${opts.join(',')}`;
+        const existing = modifiersMap.get(mg.product_id);
+        modifiersMap.set(mg.product_id, existing ? `${existing}; ${groupStr}` : groupStr);
+      }
+    }
+
+    const headers = [
+      'SKU', 'Nombre', 'Tipo', 'Descripción', 'Categoría', 'Unidad', 'Código de Barras',
+      'Marca', 'Referencia', 'Proveedor', 'Precio de Venta', 'Precio de Comparación',
+      'Costo', 'Impuesto', 'Rastrear Inventario', 'Stock Total', 'Stock Mínimo',
+      'Etiquetas', 'Notas', 'URLs de Imágenes', 'SKU Padre', 'Datos de Variante',
+      'Es Producto Padre', 'Estación', 'Modificadores', 'Estado'
+    ];
+
+    const formatProductRow = (p: Producto, parentSku: string, isParent: boolean): string[] => {
+      const pid = Number(p.id);
+      const modifiersStr = modifiersMap.get(pid) || '';
+
+      let comparePrice = '';
+      if (p.product_prices && p.product_prices.length > 0) {
+        const valid = p.product_prices
+          .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
+          .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+        if (valid.length > 0 && valid[0].compare_price) {
+          comparePrice = String(valid[0].compare_price);
+        }
+      }
+
+      let imageUrls = '';
+      if (p.product_images && p.product_images.length > 0) {
+        imageUrls = p.product_images.map((img: any) => {
+          const path = img.storage_path || '';
+          if (!path) return '';
+          const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(path);
+          return urlData?.publicUrl || '';
+        }).filter(Boolean).join(';');
+      }
+
+      let variantData = '';
+      if ((p as any).variant_data) {
+        const vd = (p as any).variant_data;
+        variantData = typeof vd === 'string' ? vd : JSON.stringify(vd);
+      }
+
+      return [
+        p.sku || '',
+        p.name || '',
+        p.product_type === 'service' ? 'Servicio' : 'Producto',
+        p.description || '',
+        p.category?.name || '',
+        p.unit_code || 'UN',
+        p.barcode || '',
+        p.brand || '',
+        p.reference || '',
+        '',
+        (p.price ?? 0).toString(),
+        comparePrice,
+        (p.cost ?? 0).toString(),
+        '',
+        p.track_stock === false ? 'false' : 'true',
+        (p.stock ?? 0).toString(),
+        '',
+        '',
+        '',
+        imageUrls,
+        parentSku,
+        variantData,
+        isParent ? 'true' : 'false',
+        (p as any).station || 'none',
+        modifiersStr,
+        p.status || 'active',
+      ];
+    };
+
+    const rows: string[][] = [];
+
+    productos.forEach((p) => {
+      rows.push(formatProductRow(p, '', !p.parent_product_id));
+
+      if (p.children && p.children.length > 0) {
+        p.children.forEach((v) => {
+          rows.push(formatProductRow(v, p.sku || '', false));
+        });
+      }
+    });
+
+    const escapeCSV = (val: string) => {
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        return `"${val.replace(/"/g, '""')}"`;
+      }
+      return val;
+    };
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map(escapeCSV).join(',')),
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `productos_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({ title: 'Exportación exitosa', description: `Se exportaron ${productos.length} productos.` });
+  };
+
   return (
     <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5">
       {/* Header con título y botón de nuevo */}
       <ProductosPageHeader 
         onCrearClick={handleCrear} 
         onImportarClick={handleImportar}
+        onExportarClick={handleExportar}
         onScrapingClick={() => setIsScrapingOpen(true)}
         onRefreshClick={() => {
           setLoading(true);

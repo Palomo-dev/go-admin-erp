@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { consumeAICredits } from '@/lib/services/aiCreditsService';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { productName, description, organizationId } = await request.json();

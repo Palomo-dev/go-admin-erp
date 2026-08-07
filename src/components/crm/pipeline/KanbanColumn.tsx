@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
-import { formatCurrency } from "@/utils/Utils";
-import { useTheme } from "next-themes";
+import { cn, formatCurrency } from "@/utils/Utils";
 import { OpportunityCard } from "./OpportunityCard";
 import { Opportunity, Stage } from "@/types/crm";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +21,6 @@ interface KanbanColumnProps {
 
 const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpdate }: KanbanColumnProps) => {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const { theme } = useTheme();
 
   // Calcular el valor total de las oportunidades en esta etapa
   const totalValue = opportunities.reduce(
@@ -59,22 +57,12 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
   return (
     <>
       <div
-        className={`h-full flex flex-col rounded-md ${
-          theme === "dark"
-            ? "bg-gray-900 border-gray-700"
-            : "bg-gray-50 border-gray-200"
-        } border shadow-sm relative overflow-hidden min-w-[200px] sm:min-w-[240px]`}
+        className="h-full flex flex-col rounded-md bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 border shadow-sm relative overflow-hidden min-w-[200px] sm:min-w-[240px]"
       >
         <div className={`absolute top-0 left-0 w-full h-1 ${getStageColorClass()}`} />
         
         <div
-          className={`p-2 sm:p-3 pt-3 sm:pt-4 ${
-            theme === "dark"
-              ? "bg-gray-800 text-gray-100"
-              : "bg-gray-100 text-gray-900"
-          } rounded-t-md border-b ${
-            theme === "dark" ? "border-gray-700" : "border-gray-200"
-          }`}
+          className="p-2 sm:p-3 pt-3 sm:pt-4 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-md border-b border-gray-200 dark:border-gray-700"
         >
           <div className="flex justify-between items-center gap-1">
             <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
@@ -125,13 +113,10 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}
-              className={`flex-1 p-2 min-h-[150px] overflow-y-auto ${
-                snapshot.isDraggingOver && theme === "dark"
-                  ? "bg-gray-900/50"
-                  : snapshot.isDraggingOver
-                  ? "bg-gray-100/50"
-                  : ""
-              }`}
+              className={cn(
+                "flex-1 p-2 min-h-[150px] overflow-y-auto",
+                snapshot.isDraggingOver && "bg-gray-100/50 dark:bg-gray-900/50"
+              )}
             >
               {opportunities.map((opportunity, index) => (
                 <Draggable

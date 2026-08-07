@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/Utils';
 import { Target, TrendingUp } from 'lucide-react';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from "@/components/ui/use-toast";
 
 interface GoalCompletionWidgetProps {
@@ -141,8 +141,10 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
 
   if (loading) {
     return (
-      <Card className={`p-4 flex justify-center items-center h-48 ${className}`}>
-        <LoadingSpinner size="md" className="text-blue-500" />
+      <Card className={`p-4 space-y-4 h-48 ${className}`}>
+        <Skeleton className="h-5 w-1/2" />
+        <Skeleton className="h-6 w-3/4" />
+        <Skeleton className="h-4 w-full" />
       </Card>
     );
   }

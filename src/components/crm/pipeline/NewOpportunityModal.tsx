@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { NewOpportunityForm } from "./NewOpportunityForm";
-import { useTheme } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 
 interface NewOpportunityModalProps {
@@ -25,8 +24,6 @@ export function NewOpportunityModal({
   pipelineId,
   onSuccess,
 }: NewOpportunityModalProps) {
-  const { theme } = useTheme();
-
   const handleSuccess = () => {
     // Cerrar el modal después de crear exitosamente
     onOpenChange(false);
@@ -43,7 +40,7 @@ export function NewOpportunityModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className={theme === 'dark' ? 'dark' : ''}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Nueva Oportunidad</DialogTitle>
           <DialogDescription>

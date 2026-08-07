@@ -47,6 +47,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SegmentosService } from './SegmentosService';
 import { Segment, SegmentStats } from './types';
 import { formatDate } from '@/utils/Utils';
@@ -214,14 +215,15 @@ export function SegmentosPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  <div className="flex items-center justify-center gap-2">
-                    <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
-                    <span className="text-gray-500 dark:text-gray-400">Cargando...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
+              <>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={5}>
+                      <Skeleton className="h-10 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </>
             ) : segments.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-12">

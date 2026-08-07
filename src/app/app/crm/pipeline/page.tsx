@@ -1,16 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from "@/components/common/PageSkeletons";
 
 // Importar el componente PipelineView de forma dinámica para evitar problemas de hidratación
 const PipelineView = dynamic(
   () => import("@/components/crm/pipeline/PipelineView"),
   { 
     loading: () => (
-      <div className="flex flex-col justify-center items-center h-screen bg-gray-50 dark:bg-gray-900 gap-3">
-        <LoadingSpinner size="lg" />
-        <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando pipeline...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     ),
     ssr: false

@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Clock,
   Phone,
@@ -52,8 +52,10 @@ export default function CustomerHistoryModal({
 
         <div className="py-4">
           {isLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <LoadingSpinner size="md" className="text-blue-500" />
+            <div className="space-y-3 py-8">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
             </div>
           ) : interactions.length > 0 ? (
             <div className="space-y-4">

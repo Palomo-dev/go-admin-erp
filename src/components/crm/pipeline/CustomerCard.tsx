@@ -1,9 +1,7 @@
 "use client";
 
 import { Mail, Phone, UserCircle, Building, ExternalLink } from "lucide-react";
-import { cn } from "@/utils/Utils";
 import { Customer } from "@/types/crm";
-import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useState } from "react";
@@ -14,7 +12,6 @@ interface CustomerCardProps {
 }
 
 export function CustomerCard({ customer }: CustomerCardProps) {
-  const { theme } = useTheme();
   const [opportunitiesCount, setOpportunitiesCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,10 +36,7 @@ export function CustomerCard({ customer }: CustomerCardProps) {
 
   return (
     <div 
-      className={cn(
-        "p-4 hover:bg-muted/50 transition-colors",
-        theme === "dark" ? "hover:bg-slate-800/50" : "hover:bg-slate-50"
-      )}
+      className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
       onMouseEnter={loadOpportunitiesCount}
     >
       <div className="flex items-start justify-between">

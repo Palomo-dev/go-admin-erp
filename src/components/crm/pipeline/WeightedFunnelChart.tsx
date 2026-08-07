@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/Utils';
 import { Filter } from 'lucide-react';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from "@/components/ui/use-toast";
 import { FunnelChart, Funnel, LabelList, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -135,8 +135,9 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
   if (loading) {
     return (
       <Card className={className}>
-        <CardContent className="p-4 flex justify-center items-center min-h-[250px]">
-          <LoadingSpinner />
+        <CardContent className="p-4 space-y-4 min-h-[250px]">
+          <Skeleton className="h-6 w-1/2" />
+          <Skeleton className="h-40 w-full" />
         </CardContent>
       </Card>
     );

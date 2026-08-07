@@ -13,7 +13,8 @@ import ForecastView from "./ForecastView";
 import TableView from "./TableView";
 import ClientsView from "./ClientsView";
 import AutomationsView from "./AutomationsView";
-import { Loader2, Plus, FolderPlus } from "lucide-react";
+import { Plus, FolderPlus } from "lucide-react";
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from "@/components/common/PageSkeletons";
 import { formatCurrency } from "@/utils/Utils";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 
@@ -360,9 +361,10 @@ export default function PipelineView() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen bg-gray-50 dark:bg-gray-900 gap-3">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-        <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Cargando pipeline...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
@@ -377,13 +379,13 @@ export default function PipelineView() {
       />
       
       <Tabs defaultValue="kanban" className="w-full px-3 sm:px-4 pt-4">
-        <div className="flex justify-center mb-4">
-          <TabsList className="inline-flex gap-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-auto p-1 rounded-lg">
-            <TabsTrigger value="kanban" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Kanban</TabsTrigger>
-            <TabsTrigger value="table" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Tabla</TabsTrigger>
-            <TabsTrigger value="forecast" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Pronóstico</TabsTrigger>
-            <TabsTrigger value="clients" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Clientes</TabsTrigger>
-            <TabsTrigger value="automation" className="text-sm font-medium min-h-[38px] px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all hidden sm:inline-flex">Automatización</TabsTrigger>
+        <div className="flex justify-center mb-4 px-2 sm:px-0">
+          <TabsList className="flex flex-wrap justify-center gap-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-auto p-1 rounded-lg w-full sm:w-auto">
+            <TabsTrigger value="kanban" className="text-xs sm:text-sm font-medium min-h-[32px] sm:min-h-[38px] px-2 sm:px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Kanban</TabsTrigger>
+            <TabsTrigger value="table" className="text-xs sm:text-sm font-medium min-h-[32px] sm:min-h-[38px] px-2 sm:px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Tabla</TabsTrigger>
+            <TabsTrigger value="forecast" className="text-xs sm:text-sm font-medium min-h-[32px] sm:min-h-[38px] px-2 sm:px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Pronóstico</TabsTrigger>
+            <TabsTrigger value="clients" className="text-xs sm:text-sm font-medium min-h-[32px] sm:min-h-[38px] px-2 sm:px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all">Clientes</TabsTrigger>
+            <TabsTrigger value="automation" className="text-xs sm:text-sm font-medium min-h-[32px] sm:min-h-[38px] px-2 sm:px-4 rounded-md data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all hidden sm:inline-flex">Automatización</TabsTrigger>
           </TabsList>
         </div>
         

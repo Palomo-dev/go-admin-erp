@@ -278,12 +278,12 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
                   {getStatusIcon(tarea.status)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+                  <h4 className="font-medium text-gray-900 dark:text-white text-sm break-words whitespace-normal">
                     {tarea.title}
                   </h4>
                   
                   {tarea.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words whitespace-normal">
                       {tarea.description}
                     </p>
                   )}
@@ -309,7 +309,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
                   </div>
                   
                   <div className="mt-2 flex items-center text-xs text-gray-500 dark:text-gray-400">
-                    <span className="truncate">
+                    <span className="break-words whitespace-normal">
                       {getAssigneeName(tarea.assigned_to)}
                     </span>
                   </div>
@@ -348,7 +348,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
                   {getStatusIcon(tarea.status)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-600 dark:text-gray-300 text-sm truncate">
+                  <h4 className="font-medium text-gray-600 dark:text-gray-300 text-sm break-words whitespace-normal">
                     {tarea.title}
                   </h4>
                   

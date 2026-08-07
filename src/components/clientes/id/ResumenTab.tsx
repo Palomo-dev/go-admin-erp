@@ -320,10 +320,10 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
                 {stat.icon}
               </div>
             </div>
-            <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+            <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white break-words whitespace-normal">
               {stat.value}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words whitespace-normal">
               {stat.description}
             </div>
           </div>
@@ -356,7 +356,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                     {iconMap[item.tipo]}
                     <div className="min-w-0">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">{item.titulo}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white block break-words whitespace-normal min-w-0">{item.titulo}</span>
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${statusColor(item.status)}`}>{item.status}</span>
                     </div>
                   </div>

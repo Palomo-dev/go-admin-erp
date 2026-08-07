@@ -142,7 +142,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto relative -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          <div className="overflow-x-auto relative">
             <table className="min-w-max w-full text-xs sm:text-sm table-auto">
               <thead className="bg-gray-50 dark:bg-gray-900/50 text-left">
                 <tr className="border-b border-gray-200 dark:border-gray-700">

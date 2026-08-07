@@ -185,7 +185,8 @@ export class POSService {
         ),
         product_prices(
           price,
-          compare_price
+          compare_price,
+          effective_from
         )
       `, { count: 'exact' })
       .eq('organization_id', this.organizationId);
@@ -326,11 +327,15 @@ export class POSService {
         const stockQty = (stock?.qty_on_hand ?? 0) + (variantStock?.qty_on_hand ?? 0);
         const reservedQty = (stock?.qty_reserved ?? 0) + (variantStock?.qty_reserved ?? 0);
         const isOutOfStock = product.track_stock === true && stockQty <= 0;
+        // Ordenar precios por effective_from descendente para tomar el mas reciente
+        const sortedPrices = (product.product_prices || []).sort(
+          (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
+        );
         return {
           ...product,
           category: product.categories,
-          price: product.product_prices?.[0]?.price || null,
-          compare_price: product.product_prices?.[0]?.compare_price || null,
+          price: sortedPrices[0]?.price || null,
+          compare_price: sortedPrices[0]?.compare_price || null,
           product_images: productImagesMap[product.id] || [],
           // Información de variantes
           has_variants: product.is_parent === true,
@@ -421,7 +426,9 @@ export class POSService {
 
         return {
           ...variant,
-          price: variant.product_prices?.[0]?.price || null,
+          price: (variant.product_prices || []).sort(
+            (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
+          )[0]?.price || null,
           product_images: ownImages.length > 0 ? ownImages : (parentImages || []),
           image: resolvedImage
         };
@@ -739,6 +746,34 @@ export class POSService {
       return cart;
     } catch (error) {
       console.error('Error updating cart item discount:', error);
+      throw error;
+    }
+  }
+
+  static async updateItemTaxIncluded(cartId: string, itemId: string, taxIncluded: boolean): Promise<Cart> {
+    try {
+      const carts = await this.getActiveCarts();
+      const cartIndex = carts.findIndex(c => c.id === cartId);
+
+      if (cartIndex === -1) throw new Error('Carrito no encontrado');
+
+      const cart = carts[cartIndex];
+      const itemIndex = cart.items.findIndex(item => item.id === itemId);
+
+      if (itemIndex === -1) throw new Error('Item no encontrado');
+
+      cart.items[itemIndex].tax_included = taxIncluded;
+
+      // Recalcular totales
+      await this.calculateCartTotals(cart);
+      cart.updated_at = new Date().toISOString();
+
+      carts[cartIndex] = cart;
+      this.saveCartsToStorage(carts);
+
+      return cart;
+    } catch (error) {
+      console.error('Error updating item tax_included:', error);
       throw error;
     }
   }

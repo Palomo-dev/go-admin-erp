@@ -162,9 +162,21 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     onCartUpdate({ ...cart, items: updatedItems });
   };
 
-  // Toggle impuesto incluido en el precio (global, sincronizado con TaxSummary)
-  const handleToggleItemTaxIncluded = () => {
-    handleTaxIncludedChange(!taxIncluded);
+  // Toggle impuesto incluido en el precio para un item especifico
+  const handleToggleItemTaxIncluded = async (itemId: string) => {
+    const item = cart.items.find(i => i.id === itemId);
+    if (!item) return;
+    const newValue = !item.tax_included;
+    const updatedItems = cart.items.map(i =>
+      i.id === itemId ? { ...i, tax_included: newValue } : i
+    );
+    onCartUpdate({ ...cart, items: updatedItems });
+    try {
+      const recalculatedCart = await POSService.updateItemTaxIncluded(cart.id, itemId, newValue);
+      onCartUpdate(recalculatedCart);
+    } catch (err) {
+      console.error('Error actualizando tax_included del item:', err);
+    }
   };
 
   // Guardar notas de un item del carrito
@@ -829,8 +841,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                           <input
                             id={`tax-included-${item.id}`}
                             type="checkbox"
-                            checked={taxIncluded}
-                            onChange={() => handleToggleItemTaxIncluded()}
+                            checked={item.tax_included ?? false}
+                            onChange={() => handleToggleItemTaxIncluded(item.id)}
                             disabled={isOnHold || item.tax_excluded}
                             className="h-3 w-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 bg-white dark:bg-gray-900 cursor-pointer"
                           />

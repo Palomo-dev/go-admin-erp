@@ -35,7 +35,8 @@ import {
   CheckCheck,
   X,
   Layers,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Wrench
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
@@ -429,6 +430,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 </TableCell>
                 <TableCell className="hidden md:table-cell text-xs sm:text-sm">
                   <div className="flex flex-wrap gap-1">
+                    {producto.product_type === 'service' && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                        <Wrench className="h-2.5 w-2.5" />
+                        Servicio
+                      </span>
+                    )}
                     {producto.is_parent && producto.children && producto.children.length > 0 && (
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                         <Layers className="h-2.5 w-2.5" />

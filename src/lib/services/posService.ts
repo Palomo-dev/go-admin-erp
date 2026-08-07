@@ -185,7 +185,8 @@ export class POSService {
         ),
         product_prices(
           price,
-          compare_price
+          compare_price,
+          effective_from
         )
       `, { count: 'exact' })
       .eq('organization_id', this.organizationId);
@@ -326,11 +327,15 @@ export class POSService {
         const stockQty = (stock?.qty_on_hand ?? 0) + (variantStock?.qty_on_hand ?? 0);
         const reservedQty = (stock?.qty_reserved ?? 0) + (variantStock?.qty_reserved ?? 0);
         const isOutOfStock = product.track_stock === true && stockQty <= 0;
+        // Ordenar precios por effective_from descendente para tomar el mas reciente
+        const sortedPrices = (product.product_prices || []).sort(
+          (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
+        );
         return {
           ...product,
           category: product.categories,
-          price: product.product_prices?.[0]?.price || null,
-          compare_price: product.product_prices?.[0]?.compare_price || null,
+          price: sortedPrices[0]?.price || null,
+          compare_price: sortedPrices[0]?.compare_price || null,
           product_images: productImagesMap[product.id] || [],
           // Información de variantes
           has_variants: product.is_parent === true,
@@ -421,7 +426,9 @@ export class POSService {
 
         return {
           ...variant,
-          price: variant.product_prices?.[0]?.price || null,
+          price: (variant.product_prices || []).sort(
+            (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
+          )[0]?.price || null,
           product_images: ownImages.length > 0 ? ownImages : (parentImages || []),
           image: resolvedImage
         };
@@ -714,6 +721,100 @@ export class POSService {
     }
   }
 
+  static async updateCartItemDiscount(cartId: string, itemId: string, discountAmount: number): Promise<Cart> {
+    try {
+      const carts = await this.getActiveCarts();
+      const cartIndex = carts.findIndex(c => c.id === cartId);
+
+      if (cartIndex === -1) throw new Error('Carrito no encontrado');
+
+      const cart = carts[cartIndex];
+      const itemIndex = cart.items.findIndex(item => item.id === itemId);
+
+      if (itemIndex === -1) throw new Error('Item no encontrado');
+
+      const maxDiscount = cart.items[itemIndex].quantity * cart.items[itemIndex].unit_price;
+      cart.items[itemIndex].discount_amount = Math.max(0, Math.min(discountAmount, maxDiscount));
+
+      // Recalcular totales
+      await this.calculateCartTotals(cart);
+      cart.updated_at = new Date().toISOString();
+
+      carts[cartIndex] = cart;
+      this.saveCartsToStorage(carts);
+
+      return cart;
+    } catch (error) {
+      console.error('Error updating cart item discount:', error);
+      throw error;
+    }
+  }
+
+  static async updateItemTaxIncluded(cartId: string, itemId: string, taxIncluded: boolean): Promise<Cart> {
+    try {
+      const carts = await this.getActiveCarts();
+      const cartIndex = carts.findIndex(c => c.id === cartId);
+
+      if (cartIndex === -1) throw new Error('Carrito no encontrado');
+
+      const cart = carts[cartIndex];
+      const itemIndex = cart.items.findIndex(item => item.id === itemId);
+
+      if (itemIndex === -1) throw new Error('Item no encontrado');
+
+      cart.items[itemIndex].tax_included = taxIncluded;
+
+      // Recalcular totales
+      await this.calculateCartTotals(cart);
+      cart.updated_at = new Date().toISOString();
+
+      carts[cartIndex] = cart;
+      this.saveCartsToStorage(carts);
+
+      return cart;
+    } catch (error) {
+      console.error('Error updating item tax_included:', error);
+      throw error;
+    }
+  }
+
+  static async getFrequentDiscounts(productId: number, organizationId: number): Promise<number[]> {
+    try {
+      const [saleItemsRes, invoiceItemsRes] = await Promise.all([
+        supabase
+          .from('sale_items')
+          .select('discount_amount')
+          .eq('product_id', productId)
+          .gt('discount_amount', 0),
+        supabase
+          .from('invoice_items')
+          .select('discount_amount')
+          .eq('product_id', productId)
+          .gt('discount_amount', 0),
+      ]);
+
+      const freqMap = new Map<number, number>();
+
+      saleItemsRes.data?.forEach((row: any) => {
+        const val = parseFloat(row.discount_amount);
+        if (val > 0) freqMap.set(val, (freqMap.get(val) ?? 0) + 1);
+      });
+
+      invoiceItemsRes.data?.forEach((row: any) => {
+        const val = parseFloat(row.discount_amount);
+        if (val > 0) freqMap.set(val, (freqMap.get(val) ?? 0) + 1);
+      });
+
+      return Array.from(freqMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([val]) => val);
+    } catch (error) {
+      console.error('Error getting frequent discounts:', error);
+      return [];
+    }
+  }
+
   static async setCartCustomer(cartId: string, customerId?: string): Promise<Cart> {
     try {
       const carts = await this.getActiveCarts();
@@ -762,9 +863,16 @@ export class POSService {
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
       const cart = carts[cartIndex];
-      if (settings.tax_included !== undefined) cart.tax_included = settings.tax_included;
+      if (settings.tax_included !== undefined) {
+        cart.tax_included = settings.tax_included;
+        // Propagar tax_included a cada item
+        cart.items.forEach(item => { item.tax_included = settings.tax_included; });
+      }
       if (settings.applied_tax_ids !== undefined) cart.applied_tax_ids = settings.applied_tax_ids;
       cart.updated_at = new Date().toISOString();
+
+      // Recalcular totales con la nueva configuracion
+      await this.calculateCartTotals(cart);
 
       carts[cartIndex] = cart;
       this.saveCartsToStorage(carts);
@@ -772,6 +880,27 @@ export class POSService {
       return cart;
     } catch (error) {
       console.error('Error updating cart tax settings:', error);
+      throw error;
+    }
+  }
+
+  static async recalculateCart(cartId: string): Promise<Cart> {
+    try {
+      const carts = await this.getActiveCarts();
+      const cartIndex = carts.findIndex(c => c.id === cartId);
+
+      if (cartIndex === -1) throw new Error('Carrito no encontrado');
+
+      const cart = carts[cartIndex];
+      await this.calculateCartTotals(cart);
+      cart.updated_at = new Date().toISOString();
+
+      carts[cartIndex] = cart;
+      this.saveCartsToStorage(carts);
+
+      return cart;
+    } catch (error) {
+      console.error('Error recalculating cart:', error);
       throw error;
     }
   }
@@ -1721,8 +1850,10 @@ export class POSService {
         .from('product_prices')
         .select('price')
         .eq('product_id', productId)
-        .is('effective_to', null) // Precio actual
-        .single();
+        .is('effective_to', null)
+        .order('effective_from', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) throw error;
       return parseFloat(data?.price || '0');
@@ -1774,7 +1905,19 @@ export class POSService {
     cart.subtotal = cart.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
     cart.tax_total = cart.items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
     cart.discount_total = cart.items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
-    cart.total = cart.subtotal + cart.tax_total - cart.discount_total;
+    // Si el impuesto está incluido en el precio, el subtotal ya contiene el impuesto
+    // Por lo tanto, el total es subtotal - descuento (no se suma tax_total)
+    const hasAnyTaxIncluded = cart.items.some(item => item.tax_included);
+    if (hasAnyTaxIncluded) {
+      // Para items con tax_included, el tax_amount ya está dentro del precio
+      // Solo sumar tax_amount de items sin tax_included
+      const extraTax = cart.items
+        .filter(item => !item.tax_included)
+        .reduce((sum, item) => sum + (item.tax_amount || 0), 0);
+      cart.total = cart.subtotal + extraTax - cart.discount_total;
+    } else {
+      cart.total = cart.subtotal + cart.tax_total - cart.discount_total;
+    }
   }
 
   private static async calculateItemTaxes(item: CartItem): Promise<void> {
@@ -1790,22 +1933,32 @@ export class POSService {
       }
 
       const baseAmount = item.quantity * item.unit_price;
+      const taxableBase = baseAmount - (item.discount_amount || 0);
       let totalTaxAmount = 0;
       let totalTaxRate = 0;
 
-      // Calcular impuestos acumulativos
+      // Calcular impuestos acumulativos sobre la base gravable (despues del descuento)
       for (const taxRelation of productTaxes) {
         const tax = taxRelation.organization_taxes;
         if (tax && tax.is_active) {
-          const taxAmount = (baseAmount * tax.rate) / 100;
+          const taxAmount = (taxableBase * tax.rate) / 100;
           totalTaxAmount += taxAmount;
           totalTaxRate += tax.rate;
         }
       }
 
-      item.tax_amount = Math.round(totalTaxAmount * 100) / 100; // Redondear a 2 decimales
+      item.tax_amount = Math.round(totalTaxAmount * 100) / 100;
       item.tax_rate = totalTaxRate;
-      item.total = baseAmount + item.tax_amount - (item.discount_amount || 0);
+
+      if (item.tax_included) {
+        // Impuesto incluido en el precio: el total NO suma el impuesto encima
+        const taxPortion = taxableBase - (taxableBase / (1 + totalTaxRate / 100));
+        item.tax_amount = Math.round(taxPortion * 100) / 100;
+        item.total = taxableBase;
+      } else {
+        // Impuesto NO incluido: se suma encima del precio
+        item.total = taxableBase + item.tax_amount;
+      }
       
       console.log(`Tax calculation for ${item.product?.name}:`, {
         baseAmount,

@@ -30,6 +30,7 @@ import {
   Ban,
   Briefcase
 } from 'lucide-react';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { AIJob, JOB_TYPE_OPTIONS } from '@/lib/services/aiJobsService';
 
 interface JobsTableProps {
@@ -92,9 +93,7 @@ export default function JobsTable({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
+      <TableSkeleton columns={7} rows={5} />
     );
   }
 

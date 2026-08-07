@@ -133,7 +133,7 @@ export function TaxSummary({
             product_id: item.product_id,
             discount_amount: item.discount_amount || 0,
             tax_rate: item.tax_rate || undefined,
-            tax_included: item.tax_excluded ? false : (taxIncluded || undefined)
+            tax_included: item.tax_excluded ? false : (item.tax_included ?? taxIncluded ?? undefined)
           };
           
           let result;
@@ -230,8 +230,9 @@ export function TaxSummary({
   }, [cart.items, organizationTaxes, appliedTaxes, taxIncluded]);
 
   // Usar los totales calculados correctamente
+  // calculateCartTaxes ya resta el descuento en lineTotal, NO restarlo de nuevo
   const { subtotal, totalTaxAmount, finalTotal } = calculatedTotals;
-  const total = finalTotal - (cart.discount_total || 0);
+  const total = finalTotal;
 
   if (loading) {
     return (
@@ -429,6 +430,19 @@ export function TaxSummary({
                 <span className="dark:text-gray-300 text-gray-700 shrink-0">Total Impuestos:</span>
                 <span className="dark:text-blue-400 text-blue-600">
                   {formatCurrency(totalTaxAmount)}
+                </span>
+              </div>
+            </>
+          )}
+
+          {/* Descuento total */}
+          {cart.discount_total > 0 && (
+            <>
+              <Separator className="dark:bg-gray-700 bg-gray-200" />
+              <div className="flex justify-between items-center gap-3 text-sm font-medium">
+                <span className="dark:text-red-400 text-red-600 shrink-0">Descuento:</span>
+                <span className="dark:text-red-400 text-red-600">
+                  -{formatCurrency(cart.discount_total)}
                 </span>
               </div>
             </>

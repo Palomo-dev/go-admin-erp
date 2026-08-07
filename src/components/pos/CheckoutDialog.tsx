@@ -495,7 +495,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           product_id: item.product_id,
           discount_amount: item.discount_amount || 0,
           tax_rate: item.tax_rate || undefined,
-          tax_included: item.tax_excluded ? false : (cart.tax_included || undefined)
+          tax_included: item.tax_excluded ? false : (item.tax_included ?? cart.tax_included ?? undefined)
         };
         
         let result;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, Clock, CheckCircle, Check, StickyNote } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, Clock, CheckCircle, Check, StickyNote, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,13 +35,24 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const [holdReason, setHoldReason] = useState('');
   const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
 
+  // Sincronizar taxIncluded cuando cambian los items del carrito
+  useEffect(() => {
+    if (cart.items.length > 0 && cart.items.every(item => item.tax_included)) {
+      setTaxIncluded(true);
+    } else if (cart.items.length > 0 && !cart.items.some(item => item.tax_included)) {
+      setTaxIncluded(false);
+    }
+  }, [cart.items]);
+
   // Sincronizar el flag con el carrito (memoria + storage) para que persista y el diálogo de pago lo refleje
-  const handleTaxIncludedChange = (value: boolean) => {
+  const handleTaxIncludedChange = async (value: boolean) => {
     setTaxIncluded(value);
-    onCartUpdate({ ...cart, tax_included: value });
-    POSService.updateCartTaxSettings(cart.id, { tax_included: value }).catch(err =>
-      console.error('Error persistiendo tax_included:', err)
-    );
+    try {
+      const recalculatedCart = await POSService.updateCartTaxSettings(cart.id, { tax_included: value });
+      onCartUpdate(recalculatedCart);
+    } catch (err) {
+      console.error('Error persistiendo tax_included:', err);
+    }
   };
 
   const handleAppliedTaxesChange = (taxIds: string[]) => {
@@ -68,6 +79,11 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   // Estado para edición de notas por item
   const [editingNotesItemId, setEditingNotesItemId] = useState<string | null>(null);
   const [itemNotesValue, setItemNotesValue] = useState('');
+
+  // Estado para descuentos frecuentes por item
+  const [frequentDiscountsMap, setFrequentDiscountsMap] = useState<Record<number, number[]>>({});
+  const [editingDiscountItemId, setEditingDiscountItemId] = useState<string | null>(null);
+  const [discountInputValue, setDiscountInputValue] = useState('');
 
   // Estado del kitchen ticket en tiempo real
   const [kitchenStatus, setKitchenStatus] = useState<string | null>(null);
@@ -146,6 +162,23 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
     onCartUpdate({ ...cart, items: updatedItems });
   };
 
+  // Toggle impuesto incluido en el precio para un item especifico
+  const handleToggleItemTaxIncluded = async (itemId: string) => {
+    const item = cart.items.find(i => i.id === itemId);
+    if (!item) return;
+    const newValue = !item.tax_included;
+    const updatedItems = cart.items.map(i =>
+      i.id === itemId ? { ...i, tax_included: newValue } : i
+    );
+    onCartUpdate({ ...cart, items: updatedItems });
+    try {
+      const recalculatedCart = await POSService.updateItemTaxIncluded(cart.id, itemId, newValue);
+      onCartUpdate(recalculatedCart);
+    } catch (err) {
+      console.error('Error actualizando tax_included del item:', err);
+    }
+  };
+
   // Guardar notas de un item del carrito
   const handleSaveNotes = (itemId: string) => {
     const updatedItems = cart.items.map(item =>
@@ -162,6 +195,35 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const handleStartEditNotes = (itemId: string, currentNotes?: string) => {
     setEditingNotesItemId(itemId);
     setItemNotesValue(currentNotes || '');
+  };
+
+  // Cargar descuentos frecuentes de un producto
+  const handleLoadFrequentDiscounts = async (productId: number) => {
+    if (frequentDiscountsMap[productId]) return;
+    try {
+      const discounts = await POSService.getFrequentDiscounts(productId, cart.organization_id);
+      setFrequentDiscountsMap(prev => ({ ...prev, [productId]: discounts }));
+    } catch (error) {
+      console.error('Error loading frequent discounts:', error);
+    }
+  };
+
+  // Aplicar descuento a un item del carrito
+  const handleApplyDiscount = async (itemId: string, discountAmount: number) => {
+    try {
+      const updatedCart = await POSService.updateCartItemDiscount(cart.id, itemId, discountAmount);
+      onCartUpdate(updatedCart);
+      setEditingDiscountItemId(null);
+      setDiscountInputValue('');
+    } catch (error) {
+      console.error('Error applying discount:', error);
+    }
+  };
+
+  // Iniciar edición de descuento
+  const handleStartEditDiscount = (itemId: string, currentDiscount?: number) => {
+    setEditingDiscountItemId(itemId);
+    setDiscountInputValue(currentDiscount ? String(currentDiscount) : '');
   };
 
   // Poner carrito en espera
@@ -625,9 +687,87 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                             ) : (
                               item.tax_amount != null && item.tax_amount > 0 && (
                                 <div className="text-[0.65rem] sm:text-xs dark:text-green-400 text-green-600 mt-0.5 sm:mt-1">
-                                  +{formatCurrency(item.tax_amount)} impuestos
+                                  {item.tax_included ? '(inc. ' : '+'}{formatCurrency(item.tax_amount)} impuestos{item.tax_included ? ')' : ''}
                                 </div>
                               )
+                            )}
+
+                            {/* Descuento aplicado o input para agregar */}
+                            {item.discount_amount && item.discount_amount > 0 && editingDiscountItemId !== item.id ? (
+                              <div
+                                className="flex items-center gap-1 mt-0.5 sm:mt-1 cursor-pointer"
+                                onClick={() => !isOnHold && handleStartEditDiscount(item.id, item.discount_amount)}
+                              >
+                                <Badge variant="outline" className="text-[0.6rem] sm:text-[0.65rem] px-1 py-0 border-red-300 text-red-700 dark:border-red-700 dark:text-red-300 shrink-0">
+                                  <Tag className="h-2.5 w-2.5 mr-0.5" />
+                                  -{formatCurrency(item.discount_amount)}
+                                </Badge>
+                              </div>
+                            ) : editingDiscountItemId === item.id ? (
+                              <div className="flex items-center gap-1 mt-0.5 sm:mt-1">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={discountInputValue}
+                                  onChange={(e) => setDiscountInputValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const val = parseFloat(discountInputValue) || 0;
+                                      handleApplyDiscount(item.id, val);
+                                    }
+                                    if (e.key === 'Escape') { setEditingDiscountItemId(null); setDiscountInputValue(''); }
+                                  }}
+                                  placeholder="Descuento"
+                                  className="h-6 sm:h-7 text-xs w-20 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 bg-white border-gray-300 px-1"
+                                  autoFocus
+                                  disabled={isOnHold}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-green-400 dark:hover:bg-green-500/20 text-green-600 hover:bg-green-100 shrink-0"
+                                  onClick={() => handleApplyDiscount(item.id, parseFloat(discountInputValue) || 0)}
+                                  title="Aplicar descuento"
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 sm:h-7 sm:w-7 p-0 dark:text-gray-400 dark:hover:bg-gray-600/20 text-gray-500 hover:bg-gray-100 shrink-0"
+                                  onClick={() => { setEditingDiscountItemId(null); setDiscountInputValue(''); }}
+                                  title="Cancelar"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : !isOnHold && (
+                              <button
+                                className="text-[0.6rem] sm:text-[0.65rem] text-blue-500 dark:text-blue-400 hover:underline mt-0.5 sm:mt-1"
+                                onClick={() => {
+                                  handleStartEditDiscount(item.id);
+                                  handleLoadFrequentDiscounts(item.product_id);
+                                }}
+                              >
+                                + Agregar descuento
+                              </button>
+                            )}
+
+                            {/* Badges de descuentos frecuentes */}
+                            {editingDiscountItemId === item.id && frequentDiscountsMap[item.product_id]?.length > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap mt-1">
+                                <span className="text-[0.6rem] text-gray-400 dark:text-gray-500">Frecuentes:</span>
+                                {frequentDiscountsMap[item.product_id].map((disc) => (
+                                  <button
+                                    key={disc}
+                                    className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.6rem] font-medium bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer"
+                                    onClick={() => handleApplyDiscount(item.id, disc)}
+                                  >
+                                    -{formatCurrency(disc)}
+                                  </button>
+                                ))}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -696,7 +836,25 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                           )}
                         </div>
 
-                        {/* Toggle impuesto por ítem */}
+                        {/* Checkbox impuesto incluido en el precio (sincronizado con TaxSummary) */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <input
+                            id={`tax-included-${item.id}`}
+                            type="checkbox"
+                            checked={item.tax_included ?? false}
+                            onChange={() => handleToggleItemTaxIncluded(item.id)}
+                            disabled={isOnHold || item.tax_excluded}
+                            className="h-3 w-3 rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 bg-white dark:bg-gray-900 cursor-pointer"
+                          />
+                          <label
+                            htmlFor={`tax-included-${item.id}`}
+                            className="text-[0.6rem] sm:text-xs text-gray-700 dark:text-gray-300 cursor-pointer whitespace-nowrap"
+                          >
+                            Incluido
+                          </label>
+                        </div>
+
+                        {/* Toggle excluir impuesto por ítem */}
                         <Button
                           size="sm"
                           variant="ghost"

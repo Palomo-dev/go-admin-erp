@@ -84,6 +84,7 @@ export interface CartItem {
   tax_amount?: number;
   tax_rate?: number;
   tax_excluded?: boolean;
+  tax_included?: boolean;
   notes?: string;
   modifiers?: CartItemModifier[];
   created_at: string;

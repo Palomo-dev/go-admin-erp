@@ -331,9 +331,9 @@ export function ProductSearchDialog({
             </Button>
           </DialogTrigger>
 
-        <DialogContent className="max-w-6xl w-[95vw] sm:w-[90vw] max-h-[90vh] h-[80vh] sm:h-[90vh] overflow-hidden flex flex-col dark:bg-gray-800 dark:border-gray-700">
+        <DialogContent className="w-full max-w-[95vw] lg:max-w-6xl max-h-[90dvh] h-[80dvh] sm:h-[90dvh] overflow-hidden flex flex-col dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader className="pb-3">
-            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900 dark:text-white">
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-lg sm:text-xl text-gray-900 dark:text-white">
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="truncate">Catálogo de Productos</span>
               <Badge variant="outline" className="ml-2 text-xs dark:border-gray-600 dark:text-gray-300">
@@ -344,7 +344,7 @@ export function ProductSearchDialog({
 
           <div className="flex flex-col space-y-3 sm:space-y-4 flex-1 min-h-0 overflow-hidden">
             {/* Barra de búsqueda */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500" />
                 <Input
@@ -453,7 +453,7 @@ export function ProductSearchDialog({
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1.5 sm:gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0 dark:border-gray-600 dark:text-gray-300">
                                   {product.sku}
                                 </Badge>
@@ -472,7 +472,7 @@ export function ProductSearchDialog({
                             )}
 
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3 sm:gap-4">
+                              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                                 {/* Precio/Costo principal */}
                                 <div>
                                   <div className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-500">
@@ -561,13 +561,13 @@ export function ProductSearchDialog({
 
             {/* Paginación */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   <span>Página {currentPage} de {totalPages}</span>
                   <span className="hidden sm:inline">·</span>
                   <span className="hidden sm:inline">{filteredProducts.length} productos</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
                   <Button
                     type="button"
                     variant="outline"

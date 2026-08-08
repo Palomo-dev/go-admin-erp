@@ -1,135 +1,18 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { supabase } from '@/lib/supabase/config';
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { BranchesSkeleton } from '@/components/organization/OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
+import { useOrgAdmin } from '@/components/organization/useOrgAdmin';
+import { BranchesSkeleton } from '@/components/organization/OrganizationSkeletons';
 
-// Dynamic import for the BranchesTab component
-const BranchesTab = dynamic(() => import('../../../../components/organization/BranchesTab'), {
+const BranchesTab = dynamic(() => import('@/components/organization/BranchesTab'), {
   loading: () => <BranchesSkeleton />
 });
 
-// Definir interfaces para los tipos de datos
-interface BranchAssignment {
-  branch_id: number;
-  branch_name?: string;
-  role_id?: number;
-}
-
 export default function SucursalesPage() {
-  const [orgData, setOrgData] = useState<any>(null);
-  const [userRole, setUserRole] = useState<number | null>(null);
-  const [userBranches, setUserBranches] = useState<BranchAssignment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const t = useTranslations('org');
-
-  useEffect(() => {
-    const fetchOrgData = async () => {
-      try {
-        setLoading(true);
-        
-        // Get current user session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          setError(t('common.noSession'));
-          return;
-        }
-        
-        // Get user ID
-        const userId = session.user.id;
-        const currentOrgId = localStorage.getItem('currentOrganizationId');
-        
-        // Get user's organization and role from organization_members
-        const { data: memberData, error: memberError } = await supabase
-          .from('organization_members')
-          .select(`
-            organization_id,
-            role_id,
-            is_super_admin,
-            organizations!inner (
-              id,
-              name,
-              type_id,
-              status
-            )
-          `)
-          .eq('user_id', userId)
-          .eq('is_active', true);
-
-        if (memberError) {
-          console.error('Error fetching organization data:', memberError);
-          setError(t('common.errorLoadingOrg'));
-          return;
-        }
-
-        if (!memberData || memberData.length === 0) {
-          setError(t('common.noOrganization'));
-          return;
-        }
-
-        // If currentOrgId is set, find that organization, otherwise use the first one
-        let selectedOrg = memberData[0];
-        if (currentOrgId) {
-          const foundOrg = memberData.find(member => member.organization_id.toString() === currentOrgId);
-          if (foundOrg) {
-            selectedOrg = foundOrg;
-          }
-        }
-
-        setOrgData(selectedOrg.organization_id);
-        setUserRole(selectedOrg.role_id);
-
-        // Get user's branch assignments
-        const { data: orgMemberData, error: orgMemberError } = await supabase
-          .from('organization_members')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('organization_id', selectedOrg.organization_id)
-          .single();
-
-        if (orgMemberError) {
-          console.error('Error fetching member data:', orgMemberError);
-        } else if (orgMemberData) {
-          // Get branch assignments for this member
-          const { data: branchData, error: branchError } = await supabase
-            .from('member_branches')
-            .select(`
-              branch_id,
-              branches (
-                name
-              )
-            `)
-            .eq('organization_member_id', orgMemberData.id);
-
-          if (branchError) {
-            console.error('Error fetching branch data:', branchError);
-          } else if (branchData && branchData.length > 0) {
-            const branchAssignments = branchData.map((assignment: any) => ({
-              branch_id: assignment.branch_id,
-              branch_name: assignment.branches?.name,
-              role_id: selectedOrg.role_id
-            }));
-            setUserBranches(branchAssignments);
-          }
-        }
-        
-      } catch (err: any) {
-        console.error('Error in fetchOrgData:', err);
-        setError(t('common.unexpectedError'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrgData();
-  }, []);
-
-  // Check if user is admin (role_id 2 or is_super_admin)
-  const isOrgAdmin = userRole === 2 || userRole === 1; // Assuming 1 is super admin, 2 is org admin
+  const { orgId, isOrgAdmin, userBranches, loading, error } = useOrgAdmin();
 
   if (loading) {
     return (
@@ -147,16 +30,7 @@ export default function SucursalesPage() {
     return (
       <div className="p-4 sm:p-8">
         <div className="bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/30 dark:border-red-400">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
-            </div>
-          </div>
+          <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
         </div>
       </div>
     );
@@ -166,16 +40,7 @@ export default function SucursalesPage() {
     return (
       <div className="p-4 sm:p-8">
         <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 dark:bg-yellow-900/30 dark:border-yellow-400">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-500 dark:text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700 dark:text-yellow-200">{t('common.noPermissions')}</p>
-            </div>
-          </div>
+          <p className="text-sm text-yellow-700 dark:text-yellow-200">{t('common.noPermissions')}</p>
         </div>
       </div>
     );
@@ -189,7 +54,7 @@ export default function SucursalesPage() {
           <p className="mt-2 text-gray-600 dark:text-gray-400">{t('branches.description')}</p>
         </div>
       </div>
-      
+
       {userBranches.length > 0 && (
         <div>
           <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('branches.yourBranches')}</h2>
@@ -204,9 +69,9 @@ export default function SucursalesPage() {
           </div>
         </div>
       )}
-      
+
       <Suspense fallback={<BranchesSkeleton />}>
-        <BranchesTab orgId={orgData} userBranches={userBranches} />
+        <BranchesTab orgId={orgId} userBranches={userBranches} />
       </Suspense>
     </div>
   );

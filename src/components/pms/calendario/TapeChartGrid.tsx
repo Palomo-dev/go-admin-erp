@@ -30,6 +30,8 @@ interface TapeChartGridProps {
   onReservationMove?: (reservationId: string, newSpaceId: string, newCheckin: string, newCheckout: string) => void;
   onReservationResize?: (reservationId: string, newCheckin: string, newCheckout: string) => void;
   onCreateReservation?: (spaceId: string, checkin: string, checkout: string) => void;
+  onCheckin?: (id: string) => void;
+  onCheckout?: (id: string) => void;
   isLoading?: boolean;
 }
 
@@ -58,6 +60,8 @@ export function TapeChartGrid({
   onReservationMove,
   onReservationResize,
   onCreateReservation,
+  onCheckin,
+  onCheckout,
   isLoading = false,
 }: TapeChartGridProps) {
   const cellWidth = 80;
@@ -366,6 +370,8 @@ export function TapeChartGrid({
                         cellWidth={cellWidth}
                         onClick={() => onReservationClick?.((cellData.data as TapeChartReservation).id)}
                         onResizeEnd={handleResizeEnd}
+                        onCheckin={onCheckin}
+                        onCheckout={onCheckout}
                       />
                     )}
                     {cellData.type === 'block' && cellData.isStart && (

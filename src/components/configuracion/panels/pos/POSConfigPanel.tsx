@@ -3,5 +3,5 @@
 import { ConfiguracionPage } from '@/components/pos/configuracion';
 
 export function POSConfigPanel() {
-  return <ConfiguracionPage />;
+  return <ConfiguracionPage embedded />;
 }

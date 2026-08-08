@@ -13,10 +13,13 @@ export interface TapeChartReservation {
   code: string;
   customerName: string;
   spaceId: string;
+  spaceLabel: string;
   checkin: string;
   checkout: string;
   status: string;
   color: string;
+  occupantCount: number;
+  totalEstimated: number;
 }
 
 export interface TapeChartBlock {
@@ -124,12 +127,18 @@ class TapeChartService {
         checkout,
         status,
         space_id,
+        occupant_count,
+        total_estimated,
         customers (
           first_name,
           last_name
         ),
         reservation_spaces (
-          space_id
+          space_id,
+          spaces (
+            id,
+            label
+          )
         )
       `)
       .not('status', 'eq', 'cancelled')
@@ -156,6 +165,16 @@ class TapeChartService {
         : 'Sin cliente';
       const code = r.metadata?.code || r.id.substring(0, 8).toUpperCase();
       
+      // Build a map of spaceId -> spaceLabel from reservation_spaces
+      const spaceLabelMap: Record<string, string> = {};
+      if (r.reservation_spaces && Array.isArray(r.reservation_spaces)) {
+        r.reservation_spaces.forEach((rs: any) => {
+          if (rs.space_id && rs.spaces?.label) {
+            spaceLabelMap[rs.space_id] = rs.spaces.label;
+          }
+        });
+      }
+
       // Get all space_ids for this reservation
       const spaceIds: string[] = [];
       if (r.space_id) {
@@ -175,10 +194,13 @@ class TapeChartService {
           code,
           customerName,
           spaceId,
+          spaceLabel: spaceLabelMap[spaceId] || '',
           checkin: r.checkin,
           checkout: r.checkout,
           status: r.status,
           color: statusColors[r.status] || '#6b7280',
+          occupantCount: r.occupant_count || 1,
+          totalEstimated: r.total_estimated || 0,
         });
       });
     });

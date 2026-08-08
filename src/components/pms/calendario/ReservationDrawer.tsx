@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -58,14 +59,10 @@ import {
   FileText,
   MoreHorizontal,
   Receipt,
+  ExternalLink,
 } from 'lucide-react';
 import { DrawerFolioSummary } from '@/components/pms/calendario/DrawerFolioSummary';
 import type { TapeChartReservation, TapeChartSpace } from '@/lib/services/tapeChartService';
-import { CheckinDialog, type CheckinData } from '@/components/pms/checkin/CheckinDialog';
-import { CheckoutDialog, type CheckoutDialogData } from '@/components/pms/checkout/CheckoutDialog';
-import CheckinService, { type CheckinReservation } from '@/lib/services/checkinService';
-import CheckoutService, { type CheckoutReservation } from '@/lib/services/checkoutService';
-import { supabase } from '@/lib/supabase/config';
 
 export interface ReservationDetails {
   id: string;
@@ -129,16 +126,11 @@ export function ReservationDrawer({
   onCreateBlock,
 }: ReservationDrawerProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBlockDialog, setShowBlockDialog] = useState(false);
-  const [showCheckinDialog, setShowCheckinDialog] = useState(false);
-  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
-  const [checkinReservation, setCheckinReservation] = useState<CheckinReservation | null>(null);
-  const [checkoutReservation, setCheckoutReservation] = useState<CheckoutReservation | null>(null);
-  const [isLoadingCheckinData, setIsLoadingCheckinData] = useState(false);
-  const [isLoadingCheckoutData, setIsLoadingCheckoutData] = useState(false);
   
   // Form state
   const [checkin, setCheckin] = useState<Date | undefined>();
@@ -214,96 +206,14 @@ export function ReservationDrawer({
     setShowDeleteDialog(false);
   };
 
-  const handleCheckin = async () => {
+  const handleCheckin = () => {
     if (!reservation) return;
-    
-    setIsLoadingCheckinData(true);
-    try {
-      const data = await CheckinService.getReservationForCheckin(reservation.id);
-      setCheckinReservation(data);
-      setShowCheckinDialog(true);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los datos del check-in',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoadingCheckinData(false);
-    }
+    onCheckin(reservation.id);
   };
 
-  const handleConfirmCheckin = async (data: CheckinData) => {
-    const { data: { user } } = await supabase.auth.getUser();
-
-    await CheckinService.performCheckin({
-      reservationId: data.reservationId,
-      userId: user?.id,
-      notes: data.notes,
-      depositAmount: data.depositAmount,
-      signatureData: data.signatureData,
-      identificationType: data.identificationType,
-      identificationNumber: data.identificationNumber,
-      nationality: data.nationality,
-      originCity: data.originCity,
-      originCountry: data.originCountry,
-      destinationCity: data.destinationCity,
-      destinationCountry: data.destinationCountry,
-      updateCheckinDate: data.updateCheckinDate,
-    });
-
-    if (data.depositAmount > 0) {
-      await CheckinService.registerDeposit({
-        reservationId: data.reservationId,
-        amount: data.depositAmount,
-        method: data.depositMethod,
-        reference: data.depositReference,
-      });
-    }
-
-    await onCheckin(data.reservationId);
-    toast({
-      title: 'Check-in realizado',
-      description: 'El huésped ha sido registrado correctamente',
-    });
-  };
-
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!reservation) return;
-    
-    setIsLoadingCheckoutData(true);
-    try {
-      const data = await CheckoutService.getReservationForCheckout(reservation.id);
-      setCheckoutReservation(data);
-      setShowCheckoutDialog(true);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los datos del check-out',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoadingCheckoutData(false);
-    }
-  };
-
-  const handleConfirmCheckout = async (data: CheckoutDialogData) => {
-    const { data: { user } } = await supabase.auth.getUser();
-
-    await CheckoutService.performCheckout({
-      reservationId: data.reservationId,
-      userId: user?.id,
-      notes: data.notes,
-      generateInvoice: data.generateInvoice,
-      generateReceipt: data.generateReceipt,
-      updateCheckoutDate: data.updateCheckoutDate,
-    });
-
-    await onCheckout(data.reservationId);
-    toast({
-      title: 'Check-out realizado',
-      description: 'El huésped ha sido dado de baja correctamente',
-    });
+    onCheckout(reservation.id);
   };
 
   const handleCreateBlock = async () => {
@@ -332,6 +242,20 @@ export function ReservationDrawer({
     }
   };
 
+  const handleGoToDetail = () => {
+    if (!reservation) return;
+    onOpenChange(false);
+    router.push(`/app/pms/reservas/${reservation.id}`);
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   if (!reservation) return null;
 
   const nights = checkin && checkout 
@@ -347,10 +271,17 @@ export function ReservationDrawer({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-1/2 min-w-[400px] sm:max-w-none overflow-y-auto bg-white dark:bg-gray-900">
           <SheetHeader className="space-y-1">
+            <SheetTitle className="sr-only">
+              Reserva {reservation.code}
+            </SheetTitle>
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-xl">
+              <button
+                onClick={handleGoToDetail}
+                className="text-xl font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1.5 transition-colors"
+              >
                 Reserva {reservation.code}
-              </SheetTitle>
+                <ExternalLink className="h-4 w-4" />
+              </button>
               <Badge className={cn('text-white', statusColors[reservation.status])}>
                 {statusLabels[reservation.status] || reservation.status}
               </Badge>
@@ -361,23 +292,32 @@ export function ReservationDrawer({
             {/* Customer Info */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
-                <User className="h-4 w-4" />
+                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/40">
+                  <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </span>
                 Cliente
               </h3>
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {reservation.customerName}
-                </p>
-                {reservation.customerEmail && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {reservation.customerEmail}
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center border-2 border-blue-200 dark:border-blue-800">
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    {getInitials(reservation.customerName)}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {reservation.customerName}
                   </p>
-                )}
-                {reservation.customerPhone && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {reservation.customerPhone}
-                  </p>
-                )}
+                  {reservation.customerEmail && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {reservation.customerEmail}
+                    </p>
+                  )}
+                  {reservation.customerPhone && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {reservation.customerPhone}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -386,7 +326,9 @@ export function ReservationDrawer({
             {/* Space and Dates */}
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
-                <MapPin className="h-4 w-4" />
+                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/40">
+                  <MapPin className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </span>
                 Espacio y Fechas
               </h3>
 
@@ -421,7 +363,12 @@ export function ReservationDrawer({
               {/* Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Check-in</Label>
+                  <Label className="flex flex-wrap items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-md bg-green-100 dark:bg-green-900/40">
+                      <LogIn className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    </span>
+                    Check-in
+                  </Label>
                   {isEditing ? (
                     <Popover>
                       <PopoverTrigger asChild>
@@ -460,7 +407,12 @@ export function ReservationDrawer({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Check-out</Label>
+                  <Label className="flex flex-wrap items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/40">
+                      <LogOut className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    </span>
+                    Check-out
+                  </Label>
                   {isEditing ? (
                     <Popover>
                       <PopoverTrigger asChild>
@@ -504,7 +456,9 @@ export function ReservationDrawer({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="flex flex-wrap items-center gap-2">
-                    <Clock className="h-4 w-4" />
+                    <span className="flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 dark:bg-purple-900/40">
+                      <Clock className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                    </span>
                     Noches
                   </Label>
                   <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
@@ -514,7 +468,9 @@ export function ReservationDrawer({
 
                 <div className="space-y-2">
                   <Label className="flex flex-wrap items-center gap-2">
-                    <Users className="h-4 w-4" />
+                    <span className="flex items-center justify-center w-6 h-6 rounded-md bg-cyan-100 dark:bg-cyan-900/40">
+                      <Users className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+                    </span>
                     Ocupantes
                   </Label>
                   {isEditing ? (
@@ -536,7 +492,9 @@ export function ReservationDrawer({
               {reservation.totalEstimated && (
                 <div className="space-y-2">
                   <Label className="flex flex-wrap items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
+                    <span className="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-900/40">
+                      <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    </span>
                     Total estimado
                   </Label>
                   <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
@@ -553,7 +511,9 @@ export function ReservationDrawer({
             {/* Folio de Consumos */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
-                <Receipt className="h-4 w-4" />
+                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-orange-100 dark:bg-orange-900/40">
+                  <Receipt className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                </span>
                 Folio de Consumos
               </h3>
               <DrawerFolioSummary spaceId={reservation.spaceId} />
@@ -582,7 +542,9 @@ export function ReservationDrawer({
             {/* Notes */}
             <div className="space-y-2">
               <Label className="flex flex-wrap items-center gap-2">
-                <FileText className="h-4 w-4" />
+                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-amber-100 dark:bg-amber-900/40">
+                  <FileText className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                </span>
                 Notas
               </Label>
               {isEditing ? (
@@ -605,38 +567,35 @@ export function ReservationDrawer({
 
             {/* Actions */}
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
                 Acciones
               </h3>
 
               {/* Check-in / Check-out */}
               <div className="grid grid-cols-2 gap-3">
                 <Button
-                  variant="outline"
-                  className="w-full"
-                  disabled={!canCheckin || isLoadingCheckinData}
+                  className="w-full bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 border border-green-200 dark:border-green-800"
+                  disabled={!canCheckin}
                   onClick={handleCheckin}
                 >
                   <LogIn className="h-4 w-4 mr-2" />
-                  {isLoadingCheckinData ? 'Cargando...' : 'Check-in'}
+                  Check-in
                 </Button>
                 <Button
-                  variant="outline"
-                  className="w-full"
-                  disabled={!canCheckout || isLoadingCheckoutData}
+                  className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800"
+                  disabled={!canCheckout}
                   onClick={handleCheckout}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  {isLoadingCheckoutData ? 'Cargando...' : 'Check-out'}
+                  Check-out
                 </Button>
               </div>
 
               {/* Maintenance / Cleaning */}
               <div className="grid grid-cols-3 gap-3">
                 <Button
-                  variant="outline"
+                  className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800"
                   size="sm"
-                  className="w-full"
                   onClick={() => {
                     setBlockType('cleaning');
                     setShowBlockDialog(true);
@@ -646,9 +605,8 @@ export function ReservationDrawer({
                   Limpieza
                 </Button>
                 <Button
-                  variant="outline"
+                  className="w-full bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800"
                   size="sm"
-                  className="w-full"
                   onClick={() => {
                     setBlockType('maintenance');
                     setShowBlockDialog(true);
@@ -658,9 +616,8 @@ export function ReservationDrawer({
                   Mantenim.
                 </Button>
                 <Button
-                  variant="outline"
+                  className="w-full bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800"
                   size="sm"
-                  className="w-full"
                   onClick={() => {
                     setBlockType('out_of_order');
                     setShowBlockDialog(true);
@@ -736,22 +693,6 @@ export function ReservationDrawer({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Check-in Dialog (compartido con /pms/checkin) */}
-      <CheckinDialog
-        open={showCheckinDialog}
-        onOpenChange={setShowCheckinDialog}
-        reservation={checkinReservation}
-        onConfirm={handleConfirmCheckin}
-      />
-
-      {/* Check-out Dialog (compartido con /pms/checkout) */}
-      <CheckoutDialog
-        open={showCheckoutDialog}
-        onOpenChange={setShowCheckoutDialog}
-        reservation={checkoutReservation}
-        onConfirm={handleConfirmCheckout}
-      />
 
       {/* Block Dialog */}
       <AlertDialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>

@@ -63,6 +63,16 @@ const ChatConfigPanel = dynamic(() => import('../panels/chat/ChatConfigPanel').t
   ssr: false,
 });
 
+const GeneralConfigPanel = dynamic(() => import('../panels/general/GeneralConfigPanel').then((m) => m.GeneralConfigPanel), {
+  loading: () => <LoadingSpinner />,
+  ssr: false,
+});
+
+const WebsiteConfigPanel = dynamic(() => import('../panels/sitioweb/WebsiteConfigPanel').then((m) => m.WebsiteConfigPanel), {
+  loading: () => <LoadingSpinner />,
+  ssr: false,
+});
+
 function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -72,6 +82,8 @@ function LoadingSpinner() {
 }
 
 const PANEL_MAP: Record<string, React.ComponentType> = {
+  general: GeneralConfigPanel,
+  sitioweb: WebsiteConfigPanel,
   parking: ParkingConfigPanel,
   timeline: TimelineConfigPanel,
   integraciones: IntegracionesConfigPanel,

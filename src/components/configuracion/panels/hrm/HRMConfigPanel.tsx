@@ -8,9 +8,8 @@ import type { OrganizationHRMSettings, OrganizationCurrency, UpdateHRMSettingsDT
 import { SettingsForm, CurrenciesCard } from '@/components/hrm/configuracion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { RefreshCw, Settings, DollarSign, Globe } from 'lucide-react';
+import { RefreshCw, Globe, DollarSign } from 'lucide-react';
 
 export function HRMConfigPanel() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -115,78 +114,69 @@ export function HRMConfigPanel() {
         </Button>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-          <TabsTrigger value="general" className="data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900">
-            <Settings className="mr-2 h-4 w-4" />
-            General
-          </TabsTrigger>
-          <TabsTrigger value="currencies" className="data-[state=active]:bg-blue-100 dark:data-[state=active]:bg-blue-900">
-            <DollarSign className="mr-2 h-4 w-4" />
-            Monedas
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-6">
-          {settings && (
-            <SettingsForm
-              settings={settings}
-              countries={countriesList}
-              frequencies={frequencies}
-              overtimePolicies={overtimePolicies}
-              onSubmit={handleSaveSettings}
-              isLoading={isLoading}
-            />
-          )}
-
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Globe className="h-6 w-6 text-blue-600" />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Reglas de País</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Consulta las reglas legales de nómina por país (salario mínimo, aportes, etc.)
-                    </p>
-                  </div>
-                </div>
-                <Link href="/app/hrm/reglas-pais">
-                  <Button variant="outline">Ver Reglas</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="currencies" className="space-y-6">
-          <CurrenciesCard
-            currencies={currencies}
-            availableCurrencies={currenciesList}
-            onSetBase={handleSetBaseCurrency}
-            onAdd={handleAddCurrency}
-            onRemove={handleRemoveCurrency}
+      {/* Configuración General */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-muted-foreground">Configuración General</h3>
+        {settings && (
+          <SettingsForm
+            settings={settings}
+            countries={countriesList}
+            frequencies={frequencies}
+            overtimePolicies={overtimePolicies}
+            onSubmit={handleSaveSettings}
             isLoading={isLoading}
           />
+        )}
 
-          <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-            <CardContent className="pt-4">
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-5 w-5 text-amber-600 mt-0.5" />
+        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Globe className="h-6 w-6 text-blue-600" />
                 <div>
-                  <p className="font-medium text-amber-900 dark:text-amber-100">Sobre las Monedas</p>
-                  <ul className="text-sm text-amber-700 dark:text-amber-300 mt-2 space-y-1">
-                    <li>• La <strong>moneda base</strong> se usa para cálculos de nómina y reportes.</li>
-                    <li>• Puede agregar múltiples monedas para operaciones internacionales.</li>
-                    <li>• Las tasas de cambio se pueden configurar manualmente o auto-actualizar.</li>
-                    <li>• No puede eliminar la moneda base; primero cambie a otra.</li>
-                  </ul>
+                  <p className="font-medium text-gray-900 dark:text-white">Reglas de País</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Consulta las reglas legales de nómina por país (salario mínimo, aportes, etc.)
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <Link href="/app/hrm/reglas-pais">
+                <Button variant="outline">Ver Reglas</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Monedas */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-muted-foreground">Monedas</h3>
+        <CurrenciesCard
+          currencies={currencies}
+          availableCurrencies={currenciesList}
+          onSetBase={handleSetBaseCurrency}
+          onAdd={handleAddCurrency}
+          onRemove={handleRemoveCurrency}
+          isLoading={isLoading}
+        />
+
+        <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <DollarSign className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-amber-900 dark:text-amber-100">Sobre las Monedas</p>
+                <ul className="text-sm text-amber-700 dark:text-amber-300 mt-2 space-y-1">
+                  <li>• La <strong>moneda base</strong> se usa para cálculos de nómina y reportes.</li>
+                  <li>• Puede agregar múltiples monedas para operaciones internacionales.</li>
+                  <li>• Las tasas de cambio se pueden configurar manualmente o auto-actualizar.</li>
+                  <li>• No puede eliminar la moneda base; primero cambie a otra.</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

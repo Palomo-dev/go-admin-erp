@@ -5,13 +5,14 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import PMSSettingsService, { type PMSSettings } from '@/lib/services/pmsSettingsService';
 import {
-  SettingsHeader,
   GeneralSettings,
   ReservationSettings,
   NotificationSettings,
   CheckinCheckoutSettings,
   OperationsSettings,
 } from '@/components/pms/configuracion';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, Save } from 'lucide-react';
 
 export function PMSConfigPanel() {
   const { organization } = useOrganization();
@@ -95,13 +96,15 @@ export function PMSConfigPanel() {
 
   return (
     <div className="space-y-6">
-      <SettingsHeader
-        onSave={handleSave}
-        onRefresh={handleRefresh}
-        isSaving={isSaving}
-        isRefreshing={isRefreshing}
-        hasChanges={hasChanges}
-      />
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
+        <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
+          <Save className="h-4 w-4 mr-2" />
+          {isSaving ? 'Guardando...' : 'Guardar'}
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <GeneralSettings settings={settings} onChange={handleChange} timezones={timezones} currencies={currencies} />

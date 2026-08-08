@@ -18,6 +18,11 @@ import {
   type ReservationDetails,
 } from '@/components/pms/calendario';
 import { NuevaReservaDialog } from '@/components/pms/reservas/nueva';
+import { CheckinDialog, type CheckinData } from '@/components/pms/checkin/CheckinDialog';
+import { CheckoutDialog, type CheckoutDialogData } from '@/components/pms/checkout/CheckoutDialog';
+import CheckinService, { type CheckinReservation } from '@/lib/services/checkinService';
+import CheckoutService, { type CheckoutReservation } from '@/lib/services/checkoutService';
+import { supabase } from '@/lib/supabase/config';
 
 export default function CalendarioPage() {
   const router = useRouter();
@@ -49,6 +54,12 @@ export default function CalendarioPage() {
   const [dialogSpaceId, setDialogSpaceId] = useState<string | null>(null);
   const [dialogCheckin, setDialogCheckin] = useState<string | null>(null);
   const [dialogCheckout, setDialogCheckout] = useState<string | null>(null);
+
+  // Checkin/Checkout dialog state (compartido entre hover card y drawer)
+  const [showCheckinDialog, setShowCheckinDialog] = useState(false);
+  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+  const [checkinReservation, setCheckinReservation] = useState<CheckinReservation | null>(null);
+  const [checkoutReservation, setCheckoutReservation] = useState<CheckoutReservation | null>(null);
 
   const dates = useMemo(() => {
     return TapeChartService.generateDateRange(
@@ -222,43 +233,89 @@ export default function CalendarioPage() {
 
   const handleCheckin = useCallback(async (id: string) => {
     try {
-      await TapeChartService.performCheckin(id);
-      await loadData();
-      
-      if (selectedReservation?.id === id) {
-        const details = await TapeChartService.getReservationDetails(id);
-        setSelectedReservation(details);
-      }
-      
-      toast({
-        title: 'Check-in realizado',
-        description: 'El huésped ha sido registrado',
-      });
+      const data = await CheckinService.getReservationForCheckin(id);
+      setCheckinReservation(data);
+      setShowCheckinDialog(true);
     } catch (error) {
-      console.error('Error performing checkin:', error);
-      throw error;
+      console.error('Error loading checkin data:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los datos del check-in',
+        variant: 'destructive',
+      });
     }
-  }, [selectedReservation?.id, toast]);
+  }, [toast]);
+
+  const handleConfirmCheckin = useCallback(async (data: CheckinData) => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    await CheckinService.performCheckin({
+      reservationId: data.reservationId,
+      userId: user?.id,
+      notes: data.notes,
+      depositAmount: data.depositAmount,
+      signatureData: data.signatureData,
+      identificationType: data.identificationType,
+      identificationNumber: data.identificationNumber,
+      nationality: data.nationality,
+      originCity: data.originCity,
+      originCountry: data.originCountry,
+      destinationCity: data.destinationCity,
+      destinationCountry: data.destinationCountry,
+      updateCheckinDate: data.updateCheckinDate,
+    });
+
+    if (data.depositAmount > 0) {
+      await CheckinService.registerDeposit({
+        reservationId: data.reservationId,
+        amount: data.depositAmount,
+        method: data.depositMethod,
+        reference: data.depositReference,
+      });
+    }
+
+    await loadData();
+    setShowCheckinDialog(false);
+    toast({
+      title: 'Check-in realizado',
+      description: 'El huésped ha sido registrado correctamente',
+    });
+  }, [toast]);
 
   const handleCheckout = useCallback(async (id: string) => {
     try {
-      await TapeChartService.performCheckout(id);
-      await loadData();
-      
-      if (selectedReservation?.id === id) {
-        const details = await TapeChartService.getReservationDetails(id);
-        setSelectedReservation(details);
-      }
-      
-      toast({
-        title: 'Check-out realizado',
-        description: 'El huésped ha sido dado de baja',
-      });
+      const data = await CheckoutService.getReservationForCheckout(id);
+      setCheckoutReservation(data);
+      setShowCheckoutDialog(true);
     } catch (error) {
-      console.error('Error performing checkout:', error);
-      throw error;
+      console.error('Error loading checkout data:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los datos del check-out',
+        variant: 'destructive',
+      });
     }
-  }, [selectedReservation?.id, toast]);
+  }, [toast]);
+
+  const handleConfirmCheckout = useCallback(async (data: CheckoutDialogData) => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    await CheckoutService.performCheckout({
+      reservationId: data.reservationId,
+      userId: user?.id,
+      notes: data.notes,
+      generateInvoice: data.generateInvoice,
+      generateReceipt: data.generateReceipt,
+      updateCheckoutDate: data.updateCheckoutDate,
+    });
+
+    await loadData();
+    setShowCheckoutDialog(false);
+    toast({
+      title: 'Check-out realizado',
+      description: 'El huésped ha sido dado de baja correctamente',
+    });
+  }, [toast]);
 
   const handleCreateBlock = useCallback(async (
     spaceId: string,
@@ -402,6 +459,8 @@ export default function CalendarioPage() {
             onReservationMove={handleReservationMove}
             onReservationResize={handleReservationResize}
             onCreateReservation={handleCreateReservation}
+            onCheckin={handleCheckin}
+            onCheckout={handleCheckout}
             isLoading={isLoading}
           />
         </div>
@@ -434,6 +493,22 @@ export default function CalendarioPage() {
         onCheckin={handleCheckin}
         onCheckout={handleCheckout}
         onCreateBlock={handleCreateBlock}
+      />
+
+      {/* Check-in Dialog (compartido entre hover card y drawer) */}
+      <CheckinDialog
+        open={showCheckinDialog}
+        onOpenChange={setShowCheckinDialog}
+        reservation={checkinReservation}
+        onConfirm={handleConfirmCheckin}
+      />
+
+      {/* Check-out Dialog (compartido entre hover card y drawer) */}
+      <CheckoutDialog
+        open={showCheckoutDialog}
+        onOpenChange={setShowCheckoutDialog}
+        reservation={checkoutReservation}
+        onConfirm={handleConfirmCheckout}
       />
     </div>
   );

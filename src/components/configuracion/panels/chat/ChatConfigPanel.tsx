@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Loader2, Tags, MessageSquareText, Key } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,13 +19,10 @@ import { TagsHeader, TagCard, TagDialog } from '@/components/chat/configuracion/
 import { ApiKeysHeader, ApiKeyCard, ApiKeyDialog } from '@/components/chat/configuracion/llaves-api';
 import { QuickRepliesHeader, QuickReplyCard, QuickReplyDialog } from '@/components/chat/configuracion/respuestas-rapidas';
 
-type ChatTab = 'etiquetas' | 'respuestas' | 'llaves';
-
 export function ChatConfigPanel() {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
-  const [activeTab, setActiveTab] = useState<ChatTab>('etiquetas');
 
   // Etiquetas state
   const [tagsLoading, setTagsLoading] = useState(true);
@@ -258,103 +254,98 @@ export function ChatConfigPanel() {
   }
 
   return (
-    <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ChatTab)}>
-        <TabsList>
-          <TabsTrigger value="etiquetas">
-            <Tags className="mr-2 h-4 w-4" />
-            Etiquetas
-          </TabsTrigger>
-          <TabsTrigger value="respuestas">
-            <MessageSquareText className="mr-2 h-4 w-4" />
-            Respuestas Rápidas
-          </TabsTrigger>
-          <TabsTrigger value="llaves">
-            <Key className="mr-2 h-4 w-4" />
-            Llaves API
-          </TabsTrigger>
-        </TabsList>
+    <div className="space-y-8">
+      {/* Etiquetas */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Tags className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-muted-foreground">Etiquetas</h3>
+        </div>
+        <TagsHeader totalTags={tags.length} loading={tagsLoading} onRefresh={loadTags} onCreateTag={handleCreateTag} />
 
-        {/* Etiquetas */}
-        <TabsContent value="etiquetas" className="space-y-4">
-          <TagsHeader totalTags={tags.length} loading={tagsLoading} onRefresh={loadTags} onCreateTag={handleCreateTag} />
+        {tags.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <span className="text-2xl">🏷️</span>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay etiquetas configuradas</h3>
+            <p className="text-gray-500 dark:text-gray-400">Crea etiquetas para organizar y clasificar tus conversaciones</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {tags.map((tag) => (
+              <TagCard key={tag.id} tag={tag} onEdit={handleEditTag} onDelete={handleDeleteTag} />
+            ))}
+          </div>
+        )}
+      </div>
 
-          {tags.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <span className="text-2xl">🏷️</span>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay etiquetas configuradas</h3>
-              <p className="text-gray-500 dark:text-gray-400">Crea etiquetas para organizar y clasificar tus conversaciones</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {tags.map((tag) => (
-                <TagCard key={tag.id} tag={tag} onEdit={handleEditTag} onDelete={handleDeleteTag} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
+      {/* Respuestas Rápidas */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <MessageSquareText className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-muted-foreground">Respuestas Rápidas</h3>
+        </div>
+        <QuickRepliesHeader
+          totalReplies={replies.length}
+          searchTerm={searchTerm}
+          loading={repliesLoading}
+          onSearchChange={setSearchTerm}
+          onRefresh={loadReplies}
+          onCreate={handleCreateReply}
+        />
 
-        {/* Respuestas Rápidas */}
-        <TabsContent value="respuestas" className="space-y-4">
-          <QuickRepliesHeader
-            totalReplies={replies.length}
-            searchTerm={searchTerm}
-            loading={repliesLoading}
-            onSearchChange={setSearchTerm}
-            onRefresh={loadReplies}
-            onCreate={handleCreateReply}
-          />
+        {replies.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <span className="text-2xl">💬</span>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay respuestas rápidas configuradas</h3>
+            <p className="text-gray-500 dark:text-gray-400">Crea plantillas de respuesta para agilizar la atención al cliente</p>
+          </div>
+        ) : filteredReplies.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 dark:text-gray-400">No se encontraron respuestas que coincidan con &quot;{searchTerm}&quot;</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredReplies.map((reply) => (
+              <QuickReplyCard key={reply.id} reply={reply} onEdit={handleEditReply} onDelete={handleDeleteReply} />
+            ))}
+          </div>
+        )}
+      </div>
 
-          {replies.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <span className="text-2xl">💬</span>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay respuestas rápidas configuradas</h3>
-              <p className="text-gray-500 dark:text-gray-400">Crea plantillas de respuesta para agilizar la atención al cliente</p>
-            </div>
-          ) : filteredReplies.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400">No se encontraron respuestas que coincidan con &quot;{searchTerm}&quot;</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredReplies.map((reply) => (
-                <QuickReplyCard key={reply.id} reply={reply} onEdit={handleEditReply} onDelete={handleDeleteReply} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
+      {/* Llaves API */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Key className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-muted-foreground">Llaves API</h3>
+        </div>
+        <ApiKeysHeader
+          totalKeys={apiKeys.length}
+          activeKeys={activeKeys}
+          loading={keysLoading}
+          onRefresh={loadApiKeys}
+          onCreate={() => setKeyDialogOpen(true)}
+        />
 
-        {/* Llaves API */}
-        <TabsContent value="llaves" className="space-y-4">
-          <ApiKeysHeader
-            totalKeys={apiKeys.length}
-            activeKeys={activeKeys}
-            loading={keysLoading}
-            onRefresh={loadApiKeys}
-            onCreate={() => setKeyDialogOpen(true)}
-          />
-
-          {apiKeys.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <span className="text-2xl">🔑</span>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay llaves de API configuradas</h3>
-              <p className="text-gray-500 dark:text-gray-400">Crea llaves de API para integrar el chat con tu aplicación o servicios externos</p>
+        {apiKeys.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <span className="text-2xl">🔑</span>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {apiKeys.map((key) => (
-                <ApiKeyCard key={key.id} apiKey={key} onRevoke={handleRevokeKey} onRotate={handleRotateKey} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay llaves de API configuradas</h3>
+            <p className="text-gray-500 dark:text-gray-400">Crea llaves de API para integrar el chat con tu aplicación o servicios externos</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {apiKeys.map((key) => (
+              <ApiKeyCard key={key.id} apiKey={key} onRevoke={handleRevokeKey} onRotate={handleRotateKey} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Dialogs */}
       <TagDialog open={tagDialogOpen} onOpenChange={setTagDialogOpen} tag={selectedTag} onSave={handleSaveTag} />

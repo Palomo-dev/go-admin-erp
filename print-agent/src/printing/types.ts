@@ -127,6 +127,8 @@ export interface SaleTicketPrintPayload {
   totalPaid?: number;
   /** Vuelto. Solo se imprime si es mayor que cero. */
   changeAmount?: number;
+  /** Saldo pendiente cuando la venta queda a crédito. */
+  balance?: number;
   businessName?: string;
   businessNit?: string;
   businessPhone?: string;

@@ -423,6 +423,38 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         .update({ track_stock: data.track_stock, updated_at: new Date().toISOString() })
         .eq('parent_product_id', productoId);
 
+      // 1a. Actualizar impuesto del producto padre
+      await supabase
+        .from('product_tax_relations')
+        .delete()
+        .eq('product_id', productoId);
+      if (data.tax_id) {
+        await supabase.from('product_tax_relations').insert({
+          product_id: productoId,
+          tax_id: data.tax_id,
+        });
+      }
+
+      // 1a-bis. Propagar impuesto a todas las variantes hijas existentes
+      const { data: existingChildrenForTax } = await supabase
+        .from('products')
+        .select('id')
+        .eq('parent_product_id', productoId);
+      if (existingChildrenForTax && existingChildrenForTax.length > 0) {
+        const childIds = existingChildrenForTax.map((c: any) => c.id);
+        await supabase
+          .from('product_tax_relations')
+          .delete()
+          .in('product_id', childIds);
+        if (data.tax_id) {
+          const taxRelations = childIds.map((cid: number) => ({
+            product_id: cid,
+            tax_id: data.tax_id,
+          }));
+          await supabase.from('product_tax_relations').insert(taxRelations);
+        }
+      }
+
       // 1b. Actualizar precio en product_prices si cambió
       if (data.price !== undefined && data.price >= 0) {
         const now = new Date().toISOString();
@@ -766,6 +798,14 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
                 product_id: newVariant.id,
                 cost: variant.cost,
                 effective_from: new Date().toISOString(),
+              });
+            }
+
+            // Heredar impuesto del producto padre
+            if (data.tax_id) {
+              await supabase.from('product_tax_relations').insert({
+                product_id: newVariant.id,
+                tax_id: data.tax_id,
               });
             }
 

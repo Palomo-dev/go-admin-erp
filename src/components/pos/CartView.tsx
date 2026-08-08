@@ -85,6 +85,23 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const [editingDiscountItemId, setEditingDiscountItemId] = useState<string | null>(null);
   const [discountInputValue, setDiscountInputValue] = useState('');
 
+  // Cargar descuentos frecuentes automáticamente para todos los items del carrito
+  useEffect(() => {
+    const productIds = cart.items
+      .map(item => item.product_id)
+      .filter(id => id && !frequentDiscountsMap[id]);
+    if (productIds.length === 0) return;
+    productIds.forEach(async (productId) => {
+      try {
+        const discounts = await POSService.getFrequentDiscounts(productId, cart.organization_id);
+        setFrequentDiscountsMap(prev => ({ ...prev, [productId]: discounts }));
+      } catch (error) {
+        console.error('Error loading frequent discounts for product', productId, error);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart.items.map(i => i.product_id).join(',')]);
+
   // Estado del kitchen ticket en tiempo real
   const [kitchenStatus, setKitchenStatus] = useState<string | null>(null);
 
@@ -341,10 +358,11 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         total: parseFloat(data.invoice.total),
         subtotal: parseFloat(data.invoice.subtotal),
         tax_total: parseFloat(data.invoice.tax_total),
-        discount_total: 0,
+        discount_total: data.items.reduce((sum: number, item: any) => sum + parseFloat(item.discount_amount || '0'), 0),
         balance: parseFloat(data.invoice.balance || data.invoice.total),
+        tax_included: data.invoice.tax_included,
         status: 'completed',
-        payment_status: 'pending',
+        payment_status: parseFloat(data.invoice.balance || data.invoice.total) > 0 ? 'partial' : 'paid',
         sale_date: data.invoice.created_at,
         notes: data.invoice.notes,
         created_at: data.invoice.created_at,
@@ -743,18 +761,33 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                                 </Button>
                               </div>
                             ) : !isOnHold && (
-                              <button
-                                className="text-[0.6rem] sm:text-[0.65rem] text-blue-500 dark:text-blue-400 hover:underline mt-0.5 sm:mt-1"
-                                onClick={() => {
-                                  handleStartEditDiscount(item.id);
-                                  handleLoadFrequentDiscounts(item.product_id);
-                                }}
-                              >
-                                + Agregar descuento
-                              </button>
+                              <div className="flex items-center gap-1 flex-wrap mt-0.5 sm:mt-1">
+                                <button
+                                  className="text-[0.6rem] sm:text-[0.65rem] text-blue-500 dark:text-blue-400 hover:underline"
+                                  onClick={() => {
+                                    handleStartEditDiscount(item.id);
+                                    handleLoadFrequentDiscounts(item.product_id);
+                                  }}
+                                >
+                                  + Agregar descuento
+                                </button>
+                                {frequentDiscountsMap[item.product_id]?.length > 0 && (
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    {frequentDiscountsMap[item.product_id].map((disc) => (
+                                      <button
+                                        key={disc}
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[0.6rem] font-medium bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer"
+                                        onClick={() => handleApplyDiscount(item.id, disc)}
+                                      >
+                                        -{formatCurrency(disc)}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             )}
 
-                            {/* Badges de descuentos frecuentes */}
+                            {/* Badges de descuentos frecuentes al editar */}
                             {editingDiscountItemId === item.id && frequentDiscountsMap[item.product_id]?.length > 0 && (
                               <div className="flex items-center gap-1 flex-wrap mt-1">
                                 <span className="text-[0.6rem] text-gray-400 dark:text-gray-500">Frecuentes:</span>

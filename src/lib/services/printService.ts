@@ -271,6 +271,7 @@ export class PrintService {
       })),
       totalPaid: payments.length > 0 ? payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : undefined,
       changeAmount: Number(anySale.change_amount) || undefined,
+      balance: Number(anySale.balance) > 0 ? Number(anySale.balance) : undefined,
       businessName: business?.name,
       businessNit: business?.nit || business?.taxId,
       businessPhone: business?.phone,

@@ -1009,7 +1009,7 @@ export class POSService {
         product_id: item.product_id
       }));
       
-      const taxIncluded = getTaxIncludedSetting(false);
+      const taxIncluded = cart.tax_included ?? getTaxIncludedSetting(false);
       
       const taxCalculation = await calculateCartTaxesComplete(
         taxCalculationItems,
@@ -2103,7 +2103,7 @@ export class POSService {
       // 3. Obtener factura con customer info (MISMA LÓGICA que la página que funciona)
       const { data: facturaData, error: facturaError } = await supabase
         .from('invoice_sales')
-        .select('*, customers(id, organization_id, full_name, first_name, last_name, email, phone, identification_type, identification_number, address, city, country, avatar_url, created_at, updated_at)')
+        .select('*, customers(id, organization_id, full_name, first_name, last_name, email, phone, identification_type, identification_number, address, city, avatar_url, created_at, updated_at)')
         .eq('number', invoiceNumber)
         .eq('organization_id', this.organizationId)
         .single();

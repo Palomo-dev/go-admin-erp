@@ -102,7 +102,7 @@ export function CustomerInfo({
       {displayEmail && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
           <Mail className="h-4 w-4 dark:text-gray-400" />
-          <a href={`mailto:${displayEmail}`} className="hover:underline truncate max-w-[200px] dark:text-gray-300">
+          <a href={`mailto:${displayEmail}`} className="hover:underline break-words whitespace-normal dark:text-gray-300">
             {displayEmail}
           </a>
         </p>

@@ -3,7 +3,6 @@
 import { CalendarIcon, User2 } from "lucide-react";
 import { formatCurrency } from "@/utils/Utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { useTheme } from "next-themes";
 import type { Opportunity } from "@/types/crm";
 import { Badge } from "@/components/ui/badge";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
@@ -13,8 +12,6 @@ interface OpportunityCardProps {
 }
 
 export function OpportunityCard({ opportunity }: OpportunityCardProps) {
-  const { theme } = useTheme();
-
   // Formatear fecha si existe
   const formattedDate = opportunity.expected_close_date
     ? new Date(opportunity.expected_close_date).toLocaleDateString("es-ES", {
@@ -62,7 +59,7 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
 
   return (
     <Card
-      className={`${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} hover:shadow-md dark:hover:shadow-gray-900/50 transition-shadow`}
+      className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition-shadow"
     >
       <CardContent className="p-2 sm:p-3 relative">
         {/* Indicador de prioridad o actividad reciente */}

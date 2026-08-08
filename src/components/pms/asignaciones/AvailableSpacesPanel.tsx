@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -116,21 +117,6 @@ function SpaceCard({
   );
 }
 
-function SpaceSkeleton() {
-  return (
-    <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
-      <div className="flex items-start justify-between mb-2">
-        <div className="space-y-1">
-          <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
-          <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-        </div>
-        <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-      </div>
-      <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-    </div>
-  );
-}
-
 export function AvailableSpacesPanel({
   spaces,
   selectedSpaceId,
@@ -162,12 +148,7 @@ export function AvailableSpacesPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-3">
-            <SpaceSkeleton />
-            <SpaceSkeleton />
-            <SpaceSkeleton />
-            <SpaceSkeleton />
-          </div>
+          <CardListSkeleton cards={4} columns="2" />
         ) : spaces.length === 0 ? (
           <div className="text-center py-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 mb-3">

@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useRouter } from 'next/navigation';
 import { Proveedor, FiltrosProveedores as FiltrosProveedoresType } from './types';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from "@/components/ui/button";
 import { toast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supplierService } from '@/lib/services/supplierService';
 
@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * Componente principal para el catálogo de proveedores
@@ -33,7 +34,7 @@ import {
  * incluyendo listado, filtrado, creación, edición y visualización de detalles.
  */
 const CatalogoProveedores: React.FC = () => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   
   // Estados
@@ -277,8 +278,7 @@ const CatalogoProveedores: React.FC = () => {
       
       {loading || isDuplicating ? (
         <div className="flex justify-center items-center py-8 sm:py-10">
-          <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-blue-600 dark:text-blue-400" />
-          {isDuplicating && <span className="ml-2 text-gray-500">Duplicando...</span>}
+          <Skeleton className="h-8 w-8 mx-auto" />{isDuplicating && <span className="ml-2 text-gray-500">Duplicando...</span>}
         </div>
       ) : (
         <ProveedoresTable 

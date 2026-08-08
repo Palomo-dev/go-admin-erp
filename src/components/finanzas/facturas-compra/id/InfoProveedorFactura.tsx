@@ -48,7 +48,7 @@ export function InfoProveedorFactura({
             {factura.supplier.contact && (
               <div className="flex items-center gap-2">
                 <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate">
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
                   {factura.supplier.contact}
                 </p>
               </div>
@@ -66,7 +66,7 @@ export function InfoProveedorFactura({
             {factura.supplier.email && (
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate">
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
                   {factura.supplier.email}
                 </p>
               </div>

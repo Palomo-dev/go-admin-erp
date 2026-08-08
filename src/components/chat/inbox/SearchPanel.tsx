@@ -5,6 +5,7 @@ import { Search, X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { Conversation } from '@/lib/services/conversationsService';
 import { formatDistanceToNow } from 'date-fns';
@@ -213,8 +214,13 @@ export default function SearchPanel({
             </p>
           </div>
         ) : loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="p-3 rounded-lg space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
           </div>
         ) : results.length === 0 && searchTerm.length >= 2 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">

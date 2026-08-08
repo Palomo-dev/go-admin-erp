@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Radio, Mail, MessageSquare, Smartphone, Bell, ToggleLeft, ToggleRight, Webhook } from 'lucide-react';
 import type { NotificationChannel } from '@/lib/services/notificacionesDashboardService';
 
@@ -46,7 +47,7 @@ export function EstadoCanales({ channels, isLoading, onToggleChannel, onNavigate
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Estado de Canales</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
           ))}
         </div>
       </div>

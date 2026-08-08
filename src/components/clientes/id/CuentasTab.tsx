@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2, Receipt, ExternalLink } from 'lucide-react';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Receipt, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -281,13 +282,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
 
   // Mostrar estado de carga
   if (loading) {
-    return (
-      <div className="w-full py-8">
-        <div className="w-full flex justify-center">
-          <div className="loading loading-spinner loading-md text-primary"></div>
-        </div>
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={5} />;
   }
 
   // Mostrar error si existe
@@ -409,22 +404,22 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
       {cuentas.length > 0 && (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full min-w-max text-left">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-700/50">
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   ID Venta
                 </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Monto
                 </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Balance
                 </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Vencimiento
                 </th>
-                <th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Estado
                 </th>
               </tr>
@@ -432,19 +427,19 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {paginatedCuentas.map(cuenta => (
                 <tr key={cuenta.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/70">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {cuenta.sale_id || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {formatCurrency(cuenta.amount)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {formatCurrency(cuenta.balance)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {new Date(cuenta.due_date).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-3 sm:px-6 py-4 text-sm">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cuenta.status, cuenta.days_overdue)}`}>
                       {getStatusText(cuenta.status, cuenta.days_overdue)}
                     </span>

@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { Loader2 } from 'lucide-react';
+
 import KnowledgeService, {
   KnowledgeSource,
   KnowledgeFragment,
@@ -19,6 +19,7 @@ import {
   SourceSettingsDialog,
   DeleteFragmentDialog
 } from '@/components/chat/conocimiento/fuentes/id';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface SourceWithStats extends KnowledgeSource {
   indexedCount?: number;
@@ -264,13 +265,10 @@ export default function SourceDetailPage() {
 
   if (loading && !source) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando fuente...</p>
-        </div>
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <DetailSkeleton />
+  </div>
+);
   }
 
   if (!source) {

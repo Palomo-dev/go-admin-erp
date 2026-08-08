@@ -36,7 +36,19 @@ export function RelatedTasksList({ tasks, loading, emptyLabel = 'Sin tareas vinc
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
   if (loading) {
-    return <p className="text-xs text-gray-400">Cargando tareas...</p>;
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-start gap-2 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2">
+            <Skeleton className="h-4 w-4 rounded-full mt-0.5 shrink-0" />
+            <div className="flex-1 space-y-1.5 min-w-0">
+              <Skeleton className="h-3.5 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (total === 0) {
@@ -73,24 +85,24 @@ export function RelatedTasksList({ tasks, loading, emptyLabel = 'Sin tareas vinc
                 ? <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                 : <Circle className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm truncate ${isDone(task.status) ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                <p className={`text-sm break-words whitespace-normal ${isDone(task.status) ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
                   {task.title}
                 </p>
-                <div className="flex items-center gap-2 flex-wrap mt-1 text-[10px] text-gray-500">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[10px] text-gray-500">
                   <Badge className={`text-[9px] px-1.5 py-0 ${TASK_STATUS_COLORS[task.status] || ''}`}>
                     {TASK_STATUS_LABELS[task.status] || task.status}
                   </Badge>
                   {task.estimated_hours != null && (
-                    <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" />{task.actual_hours || 0}/{task.estimated_hours}h</span>
+                    <span className="flex items-center gap-0.5 min-w-0 break-words whitespace-normal"><Clock className="h-3 w-3 shrink-0" />{task.actual_hours || 0}/{task.estimated_hours}h</span>
                   )}
                   {task.due_date && (
-                    <span className={`flex items-center gap-0.5 ${isOverdue(task) ? 'text-red-500 font-medium' : ''}`}>
-                      <Calendar className="h-3 w-3" />
+                    <span className={`flex items-center gap-0.5 min-w-0 break-words whitespace-normal ${isOverdue(task) ? 'text-red-500 font-medium' : ''}`}>
+                      <Calendar className="h-3 w-3 shrink-0" />
                       {new Date(task.due_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
                     </span>
                   )}
-                  {name && <span className="flex items-center gap-0.5"><User className="h-3 w-3" />{name}</span>}
-                  {related && <span className="text-blue-500 truncate max-w-[120px]">{related}</span>}
+                  {name && <span className="flex items-center gap-0.5 min-w-0 break-words whitespace-normal"><User className="h-3 w-3 shrink-0" />{name}</span>}
+                  {related && <span className="text-blue-500 break-words max-w-full whitespace-normal">{related}</span>}
                 </div>
               </div>
             </button>

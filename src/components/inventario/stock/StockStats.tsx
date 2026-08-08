@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Package, 
-  DollarSign, 
-  AlertTriangle, 
+import {
+  Card,
+  CardContent } from '@/components/ui/card';
+import {
+  Package,
+  DollarSign,
+  AlertTriangle,
   PackageX,
   Building2
 } from 'lucide-react';
@@ -74,10 +76,10 @@ export function StockStats({ stats, isLoading }: StockStatsProps) {
                 <stat.icon className={`h-5 w-5 ${stat.textColor}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                   {stat.title}
                 </p>
-                <p className={`text-lg font-semibold ${stat.textColor} truncate`}>
+                <p className={`text-lg font-semibold ${stat.textColor} break-words whitespace-normal`}>
                   {isLoading ? '...' : stat.value}
                 </p>
               </div>

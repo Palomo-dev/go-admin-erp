@@ -12,9 +12,9 @@ import {
   User,
   FileText,
   ExternalLink,
-  Loader2,
   Link2
 } from 'lucide-react';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -171,7 +171,7 @@ export default function CustomerProfileDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[450px] overflow-y-auto">
+      <SheetContent className="w-full max-w-[400px] sm:max-w-[450px] sm:w-[450px] overflow-y-auto">
         <SheetHeader className="pb-4">
           <div className="flex items-center justify-between">
             <SheetTitle>Perfil del Cliente</SheetTitle>
@@ -179,9 +179,7 @@ export default function CustomerProfileDrawer({
         </SheetHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          </div>
+          <DetailSkeleton />
         ) : customer ? (
           <div className="space-y-6">
             {/* Header del perfil */}

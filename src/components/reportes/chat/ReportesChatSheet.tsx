@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, Loader2 } from 'lucide-react';
+import { Send, Sparkles } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Sheet,
   SheetContent,
@@ -11,7 +12,6 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatMessage, type ChatMessageData } from './ChatMessage';
 import type { PeriodoCierre } from '@/lib/services/reportes/types';
 
@@ -195,9 +195,9 @@ export function ReportesChatSheet({
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-gray-500" />
               </div>
-              <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800">
-                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                <span className="text-sm text-gray-400">Generando reporte...</span>
+              <div className="flex-1 space-y-2 px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800">
+                <Skeleton className="h-3 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
               </div>
             </div>
           )}

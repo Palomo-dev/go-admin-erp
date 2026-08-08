@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Palette, Search, FileText, Code, Globe,
-  ArrowLeft, RefreshCw, Save, FileEdit, ShoppingCart
+  ArrowLeft, RefreshCw, FileEdit, ShoppingCart,
+  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
@@ -30,7 +30,7 @@ import {
 } from '@/components/organization/branding';
 
 const TAB_IDS = ['theme', 'pages', 'checkout', 'seo', 'content', 'advanced', 'publish'] as const;
-const TAB_ICONS: Record<string, any> = {
+const TAB_ICONS: Record<string, LucideIcon> = {
   theme: Palette,
   pages: FileEdit,
   checkout: ShoppingCart,
@@ -41,7 +41,6 @@ const TAB_ICONS: Record<string, any> = {
 };
 
 export default function BrandingPage() {
-  const router = useRouter();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { toast } = useToast();
@@ -96,7 +95,7 @@ export default function BrandingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, t]);
 
   useEffect(() => {
     loadSettings();
@@ -120,7 +119,8 @@ export default function BrandingPage() {
       let updatedSettings: WebsiteSettings;
 
       // Cast necesario: Partial<WebsiteSettings> puede tener null, pero los métodos esperan undefined
-      const safeData = data as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const safeData = data as any;
 
       if ('template_id' in data || 'theme_mode' in data || 'primary_color' in data) {
         updatedSettings = await websiteSettingsService.updateTheme(organizationId, safeData);
@@ -303,10 +303,10 @@ export default function BrandingPage() {
                     <TabsTrigger
                       key={tabId}
                       value={tabId}
-                      className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+                      className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
                     >
-                      <Icon className="h-4 w-4" />
-                      <span className="hidden sm:inline">{t(`tabs.${tabId}`)}</span>
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{t(`tabs.${tabId}`)}</span>
                     </TabsTrigger>
                   );
                 })}

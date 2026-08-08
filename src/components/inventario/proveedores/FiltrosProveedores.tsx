@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useTheme } from 'next-themes';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
@@ -21,8 +21,7 @@ const FiltrosProveedores: React.FC<FiltrosProveedoresProps> = ({
   filters,
   setFilters
 }) => {
-  const { theme } = useTheme();
-  
+
   // Maneja cambios en la entrada de búsqueda
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters(prev => ({ ...prev, busqueda: e.target.value }));

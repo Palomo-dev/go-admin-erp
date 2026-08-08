@@ -204,7 +204,7 @@ export function WebOrderCard({
         {order.delivery_type !== 'pickup' && order.delivery_address?.address && (
           <div className="flex items-start gap-2 mb-3 text-sm text-muted-foreground dark:text-gray-400">
             <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 dark:text-gray-400" />
-            <span className="line-clamp-2 dark:text-gray-300">{order.delivery_address.address}</span>
+            <span className="break-words whitespace-normal dark:text-gray-300">{order.delivery_address.address}</span>
           </div>
         )}
 
@@ -216,7 +216,7 @@ export function WebOrderCard({
           <div className="text-sm space-y-1 max-h-20 overflow-y-auto">
             {order.items?.slice(0, 3).map((item, idx) => (
               <div key={idx} className="flex justify-between">
-                <span className="truncate dark:text-gray-200">{item.quantity}x {item.product_name}</span>
+                <span className="break-words whitespace-normal dark:text-gray-200">{item.quantity}x {item.product_name}</span>
                 <span className="text-muted-foreground dark:text-gray-400">${item.total.toLocaleString()}</span>
               </div>
             ))}

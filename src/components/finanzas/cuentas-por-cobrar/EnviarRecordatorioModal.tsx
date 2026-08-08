@@ -107,7 +107,7 @@ Equipo de Cobranzas`;
                 </div>
                 <div>
                   <Label className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Email</Label>
-                  <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white truncate">
+                  <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                     {cuenta.customer_email || 'No disponible'}
                   </p>
                 </div>

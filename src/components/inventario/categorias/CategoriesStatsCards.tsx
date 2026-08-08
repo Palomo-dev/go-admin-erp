@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+  Card,
+  CardContent } from '@/components/ui/card';
 import { cn } from '@/utils/Utils';
 import { FolderTree, CheckCircle2, XCircle, Package } from 'lucide-react';
 import { type CategoryStats } from '@/lib/services/categoryService';

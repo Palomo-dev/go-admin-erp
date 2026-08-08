@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { AlertTriangle, ClipboardCheck, Clock, PlayCircle, PauseCircle, XCircle, FileText } from 'lucide-react';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
+import { AlertTriangle, ClipboardCheck, PlayCircle, PauseCircle, XCircle, FileText } from 'lucide-react';
 import type { MaintenanceStats } from '@/lib/services/maintenanceService';
 
 interface MaintenanceStatsProps {
@@ -57,16 +58,7 @@ export function MaintenanceStats({ stats, isLoading }: MaintenanceStatsProps) {
   ];
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="p-6 animate-pulse">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-2" />
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-12" />
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={6} />;
   }
 
   return (

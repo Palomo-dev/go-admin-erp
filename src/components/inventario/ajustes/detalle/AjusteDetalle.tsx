@@ -51,6 +51,7 @@ import {
   type InventoryAdjustment
 } from '@/lib/services/adjustmentService';
 import Link from 'next/link';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface AjusteDetalleProps {
   adjustmentId: number;
@@ -224,9 +225,9 @@ export function AjusteDetalle({ adjustmentId }: AjusteDetalleProps) {
 
   if (loadingOrg || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando ajuste...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

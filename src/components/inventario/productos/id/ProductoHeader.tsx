@@ -1,15 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+import {
+  useState,
+  useEffect } from 'react';
+
 import Image from 'next/image';
-import { 
-  Badge,
-  InfoIcon,
-  Tag,
-  PackageIcon,
-  Loader2
-} from 'lucide-react';
+import { Badge, InfoIcon, Tag, PackageIcon } from 'lucide-react';
 import { Badge as UIBadge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatCurrency } from '@/utils/Utils';
@@ -17,6 +13,7 @@ import { supabase } from '@/lib/supabase/config';
 import { loadProductImages, getPublicUrl, ProductImageType } from '@/lib/supabase/imageUtils';
 
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProductoHeaderProps {
   producto: any;
@@ -27,7 +24,7 @@ interface ProductoHeaderProps {
  * Incluye imagen principal, nombre, SKU, estado, categoría, etc.
  */
 const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const { organization } = useOrganization();
   const [selectedImage, setSelectedImage] = useState<number>(0);
   const [showAllImages, setShowAllImages] = useState<boolean>(false);
@@ -418,7 +415,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                   ) : (
                     <p className="mt-1 text-2xl font-semibold dark:text-white">
                       {loadingStock ? 
-                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" /> : 
+                        <Skeleton className="h-6 w-8 mx-auto" />: 
                         totalStock.total
                       }
                     </p>

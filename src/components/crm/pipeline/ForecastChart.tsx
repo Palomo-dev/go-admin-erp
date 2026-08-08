@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/utils/Utils';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // Interfaces
@@ -220,8 +220,9 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
   // Renderizar gráfico de carga
   if (loading) {
     return (
-      <Card className="p-4 h-80 flex items-center justify-center">
-        <LoadingSpinner size="lg" className="text-blue-500" />
+      <Card className="p-4 h-80 space-y-4">
+        <Skeleton className="h-5 w-1/2" />
+        <Skeleton className="h-60 w-full" />
       </Card>
     );
   }

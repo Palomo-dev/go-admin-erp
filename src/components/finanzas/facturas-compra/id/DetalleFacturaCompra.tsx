@@ -401,7 +401,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
             <span>Volver</span>
           </Button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
               Factura {factura.number_ext}
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
@@ -541,7 +541,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                   <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Número</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white truncate">{factura.number_ext}</p>
+                    <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white break-words whitespace-normal min-w-0">{factura.number_ext}</p>
                   </div>
                 </div>
 
@@ -631,11 +631,11 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                             return (
                               <div className="flex flex-col">
                                 <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
-                                <span className="line-clamp-2">{item.description}</span>
+                                <span className="break-words whitespace-normal min-w-0">{item.description}</span>
                               </div>
                             );
                           }
-                          return <span className="line-clamp-2">{item.description}</span>;
+                          return <span className="break-words whitespace-normal min-w-0">{item.description}</span>;
                         })()}
                       </TableCell>
                       <TableCell className="text-xs sm:text-sm text-right text-gray-900 dark:text-gray-300 py-2 sm:py-3 whitespace-nowrap">

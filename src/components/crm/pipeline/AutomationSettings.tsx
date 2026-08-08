@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Mail, Check, Plus, Trash } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AutomationSettingsProps {
   pipelineId: string;
@@ -52,7 +52,6 @@ export function AutomationSettings({ pipelineId }: AutomationSettingsProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
-  const { theme } = useTheme();
 
   // Obtener el ID de la organización activa del almacenamiento local
   const getOrganizationId = () => {
@@ -195,15 +194,29 @@ export function AutomationSettings({ pipelineId }: AutomationSettingsProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-24">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2">Cargando configuraciones...</span>
-      </div>
+      <Card className="w-full border bg-background">
+        <CardHeader>
+          <Skeleton className="h-6 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <Card className={`w-full border ${theme === 'dark' ? 'bg-background/40' : 'bg-background'}`}>
+    <Card className="w-full border bg-background dark:bg-background/40">
       <CardHeader>
         <CardTitle>Configuración de Automatizaciones</CardTitle>
         <CardDescription>
@@ -212,7 +225,7 @@ export function AutomationSettings({ pipelineId }: AutomationSettingsProps) {
       </CardHeader>
       <CardContent>
         {automations.map((automation, index) => (
-          <div key={index} className={`mb-6 p-4 rounded-md ${theme === 'dark' ? 'bg-secondary/20' : 'bg-secondary/10'}`}>
+          <div key={index} className="mb-6 p-4 rounded-md bg-secondary/10 dark:bg-secondary/20">
             <div className="flex flex-col md:flex-row justify-between mb-4">
               <div className="flex-1 mb-2 md:mb-0 md:mr-2">
                 <Label htmlFor={`from-stage-${index}`} className="mb-2 block">

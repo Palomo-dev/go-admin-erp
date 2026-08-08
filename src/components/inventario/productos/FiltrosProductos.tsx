@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { Search } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ interface FiltrosProductosProps {
  * Componente para filtros de búsqueda de productos
  */
 const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersChange }) => {
-  const { theme } = useTheme();
+
   const { organization } = useOrganization();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [busquedaLocal, setBusquedaLocal] = useState<string>(filters.busqueda);

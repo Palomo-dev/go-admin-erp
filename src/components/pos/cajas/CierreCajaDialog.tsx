@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
@@ -222,9 +223,10 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
         </DialogHeader>
 
         {loadingSummary ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
-            <span className="ml-2 dark:text-gray-300">Calculando resumen...</span>
+          <div className="py-8 space-y-3">
+            <Skeleton className="h-5 w-1/2" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-20 w-full" />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -366,11 +368,11 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                             {MOVEMENT_ICONS[mov.type]}
                           </span>
                           <div className="min-w-0">
-                            <p className="font-medium dark:text-white text-gray-900 truncate">
+                            <p className="font-medium dark:text-white text-gray-900 break-words whitespace-normal">
                               {mov.label}
                               {mov.reference ? ` #${mov.reference}` : ''}
                             </p>
-                            <p className="text-xs dark:text-gray-400 text-gray-500 truncate">
+                            <p className="text-xs dark:text-gray-400 text-gray-500 break-words whitespace-normal">
                               {mov.counterparty || 'Sin contraparte'}
                             </p>
                           </div>

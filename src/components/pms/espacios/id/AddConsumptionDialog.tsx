@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Minus, Search, X, ShoppingCart, Package } from 'lucide-react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { formatCurrency } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { POSService } from '@/lib/services/posService';
@@ -304,11 +305,8 @@ export function AddConsumptionDialog({
             {/* Grid de productos */}
             <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
               {isLoadingProducts ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-500 dark:text-gray-400">Cargando productos...</p>
-                  </div>
+                <div className="py-4">
+                  <CardListSkeleton cards={6} columns="2" />
                 </div>
               ) : products.length === 0 ? (
                 <div className="flex items-center justify-center py-20">

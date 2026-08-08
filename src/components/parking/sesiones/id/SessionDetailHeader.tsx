@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface SessionDetailHeaderProps {
   session: {
@@ -83,15 +84,15 @@ export function SessionDetailHeader({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {session?.vehicle_plate || 'Cargando...'}
+                {session?.vehicle_plate || <Skeleton className="h-8 w-32" />}
               </h1>
               {session && getStatusBadge(session.status)}
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {session
                 ? `Sesión iniciada ${new Date(session.entry_at).toLocaleString('es-ES')}`
-                : 'Cargando detalles...'}
-            </p>
+                : <Skeleton className="h-4 w-48" />}
+            </div>
           </div>
         </div>
 

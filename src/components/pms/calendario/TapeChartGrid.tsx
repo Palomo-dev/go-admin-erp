@@ -13,6 +13,7 @@ import {
   pointerWithin,
 } from '@dnd-kit/core';
 import { cn } from '@/utils/Utils';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { format, isToday, isWeekend } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { TapeChartSpace, TapeChartReservation, TapeChartBlock } from '@/lib/services/tapeChartService';
@@ -250,11 +251,8 @@ export function TapeChartGrid({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[400px] bg-white dark:bg-gray-800">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Cargando calendario...</p>
-        </div>
+      <div className="h-[400px] bg-white dark:bg-gray-800 p-4">
+        <TableSkeleton rows={5} columns={7} />
       </div>
     );
   }

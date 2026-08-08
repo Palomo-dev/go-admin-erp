@@ -10,6 +10,7 @@ import {
   ServiciosList,
   ServicioDialog,
 } from '@/components/pms/servicios';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function ServiciosPage() {
   const { organization } = useOrganization();
@@ -163,8 +164,11 @@ export default function ServiciosPage() {
   // ─── Render ─────────────────────────────────────────────────────────────────
   if (!mounted || !organization) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400">Cargando organización...</div>
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <PageHeaderSkeleton />
+          <CardListSkeleton cards={6} columns="3" />
+        </div>
       </div>
     );
   }

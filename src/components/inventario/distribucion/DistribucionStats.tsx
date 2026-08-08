@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+  Card,
+  CardContent } from '@/components/ui/card';
 import { Clock, Truck, CheckCircle2, Package } from 'lucide-react';
 import type { InventoryTransfer } from '../transferencias/types';
 

@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Search, User, Plus, X, Car, Mail, Phone } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/utils/Utils';
@@ -356,7 +357,7 @@ export function PassFormDialog({
                         autoFocus
                       />
                       {isSearching && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-blue-500" />
+                        <Skeleton className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full" />
                       )}
                     </div>
 
@@ -364,9 +365,10 @@ export function PassFormDialog({
 
                     <ScrollArea className="h-52">
                       {isSearching ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-5 w-5 animate-spin text-blue-500 mr-2" />
-                          <span className="text-sm text-gray-500 dark:text-gray-400">Buscando...</span>
+                        <div className="space-y-2 py-4 px-2">
+                          {Array.from({ length: 4 }).map((_, i) => (
+                            <Skeleton key={i} className="h-10 w-full" />
+                          ))}
                         </div>
                       ) : customers.length === 0 && customerSearch.length >= 2 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">

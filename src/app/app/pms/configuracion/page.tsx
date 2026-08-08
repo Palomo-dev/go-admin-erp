@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import PMSSettingsService, { type PMSSettings } from '@/lib/services/pmsSettingsService';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import {
   SettingsHeader,
   GeneralSettings,
@@ -95,17 +96,9 @@ export default function ConfiguracionPage() {
 
   if (isLoading || !settings) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="animate-pulse space-y-6">
-            <div className="h-16 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-              <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-              <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-              <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-            </div>
-          </div>
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <DetailSkeleton />
         </div>
       </div>
     );

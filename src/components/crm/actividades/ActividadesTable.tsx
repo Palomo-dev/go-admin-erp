@@ -36,6 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatDate } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, ACTIVITY_TYPE_CONFIG } from './types';
 
 interface ActividadesTableProps {
@@ -82,11 +83,10 @@ export function ActividadesTable({
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <div className="p-8 text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando actividades...</p>
-        </div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
       </div>
     );
   }

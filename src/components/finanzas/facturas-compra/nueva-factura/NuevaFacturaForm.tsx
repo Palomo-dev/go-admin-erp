@@ -514,7 +514,7 @@ export function NuevaFacturaForm({
             <span className="hidden sm:inline">Volver</span>
           </Button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
               {esEdicion ? 'Editar Factura de Compra' : 'Nueva Factura de Compra'}
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">

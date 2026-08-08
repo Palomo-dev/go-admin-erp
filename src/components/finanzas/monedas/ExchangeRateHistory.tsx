@@ -21,21 +21,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { 
-  TrendingUp, 
+import {TrendingUp, 
   TrendingDown, 
   History, 
   Calendar, 
   RefreshCw,
-  Loader2,
   Download,
   Filter,
-  Globe
-} from 'lucide-react';
+  Globe} from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
 import { actualizarTasasDeCambioGlobal } from '@/lib/services/openexchangerates';
 import { ExchangeRateHistoryPagination } from './ExchangeRateHistoryPagination';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 
 interface ExchangeRateRecord {
   id: string;
@@ -348,9 +346,7 @@ export function ExchangeRateHistory({ organizationId: propOrgId }: ExchangeRateH
 
         {/* Tabla de histórico */}
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-          </div>
+          <TableSkeleton columns={6} rows={5} />
         ) : filteredRates.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <History className="h-12 w-12 mx-auto mb-3 opacity-50 dark:text-gray-600" />

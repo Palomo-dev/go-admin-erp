@@ -173,7 +173,7 @@ export function ProductSearchDialog({
         <DialogHeader className="pb-3">
           <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900 dark:text-white">
             <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="truncate">Catálogo de Productos</span>
+            <span className="break-words whitespace-normal min-w-0">Catálogo de Productos</span>
           </DialogTitle>
         </DialogHeader>
         
@@ -216,7 +216,7 @@ export function ProductSearchDialog({
           
           {/* Estadísticas */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-            <span className="truncate">
+            <span className="break-words whitespace-normal min-w-0">
               <span className="font-medium text-gray-900 dark:text-gray-100">{filteredProducts.length}</span> de {products.length} productos
               <span className="hidden md:inline">{searchTerm && ` - Filtrando por "${searchTerm}"`}</span>
             </span>
@@ -233,7 +233,7 @@ export function ProductSearchDialog({
               <>
                 {[...Array(6)].map((_, i) => (
                   <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                       <div className="flex-1 space-y-2">
                         <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
                         <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
@@ -263,7 +263,7 @@ export function ProductSearchDialog({
                         {/* Información del producto */}
                         <div className="flex-1 min-w-0 w-full sm:w-auto">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                            <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">
+                            <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                               {product.name}
                             </h4>
                             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -279,12 +279,12 @@ export function ProductSearchDialog({
                           </div>
                           
                           {product.description && (
-                            <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-1">
+                            <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mb-2 break-words whitespace-normal min-w-0">
                               {product.description}
                             </p>
                           )}
                           
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-wrap items-center justify-between">
                             <div className="flex items-center gap-3 sm:gap-4">
                               <div>
                                 <div className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-500">

@@ -7,6 +7,7 @@ import {
   Bell, Mail, MessageSquare, Smartphone, RotateCcw, Eye,
   ChevronLeft, ChevronRight, CheckCheck,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { NotificationDetailSheet } from './NotificationDetailSheet';
@@ -70,7 +71,7 @@ export function UltimasNotificaciones({ notifications, isLoading, onRetry, onNav
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Últimas Notificaciones</h2>
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="h-14 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+            <Skeleton key={i} className="h-14 w-full rounded-lg" />
           ))}
         </div>
       </div>

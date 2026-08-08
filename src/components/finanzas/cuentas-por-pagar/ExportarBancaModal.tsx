@@ -380,7 +380,7 @@ export function ExportarBancaModal({
               {/* Resumen de exportación */}
               <Card>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between">
                     <div>
                       <h3 className="font-medium">Resumen de Exportación</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">

@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContabilidadService, JournalEntry, ChartAccount } from '../ContabilidadService';
 import { formatCurrency, formatNumber } from '@/utils/Utils';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 interface JournalLineInput {
   account_code: string;
@@ -192,14 +193,16 @@ export function AsientosPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -327,7 +330,7 @@ export function AsientosPage() {
                   <TableCell className="text-gray-700 dark:text-gray-300">
                     {new Date(asiento.entry_date).toLocaleDateString('es-CO')}
                   </TableCell>
-                  <TableCell className="text-gray-700 dark:text-gray-300 max-w-xs truncate">
+                  <TableCell className="text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
                     {asiento.memo || '-'}
                   </TableCell>
                   <TableCell>

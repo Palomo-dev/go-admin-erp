@@ -24,6 +24,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
@@ -199,7 +200,11 @@ export function AccessRulesEditor({ value, onChange }: AccessRulesEditorProps) {
             <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
               <Label className="text-sm">Sedes permitidas</Label>
               {isLoading ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400">Cargando sedes...</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
               ) : branches.length === 0 ? (
                 <div className="text-sm text-gray-500 dark:text-gray-400">No hay sedes configuradas</div>
               ) : (

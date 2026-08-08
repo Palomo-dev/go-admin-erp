@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { ShoppingBag, Calendar, DollarSign, Home, CalendarClock, CalendarX, Receipt } from 'lucide-react';
 
 interface HistorialItem {
@@ -285,10 +286,8 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
   // Mostrar estado de carga
   if (loading) {
     return (
-      <div className="w-full py-8">
-        <div className="w-full flex justify-center">
-          <div className="loading loading-spinner loading-md text-primary"></div>
-        </div>
+      <div className="py-4">
+        <StatsSkeleton count={4} />
       </div>
     );
   }
@@ -321,10 +320,10 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
                 {stat.icon}
               </div>
             </div>
-            <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+            <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white break-words whitespace-normal">
               {stat.value}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words whitespace-normal">
               {stat.description}
             </div>
           </div>
@@ -357,7 +356,7 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                     {iconMap[item.tipo]}
                     <div className="min-w-0">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">{item.titulo}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white block break-words whitespace-normal min-w-0">{item.titulo}</span>
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${statusColor(item.status)}`}>{item.status}</span>
                     </div>
                   </div>

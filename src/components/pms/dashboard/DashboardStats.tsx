@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { 
   LogIn, 
   LogOut, 
@@ -53,22 +54,6 @@ function StatCard({ title, value, icon, color, subtitle }: StatCardProps) {
   );
 }
 
-function StatCardSkeleton() {
-  return (
-    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          </div>
-          <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function DashboardStats({
   arrivalsToday,
   departuresToday,
@@ -80,13 +65,7 @@ export function DashboardStats({
   isLoading = false,
 }: DashboardStatsProps) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        {Array.from({ length: 7 }).map((_, i) => (
-          <StatCardSkeleton key={i} />
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={7} />;
   }
 
   return (

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+
 import FacebookChannelService, { 
   FacebookChannel, 
   FacebookCredentials, 
@@ -18,6 +18,7 @@ import {
   FacebookEventsCard,
   FacebookWebhookCard
 } from '@/components/chat/channels/facebook/id';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function FacebookChannelPage() {
   const params = useParams();
@@ -159,10 +160,10 @@ export default function FacebookChannelPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <DetailSkeleton />
+  </div>
+);
   }
 
   if (!channel) {

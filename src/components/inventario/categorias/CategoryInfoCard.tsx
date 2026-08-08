@@ -2,7 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle } from '@/components/ui/card';
 import { Calendar, ChefHat, Utensils } from 'lucide-react';
 import { type Category } from '@/lib/services/categoryService';
 import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';

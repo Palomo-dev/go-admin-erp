@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Car,
   CircleCheck,
@@ -428,8 +429,7 @@ export function SpaceDetailDialog({
               <div className="pt-2 border-t border-red-200 dark:border-red-700">
                 {loadingRate ? (
                   <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Calculando tarifa...
+                    <Skeleton className="h-4 w-32 rounded" />
                   </div>
                 ) : calculatedFee ? (
                   <div className="space-y-2">

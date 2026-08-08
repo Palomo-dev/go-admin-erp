@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Plus, Package } from 'lucide-react';
 import { getPlans, createMembership, MembershipPlan } from '@/lib/services/gymService';
 import { CustomerSelectorGym, CustomerGym } from './CustomerSelectorGym';
@@ -137,9 +138,10 @@ export function MembershipDialog({ open, onOpenChange, onSave }: MembershipDialo
             <Label className="text-sm font-medium">Plan de Membresía</Label>
             
             {isLoading ? (
-              <div className="flex items-center justify-center p-4 border rounded-lg dark:border-gray-700">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400 mr-2" />
-                <span className="text-sm dark:text-gray-400">Cargando planes...</span>
+              <div className="p-4 border rounded-lg dark:border-gray-700 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-2/3" />
               </div>
             ) : plans.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-6 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">

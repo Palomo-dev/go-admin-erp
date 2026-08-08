@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { 
   AlertTriangle, 
   AlertCircle, 
@@ -79,18 +79,6 @@ function AlertItem({ alert }: { alert: Alert }) {
   );
 }
 
-function AlertSkeleton() {
-  return (
-    <div className="flex flex-wrap items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
-      <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded" />
-      <div className="flex-1 space-y-2">
-        <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-      </div>
-    </div>
-  );
-}
-
 export function AlertsPanel({ alerts, isLoading = false }: AlertsPanelProps) {
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -107,11 +95,7 @@ export function AlertsPanel({ alerts, isLoading = false }: AlertsPanelProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
-          <>
-            <AlertSkeleton />
-            <AlertSkeleton />
-            <AlertSkeleton />
-          </>
+          <CardListSkeleton cards={3} columns="1" />
         ) : alerts.length === 0 ? (
           <div className="text-center py-6">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 mb-3">

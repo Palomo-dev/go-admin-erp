@@ -1,4 +1,5 @@
 import { FC } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface RotacionProductosChartProps {
   data?: Array<{
@@ -30,7 +31,7 @@ const RotacionProductosChart: FC<RotacionProductosChartProps> = ({
       <h3 className="text-lg font-semibold mb-4 text-gray-900">Rotación de Productos</h3>
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <p>Cargando...</p>
+          <Skeleton className="h-4 w-24 mx-auto" />
         </div>
       ) : (
         <div className="h-64">

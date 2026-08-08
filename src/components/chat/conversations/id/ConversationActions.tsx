@@ -12,6 +12,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -102,8 +103,13 @@ export default function ConversationActions({
   if (!conversation) {
     return (
       <Card className="h-full">
-        <CardContent className="flex items-center justify-center h-32">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+        <CardContent className="p-4 space-y-3">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-20 w-full" />
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+          </div>
         </CardContent>
       </Card>
     );

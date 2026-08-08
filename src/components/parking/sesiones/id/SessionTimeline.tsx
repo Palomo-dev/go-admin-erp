@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Clock,
   LogIn,
@@ -10,7 +11,6 @@ import {
   AlertTriangle,
   Edit,
   CheckCircle,
-  XCircle,
 } from 'lucide-react';
 
 export interface TimelineEvent {
@@ -64,13 +64,13 @@ export function SessionTimeline({ events, isLoading }: SessionTimelineProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-4">
-            {[1, 2, 3].map((i) => (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="flex gap-4">
-                <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                <Skeleton className="h-8 w-8 rounded-full shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
                 </div>
               </div>
             ))}
@@ -97,7 +97,7 @@ export function SessionTimeline({ events, isLoading }: SessionTimelineProps) {
           <div className="relative">
             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
             <div className="space-y-4">
-              {events.map((event, index) => (
+              {events.map((event) => (
                 <div key={event.id} className="relative flex gap-4 pl-2">
                   <div
                     className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full border-2 ${getEventColor(

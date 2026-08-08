@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   TripDetailHeader,
@@ -22,7 +23,7 @@ import {
   type TripTicket,
   type TransportEvent,
 } from '@/lib/services/tripsService';
-import { Loader2, Users, Clock, AlertTriangle } from 'lucide-react';
+import { Users, Clock, AlertTriangle } from 'lucide-react';
 
 interface Route {
   id: string;
@@ -288,9 +289,8 @@ export default function TripDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
-        <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando viaje...</span>
+      <div className="p-4 sm:p-6 space-y-4">
+        <DetailSkeleton />
       </div>
     );
   }

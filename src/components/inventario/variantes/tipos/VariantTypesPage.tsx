@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import { VariantTypesService } from './VariantTypesService';
 import { VariantType, VariantTypesStats } from './types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function VariantTypesPage() {
   const { toast } = useToast();
@@ -303,8 +304,7 @@ export function VariantTypesPage() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
+              <Skeleton className="h-8 w-8 mx-auto" /></div>
           ) : tiposFiltrados.length === 0 ? (
             <div className="text-center py-10 text-gray-500 dark:text-gray-400">
               <Layers className="h-12 w-12 mx-auto mb-4 opacity-50" />

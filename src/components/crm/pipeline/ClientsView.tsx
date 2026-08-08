@@ -5,6 +5,7 @@ import { usePipeline } from "./hooks/usePipeline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from "@/components/common/PageSkeletons";
 
 // Componentes modulares
 import CustomerDetailsModal from "./modals/CustomerDetailsModal";
@@ -88,9 +89,10 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
   // Si estamos cargando, mostrar spinner
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[60vh] gap-3">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
-        <span className="text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

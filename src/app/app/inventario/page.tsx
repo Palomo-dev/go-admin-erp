@@ -1,12 +1,16 @@
 'use client';
 
-import { FC, useState, useEffect, useCallback } from 'react';
-import { 
-  Package, 
-  PackageCheck, 
-  AlertTriangle, 
-  PackageX, 
-  DollarSign, 
+import {
+  FC,
+  useState,
+  useEffect,
+  useCallback } from 'react';
+import {
+  Package,
+  PackageCheck,
+  AlertTriangle,
+  PackageX,
+  DollarSign,
   FolderTree,
   RefreshCw
 } from 'lucide-react';
@@ -114,7 +118,7 @@ const InventarioPage: FC<InventarioPageProps> = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

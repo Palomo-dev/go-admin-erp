@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import {
   User,
@@ -419,8 +421,8 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <div className="py-4">
+          <CardListSkeleton cards={3} columns="1" />
         </div>
       ) : contacts.length === 0 ? (
         <Card className="bg-gray-50 dark:bg-gray-800/50 border-dashed border-gray-300 dark:border-gray-600">
@@ -515,7 +517,7 @@ function ContactRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <p className="text-sm font-medium text-gray-900 dark:text-white break-words whitespace-normal">
             {fullName}
           </p>
           {isNew && (
@@ -532,7 +534,7 @@ function ContactRow({
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
           {contact.email && (
-            <span className="flex flex-wrap items-center gap-1 truncate">
+            <span className="flex flex-wrap items-center gap-1 break-words whitespace-normal">
               <Mail className="h-3 w-3" />
               {contact.email}
             </span>
@@ -713,7 +715,7 @@ function AddContactModal({
                       autoFocus
                     />
                     {searching && (
-                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" />
+                      <Skeleton className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full" />
                     )}
                   </div>
                 </div>
@@ -736,11 +738,11 @@ function AddContactModal({
                             className="w-8 h-8 shrink-0"
                           />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white break-words whitespace-normal">
                               {name}
                             </p>
                             {person.email && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                                 {person.email}
                               </p>
                             )}
@@ -859,7 +861,7 @@ function AddContactModal({
               </div>
 
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">
                       Nombre <span className="text-red-500">*</span>
@@ -883,7 +885,7 @@ function AddContactModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">Email</Label>
                     <Input
@@ -903,7 +905,7 @@ function AddContactModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">Tipo de documento</Label>
                     <select

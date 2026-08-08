@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useRef } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
-import { Loader2, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { cn } from "@/utils/Utils";
 import KanbanColumn from "./KanbanColumn";
 import { KanbanSummary } from "./KanbanSummary";
-import { useTheme } from "next-themes";
+import { Skeleton } from "@/components/ui/skeleton";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
 import { Customer, Opportunity, Stage, Pipeline, OpportunityBase } from "@/types/crm";
 import { 
@@ -45,7 +45,6 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
   const [processingAutomation, setProcessingAutomation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stageStats, setStageStats] = useState<StageStats[]>([]);
-  const { theme } = useTheme();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [realtimeEnabled, setRealtimeEnabled] = useState(true);
   
@@ -618,9 +617,8 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
       </div>
     </DragDropContext>
     {isLoading && (
-      <div className="flex items-center justify-center mt-4">
-        <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-        <span>Sincronizando datos...</span>
+      <div className="flex items-center justify-center mt-4 gap-2">
+        <Skeleton className="h-5 w-40" />
       </div>
     )}
   </div>

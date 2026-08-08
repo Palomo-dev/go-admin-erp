@@ -208,7 +208,7 @@ export function RegistrarPagoModal({
             <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600 dark:text-blue-400" />
             <span>Registrar Pago</span>
           </DialogTitle>
-          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">
             Factura: <span className="font-medium">{factura.number_ext}</span> - {factura.supplier?.name}
           </div>
         </DialogHeader>

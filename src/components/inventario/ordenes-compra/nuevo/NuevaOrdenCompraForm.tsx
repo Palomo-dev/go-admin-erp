@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
@@ -11,13 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+
 import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
 import { SearchSelectCombobox, type SearchSelectOption } from '../SearchSelectCombobox';
 import { Store } from 'lucide-react';
@@ -35,8 +30,7 @@ import {
   Send,
   Loader2, 
   Building2, 
-  Truck, 
-  Calendar,
+  Truck,
   Plus,
   Trash2,
   Package
@@ -62,6 +56,7 @@ export function NuevaOrdenCompraForm() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Datos de selectores
   const [suppliers, setSuppliers] = useState<SearchSelectOption[]>([]);
@@ -76,15 +71,20 @@ export function NuevaOrdenCompraForm() {
   // Cargar datos iniciales
   useEffect(() => {
     const loadData = async () => {
-      const organizationId = getOrganizationId();
-      const [suppliersData, branchesData, productsData] = await Promise.all([
-        purchaseOrderService.getSuppliers(organizationId),
-        purchaseOrderService.getBranches(organizationId),
-        purchaseOrderService.getProducts(organizationId)
-      ]);
-      setSuppliers(suppliersData);
-      setBranches(branchesData);
-      setProducts(productsData);
+      setIsLoading(true);
+      try {
+        const organizationId = getOrganizationId();
+        const [suppliersData, branchesData, productsData] = await Promise.all([
+          purchaseOrderService.getSuppliers(organizationId),
+          purchaseOrderService.getBranches(organizationId),
+          purchaseOrderService.getProducts(organizationId)
+        ]);
+        setSuppliers(suppliersData);
+        setBranches(branchesData);
+        setProducts(productsData);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
   }, []);
@@ -207,6 +207,19 @@ export function NuevaOrdenCompraForm() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <Skeleton className="h-64 w-full lg:col-span-2" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -382,7 +395,7 @@ export function NuevaOrdenCompraForm() {
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-white truncate">{item.productName}</p>
+                                <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">{item.productName}</p>
                                 <p className="text-xs text-blue-600 dark:text-blue-400 font-mono">{item.sku}</p>
                               </div>
                             </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { formatCurrency } from "@/utils/Utils";
-import { useTheme } from "next-themes";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface StageStats {
@@ -17,7 +16,6 @@ interface KanbanSummaryProps {
 }
 
 export function KanbanSummary({ stages }: KanbanSummaryProps) {
-  const { theme } = useTheme();
 
   const totalOpportunities = stages.reduce(
     (sum, stage) => sum + stage.count,
@@ -45,9 +43,7 @@ export function KanbanSummary({ stages }: KanbanSummaryProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <Card
-        className={
-          theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white"
-        }
+        className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
       >
         <CardContent className="p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Resumen</h3>
@@ -71,9 +67,7 @@ export function KanbanSummary({ stages }: KanbanSummaryProps) {
       </Card>
 
       <Card
-        className={
-          theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white"
-        }
+        className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
       >
         <CardContent className="p-4">
           <h3 className="text-sm font-medium text-muted-foreground">
@@ -97,9 +91,7 @@ export function KanbanSummary({ stages }: KanbanSummaryProps) {
       </Card>
 
       <Card
-        className={
-          theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white"
-        }
+        className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
       >
         <CardContent className="p-4">
           <h3 className="text-sm font-medium text-muted-foreground">

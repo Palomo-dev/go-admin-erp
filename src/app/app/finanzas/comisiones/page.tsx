@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
@@ -65,8 +66,8 @@ export default function ComisionesPage() {
   }, [loadData]);
 
   return (
-    <div className="p-6 space-y-4 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <ComisionesHeader />
         <Button
           variant="outline"
@@ -85,9 +86,7 @@ export default function ComisionesPage() {
       <ComisionesFilters filters={filters} onChange={setFilters} />
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
+        <TableSkeleton columns={10} rows={5} />
       ) : (
         <ComisionesList commissions={commissions} isLoading={isLoading} onRefresh={loadData} />
       )}

@@ -73,7 +73,7 @@ export function AlertasCard({ alertas, isLoading, maxItems = 5 }: AlertasCardPro
   return (
     <Card className="dark:bg-gray-800/50">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <Bell className="h-5 w-5 text-blue-500" />
             Alertas y Notificaciones
@@ -122,14 +122,14 @@ export function AlertasCard({ alertas, isLoading, maxItems = 5 }: AlertasCardPro
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                        <span className="font-medium text-sm text-gray-900 dark:text-white break-words whitespace-normal">
                           {alerta.titulo}
                         </span>
                         <Badge className={cn('text-xs', colors.badge)}>
                           {alerta.prioridad}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 break-words whitespace-normal">
                         {alerta.descripcion}
                       </p>
                     </div>

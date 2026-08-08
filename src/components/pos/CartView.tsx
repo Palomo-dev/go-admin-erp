@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Minus, Plus, Trash2, ShoppingCart, Pause, Play, CreditCard, Package, FileText, Printer, X, ReceiptText, Send, ChefHat, Clock, CheckCircle, Check, StickyNote, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -527,7 +528,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
               </div>
             )}
             {cart.customer && (
-              <div className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 truncate">
+              <div className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 break-words whitespace-normal">
                 Cliente: <span className="font-medium dark:text-gray-200 text-gray-900">{cart.customer.full_name}</span>
               </div>
             )}
@@ -577,7 +578,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
 
                           <div className="flex-1 min-w-0">
                             {/* Nombre del producto con ellipsis */}
-                            <h4 className="font-medium text-xs sm:text-sm dark:text-gray-100 text-gray-900 line-clamp-2 leading-tight" title={item.product.name}>
+                            <h4 className="font-medium text-xs sm:text-sm dark:text-gray-100 text-gray-900 break-words whitespace-normal leading-tight" title={item.product.name}>
                               {item.product.name}
                             </h4>
 
@@ -830,7 +831,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
                             {formatCurrency(item.total)}
                           </div>
                           {item.quantity > 1 && (
-                            <div className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600 truncate">
+                            <div className="text-[0.65rem] sm:text-xs dark:text-gray-400 text-gray-600 break-words whitespace-normal">
                               {item.quantity} × {formatCurrency(item.unit_price)}
                             </div>
                           )}
@@ -1207,9 +1208,11 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
           
           <div className="mt-4">
             {isLoadingInvoice ? (
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3" />
-                <span className="dark:text-white text-gray-900">Cargando factura...</span>
+              <div className="p-4 space-y-3">
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-10 w-full" />
               </div>
             ) : invoiceData ? (
               <DetalleFactura factura={invoiceData.invoice} />

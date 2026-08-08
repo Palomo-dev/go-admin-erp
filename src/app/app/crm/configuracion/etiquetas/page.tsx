@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import InboxConfigService, { type ConversationTag } from '@/lib/services/inboxConfigService';
 import { TagsHeader, TagCard, TagDialog } from '@/components/chat/configuracion/etiquetas';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function CRMEtiquetasPage() {
   const router = useRouter();
@@ -127,13 +128,12 @@ export default function CRMEtiquetasPage() {
 
   if (loading && tags.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando etiquetas...</p>
-        </div>
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <PageHeaderSkeleton />
+    <StatsSkeleton count={4} />
+    <CardListSkeleton cards={3} columns="1" />
+  </div>
+);
   }
 
   return (

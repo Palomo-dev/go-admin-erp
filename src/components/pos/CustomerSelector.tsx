@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { POSService } from '@/lib/services/posService';
@@ -279,11 +280,10 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
       <ScrollArea className="h-80">
         <div className="space-y-3 pr-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="flex items-center gap-2 text-sm dark:text-gray-400 text-gray-600">
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span>Buscando...</span>
-              </div>
+            <div className="py-8 space-y-3 px-4">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-5/6" />
             </div>
           ) : occupiedSpaces.length === 0 && customers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -331,7 +331,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                         {room.customer_email && (
                           <div className="flex items-center gap-1 text-xs dark:text-gray-500 text-gray-500">
                             <Mail className="h-3 w-3" />
-                            <span className="truncate">{room.customer_email}</span>
+                            <span className="break-words whitespace-normal">{room.customer_email}</span>
                           </div>
                         )}
                       </div>
@@ -368,7 +368,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="font-medium text-sm dark:text-white text-gray-900 truncate">
+                          <p className="font-medium text-sm dark:text-white text-gray-900 break-words whitespace-normal">
                             {customer.full_name}
                           </p>
                           {customer.customer_type === 'company' && (
@@ -376,7 +376,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                           )}
                         </div>
                         {customer.customer_type === 'company' && (customer as any).primary_contact_name && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                             Contacto: {(customer as any).primary_contact_name}{(customer as any).primary_contact_position ? ` (${(customer as any).primary_contact_position})` : ''}
                           </p>
                         )}
@@ -384,7 +384,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                           {customer.email && (
                             <div className="flex items-center gap-1 text-xs dark:text-gray-400 text-gray-600">
                               <Mail className="h-3 w-3" />
-                              <span className="truncate max-w-[120px]">{customer.email}</span>
+                              <span className="break-words whitespace-normal">{customer.email}</span>
                             </div>
                           )}
                           {customer.phone && (
@@ -436,7 +436,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                   className="shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-base dark:text-white text-gray-900 truncate">
+                  <h3 className="font-semibold text-base dark:text-white text-gray-900 break-words whitespace-normal">
                     {selectedCustomer.full_name}
                   </h3>
                   
@@ -444,7 +444,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                     {selectedCustomer.email && (
                       <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
                         <Mail className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{selectedCustomer.email}</span>
+                        <span className="break-words whitespace-normal">{selectedCustomer.email}</span>
                       </div>
                     )}
                     
@@ -458,7 +458,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                     {(selectedCustomer.doc_type && selectedCustomer.doc_number) && (
                       <div className="flex items-center gap-1.5 text-sm dark:text-gray-300 text-gray-600">
                         <CreditCard className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{selectedCustomer.doc_type}: {selectedCustomer.doc_number}</span>
+                        <span className="break-words whitespace-normal">{selectedCustomer.doc_type}: {selectedCustomer.doc_number}</span>
                       </div>
                     )}
                     
@@ -494,10 +494,10 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                     <User className="h-4 w-4 dark:text-blue-400 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium dark:text-white text-gray-900 text-sm truncate">
+                    <p className="font-medium dark:text-white text-gray-900 text-sm break-words whitespace-normal">
                       Seleccionar cliente
                     </p>
-                    <p className="text-xs dark:text-gray-400 text-gray-600 truncate">
+                    <p className="text-xs dark:text-gray-400 text-gray-600 break-words whitespace-normal">
                       Buscar cliente
                     </p>
                   </div>
@@ -527,14 +527,14 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
                   
                   {/* Contenido de texto responsive */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium dark:text-white text-gray-900 text-sm sm:text-base truncate">
+                    <p className="font-medium dark:text-white text-gray-900 text-sm sm:text-base break-words whitespace-normal">
                       Seleccionar cliente
                     </p>
-                    <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 truncate hidden xs:block">
+                    <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 break-words whitespace-normal hidden xs:block">
                       Buscar por nombre, email o teléfono
                     </p>
                     {/* Versión móvil más corta */}
-                    <p className="text-xs dark:text-gray-400 text-gray-600 truncate block xs:hidden">
+                    <p className="text-xs dark:text-gray-400 text-gray-600 break-words whitespace-normal block xs:hidden">
                       Buscar cliente
                     </p>
                   </div>

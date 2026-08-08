@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Filter, Loader2, Radio } from 'lucide-react';
+import { Search, Filter, Radio } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import ChannelCard from './ChannelCard';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ChatChannel, ChannelType, AIMode } from '@/lib/services/chatChannelsService';
 
 interface ChannelsListProps {
@@ -45,8 +46,8 @@ export default function ChannelsList({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4">
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

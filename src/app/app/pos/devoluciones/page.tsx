@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeftRight, RefreshCw, Package, History, RotateCcw, Tag, Settings } from 'lucide-react';
+import { ArrowLeftRight, Package, History, RotateCcw, Tag, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { TicketSearch } from '@/components/pos/devoluciones/TicketSearch';
 import { ReturnForm } from '@/components/pos/devoluciones/ReturnForm';
 import { ReturnsHistory } from '@/components/pos/devoluciones/ReturnsHistory';
@@ -48,13 +49,9 @@ export default function DevolucionesPage() {
 
   if (orgLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className="text-gray-600 dark:text-gray-400">Cargando...</p>
-          </div>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={5} columns="1" />
       </div>
     );
   }
@@ -109,28 +106,28 @@ export default function DevolucionesPage() {
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="p-0">
             <Tabs value={activeView} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 dark:bg-gray-700">
-                <TabsTrigger 
-                  value="search" 
+              <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 dark:bg-gray-700">
+                <TabsTrigger
+                  value="search"
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
-                  <Package className="h-4 w-4" />
-                  <span>Buscar Ticket</span>
+                  <Package className="h-4 w-4 shrink-0" />
+                  <span className="break-words whitespace-normal text-left">Buscar Ticket</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="process" 
+                <TabsTrigger
+                  value="process"
                   disabled={!selectedSale}
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
-                  <ArrowLeftRight className="h-4 w-4" />
-                  <span>Procesar Devolución</span>
+                  <ArrowLeftRight className="h-4 w-4 shrink-0" />
+                  <span className="break-words whitespace-normal text-left">Procesar Devolución</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="history" 
+                <TabsTrigger
+                  value="history"
                   className="flex items-center space-x-2 dark:data-[state=active]:bg-gray-600 dark:data-[state=active]:text-white"
                 >
-                  <History className="h-4 w-4" />
-                  <span>Historial</span>
+                  <History className="h-4 w-4 shrink-0" />
+                  <span className="break-words whitespace-normal text-left">Historial</span>
                 </TabsTrigger>
               </TabsList>
 

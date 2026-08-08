@@ -3,7 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, Loader2, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
+import {
+  StatsSkeleton,
+} from '@/components/common/PageSkeletons';
+import { BookOpen, FileText, Calculator, Calendar, Settings, ArrowRight, BarChart3, TrendingUp, Shield, LayoutGrid, Package, Target, CalendarClock, Receipt } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ContabilidadService, ContabilidadResumen } from './ContabilidadService';
@@ -204,7 +207,7 @@ export function ContabilidadHomePage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
@@ -222,8 +225,8 @@ export function ContabilidadHomePage() {
 
       {/* Resumen */}
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <div className="py-8">
+          <StatsSkeleton count={4} />
         </div>
       ) : resumen && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -58,6 +58,7 @@ import {
   type CreateFareData,
 } from '@/lib/services/faresService';
 import { FareDialog, ImportFaresDialog, SortableFareCard } from '@/components/transporte/tarifas-pasajeros';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 
 const FARE_TYPE_OPTIONS = [
   { value: 'all', label: 'Todos los tipos' },
@@ -523,12 +524,7 @@ export default function TarifasPasajerosPage() {
 
       {/* Lista de tarifas */}
       {isLoading ? (
-        <Card className="p-4 sm:p-8">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
-            <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando tarifas...</span>
-          </div>
-        </Card>
+        <CardListSkeleton cards={5} columns="1" />
       ) : fares.length === 0 ? (
         <Card className="p-4 sm:p-8 text-center">
           <DollarSign className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />

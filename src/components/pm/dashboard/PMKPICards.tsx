@@ -118,12 +118,12 @@ export function PMKPICards({ stats, isLoading }: PMKPICardsProps) {
         <Card key={kpi.label} className={`${kpi.bgColor} border-0`}>
           <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-1.5 mb-1">
-              <span className={kpi.color}>{kpi.icon}</span>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{kpi.label}</span>
+              <span className={`${kpi.color} shrink-0`}>{kpi.icon}</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 break-words whitespace-normal">{kpi.label}</span>
             </div>
             <p className={`text-xl sm:text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
             {kpi.subLabel && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{kpi.subLabel}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words whitespace-normal">{kpi.subLabel}</p>
             )}
           </CardContent>
         </Card>

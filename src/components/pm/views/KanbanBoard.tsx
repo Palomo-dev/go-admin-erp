@@ -132,7 +132,7 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, runningTimers }:
                                 <GripVertical className="h-4 w-4" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white break-words whitespace-normal">
                                   {task.title}
                                 </p>
 
@@ -148,7 +148,7 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, runningTimers }:
                                       className="inline-flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-full px-2 py-0.5 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
                                     >
                                       <GitBranch className="h-2.5 w-2.5" />
-                                      <span className="truncate max-w-[120px]">{task.parent_task.title}</span>
+                                      <span className="break-words max-w-full whitespace-normal">{task.parent_task.title}</span>
                                     </button>
                                   )}
                                   {isOverdue(task) && (
@@ -158,22 +158,22 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, runningTimers }:
                                   )}
                                 </div>
 
-                                <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-400">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-gray-400">
                                   {task.projects?.name && (
-                                    <span className="flex items-center gap-0.5 truncate">
+                                    <span className="flex items-center gap-0.5 min-w-0 break-words whitespace-normal">
                                       <FolderKanban className="h-3 w-3 shrink-0" />
                                       {task.projects.name}
                                     </span>
                                   )}
                                   {task.due_date && (
-                                    <span className="flex items-center gap-0.5">
-                                      <Calendar className="h-3 w-3" />
+                                    <span className="flex items-center gap-0.5 min-w-0 break-words whitespace-normal">
+                                      <Calendar className="h-3 w-3 shrink-0" />
                                       {new Date(task.due_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
                                     </span>
                                   )}
                                   {task.estimated_hours && (
-                                    <span className="flex items-center gap-0.5">
-                                      <Clock className="h-3 w-3" />{task.estimated_hours}h
+                                    <span className="flex items-center gap-0.5 min-w-0 break-words whitespace-normal">
+                                      <Clock className="h-3 w-3 shrink-0" />{task.estimated_hours}h
                                     </span>
                                   )}
                                 </div>
@@ -182,7 +182,7 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskClick, runningTimers }:
                                   {getAssigneeName(task) ? (
                                     <div className="flex items-center gap-1 text-[10px] text-gray-400 min-w-0">
                                       <User className="h-3 w-3 shrink-0" />
-                                      <span className="truncate">{getAssigneeName(task)}</span>
+                                      <span className="break-words whitespace-normal">{getAssigneeName(task)}</span>
                                     </div>
                                   ) : <span />}
                                   <TaskTimer taskId={task.id} variant="compact" providedRunning={runningTimers?.[task.id] ?? null} />

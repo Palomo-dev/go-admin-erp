@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Plus, Send, Loader2 } from 'lucide-react';
@@ -47,9 +48,9 @@ export function SessionNotes({ notes, isLoading, onAddNote }: SessionNotesProps)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-3">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="space-y-3">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-md" />
             ))}
           </div>
         </CardContent>

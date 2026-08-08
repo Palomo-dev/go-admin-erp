@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { 
-  Package, 
-  Download, 
-  ArrowRightLeft, 
+import {
+  Button } from '@/components/ui/button';
+import {
+  Package,
+  Download,
+  ArrowRightLeft,
   ClipboardEdit,
   RefreshCw
 } from 'lucide-react';

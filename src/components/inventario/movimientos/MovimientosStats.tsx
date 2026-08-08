@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  ArrowDownCircle, 
-  ArrowUpCircle, 
-  Activity, 
+import {
+  Card,
+  CardContent } from '@/components/ui/card';
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Activity,
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
@@ -69,10 +71,10 @@ export function MovimientosStats({ stats, isLoading }: MovimientosStatsProps) {
                 <stat.icon className={`h-5 w-5 ${stat.textColor}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                   {stat.title}
                 </p>
-                <p className={`text-lg font-semibold ${stat.textColor} truncate`}>
+                <p className={`text-lg font-semibold ${stat.textColor} break-words whitespace-normal`}>
                   {isLoading ? '...' : stat.value}
                 </p>
               </div>

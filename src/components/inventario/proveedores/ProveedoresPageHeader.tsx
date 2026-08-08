@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Download, Upload, Truck } from 'lucide-react';
-import { useTheme } from 'next-themes';
+
 import Link from 'next/link';
 
 interface ProveedoresPageHeaderProps {
@@ -18,8 +18,7 @@ const ProveedoresPageHeader: React.FC<ProveedoresPageHeaderProps> = ({
   onNuevoProveedor,
   onExport
 }) => {
-  const { theme } = useTheme();
-  
+
   return (
     <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">

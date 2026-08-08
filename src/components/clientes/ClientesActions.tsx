@@ -798,7 +798,7 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
           {(importStep === 'preview' || importStep === 'importing' || importStep === 'complete') && (
             <div className="space-y-4">
               {/* Stats */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
                   <div className="text-xl font-bold text-gray-900 dark:text-white">{importStats.total}</div>
                   <p className="text-xs text-gray-500">Total</p>
@@ -883,11 +883,11 @@ const ClientesActions: React.FC<ClientesActionsProps> = ({
                       <tr key={idx} className="border-t border-gray-200 dark:border-gray-700">
                         <td className="px-2 py-1.5 text-gray-500">{row.row}</td>
                         <td className="px-2 py-1.5">{row.customerType || (row.companyName ? 'Empresa' : 'Persona')}</td>
-                        <td className="px-2 py-1.5 max-w-[150px] truncate" title={row.companyName || `${row.firstName || ''} ${row.lastName || ''}`}>
+                        <td className="px-2 py-1.5 break-words whitespace-normal" title={row.companyName || `${row.firstName || ''} ${row.lastName || ''}`}>
                           {row.companyName || `${row.firstName || ''} ${row.lastName || ''}`.trim() || row.fullName || '-'}
                         </td>
                         <td className="px-2 py-1.5 text-gray-500">{row.docNumber || '-'}</td>
-                        <td className="px-2 py-1.5 text-gray-500 max-w-[120px] truncate" title={row.email || ''}>{row.email || '-'}</td>
+                        <td className="px-2 py-1.5 text-gray-500 break-words whitespace-normal" title={row.email || ''}>{row.email || '-'}</td>
                         <td className="px-2 py-1.5 text-gray-500">{row.phone || '-'}</td>
                         <td className="px-2 py-1.5">
                           {row.status === 'pending' && <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded">Pendiente</span>}

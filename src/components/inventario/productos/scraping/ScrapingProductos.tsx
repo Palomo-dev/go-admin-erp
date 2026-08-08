@@ -578,7 +578,7 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
                     )}
                   </div>
                   {p.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                       {p.description}
                     </p>
                   )}

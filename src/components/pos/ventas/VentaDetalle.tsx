@@ -18,7 +18,6 @@ import {
   Clock,
   AlertCircle,
   Receipt,
-  RefreshCw,
   Globe,
   ShoppingCart,
   Truck,
@@ -46,6 +45,7 @@ import {
 } from '@/components/ui/table';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { VentasService } from './VentasService';
 import { SaleWithDetails } from './types';
 import { formatCurrency, formatDate } from '@/utils/Utils';
@@ -227,8 +227,9 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-[400px]">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

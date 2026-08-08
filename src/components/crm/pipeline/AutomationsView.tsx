@@ -22,7 +22,7 @@ import {
   CalendarClock,
   AlertCircle
 } from "lucide-react";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import { TableSkeleton } from "@/components/common/PageSkeletons";
 
 interface AutomationsViewProps {
   pipelineId: string;
@@ -256,10 +256,7 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
   if (loading) {
     return (
       <div className="p-3 sm:p-4">
-        <div className="flex flex-col justify-center items-center h-40 gap-3">
-          <LoadingSpinner size="lg" className="text-blue-500" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando automatizaciones...</span>
-        </div>
+        <TableSkeleton columns={4} rows={4} />
       </div>
     );
   }

@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ContabilidadService, ChartAccount } from '../ContabilidadService';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 const ACCOUNT_TYPES = [
   { value: 'asset', label: 'Activo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -231,7 +232,7 @@ export function PlanCuentasPage() {
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-gray-900 dark:text-white font-medium truncate">
+              <span className="text-gray-900 dark:text-white font-medium break-words whitespace-normal min-w-0">
                 {node.name}
               </span>
               {hasChildren && (
@@ -241,7 +242,7 @@ export function PlanCuentasPage() {
               )}
             </div>
             {node.description && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+              <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0 mt-0.5">
                 {node.description}
               </p>
             )}
@@ -266,14 +267,16 @@ export function PlanCuentasPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">

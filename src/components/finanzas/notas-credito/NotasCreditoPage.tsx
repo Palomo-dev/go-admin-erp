@@ -13,7 +13,6 @@ import {
   MoreVertical,
   Eye,
   XCircle,
-  Loader2,
   Filter,
   Calendar,
   User,
@@ -21,6 +20,11 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
+import {
+  PageHeaderSkeleton,
+  StatsSkeleton,
+  CardListSkeleton,
+} from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -170,8 +174,10 @@ export function NotasCreditoPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

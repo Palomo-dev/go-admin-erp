@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Users, Search, Filter } from 'lucide-react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Users, Search, Filter } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
@@ -184,9 +185,7 @@ export default function InstructoresPage() {
 
       {/* Lista de instructores */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-        </div>
+        <CardListSkeleton cards={6} columns="3" />
       ) : filteredInstructors.length === 0 ? (
         <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardContent className="flex flex-col items-center justify-center py-12">

@@ -2,8 +2,12 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+import {
+  useRouter } from 'next/navigation';
+import { DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -13,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  } from '@/components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -21,7 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+  } from '@/components/ui/table';
 import { cn } from '@/utils/Utils';
 import {
   Plus,
@@ -44,7 +48,7 @@ import {
   Tag,
   GripVertical,
   Home,
-  ChefHat,
+  ChefHat
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { FlatNode } from './useCategories';
@@ -256,7 +260,7 @@ export function CategoriesTreeTable({
                                 {!cat.icon && (
                                   <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-200 dark:border-gray-600" style={{ backgroundColor: cat.color || '#3B82F6' }} />
                                 )}
-                                <Link href={`/app/inventario/categorias/${cat.uuid}`} className="font-medium text-gray-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                <Link href={`/app/inventario/categorias/${cat.uuid}`} className="font-medium text-gray-900 dark:text-white break-words whitespace-normal hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                   {cat.name}
                                 </Link>
                                 {node.level > 0 && (
@@ -328,7 +332,7 @@ export function CategoriesTreeTable({
 
                             {/* Slug */}
                             <TableCell className="text-center">
-                              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[120px] inline-block">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono break-words whitespace-normal max-w-[120px] inline-block">
                                 {cat.slug}
                               </span>
                             </TableCell>

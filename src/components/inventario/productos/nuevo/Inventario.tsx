@@ -1,13 +1,16 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import {
+  useState,
+  useEffect } from 'react'
 import { supabase } from '@/lib/supabase/config'
 import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { Warehouse, Plus, Trash2, Loader2, PackageCheck } from 'lucide-react'
+import { Warehouse, Plus, Trash2, PackageCheck } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface InventarioProps {
   formData: any
@@ -155,8 +158,7 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
         </div>
       ) : isLoadingBranches ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </div>
+          <Skeleton className="h-6 w-8 mx-auto" /></div>
       ) : hasVariants ? (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
           <Warehouse className="h-12 w-12 mx-auto text-gray-400 mb-4" />

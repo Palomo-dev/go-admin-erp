@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  Plus,
+import {Plus,
   Download,
   Upload,
   Search,
@@ -18,9 +17,7 @@ import {
   Eye,
   Edit,
   Copy,
-  XCircle,
-  Loader2,
-} from 'lucide-react';
+  XCircle} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,6 +48,7 @@ import { toast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
 import { NuevoIngresoDialog } from './NuevoIngresoDialog';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export function IngresosPage() {
   const router = useRouter();
@@ -144,8 +142,10 @@ export function IngresosPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
@@ -306,7 +306,7 @@ export function IngresosPage() {
                     <TableCell className="text-right font-semibold text-green-600 dark:text-green-400">
                       {formatCurrency(movement.amount)}
                     </TableCell>
-                    <TableCell className="text-gray-500 dark:text-gray-400 max-w-[200px] truncate">
+                    <TableCell className="text-gray-500 dark:text-gray-400 break-words whitespace-normal min-w-0">
                       {movement.notes || '-'}
                     </TableCell>
                     <TableCell className="text-right">

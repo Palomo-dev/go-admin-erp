@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Bell, Mail, Smartphone, MessageSquare, Eye, EyeOff,
   ChevronLeft, ChevronRight, Copy, RotateCcw,
   AlertCircle, CheckCircle2, Clock, Send, XCircle,
 } from 'lucide-react';
-import { cn, formatDate } from '@/utils/Utils';
+import { cn } from '@/utils/Utils';
 import { NotificationDetailSheet } from '../NotificationDetailSheet';
 import type { BandejaNotification } from './types';
 
@@ -75,7 +76,7 @@ export function NotificationList({
     return (
       <div className="space-y-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+          <Skeleton key={i} className="h-16 w-full rounded-lg" />
         ))}
       </div>
     );

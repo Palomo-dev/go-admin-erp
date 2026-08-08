@@ -13,6 +13,7 @@ import {
   AuditDetailDialog,
 } from '@/components/chat/auditoria';
 import { ChatNavTabs } from '@/components/chat/ChatNavTabs';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function ChatAuditPage() {
   const { toast } = useToast();
@@ -142,13 +143,12 @@ export default function ChatAuditPage() {
 
   if (isLoading && logs.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando auditoría...</p>
-        </div>
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <PageHeaderSkeleton />
+    <StatsSkeleton count={4} />
+    <CardListSkeleton cards={3} columns="1" />
+  </div>
+);
   }
 
   return (

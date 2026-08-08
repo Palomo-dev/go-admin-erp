@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function OrganizacionPage() {
   const router = useRouter();
@@ -14,11 +15,10 @@ export default function OrganizacionPage() {
   }, [router]);
 
   return (
-    <div className="p-4 sm:p-8">
-      <div className="text-center py-10">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
-        <p className="mt-2">{t('redirecting')}</p>
-      </div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <PageHeaderSkeleton />
+      <DetailSkeleton />
+      <p className="text-center text-gray-500 dark:text-gray-400">{t('redirecting')}</p>
     </div>
   );
 }

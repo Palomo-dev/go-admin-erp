@@ -154,7 +154,7 @@ export function OrderItemCard({
         {/* Info del producto */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+            <h3 className="font-medium text-gray-900 dark:text-gray-100 break-words whitespace-normal">
               {item.product?.name || 'Producto'}
             </h3>
             {parsedNotes?.guest_number && (
@@ -188,7 +188,7 @@ export function OrderItemCard({
             </Badge>
           )}
           {parsedNotes?.extra && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words whitespace-normal">
               📝 {parsedNotes.extra}
             </p>
           )}

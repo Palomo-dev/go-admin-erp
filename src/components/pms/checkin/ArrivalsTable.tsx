@@ -20,6 +20,7 @@ import {
   Calendar,
   Users,
 } from 'lucide-react';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import type { CheckinReservation } from '@/lib/services/checkinService';
 
 interface ArrivalsTableProps {
@@ -71,16 +72,7 @@ export function ArrivalsTable({
   };
 
   if (isLoading) {
-    return (
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-        <div className="p-8 text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-gray-500 dark:text-gray-400 mt-4">
-            Cargando llegadas...
-          </p>
-        </div>
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={6} />;
   }
 
   if (arrivals.length === 0) {

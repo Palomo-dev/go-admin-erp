@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -282,8 +283,10 @@ export function NewOpportunityForm({
     <>
       <div className="max-w-md mx-auto">
         {isLoading && (
-          <div className="flex justify-center my-4">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <div className="my-4 space-y-3">
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         )}
         <Form {...form}>

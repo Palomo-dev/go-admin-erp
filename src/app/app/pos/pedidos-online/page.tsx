@@ -922,7 +922,7 @@ export default function PedidosOnlinePage() {
                             )}
                           </div>
                           {order.customer_notes && (
-                            <span className="text-xs text-yellow-700 dark:text-yellow-300 break-words sm:line-clamp-1 sm:max-w-[180px]" title={order.customer_notes}>
+                            <span className="text-xs text-yellow-700 dark:text-yellow-300 break-words whitespace-normal" title={order.customer_notes}>
                               📝 {order.customer_notes}
                             </span>
                           )}
@@ -938,7 +938,7 @@ export default function PedidosOnlinePage() {
                             </span>
                           )}
                           {(order.customer_email || order.customer?.email) && (
-                            <span className="text-xs text-muted-foreground dark:text-gray-400 break-words sm:truncate sm:max-w-[150px]" title={order.customer_email || order.customer?.email}>
+                            <span className="text-xs text-muted-foreground dark:text-gray-400 break-words whitespace-normal" title={order.customer_email || order.customer?.email}>
                               {order.customer_email || order.customer?.email}
                             </span>
                           )}
@@ -958,9 +958,9 @@ export default function PedidosOnlinePage() {
                             {order.delivery_type === 'pickup' ? 'Retiro' : order.delivery_type === 'delivery_own' ? 'Propio' : 'Tercero'}
                           </span>
                           {order.delivery_type !== 'pickup' && order.delivery_address?.address && (
-                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1 break-words sm:max-w-[120px] sm:truncate" title={order.delivery_address.address}>
+                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1 break-words whitespace-normal" title={order.delivery_address.address}>
                               <MapPin className="h-3 w-3 flex-shrink-0" />
-                              <span className="break-words sm:truncate">{order.delivery_address.address}</span>
+                              <span className="break-words whitespace-normal">{order.delivery_address.address}</span>
                             </span>
                           )}
                           {order.delivery_type !== 'pickup' && order.delivery_address?.city && (
@@ -976,7 +976,7 @@ export default function PedidosOnlinePage() {
                           <div className="text-xs text-muted-foreground dark:text-gray-400 space-y-0.5 sm:max-w-[160px]">
                             {order.items?.slice(0, 2).map((item, idx) => (
                               <div key={idx} className="flex justify-between gap-1">
-                                <span className="break-words sm:truncate">{item.quantity}x {item.product_name}</span>
+                                <span className="break-words whitespace-normal">{item.quantity}x {item.product_name}</span>
                               </div>
                             ))}
                             {(order.items?.length || 0) > 2 && (

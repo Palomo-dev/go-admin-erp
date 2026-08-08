@@ -1,6 +1,7 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,13 +73,7 @@ const EVENT_CONFIG: Record<string, { label: string; icon: React.ReactNode; color
 
 export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProps) {
   if (isLoading) {
-    return (
-      <Card className="p-4 sm:p-8">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
-        </div>
-      </Card>
-    );
+    return <CardListSkeleton cards={3} columns="1" />;
   }
 
   return (

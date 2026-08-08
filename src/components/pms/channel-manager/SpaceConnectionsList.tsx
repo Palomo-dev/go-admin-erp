@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -203,15 +204,7 @@ export function SpaceConnectionsList({
   );
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="animate-pulse">
-            <div className="h-32 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-          </div>
-        ))}
-      </div>
-    );
+    return <CardListSkeleton cards={3} columns="1" />;
   }
 
   return (

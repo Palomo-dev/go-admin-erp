@@ -1,5 +1,6 @@
 import React from 'react';
-import { MoreHorizontal, Loader2, Building2, User } from 'lucide-react';
+import { MoreHorizontal, Building2, User } from 'lucide-react';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,7 +72,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
     
     try {
       return format(new Date(dateString), 'dd MMM yyyy', { locale: es });
-    } catch (error) {
+    } catch {
       return 'Fecha inválida';
     }
   };
@@ -103,8 +104,6 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
 
   // Calcular información de paginación
   const totalPages = Math.ceil(count / pageSize);
-  const startItem = page * pageSize + 1;
-  const endItem = Math.min((page + 1) * pageSize, count);
 
   // Funciones de selección
   const isAllSelected = customers.length > 0 && customers.every(c => selectedIds.includes(c.id));
@@ -130,12 +129,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   };
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-        <span className="mt-2 text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={10} />;
   }
 
   return (
@@ -149,7 +143,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
       ) : (
         <>
           <div className="overflow-x-auto relative">
-            <table className="w-full text-xs sm:text-sm table-auto">
+            <table className="min-w-max w-full text-xs sm:text-sm table-auto">
               <thead className="bg-gray-50 dark:bg-gray-900/50 text-left">
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="px-3 sm:px-4 py-3 w-12">
@@ -161,13 +155,13 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                     />
                   </th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Cliente</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden sm:table-cell">Contacto</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden md:table-cell">Documento</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden xl:table-cell">Municipio</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden lg:table-cell">Etiquetas</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm table-cell">Contacto</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm table-cell">Documento</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm table-cell">Municipio</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm table-cell">Etiquetas</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Cuentas por Cobrar</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden md:table-cell">Ventas</th>
-                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm hidden lg:table-cell">Última compra</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm table-cell">Ventas</th>
+                  <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm table-cell">Última compra</th>
                   <th className="px-3 sm:px-4 py-3 font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm text-right">Acciones</th>
                 </tr>
               </thead>
@@ -226,7 +220,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                             </span>
                           )}
                           {/* Mostrar contacto en móvil */}
-                          <div className="sm:hidden flex flex-col mt-1 text-xs text-gray-600 dark:text-gray-400">
+                          <div className="hidden">
                             {customer.email && <span className="break-words min-w-0">{customer.email}</span>}
                             {customer.phone && <span className="break-words min-w-0">{customer.phone}</span>}
                           </div>
@@ -244,7 +238,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 sm:px-4 py-3 hidden sm:table-cell">
+                    <td className="px-3 sm:px-4 py-3 table-cell">
                       <div className="flex flex-col min-w-0">
                         {customer.email && (
                           <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
@@ -258,7 +252,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         )}
                       </div>
                     </td>
-                    <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
+                    <td className="px-3 sm:px-4 py-3 table-cell">
                       {customer.doc_type && customer.doc_number ? (
                         <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
                           {customer.doc_type}: {customer.doc_number}
@@ -269,7 +263,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </span>
                       )}
                     </td>
-                    <td className="px-3 sm:px-4 py-3 hidden xl:table-cell">
+                    <td className="px-3 sm:px-4 py-3 table-cell">
                       {customer.municipality_name ? (
                         <div className="flex flex-col min-w-0">
                           <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
@@ -282,7 +276,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </span>
                       )}
                     </td>
-                    <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
+                    <td className="px-3 sm:px-4 py-3 table-cell">
                       <div className="flex flex-wrap gap-1 min-w-0">
                         {customer.tags?.length ? (
                           customer.tags.slice(0, 2).map(tag => (
@@ -333,7 +327,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         )}
                       </div>
                     </td>
-                    <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
+                    <td className="px-3 sm:px-4 py-3 table-cell">
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 break-words min-w-0">
                           {formatCurrency(Number(customer.total_sales || 0))}
@@ -343,7 +337,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </span>
                       </div>
                     </td>
-                    <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
+                    <td className="px-3 sm:px-4 py-3 table-cell">
                       <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words min-w-0">
                         {customer.last_purchase_date ? 
                           formatDate(customer.last_purchase_date) : 

@@ -2,16 +2,13 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { 
   Snowflake, 
   Calendar, 
-  Clock,
-  Play,
   CheckCircle2,
-  XCircle,
-  Pause,
-  User
+  XCircle
 } from 'lucide-react';
 import { cn, formatDate } from '@/utils/Utils';
 import { MembershipFreeze } from '@/lib/services/gymService';
@@ -47,16 +44,16 @@ export function MembershipFreezes({ freezes, isLoading }: MembershipFreezesProps
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <div className="animate-pulse h-6 bg-gray-200 dark:bg-gray-700 rounded w-full sm:w-48" />
+          <Skeleton className="h-6 w-full sm:w-48 rounded" />
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[1, 2].map(i => (
-              <div key={i} className="animate-pulse flex gap-4">
-                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <Skeleton className="h-10 w-10 rounded-full shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+                  <Skeleton className="h-4 w-1/3 rounded" />
+                  <Skeleton className="h-3 w-1/2 rounded" />
                 </div>
               </div>
             ))}

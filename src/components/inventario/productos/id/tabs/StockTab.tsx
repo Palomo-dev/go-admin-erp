@@ -1,11 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+import {
+  useState,
+  useEffect } from 'react';
+
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { Plus, ArrowUp, ArrowDown, History, Loader2, PackageCheck } from 'lucide-react';
+import {
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  History,
+  PackageCheck
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -24,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface StockTabProps {
   producto: any;
@@ -44,7 +53,7 @@ interface StockLevel {
  * Pestaña para mostrar y gestionar el stock del producto por sucursal
  */
 const StockTab: React.FC<StockTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   const { organization } = useOrganization();
   
@@ -256,8 +265,7 @@ const StockTab: React.FC<StockTabProps> = ({ producto }) => {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
-                    </TableCell>
+                      <Skeleton className="h-8 w-8 mx-auto" /></TableCell>
                   </TableRow>
                 ) : stockLevels.length === 0 ? (
                   <TableRow>

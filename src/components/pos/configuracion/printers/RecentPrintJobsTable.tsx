@@ -140,7 +140,7 @@ export function RecentPrintJobsTable({ branchId }: RecentPrintJobsTableProps) {
                           {STATUS_LABELS[job.status]}
                         </Badge>
                         {job.status === 'error' && job.error_message && (
-                          <p className="text-xs text-red-600 dark:text-red-400 mt-1 max-w-[200px] truncate" title={job.error_message}>
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-1 break-words whitespace-normal" title={job.error_message}>
                             {job.error_message}
                           </p>
                         )}

@@ -1,22 +1,23 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useTheme } from 'next-themes';
-import { useRouter } from 'next/navigation';
+
+import {
+  useRouter } from 'next/navigation';
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { 
-  Eye, 
-  Pencil, 
-  Trash2, 
-  ChevronLeft, 
+import {
+  Eye,
+  Pencil,
+  Trash2,
+  ChevronLeft,
   ChevronRight,
   Copy
 } from 'lucide-react';
@@ -38,7 +39,7 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
   onDelete,
   onDuplicate
 }) => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;

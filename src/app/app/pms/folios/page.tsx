@@ -5,7 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { FoliosHeader, FoliosList, FolioDetailDialog } from '@/components/pms/folios';
 import FoliosService, { type Folio } from '@/lib/services/foliosService';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { PageHeaderSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import {
@@ -98,10 +98,10 @@ export default function FoliosPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Cargando folios...</p>
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <PageHeaderSkeleton />
+          <TableSkeleton rows={5} columns={6} />
         </div>
       </div>
     );

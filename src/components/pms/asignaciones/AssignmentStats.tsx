@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { AlertTriangle, Calendar, CalendarClock, CalendarDays } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 
@@ -47,22 +48,6 @@ function StatCard({ title, value, icon, color, urgent = false }: StatCardProps) 
   );
 }
 
-function StatCardSkeleton() {
-  return (
-    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-            <div className="h-8 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          </div>
-          <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function AssignmentStats({
   totalUnassigned,
   arrivingToday,
@@ -71,14 +56,7 @@ export function AssignmentStats({
   isLoading = false,
 }: AssignmentStatsProps) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCardSkeleton />
-        <StatCardSkeleton />
-        <StatCardSkeleton />
-        <StatCardSkeleton />
-      </div>
-    );
+    return <StatsSkeleton count={4} />;
   }
 
   return (

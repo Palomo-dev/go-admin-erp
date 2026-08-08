@@ -7,6 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { MoreVertical, Pencil, Trash2, Loader2, Sparkles, Globe, Settings2, Link2 } from 'lucide-react';
 import { OrgServiceView, SERVICE_CATEGORIES } from '@/lib/services/spaceServicesService';
 
@@ -25,9 +26,8 @@ export function ServiciosList({
 }: ServiciosListProps) {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Cargando servicios...</span>
+      <div className="py-4">
+        <CardListSkeleton cards={6} columns="2" />
       </div>
     );
   }

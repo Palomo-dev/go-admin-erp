@@ -113,7 +113,7 @@ export function ResumenTotalesFactura({
   return (
     <Card className={`dark:bg-gray-800/50 dark:border-gray-700 border-gray-200 ${className}`}>
       <CardHeader className="pb-2 sm:pb-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-base sm:text-lg text-gray-900 dark:text-white flex items-center">
             <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             <span>Totales</span>

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CreditCard, Upload, Filter, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
@@ -251,22 +251,7 @@ export default function GymPlanesPage() {
       )}
 
         {/* Loading */}
-        {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="animate-pulse bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700">
-                <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-                  <div className="space-y-2">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" />
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16" />
-                  </div>
-                </div>
-                <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            ))}
-          </div>
-        )}
+        {isLoading && <CardListSkeleton cards={6} columns="3" />}
 
         {/* Empty state */}
         {!isLoading && plans.length === 0 && (

@@ -21,8 +21,8 @@ import {
   Image as ImageIcon,
   Download,
   ExternalLink,
-  Loader2,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   deliveryIntegrationService,
   type ProofOfDelivery,
@@ -72,8 +72,10 @@ export function ProofOfDeliveryView({
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground dark:text-gray-400" />
+        <div className="py-8 space-y-3">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-20 w-full" />
         </div>
       );
     }

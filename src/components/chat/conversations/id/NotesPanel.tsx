@@ -8,10 +8,11 @@ import {
   Plus, 
   Pin, 
   PinOff, 
-  Trash2, 
+  Trash2,
   Loader2,
   Send
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -134,8 +135,13 @@ export default function NotesPanel({
         {/* Lista de notas */}
         <div className="flex-1 overflow-y-auto space-y-3">
           {loading ? (
-            <div className="flex items-center justify-center h-24">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
             </div>
           ) : notes.length === 0 ? (
             <div className="text-center py-8">

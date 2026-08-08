@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, BookOpen, Calendar, Search } from 'lucide-react';
+import {BookOpen, Calendar, Search} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ReportesContablesService, LedgerAccount, ChartAccount } from '../ReportesContablesService';
 import { ContabilidadService } from '../ContabilidadService';
+import { StatsSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 
 function formatCurrency(value: number): string {
   if (Math.abs(value) < 0.01) return '-';
@@ -73,7 +74,7 @@ export function MayorContablePage() {
   }, [selectedAccount]);
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
           <BookOpen className="h-6 w-6 text-indigo-600" />
@@ -119,8 +120,9 @@ export function MayorContablePage() {
       </Card>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <div className="py-8 space-y-4">
+          <StatsSkeleton count={4} />
+          <TableSkeleton columns={4} rows={6} />
         </div>
       ) : ledger ? (
         <>

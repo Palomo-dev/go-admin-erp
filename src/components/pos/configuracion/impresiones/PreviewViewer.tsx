@@ -92,7 +92,7 @@ function OverflowNotice({ overflow, charsPerLine }: { overflow: PrintPreview['ov
       </div>
       <ul className="mt-2 space-y-1 font-mono text-xs">
         {overflow.map((line, i) => (
-          <li key={i} className="truncate">
+          <li key={i} className="break-words whitespace-normal">
             ({line.length}) {line.text}
           </li>
         ))}

@@ -59,7 +59,7 @@ export function BancosPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <BancosPageHeader onRefresh={handleRefresh} isRefreshing={isRefreshing} />
 
       {/* Estadísticas */}
@@ -73,14 +73,14 @@ export function BancosPage() {
             className="text-xs sm:text-sm py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
           >
             <Landmark className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
-            <span className="truncate">Cuentas Bancarias</span>
+            <span className="break-words whitespace-normal min-w-0">Cuentas Bancarias</span>
           </TabsTrigger>
           <TabsTrigger 
             value="conciliacion"
             className="text-xs sm:text-sm py-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
           >
             <ArrowRightLeft className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
-            <span className="truncate">Conciliación Bancaria</span>
+            <span className="break-words whitespace-normal min-w-0">Conciliación Bancaria</span>
           </TabsTrigger>
         </TabsList>
 

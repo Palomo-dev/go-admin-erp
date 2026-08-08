@@ -9,7 +9,8 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { FileDown, Loader2 } from 'lucide-react';
+import { FileDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ReporteKPIs } from './ReporteKPIs';
 import { ReporteTabla } from './ReporteTabla';
 import { ReporteEmpty } from './ReporteEmpty';
@@ -65,7 +66,7 @@ export function ReporteSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:w-1/2 min-w-[400px] sm:max-w-none overflow-y-auto bg-white dark:bg-gray-900"
+        className="w-full sm:w-1/2 sm:min-w-[400px] overflow-y-auto bg-white dark:bg-gray-900"
       >
         <SheetHeader className="pr-8">
           <div className="flex items-start justify-between gap-4">
@@ -91,8 +92,10 @@ export function ReporteSheet({
 
         <div className="mt-6 space-y-6">
           {loading && (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <div className="py-16 space-y-4">
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full" />
             </div>
           )}
 

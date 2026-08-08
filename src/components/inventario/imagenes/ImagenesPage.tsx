@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { ImagenesService } from './ImagenesService';
 import { SharedImage, ImagesStats } from './types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function ImagenesPage() {
   const { toast } = useToast();
@@ -403,8 +404,7 @@ export function ImagenesPage() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
+              <Skeleton className="h-8 w-8 mx-auto" /></div>
           ) : imagenes.length === 0 ? (
             <div className="text-center py-10 text-gray-500 dark:text-gray-400">
               <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -479,7 +479,7 @@ export function ImagenesPage() {
 
                   {/* Nombre */}
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                    <p className="text-white text-xs truncate">{img.file_name}</p>
+                    <p className="text-white text-xs break-words whitespace-normal">{img.file_name}</p>
                   </div>
                 </div>
               ))}

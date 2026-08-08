@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   LogIn, 
@@ -97,23 +98,7 @@ export function CheckinStats({ stats, isLoading }: CheckinStatsProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="pt-4">
-              <div className="animate-pulse flex flex-wrap items-center gap-3">
-                <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-                <div className="space-y-2">
-                  <div className="h-6 w-12 bg-gray-200 dark:bg-gray-700 rounded" />
-                  <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={6} />;
   }
 
   return (

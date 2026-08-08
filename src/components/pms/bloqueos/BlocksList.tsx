@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -56,17 +57,7 @@ function isActiveToday(dateFrom: string, dateTo: string): boolean {
 
 export function BlocksList({ blocks, isLoading, onEdit, onDelete }: BlocksListProps) {
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <CardListSkeleton cards={3} columns="1" />;
   }
 
   if (blocks.length === 0) {

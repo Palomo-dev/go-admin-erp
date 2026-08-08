@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -70,26 +71,7 @@ export function TarifasList({
   isLoading,
 }: TarifasListProps) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
-                  </div>
-                </div>
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <CardListSkeleton cards={6} columns="3" />;
   }
 
   if (rates.length === 0) {

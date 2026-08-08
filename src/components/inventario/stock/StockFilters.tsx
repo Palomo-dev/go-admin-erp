@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
+import {
+  Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -9,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+  } from '@/components/ui/select';
 import { Search, X, Filter } from 'lucide-react';
 
 interface StockFiltersProps {

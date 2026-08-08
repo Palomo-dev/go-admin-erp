@@ -9,7 +9,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, Check, AlertCircle } from 'lucide-react';
+import { Package, Check, AlertCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency } from '@/utils/Utils';
 import { POSService } from '@/lib/services/posService';
@@ -230,8 +231,13 @@ export function VariantSelectorDialog({
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div className="px-6 py-8 space-y-3">
+            <Skeleton className="h-5 w-1/2 mx-auto" />
+            <Skeleton className="h-4 w-3/4 mx-auto" />
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">

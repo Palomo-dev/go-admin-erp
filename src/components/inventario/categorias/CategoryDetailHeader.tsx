@@ -2,10 +2,18 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import {
+  useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit, Trash2, Copy, ToggleLeft, FolderTree } from 'lucide-react';
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Copy,
+  ToggleLeft,
+  FolderTree
+} from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { type Category } from '@/lib/services/categoryService';
 

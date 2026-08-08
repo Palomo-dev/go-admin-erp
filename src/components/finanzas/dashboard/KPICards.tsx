@@ -73,7 +73,7 @@ function KPICard({ title, value, icon, trend, trendValue, color, currencyCode = 
     return (
       <Card className={cn('border', colors.border, 'dark:bg-gray-800/50')}>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between">
             <div className="space-y-2">
               <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
               <div className="h-7 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
@@ -90,7 +90,7 @@ function KPICard({ title, value, icon, trend, trendValue, color, currencyCode = 
   return (
     <Card className={cn('border transition-all hover:shadow-md', colors.border, 'dark:bg-gray-800/50')}>
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <div className="space-y-1">
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
             <p className="text-xl font-bold text-gray-900 dark:text-white">

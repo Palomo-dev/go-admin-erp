@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
 import { formatCurrency } from '@/utils/Utils';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -23,9 +24,7 @@ export function FlujoProyectadoChart({ data, isLoading, currencyCode = 'COP' }: 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400">Cargando...</div>
-          </div>
+          <Skeleton className="h-64 w-full" />
         </CardContent>
       </Card>
     );
@@ -57,7 +56,7 @@ export function FlujoProyectadoChart({ data, isLoading, currencyCode = 'COP' }: 
   return (
     <Card className="dark:bg-gray-800/50">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
             Flujo de Caja Proyectado (6 meses)
           </CardTitle>

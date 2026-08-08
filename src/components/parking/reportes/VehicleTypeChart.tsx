@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Car, Bike, Truck } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { VehicleTypeStats } from '@/lib/services/parkingReportService';
@@ -32,8 +33,6 @@ const VEHICLE_COLORS: Record<string, string> = {
 };
 
 export function VehicleTypeChart({ data, isLoading }: VehicleTypeChartProps) {
-  const total = data.reduce((sum, d) => sum + d.count, 0);
-
   return (
     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-2">
@@ -45,7 +44,7 @@ export function VehicleTypeChart({ data, isLoading }: VehicleTypeChartProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
+            <Skeleton className="h-32 w-full" />
           </div>
         ) : data.length === 0 ? (
           <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">

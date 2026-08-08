@@ -1,8 +1,16 @@
 'use client';
 
-import { FC } from 'react';
-import { cn, formatCurrency } from '@/utils/Utils';
-import { Building2, Package, AlertTriangle, PackageX, TrendingUp } from 'lucide-react';
+import {
+  FC } from 'react';
+import { cn,
+  formatCurrency } from '@/utils/Utils';
+import {
+  Building2,
+  Package,
+  AlertTriangle,
+  PackageX,
+  TrendingUp
+} from 'lucide-react';
 import { BranchSummary } from '@/lib/services/inventoryDashboardService';
 
 interface ResumenSucursalesProps {

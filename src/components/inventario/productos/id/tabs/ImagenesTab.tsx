@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
@@ -36,6 +36,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ImagenesTabProps {
   producto: any;
@@ -47,7 +48,7 @@ interface ImagenesTabProps {
  * Pestaña para gestionar las imágenes del producto
  */
 const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   const { organization } = useOrganization();
   
@@ -398,8 +399,7 @@ const ImagenesTab: React.FC<ImagenesTabProps> = ({ producto }) => {
       {/* Galería de imágenes */}
       {loading ? (
         <div className="flex items-center justify-center h-32 bg-gray-100 dark:bg-gray-800 rounded-lg border border-dashed dark:border-gray-700 cursor-pointer">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-        </div>
+          <Skeleton className="h-8 w-8 mx-auto" /></div>
       ) : images.length === 0 ? (
         <div className="p-8 text-center rounded-md border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
           <PackageIcon className="mx-auto h-12 w-12 text-gray-400" />

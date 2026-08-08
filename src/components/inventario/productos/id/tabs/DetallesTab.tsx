@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
@@ -34,7 +34,7 @@ interface DetallesTabProps {
  * Muestra y permite editar los campos básicos
  */
 const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   const { organization } = useOrganization();
   

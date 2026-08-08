@@ -1,10 +1,15 @@
 'use client';
 
-import { FC, useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Factory, ChefHat, TrendingUp, Package, Loader2 } from 'lucide-react';
+import {
+  FC,
+  useState,
+  useEffect } from 'react';
+import { Card,
+  CardContent } from '@/components/ui/card';
+import { Factory, ChefHat, TrendingUp, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface ProduccionKPIsProps {
   className?: string;
@@ -77,8 +82,9 @@ const ProduccionKPIs: FC<ProduccionKPIsProps> = ({ className }) => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

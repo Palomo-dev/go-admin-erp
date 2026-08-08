@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Shield, 
@@ -152,15 +153,8 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
-          <div className="space-y-3">
-            <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
-        </div>
+      <div className="py-4">
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

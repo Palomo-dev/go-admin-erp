@@ -544,7 +544,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
               <TableCell className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                 {factura.number}
               </TableCell>
-              <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm truncate max-w-[200px]">{factura.customer_name}</TableCell>
+              <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm break-words whitespace-normal min-w-0">{factura.customer_name}</TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm whitespace-nowrap">{formatearFecha(factura.issue_date)}</TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm whitespace-nowrap">{formatearFecha(factura.due_date)}</TableCell>
               <TableCell className="text-right font-medium text-gray-900 dark:text-gray-100 text-xs sm:text-sm whitespace-nowrap">
@@ -554,7 +554,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                 {formatCurrency(factura.balance, factura.currency)}
               </TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
-                <span className="truncate max-w-[120px] inline-block">{factura.payment_method_name}</span>
+                <span className="break-words whitespace-normal min-w-0 inline-block">{factura.payment_method_name}</span>
               </TableCell>
               <TableCell>
                 <Badge className={`text-[10px] sm:text-xs px-2 py-0.5 ${getStatusColor(factura.status)}`}>

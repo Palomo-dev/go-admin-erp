@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, LogIn, LogOut, Ban, Wrench } from 'lucide-react';
 import { cn } from '@/utils/Utils';
@@ -93,31 +94,7 @@ function EventItem({ event }: { event: CalendarEvent }) {
   );
 }
 
-function EventSkeleton() {
-  return (
-    <div className="flex flex-wrap items-center gap-3 py-2 animate-pulse">
-      <div className="h-7 w-7 bg-gray-200 dark:bg-gray-700 rounded" />
-      <div className="flex-1 space-y-1">
-        <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-        <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-      </div>
-      <div className="h-5 w-12 bg-gray-200 dark:bg-gray-700 rounded" />
-    </div>
-  );
-}
-
 export function MiniCalendar({ events, isLoading = false }: MiniCalendarProps) {
-  const groupedEvents = events.reduce((acc, event) => {
-    const date = event.date;
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(event);
-    return acc;
-  }, {} as Record<string, CalendarEvent[]>);
-
-  const sortedDates = Object.keys(groupedEvents).sort();
-
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="pb-3">
@@ -133,12 +110,7 @@ export function MiniCalendar({ events, isLoading = false }: MiniCalendarProps) {
       </CardHeader>
       <CardContent className="max-h-[300px] overflow-y-auto">
         {isLoading ? (
-          <div className="space-y-2">
-            <EventSkeleton />
-            <EventSkeleton />
-            <EventSkeleton />
-            <EventSkeleton />
-          </div>
+          <CardListSkeleton cards={4} columns="1" />
         ) : events.length === 0 ? (
           <div className="text-center py-6">
             <Calendar className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />

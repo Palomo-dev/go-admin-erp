@@ -14,7 +14,7 @@ import ForecastByStageChart from "./ForecastByStageChart";
 import MonthlyForecastView from "./MonthlyForecastView";
 import ForecastSidebar from "./ForecastSidebar";
 import WeightedFunnelChart from "./WeightedFunnelChart";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import { TableSkeleton } from "@/components/common/PageSkeletons";
 import { forecastRealTimeService } from "@/lib/services/forecastRealTimeService";
 
 interface ForecastMonth {
@@ -310,10 +310,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
   if (loading) {
     return (
       <div className="p-3 sm:p-4">
-        <div className="flex flex-col justify-center items-center h-40 gap-3">
-          <LoadingSpinner size="lg" className="text-blue-500" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando pronóstico...</span>
-        </div>
+        <TableSkeleton columns={6} rows={5} />
       </div>
     );
   }

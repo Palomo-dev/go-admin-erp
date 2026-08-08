@@ -3,18 +3,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
+import {ArrowLeft,
   MinusCircle,
   Calendar,
   User,
   FileText,
   Wallet,
   Download,
-  Loader2,
   XCircle,
-  Copy,
-} from 'lucide-react';
+  Copy} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface EgresoDetalleProps {
   id: string; // UUID
@@ -109,8 +107,8 @@ Notas: ${movement.notes || 'N/A'}
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <DetailSkeleton />
       </div>
     );
   }

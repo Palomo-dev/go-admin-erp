@@ -494,7 +494,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
                 <div key={kr.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-2 group">
                     <span className="text-xs font-bold text-blue-600 flex-shrink-0">{idx + 1}.</span>
-                    <span className="text-sm flex-1 text-gray-700 dark:text-gray-300 truncate">{kr.title}</span>
+                    <span className="text-sm flex-1 min-w-0 text-gray-700 dark:text-gray-300 break-words whitespace-normal">{kr.title}</span>
                     {kr.target_value && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
                         {kr.target_value}{kr.unit ? ` ${kr.unit}` : ''}

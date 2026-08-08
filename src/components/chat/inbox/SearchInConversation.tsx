@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -159,7 +160,7 @@ export default function SearchInConversation({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[450px] flex flex-col">
+      <SheetContent className="w-full max-w-[400px] sm:max-w-[450px] sm:w-[450px] flex flex-col">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
@@ -239,8 +240,13 @@ export default function SearchInConversation({
               </p>
             </div>
           ) : loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-3 rounded-lg space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
             </div>
           ) : results.length === 0 && searchTerm.length >= 2 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">

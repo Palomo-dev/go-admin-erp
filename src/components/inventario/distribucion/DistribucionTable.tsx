@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
+import {
+  Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -10,16 +11,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+  } from '@/components/ui/table';
 import {
   Eye,
   Truck,
   XCircle,
-  Loader2,
   ArrowRight,
-  Package,
+  Package
 } from 'lucide-react';
 import type { InventoryTransfer } from '../transferencias/types';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface DistribucionTableProps {
   transferencias: InventoryTransfer[];
@@ -47,8 +48,9 @@ export function DistribucionTable({
 }: DistribucionTableProps) {
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }
@@ -101,7 +103,7 @@ export function DistribucionTable({
                 <TableCell className="text-sm text-gray-500 dark:text-gray-400">
                   {t.created_at ? new Date(t.created_at).toLocaleDateString('es-CO') : '-'}
                 </TableCell>
-                <TableCell className="text-sm text-gray-500 dark:text-gray-400 max-w-[200px] truncate">
+                <TableCell className="text-sm text-gray-500 dark:text-gray-400 max-w-[200px] break-words whitespace-normal">
                   {t.notes || '-'}
                 </TableCell>
                 <TableCell className="text-right">

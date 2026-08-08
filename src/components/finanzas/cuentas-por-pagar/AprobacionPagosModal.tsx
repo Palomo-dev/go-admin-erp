@@ -294,14 +294,14 @@ export function AprobacionPagosModal({
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                             <div className="flex items-center gap-1 text-gray-700 dark:text-gray-300">
                               <User className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                              <span className="truncate">
+                              <span className="break-words whitespace-normal min-w-0">
                                 {`${pago.created_by_user?.first_name || ''} ${pago.created_by_user?.last_name || ''}`.trim() || pago.created_by_user?.email || 'Usuario'}
                               </span>
                             </div>
                             {pago.reference && (
                               <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                                 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                                <span className="truncate max-w-full sm:max-w-xs">{pago.reference}</span>
+                                <span className="break-words whitespace-normal min-w-0 sm:max-w-xs">{pago.reference}</span>
                               </div>
                             )}
                           </div>

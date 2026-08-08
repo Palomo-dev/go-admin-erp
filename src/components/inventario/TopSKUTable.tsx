@@ -1,4 +1,5 @@
 import { FC, useState, useEffect } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface SKU {
   id: string;
@@ -141,7 +142,7 @@ const TopSKUTable: FC<TopSKUTableProps> = ({
       
       {loading ? (
         <div className="flex justify-center items-center h-40">
-          <p>Cargando...</p>
+          <Skeleton className="h-4 w-24 mx-auto" />
         </div>
       ) : (
         <div className="overflow-x-auto">

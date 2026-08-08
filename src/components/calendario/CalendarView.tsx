@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { CalendarHeader } from './CalendarHeader';
 import { CalendarFilters } from './CalendarFilters';
@@ -12,7 +12,7 @@ import { DayView } from './DayView';
 import { AgendaView } from './AgendaView';
 import { EventModal } from './EventModal';
 import { useCalendar } from './useCalendar';
-import { CalendarEvent, CalendarViewType, EventStatus } from './types';
+import { CalendarEvent, EventStatus } from './types';
 import { cn } from '@/utils/Utils';
 
 interface CalendarViewProps {
@@ -273,10 +273,15 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
   const renderView = () => {
     if (isLoading) {
       return (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto" />
-            <p className="mt-2 text-gray-500 dark:text-gray-400">Cargando eventos...</p>
+        <div className="flex-1 space-y-4 p-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-8 w-32 ml-auto" />
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 sm:h-24 w-full rounded-lg" />
+            ))}
           </div>
         </div>
       );

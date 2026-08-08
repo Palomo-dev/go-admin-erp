@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/lib/supabase/config';
 import { formatDate } from '@/utils/Utils';
 import { Building2 } from 'lucide-react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 
 interface InfoTabProps {
   clienteId: string;
@@ -129,11 +130,8 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
 
   if (loading) {
     return (
-      <div className="w-full flex justify-center items-center py-12">
-        <div className="flex flex-col items-center">
-          <div className="loading loading-spinner loading-md text-primary mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Cargando información detallada...</p>
-        </div>
+      <div className="py-4">
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

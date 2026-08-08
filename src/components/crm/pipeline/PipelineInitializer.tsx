@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/config";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PipelineInitializerProps {
   organizationId: string | null;
@@ -125,9 +125,10 @@ export function PipelineInitializer({ organizationId, onInitComplete }: Pipeline
   }, [organizationId, onInitComplete]);
 
   return (
-    <div className="flex flex-col items-center justify-center p-8">
-      <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-      <p className="text-center text-muted-foreground">{message}</p>
+    <div className="p-8 space-y-4 max-w-md mx-auto">
+      <Skeleton className="h-8 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
     </div>
   );
 }

@@ -2,7 +2,14 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Package, PlusCircle, FileSpreadsheet, Download, RefreshCw, Sparkles } from 'lucide-react';
+import {
+  Package,
+  PlusCircle,
+  FileSpreadsheet,
+  Download,
+  RefreshCw,
+  Sparkles
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

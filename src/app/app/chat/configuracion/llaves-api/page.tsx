@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { Loader2 } from 'lucide-react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +17,7 @@ import {
 import InboxConfigService, { type ChannelApiKey, type Channel } from '@/lib/services/inboxConfigService';
 import { ApiKeysHeader, ApiKeyCard, ApiKeyDialog } from '@/components/chat/configuracion/llaves-api';
 import { ConfigNavTabs } from '@/components/chat/configuracion/ConfigNavTabs';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function LlavesApiPage() {
   const { toast } = useToast();
@@ -150,13 +151,12 @@ export default function LlavesApiPage() {
 
   if (loading && apiKeys.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando llaves de API...</p>
-        </div>
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <PageHeaderSkeleton />
+    <StatsSkeleton count={4} />
+    <CardListSkeleton cards={3} columns="1" />
+  </div>
+);
   }
 
   return (

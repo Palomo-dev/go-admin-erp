@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Bell, RefreshCw, CheckCheck, ArrowLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
@@ -43,11 +44,11 @@ export function BandejaHeader({
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 Bandeja de Notificaciones
               </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
                 {stats
                   ? `${stats.total} total · ${stats.unread} sin leer · ${stats.today} hoy`
-                  : 'Cargando...'}
-              </p>
+                  : <Skeleton className="h-4 w-32" />}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

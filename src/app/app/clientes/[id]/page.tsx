@@ -5,8 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
-import { ArrowLeft, User, Loader2, Users } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 
 // Importamos los componentes del perfil del cliente
@@ -87,9 +87,9 @@ export default function PerfilCliente() {
   
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
-        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando perfil del cliente...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }
@@ -145,15 +145,15 @@ export default function PerfilCliente() {
         {/* Sección principal con pestañas */}
         <div className="col-span-1 lg:col-span-2">
           <Tabs defaultValue="resumen" className="w-full">
-            <TabsList className="mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 rounded-lg">
-              <TabsTrigger value="resumen" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Resumen</TabsTrigger>
-              <TabsTrigger value="info" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Información</TabsTrigger>
-              <TabsTrigger value="oportunidades" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Oportunidades</TabsTrigger>
-              <TabsTrigger value="timeline" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Timeline</TabsTrigger>
-              <TabsTrigger value="cuentas" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Cuentas por cobrar</TabsTrigger>
-              <TabsTrigger value="notas" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Notas y archivos</TabsTrigger>
+            <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1 h-auto mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1 rounded-lg">
+              <TabsTrigger value="resumen" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Resumen</TabsTrigger>
+              <TabsTrigger value="info" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Información</TabsTrigger>
+              <TabsTrigger value="oportunidades" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Oportunidades</TabsTrigger>
+              <TabsTrigger value="timeline" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Timeline</TabsTrigger>
+              <TabsTrigger value="cuentas" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Cuentas por cobrar</TabsTrigger>
+              <TabsTrigger value="notas" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Notas y archivos</TabsTrigger>
               {cliente.customer_type === 'company' && (
-                <TabsTrigger value="contactos" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Contactos</TabsTrigger>
+                <TabsTrigger value="contactos" className="text-xs sm:text-sm h-auto py-1.5 px-2 whitespace-normal min-w-0 data-[state=active]:bg-blue-600 data-[state=active]:text-white">Contactos</TabsTrigger>
               )}
             </TabsList>
             

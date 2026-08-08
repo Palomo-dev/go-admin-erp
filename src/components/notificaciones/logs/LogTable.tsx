@@ -8,6 +8,7 @@ import {
   Mail, Smartphone, Bell, MessageSquare, Webhook, BellRing,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { DeliveryLog } from './types';
 import { STATUS_OPTIONS, PAGE_SIZE } from './types';
 
@@ -50,7 +51,7 @@ export function LogTable({ logs, total, page, onPageChange, onViewDetail, onRetr
     return (
       <div className="space-y-2">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-12 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+          <Skeleton key={i} className="h-12 w-full rounded-lg" />
         ))}
       </div>
     );

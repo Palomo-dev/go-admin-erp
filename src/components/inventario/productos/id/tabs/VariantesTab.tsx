@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface VariantTypeOption {
   id: number;
@@ -96,7 +97,7 @@ interface Variante {
  * Permite crear, editar y eliminar variantes
  */
 const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   const { organization } = useOrganization();
   
@@ -701,8 +702,7 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
             {loading ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
-                </TableCell>
+                  <Skeleton className="h-8 w-8 mx-auto" /></TableCell>
               </TableRow>
             ) : variantes.length === 0 ? (
               <TableRow>

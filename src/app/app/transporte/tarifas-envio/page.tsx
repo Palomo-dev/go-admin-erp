@@ -51,6 +51,7 @@ import {
   ImportRatesDialog,
   SimulatorDialog,
 } from '@/components/transporte/tarifas-envio';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 
 const SERVICE_LEVEL_OPTIONS = [
   { value: 'all', label: 'Todos los niveles' },
@@ -483,12 +484,7 @@ export default function TarifasEnvioPage() {
 
       {/* Lista de tarifas */}
       {isLoading ? (
-        <Card className="p-4 sm:p-8">
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
-            <span className="ml-3 text-gray-600 dark:text-gray-400">Cargando tarifas...</span>
-          </div>
-        </Card>
+        <CardListSkeleton cards={6} columns="3" />
       ) : rates.length === 0 ? (
         <Card className="p-4 sm:p-8 text-center">
           <Truck className="h-12 w-12 mx-auto text-gray-400 mb-4 dark:text-gray-500" />

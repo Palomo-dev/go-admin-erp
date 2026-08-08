@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { DollarSign, Layers, TrendingUp, Calendar } from 'lucide-react';
 import type { Rate } from '@/lib/services/ratesService';
 
@@ -57,16 +58,7 @@ export function RatesStats({ rates, isLoading }: RatesStatsProps) {
   ];
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="p-6 animate-pulse">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-3"></div>
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={4} />;
   }
 
   return (

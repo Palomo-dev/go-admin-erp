@@ -41,6 +41,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   Hash,
   Plus,
@@ -299,8 +300,10 @@ export function ConsecutivosPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={5} columns="1" />
       </div>
     );
   }
@@ -327,19 +330,19 @@ export function ConsecutivosPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing} className="shrink-0">
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
-          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+          <Button variant="outline" onClick={() => setShowImportDialog(true)} className="w-full sm:w-auto">
             <Upload className="h-4 w-4 mr-2" />
             Importar
           </Button>
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Exportar
           </Button>
-          <Button onClick={openModalNuevo} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button onClick={openModalNuevo} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Consecutivo
           </Button>

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   Search,
   ClipboardList,
@@ -228,33 +228,37 @@ export default function PMTasksPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {[
-            { label: 'Total', value: stats.total, icon: <ClipboardList className="h-4 w-4" />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/20' },
-            { label: 'Pendientes', value: stats.open, icon: <Clock className="h-4 w-4" />, color: 'text-gray-600', bg: 'bg-gray-50 dark:bg-gray-800' },
-            { label: 'En Progreso', value: stats.inProgress, icon: <TrendingUp className="h-4 w-4" />, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
-            { label: 'Completadas', value: stats.done, icon: <CheckCircle className="h-4 w-4" />, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-950/20' },
-            { label: 'Vencidas', value: stats.overdue, icon: <AlertTriangle className="h-4 w-4" />, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/20' },
-          ].map(s => (
-            <Card key={s.label} className={`${s.bg} border-0`}>
-              <CardContent className="p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className={s.color}>{s.icon}</span>
-                  <span className="text-xs font-medium text-gray-500">{s.label}</span>
-                </div>
-                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {loading ? (
+          <StatsSkeleton count={5} />
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: 'Total', value: stats.total, icon: <ClipboardList className="h-4 w-4" />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/20' },
+              { label: 'Pendientes', value: stats.open, icon: <Clock className="h-4 w-4" />, color: 'text-gray-600', bg: 'bg-gray-50 dark:bg-gray-800' },
+              { label: 'En Progreso', value: stats.inProgress, icon: <TrendingUp className="h-4 w-4" />, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
+              { label: 'Completadas', value: stats.done, icon: <CheckCircle className="h-4 w-4" />, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-950/20' },
+              { label: 'Vencidas', value: stats.overdue, icon: <AlertTriangle className="h-4 w-4" />, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/20' },
+            ].map(s => (
+              <Card key={s.label} className={`${s.bg} border-0`}>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={s.color}>{s.icon}</span>
+                    <span className="text-xs font-medium text-gray-500">{s.label}</span>
+                  </div>
+                  <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full sm:w-fit overflow-x-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 w-full sm:w-fit">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all flex-1 sm:flex-none justify-center ${
+              className={`flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-all w-full justify-center ${
                 activeTab === tab.id
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -274,7 +278,7 @@ export default function PMTasksPage() {
               <Input placeholder="Buscar tareas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 bg-white dark:bg-gray-800" />
             </div>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); }}>
-              <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-800"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[150px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Estado" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="open">Pendiente</SelectItem>
@@ -284,14 +288,14 @@ export default function PMTasksPage() {
               </SelectContent>
             </Select>
             <Select value={projectFilter} onValueChange={(v) => { setProjectFilter(v); }}>
-              <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800"><SelectValue placeholder="Proyecto" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[180px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Proyecto" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los proyectos</SelectItem>
                 {projects.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
               </SelectContent>
             </Select>
             <Select value={dueFilter} onValueChange={setDueFilter}>
-              <SelectTrigger className="w-full sm:w-[160px] bg-white dark:bg-gray-800"><SelectValue placeholder="Vencimiento" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Vencimiento" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toda fecha</SelectItem>
                 <SelectItem value="overdue">Vencidas</SelectItem>
@@ -304,14 +308,14 @@ export default function PMTasksPage() {
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] bg-white dark:bg-gray-800"><SelectValue placeholder="Prioridad" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[140px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Prioridad" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toda prioridad</SelectItem>
                 {Object.entries(PRIORITY_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
               </SelectContent>
             </Select>
             <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="w-full sm:w-[160px] bg-white dark:bg-gray-800"><SelectValue placeholder="Asignado" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[160px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Asignado" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los asignados</SelectItem>
                 <SelectItem value="unassigned">Sin asignar</SelectItem>
@@ -319,7 +323,7 @@ export default function PMTasksPage() {
               </SelectContent>
             </Select>
             <Select value={moduleFilter} onValueChange={setModuleFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] bg-white dark:bg-gray-800"><SelectValue placeholder="Módulo" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[140px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Módulo" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los módulos</SelectItem>
                 <SelectItem value="crm">CRM</SelectItem>
@@ -328,7 +332,7 @@ export default function PMTasksPage() {
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[150px] bg-white dark:bg-gray-800"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[150px] text-xs bg-white dark:bg-gray-800"><SelectValue placeholder="Tipo" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los tipos</SelectItem>
                 {Object.entries(TASK_TYPE_LABELS).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
@@ -347,11 +351,7 @@ export default function PMTasksPage() {
 
         {/* Content */}
         {loading && activeTab !== 'ai' ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Card key={i}><CardContent className="p-4"><Skeleton className="h-4 w-3/4 mb-2" /><Skeleton className="h-3 w-1/2" /></CardContent></Card>
-            ))}
-          </div>
+          <CardListSkeleton cards={5} columns="1" />
         ) : (
           <>
             {activeTab === 'list' && (

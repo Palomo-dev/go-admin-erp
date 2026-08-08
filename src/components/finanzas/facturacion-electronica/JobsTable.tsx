@@ -17,16 +17,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  MoreVertical,
+import {MoreVertical,
   RefreshCw,
   XCircle,
   Eye,
   FileDown,
-  FileText,
-  Loader2,
-} from 'lucide-react';
+  FileText} from 'lucide-react';
 import { formatDate, cn } from '@/utils/Utils';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 
 export interface ElectronicInvoicingJob {
   id: string;
@@ -103,10 +101,7 @@ export function JobsTable({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando jobs...</span>
-      </div>
+      <TableSkeleton columns={5} rows={5} />
     );
   }
 
@@ -150,7 +145,7 @@ export function JobsTable({
                 <TableCell className="font-medium">
                   {job.invoice?.number || job.invoice_id.substring(0, 8)}
                 </TableCell>
-                <TableCell className="max-w-[200px] truncate">
+                <TableCell className="break-words whitespace-normal min-w-0">
                   {getCustomerName(job)}
                 </TableCell>
                 <TableCell>

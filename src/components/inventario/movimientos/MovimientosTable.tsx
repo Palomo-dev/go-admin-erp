@@ -8,7 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+  } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,19 +16,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { 
-  MoreHorizontal, 
-  Eye, 
+  } from '@/components/ui/dropdown-menu';
+import {
+  MoreHorizontal,
+  Eye,
   FileText,
   ArrowDownCircle,
   ArrowUpCircle,
-  Loader2,
   Package
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import type { StockMovement } from '@/lib/services/stockService';
 import Link from 'next/link';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface MovimientosTableProps {
   data: StockMovement[];
@@ -85,9 +85,9 @@ export function MovimientosTable({
 }: MovimientosTableProps) {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando movimientos...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }
@@ -170,7 +170,7 @@ export function MovimientosTable({
                   </TableCell>
                   <TableCell className="font-medium text-gray-900 dark:text-white">
                     <div className="max-w-[200px]">
-                      <div className="truncate">{item.products?.name || 'N/A'}</div>
+                      <div className="break-words whitespace-normal">{item.products?.name || 'N/A'}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                         {item.products?.sku || '-'}
                       </div>
@@ -210,7 +210,7 @@ export function MovimientosTable({
                     {item.source_id || '-'}
                   </TableCell>
                   <TableCell className="text-gray-600 dark:text-gray-400">
-                    <div className="max-w-[150px] truncate" title={item.note || ''}>
+                    <div className="max-w-[150px] break-words whitespace-normal" title={item.note || ''}>
                       {item.note || '-'}
                     </div>
                   </TableCell>

@@ -8,9 +8,8 @@ import {
   Edit, 
   Copy, 
   Trash2, 
-  Calendar, 
+  Calendar,
   Ticket,
-  RefreshCw,
   Percent,
   DollarSign,
   CheckCircle,
@@ -43,6 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { PageHeaderSkeleton, DetailSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CouponsService, CouponForm } from '@/components/pos/cupones';
 import { Coupon, CouponRedemption, DISCOUNT_TYPE_LABELS } from '@/components/pos/cupones/types';
 import { formatCurrency, cn } from '@/utils/Utils';
@@ -184,13 +184,9 @@ export default function CuponDetallePage() {
 
   if (orgLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center py-12">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-purple-600" />
-            <p className="text-gray-600 dark:text-gray-400">Cargando...</p>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

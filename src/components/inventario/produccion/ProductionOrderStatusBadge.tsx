@@ -1,8 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { FileText, Clock, Play, CheckCircle, XCircle } from 'lucide-react';
+import {
+  Badge } from '@/components/ui/badge';
+import {
+  FileText,
+  Clock,
+  Play,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
 import type { ProductionOrderStatus } from '@/lib/services/productionOrderService';
 
 interface StatusConfig {

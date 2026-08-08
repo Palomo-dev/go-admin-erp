@@ -112,6 +112,23 @@ La mayoría de subpáginas **ya son componentes reutilizables**:
 - Cambios en `OrganizationInfoTab`, `MembersTab`, etc. se reflejan en ambos lugares (organización app + configuración general)
 - Las 5 páginas de organización pasaron de ~150 líneas a ~63, eliminando código duplicado
 
+### Módulo "Sitio Web" como tab de configuración ✅ DONE
+
+**Objetivo**: Agregar un tab "Sitio Web" en la configuración centralizada que reutilice exactamente los mismos componentes de `/app/organizacion/branding`, evitando duplicación.
+
+**Archivos creados**:
+1. `src/components/configuracion/panels/sitioweb/WebsiteConfigPanel.tsx` — Panel con tabs internos (Tema, Páginas, Checkout, SEO, Contenido, Avanzado, Publicar) que reutilizan exactamente los mismos componentes: `BrandingThemeTab`, `BrandingPagesTab`, `BrandingCheckoutTab`, `BrandingSEOTab`, `BrandingContentTab`, `BrandingAdvancedTab`, `BrandingPublishTab`. Misma lógica de `loadSettings`, `handleSave`, `handlePublish`, `handleUnpublish`, `handleResetToTemplate`, `handleUploadImage`. Sin header con `ArrowLeft` (no aplica en contexto de configuración). Tabs con estilo POS igual que `GeneralConfigPanel`.
+
+**Archivos modificados**:
+1. `src/components/configuracion/config/configModulesRegistry.ts` — Agregado módulo `sitioweb` con `moduleCode: 'website'`, icono `Globe`, `isCore: true`, posicionado después de `general`.
+2. `src/components/configuracion/layout/ConfiguracionPanelRenderer.tsx` — Agregado `WebsiteConfigPanel` al `PANEL_MAP` con import dinámico.
+
+**Resultado**:
+- Al entrar a `/app/configuracion` ahora aparecen dos tabs core: **General** y **Sitio Web**
+- El tab "Sitio Web" muestra los 7 tabs internos de branding con el mismo estilo POS
+- La página `/app/organizacion/branding` sigue funcionando independientemente — ambos lugares comparten los mismos componentes
+- Cualquier cambio en `BrandingThemeTab`, `BrandingSEOTab`, etc. se refleja en ambos lugares
+
 ---
 
 ## Estado Actual (inventario completo)
@@ -150,6 +167,7 @@ La mayoría de subpáginas **ya son componentes reutilizables**:
 
 ### Integrado en Configuración (ya no fuera de scope)
 - `/app/organizacion/*` → ahora compartido via `useOrgAdmin` + `GeneralConfigPanel` con tabs internos. Las páginas siguen existiendo en `/app/organizacion/*` pero usan el mismo hook y componentes.
+- `/app/organizacion/branding` → ahora compartido via `WebsiteConfigPanel` con tabs internos. La página sigue existiendo en `/app/organizacion/branding` pero usa los mismos componentes.
 - `/app/perfil` → config a nivel usuario personal
 
 ---
@@ -182,6 +200,8 @@ src/
     └── panels/
         ├── general/
         │   └── GeneralConfigPanel.tsx     # Tabs internos con componentes de organización
+        ├── sitioweb/
+        │   └── WebsiteConfigPanel.tsx     # Tabs internos con componentes de branding
         ├── crm/
         │   ├── CRMConfigPanel.tsx          # Cards: Canales, Etiquetas, API Keys, Widget
         │   └── drawers/ChannelDetailDrawer.tsx  # REFACTOR de canales/[id]
@@ -235,6 +255,7 @@ export interface ConfigModule {
 
 export const CONFIG_MODULES: ConfigModule[] = [
   { id: 'general', moduleCode: 'general', title: 'General', isCore: true, ... },
+  { id: 'sitioweb', moduleCode: 'website', title: 'Sitio Web', isCore: true, ... },
   { id: 'crm', moduleCode: 'crm', title: 'CRM', ... },
   { id: 'hrm', moduleCode: 'hrm', ... },
   // ...
@@ -282,6 +303,7 @@ const CRMConfigPanel = dynamic(() => import('./panels/crm/CRMConfigPanel'), {
 | Gym | `gym` | 6 cards inline | — |
 | Notificaciones | `notifications` | Preferencias de canales inline | — |
 | General | `general` (core) | Tabs internos: OrganizationInfoTab, MembersTab, InvitationsTab, BranchesTab, ManageOrganizationsTab | — |
+| Sitio Web | `website` (core) | Tabs internos: BrandingThemeTab, BrandingPagesTab, BrandingCheckoutTab, BrandingSEOTab, BrandingContentTab, BrandingAdvancedTab, BrandingPublishTab | — |
 
 ---
 

@@ -107,8 +107,7 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                 <TableCell className="text-right text-xs sm:text-sm py-2 sm:py-3 hidden md:table-cell">
                   {(() => {
                     const rate = Number(item.tax_rate);
-                    const hasTaxCode = item.tax_code != null && item.tax_code !== '';
-                    if (hasTaxCode && !isNaN(rate) && rate > 0) {
+                    if (!isNaN(rate) && rate > 0) {
                       const taxName = resolveTaxName(item);
                       const isIncluded = item.tax_included ?? taxIncluded;
                       const nameHasRate = /\d+/.test(taxName);

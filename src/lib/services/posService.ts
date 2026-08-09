@@ -1332,10 +1332,38 @@ export class POSService {
     try {
       const { cart, payments } = checkoutData;
 
+      // Calcular totales desde los items (fallback si calculatedTotals falló en el CheckoutDialog)
+      const checkoutTaxIncluded = checkoutData.tax_included || false;
+      let calculatedSubtotal = 0;
+      let calculatedTaxTotal = 0;
+      let calculatedDiscount = 0;
+      let calculatedGrandTotal = 0;
+
+      for (const item of cart.items) {
+        const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+        const itemDiscount = item.discount_amount || 0;
+        const lineNet = lineTotal - itemDiscount;
+        const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
+        const itemTaxRate = item.tax_rate || 0;
+        const itemTax = itemTaxIncluded
+          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
+          : lineNet * itemTaxRate / 100;
+        calculatedSubtotal += itemTaxIncluded ? (lineNet - itemTax) : lineNet;
+        calculatedTaxTotal += itemTax;
+        calculatedDiscount += itemDiscount;
+        calculatedGrandTotal += itemTaxIncluded ? lineNet : (lineNet + itemTax);
+      }
+
+      // Usar los valores calculados si cart.subtotal es 0 (calculatedTotals falló en CheckoutDialog)
+      const effectiveSubtotal = cart.subtotal > 0 ? cart.subtotal : calculatedSubtotal;
+      const effectiveTaxTotal = cart.tax_total > 0 ? cart.tax_total : calculatedTaxTotal;
+      const effectiveDiscount = cart.discount_total > 0 ? cart.discount_total : calculatedDiscount;
+
       // Calcular total final incluyendo flete y propina
       const shippingFee = checkoutData.shipping_fee || 0;
       const tipAmount = checkoutData.tip_amount || 0;
-      const finalTotal = cart.total + shippingFee + tipAmount;
+      const baseTotal = cart.total > 0 ? cart.total : calculatedGrandTotal;
+      const finalTotal = baseTotal + shippingFee + tipAmount;
 
       // Si el carrito ya tiene sale_id (viene de hold_with_debt), actualizar la venta existente
       const isDebtCheckout = !!(cart.sale_id && cart.invoice_id);
@@ -1372,9 +1400,9 @@ export class POSService {
             branch_id: getCurrentBranchId(),
             customer_id: cart.customer_id,
             user_id: (await supabase.auth.getUser()).data.user?.id,
-            subtotal: cart.subtotal,
-            tax_total: cart.tax_total,
-            discount_total: cart.discount_total,
+            subtotal: effectiveSubtotal,
+            tax_total: effectiveTaxTotal,
+            discount_total: effectiveDiscount,
             total: finalTotal,
             balance: Math.max(0, finalTotal - checkoutData.total_paid),
             status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
@@ -1444,15 +1472,24 @@ export class POSService {
           if (item.notes) notesObj.extra = item.notes;
           if (item.modifiers && item.modifiers.length > 0) notesObj.modifiers = item.modifiers;
 
+          const lineTotalSale = (item.unit_price || 0) * (item.quantity || 1);
+          const itemDiscountSale = item.discount_amount || 0;
+          const lineNetSale = lineTotalSale - itemDiscountSale;
+          const itemTaxIncludedSale = item.tax_included ?? (checkoutData.tax_included || false);
+          const itemTaxRateSale = item.tax_rate || 0;
+          const itemTaxSale = itemTaxIncludedSale
+            ? lineNetSale - (lineNetSale / (1 + itemTaxRateSale / 100))
+            : lineNetSale * itemTaxRateSale / 100;
+
           return {
             sale_id: saleData.id,
             product_id: item.product_id,
             quantity: item.quantity,
             unit_price: item.unit_price,
-            total: item.total,
-            tax_amount: item.tax_amount || 0,
-            tax_rate: item.tax_rate || 0,
-            discount_amount: item.discount_amount || 0,
+            total: itemTaxIncludedSale ? lineNetSale : lineNetSale + itemTaxSale,
+            tax_amount: itemTaxSale,
+            tax_rate: itemTaxRateSale,
+            discount_amount: itemDiscountSale,
             notes: notesObj
           };
         });
@@ -1526,8 +1563,8 @@ export class POSService {
             issue_date: new Date().toISOString(),
             due_date: new Date().toISOString(),
             currency: baseCurrency.code,
-            subtotal: cart.subtotal,
-            tax_total: cart.tax_total,
+            subtotal: effectiveSubtotal,
+            tax_total: effectiveTaxTotal,
             total: finalTotal,
             balance: saleData.balance,
             status: saleData.balance > 0 ? 'partial' : 'paid',
@@ -1642,6 +1679,15 @@ export class POSService {
               }
             }
 
+            const lineTotalCheckout = (cartItem.unit_price || 0) * (cartItem.quantity || 0);
+            const itemDiscountCheckout = cartItem.discount_amount || 0;
+            const lineNetCheckout = lineTotalCheckout - itemDiscountCheckout;
+            const itemTaxIncludedCheckout = cartItem.tax_included ?? (checkoutData.tax_included || false);
+            const itemTaxRateCheckout = cartItem.tax_rate || 0;
+            const itemTaxCheckout = itemTaxIncludedCheckout
+              ? lineNetCheckout - (lineNetCheckout / (1 + itemTaxRateCheckout / 100))
+              : lineNetCheckout * itemTaxRateCheckout / 100;
+
             return {
               invoice_id: invoiceData.id, // Campo correcto según schema
               invoice_sales_id: invoiceData.id, // Mantener para relación
@@ -1650,10 +1696,10 @@ export class POSService {
               description: description.substring(0, 255), // Limitar longitud
               qty: cartItem.quantity,
               unit_price: cartItem.unit_price,
-              total_line: cartItem.total,
-              tax_rate: cartItem.tax_rate || 0,
-              tax_included: checkoutData.tax_included || false,
-              discount_amount: cartItem.discount_amount || 0
+              total_line: itemTaxIncludedCheckout ? lineNetCheckout : lineNetCheckout + itemTaxCheckout,
+              tax_rate: itemTaxRateCheckout,
+              tax_included: itemTaxIncludedCheckout,
+              discount_amount: itemDiscountCheckout
             };
           });
           

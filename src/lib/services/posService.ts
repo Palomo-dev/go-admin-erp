@@ -1025,6 +1025,8 @@ export class POSService {
       // PASO 2.5: Crear venta (sale) PRIMERO para tener sale_id
       console.log('🔄 Creando venta (sale) antes de factura...');
       
+      const totalDiscount = cart.items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
+
       const saleData: any = {
         organization_id: this.organizationId,
         branch_id: getCurrentBranchId(),
@@ -1033,11 +1035,12 @@ export class POSService {
         sale_date: new Date().toISOString(),
         subtotal: taxCalculation.subtotal,
         tax_total: taxCalculation.totalTaxAmount,
-        discount_total: 0,
+        discount_total: totalDiscount,
         total: taxCalculation.finalTotal, // Agregar campo total requerido
         balance: taxCalculation.finalTotal,
         status: 'pending', // Estado pending hasta completar pago
         payment_status: 'pending',
+        tax_included: taxIncluded,
         notes: `Venta con deuda - ${reason}`
       };
       

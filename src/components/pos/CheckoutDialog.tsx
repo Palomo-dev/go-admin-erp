@@ -643,7 +643,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
         return {
           ...item,
-          total: itemSubtotal + itemTaxAmount,
+          total: taxIncluded ? itemSubtotal : itemSubtotal + itemTaxAmount,
           tax_amount: itemTaxAmount,
           tax_rate: itemTaxRate
         };

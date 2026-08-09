@@ -1564,6 +1564,9 @@
     "signingOut": "Signing out...",
     "signOut": "Sign out",
     "profilePhoto": "Profile photo",
-    "user": "User"
+    "user": "User",
+    "emailNotConfirmed": "Email not confirmed",
+    "sending": "Sending...",
+    "resend": "Resend"
   }
 }

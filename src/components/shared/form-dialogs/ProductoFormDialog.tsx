@@ -18,8 +18,8 @@ interface ProductoFormDialogProps {
 export function ProductoFormDialog({ open, onOpenChange, onCreated }: ProductoFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-5xl h-[80dvh] sm:h-[90dvh] max-h-[90dvh] overflow-hidden flex flex-col gap-0 p-0 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b border-gray-200 dark:border-gray-800">
           <DialogTitle className="text-gray-900 dark:text-gray-100">Nuevo Producto</DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-400">
             Completa la información para agregar un producto al catálogo.

@@ -542,86 +542,88 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
   }
 
   return (
-    <div className="space-y-6">
-      {/* Información Básica */}
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardContent className="pt-6">
-          <InformacionBasica 
-            formData={formData}
-            updateFormData={updateFormData}
-          />
-        </CardContent>
-      </Card>
+    <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto px-6 pt-6 space-y-6 min-h-0">
+        {/* Información Básica */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <InformacionBasica 
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Precios y Costos */}
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardContent className="pt-6">
-          <PreciosYCostos 
-            formData={formData}
-            updateFormData={updateFormData}
-          />
-        </CardContent>
-      </Card>
+        {/* Precios y Costos */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <PreciosYCostos 
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Inventario */}
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardContent className="pt-6">
-          <Inventario 
-            formData={formData}
-            updateFormData={updateFormData}
-            hasVariants={formData.has_variants}
-          />
-        </CardContent>
-      </Card>
+        {/* Inventario */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <Inventario 
+              formData={formData}
+              updateFormData={updateFormData}
+              hasVariants={formData.has_variants}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Imágenes */}
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardContent className="pt-6">
-          <Imagenes 
-            formData={formData}
-            updateFormData={updateFormData}
-          />
-        </CardContent>
-      </Card>
+        {/* Imágenes */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <Imagenes 
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Variantes */}
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardContent className="pt-6">
-          <Variantes 
-            formData={formData}
-            updateFormData={updateFormData}
-          />
-        </CardContent>
-      </Card>
+        {/* Variantes */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <Variantes 
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Notas */}
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardContent className="pt-6">
-          <Notas 
-            formData={formData}
-            updateFormData={updateFormData}
-          />
-        </CardContent>
-      </Card>
+        {/* Notas */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <Notas 
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          </CardContent>
+        </Card>
 
-      {/* Etiquetas */}
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardContent className="pt-6">
-          <Etiquetas 
-            formData={formData}
-            updateFormData={updateFormData}
-          />
-        </CardContent>
-      </Card>
+        {/* Etiquetas */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <Etiquetas 
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Botones de acción */}
-      <div className="flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-gray-900 py-4 border-t border-gray-200 dark:border-gray-800">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <Button
           type="button"
           variant="outline"
           onClick={() => (embedded && onCancel ? onCancel() : router.back())}
           disabled={isLoading}
-          className="border-gray-300 dark:border-gray-700"
+          className="w-full sm:w-auto border-gray-300 dark:border-gray-700"
         >
           <X className="h-4 w-4 mr-2" />
           Cancelar
@@ -630,7 +632,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           type="button"
           onClick={handleSubmit}
           disabled={isLoading}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
         >
           {isLoading ? (
             <>

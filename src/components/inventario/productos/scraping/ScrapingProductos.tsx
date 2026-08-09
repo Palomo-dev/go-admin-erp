@@ -384,7 +384,7 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col dark:bg-gray-800 dark:border-gray-700">
+      <DialogContent className="sm:max-w-3xl max-h-[90dvh] overflow-hidden flex flex-col dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 dark:text-gray-100">
             <Sparkles className="h-5 w-5 text-purple-500" />

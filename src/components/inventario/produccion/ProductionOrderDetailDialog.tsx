@@ -29,7 +29,7 @@ export function ProductionOrderDetailDialog({
 }: ProductionOrderDetailDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
+      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="dark:text-white flex items-center gap-2">
             <Factory className="h-5 w-5 text-blue-600" />

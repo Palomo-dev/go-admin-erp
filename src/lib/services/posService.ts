@@ -1006,7 +1006,10 @@ export class POSService {
       const taxCalculationItems: TaxCalculationItem[] = cart.items.map(item => ({
         quantity: item.quantity,
         unit_price: item.unit_price,
-        product_id: item.product_id
+        product_id: item.product_id,
+        tax_rate: item.tax_rate,
+        tax_included: item.tax_included ?? cart.tax_included,
+        discount_amount: item.discount_amount || 0
       }));
       
       const taxIncluded = cart.tax_included ?? getTaxIncludedSetting(false);
@@ -1120,10 +1123,12 @@ export class POSService {
           }
         }
 
-        const itemSubtotal = (item.unit_price || 0) * (item.quantity || 0);
-        const itemTax = taxIncluded
-          ? 0
-          : itemSubtotal * (item.tax_rate || 0) / 100;
+        const lineTotal = (item.unit_price || 0) * (item.quantity || 0);
+        const itemTaxIncluded = item.tax_included ?? taxIncluded;
+        const itemTaxRate = item.tax_rate || 0;
+        const itemTax = itemTaxIncluded
+          ? lineTotal - (lineTotal / (1 + itemTaxRate / 100))
+          : lineTotal * itemTaxRate / 100;
 
         return {
           invoice_id: invoice.id,
@@ -1133,10 +1138,10 @@ export class POSService {
           description: description.substring(0, 255),
           qty: item.quantity || 0,
           unit_price: item.unit_price || 0,
-          tax_rate: item.tax_rate || 0,
-          total_line: taxIncluded ? itemSubtotal : itemSubtotal + itemTax,
+          tax_rate: itemTaxRate,
+          total_line: lineTotal,
           discount_amount: item.discount_amount || 0,
-          tax_included: taxIncluded
+          tax_included: itemTaxIncluded
         };
       });
       
@@ -1165,16 +1170,18 @@ export class POSService {
       const totalTaxPerItem = taxCalculation.totalTaxAmount / cart.items.length;
       
       const saleItems = cart.items.map(item => {
-        const itemSubtotal = (item.unit_price || 0) * (item.quantity || 1);
-        const itemTax = taxIncluded
-          ? 0
-          : itemSubtotal * (item.tax_rate || 0) / 100;
+        const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+        const itemTaxIncluded = item.tax_included ?? taxIncluded;
+        const itemTaxRate = item.tax_rate || 0;
+        const itemTax = itemTaxIncluded
+          ? lineTotal - (lineTotal / (1 + itemTaxRate / 100))
+          : lineTotal * itemTaxRate / 100;
         return {
           sale_id: sale.id,
           product_id: item.product_id,
           quantity: item.quantity || 1,
           unit_price: item.unit_price,
-          total: taxIncluded ? itemSubtotal : itemSubtotal + itemTax,
+          total: lineTotal,
           discount_amount: item.discount_amount || 0,
           tax_amount: itemTax || totalTaxPerItem
         };

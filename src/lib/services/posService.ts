@@ -1120,6 +1120,11 @@ export class POSService {
           }
         }
 
+        const itemSubtotal = (item.unit_price || 0) * (item.quantity || 0);
+        const itemTax = taxIncluded
+          ? 0
+          : itemSubtotal * (item.tax_rate || 0) / 100;
+
         return {
           invoice_id: invoice.id,
           invoice_type: 'sale',
@@ -1129,7 +1134,7 @@ export class POSService {
           qty: item.quantity || 0,
           unit_price: item.unit_price || 0,
           tax_rate: item.tax_rate || 0,
-          total_line: item.total || 0,
+          total_line: taxIncluded ? itemSubtotal : itemSubtotal + itemTax,
           discount_amount: item.discount_amount || 0,
           tax_included: taxIncluded
         };
@@ -1159,16 +1164,21 @@ export class POSService {
       // Calcular tax_amount total por item basado en el resultado de taxCalculation
       const totalTaxPerItem = taxCalculation.totalTaxAmount / cart.items.length;
       
-      const saleItems = cart.items.map(item => ({
-        sale_id: sale.id,
-        product_id: item.product_id,
-        quantity: item.quantity || 1, // Default es 1, no 0
-        unit_price: item.unit_price,
-        total: item.total,
-        discount_amount: item.discount_amount || 0,
-        tax_amount: item.tax_rate ? (item.unit_price * (item.tax_rate / 100) * item.quantity) : totalTaxPerItem
-        // No incluir created_by - no existe en tabla sale_items
-      }));
+      const saleItems = cart.items.map(item => {
+        const itemSubtotal = (item.unit_price || 0) * (item.quantity || 1);
+        const itemTax = taxIncluded
+          ? 0
+          : itemSubtotal * (item.tax_rate || 0) / 100;
+        return {
+          sale_id: sale.id,
+          product_id: item.product_id,
+          quantity: item.quantity || 1,
+          unit_price: item.unit_price,
+          total: taxIncluded ? itemSubtotal : itemSubtotal + itemTax,
+          discount_amount: item.discount_amount || 0,
+          tax_amount: itemTax || totalTaxPerItem
+        };
+      });
       
       console.log('🛍️ Creando sale_items con datos:', saleItems);
       

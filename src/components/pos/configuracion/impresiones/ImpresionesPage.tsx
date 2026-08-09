@@ -53,7 +53,7 @@ const COURIER_CHAR_ADVANCE_EM = 0.6;
  * (`@printing`), de modo que sirve para validar un cambio de plantilla sin
  * gastar papel ni depender de tener una impresora conectada.
  */
-export function ImpresionesPage() {
+export function ImpresionesPage({ embedded = false }: { embedded?: boolean }) {
   const [kind, setKind] = useState<DocumentKind>('pre_cuenta');
   const [path, setPath] = useState<RenderPath>('html');
   const [width, setWidth] = useState<PaperOption>('80mm');
@@ -103,30 +103,41 @@ export function ImpresionesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/pos/configuracion">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Printer className="h-6 w-6 text-blue-600" />
-              </div>
-              Previsualizacion de Impresiones
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">POS / Configuracion / Impresiones</p>
+    <div className={embedded ? "space-y-6" : "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6"}>
+      {!embedded && (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link href="/app/pos/configuracion">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                  <Printer className="h-6 w-6 text-blue-600" />
+                </div>
+                Previsualizacion de Impresiones
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400">POS / Configuracion / Impresiones</p>
+            </div>
           </div>
-        </div>
 
-        <Button onClick={handlePrintTest} variant="outline">
-          <Printer className="h-4 w-4 mr-2" />
-          {path === 'html' ? 'Imprimir prueba' : 'Imprimir simulacion'}
-        </Button>
-      </div>
+          <Button onClick={handlePrintTest} variant="outline">
+            <Printer className="h-4 w-4 mr-2" />
+            {path === 'html' ? 'Imprimir prueba' : 'Imprimir simulacion'}
+          </Button>
+        </div>
+      )}
+
+      {embedded && (
+        <div className="flex justify-end">
+          <Button onClick={handlePrintTest} variant="outline" size="sm">
+            <Printer className="h-4 w-4 mr-2" />
+            {path === 'html' ? 'Imprimir prueba' : 'Imprimir simulacion'}
+          </Button>
+        </div>
+      )}
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>

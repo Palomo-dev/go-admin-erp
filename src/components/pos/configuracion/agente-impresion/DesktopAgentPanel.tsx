@@ -19,7 +19,7 @@ interface Branch {
   name: string;
 }
 
-export function DesktopAgentPanel() {
+export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) {
   const { isDesktopApp, agentStatus, loading, error, startAgentForCurrentOrg, stopAgent, refreshStatus } =
     useDesktopAgent();
   const [autoStart, setAutoStart] = useState(false);
@@ -160,23 +160,25 @@ export function DesktopAgentPanel() {
   const running = agentStatus?.running ?? false;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/app/pos/configuracion">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-              <Printer className="h-6 w-6 text-indigo-600" />
-            </div>
-            Agente de Impresión
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">POS / Configuración / Agente de Impresión</p>
+    <div className={embedded ? "space-y-6" : "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6"}>
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <Link href="/app/pos/configuracion">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                <Printer className="h-6 w-6 text-indigo-600" />
+              </div>
+              Agente de Impresión
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">POS / Configuración / Agente de Impresión</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {!isDesktopApp ? (
         <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">

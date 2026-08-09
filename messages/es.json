@@ -1564,6 +1564,9 @@
     "signingOut": "Cerrando sesión...",
     "signOut": "Cerrar sesión",
     "profilePhoto": "Foto de perfil",
-    "user": "Usuario"
+    "user": "Usuario",
+    "emailNotConfirmed": "Correo sin confirmar",
+    "sending": "Enviando...",
+    "resend": "Reenviar"
   }
 }

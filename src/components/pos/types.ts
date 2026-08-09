@@ -112,6 +112,8 @@ export interface Cart {
   tax_included?: boolean;
   applied_tax_ids?: string[];
   kitchen_ticket_id?: number | null;
+  sale_id?: string;
+  invoice_id?: string;
 }
 
 export interface Sale {

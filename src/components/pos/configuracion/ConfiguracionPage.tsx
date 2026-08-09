@@ -47,8 +47,15 @@ import { PrintersSection } from './printers/PrintersSection';
 import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
 import { RecentPrintJobsTable } from './printers/RecentPrintJobsTable';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import {
+  ConsecutivosModal,
+  PropinasModal,
+  CargosModal,
+  ImpresionesModal,
+  AgenteModal,
+} from './ConfigModals';
 
-export function ConfiguracionPage() {
+export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
   const { branch_id } = useOrganization();
   const [loading, setLoading] = useState(true);
@@ -66,6 +73,12 @@ export function ConfiguracionPage() {
   const [blindCashCount, setBlindCashCount] = useState<PosBlindCashCountConfig>(defaultBlindCashCountConfig);
   const [savingBlindCash, setSavingBlindCash] = useState(false);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+
+  const [showConsecutivos, setShowConsecutivos] = useState(false);
+  const [showPropinas, setShowPropinas] = useState(false);
+  const [showCargos, setShowCargos] = useState(false);
+  const [showImpresiones, setShowImpresiones] = useState(false);
+  const [showAgente, setShowAgente] = useState(false);
 
   const loadData = useCallback(async (showRefresh = false) => {
     if (showRefresh) {
@@ -222,33 +235,35 @@ export function ConfiguracionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/pos">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+    <div className={embedded ? "space-y-6" : "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6"}>
+      {/* Header - hidden when embedded */}
+      {!embedded && (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link href="/app/pos">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                  <Settings className="h-6 w-6 text-blue-600" />
+                </div>
+                Configuración POS
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400">
+                POS / Configuración
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Settings className="h-6 w-6 text-blue-600" />
-              </div>
-              Configuración POS
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              POS / Configuración
-            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -335,90 +350,80 @@ export function ConfiguracionPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Link href="/app/pos/configuracion/consecutivos-ventas">
-              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <Hash className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Consecutivos de Ventas</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Prefijos, padding, reset</p>
-                    </div>
+            <button type="button" onClick={() => setShowConsecutivos(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                    <Hash className="h-5 w-5 text-blue-600" />
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Consecutivos de Ventas</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Prefijos, padding, reset</p>
+                  </div>
                 </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
               </div>
-            </Link>
+            </button>
 
-            <Link href="/app/pos/propinas">
-              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                      <DollarSign className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Propinas</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Configurar propinas</p>
-                    </div>
+            <button type="button" onClick={() => setShowPropinas(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <DollarSign className="h-5 w-5 text-green-600" />
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Propinas</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Configurar propinas</p>
+                  </div>
                 </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" />
               </div>
-            </Link>
+            </button>
 
-            <Link href="/app/pos/cargos-servicio">
-              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                      <Calculator className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Cargos de Servicio</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Configurar cargos</p>
-                    </div>
+            <button type="button" onClick={() => setShowCargos(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <Calculator className="h-5 w-5 text-purple-600" />
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Cargos de Servicio</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Configurar cargos</p>
+                  </div>
                 </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
               </div>
-            </Link>
+            </button>
 
-            <Link href="/app/pos/configuracion/impresiones">
-              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
-                      <Printer className="h-5 w-5 text-cyan-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Previsualizar Impresiones</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Ver tickets antes de imprimir</p>
-                    </div>
+            <button type="button" onClick={() => setShowImpresiones(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                    <Printer className="h-5 w-5 text-cyan-600" />
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Previsualizar Impresiones</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Ver tickets antes de imprimir</p>
+                  </div>
                 </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
               </div>
-            </Link>
+            </button>
 
-            <Link href="/app/pos/configuracion/agente-impresion">
-              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                      <Monitor className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">Agente de Impresión</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Estado y configuración del agente</p>
-                    </div>
+            <button type="button" onClick={() => setShowAgente(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                    <Monitor className="h-5 w-5 text-indigo-600" />
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Agente de Impresión</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Estado y configuración del agente</p>
+                  </div>
                 </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
               </div>
-            </Link>
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -703,6 +708,13 @@ export function ConfiguracionPage() {
       {/* Estado del Print Agent y trabajos de impresión recientes (sucursal activa) */}
       <PrintAgentStatusCard branchId={branch_id} />
       <RecentPrintJobsTable branchId={branch_id} />
+
+      {/* Modales de configuración avanzada */}
+      <ConsecutivosModal open={showConsecutivos} onOpenChange={setShowConsecutivos} />
+      <PropinasModal open={showPropinas} onOpenChange={setShowPropinas} />
+      <CargosModal open={showCargos} onOpenChange={setShowCargos} />
+      <ImpresionesModal open={showImpresiones} onOpenChange={setShowImpresiones} />
+      <AgenteModal open={showAgente} onOpenChange={setShowAgente} />
     </div>
   );
 }

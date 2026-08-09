@@ -1006,10 +1006,13 @@ export class POSService {
       const taxCalculationItems: TaxCalculationItem[] = cart.items.map(item => ({
         quantity: item.quantity,
         unit_price: item.unit_price,
-        product_id: item.product_id
+        product_id: item.product_id,
+        tax_rate: item.tax_rate,
+        tax_included: item.tax_included ?? cart.tax_included,
+        discount_amount: item.discount_amount || 0
       }));
       
-      const taxIncluded = getTaxIncludedSetting(false);
+      const taxIncluded = cart.tax_included ?? getTaxIncludedSetting(false);
       
       const taxCalculation = await calculateCartTaxesComplete(
         taxCalculationItems,
@@ -1120,6 +1123,15 @@ export class POSService {
           }
         }
 
+        const lineTotal = (item.unit_price || 0) * (item.quantity || 0);
+        const itemDiscount = item.discount_amount || 0;
+        const lineNet = lineTotal - itemDiscount;
+        const itemTaxIncluded = item.tax_included ?? taxIncluded;
+        const itemTaxRate = item.tax_rate || 0;
+        const itemTax = itemTaxIncluded
+          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
+          : lineNet * itemTaxRate / 100;
+
         return {
           invoice_id: invoice.id,
           invoice_type: 'sale',
@@ -1128,10 +1140,10 @@ export class POSService {
           description: description.substring(0, 255),
           qty: item.quantity || 0,
           unit_price: item.unit_price || 0,
-          tax_rate: item.tax_rate || 0,
-          total_line: item.total || 0,
-          discount_amount: item.discount_amount || 0,
-          tax_included: taxIncluded
+          tax_rate: itemTaxRate,
+          total_line: itemTaxIncluded ? lineNet : lineNet + itemTax,
+          discount_amount: itemDiscount,
+          tax_included: itemTaxIncluded
         };
       });
       
@@ -1159,16 +1171,25 @@ export class POSService {
       // Calcular tax_amount total por item basado en el resultado de taxCalculation
       const totalTaxPerItem = taxCalculation.totalTaxAmount / cart.items.length;
       
-      const saleItems = cart.items.map(item => ({
-        sale_id: sale.id,
-        product_id: item.product_id,
-        quantity: item.quantity || 1, // Default es 1, no 0
-        unit_price: item.unit_price,
-        total: item.total,
-        discount_amount: item.discount_amount || 0,
-        tax_amount: item.tax_rate ? (item.unit_price * (item.tax_rate / 100) * item.quantity) : totalTaxPerItem
-        // No incluir created_by - no existe en tabla sale_items
-      }));
+      const saleItems = cart.items.map(item => {
+        const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+        const itemDiscount = item.discount_amount || 0;
+        const lineNet = lineTotal - itemDiscount;
+        const itemTaxIncluded = item.tax_included ?? taxIncluded;
+        const itemTaxRate = item.tax_rate || 0;
+        const itemTax = itemTaxIncluded
+          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
+          : lineNet * itemTaxRate / 100;
+        return {
+          sale_id: sale.id,
+          product_id: item.product_id,
+          quantity: item.quantity || 1,
+          unit_price: item.unit_price,
+          total: itemTaxIncluded ? lineNet : lineNet + itemTax,
+          discount_amount: itemDiscount,
+          tax_amount: itemTax || totalTaxPerItem
+        };
+      });
       
       console.log('🛍️ Creando sale_items con datos:', saleItems);
       
@@ -1264,6 +1285,8 @@ export class POSService {
       cart.status = 'hold_with_debt';
       cart.hold_reason = reason;
       cart.notes = `Factura: ${invoice.number} | Vence: ${dueDate.toLocaleDateString()}`;
+      cart.sale_id = sale.id;
+      cart.invoice_id = invoice.id;
       cart.updated_at = new Date().toISOString();
       
       carts[cartIndex] = cart;
@@ -1314,34 +1337,63 @@ export class POSService {
       const tipAmount = checkoutData.tip_amount || 0;
       const finalTotal = cart.total + shippingFee + tipAmount;
 
-      // Crear la venta en la base de datos
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .insert({
-          organization_id: cart.organization_id,
-          branch_id: getCurrentBranchId(), // Usar branch_id actual del usuario
-          customer_id: cart.customer_id,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          subtotal: cart.subtotal,
-          tax_total: cart.tax_total,
-          discount_total: cart.discount_total,
-          total: finalTotal,
-          balance: Math.max(0, finalTotal - checkoutData.total_paid),
-          status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
-          payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
-          tax_included: checkoutData.tax_included || false,
-          tax_breakdown: checkoutData.tax_breakdown || null,
-          sale_date: new Date().toISOString(),
-          salesperson_id: checkoutData.salesperson_id || null,
-          commission_rate: checkoutData.commission_rate || 0,
-          commission_type: checkoutData.commission_type || 'none',
-          delivery_fee: shippingFee > 0 ? shippingFee : 0,
-          tip_amount: tipAmount > 0 ? tipAmount : null
-        })
-        .select()
-        .single();
+      // Si el carrito ya tiene sale_id (viene de hold_with_debt), actualizar la venta existente
+      const isDebtCheckout = !!(cart.sale_id && cart.invoice_id);
+      let saleData: any;
 
-      if (saleError) throw saleError;
+      if (isDebtCheckout) {
+        console.log(`💰 Checkout de deuda existente - sale_id: ${cart.sale_id}, invoice_id: ${cart.invoice_id}`);
+        const { data: updatedSale, error: saleError } = await supabase
+          .from('sales')
+          .update({
+            balance: Math.max(0, finalTotal - checkoutData.total_paid),
+            status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
+            payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
+            tax_included: checkoutData.tax_included || false,
+            tax_breakdown: checkoutData.tax_breakdown || null,
+            salesperson_id: checkoutData.salesperson_id || null,
+            commission_rate: checkoutData.commission_rate || 0,
+            commission_type: checkoutData.commission_type || 'none',
+            delivery_fee: shippingFee > 0 ? shippingFee : 0,
+            tip_amount: tipAmount > 0 ? tipAmount : null
+          })
+          .eq('id', cart.sale_id)
+          .select()
+          .single();
+
+        if (saleError) throw saleError;
+        saleData = updatedSale;
+      } else {
+        // Crear la venta en la base de datos (flujo normal)
+        const { data: newSale, error: saleError } = await supabase
+          .from('sales')
+          .insert({
+            organization_id: cart.organization_id,
+            branch_id: getCurrentBranchId(),
+            customer_id: cart.customer_id,
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            subtotal: cart.subtotal,
+            tax_total: cart.tax_total,
+            discount_total: cart.discount_total,
+            total: finalTotal,
+            balance: Math.max(0, finalTotal - checkoutData.total_paid),
+            status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
+            payment_status: checkoutData.total_paid >= finalTotal ? 'paid' : 'partial',
+            tax_included: checkoutData.tax_included || false,
+            tax_breakdown: checkoutData.tax_breakdown || null,
+            sale_date: new Date().toISOString(),
+            salesperson_id: checkoutData.salesperson_id || null,
+            commission_rate: checkoutData.commission_rate || 0,
+            commission_type: checkoutData.commission_type || 'none',
+            delivery_fee: shippingFee > 0 ? shippingFee : 0,
+            tip_amount: tipAmount > 0 ? tipAmount : null
+          })
+          .select()
+          .single();
+
+        if (saleError) throw saleError;
+        saleData = newSale;
+      }
 
       // Crear registro de comisión si aplica
       if (checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 && checkoutData.commission_type !== 'none') {
@@ -1385,82 +1437,117 @@ export class POSService {
         }
       }
 
-      // Crear los items de venta
-      const saleItems = cart.items.map(item => {
-        const notesObj: Record<string, any> = { product_name: item.product?.name };
-        if (item.notes) notesObj.extra = item.notes;
-        if (item.modifiers && item.modifiers.length > 0) notesObj.modifiers = item.modifiers;
+      // Crear los items de venta (solo si no es checkout de deuda - ya fueron creados)
+      if (!isDebtCheckout) {
+        const saleItems = cart.items.map(item => {
+          const notesObj: Record<string, any> = { product_name: item.product?.name };
+          if (item.notes) notesObj.extra = item.notes;
+          if (item.modifiers && item.modifiers.length > 0) notesObj.modifiers = item.modifiers;
 
-        return {
-          sale_id: saleData.id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total: item.total,
-          tax_amount: item.tax_amount || 0,
-          tax_rate: item.tax_rate || 0,
-          discount_amount: item.discount_amount || 0,
-          notes: notesObj
-        };
-      });
+          return {
+            sale_id: saleData.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.total,
+            tax_amount: item.tax_amount || 0,
+            tax_rate: item.tax_rate || 0,
+            discount_amount: item.discount_amount || 0,
+            notes: notesObj
+          };
+        });
 
-      const { error: itemsError } = await supabase
-        .from('sale_items')
-        .insert(saleItems);
+        const { error: itemsError } = await supabase
+          .from('sale_items')
+          .insert(saleItems);
 
-      if (itemsError) throw itemsError;
-
-      // Descontar stock por cada item vendido
-      try {
-        const stockResult = await stockMovementService.decrementOnSale(
-          cart.organization_id,
-          getCurrentBranchIdWithFallback(),
-          saleData.id,
-          cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
-          'sale'
-        );
-        if (stockResult.errors.length > 0) {
-          console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
-        }
-        console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
-      } catch (stockError) {
-        console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
+        if (itemsError) throw itemsError;
       }
 
-      // Crear la factura (invoice_sales)
-      const invoiceNumber = await this.generateInvoiceNumber();
-      const baseCurrency = await this.getBaseCurrency();
-      
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoice_sales')
-        .insert({
-          organization_id: cart.organization_id,
-          branch_id: getCurrentBranchId(), // Usar branch_id actual del usuario
-          customer_id: cart.customer_id,
-          sale_id: saleData.id,
-          number: invoiceNumber,
-          issue_date: new Date().toISOString(),
-          due_date: new Date().toISOString(), // Pago inmediato para POS
-          currency: baseCurrency.code,
-          subtotal: cart.subtotal,
-          tax_total: cart.tax_total,
-          total: finalTotal,
-          balance: saleData.balance,
-          status: saleData.balance > 0 ? 'partial' : 'paid',
-          tax_included: checkoutData.tax_included || false,
-          payment_method: payments.length > 0 ? payments[0].method : 'cash',
-          payment_terms: 0, // POS es pago inmediato
-          created_by: (await supabase.auth.getUser()).data.user?.id,
-          notes: `Factura generada automáticamente desde POS - Venta #${saleData.id}`
-        })
-        .select()
-        .single();
+      // Descontar stock por cada item vendido (solo si no es deuda - ya fue descontado)
+      if (!isDebtCheckout) {
+        try {
+          const stockResult = await stockMovementService.decrementOnSale(
+            cart.organization_id,
+            getCurrentBranchIdWithFallback(),
+            saleData.id,
+            cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
+            'sale'
+          );
+          if (stockResult.errors.length > 0) {
+            console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
+          }
+          console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
+        } catch (stockError) {
+          console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
+        }
+      }
 
-      if (invoiceError) {
-        console.error('Error creating invoice:', invoiceError);
-        // No lanzamos error para que no falle todo el checkout
+      // Crear o actualizar la factura (invoice_sales)
+      const baseCurrency = await this.getBaseCurrency();
+      let invoiceData: any = null;
+      let invoiceError: any = null;
+
+      if (isDebtCheckout) {
+        // Actualizar factura existente de la deuda
+        const { data: updatedInvoice, error: updateInvError } = await supabase
+          .from('invoice_sales')
+          .update({
+            balance: saleData.balance,
+            status: saleData.balance > 0 ? 'partial' : 'paid',
+            tax_included: checkoutData.tax_included || false,
+            payment_method: payments.length > 0 ? payments[0].method : 'cash',
+            payment_terms: 0,
+            due_date: new Date().toISOString(),
+          })
+          .eq('id', cart.invoice_id)
+          .select()
+          .single();
+
+        invoiceData = updatedInvoice;
+        invoiceError = updateInvError;
+
+        if (updateInvError) {
+          console.error('Error updating debt invoice:', updateInvError);
+        } else {
+          console.log('Debt invoice updated successfully:', invoiceData.number);
+        }
       } else {
-        console.log('Invoice created successfully:', invoiceData.number);
+        // Crear nueva factura (flujo normal)
+        const invoiceNumber = await this.generateInvoiceNumber();
+        const { data: newInvoice, error: newInvError } = await supabase
+          .from('invoice_sales')
+          .insert({
+            organization_id: cart.organization_id,
+            branch_id: getCurrentBranchId(),
+            customer_id: cart.customer_id,
+            sale_id: saleData.id,
+            number: invoiceNumber,
+            issue_date: new Date().toISOString(),
+            due_date: new Date().toISOString(),
+            currency: baseCurrency.code,
+            subtotal: cart.subtotal,
+            tax_total: cart.tax_total,
+            total: finalTotal,
+            balance: saleData.balance,
+            status: saleData.balance > 0 ? 'partial' : 'paid',
+            tax_included: checkoutData.tax_included || false,
+            payment_method: payments.length > 0 ? payments[0].method : 'cash',
+            payment_terms: 0,
+            created_by: (await supabase.auth.getUser()).data.user?.id,
+            notes: `Factura generada automáticamente desde POS - Venta #${saleData.id}`
+          })
+          .select()
+          .single();
+
+        invoiceData = newInvoice;
+        invoiceError = newInvError;
+
+        if (newInvError) {
+          console.error('Error creating invoice:', newInvError);
+        } else {
+          console.log('Invoice created successfully:', invoiceData.number);
+        }
       }
 
       // Crear los pagos - asociar con la factura (invoice_sales)
@@ -1524,8 +1611,8 @@ export class POSService {
         }
       }
 
-      // Crear los invoice_items basados en cart.items (despues de los pagos)
-      if (invoiceData && !invoiceError) {
+      // Crear los invoice_items basados en cart.items (solo si no es deuda - ya existen)
+      if (invoiceData && !invoiceError && !isDebtCheckout) {
         try {
           // Obtener información de productos para las descripciones
           const productIds = cart.items.map(item => item.product_id).filter(id => id);
@@ -1593,8 +1680,8 @@ export class POSService {
         }
       }
 
-      // Si hay balance pendiente, crear cuenta por cobrar
-      if (saleData.balance > 0 && cart.customer_id) {
+      // Si hay balance pendiente, crear cuenta por cobrar (solo si no es deuda - ya existe)
+      if (saleData.balance > 0 && cart.customer_id && !isDebtCheckout) {
         const { error: arError } = await supabase
           .from('accounts_receivable')
           .insert({
@@ -2103,7 +2190,7 @@ export class POSService {
       // 3. Obtener factura con customer info (MISMA LÓGICA que la página que funciona)
       const { data: facturaData, error: facturaError } = await supabase
         .from('invoice_sales')
-        .select('*, customers(id, organization_id, full_name, first_name, last_name, email, phone, identification_type, identification_number, address, city, country, avatar_url, created_at, updated_at)')
+        .select('*, customers(id, organization_id, full_name, first_name, last_name, email, phone, identification_type, identification_number, address, city, avatar_url, created_at, updated_at)')
         .eq('number', invoiceNumber)
         .eq('organization_id', this.organizationId)
         .single();
@@ -2179,43 +2266,30 @@ export class POSService {
         throw new Error('El carrito no tiene deuda pendiente');
       }
 
-      // 2. Obtener la venta asociada al carrito
-      // Primero necesitamos encontrar la venta por el customer y items del carrito
+      // 2. Usar sale_id e invoice_id del carrito (guardados por holdCartWithDebt)
+      if (!cart.sale_id || !cart.invoice_id) {
+        throw new Error('El carrito no tiene sale_id o invoice_id. Es posible que la deuda se haya creado antes de esta corrección.');
+      }
+
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
-        .select('id')
-        .eq('customer_id', cart.customer_id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(1)
+        .select('*')
+        .eq('id', cart.sale_id)
         .single();
 
       if (saleError || !saleData) {
         throw new Error('No se encontró la venta asociada al carrito');
       }
 
-      // 3. Obtener la factura original asociada a la venta
-      let { data: originalInvoice, error: invoiceError } = await supabase
+      // 3. Obtener la factura original directamente por invoice_id
+      const { data: originalInvoice, error: invoiceError } = await supabase
         .from('invoice_sales')
         .select('*')
-        .eq('sale_id', saleData.id)
-        .eq('document_type', 'invoice')
+        .eq('id', cart.invoice_id)
         .single();
 
-      // Si no se encuentra con document_type 'invoice', buscar con document_type null
       if (invoiceError || !originalInvoice) {
-        const { data: invoiceWithNullType, error: nullTypeError } = await supabase
-          .from('invoice_sales')
-          .select('*')
-          .eq('sale_id', saleData.id)
-          .is('document_type', null)
-          .single();
-          
-        if (nullTypeError || !invoiceWithNullType) {
-          throw new Error('No se encontró la factura original');
-        }
-        
-        originalInvoice = invoiceWithNullType;
+        throw new Error('No se encontró la factura original');
       }
 
       // 4. Obtener los items de la factura original
@@ -2292,12 +2366,31 @@ export class POSService {
         }
       }
 
-      // 8. Actualizar la factura original (balance a cero)
+      // 8. Fix: El trigger fn_recalc_invoice_totals usa GREATEST(tax, 0) que no permite
+      // tax negativo en NC. Actualizamos tax_total manualmente DESPUÉS de que el trigger corre.
+      const correctTaxTotal = -originalInvoice.tax_total;
+      const correctSubtotal = -originalInvoice.subtotal;
+      const correctTotal = -originalInvoice.total;
+      const { error: fixNcError } = await supabase
+        .from('invoice_sales')
+        .update({
+          subtotal: correctSubtotal,
+          tax_total: correctTaxTotal,
+          total: correctTotal,
+          balance: 0,
+        })
+        .eq('id', creditNoteData.id);
+
+      if (fixNcError) {
+        console.warn('⚠️ No se pudo corregir tax_total de la NC:', fixNcError);
+      }
+
+      // 9. Actualizar la factura original (anulada, no pagada)
       const { error: updateInvoiceError } = await supabase
         .from('invoice_sales')
         .update({
           balance: 0,
-          status: 'paid', // Cambiamos a pagado porque se anuló con nota de crédito
+          status: 'void',
           updated_at: new Date().toISOString()
         })
         .eq('id', originalInvoice.id);
@@ -2306,12 +2399,13 @@ export class POSService {
         throw new Error('Error al actualizar la factura original');
       }
 
-      // 9. Actualizar la venta original (balance a cero)
+      // 10. Actualizar la venta original (cancelada, no pagada)
       const { error: updateSaleError } = await supabase
         .from('sales')
         .update({
           balance: 0,
-          status: 'paid',
+          status: 'void',
+          payment_status: 'refunded',
           updated_at: new Date().toISOString()
         })
         .eq('id', saleData.id);
@@ -2320,12 +2414,12 @@ export class POSService {
         throw new Error('Error al actualizar la venta original');
       }
 
-      // 10. Actualizar las cuentas por cobrar (balance a cero)
+      // 11. Actualizar las cuentas por cobrar (cancelada, no pagada)
       const { error: updateARError } = await supabase
         .from('accounts_receivable')
         .update({
           balance: 0,
-          status: 'paid',
+          status: 'cancelled',
           updated_at: new Date().toISOString()
         })
         .eq('invoice_id', originalInvoice.id);

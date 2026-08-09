@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CloudOff, CloudCheck, Sync } from 'lucide-react';
+import { CloudOff, CloudCheck, RefreshCw } from 'lucide-react';
 
 /**
  * Indicador de estado offline/online para el app de escritorio.
@@ -99,7 +99,7 @@ export function OfflineIndicator() {
           disabled={isSyncing}
           className="ml-3 inline-flex items-center gap-1 px-3 py-1 bg-gray-900 text-white rounded-md text-xs hover:bg-gray-800 disabled:opacity-50"
         >
-          <Sync className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} />
           {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
         </button>
       )}

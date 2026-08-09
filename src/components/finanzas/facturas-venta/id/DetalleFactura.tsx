@@ -41,6 +41,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -440,7 +451,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
     });
   };
 
-  const generarPDF = () => {
+  const generarPDF = async () => {
     // Preparar datos para el PDF usando el servicio centralizado
     const pdfData: InvoiceDataForPDF = {
       id: facturaActual.id,
@@ -454,6 +465,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       total: facturaActual.total || 0,
       balance: facturaActual.balance || 0,
       notes: facturaActual.notes,
+      tax_included: facturaActual.tax_included,
+      discount_total: totalDescuentos > 0 ? totalDescuentos : undefined,
       credit_applied: creditoAplicado || undefined,
       organization: organizationData || undefined,
       customer: factura.customers ? {
@@ -468,13 +481,15 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         qty: item.qty,
         unit_price: item.unit_price,
         tax_rate: item.tax_rate,
+        tax_included: item.tax_included,
+        discount_amount: item.discount_amount || 0,
         total_line: item.total_line,
         sku: item.products?.sku || item.code_reference
       })) || []
     };
 
     // Usar el servicio centralizado de PDF
-    PDFService.printInvoiceHTML(pdfData);
+    await PDFService.printInvoiceHTML(pdfData);
 
     toast({
       title: 'PDF Generado',
@@ -484,6 +499,12 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   
   // Calcular el saldo pendiente usando facturaActual (actualizada tras pagos)
   const saldoPendiente = Number(facturaActual.balance) || 0;
+  
+  // Calcular total de descuentos desde los items
+  const totalDescuentos = (factura.items || factura.invoice_items || []).reduce(
+    (sum: number, item: any) => sum + (Number(item.discount_amount) || 0),
+    0
+  );
   
   // Determinar si la factura está completamente pagada
   const isPagada = facturaActual.status === 'paid';
@@ -733,15 +754,35 @@ export default function DetalleFactura({ factura }: { factura: any }) {
                 <Pencil className="h-3.5 w-3.5" />
                 <span>Editar</span>
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={emitirFactura}
-                className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
-              >
-                <Send className="h-3.5 w-3.5" />
-                <span>Emitir</span>
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>Emitir</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>¿Emitir factura {facturaActual.number}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Al emitir la factura se cambiará el estado a "Emitida" y se descontará el inventario. Esta acción no se puede deshacer.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={emitirFactura}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Sí, emitir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </>
           )}
           {!isDraft && (
@@ -850,16 +891,33 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               </Button>
             </>
           )}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={duplicarFactura}
-            className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-            title="Duplicar factura"
-          >
-            <Copy size={14} />
-            <span>Duplicar</span>
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 h-8 px-2 sm:px-3 text-xs dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                title="Duplicar factura"
+              >
+                <Copy size={14} />
+                <span>Duplicar</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Duplicar factura {facturaActual.number}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se creará una nueva factura en borrador con los mismos items, cliente y condiciones. Podrás editarla antes de emitirla.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={duplicarFactura}>
+                  Sí, duplicar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           
           {/* Botón Nota Crédito: visible siempre excepto si está anulada */}
           {facturaActual.status !== 'void' && facturaActual.status !== 'voided' && (
@@ -1000,6 +1058,11 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           <CardTitle className="text-base sm:text-lg flex items-center gap-2">
             <Receipt className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
             <span className="text-gray-900 dark:text-gray-100">Resumen Financiero</span>
+            {factura.tax_included && (
+              <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                Imp. incluidos
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -1008,6 +1071,13 @@ export default function DetalleFactura({ factura }: { factura: any }) {
               <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Subtotal:</span>
               <span className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">{formatCurrency(factura.subtotal || 0)}</span>
             </div>
+            
+            {totalDescuentos > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Descuentos:</span>
+                <span className="text-sm sm:text-base font-medium text-red-600 dark:text-red-400">- {formatCurrency(totalDescuentos)}</span>
+              </div>
+            )}
             
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Impuestos:</span>

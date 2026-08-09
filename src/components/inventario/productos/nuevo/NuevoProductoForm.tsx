@@ -448,6 +448,14 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
               })
             }
 
+            // Heredar impuesto del producto padre
+            if (formData.tax_id) {
+              await supabase.from('product_tax_relations').insert({
+                product_id: variantProduct.id,
+                tax_id: formData.tax_id
+              })
+            }
+
             // Stock de variante (solo si el producto rastrea inventario)
             if (formData.track_stock) {
               // Igual que el producto simple: la variante necesita fila por sucursal

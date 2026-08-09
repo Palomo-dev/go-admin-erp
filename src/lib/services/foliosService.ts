@@ -104,7 +104,7 @@ export interface CreatePaymentData {
   created_by?: string;
 }
 
-class FoliosService {
+export class FoliosService {
   /**
    * Obtener todos los folios con filtros
    */

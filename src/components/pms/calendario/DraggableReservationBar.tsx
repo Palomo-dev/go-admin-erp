@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/utils/Utils';
 import type { TapeChartReservation } from '@/lib/services/tapeChartService';
+import { ReservationHoverCard } from './ReservationHoverCard';
 
 interface DraggableReservationBarProps {
   reservation: TapeChartReservation;
@@ -14,6 +16,8 @@ interface DraggableReservationBarProps {
   onClick: () => void;
   onResizeStart?: (reservationId: string, edge: 'start' | 'end') => void;
   onResizeEnd?: (reservationId: string, newDate: string, edge: 'start' | 'end') => void;
+  onCheckin?: (id: string) => void;
+  onCheckout?: (id: string) => void;
 }
 
 export function DraggableReservationBar({
@@ -24,9 +28,26 @@ export function DraggableReservationBar({
   onClick,
   onResizeStart,
   onResizeEnd,
+  onCheckin,
+  onCheckout,
 }: DraggableReservationBarProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [resizeEdge, setResizeEdge] = useState<'start' | 'end' | null>(null);
+  const [showHover, setShowHover] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleBarMouseEnter = useCallback(() => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+    setShowHover(true);
+  }, []);
+
+  const handleBarMouseLeave = useCallback(() => {
+    hideTimer.current = setTimeout(() => setShowHover(false), 200);
+  }, []);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `reservation-${reservation.id}`,
@@ -105,41 +126,60 @@ export function DraggableReservationBar({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'absolute top-1 left-1 h-[calc(100%-8px)] rounded-md flex items-center overflow-hidden transition-shadow',
-        isDragging && 'shadow-lg ring-2 ring-blue-400',
-        'group'
-      )}
-      style={style}
-      onClick={(e) => {
-        if (!isDragging && !isResizing) {
-          e.stopPropagation();
-          onClick();
-        }
-      }}
-      {...attributes}
-      {...listeners}
-    >
-      {/* Left resize handle */}
+    <>
       <div
-        className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-white/30 hover:bg-white/50 transition-opacity"
-        onMouseDown={(e) => handleResizeMouseDown(e, 'start')}
-      />
-      
-      {/* Content */}
-      <div className="flex-1 px-2 truncate">
-        <span className="text-white text-xs font-medium truncate">
-          {reservation.customerName}
-        </span>
+        ref={(node) => {
+          setNodeRef(node);
+          barRef.current = node;
+        }}
+        className={cn(
+          'absolute top-1 left-1 h-[calc(100%-8px)] rounded-md flex items-center overflow-hidden transition-shadow',
+          isDragging && 'shadow-lg ring-2 ring-blue-400',
+          'group'
+        )}
+        style={style}
+        onClick={(e) => {
+          if (!isDragging && !isResizing) {
+            e.stopPropagation();
+            onClick();
+          }
+        }}
+        onMouseEnter={handleBarMouseEnter}
+        onMouseLeave={handleBarMouseLeave}
+        {...attributes}
+        {...listeners}
+      >
+        {/* Left resize handle */}
+        <div
+          className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-white/30 hover:bg-white/50 transition-opacity"
+          onMouseDown={(e) => handleResizeMouseDown(e, 'start')}
+        />
+        
+        {/* Content */}
+        <div className="flex-1 px-2 truncate">
+          <span className="text-white text-xs font-medium truncate">
+            {reservation.customerName}
+          </span>
+        </div>
+        
+        {/* Right resize handle */}
+        <div
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-white/30 hover:bg-white/50 transition-opacity"
+          onMouseDown={(e) => handleResizeMouseDown(e, 'end')}
+        />
       </div>
-      
-      {/* Right resize handle */}
-      <div
-        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-white/30 hover:bg-white/50 transition-opacity"
-        onMouseDown={(e) => handleResizeMouseDown(e, 'end')}
-      />
-    </div>
+      {showHover && !isDragging && !isResizing && barRef.current && typeof document !== 'undefined' && createPortal(
+        <ReservationHoverCard
+          reservation={reservation}
+          onCheckin={onCheckin}
+          onCheckout={onCheckout}
+          anchorRect={barRef.current.getBoundingClientRect()}
+          onHide={() => setShowHover(false)}
+          onHoverEnter={handleBarMouseEnter}
+          onHoverLeave={handleBarMouseLeave}
+        />,
+        document.body
+      )}
+    </>
   );
 }

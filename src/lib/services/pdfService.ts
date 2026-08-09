@@ -14,6 +14,8 @@ export interface InvoiceDataForPDF {
   total: number;
   balance: number;
   notes?: string;
+  tax_included?: boolean;
+  discount_total?: number;
   customer?: {
     full_name: string;
     email?: string;
@@ -36,6 +38,8 @@ export interface InvoiceDataForPDF {
     qty: number;
     unit_price: number;
     tax_rate?: number;
+    tax_included?: boolean;
+    discount_amount?: number;
     total_line: number;
     sku?: string;
   }[];
@@ -102,9 +106,10 @@ export class PDFService {
   }
 
   // Generar HTML para el PDF (alternativa usando window.print con estilos)
-  static generateInvoiceHTML(data: InvoiceDataForPDF): string {
+  static generateInvoiceHTML(data: InvoiceDataForPDF, qrUrl?: string): string {
     const primaryColor = data.organization?.primary_color || '#2563eb';
     const secondaryColor = data.organization?.secondary_color || '#1e40af';
+    const qrData = qrUrl || `Factura: ${data.number} | Total: ${formatCurrency(data.total)} | Saldo: ${formatCurrency(data.balance)} | ${data.organization?.name || ''}`;
 
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleDateString('es-CO', {
@@ -162,8 +167,15 @@ export class PDFService {
           .totals { margin-left: auto; width: 280px; }
           .totals div { display: flex; justify-content: space-between; padding: 8px 0; }
           .totals .subtotal { border-bottom: 1px solid #e5e7eb; }
+          .totals .discount { color: #dc2626; }
           .totals .total { font-size: 16px; font-weight: bold; border-top: 2px solid ${primaryColor}; padding-top: 12px; margin-top: 4px; }
-          .totals .balance { color: #dc2626; }
+          .totals .balance { color: #dc2626; font-weight: bold; }
+          .totals .paid { color: #059669; font-weight: 600; }
+          .debt-badge { display: inline-block; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; margin-top: 8px; }
+          .debt-badge-pending { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+          .debt-badge-paid { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+          .tax-included-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; background: #ede9fe; color: #5b21b6; margin-left: 6px; }
+          .item-discount { color: #dc2626; font-size: 11px; }
           .notes { margin-top: 30px; padding: 15px; background: #f9fafb; border-radius: 8px; }
           .notes h4 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
           .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #9ca3af; padding-top: 20px; border-top: 1px solid #e5e7eb; }
@@ -180,9 +192,17 @@ export class PDFService {
               ${data.organization?.logo_url ? `<img src="${data.organization.logo_url}" alt="Logo" class="logo-img" />` : `<div class="logo-text">${data.organization?.name || 'Mi Empresa'}</div>`}
             </div>
             <div class="invoice-title">
-              <h1>FACTURA</h1>
-              <div class="invoice-number">${data.number}</div>
-              <span class="status status-${data.status}">${statusText[data.status] || data.status}</span>
+              <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="text-align:right;">
+                  <h1>FACTURA</h1>
+                  <div class="invoice-number">${data.number}</div>
+                  <span class="status status-${data.status}">${statusText[data.status] || data.status}</span>
+                </div>
+                <div style="flex-shrink:0;">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(qrData)}" alt="QR Factura" style="width:80px;height:80px;" />
+                  <div style="font-size:9px;color:#6b7280;text-align:center;margin-top:2px;">Escanear para ver</div>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -226,10 +246,11 @@ export class PDFService {
           <table>
             <thead>
               <tr>
-                <th style="width: 50%">Descripción</th>
-                <th style="width: 10%">Cant.</th>
-                <th style="width: 15%">Precio Unit.</th>
-                <th style="width: 10%">IVA</th>
+                <th style="width: 40%">Descripción</th>
+                <th style="width: 8%">Cant.</th>
+                <th style="width: 13%">Precio Unit.</th>
+                <th style="width: 10%">Descuento</th>
+                <th style="width: 9%">IVA</th>
                 <th style="width: 15%">Total</th>
               </tr>
             </thead>
@@ -239,7 +260,8 @@ export class PDFService {
                   <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}</td>
                   <td>${item.qty}</td>
                   <td>${formatCurrency(item.unit_price)}</td>
-                  <td>${item.tax_rate ? `${item.tax_rate}%` : '-'}</td>
+                  <td>${item.discount_amount && item.discount_amount > 0 ? `<span class="item-discount">- ${formatCurrency(item.discount_amount)}</span>` : '-'}</td>
+                  <td>${item.tax_rate ? `${item.tax_rate}%${item.tax_included ? ' (incl.)' : ''}` : '-'}</td>
                   <td>${formatCurrency(item.total_line)}</td>
                 </tr>
               `).join('')}
@@ -248,9 +270,15 @@ export class PDFService {
           
           <div class="totals">
             <div class="subtotal">
-              <span>Subtotal</span>
+              <span>Subtotal${data.tax_included ? ' <span class="tax-included-badge">Imp. incluidos</span>' : ''}</span>
               <span>${formatCurrency(data.subtotal)}</span>
             </div>
+            ${data.discount_total && data.discount_total > 0 ? `
+            <div class="discount">
+              <span>Descuentos</span>
+              <span>- ${formatCurrency(data.discount_total)}</span>
+            </div>
+            ` : ''}
             <div>
               <span>IVA</span>
               <span>${formatCurrency(data.tax_total)}</span>
@@ -265,12 +293,17 @@ export class PDFService {
                 <span>- ${formatCurrency(data.credit_applied)}</span>
               </div>
             ` : ''}
-            ${data.balance > 0 && data.balance < data.total ? `
+            ${data.balance > 0 ? `
               <div class="balance">
                 <span>Saldo Pendiente</span>
                 <span>${formatCurrency(data.balance)}</span>
               </div>
-            ` : ''}
+            ` : `
+              <div class="paid">
+                <span>Pagado</span>
+                <span>${formatCurrency(data.total - (data.balance || 0))}</span>
+              </div>
+            `}
           </div>
           
           ${data.notes ? `
@@ -291,8 +324,21 @@ export class PDFService {
   }
 
   // Método alternativo: Imprimir usando ventana del navegador
-  static printInvoiceHTML(data: InvoiceDataForPDF): void {
-    const html = this.generateInvoiceHTML(data);
+  static async printInvoiceHTML(data: InvoiceDataForPDF): Promise<void> {
+    // 1. Construir URL pública de Storage determinísticamente (sin esperar)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const pdfUrl = `${supabaseUrl}/storage/v1/object/public/invoices/facturas-venta/${data.id}.pdf`;
+
+    // 2. Disparar generación del PDF en background (no bloquea la impresión)
+    fetch(`/api/facturas-venta/${data.id}/pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).catch((e) => console.warn('[PDF] Error generando PDF en background:', e));
+
+    // 3. Generar HTML y abrir inmediatamente
+    const html = this.generateInvoiceHTML(data, pdfUrl);
+
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(html);
@@ -366,8 +412,15 @@ export class PDFService {
           .totals { margin-left: auto; width: 280px; }
           .totals div { display: flex; justify-content: space-between; padding: 8px 0; }
           .totals .subtotal { border-bottom: 1px solid #e5e7eb; }
+          .totals .discount { color: #dc2626; }
           .totals .total { font-size: 16px; font-weight: bold; border-top: 2px solid ${primaryColor}; padding-top: 12px; margin-top: 4px; }
-          .totals .balance { color: #dc2626; }
+          .totals .balance { color: #dc2626; font-weight: bold; }
+          .totals .paid { color: #059669; font-weight: 600; }
+          .debt-badge { display: inline-block; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; margin-top: 8px; }
+          .debt-badge-pending { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+          .debt-badge-paid { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+          .tax-included-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; background: #ede9fe; color: #5b21b6; margin-left: 6px; }
+          .item-discount { color: #dc2626; font-size: 11px; }
           .notes { margin-top: 30px; padding: 15px; background: #f9fafb; border-radius: 8px; }
           .notes h4 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
           .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #9ca3af; padding-top: 20px; border-top: 1px solid #e5e7eb; }
@@ -430,10 +483,11 @@ export class PDFService {
           <table>
             <thead>
               <tr>
-                <th style="width: 50%">Descripción</th>
-                <th style="width: 10%">Cant.</th>
-                <th style="width: 15%">Precio Unit.</th>
-                <th style="width: 10%">IVA</th>
+                <th style="width: 40%">Descripción</th>
+                <th style="width: 8%">Cant.</th>
+                <th style="width: 13%">Precio Unit.</th>
+                <th style="width: 10%">Descuento</th>
+                <th style="width: 9%">IVA</th>
                 <th style="width: 15%">Total</th>
               </tr>
             </thead>
@@ -443,7 +497,8 @@ export class PDFService {
                   <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}</td>
                   <td>${item.qty}</td>
                   <td>${formatCurrency(item.unit_price)}</td>
-                  <td>${item.tax_rate ? `${item.tax_rate}%` : '-'}</td>
+                  <td>${item.discount_amount && item.discount_amount > 0 ? `<span class="item-discount">- ${formatCurrency(item.discount_amount)}</span>` : '-'}</td>
+                  <td>${item.tax_rate ? `${item.tax_rate}%${item.tax_included ? ' (incl.)' : ''}` : '-'}</td>
                   <td>${formatCurrency(item.total_line)}</td>
                 </tr>
               `).join('')}
@@ -452,9 +507,15 @@ export class PDFService {
           
           <div class="totals">
             <div class="subtotal">
-              <span>Subtotal</span>
+              <span>Subtotal${data.tax_included ? ' <span class="tax-included-badge">Imp. incluidos</span>' : ''}</span>
               <span>${formatCurrency(data.subtotal)}</span>
             </div>
+            ${data.discount_total && data.discount_total > 0 ? `
+            <div class="discount">
+              <span>Descuentos</span>
+              <span>- ${formatCurrency(data.discount_total)}</span>
+            </div>
+            ` : ''}
             <div>
               <span>IVA</span>
               <span>${formatCurrency(data.tax_total)}</span>
@@ -469,12 +530,17 @@ export class PDFService {
                 <span>- ${formatCurrency(data.credit_applied)}</span>
               </div>
             ` : ''}
-            ${data.balance > 0 && data.balance < data.total ? `
+            ${data.balance > 0 ? `
               <div class="balance">
                 <span>Saldo Pendiente</span>
                 <span>${formatCurrency(data.balance)}</span>
               </div>
-            ` : ''}
+            ` : `
+              <div class="paid">
+                <span>Pagado</span>
+                <span>${formatCurrency(data.total - (data.balance || 0))}</span>
+              </div>
+            `}
           </div>
           
           ${data.notes ? `

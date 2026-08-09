@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { CalendarIcon, CreditCardIcon, CheckCircleIcon, XCircleIcon, ClockIcon, UsersIcon, Building2Icon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, CreditCardIcon, CheckCircleIcon, XCircleIcon, ClockIcon, UsersIcon, BuildingOffice2Icon, SparklesIcon } from '@heroicons/react/24/outline';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeaderSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
@@ -402,7 +402,7 @@ export default function HistorialPage() {
           <div className="space-y-3">
             {addons.map((addon) => {
               const isUsers = addon.addon_type === 'extra_users';
-              const Icon = isUsers ? UsersIcon : Building2Icon;
+              const Icon = isUsers ? UsersIcon : BuildingOffice2Icon;
               const colorClass = isUsers ? 'text-indigo-600 bg-indigo-50' : 'text-green-600 bg-green-50';
               const label = isUsers ? 'Usuarios extra' : 'Sucursales extra';
               return (

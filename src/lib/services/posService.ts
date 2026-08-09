@@ -1124,11 +1124,13 @@ export class POSService {
         }
 
         const lineTotal = (item.unit_price || 0) * (item.quantity || 0);
+        const itemDiscount = item.discount_amount || 0;
+        const lineNet = lineTotal - itemDiscount;
         const itemTaxIncluded = item.tax_included ?? taxIncluded;
         const itemTaxRate = item.tax_rate || 0;
         const itemTax = itemTaxIncluded
-          ? lineTotal - (lineTotal / (1 + itemTaxRate / 100))
-          : lineTotal * itemTaxRate / 100;
+          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
+          : lineNet * itemTaxRate / 100;
 
         return {
           invoice_id: invoice.id,
@@ -1139,8 +1141,8 @@ export class POSService {
           qty: item.quantity || 0,
           unit_price: item.unit_price || 0,
           tax_rate: itemTaxRate,
-          total_line: itemTaxIncluded ? lineTotal : lineTotal + itemTax,
-          discount_amount: item.discount_amount || 0,
+          total_line: itemTaxIncluded ? lineNet : lineNet + itemTax,
+          discount_amount: itemDiscount,
           tax_included: itemTaxIncluded
         };
       });
@@ -1171,18 +1173,20 @@ export class POSService {
       
       const saleItems = cart.items.map(item => {
         const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+        const itemDiscount = item.discount_amount || 0;
+        const lineNet = lineTotal - itemDiscount;
         const itemTaxIncluded = item.tax_included ?? taxIncluded;
         const itemTaxRate = item.tax_rate || 0;
         const itemTax = itemTaxIncluded
-          ? lineTotal - (lineTotal / (1 + itemTaxRate / 100))
-          : lineTotal * itemTaxRate / 100;
+          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
+          : lineNet * itemTaxRate / 100;
         return {
           sale_id: sale.id,
           product_id: item.product_id,
           quantity: item.quantity || 1,
           unit_price: item.unit_price,
-          total: itemTaxIncluded ? lineTotal : lineTotal + itemTax,
-          discount_amount: item.discount_amount || 0,
+          total: itemTaxIncluded ? lineNet : lineNet + itemTax,
+          discount_amount: itemDiscount,
           tax_amount: itemTax || totalTaxPerItem
         };
       });

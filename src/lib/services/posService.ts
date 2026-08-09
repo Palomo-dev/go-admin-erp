@@ -2262,12 +2262,22 @@ export class POSService {
         throw new Error('El carrito no tiene deuda pendiente');
       }
 
-      // 2. Usar invoice_id del carrito para encontrar la factura y luego la venta
-      if (!cart.invoice_id) {
-        throw new Error('El carrito no tiene invoice_id. Es posible que la deuda se haya creado antes de esta corrección.');
+      // 2. Usar sale_id e invoice_id del carrito (guardados por holdCartWithDebt)
+      if (!cart.sale_id || !cart.invoice_id) {
+        throw new Error('El carrito no tiene sale_id o invoice_id. Es posible que la deuda se haya creado antes de esta corrección.');
       }
 
-      // Buscar la factura primero por invoice_id
+      const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('id', cart.sale_id)
+        .single();
+
+      if (saleError || !saleData) {
+        throw new Error('No se encontró la venta asociada al carrito');
+      }
+
+      // 3. Obtener la factura original directamente por invoice_id
       const { data: originalInvoice, error: invoiceError } = await supabase
         .from('invoice_sales')
         .select('*')
@@ -2276,23 +2286,6 @@ export class POSService {
 
       if (invoiceError || !originalInvoice) {
         throw new Error('No se encontró la factura original');
-      }
-
-      // Buscar la venta por sale_id del carrito o por sale_id de la factura
-      const saleIdToUse = cart.sale_id || originalInvoice.sale_id;
-
-      if (!saleIdToUse) {
-        throw new Error('No se pudo determinar la venta asociada');
-      }
-
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .select('*')
-        .eq('id', saleIdToUse)
-        .single();
-
-      if (saleError || !saleData) {
-        throw new Error('No se encontró la venta asociada al carrito');
       }
 
       // 4. Obtener los items de la factura original

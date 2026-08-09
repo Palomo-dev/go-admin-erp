@@ -12,6 +12,7 @@ import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
 
 interface ProfileDropdownMenuProps {
   userData: UserData | null;
@@ -71,9 +72,14 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
     setResendingEmail(true);
     try {
       const { error } = await supabase.auth.resend({ type: 'signup', email: userData.email });
-      if (!error) startResendEmailTimer();
-    } catch {
-      // silenciar error
+      if (error) {
+        toast.error('Error al reenviar correo', { description: error.message });
+      } else {
+        toast.success('Correo de confirmación enviado', { description: 'Revisa tu bandeja de entrada y carpeta de spam.' });
+        startResendEmailTimer();
+      }
+    } catch (err: any) {
+      toast.error('Error al reenviar correo', { description: err?.message || 'Intenta nuevamente en unos minutos.' });
     } finally {
       setResendingEmail(false);
     }

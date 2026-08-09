@@ -1139,7 +1139,7 @@ export class POSService {
           qty: item.quantity || 0,
           unit_price: item.unit_price || 0,
           tax_rate: itemTaxRate,
-          total_line: lineTotal,
+          total_line: itemTaxIncluded ? lineTotal : lineTotal + itemTax,
           discount_amount: item.discount_amount || 0,
           tax_included: itemTaxIncluded
         };
@@ -1181,7 +1181,7 @@ export class POSService {
           product_id: item.product_id,
           quantity: item.quantity || 1,
           unit_price: item.unit_price,
-          total: lineTotal,
+          total: itemTaxIncluded ? lineTotal : lineTotal + itemTax,
           discount_amount: item.discount_amount || 0,
           tax_amount: itemTax || totalTaxPerItem
         };

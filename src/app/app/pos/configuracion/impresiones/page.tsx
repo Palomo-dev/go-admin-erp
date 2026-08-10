@@ -1,7 +1,5 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { ImpresionesPage } from '@/components/pos/configuracion/impresiones';
-
-export default function ImpresionesConfiguracionPage() {
-  return <ImpresionesPage />;
+export default function Page() {
+  redirect('/app/configuracion?modulo=pos&seccion=impresiones');
 }

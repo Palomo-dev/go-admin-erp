@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderWithItems, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
+import { supplierService } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,6 +73,11 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [itemQuantity, setItemQuantity] = useState<string>('1');
   const [itemCost, setItemCost] = useState<string>('0');
+
+  // Productos filtrados por proveedor
+  const [supplierProductIds, setSupplierProductIds] = useState<Set<number>>(new Set());
+  const [supplierCosts, setSupplierCosts] = useState<Map<number, number>>(new Map());
+  const [showAllProducts, setShowAllProducts] = useState(false);
 
   // Cargar datos iniciales
   const loadData = useCallback(async () => {
@@ -147,6 +153,27 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Cargar productos del proveedor cuando se selecciona
+  useEffect(() => {
+    if (!supplierId) {
+      setSupplierProductIds(new Set());
+      setSupplierCosts(new Map());
+      return;
+    }
+    const loadSupplierProducts = async () => {
+      const supplierProducts = await supplierService.getProductsBySupplier(parseInt(supplierId));
+      setSupplierProductIds(new Set(supplierProducts.map(p => p.product_id)));
+      setSupplierCosts(new Map(supplierProducts.map(p => [p.product_id, p.cost])));
+      setShowAllProducts(false);
+    };
+    loadSupplierProducts();
+  }, [supplierId]);
+
+  // Productos a mostrar: filtrados por proveedor o todos
+  const displayedProducts = showAllProducts || supplierProductIds.size === 0
+    ? products
+    : products.filter(p => supplierProductIds.has(p.id));
 
   // Agregar item
   const handleAddItem = () => {
@@ -373,16 +400,34 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500 dark:text-gray-400">Buscar Producto</Label>
                   <ProductSearchCombobox
-                    products={products as ProductOption[]}
+                    products={displayedProducts as ProductOption[]}
                     value={selectedProduct}
                     onSelect={(product) => {
                       setSelectedProduct(product ? product.id.toString() : '');
-                      if (product?.cost && product.cost > 0) {
-                        setItemCost(product.cost.toString());
+                      if (product) {
+                        const supplierCost = supplierCosts.get(product.id);
+                        if (supplierCost && supplierCost > 0) {
+                          setItemCost(supplierCost.toString());
+                        } else if (product.cost && product.cost > 0) {
+                          setItemCost(product.cost.toString());
+                        }
                       }
                     }}
                     placeholder="Buscar por nombre o SKU..."
                   />
+                  {supplierProductIds.size > 0 && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllProducts(!showAllProducts)}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {showAllProducts
+                          ? `Mostrar solo productos del proveedor (${supplierProductIds.size})`
+                          : `Mostrar todos los productos (${products.length})`}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 items-end">
                   <div className="flex-1 sm:w-32 space-y-1">

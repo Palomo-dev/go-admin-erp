@@ -18,6 +18,7 @@ interface ItemsListFormProps {
   onAgregarItem: () => void;
   onEliminarItem: (index: number) => void;
   onDirectAddItem?: (item: InvoiceItemForm) => void;
+  supplierId?: number | null;
 }
 
 export function ItemsListForm({
@@ -27,7 +28,8 @@ export function ItemsListForm({
   onItemChange,
   onAgregarItem,
   onEliminarItem,
-  onDirectAddItem
+  onDirectAddItem,
+  supplierId = null
 }: ItemsListFormProps) {
   // Estado para productos seleccionados
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
@@ -226,6 +228,7 @@ export function ItemsListForm({
                 currency={currency} 
                 onProductSelect={handleProductSelect}
                 selectedProductIds={selectedProductIds}
+                supplierId={supplierId}
                 showCreateButton
               />
             </div>

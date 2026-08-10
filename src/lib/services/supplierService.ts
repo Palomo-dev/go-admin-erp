@@ -94,6 +94,52 @@ export interface PurchaseInvoiceSummary {
   created_at: string;
 }
 
+// Cuenta por pagar resumida
+export interface AccountPayableSummary {
+  id: string;
+  invoice_id: string | null;
+  amount: number;
+  balance: number;
+  due_date: string | null;
+  status: string;
+  days_overdue: number;
+  discount_amount: number;
+  created_at: string;
+  invoice_number: string | null;
+  invoice_total: number;
+}
+
+// Pago a proveedor resumido
+export interface SupplierPaymentSummary {
+  id: string;
+  source: string;
+  source_id: string;
+  method: string;
+  amount: number;
+  currency: string;
+  reference: string | null;
+  status: string;
+  payment_date: string | null;
+  created_at: string;
+  discount_amount: number;
+}
+
+// Stock de producto del proveedor
+export interface SupplierStockSummary {
+  product_id: number;
+  product_uuid: string;
+  product_name: string;
+  product_sku: string;
+  track_stock: boolean;
+  status: string;
+  cost: number;
+  is_preferred: boolean;
+  supplier_sku: string | null;
+  stock_total: number;
+  branches_with_stock: number;
+  stock_value: number;
+}
+
 class SupplierService {
   /**
    * Obtener lista de proveedores con filtros
@@ -495,6 +541,237 @@ class SupplierService {
     }
 
     return results;
+  }
+
+  /**
+   * Obtener IDs de productos relacionados a un proveedor
+   */
+  async getProductsBySupplier(
+    supplierId: number
+  ): Promise<{ product_id: number; cost: number; supplier_sku: string | null; lead_time_days: number | null; min_order_qty: number | null }[]> {
+    try {
+      const { data, error } = await supabase
+        .from('product_suppliers')
+        .select('product_id, cost, supplier_sku, lead_time_days, min_order_qty')
+        .eq('supplier_id', supplierId);
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        product_id: item.product_id,
+        cost: parseFloat(item.cost) || 0,
+        supplier_sku: item.supplier_sku || null,
+        lead_time_days: item.lead_time_days || null,
+        min_order_qty: item.min_order_qty ? parseFloat(item.min_order_qty) : null
+      }));
+    } catch (error) {
+      console.error('Error obteniendo productos del proveedor:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener cuentas por pagar de un proveedor
+   */
+  async getSupplierAccountsPayable(
+    supplierId: number,
+    organizationId: number
+  ): Promise<AccountPayableSummary[]> {
+    try {
+      const { data, error } = await supabase
+        .from('accounts_payable')
+        .select(`
+          id,
+          invoice_id,
+          amount,
+          balance,
+          due_date,
+          status,
+          days_overdue,
+          discount_amount,
+          created_at,
+          invoice_purchase (
+            number_ext,
+            issue_date,
+            total
+          )
+        `)
+        .eq('supplier_id', supplierId)
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        invoice_id: item.invoice_id,
+        amount: parseFloat(item.amount) || 0,
+        balance: parseFloat(item.balance) || 0,
+        due_date: item.due_date,
+        status: item.status,
+        days_overdue: item.days_overdue || 0,
+        discount_amount: parseFloat(item.discount_amount) || 0,
+        created_at: item.created_at,
+        invoice_number: item.invoice_purchase?.number_ext || null,
+        invoice_total: parseFloat(item.invoice_purchase?.total) || 0
+      }));
+    } catch (error) {
+      console.error('Error obteniendo cuentas por pagar:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener pagos realizados a un proveedor
+   */
+  async getSupplierPayments(
+    supplierId: number,
+    organizationId: number
+  ): Promise<SupplierPaymentSummary[]> {
+    try {
+      // Los pagos a proveedores se relacionan via accounts_payable o invoice_purchase
+      // Primero obtenemos los IDs de las CxP del proveedor
+      const { data: accountsPayable } = await supabase
+        .from('accounts_payable')
+        .select('id')
+        .eq('supplier_id', supplierId)
+        .eq('organization_id', organizationId);
+
+      const cxpIds = (accountsPayable || []).map(ap => ap.id);
+
+      // También obtenemos los IDs de facturas de compra del proveedor
+      const { data: invoices } = await supabase
+        .from('invoice_purchase')
+        .select('id')
+        .eq('supplier_id', supplierId)
+        .eq('organization_id', organizationId);
+
+      const invoiceIds = (invoices || []).map(inv => inv.id);
+
+      // Buscar pagos donde source = 'account_payable' y source_id IN cxpIds
+      // o source = 'invoice_purchase' y source_id IN invoiceIds
+      let paymentsQuery = supabase
+        .from('payments')
+        .select(`
+          id,
+          source,
+          source_id,
+          method,
+          amount,
+          currency,
+          reference,
+          status,
+          payment_date,
+          created_at,
+          discount_amount
+        `)
+        .eq('organization_id', organizationId)
+        .eq('status', 'completed')
+        .order('payment_date', { ascending: false });
+
+      // Buscar pagos relacionados a CxP o facturas de compra
+      const { data: paymentsData, error } = await paymentsQuery
+        .or(`source.eq.account_payable,source.eq.invoice_purchase`);
+
+      if (error) throw error;
+
+      // Filtrar en cliente los que corresponden a este proveedor
+      const cxpIdSet = new Set(cxpIds.map(id => id.toString()));
+      const invoiceIdSet = new Set(invoiceIds.map(id => id.toString()));
+      const filteredPayments = (paymentsData || []).filter((p: any) => {
+        if (p.source === 'account_payable' && cxpIdSet.has(p.source_id)) return true;
+        if (p.source === 'invoice_purchase' && invoiceIdSet.has(p.source_id)) return true;
+        return false;
+      });
+
+      return filteredPayments.map((p: any) => ({
+        id: p.id,
+        source: p.source,
+        source_id: p.source_id,
+        method: p.method,
+        amount: parseFloat(p.amount) || 0,
+        currency: p.currency,
+        reference: p.reference,
+        status: p.status,
+        payment_date: p.payment_date,
+        created_at: p.created_at,
+        discount_amount: parseFloat(p.discount_amount) || 0
+      }));
+    } catch (error) {
+      console.error('Error obteniendo pagos del proveedor:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtener resumen de stock de productos del proveedor
+   */
+  async getSupplierStockSummary(
+    supplierId: number,
+    organizationId: number
+  ): Promise<SupplierStockSummary[]> {
+    try {
+      // Obtener productos del proveedor con su stock
+      const { data, error } = await supabase
+        .from('product_suppliers')
+        .select(`
+          product_id,
+          cost,
+          is_preferred,
+          supplier_sku,
+          product:products (
+            id,
+            uuid,
+            name,
+            sku,
+            track_stock,
+            status
+          )
+        `)
+        .eq('supplier_id', supplierId);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) return [];
+
+      const productIds = data.map((item: any) => item.product_id);
+
+      // Obtener stock_levels para los productos del proveedor
+      const { data: stockData } = await supabase
+        .from('stock_levels')
+        .select('product_id, branch_id, qty_on_hand, min_level')
+        .in('product_id', productIds);
+
+      // Agrupar stock por producto
+      const stockMap = new Map<number, { total: number; branches: number }>();
+      for (const stock of (stockData || [])) {
+        const existing = stockMap.get(stock.product_id) || { total: 0, branches: 0 };
+        existing.total += Number(stock.qty_on_hand) || 0;
+        existing.branches += 1;
+        stockMap.set(stock.product_id, existing);
+      }
+
+      return data.map((item: any) => {
+        const stock = stockMap.get(item.product_id) || { total: 0, branches: 0 };
+        return {
+          product_id: item.product_id,
+          product_uuid: item.product?.uuid || '',
+          product_name: item.product?.name || `Producto #${item.product_id}`,
+          product_sku: item.product?.sku || '',
+          track_stock: item.product?.track_stock || false,
+          status: item.product?.status || 'active',
+          cost: parseFloat(item.cost) || 0,
+          is_preferred: item.is_preferred || false,
+          supplier_sku: item.supplier_sku || null,
+          stock_total: stock.total,
+          branches_with_stock: stock.branches,
+          stock_value: stock.total * (parseFloat(item.cost) || 0)
+        };
+      });
+    } catch (error) {
+      console.error('Error obteniendo stock del proveedor:', error);
+      return [];
+    }
   }
 
   /**

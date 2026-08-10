@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { supplierService } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -37,12 +38,14 @@ interface ProductSearchDialogProps {
   currency: string;
   onProductSelect: (product: Product) => void;
   selectedProductIds?: number[];
+  supplierId?: number | null;
 }
 
 export function ProductSearchDialog({ 
   currency, 
   onProductSelect,
-  selectedProductIds = []
+  selectedProductIds = [],
+  supplierId = null
 }: ProductSearchDialogProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -50,7 +53,26 @@ export function ProductSearchDialog({
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNewProductOpen, setIsNewProductOpen] = useState(false);
+  const [supplierProductIds, setSupplierProductIds] = useState<Set<number>>(new Set());
+  const [supplierCosts, setSupplierCosts] = useState<Map<number, number>>(new Map());
+  const [showAllProducts, setShowAllProducts] = useState(false);
   const organizationId = getOrganizationId();
+
+  // Cargar IDs de productos del proveedor cuando cambia supplierId
+  useEffect(() => {
+    if (!supplierId) {
+      setSupplierProductIds(new Set());
+      setSupplierCosts(new Map());
+      return;
+    }
+    const loadSupplierProducts = async () => {
+      const supplierProducts = await supplierService.getProductsBySupplier(supplierId);
+      setSupplierProductIds(new Set(supplierProducts.map(p => p.product_id)));
+      setSupplierCosts(new Map(supplierProducts.map(p => [p.product_id, p.cost])));
+      setShowAllProducts(false);
+    };
+    loadSupplierProducts();
+  }, [supplierId]);
 
   // Cargar productos al abrir el diálogo
   useEffect(() => {
@@ -61,17 +83,22 @@ export function ProductSearchDialog({
 
   // Filtrar productos en tiempo real
   useEffect(() => {
+    // Base: todos los productos o solo los del proveedor
+    const baseProducts = showAllProducts || supplierProductIds.size === 0
+      ? products
+      : products.filter(p => supplierProductIds.has(p.id));
+
     if (searchTerm.trim()) {
-      const filtered = products.filter(p => 
+      const filtered = baseProducts.filter(p => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredProducts(filtered);
     } else {
-      setFilteredProducts(products);
+      setFilteredProducts(baseProducts);
     }
-  }, [searchTerm, products]);
+  }, [searchTerm, products, showAllProducts, supplierProductIds]);
 
   // Función para cargar productos con costos
   const cargarProductos = async () => {
@@ -133,7 +160,12 @@ export function ProductSearchDialog({
 
   // Seleccionar producto
   const handleSelectProduct = (product: Product) => {
-    onProductSelect(product);
+    // Aplicar costo del proveedor si está disponible
+    const supplierCost = supplierCosts.get(product.id);
+    const productWithSupplierCost = supplierCost && supplierCost > 0
+      ? { ...product, cost: supplierCost }
+      : product;
+    onProductSelect(productWithSupplierCost);
     setIsDialogOpen(false);
     setSearchTerm('');
     
@@ -214,12 +246,25 @@ export function ProductSearchDialog({
             </Button>
           </div>
           
-          {/* Estadísticas */}
+          {/* Estadísticas y toggle de filtro */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-            <span className="break-words whitespace-normal min-w-0">
-              <span className="font-medium text-gray-900 dark:text-gray-100">{filteredProducts.length}</span> de {products.length} productos
-              <span className="hidden md:inline">{searchTerm && ` - Filtrando por "${searchTerm}"`}</span>
-            </span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="break-words whitespace-normal min-w-0">
+                <span className="font-medium text-gray-900 dark:text-gray-100">{filteredProducts.length}</span> de {products.length} productos
+                <span className="hidden md:inline">{searchTerm && ` - Filtrando por "${searchTerm}"`}</span>
+              </span>
+              {supplierProductIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllProducts(!showAllProducts)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+                >
+                  {showAllProducts
+                    ? `Solo del proveedor (${supplierProductIds.size})`
+                    : `Ver todos (${products.length})`}
+                </button>
+              )}
+            </div>
             {selectedProductIds.length > 0 && (
               <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300">
                 {selectedProductIds.length} seleccionados

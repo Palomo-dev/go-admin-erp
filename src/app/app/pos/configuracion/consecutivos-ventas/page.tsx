@@ -1,7 +1,5 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { ConsecutivosPage } from '@/components/pos/configuracion/consecutivos-ventas';
-
-export default function ConsecutivosVentasPage() {
-  return <ConsecutivosPage />;
+export default function Page() {
+  redirect('/app/configuracion?modulo=pos&seccion=consecutivos-ventas');
 }

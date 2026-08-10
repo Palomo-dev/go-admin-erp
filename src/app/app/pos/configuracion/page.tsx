@@ -1,7 +1,5 @@
-'use client';
-
-import { ConfiguracionPage } from '@/components/pos/configuracion';
+import { redirect } from 'next/navigation';
 
 export default function POSConfiguracionPage() {
-  return <ConfiguracionPage />;
+  redirect('/app/configuracion?modulo=pos');
 }

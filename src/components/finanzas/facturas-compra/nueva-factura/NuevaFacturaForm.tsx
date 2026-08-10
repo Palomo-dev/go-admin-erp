@@ -557,6 +557,7 @@ export function NuevaFacturaForm({
           onAgregarItem={agregarItem}
           onEliminarItem={eliminarItem}
           onDirectAddItem={agregarItemDirecto}
+          supplierId={formData.supplier_id}
         />
 
         {/* Configuración de impuestos */}

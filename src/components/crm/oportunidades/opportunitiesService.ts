@@ -530,29 +530,40 @@ class OpportunitiesService {
 
   async getProducts(): Promise<{ id: number; name: string; sku: string; price: number; image?: string }[]> {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          id, 
-          name, 
-          sku,
-          product_prices (
-            price
-          ),
-          product_images (
-            storage_path
-          )
-        `)
-        .eq('organization_id', this.getOrganizationId())
-        .eq('status', 'active')
-        .order('name');
+      // Paginar porque Supabase devuelve máximo 1000 filas por defecto
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data: pageData, error: pageError } = await supabase
+          .from('products')
+          .select(`
+            id, 
+            name, 
+            sku,
+            product_prices (
+              price
+            ),
+            product_images (
+              storage_path
+            )
+          `)
+          .eq('organization_id', this.getOrganizationId())
+          .eq('status', 'active')
+          .order('name')
+          .range(offset, offset + PAGE_SIZE - 1);
 
-      if (error) {
-        console.warn('Advertencia obteniendo productos:', error.message);
-        return [];
+        if (pageError) {
+          console.warn('Advertencia obteniendo productos:', pageError.message);
+          break;
+        }
+        if (!pageData || pageData.length === 0) break;
+        allData = allData.concat(pageData);
+        if (pageData.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
       }
       
-      return (data || []).map((p: any) => ({
+      return (allData || []).map((p: any) => ({
         id: p.id,
         name: p.name,
         sku: p.sku || '',

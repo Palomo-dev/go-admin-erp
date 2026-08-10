@@ -367,13 +367,16 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
 
       // 9. Guardar notas
       if (formData.notes.trim()) {
+        const { data: { user } } = await supabase.auth.getUser()
         const { error: notesError } = await supabase
           .from('product_notes')
           .insert({
             product_id: product.id,
-            note: formData.notes
+            content: formData.notes,
+            user_id: user?.id,
+            organization_id: organization.id
           })
-        
+
         if (notesError) throw notesError
       }
 

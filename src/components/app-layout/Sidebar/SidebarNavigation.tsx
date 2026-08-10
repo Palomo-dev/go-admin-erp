@@ -9,7 +9,6 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { 
   Bell, 
@@ -30,7 +29,6 @@ import {
   BarChart3,
   Shield,
   UserCog,
-  Banknote,
   Clock,
   Globe,
   FileBarChart,
@@ -79,7 +77,6 @@ import {
   Ticket,
   Search,
   LayoutGrid,
-  Banknote as BanknoteIcon,
   ListChecks,
   Link2,
   Send,
@@ -93,7 +90,6 @@ import {
   Factory,
 } from 'lucide-react';
 import AccountSwitcher from '../AccountSwitcher';
-import { NavItem } from './NavItem';
 import { NavSection } from './NavSection';
 import { SidebarNavigationProps } from '../types';
 import { useTranslations } from 'next-intl';
@@ -103,7 +99,6 @@ const SidebarNavigationComponent = ({
   handleSignOut, 
   loading, 
   userData, 
-  orgName,
   collapsed,
   onNavigate,
   activeModuleCodes,
@@ -111,7 +106,7 @@ const SidebarNavigationComponent = ({
   jobPositionVisibleModules,
   jobPositionVisiblePages
 }: SidebarNavigationProps) => {
-  const pathname = usePathname();
+  void usePathname();
   const t = useTranslations('nav');
   
   // Memoizar las secciones de navegación para evitar re-creaciones costosas
@@ -141,7 +136,7 @@ const SidebarNavigationComponent = ({
             { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
             { name: "Reportes", href: "/app/crm/reportes", icon: <BarChart3 size={16} /> },
             { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> },
-            { name: "Configuración", href: "/app/crm/configuracion", icon: <Settings size={16} /> }
+            { name: "Configuración", href: "/app/configuracion?modulo=crm", icon: <Settings size={16} /> }
           ]
         },
         { 
@@ -163,7 +158,7 @@ const SidebarNavigationComponent = ({
             { name: "Préstamos", href: "/app/hrm/prestamos", icon: <Wallet size={16} /> },
             { name: "Reportes", href: "/app/hrm/reportes", icon: <BarChart3 size={16} /> },
             { name: "Reglas País", href: "/app/hrm/reglas-pais", icon: <Globe size={16} /> },
-            { name: "Configuración", href: "/app/hrm/configuracion", icon: <Settings size={16} /> }
+            { name: "Configuración", href: "/app/configuracion?modulo=hrm", icon: <Settings size={16} /> }
           ]
         },
         { 
@@ -270,7 +265,7 @@ const SidebarNavigationComponent = ({
             { name: "Promociones", href: "/app/pos/promociones", icon: <Percent size={16} /> },
             { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar", icon: <DollarSign size={16} /> },
             { name: "Reportes", href: "/app/pos/reportes", icon: <BarChart3 size={16} /> },
-            { name: "Configuración", href: "/app/pos/configuracion", icon: <Settings size={16} /> },
+            { name: "Configuración", href: "/app/configuracion?modulo=pos", icon: <Settings size={16} /> },
           ]
         },
         { 
@@ -297,7 +292,7 @@ const SidebarNavigationComponent = ({
             { name: "Origenes", href: "/app/pms/origenes", icon: <Globe size={16} /> },
             { name: "Channel Manager", href: "/app/pms/channel-manager", icon: <Radio size={16} /> },
             { name: "Parquedero", href: "/app/pms/parking", icon: <ParkingCircle size={16} /> },
-            { name: "Configuración", href: "/app/pms/configuracion", icon: <Settings size={16} /> },
+            { name: "Configuración", href: "/app/configuracion?modulo=pms", icon: <Settings size={16} /> },
           ]
         },
         { 
@@ -310,7 +305,7 @@ const SidebarNavigationComponent = ({
             { name: "Canales", href: "/app/chat/canales", icon: <MessageSquare size={16} /> },
             { name: "Conocimiento", href: "/app/chat/conocimiento", icon: <BookOpen size={16} /> },
             { name: "IA", href: "/app/chat/ia/configuracion", icon: <Bot size={16} /> },
-            { name: "Configuración", href: "/app/chat/configuracion/etiquetas", icon: <Settings size={16} /> },
+            { name: "Configuración", href: "/app/configuracion?modulo=chat", icon: <Settings size={16} /> },
             { name: "Widget", href: "/app/chat/widget/sesiones", icon: <Headphones size={16} /> },
             { name: "Auditoría", href: "/app/chat/auditoria", icon: <Shield size={16} /> },
           ]
@@ -356,7 +351,7 @@ const SidebarNavigationComponent = ({
             { name: "Reservaciones", href: "/app/gym/reservaciones", icon: <CalendarCheck size={16} /> },
             { name: "Instructores", href: "/app/gym/instructores", icon: <User size={16} /> },
             { name: "Reportes", href: "/app/gym/reportes", icon: <BarChart3 size={16} /> },
-            { name: "Configuración", href: "/app/gym/ajustes", icon: <Settings size={16} /> },
+            { name: "Configuración", href: "/app/configuracion?modulo=gym", icon: <Settings size={16} /> },
           ]
         },
         { 
@@ -376,7 +371,7 @@ const SidebarNavigationComponent = ({
             { name: "Zonas", href: "/app/parking/zonas", icon: <MapPin size={16} /> },
             { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> },
             { name: "Reportes", href: "/app/parking/reportes", icon: <BarChart3 size={16} /> },
-            { name: "Configuración", href: "/app/parking/configuracion", icon: <Settings size={16} /> },
+            { name: "Configuración", href: "/app/configuracion?modulo=parking", icon: <Settings size={16} /> },
           ]
         }
       ]
@@ -394,7 +389,7 @@ const SidebarNavigationComponent = ({
             { name: "Vista General", href: "/app/calendario", icon: <CalendarDays size={16} /> },
             { name: "Recurrencias", href: "/app/calendario/recurrencias", icon: <GitMerge size={16} /> },
             { name: "Importar", href: "/app/calendario/importar", icon: <Upload size={16} /> },
-            { name: "Configuración", href: "/app/calendario/configuracion", icon: <Settings size={16} /> },
+            { name: "Configuración", href: "/app/configuracion?modulo=calendario", icon: <Settings size={16} /> },
           ]
         },
         { 
@@ -427,7 +422,7 @@ const SidebarNavigationComponent = ({
           moduleCode: 'roles',
           submenu: [
             { name: "Gestión de Roles", href: "/app/roles", icon: <Shield size={16} /> },
-            { name: "Configuración", href: "/app/roles/configuracion", icon: <Settings size={16} /> }
+            { name: "Configuración", href: "/app/configuracion?modulo=roles", icon: <Settings size={16} /> }
           ]
         },
       ]
@@ -448,7 +443,7 @@ const SidebarNavigationComponent = ({
             { name: "Canales de Envío", href: "/app/notificaciones/canales", icon: <Send size={16} /> },
             { name: "Plantillas", href: "/app/notificaciones/plantillas", icon: <FileText size={16} /> },
             { name: "Logs de Envío", href: "/app/notificaciones/logs", icon: <Activity size={16} /> },
-            { name: "Preferencias", href: "/app/notificaciones/preferencias", icon: <Settings size={16} /> },
+            { name: "Preferencias", href: "/app/configuracion?modulo=notificaciones", icon: <Settings size={16} /> },
           ] : [
             { name: "Bandeja", href: "/app/notificaciones/bandeja", icon: <Inbox size={16} /> },
           ]
@@ -466,7 +461,7 @@ const SidebarNavigationComponent = ({
             { name: "Mapeos", href: "/app/integraciones/mapeos", icon: <GitMerge size={16} /> },
             { name: "API Keys", href: "/app/integraciones/api-keys", icon: <Key size={16} /> },
             { name: "Webhooks", href: "/app/integraciones/webhooks-salientes", icon: <Send size={16} /> },
-            { name: "Configuración", href: "/app/integraciones/configuracion", icon: <Settings size={16} /> }
+            { name: "Configuración", href: "/app/configuracion?modulo=integraciones", icon: <Settings size={16} /> }
           ]
         },
         { 
@@ -477,12 +472,12 @@ const SidebarNavigationComponent = ({
           submenu: [
             { name: "Vista General", href: "/app/timeline", icon: <History size={16} /> },
             { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> },
-            { name: "Configuración", href: "/app/timeline/configuracion", icon: <Settings size={16} /> }
+            { name: "Configuración", href: "/app/configuracion?modulo=timeline", icon: <Settings size={16} /> }
           ]
         }
       ]
     }
-  ], [t]);
+  ], [t, userData?.role]);
 
   // Filtrar items según módulos activos de la organización y acceso del cargo
   const filteredSections = useMemo(() => {
@@ -494,31 +489,31 @@ const SidebarNavigationComponent = ({
         items: section.items
           .filter(item => {
             // Items sin moduleCode siempre son visibles (core / siempre visible)
-            if (!(item as any).moduleCode) return true;
+            if (!item.moduleCode) return true;
             // Filtrar por módulos activos de la organización
-            if (!activeModuleCodes.includes((item as any).moduleCode)) return false;
+            if (!activeModuleCodes.includes(item.moduleCode)) return false;
             // Filtrar por acceso del cargo (null = sin restricciones)
             if (jobPositionVisibleModules !== null && jobPositionVisibleModules !== undefined) {
-              if (!jobPositionVisibleModules.includes((item as any).moduleCode)) return false;
+              if (!jobPositionVisibleModules.includes(item.moduleCode)) return false;
             }
             return true;
           })
           .map(item => {
             // Filtrar submenu basado en páginas activas y acceso del cargo
-            if ((item as any).submenu && (item as any).moduleCode) {
-              let filteredSubmenu = (item as any).submenu;
+            if (item.submenu && item.moduleCode) {
+              let filteredSubmenu = item.submenu;
 
               // Filtrar por páginas activas de la organización
               if (activeModulePages) {
-                const activePages = activeModulePages[(item as any).moduleCode];
+                const activePages = activeModulePages[item.moduleCode];
                 if (activePages !== undefined) {
-                  filteredSubmenu = filteredSubmenu.filter((sub: any) => activePages.includes(sub.href));
+                  filteredSubmenu = filteredSubmenu.filter((sub) => activePages.includes(sub.href));
                 }
               }
 
               // Filtrar por acceso del cargo a páginas (siempre aplicar)
               if (jobPositionVisiblePages !== null && jobPositionVisiblePages !== undefined) {
-                filteredSubmenu = filteredSubmenu.filter((sub: any) => jobPositionVisiblePages.includes(sub.href));
+                filteredSubmenu = filteredSubmenu.filter((sub) => jobPositionVisiblePages.includes(sub.href));
               }
 
               // Si solo queda 1 página activa, convertir en link directo sin submenu

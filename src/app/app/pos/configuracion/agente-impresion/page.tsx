@@ -1,7 +1,5 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { DesktopAgentPanel } from '@/components/pos/configuracion/agente-impresion/DesktopAgentPanel';
-
-export default function AgenteImpresionPage() {
-  return <DesktopAgentPanel />;
+export default function Page() {
+  redirect('/app/configuracion?modulo=pos&seccion=agente-impresion');
 }

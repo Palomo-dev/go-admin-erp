@@ -11,7 +11,6 @@ import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSk
 import {
   Settings,
   CreditCard,
-  FileText,
   Percent,
   Hash,
   RefreshCw,
@@ -129,7 +128,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       await ConfiguracionService.togglePaymentMethod(id, !currentState);
       toast({ title: 'Actualizado', description: 'Método de pago actualizado' });
       loadData(true);
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el método de pago',
@@ -143,7 +142,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       await ConfiguracionService.toggleServiceCharge(id, !currentState);
       toast({ title: 'Actualizado', description: 'Cargo de servicio actualizado' });
       loadData(true);
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el cargo de servicio',
@@ -160,7 +159,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     try {
       await ConfiguracionService.saveCategoriesDisplayConfig(config);
       toast({ title: 'Actualizado', description: 'Visualización de categorías actualizada' });
-    } catch (error) {
+    } catch {
       setCategoriesDisplay(previous);
       toast({
         title: 'Error',
@@ -179,7 +178,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     try {
       await ConfiguracionService.saveBlindCashCountConfig({ blind_cash_count: value });
       toast({ title: 'Actualizado', description: value ? 'Arqueo ciego activado' : 'Arqueo ciego desactivado' });
-    } catch (error) {
+    } catch {
       setBlindCashCount(previous);
       toast({
         title: 'Error',
@@ -198,7 +197,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     try {
       await ConfiguracionService.saveRequireCashSessionConfig({ require_cash_session: value });
       toast({ title: 'Actualizado', description: value ? 'Se requiere caja abierta para vender' : 'Venta sin caja abierta permitida' });
-    } catch (error) {
+    } catch {
       setRequireCashSession(previous);
       toast({
         title: 'Error',

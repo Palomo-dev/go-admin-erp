@@ -195,7 +195,8 @@ const SidebarNavigationComponent = ({
             { name: "Impuestos", href: "/app/finanzas/impuestos", icon: <Percent size={16} /> },
             { name: "Monedas", href: "/app/finanzas/monedas", icon: <Globe size={16} /> },
             { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> },
-            { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> }
+            { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> },
+            { name: "Configuración", href: "/app/configuracion?modulo=facturacion", icon: <Settings size={16} /> }
           ]
         },
         { 
@@ -474,7 +475,13 @@ const SidebarNavigationComponent = ({
             { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> },
             { name: "Configuración", href: "/app/configuracion?modulo=timeline", icon: <Settings size={16} /> }
           ]
-        }
+        },
+        { 
+          name: "Configuración", 
+          href: "/app/configuracion", 
+          icon: <Settings size={18} />,
+          moduleCode: 'configuracion',
+        },
       ]
     }
   ], [t, userData?.role]);

@@ -474,7 +474,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   };
   
   const calculateCartTotals = async () => {
-    if (!cart.items.length || !organizationTaxes.length) {
+    if (!cart.items.length) {
       setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0 });
       return;
     }

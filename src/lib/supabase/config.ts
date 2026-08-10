@@ -80,6 +80,9 @@ const removeCookie = (name: string) => {
   }
 }
 
+// Referencia al fetch nativo del navegador antes de cualquier override
+const nativeFetch = globalThis.fetch.bind(globalThis);
+
 // Creación del cliente de Supabase para el navegador
 export const createSupabaseClient = () => {
   // Configuramos las credenciales, usando valores predeterminados si no hay variables de entorno
@@ -282,7 +285,7 @@ export const createSupabaseClient = () => {
         return new Promise((resolve, reject) => {
           const attemptFetch = async (retriesLeft: number, delay: number) => {
             try {
-              const response = await fetch(url, options);
+              const response = await nativeFetch(url, options);
 
               if (response.status === 429 && retriesLeft > 0 && !isAuthRequest) {
                 console.log(`Límite de solicitudes alcanzado, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);

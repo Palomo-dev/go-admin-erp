@@ -16,6 +16,7 @@ export interface CuentaPorPagarDetalle {
   
   // Datos del proveedor
   supplier_name: string;
+  supplier_uuid?: string;
   supplier_nit?: string;
   supplier_email?: string;
   supplier_phone?: string;

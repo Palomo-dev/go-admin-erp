@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, User, Phone, Mail, IdCard } from 'lucide-react';
+import { Building2, User, Phone, Mail, IdCard, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { InvoicePurchase } from '../types';
 
 interface InfoProveedorFacturaProps {
@@ -14,6 +16,8 @@ export function InfoProveedorFactura({
   factura, 
   className = '' 
 }: InfoProveedorFacturaProps) {
+  const router = useRouter();
+  
   if (!factura.supplier) {
     return null;
   }
@@ -72,6 +76,18 @@ export function InfoProveedorFactura({
               </div>
             )}
           </div>
+        )}
+
+        {factura.supplier.uuid && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(`/app/inventario/proveedores/${factura.supplier!.uuid}`)}
+            className="w-full dark:border-gray-600 dark:hover:bg-gray-800"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Ver Perfil del Proveedor
+          </Button>
         )}
 
 

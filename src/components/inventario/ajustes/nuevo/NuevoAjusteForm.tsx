@@ -113,14 +113,27 @@ export function NuevoAjusteForm() {
       if (!organization?.id) return;
       try {
         // Cargar todos los productos activos (incluyendo padres para mapeo)
-        const { data: allData } = await supabase
-          .from('products')
-          .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data')
-          .eq('organization_id', organization.id)
-          .eq('status', 'active')
-          .order('name');
+        // Paginar porque Supabase devuelve máximo 1000 filas por defecto
+        const PAGE_SIZE = 1000;
+        let allData: any[] = [];
+        let offset = 0;
+        while (true) {
+          const { data: pageData, error: pageError } = await supabase
+            .from('products')
+            .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data')
+            .eq('organization_id', organization.id)
+            .eq('status', 'active')
+            .order('name')
+            .range(offset, offset + PAGE_SIZE - 1);
 
-        if (!allData) return;
+          if (pageError) break;
+          if (!pageData || pageData.length === 0) break;
+          allData = allData.concat(pageData);
+          if (pageData.length < PAGE_SIZE) break;
+          offset += PAGE_SIZE;
+        }
+
+        if (allData.length === 0) return;
 
         // Mapa de padres: id -> { name, sku }
         const parentMap = new Map<number, { name: string; sku: string }>();

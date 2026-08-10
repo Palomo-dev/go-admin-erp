@@ -2,6 +2,7 @@
 
 export interface SupplierBase {
   id: number;
+  uuid?: string;
   organization_id: number;
   name: string;
   nit?: string;

@@ -13,6 +13,7 @@ export interface NavItemProps {
   href: string;
   icon: ReactNode;
   submenu?: SubNavItem[];
+  moduleCode?: string;
 }
 
 export interface NavSection {

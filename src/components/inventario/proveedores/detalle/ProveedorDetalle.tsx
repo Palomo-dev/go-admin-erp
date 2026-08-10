@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { supplierService, type Supplier, type PurchaseOrderSummary, type PurchaseInvoiceSummary } from '@/lib/services/supplierService';
+import { supplierService, type Supplier, type PurchaseOrderSummary, type PurchaseInvoiceSummary, type AccountPayableSummary, type SupplierPaymentSummary, type SupplierStockSummary } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ import {
 import { 
   ArrowLeft, Loader2, Edit, Building2, User, Phone, Mail, FileText,
   ShoppingCart, Receipt, Calendar, Plus, MapPin, Globe, CreditCard,
-  Landmark, Package, Star
+  Landmark, Package, Star, Wallet, TrendingDown, DollarSign, Boxes
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import Link from 'next/link';
@@ -50,6 +50,9 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderSummary[]>([]);
   const [invoices, setInvoices] = useState<PurchaseInvoiceSummary[]>([]);
   const [products, setProducts] = useState<ProductSupplierRelation[]>([]);
+  const [accountsPayable, setAccountsPayable] = useState<AccountPayableSummary[]>([]);
+  const [payments, setPayments] = useState<SupplierPaymentSummary[]>([]);
+  const [stockSummary, setStockSummary] = useState<SupplierStockSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -66,12 +69,18 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
       }
       setSupplier(data);
 
-      const [orders, invs] = await Promise.all([
+      const [orders, invs, cxp, pays, stock] = await Promise.all([
         supplierService.getSupplierPurchaseOrders(data.id, organizationId),
-        supplierService.getSupplierInvoices(data.id, organizationId)
+        supplierService.getSupplierInvoices(data.id, organizationId),
+        supplierService.getSupplierAccountsPayable(data.id, organizationId),
+        supplierService.getSupplierPayments(data.id, organizationId),
+        supplierService.getSupplierStockSummary(data.id, organizationId)
       ]);
       setPurchaseOrders(orders);
       setInvoices(invs);
+      setAccountsPayable(cxp);
+      setPayments(pays);
+      setStockSummary(stock);
 
       // Cargar productos relacionados via product_suppliers
       const { data: prodData } = await supabase
@@ -334,7 +343,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                     </TableHeader>
                     <TableBody>
                       {purchaseOrders.map((order) => (
-                        <TableRow key={order.id} className="dark:border-gray-700">
+                        <TableRow key={order.id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => router.push(`/app/inventario/ordenes-compra/${order.id}`)}>
                           <TableCell className="text-gray-600 dark:text-gray-400">{formatDate(order.created_at)}</TableCell>
                           <TableCell className="font-medium dark:text-white">{`OC-${order.id}`}</TableCell>
                           <TableCell>{getStatusBadge(order.status)}</TableCell>
@@ -371,7 +380,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                     </TableHeader>
                     <TableBody>
                       {invoices.map((invoice) => (
-                        <TableRow key={invoice.id} className="dark:border-gray-700">
+                        <TableRow key={invoice.id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => router.push(`/app/finanzas/facturas-compra/${invoice.id}`)}>
                           <TableCell className="text-gray-600 dark:text-gray-400">{formatDate(invoice.created_at)}</TableCell>
                           <TableCell className="font-medium dark:text-white">{invoice.number_ext || `FC-${invoice.id.slice(0, 8)}`}</TableCell>
                           <TableCell>{getStatusBadge(invoice.status)}</TableCell>
@@ -384,13 +393,148 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* Cuentas por Pagar */}
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-blue-600" />
+                Cuentas por Pagar
+                {accountsPayable.length > 0 && <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{accountsPayable.length}</Badge>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {accountsPayable.length === 0 ? (
+                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay cuentas por pagar registradas</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="dark:border-gray-700">
+                        <TableHead className="dark:text-gray-300">Factura</TableHead>
+                        <TableHead className="dark:text-gray-300">Vencimiento</TableHead>
+                        <TableHead className="dark:text-gray-300">Estado</TableHead>
+                        <TableHead className="text-right dark:text-gray-300">Monto</TableHead>
+                        <TableHead className="text-right dark:text-gray-300">Saldo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {accountsPayable.map((cxp) => (
+                        <TableRow key={cxp.id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => router.push(`/app/finanzas/cuentas-por-pagar/${cxp.id}`)}>
+                          <TableCell className="font-medium dark:text-white">{cxp.invoice_number || `CxP-${cxp.id.slice(0, 8)}`}</TableCell>
+                          <TableCell className="text-gray-600 dark:text-gray-400">{cxp.due_date ? formatDate(cxp.due_date) : '-'}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              cxp.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                              cxp.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                              cxp.status === 'partial' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            }>
+                              {cxp.status === 'paid' ? 'Pagada' : cxp.status === 'overdue' ? `Vencida (${cxp.days_overdue}d)` : cxp.status === 'partial' ? 'Parcial' : 'Pendiente'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right dark:text-white">{formatCurrency(cxp.amount)}</TableCell>
+                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(cxp.balance)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Historial de Pagos */}
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                Historial de Pagos
+                {payments.length > 0 && <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">{payments.length}</Badge>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {payments.length === 0 ? (
+                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay pagos registrados a este proveedor</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="dark:border-gray-700">
+                        <TableHead className="dark:text-gray-300">Fecha</TableHead>
+                        <TableHead className="dark:text-gray-300">Método</TableHead>
+                        <TableHead className="dark:text-gray-300">Referencia</TableHead>
+                        <TableHead className="dark:text-gray-300">Origen</TableHead>
+                        <TableHead className="text-right dark:text-gray-300">Monto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.map((pay) => (
+                        <TableRow key={pay.id} className="dark:border-gray-700">
+                          <TableCell className="text-gray-600 dark:text-gray-400">{pay.payment_date ? formatDate(pay.payment_date) : formatDate(pay.created_at)}</TableCell>
+                          <TableCell className="font-medium dark:text-white capitalize">{pay.method || '-'}</TableCell>
+                          <TableCell className="text-gray-600 dark:text-gray-400">{pay.reference || '-'}</TableCell>
+                          <TableCell className="text-gray-600 dark:text-gray-400">{pay.source === 'account_payable' ? 'CxP' : 'Factura'}</TableCell>
+                          <TableCell className="text-right font-medium text-green-600 dark:text-green-400">{formatCurrency(pay.amount)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Stock comprado del proveedor */}
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
+                <Boxes className="h-5 w-5 text-blue-600" />
+                Stock de Productos del Proveedor
+                {stockSummary.length > 0 && <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">{stockSummary.length}</Badge>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {stockSummary.length === 0 ? (
+                <p className="text-center py-4 text-gray-500 dark:text-gray-400">No hay productos con stock registrado</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="dark:border-gray-700">
+                        <TableHead className="dark:text-gray-300">Producto</TableHead>
+                        <TableHead className="dark:text-gray-300">SKU</TableHead>
+                        <TableHead className="text-right dark:text-gray-300">Costo</TableHead>
+                        <TableHead className="text-right dark:text-gray-300">Stock Total</TableHead>
+                        <TableHead className="text-right dark:text-gray-300">Valor Stock</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {stockSummary.map((item) => (
+                        <TableRow key={item.product_id} className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => item.product_uuid && router.push(`/app/inventario/productos/${item.product_uuid}`)}>
+                          <TableCell className="font-medium dark:text-white">{item.product_name}</TableCell>
+                          <TableCell className="text-gray-600 dark:text-gray-400">{item.product_sku || '-'}</TableCell>
+                          <TableCell className="text-right dark:text-white">{formatCurrency(item.cost)}</TableCell>
+                          <TableCell className="text-right dark:text-white">
+                            {item.track_stock ? item.stock_total : <span className="text-gray-400">N/A</span>}
+                          </TableCell>
+                          <TableCell className="text-right font-medium dark:text-white">{formatCurrency(item.stock_value)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Panel lateral */}
         <div className="space-y-6">
+          {/* Resumen financiero */}
           <Card className="dark:bg-gray-800 dark:border-gray-700 sticky top-6">
             <CardHeader>
-              <CardTitle className="text-lg dark:text-white">Resumen</CardTitle>
+              <CardTitle className="text-lg dark:text-white">Resumen Financiero</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
@@ -409,6 +553,39 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                 <span className="text-gray-600 dark:text-gray-400">Total Compras</span>
                 <span className="font-medium text-green-600 dark:text-green-400">
                   {formatCurrency(purchaseOrders.reduce((sum, o) => sum + (o.total || 0), 0))}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400">Total Facturado</span>
+                <span className="font-medium dark:text-white">
+                  {formatCurrency(invoices.reduce((sum, inv) => sum + (inv.total || 0), 0))}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                  Saldo Pendiente CxP
+                </span>
+                <span className="font-medium text-red-600 dark:text-red-400">
+                  {formatCurrency(accountsPayable.reduce((sum, cxp) => sum + (cxp.balance || 0), 0))}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                  Total Pagado
+                </span>
+                <span className="font-medium text-green-600 dark:text-green-400">
+                  {formatCurrency(payments.reduce((sum, pay) => sum + (pay.amount || 0), 0))}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b dark:border-gray-700">
+                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                  <Boxes className="h-4 w-4 text-blue-500" />
+                  Valor en Stock
+                </span>
+                <span className="font-medium dark:text-white">
+                  {formatCurrency(stockSummary.reduce((sum, item) => sum + (item.stock_value || 0), 0))}
                 </span>
               </div>
               <div className="space-y-2 pt-4">

@@ -21,6 +21,7 @@ export class CuentaPorPagarDetailService {
           *,
           suppliers:supplier_id(
             id,
+            uuid,
             name,
             nit,
             email,
@@ -123,6 +124,7 @@ export class CuentaPorPagarDetailService {
         created_at: data.created_at,
         updated_at: data.updated_at,
         supplier_name: data.suppliers?.name || 'N/A',
+        supplier_uuid: data.suppliers?.uuid,
         supplier_nit: data.suppliers?.nit,
         supplier_email: data.suppliers?.email,
         supplier_phone: data.suppliers?.phone,

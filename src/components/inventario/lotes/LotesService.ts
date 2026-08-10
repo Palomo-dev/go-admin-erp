@@ -116,17 +116,28 @@ export class LotesService {
     try {
       const organizationId = getOrganizationId();
 
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, sku')
-        .eq('organization_id', organizationId)
-        .order('name');
+      // Paginar porque Supabase devuelve máximo 1000 filas por defecto
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data: pageData, error: pageError } = await supabase
+          .from('products')
+          .select('id, name, sku')
+          .eq('organization_id', organizationId)
+          .order('name')
+          .range(offset, offset + PAGE_SIZE - 1);
 
-      if (error) {
-        console.error('❌ Error obteniendo productos:', error.message, error.code);
-        throw new Error(`Error obteniendo productos: ${error.message}`);
+        if (pageError) {
+          console.error('❌ Error obteniendo productos:', pageError.message, pageError.code);
+          throw new Error(`Error obteniendo productos: ${pageError.message}`);
+        }
+        if (!pageData || pageData.length === 0) break;
+        allData = allData.concat(pageData);
+        if (pageData.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
       }
-      return data || [];
+      return allData;
     } catch (err) {
       console.error('❌ LotesService.obtenerProductos:', err);
       throw err instanceof Error ? err : new Error(String(err));

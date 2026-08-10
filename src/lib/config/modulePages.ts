@@ -24,7 +24,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Campañas', href: '/app/crm/campanas' },
     { name: 'Reportes', href: '/app/crm/reportes' },
     { name: 'Identidades', href: '/app/crm/identidades' },
-    { name: 'Configuración', href: '/app/crm/configuracion' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=crm' },
   ],
   hrm: [
     { name: 'Panel HRM', href: '/app/hrm' },
@@ -40,7 +40,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Préstamos', href: '/app/hrm/prestamos' },
     { name: 'Reportes', href: '/app/hrm/reportes' },
     { name: 'Reglas País', href: '/app/hrm/reglas-pais' },
-    { name: 'Configuración', href: '/app/hrm/configuracion' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=hrm' },
   ],
   finance: [
     { name: 'Dashboard', href: '/app/finanzas' },
@@ -112,7 +112,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Promociones', href: '/app/pos/promociones' },
     { name: 'Cuentas por Cobrar', href: '/app/pos/cuentas-por-cobrar' },
     { name: 'Reportes', href: '/app/pos/reportes' },
-    { name: 'Configuración', href: '/app/pos/configuracion' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=pos' },
   ],
   pms_hotel: [
     { name: 'Dashboard', href: '/app/pms' },
@@ -133,7 +133,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Origenes', href: '/app/pms/origenes' },
     { name: 'Channel Manager', href: '/app/pms/channel-manager' },
     { name: 'Parquedero', href: '/app/pms/parking' },
-    { name: 'Configuración', href: '/app/pms/configuracion' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=pms' },
   ],
   pm: [
     { name: 'Dashboard', href: '/app/pm' },
@@ -146,7 +146,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Canales', href: '/app/chat/canales' },
     { name: 'Conocimiento', href: '/app/chat/conocimiento' },
     { name: 'IA', href: '/app/chat/ia/configuracion' },
-    { name: 'Configuración', href: '/app/chat/configuracion/etiquetas' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=chat' },
     { name: 'Widget', href: '/app/chat/widget/sesiones' },
     { name: 'Auditoría', href: '/app/chat/auditoria' },
   ],
@@ -154,7 +154,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Vista General', href: '/app/calendario' },
     { name: 'Recurrencias', href: '/app/calendario/recurrencias' },
     { name: 'Importar', href: '/app/calendario/importar' },
-    { name: 'Configuración', href: '/app/calendario/configuracion' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=calendario' },
   ],
   organizations: [
     { name: 'Información', href: '/app/organizacion/informacion' },
@@ -169,7 +169,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
   ],
   roles: [
     { name: 'Roles y Permisos', href: '/app/roles' },
-    { name: 'Configuración', href: '/app/roles/configuracion' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=roles' },
   ],
   gym: [
     { name: 'Dashboard', href: '/app/gym' },
@@ -181,7 +181,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Reservaciones', href: '/app/gym/reservaciones' },
     { name: 'Instructores', href: '/app/gym/instructores' },
     { name: 'Reportes', href: '/app/gym/reportes' },
-    { name: 'Configuración', href: '/app/gym/ajustes' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=gym' },
   ],
   parking: [
     { name: 'Dashboard', href: '/app/parking' },
@@ -195,7 +195,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Zonas', href: '/app/parking/zonas' },
     { name: 'Mapa', href: '/app/parking/mapa' },
     { name: 'Reportes', href: '/app/parking/reportes' },
-    { name: 'Configuración', href: '/app/parking/configuracion' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=parking' },
   ],
   transport: [
     { name: 'Dashboard', href: '/app/transporte' },
@@ -225,7 +225,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Canales', href: '/app/notificaciones/canales' },
     { name: 'Plantillas', href: '/app/notificaciones/plantillas' },
     { name: 'Logs de Envío', href: '/app/notificaciones/logs' },
-    { name: 'Preferencias', href: '/app/notificaciones/preferencias' },
+    { name: 'Preferencias', href: '/app/configuracion?modulo=notificaciones' },
   ],
   integrations: [
     { name: 'Dashboard', href: '/app/integraciones' },
@@ -235,10 +235,13 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Mapeos', href: '/app/integraciones/mapeos' },
     { name: 'API Keys', href: '/app/integraciones/api-keys' },
     { name: 'Webhooks', href: '/app/integraciones/webhooks-salientes' },
-    { name: 'Configuración', href: '/app/integraciones/configuracion' },
+    { name: 'Configuración', href: '/app/configuracion?modulo=integraciones' },
   ],
   reports: [
     { name: 'Reportes', href: '/app/reportes' },
+  ],
+  configuracion: [
+    { name: 'Configuración', href: '/app/configuracion' },
   ],
 };
 
@@ -273,6 +276,7 @@ export const MODULE_HREF_TO_CODE: Record<string, string> = {
   '/app/integraciones': 'integraciones',
   '/app/timeline': 'operations',
   '/app/reportes': 'reports',
+  '/app/configuracion': 'configuracion',
 };
 
 /**

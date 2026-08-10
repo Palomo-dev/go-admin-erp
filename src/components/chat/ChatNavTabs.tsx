@@ -40,15 +40,15 @@ const chatTabs: NavTab[] = [
   },
   {
     name: 'IA',
-    href: '/app/chat/ia/configuracion',
+    href: '/app/chat/ia',
     icon: <Bot className="h-4 w-4" />,
     matchPaths: ['/app/chat/ia'],
   },
   {
     name: 'Configuración',
-    href: '/app/chat/configuracion/etiquetas',
+    href: '/app/configuracion?modulo=chat',
     icon: <Settings className="h-4 w-4" />,
-    matchPaths: ['/app/chat/configuracion'],
+    matchPaths: ['/app/configuracion'],
   },
   {
     name: 'Widget',

@@ -1025,6 +1025,8 @@ export class POSService {
       // PASO 2.5: Crear venta (sale) PRIMERO para tener sale_id
       console.log('🔄 Creando venta (sale) antes de factura...');
       
+      const totalDiscount = cart.items.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
+
       const saleData: any = {
         organization_id: this.organizationId,
         branch_id: getCurrentBranchId(),
@@ -1033,11 +1035,12 @@ export class POSService {
         sale_date: new Date().toISOString(),
         subtotal: taxCalculation.subtotal,
         tax_total: taxCalculation.totalTaxAmount,
-        discount_total: 0,
+        discount_total: totalDiscount,
         total: taxCalculation.finalTotal, // Agregar campo total requerido
         balance: taxCalculation.finalTotal,
         status: 'pending', // Estado pending hasta completar pago
         payment_status: 'pending',
+        tax_included: taxIncluded,
         notes: `Venta con deuda - ${reason}`
       };
       
@@ -1332,10 +1335,82 @@ export class POSService {
     try {
       const { cart, payments } = checkoutData;
 
+      // Calcular totales por item resolviendo tax_rate desde los impuestos del producto
+      // cuando el item no lo trae (fallback si calculatedTotals falló en el CheckoutDialog)
+      const checkoutTaxIncluded = checkoutData.tax_included || false;
+      let calculatedSubtotal = 0;
+      let calculatedTaxTotal = 0;
+      let calculatedDiscount = 0;
+      let calculatedGrandTotal = 0;
+
+      const itemCalcs: Array<{
+        lineNet: number;
+        taxRate: number;
+        taxAmount: number;
+        total: number;
+        taxIncluded: boolean;
+        discount: number;
+      }> = [];
+
+      for (const item of cart.items) {
+        const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+        const itemDiscount = item.discount_amount || 0;
+        const lineNet = lineTotal - itemDiscount;
+        const itemTaxIncluded = item.tax_included ?? checkoutTaxIncluded;
+
+        // Si el item no trae tax_rate, resolverlo desde los impuestos del producto
+        let itemTaxRate = Number(item.tax_rate) || 0;
+        if (!itemTaxRate && item.product_id) {
+          try {
+            const productTaxes = await this.getProductTaxes(item.product_id);
+            itemTaxRate = productTaxes
+              .filter((rel: any) => rel.organization_taxes?.is_active)
+              .reduce((sum: number, rel: any) => sum + Number(rel.organization_taxes.rate || 0), 0);
+          } catch (taxErr) {
+            console.warn('No se pudieron obtener impuestos del producto', item.product_id, taxErr);
+          }
+        }
+
+        const itemTax = itemTaxIncluded
+          ? lineNet - (lineNet / (1 + itemTaxRate / 100))
+          : lineNet * itemTaxRate / 100;
+        const roundedTax = Math.round(itemTax * 100) / 100;
+        const itemTotal = itemTaxIncluded ? lineNet : lineNet + roundedTax;
+
+        itemCalcs.push({
+          lineNet,
+          taxRate: itemTaxRate,
+          taxAmount: roundedTax,
+          total: itemTotal,
+          taxIncluded: itemTaxIncluded,
+          discount: itemDiscount
+        });
+
+        calculatedSubtotal += itemTaxIncluded ? (lineNet - roundedTax) : lineNet;
+        calculatedTaxTotal += roundedTax;
+        calculatedDiscount += itemDiscount;
+        calculatedGrandTotal += itemTotal;
+      }
+
+      // Usar los valores del carrito solo si son consistentes; si no, usar los calculados
+      const cartSubtotal = Number(cart.subtotal) || 0;
+      const cartTaxTotal = Number(cart.tax_total) || 0;
+      const cartTotal = Number(cart.total) || 0;
+      const cartDiscount = Number(cart.discount_total) || 0;
+
+      // Cuando hay impuestos incluidos, cart.subtotal puede venir con impuesto dentro;
+      // el subtotal correcto es la base gravable (sin impuesto)
+      const effectiveSubtotal = calculatedSubtotal > 0
+        ? calculatedSubtotal
+        : cartSubtotal;
+      const effectiveTaxTotal = calculatedTaxTotal > 0 ? calculatedTaxTotal : cartTaxTotal;
+      const effectiveDiscount = calculatedDiscount > 0 ? calculatedDiscount : cartDiscount;
+
       // Calcular total final incluyendo flete y propina
       const shippingFee = checkoutData.shipping_fee || 0;
       const tipAmount = checkoutData.tip_amount || 0;
-      const finalTotal = cart.total + shippingFee + tipAmount;
+      const baseTotal = calculatedGrandTotal > 0 ? calculatedGrandTotal : cartTotal;
+      const finalTotal = baseTotal + shippingFee + tipAmount;
 
       // Si el carrito ya tiene sale_id (viene de hold_with_debt), actualizar la venta existente
       const isDebtCheckout = !!(cart.sale_id && cart.invoice_id);
@@ -1372,9 +1447,9 @@ export class POSService {
             branch_id: getCurrentBranchId(),
             customer_id: cart.customer_id,
             user_id: (await supabase.auth.getUser()).data.user?.id,
-            subtotal: cart.subtotal,
-            tax_total: cart.tax_total,
-            discount_total: cart.discount_total,
+            subtotal: effectiveSubtotal,
+            tax_total: effectiveTaxTotal,
+            discount_total: effectiveDiscount,
             total: finalTotal,
             balance: Math.max(0, finalTotal - checkoutData.total_paid),
             status: checkoutData.total_paid >= finalTotal ? 'paid' : 'pending',
@@ -1439,20 +1514,22 @@ export class POSService {
 
       // Crear los items de venta (solo si no es checkout de deuda - ya fueron creados)
       if (!isDebtCheckout) {
-        const saleItems = cart.items.map(item => {
+        const saleItems = cart.items.map((item, itemIdx) => {
           const notesObj: Record<string, any> = { product_name: item.product?.name };
           if (item.notes) notesObj.extra = item.notes;
           if (item.modifiers && item.modifiers.length > 0) notesObj.modifiers = item.modifiers;
+
+          const calc = itemCalcs[itemIdx];
 
           return {
             sale_id: saleData.id,
             product_id: item.product_id,
             quantity: item.quantity,
             unit_price: item.unit_price,
-            total: item.total,
-            tax_amount: item.tax_amount || 0,
-            tax_rate: item.tax_rate || 0,
-            discount_amount: item.discount_amount || 0,
+            total: calc ? calc.total : (item.unit_price || 0) * (item.quantity || 1) - (item.discount_amount || 0),
+            tax_amount: calc ? calc.taxAmount : 0,
+            tax_rate: calc ? calc.taxRate : 0,
+            discount_amount: calc ? calc.discount : (item.discount_amount || 0),
             notes: notesObj
           };
         });
@@ -1526,8 +1603,8 @@ export class POSService {
             issue_date: new Date().toISOString(),
             due_date: new Date().toISOString(),
             currency: baseCurrency.code,
-            subtotal: cart.subtotal,
-            tax_total: cart.tax_total,
+            subtotal: effectiveSubtotal,
+            tax_total: effectiveTaxTotal,
             total: finalTotal,
             balance: saleData.balance,
             status: saleData.balance > 0 ? 'partial' : 'paid',
@@ -1623,7 +1700,7 @@ export class POSService {
             
           const productMap = new Map((productsData || []).map(p => [p.id, p]));
           
-          const invoiceItems = cart.items.map((cartItem: any) => {
+          const invoiceItems = cart.items.map((cartItem: any, cartItemIdx: number) => {
             const product = productMap.get(cartItem.product_id);
             let description = product 
               ? product.name
@@ -1642,6 +1719,9 @@ export class POSService {
               }
             }
 
+            const calc = itemCalcs[cartItemIdx];
+            const fallbackNet = (cartItem.unit_price || 0) * (cartItem.quantity || 0) - (cartItem.discount_amount || 0);
+
             return {
               invoice_id: invoiceData.id, // Campo correcto según schema
               invoice_sales_id: invoiceData.id, // Mantener para relación
@@ -1650,10 +1730,10 @@ export class POSService {
               description: description.substring(0, 255), // Limitar longitud
               qty: cartItem.quantity,
               unit_price: cartItem.unit_price,
-              total_line: cartItem.total,
-              tax_rate: cartItem.tax_rate || 0,
-              tax_included: checkoutData.tax_included || false,
-              discount_amount: cartItem.discount_amount || 0
+              total_line: calc ? calc.total : fallbackNet,
+              tax_rate: calc ? calc.taxRate : (cartItem.tax_rate || 0),
+              tax_included: calc ? calc.taxIncluded : (cartItem.tax_included ?? (checkoutData.tax_included || false)),
+              discount_amount: calc ? calc.discount : (cartItem.discount_amount || 0)
             };
           });
           

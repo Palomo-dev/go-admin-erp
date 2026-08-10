@@ -147,7 +147,7 @@ export default function AILaboratorioPage() {
   };
 
   const handleGoToSettings = () => {
-    router.push('/app/chat/ia/configuracion');
+    router.push('/app/configuracion?modulo=chat');
   };
 
   if (loading && fragments.length === 0) {

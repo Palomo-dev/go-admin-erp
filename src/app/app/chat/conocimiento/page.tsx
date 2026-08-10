@@ -316,7 +316,7 @@ export default function ConocimientoPage() {
         loading={loading}
         onCreateSource={handleCreateSource}
         onImport={() => router.push('/app/chat/conocimiento/importar')}
-        onAISettings={() => router.push('/app/chat/ia/configuracion')}
+        onAISettings={() => router.push('/app/configuracion?modulo=chat')}
       />
 
       <div className="flex-1 overflow-hidden">

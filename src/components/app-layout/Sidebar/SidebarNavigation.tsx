@@ -135,8 +135,7 @@ const SidebarNavigationComponent = ({
             { name: "Segmentos", href: "/app/crm/segmentos", icon: <Tag size={16} /> },
             { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
             { name: "Reportes", href: "/app/crm/reportes", icon: <BarChart3 size={16} /> },
-            { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=crm", icon: <Settings size={16} /> }
+            { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> }
           ]
         },
         { 
@@ -157,8 +156,7 @@ const SidebarNavigationComponent = ({
             { name: "Compensación", href: "/app/hrm/compensacion", icon: <HandCoins size={16} /> },
             { name: "Préstamos", href: "/app/hrm/prestamos", icon: <Wallet size={16} /> },
             { name: "Reportes", href: "/app/hrm/reportes", icon: <BarChart3 size={16} /> },
-            { name: "Reglas País", href: "/app/hrm/reglas-pais", icon: <Globe size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=hrm", icon: <Settings size={16} /> }
+            { name: "Reglas País", href: "/app/hrm/reglas-pais", icon: <Globe size={16} /> }
           ]
         },
         { 
@@ -195,8 +193,7 @@ const SidebarNavigationComponent = ({
             { name: "Impuestos", href: "/app/finanzas/impuestos", icon: <Percent size={16} /> },
             { name: "Monedas", href: "/app/finanzas/monedas", icon: <Globe size={16} /> },
             { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> },
-            { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=facturacion", icon: <Settings size={16} /> }
+            { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> }
           ]
         },
         { 
@@ -266,7 +263,6 @@ const SidebarNavigationComponent = ({
             { name: "Promociones", href: "/app/pos/promociones", icon: <Percent size={16} /> },
             { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar", icon: <DollarSign size={16} /> },
             { name: "Reportes", href: "/app/pos/reportes", icon: <BarChart3 size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=pos", icon: <Settings size={16} /> },
           ]
         },
         { 
@@ -293,7 +289,6 @@ const SidebarNavigationComponent = ({
             { name: "Origenes", href: "/app/pms/origenes", icon: <Globe size={16} /> },
             { name: "Channel Manager", href: "/app/pms/channel-manager", icon: <Radio size={16} /> },
             { name: "Parquedero", href: "/app/pms/parking", icon: <ParkingCircle size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=pms", icon: <Settings size={16} /> },
           ]
         },
         { 
@@ -305,8 +300,7 @@ const SidebarNavigationComponent = ({
             { name: "Bandeja", href: "/app/chat/bandeja", icon: <Inbox size={16} /> },
             { name: "Canales", href: "/app/chat/canales", icon: <MessageSquare size={16} /> },
             { name: "Conocimiento", href: "/app/chat/conocimiento", icon: <BookOpen size={16} /> },
-            { name: "IA", href: "/app/chat/ia/configuracion", icon: <Bot size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=chat", icon: <Settings size={16} /> },
+            { name: "IA", href: "/app/chat/ia", icon: <Bot size={16} /> },
             { name: "Widget", href: "/app/chat/widget/sesiones", icon: <Headphones size={16} /> },
             { name: "Auditoría", href: "/app/chat/auditoria", icon: <Shield size={16} /> },
           ]
@@ -352,7 +346,6 @@ const SidebarNavigationComponent = ({
             { name: "Reservaciones", href: "/app/gym/reservaciones", icon: <CalendarCheck size={16} /> },
             { name: "Instructores", href: "/app/gym/instructores", icon: <User size={16} /> },
             { name: "Reportes", href: "/app/gym/reportes", icon: <BarChart3 size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=gym", icon: <Settings size={16} /> },
           ]
         },
         { 
@@ -372,7 +365,6 @@ const SidebarNavigationComponent = ({
             { name: "Zonas", href: "/app/parking/zonas", icon: <MapPin size={16} /> },
             { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> },
             { name: "Reportes", href: "/app/parking/reportes", icon: <BarChart3 size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=parking", icon: <Settings size={16} /> },
           ]
         }
       ]
@@ -390,7 +382,6 @@ const SidebarNavigationComponent = ({
             { name: "Vista General", href: "/app/calendario", icon: <CalendarDays size={16} /> },
             { name: "Recurrencias", href: "/app/calendario/recurrencias", icon: <GitMerge size={16} /> },
             { name: "Importar", href: "/app/calendario/importar", icon: <Upload size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=calendario", icon: <Settings size={16} /> },
           ]
         },
         { 
@@ -422,8 +413,7 @@ const SidebarNavigationComponent = ({
           icon: <Shield size={18} />,
           moduleCode: 'roles',
           submenu: [
-            { name: "Gestión de Roles", href: "/app/roles", icon: <Shield size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=roles", icon: <Settings size={16} /> }
+            { name: "Gestión de Roles", href: "/app/roles", icon: <Shield size={16} /> }
           ]
         },
       ]
@@ -444,7 +434,6 @@ const SidebarNavigationComponent = ({
             { name: "Canales de Envío", href: "/app/notificaciones/canales", icon: <Send size={16} /> },
             { name: "Plantillas", href: "/app/notificaciones/plantillas", icon: <FileText size={16} /> },
             { name: "Logs de Envío", href: "/app/notificaciones/logs", icon: <Activity size={16} /> },
-            { name: "Preferencias", href: "/app/configuracion?modulo=notificaciones", icon: <Settings size={16} /> },
           ] : [
             { name: "Bandeja", href: "/app/notificaciones/bandeja", icon: <Inbox size={16} /> },
           ]
@@ -461,8 +450,7 @@ const SidebarNavigationComponent = ({
             { name: "Jobs", href: "/app/integraciones/jobs", icon: <Briefcase size={16} /> },
             { name: "Mapeos", href: "/app/integraciones/mapeos", icon: <GitMerge size={16} /> },
             { name: "API Keys", href: "/app/integraciones/api-keys", icon: <Key size={16} /> },
-            { name: "Webhooks", href: "/app/integraciones/webhooks-salientes", icon: <Send size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=integraciones", icon: <Settings size={16} /> }
+            { name: "Webhooks", href: "/app/integraciones/webhooks-salientes", icon: <Send size={16} /> }
           ]
         },
         { 
@@ -472,8 +460,7 @@ const SidebarNavigationComponent = ({
           moduleCode: 'operations',
           submenu: [
             { name: "Vista General", href: "/app/timeline", icon: <History size={16} /> },
-            { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> },
-            { name: "Configuración", href: "/app/configuracion?modulo=timeline", icon: <Settings size={16} /> }
+            { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> }
           ]
         },
         { 

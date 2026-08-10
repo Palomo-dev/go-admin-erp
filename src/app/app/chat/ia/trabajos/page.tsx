@@ -210,7 +210,7 @@ export default function TrabajosPage() {
         stats={stats}
         loading={loading}
         onRefresh={loadData}
-        onSettings={() => router.push('/app/chat/ia/configuracion')}
+        onSettings={() => router.push('/app/configuracion?modulo=chat')}
       />
 
       <JobsFilters

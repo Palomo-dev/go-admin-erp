@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/button';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Home, RefreshCw, QrCode, Clock } from 'lucide-react';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { useTranslations, useLocale } from 'next-intl';
-import { cn } from '@/utils/Utils';
 import {
   inicioService,
   DashboardKPIs,
@@ -26,7 +26,7 @@ import { moduleManagementService } from '@/lib/services/moduleManagementService'
 function InicioContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
-  const module = searchParams.get('module');
+  const moduleCode = searchParams.get('module');
   const { organization } = useOrganization();
   const { toast } = useToast();
   const t = useTranslations('home');
@@ -34,7 +34,6 @@ function InicioContent() {
 
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [fechaHoy, setFechaHoy] = useState('');
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
@@ -49,7 +48,7 @@ function InicioContent() {
         day: 'numeric',
       })
     );
-  }, []);
+  }, [locale]);
 
   const loadData = useCallback(async () => {
     if (!organization?.id) return;
@@ -71,39 +70,27 @@ function InicioContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, toast]);
+  }, [organization?.id, toast, t]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
     await loadData();
-    setIsRefreshing(false);
     toast({ title: t('dashboardUpdated') });
   };
 
-  if (error === 'module_not_activated' && module) {
-    return <ModuleAccessDenied moduleCode={module} />;
+  if (error === 'module_not_activated' && moduleCode) {
+    return <ModuleAccessDenied moduleCode={moduleCode} />;
   }
 
   if (!mounted || !organization) {
     return (
-      <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="animate-pulse space-y-6">
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48" />
-          <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-            ))}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-            ))}
-          </div>
-        </div>
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={10} />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }
@@ -154,10 +141,10 @@ function InicioContent() {
             variant="outline"
             size="sm"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isLoading}
             className="border-gray-300 dark:border-gray-700"
           >
-            <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
+            <RefreshCw className="h-4 w-4 mr-2" />
             {t('refresh')}
           </Button>
         </div>

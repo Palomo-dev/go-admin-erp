@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { RevenueByPeriod } from '@/lib/services/parkingReportService';
@@ -36,7 +37,7 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-64 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
+            <Skeleton className="h-48 w-full" />
           </div>
         ) : data.length === 0 ? (
           <div className="h-64 flex items-center justify-center text-gray-400 dark:text-gray-500">

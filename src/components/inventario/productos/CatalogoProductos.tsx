@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTheme } from 'next-themes';
+
 import { Producto, FiltrosProductos, StockSucursal } from './types';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -37,7 +37,7 @@ import {
  */
 const CatalogoProductos: React.FC = () => {
   // Tema actual
-  const { theme } = useTheme();
+
   // Router para navegación
   const router = useRouter();
   // Obtener organización y sucursal del hook
@@ -630,21 +630,21 @@ const CatalogoProductos: React.FC = () => {
       <Button
         variant="outline"
         onClick={() => handleEditar(producto)}
-        className={theme === 'dark' ? 'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700' : ''}
+        className={'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'}
       >
         Editar
       </Button>
       <Button
         variant="outline"
         onClick={() => handleVer(producto)}
-        className={theme === 'dark' ? 'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700' : ''}
+        className={'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'}
       >
         Ver
       </Button>
       <Button
         variant="outline"
         onClick={() => handleDuplicar(producto)}
-        className={theme === 'dark' ? 'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700' : ''}
+        className={'dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'}
       >
         Duplicar
       </Button>

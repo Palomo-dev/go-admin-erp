@@ -14,9 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/utils/Utils';
 import { ArrowUpRight, ArrowDownRight, LineChart, TrendingUp, ChevronRight, RefreshCw } from 'lucide-react';
-import LoadingSpinner from '@/components/ui/loading-spinner';
 import { toast } from '@/components/ui/use-toast';
-import { useTheme } from 'next-themes';
+import { Skeleton } from '@/components/ui/skeleton';
 // No se necesita importar realtime por separado
 
 interface ForecastSidebarProps {
@@ -58,7 +57,6 @@ interface ForecastSummary {
 }
 
 const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetailed = true }) => {
-  const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [forecastData, setForecastData] = useState<ForecastSummary | null>(null);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
@@ -229,9 +227,13 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
   if (loading) {
     return (
       <Card className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="p-6 flex flex-col justify-center items-center min-h-[200px] gap-3">
-          <LoadingSpinner />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando pronóstico...</span>
+        <CardContent className="p-6 space-y-4 min-h-[200px]">
+          <Skeleton className="h-6 w-1/2" />
+          <Skeleton className="h-10 w-3/4" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
         </CardContent>
       </Card>
     );

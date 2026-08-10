@@ -106,6 +106,7 @@ export default function JobPositionPermissionsManager({
       'roles': 'Roles',
       'catalog': 'Catálogo',
       'operations': 'Operaciones',
+      'configuracion': 'Configuración',
       'sales': 'Ventas',
       'other': 'Otros'
     };

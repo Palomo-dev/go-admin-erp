@@ -18,6 +18,7 @@ interface ItemsListFormProps {
   onAgregarItem: () => void;
   onEliminarItem: (index: number) => void;
   onDirectAddItem?: (item: InvoiceItemForm) => void;
+  supplierId?: number | null;
 }
 
 export function ItemsListForm({
@@ -27,7 +28,8 @@ export function ItemsListForm({
   onItemChange,
   onAgregarItem,
   onEliminarItem,
-  onDirectAddItem
+  onDirectAddItem,
+  supplierId = null
 }: ItemsListFormProps) {
   // Estado para productos seleccionados
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
@@ -209,7 +211,7 @@ export function ItemsListForm({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-white">
               <ListChecks className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="truncate">Productos para Factura de Compra</span>
+              <span className="break-words whitespace-normal min-w-0">Productos para Factura de Compra</span>
             </CardTitle>
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               {selectedProducts.length > 0 && (
@@ -226,6 +228,7 @@ export function ItemsListForm({
                 currency={currency} 
                 onProductSelect={handleProductSelect}
                 selectedProductIds={selectedProductIds}
+                supplierId={supplierId}
                 showCreateButton
               />
             </div>

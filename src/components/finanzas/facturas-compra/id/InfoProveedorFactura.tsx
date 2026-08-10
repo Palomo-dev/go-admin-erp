@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, User, Phone, Mail, IdCard } from 'lucide-react';
+import { Building2, User, Phone, Mail, IdCard, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { InvoicePurchase } from '../types';
 
 interface InfoProveedorFacturaProps {
@@ -14,6 +16,8 @@ export function InfoProveedorFactura({
   factura, 
   className = '' 
 }: InfoProveedorFacturaProps) {
+  const router = useRouter();
+  
   if (!factura.supplier) {
     return null;
   }
@@ -48,7 +52,7 @@ export function InfoProveedorFactura({
             {factura.supplier.contact && (
               <div className="flex items-center gap-2">
                 <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate">
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
                   {factura.supplier.contact}
                 </p>
               </div>
@@ -66,12 +70,24 @@ export function InfoProveedorFactura({
             {factura.supplier.email && (
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate">
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-words whitespace-normal min-w-0">
                   {factura.supplier.email}
                 </p>
               </div>
             )}
           </div>
+        )}
+
+        {factura.supplier.uuid && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(`/app/inventario/proveedores/${factura.supplier!.uuid}`)}
+            className="w-full dark:border-gray-600 dark:hover:bg-gray-800"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Ver Perfil del Proveedor
+          </Button>
         )}
 
 

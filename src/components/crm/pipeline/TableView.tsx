@@ -7,6 +7,7 @@ import { formatCurrency } from "@/utils/Utils";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 
 // Importaciones de UI
+import { TableSkeleton } from "@/components/common/PageSkeletons";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import {
   Table,
@@ -320,10 +321,7 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
   if (loading) {
     return (
       <div className="p-3 sm:p-4">
-        <div className="flex flex-col justify-center items-center h-40 gap-3">
-          <LoadingSpinner size="lg" className="text-blue-500" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Cargando oportunidades...</span>
-        </div>
+        <TableSkeleton columns={6} rows={5} />
       </div>
     );
   }

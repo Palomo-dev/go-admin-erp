@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +18,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+  } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -21,15 +26,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+  } from '@/components/ui/table';
+import { Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import {
   BarChart3,
   RefreshCw,
   ArrowLeft,
   Download,
-  Loader2,
   Package,
   TrendingUp,
   Truck,
@@ -38,12 +45,13 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  ArrowUp,
+  ArrowUp
 } from 'lucide-react';
 import { ReportesService } from './ReportesService';
 import { ReportesPagination, usePagination } from './ReportesPagination';
 import { StockReport, KardexEntry, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
 import { formatCurrency, formatDate } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function ReportesPage() {
   const { toast } = useToast();
@@ -336,8 +344,7 @@ export function ReportesPage() {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
+                  <Skeleton className="h-8 w-8 mx-auto" /></div>
               ) : stockData.length === 0 ? (
                 <div className="text-center py-10 text-gray-500 dark:text-gray-400">
                   <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -433,8 +440,7 @@ export function ReportesPage() {
                 </div>
               ) : loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
+                  <Skeleton className="h-8 w-8 mx-auto" /></div>
               ) : kardexData.length === 0 ? (
                 <div className="text-center py-10 text-gray-500 dark:text-gray-400">
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -513,8 +519,7 @@ export function ReportesPage() {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
+                  <Skeleton className="h-8 w-8 mx-auto" /></div>
               ) : rotacionData.length === 0 ? (
                 <div className="text-center py-10 text-gray-500 dark:text-gray-400">
                   <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -597,8 +602,7 @@ export function ReportesPage() {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
+                  <Skeleton className="h-8 w-8 mx-auto" /></div>
               ) : comprasData.length === 0 ? (
                 <div className="text-center py-10 text-gray-500 dark:text-gray-400">
                   <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />

@@ -135,7 +135,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                   <button
                     key={task.id}
                     onClick={() => onTaskClick?.(task)}
-                    className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded truncate block ${
+                    className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded break-words whitespace-normal block ${
                       task.status === 'done'
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 line-through'
                         : task.status === 'in_progress'

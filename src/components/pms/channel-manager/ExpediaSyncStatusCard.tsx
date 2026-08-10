@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -185,11 +186,11 @@ export function ExpediaSyncStatusCard({
   if (isLoading) {
     return (
       <Card className="p-4">
-        <div className="animate-pulse flex flex-wrap items-center gap-3">
-          <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="flex flex-wrap items-center gap-3">
+          <Skeleton className="h-8 w-8 rounded" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+            <Skeleton className="h-4 w-1/3 rounded" />
+            <Skeleton className="h-3 w-1/2 rounded" />
           </div>
         </div>
       </Card>

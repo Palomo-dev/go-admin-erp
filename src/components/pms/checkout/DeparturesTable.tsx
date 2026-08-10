@@ -21,6 +21,7 @@ import {
   DollarSign,
   FileText,
 } from 'lucide-react';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import type { CheckoutReservation } from '@/lib/services/checkoutService';
 import { formatCurrency } from '@/utils/Utils';
 
@@ -46,16 +47,7 @@ export function DeparturesTable({
   };
 
   if (isLoading) {
-    return (
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
-        <div className="p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-500 dark:text-gray-400">
-            Cargando salidas del día...
-          </p>
-        </div>
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={6} />;
   }
 
   if (departures.length === 0) {

@@ -48,6 +48,7 @@ import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { SearchSelectCombobox, type SearchSelectOption } from '@/components/inventario/ordenes-compra/SearchSelectCombobox';
 import { ProductSearchCombobox, type ProductOption } from '@/components/inventario/ordenes-compra/ProductSearchCombobox';
 import { Store } from 'lucide-react';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface ProductForAdjustment {
   id: number;
@@ -113,14 +114,27 @@ export function NuevoAjusteForm() {
       if (!organization?.id) return;
       try {
         // Cargar todos los productos activos (incluyendo padres para mapeo)
-        const { data: allData } = await supabase
-          .from('products')
-          .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data')
-          .eq('organization_id', organization.id)
-          .eq('status', 'active')
-          .order('name');
+        // Paginar porque Supabase devuelve máximo 1000 filas por defecto
+        const PAGE_SIZE = 1000;
+        let allData: any[] = [];
+        let offset = 0;
+        while (true) {
+          const { data: pageData, error: pageError } = await supabase
+            .from('products')
+            .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data')
+            .eq('organization_id', organization.id)
+            .eq('status', 'active')
+            .order('name')
+            .range(offset, offset + PAGE_SIZE - 1);
 
-        if (!allData) return;
+          if (pageError) break;
+          if (!pageData || pageData.length === 0) break;
+          allData = allData.concat(pageData);
+          if (pageData.length < PAGE_SIZE) break;
+          offset += PAGE_SIZE;
+        }
+
+        if (allData.length === 0) return;
 
         // Mapa de padres: id -> { name, sku }
         const parentMap = new Map<number, { name: string; sku: string }>();
@@ -542,9 +556,9 @@ export function NuevoAjusteForm() {
 
   if (loadingOrg || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

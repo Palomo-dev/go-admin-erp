@@ -10,13 +10,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { 
   ChevronLeft, 
   ChevronRight, 
   Clock,
   MapPin,
-  Users,
-  Loader2
+  Users
 } from 'lucide-react';
 import { Instructor, getClasses, GymClass, getClassTypeLabel, getClassStatusColor, getClassStatusLabel } from '@/lib/services/gymService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -170,8 +170,8 @@ export function InstructorScheduleDialog({ open, onOpenChange, instructor }: Ins
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+          <div className="py-4">
+            <TableSkeleton rows={5} columns={8} />
           </div>
         ) : (
           <div className="flex-1 overflow-auto">

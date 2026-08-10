@@ -30,6 +30,7 @@ import ImageUploader from '@/components/common/ImageUploader';
 import IconSelector from '@/components/common/IconSelector';
 import ColorPicker from '@/components/common/ColorPicker';
 import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface CategoryFormProps {
   categoryUuid?: string;
@@ -169,8 +170,9 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

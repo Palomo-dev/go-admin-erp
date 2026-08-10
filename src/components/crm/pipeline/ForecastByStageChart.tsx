@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/Utils';
 import { Filter } from 'lucide-react';
-import LoadingSpinner from '@/components/ui/loading-spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from "@/components/ui/use-toast";
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend
@@ -172,8 +172,9 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
 
   if (loading) {
     return (
-      <Card className={`p-4 flex justify-center items-center h-80 ${className}`}>
-        <LoadingSpinner size="md" className="text-blue-500" />
+      <Card className={`p-4 space-y-4 h-80 ${className}`}>
+        <Skeleton className="h-5 w-1/2" />
+        <Skeleton className="h-60 w-full" />
       </Card>
     );
   }

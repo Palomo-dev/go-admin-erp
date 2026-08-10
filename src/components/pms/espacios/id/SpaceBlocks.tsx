@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Ban, Calendar, Wrench, User, PartyPopper, Clock, HelpCircle } from 'lucide-react';
 import { ReservationBlock, BlockType } from '@/lib/services/reservationBlocksService';
@@ -56,11 +57,7 @@ export function SpaceBlocks({ blocks, isLoading }: SpaceBlocksProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-3">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            ))}
-          </div>
+          <CardListSkeleton cards={2} columns="1" />
         </CardContent>
       </Card>
     );

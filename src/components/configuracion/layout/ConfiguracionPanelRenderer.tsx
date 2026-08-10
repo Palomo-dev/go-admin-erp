@@ -63,6 +63,11 @@ const ChatConfigPanel = dynamic(() => import('../panels/chat/ChatConfigPanel').t
   ssr: false,
 });
 
+const CRMConfigPanel = dynamic(() => import('../panels/crm/CRMConfigPanel').then((m) => m.CRMConfigPanel), {
+  loading: () => <LoadingSpinner />,
+  ssr: false,
+});
+
 const GeneralConfigPanel = dynamic(() => import('../panels/general/GeneralConfigPanel').then((m) => m.GeneralConfigPanel), {
   loading: () => <LoadingSpinner />,
   ssr: false,
@@ -96,6 +101,7 @@ const PANEL_MAP: Record<string, React.ComponentType> = {
   pms: PMSConfigPanel,
   pos: POSConfigPanel,
   chat: ChatConfigPanel,
+  crm: CRMConfigPanel,
 };
 
 interface ConfiguracionPanelRendererProps {

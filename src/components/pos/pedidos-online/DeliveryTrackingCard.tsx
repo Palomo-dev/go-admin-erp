@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Truck,
   User,
@@ -116,8 +117,10 @@ export function DeliveryTrackingCard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-4">
-            <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground dark:text-gray-400" />
+          <div className="py-4 space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-5/6" />
           </div>
         </CardContent>
       </Card>

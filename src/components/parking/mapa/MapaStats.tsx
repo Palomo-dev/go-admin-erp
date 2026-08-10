@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { Car, CircleCheck, Clock, Wrench, Percent } from 'lucide-react';
 import type { MapStats } from '@/lib/services/parkingMapService';
 
@@ -56,6 +57,10 @@ export function MapaStats({ stats, isLoading }: MapaStatsProps) {
     },
   ];
 
+  if (isLoading) {
+    return <StatsSkeleton count={6} />;
+  }
+
   return (
     <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
       {items.map((item, index) => (
@@ -64,12 +69,7 @@ export function MapaStats({ stats, isLoading }: MapaStatsProps) {
           className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
         >
           <CardContent className="p-3">
-            {isLoading ? (
-              <div className="animate-pulse">
-                <div className="h-6 w-10 bg-gray-200 dark:bg-gray-700 rounded mb-1" />
-                <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            ) : (
+            {
               <div className="flex flex-wrap items-center gap-2">
                 <div className={`p-1.5 rounded-lg ${item.bgColor}`}>
                   <item.icon className={`h-4 w-4 ${item.textColor}`} />
@@ -79,7 +79,7 @@ export function MapaStats({ stats, isLoading }: MapaStatsProps) {
                   <p className="text-[10px] text-gray-500 dark:text-gray-400">{item.label}</p>
                 </div>
               </div>
-            )}
+            }
           </CardContent>
         </Card>
       ))}

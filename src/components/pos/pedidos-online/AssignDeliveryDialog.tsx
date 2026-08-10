@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Truck, User, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -190,8 +191,10 @@ export function AssignDeliveryDialog({
         </DialogHeader>
 
         {loadingData ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground dark:text-gray-400" />
+          <div className="py-8 space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         ) : error && vehicles.length === 0 && drivers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">

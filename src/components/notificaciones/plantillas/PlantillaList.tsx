@@ -7,6 +7,7 @@ import {
   Mail, MessageSquare, Bell, Smartphone, Webhook, MoreHorizontal,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { NotificationTemplate, TemplateChannel } from './types';
 
 interface PlantillaListProps {
@@ -42,7 +43,7 @@ export function PlantillaList({
     return (
       <div className="space-y-2">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+          <Skeleton key={i} className="h-20 w-full rounded-lg" />
         ))}
       </div>
     );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { Plus, Trash2, Star, StarOff, Save, Loader2, Edit } from 'lucide-react';
@@ -48,6 +48,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { formatCurrency } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProveedoresTabProps {
   producto: any;
@@ -77,7 +78,7 @@ interface Supplier {
  * Permite agregar, editar, eliminar proveedores y marcar uno como preferido
  */
 const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const { organization } = useOrganization();
 
   const [proveedores, setProveedores] = useState<ProductSupplier[]>([]);
@@ -331,8 +332,7 @@ const ProveedoresTab: React.FC<ProveedoresTabProps> = ({ producto }) => {
             {loading ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
-                </TableCell>
+                  <Skeleton className="h-8 w-8 mx-auto" /></TableCell>
               </TableRow>
             ) : proveedores.length === 0 ? (
               <TableRow>

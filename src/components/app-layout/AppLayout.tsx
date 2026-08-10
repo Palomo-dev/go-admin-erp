@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
-  Menu, 
   ChevronsLeft, 
   ChevronsRight, 
   Building2,
@@ -62,9 +61,7 @@ import {
   Dumbbell,
   LogIn,
   CalendarCheck,
-  Ticket,
   Search,
-  Bus,
   ListChecks,
   LayoutGrid,
   Link2,
@@ -75,7 +72,6 @@ import {
   Palette,
   Bell,
   FileBarChart,
-  Wrench,
   CalendarClock,
   Radio,
   FolderKanban,
@@ -85,7 +81,6 @@ import {
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
-import { getUserData } from '@/lib/services/userService';
 import { AppHeader } from './Header/AppHeader';
 import { SidebarNavigation } from './Sidebar/SidebarNavigation';
 import { SubMenuPanel } from './Sidebar/SubMenuPanel';
@@ -100,7 +95,8 @@ import type { AssistantContext } from '@/lib/services/aiAssistantService';
 
 // Importaciones estándar para evitar ChunkLoadError
 import ModuleLimitNotification from '@/components/notifications/ModuleLimitNotification';
-import { ModuleProvider, useModuleContext } from '@/lib/context/ModuleContext';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { ModuleProvider } from '@/lib/context/ModuleContext';
 import { BranchProvider } from '@/lib/context/BranchContext';
 import { NavigationProgress } from './NavigationProgress';
 import { OfflineIndicator } from './OfflineIndicator';
@@ -135,7 +131,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
       { name: "Reportes", href: "/app/crm/reportes", icon: <BarChart3 size={16} /> },
       { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> },
-      { name: "Configuración", href: "/app/crm/configuracion", icon: <Settings size={16} /> }
+      { name: "Configuración", href: "/app/configuracion?modulo=crm", icon: <Settings size={16} /> }
     ]
   },
   { 
@@ -156,7 +152,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Préstamos", href: "/app/hrm/prestamos", icon: <Wallet size={16} /> },
       { name: "Reportes", href: "/app/hrm/reportes", icon: <BarChart3 size={16} /> },
       { name: "Reglas País", href: "/app/hrm/reglas-pais", icon: <Globe size={16} /> },
-      { name: "Configuración", href: "/app/hrm/configuracion", icon: <Settings size={16} /> }
+      { name: "Configuración", href: "/app/configuracion?modulo=hrm", icon: <Settings size={16} /> }
     ]
   },
   { 
@@ -192,7 +188,8 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Impuestos", href: "/app/finanzas/impuestos", icon: <Percent size={16} /> },
       { name: "Monedas", href: "/app/finanzas/monedas", icon: <Globe size={16} /> },
       { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> },
-      { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> }
+      { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> },
+      { name: "Configuración", href: "/app/configuracion?modulo=facturacion", icon: <Settings size={16} /> }
     ]
   },
   { 
@@ -243,7 +240,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Promociones", href: "/app/pos/promociones", icon: <Percent size={16} /> },
       { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar", icon: <DollarSign size={16} /> },
       { name: "Reportes", href: "/app/pos/reportes", icon: <BarChart3 size={16} /> },
-      { name: "Configuración", href: "/app/pos/configuracion", icon: <Settings size={16} /> },
+      { name: "Configuración", href: "/app/configuracion?modulo=pos", icon: <Settings size={16} /> },
     ]
   },
   { 
@@ -269,7 +266,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Origenes", href: "/app/pms/origenes", icon: <Globe size={16} /> },
       { name: "Channel Manager", href: "/app/pms/channel-manager", icon: <Radio size={16} /> },
       { name: "Parquedero", href: "/app/pms/parking", icon: <ParkingCircle size={16} /> },
-      { name: "Configuración", href: "/app/pms/configuracion", icon: <Settings size={16} /> },
+      { name: "Configuración", href: "/app/configuracion?modulo=pms", icon: <Settings size={16} /> },
     ]
   },
   { 
@@ -293,7 +290,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Canales", href: "/app/chat/canales", icon: <MessageSquare size={16} /> },
       { name: "Conocimiento", href: "/app/chat/conocimiento", icon: <BookOpen size={16} /> },
       { name: "IA", href: "/app/chat/ia/configuracion", icon: <Bot size={16} /> },
-      { name: "Configuración", href: "/app/chat/configuracion/etiquetas", icon: <Settings size={16} /> },
+      { name: "Configuración", href: "/app/configuracion?modulo=chat", icon: <Settings size={16} /> },
       { name: "Widget", href: "/app/chat/widget/sesiones", icon: <Headphones size={16} /> },
       { name: "Auditoría", href: "/app/chat/auditoria", icon: <Shield size={16} /> },
     ]
@@ -306,7 +303,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Vista General", href: "/app/calendario", icon: <CalendarDays size={16} /> },
       { name: "Recurrencias", href: "/app/calendario/recurrencias", icon: <GitMerge size={16} /> },
       { name: "Importar", href: "/app/calendario/importar", icon: <Upload size={16} /> },
-      { name: "Configuración", href: "/app/calendario/configuracion", icon: <Settings size={16} /> },
+      { name: "Configuración", href: "/app/configuracion?modulo=calendario", icon: <Settings size={16} /> },
     ]
   },
   { 
@@ -333,7 +330,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     moduleCode: 'roles',
     submenu: [
       { name: "Roles y Permisos", href: "/app/roles", icon: <Shield size={16} /> },
-      { name: "Configuración", href: "/app/roles/configuracion", icon: <Settings size={16} /> }
+      { name: "Configuración", href: "/app/configuracion?modulo=roles", icon: <Settings size={16} /> }
     ]
   },
   { 
@@ -350,7 +347,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Reservaciones", href: "/app/gym/reservaciones", icon: <CalendarCheck size={16} /> },
       { name: "Instructores", href: "/app/gym/instructores", icon: <User size={16} /> },
       { name: "Reportes", href: "/app/gym/reportes", icon: <BarChart3 size={16} /> },
-      { name: "Configuración", href: "/app/gym/ajustes", icon: <Settings size={16} /> }
+      { name: "Configuración", href: "/app/configuracion?modulo=gym", icon: <Settings size={16} /> }
     ]
   },
   { 
@@ -369,7 +366,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Zonas", href: "/app/parking/zonas", icon: <MapPin size={16} /> },
       { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> },
       { name: "Reportes", href: "/app/parking/reportes", icon: <BarChart3 size={16} /> },
-      { name: "Configuración", href: "/app/parking/configuracion", icon: <Settings size={16} /> },
+      { name: "Configuración", href: "/app/configuracion?modulo=parking", icon: <Settings size={16} /> },
     ]
   },
   { 
@@ -409,7 +406,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Canales", href: "/app/notificaciones/canales", icon: <Send size={16} /> },
       { name: "Plantillas", href: "/app/notificaciones/plantillas", icon: <FileText size={16} /> },
       { name: "Logs de Envío", href: "/app/notificaciones/logs", icon: <Activity size={16} /> },
-      { name: "Preferencias", href: "/app/notificaciones/preferencias", icon: <Settings size={16} /> },
+      { name: "Preferencias", href: "/app/configuracion?modulo=notificaciones", icon: <Settings size={16} /> },
     ]
   },
   { 
@@ -424,7 +421,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Mapeos", href: "/app/integraciones/mapeos", icon: <GitMerge size={16} /> },
       { name: "API Keys", href: "/app/integraciones/api-keys", icon: <Key size={16} /> },
       { name: "Webhooks", href: "/app/integraciones/webhooks-salientes", icon: <Send size={16} /> },
-      { name: "Configuración", href: "/app/integraciones/configuracion", icon: <Settings size={16} /> },
+      { name: "Configuración", href: "/app/configuracion?modulo=integraciones", icon: <Settings size={16} /> },
     ]
   },
   { 
@@ -434,7 +431,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     submenu: [
       { name: "Vista General", href: "/app/timeline", icon: <History size={16} /> },
       { name: "Exportaciones", href: "/app/timeline/exportaciones", icon: <FileText size={16} /> },
-      { name: "Configuración", href: "/app/timeline/configuracion", icon: <Settings size={16} /> },
+      { name: "Configuración", href: "/app/configuracion?modulo=timeline", icon: <Settings size={16} /> },
     ]
   },
   { 
@@ -449,9 +446,9 @@ const getActiveModule = (pathname: string | null): NavItemProps | null => {
   if (!pathname) return null;
   
   // Buscar el módulo que coincida con la ruta actual
-  for (const module of MODULES_WITH_SUBMENU) {
-    if (pathname === module.href || pathname.startsWith(module.href + '/')) {
-      return module;
+  for (const navModule of MODULES_WITH_SUBMENU) {
+    if (pathname === navModule.href || pathname.startsWith(navModule.href + '/')) {
+      return navModule;
     }
   }
   
@@ -764,6 +761,74 @@ export const AppLayout = ({
     }
   }, []);
 
+  // Función de fallback con consultas separadas
+  const loadUserProfileFallback = useCallback(async (user: { id: string }, currentOrgId: number) => {
+    try {
+      console.log('🔄 Usando método fallback con consultas separadas');
+      
+      // Obtener perfil
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error al obtener perfil:', profileError);
+        return;
+      }
+
+      // Obtener organización
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', currentOrgId)
+        .single();
+
+      // Obtener rol del usuario
+      const { data: userRoleData, error: roleError } = await supabase
+        .from('organization_members')
+        .select('role_id')
+        .eq('user_id', user.id)
+        .eq('organization_id', currentOrgId)
+        .single();
+
+      let roleName = 'Usuario';
+      if (!roleError && userRoleData?.role_id) {
+        const { data: roleData } = await supabase
+          .from('roles')
+          .select('name')
+          .eq('id', userRoleData.role_id)
+          .single();
+        
+        roleName = roleData?.name || 'Usuario';
+      }
+
+      const finalUserData = {
+        name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || profileData.email,
+        email: profileData.email,
+        role: roleName,
+        avatar: profileData.avatar_url || ''
+      };
+
+      const finalOrgName = orgData?.name || '';
+
+      setUserData(finalUserData);
+      setOrgName(finalOrgName);
+      
+      // Guardar en cache también
+      saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
+
+      // Sincronizar el nombre real del perfil con el selector de cuentas guardadas
+      // (ver comentario equivalente en loadUserProfileOptimized).
+      const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
+      updateSavedAccountProfile(user.id, { name: finalUserData.name, avatarUrl: finalUserData.avatar });
+      
+    } catch (error) {
+      console.error('Error en fallback:', error);
+    }
+  }, [saveToCache]);
+
   // Función optimizada para cargar perfil con consulta unificada
   const loadUserProfileOptimized = useCallback(async () => {
     try {
@@ -975,75 +1040,7 @@ export const AppLayout = ({
     } finally {
       setLoading(false);
     }
-  }, [loadFromCache, saveToCache]);
-
-  // Función de fallback con consultas separadas
-  const loadUserProfileFallback = useCallback(async (user: any, currentOrgId: number) => {
-    try {
-      console.log('🔄 Usando método fallback con consultas separadas');
-      
-      // Obtener perfil
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, email, avatar_url')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error al obtener perfil:', profileError);
-        return;
-      }
-
-      // Obtener organización
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', currentOrgId)
-        .single();
-
-      // Obtener rol del usuario
-      const { data: userRoleData, error: roleError } = await supabase
-        .from('organization_members')
-        .select('role_id')
-        .eq('user_id', user.id)
-        .eq('organization_id', currentOrgId)
-        .single();
-
-      let roleName = 'Usuario';
-      if (!roleError && userRoleData?.role_id) {
-        const { data: roleData } = await supabase
-          .from('roles')
-          .select('name')
-          .eq('id', userRoleData.role_id)
-          .single();
-        
-        roleName = roleData?.name || 'Usuario';
-      }
-
-      const finalUserData = {
-        name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || profileData.email,
-        email: profileData.email,
-        role: roleName,
-        avatar: profileData.avatar_url || ''
-      };
-
-      const finalOrgName = orgData?.name || '';
-
-      setUserData(finalUserData);
-      setOrgName(finalOrgName);
-      
-      // Guardar en cache también
-      saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
-
-      // Sincronizar el nombre real del perfil con el selector de cuentas guardadas
-      // (ver comentario equivalente en loadUserProfileOptimized).
-      const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
-      updateSavedAccountProfile(user.id, { name: finalUserData.name, avatarUrl: finalUserData.avatar });
-      
-    } catch (error) {
-      console.error('Error en fallback:', error);
-    }
-  }, [saveToCache]);
+  }, [loadFromCache, saveToCache, loadUserProfileFallback]);
 
   // Cargar datos del perfil del usuario y configurar suscripción
   useEffect(() => {
@@ -1096,7 +1093,7 @@ export const AppLayout = ({
     if (storedOrgName) {
       setOrgName(storedOrgName);
     }
-    
+
     // Obtener ID de organización
     const storedOrgId = localStorage.getItem('currentOrganizationId');
     setOrgId(storedOrgId);
@@ -1115,22 +1112,7 @@ export const AppLayout = ({
     return () => {
       window.removeEventListener('organization-changed', handleOrgChange);
     };
-  }, []);
-  
-  // Importación dinámica de la función signOut (memoizada)
-  const signOut = useMemo(() => {
-    let signOutFn: () => Promise<any> = async () => {
-      console.log('Función de cierre de sesión no disponible');
-      return { error: null };
-    };
-    
-    // Importar dinámicamente para evitar errores de referencia circular
-    import('@/lib/supabase/config').then((module) => {
-      signOutFn = module.signOut;
-    });
-    
-    return signOutFn;
-  }, []);
+  }, [setNextTheme]);
 
   // Función para cerrar sesión (memoizada)
   const handleSignOut = useCallback(async () => {
@@ -1181,7 +1163,7 @@ export const AppLayout = ({
     } finally {
       setLoading(false);
     }
-  }, [signOut]);
+  }, []);
 
   // Función para alternar el tema (memoizada) - usa next-themes + sync Supabase
   const toggleTheme = useCallback(() => {
@@ -1192,8 +1174,9 @@ export const AppLayout = ({
     themeService.setRemoteTheme(newTheme);
   }, [nextTheme, setNextTheme]);
 
-  // Función para invalidar cache manualmente
-  const invalidateUserCache = useCallback(() => {
+  // Función para invalidar cache manualmente (reservada para uso futuro)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _invalidateUserCache = useCallback(() => {
     localStorage.removeItem(USER_CACHE_KEY);
     setProfileRefresh(prev => prev + 1);
   }, []);
@@ -1267,6 +1250,7 @@ export const AppLayout = ({
                   <div className="flex justify-center items-center">
                     {getActiveOrgLogo() ? (
                       <div className="w-8 h-8 lg:w-7 lg:h-7 lg:mx-auto">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 
                           src={getActiveOrgLogo()!}
                           alt="Logo"
@@ -1285,6 +1269,7 @@ export const AppLayout = ({
                   <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 pl-2 hidden lg:group-hover:block z-50 whitespace-nowrap">
                     <div className="bg-gray-800 text-white text-sm py-1 px-3 rounded shadow-lg flex items-center">
                       {getActiveOrgLogo() ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img 
                           src={getActiveOrgLogo()!}
                           alt="Logo"
@@ -1397,8 +1382,10 @@ export const AppLayout = ({
         <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 overscroll-contain min-w-0">
           <div className="h-full min-w-0 w-full">
             {subscriptionChecked ? children : (
-              <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-full">
+                <PageHeaderSkeleton />
+                <StatsSkeleton count={4} />
+                <CardListSkeleton cards={3} columns="1" />
               </div>
             )}
           </div>

@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, UserCog } from 'lucide-react';
+import { ArrowLeft, UserCog } from 'lucide-react';
 import Link from 'next/link';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { ClientForm } from '@/components/clientes/new/ClientForm';
 import { useSession } from '@/lib/hooks/useSession';
 import { getUserOrganization } from '@/lib/supabase/config';
 
 export default function EditarClientePage() {
   const params = useParams();
-  const router = useRouter();
   const clientId = params?.id as string;
   
   const [organizationId, setOrganizationId] = useState<number | null>(null);
@@ -72,9 +72,9 @@ export default function EditarClientePage() {
   
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
-        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   Select,
   SelectContent,
@@ -218,8 +219,8 @@ export function InstructorAvailabilityDialog({ open, onOpenChange, instructor }:
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+          <div className="py-4">
+            <CardListSkeleton cards={3} columns="1" />
           </div>
         ) : (
           <div className="space-y-4">

@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import {
+  useState,
+  useEffect } from 'react'
 import { supabase } from '@/lib/supabase/config'
 import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Label } from '@/components/ui/label'
@@ -9,8 +11,20 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { GitBranch, Plus, Trash2, ChevronDown, ChevronUp, X, Tags } from 'lucide-react'
+import { Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue } from '@/components/ui/select'
+import {
+  GitBranch,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Tags
+} from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 
 interface VariantesProps {

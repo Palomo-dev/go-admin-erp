@@ -248,7 +248,7 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                 >
                   <TableCell className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-200 py-2 sm:py-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="truncate max-w-[120px] sm:max-w-none">{factura.number_ext}</span>
+                      <span className="break-words whitespace-normal min-w-0 sm:max-w-none">{factura.number_ext}</span>
                       {factura.due_date && factura.balance > 0 && parseLocalDate(factura.due_date) < new Date() && (
                         <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                       )}
@@ -256,7 +256,7 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                   </TableCell>
                   <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3">
                     <div>
-                      <div className="font-medium truncate max-w-[150px] sm:max-w-[200px]">{factura.supplier?.name}</div>
+                      <div className="font-medium break-words whitespace-normal min-w-0 sm:max-w-[200px]">{factura.supplier?.name}</div>
                       {factura.supplier?.nit && (
                         <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500">{factura.supplier.nit}</div>
                       )}

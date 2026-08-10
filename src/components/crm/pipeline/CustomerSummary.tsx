@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, UserCircle, Users, TrendingUp, Phone } from "lucide-react";
+import { UserCircle, Users, TrendingUp, Phone } from "lucide-react";
 import { supabase } from "@/lib/supabase/config";
 import { cn } from "@/utils/Utils";
-import { useTheme } from "next-themes";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -26,7 +26,6 @@ export function CustomerSummary() {
     contactedThisMonth: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const { theme } = useTheme();
 
   const getOrganizationId = () => {
     if (typeof window !== "undefined") {
@@ -135,9 +134,7 @@ export function CustomerSummary() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-      <Card className={cn(
-        theme === "dark" ? "bg-background/50 border-slate-800" : "bg-white"
-      )}>
+      <Card className={cn("bg-white dark:bg-background/50 border dark:border-slate-800")}>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="space-y-1">
             <CardTitle className="text-sm font-medium">
@@ -153,16 +150,14 @@ export function CustomerSummary() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Skeleton className="h-8 w-20" />
           ) : (
             <div className="text-2xl font-bold">{stats.total}</div>
           )}
         </CardContent>
       </Card>
 
-      <Card className={cn(
-        theme === "dark" ? "bg-background/50 border-slate-800" : "bg-white"
-      )}>
+      <Card className={cn("bg-white dark:bg-background/50 border dark:border-slate-800")}>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="space-y-1">
             <CardTitle className="text-sm font-medium">
@@ -178,16 +173,14 @@ export function CustomerSummary() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Skeleton className="h-8 w-20" />
           ) : (
             <div className="text-2xl font-bold">{stats.activeOpportunities}</div>
           )}
         </CardContent>
       </Card>
 
-      <Card className={cn(
-        theme === "dark" ? "bg-background/50 border-slate-800" : "bg-white"
-      )}>
+      <Card className={cn("bg-white dark:bg-background/50 border dark:border-slate-800")}>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="space-y-1">
             <CardTitle className="text-sm font-medium">
@@ -203,7 +196,7 @@ export function CustomerSummary() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Skeleton className="h-8 w-20" />
           ) : (
             <div className="text-2xl font-bold">{stats.contactedThisMonth}</div>
           )}

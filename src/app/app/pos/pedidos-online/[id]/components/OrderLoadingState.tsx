@@ -1,20 +1,12 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
-import { cn } from '@/utils/Utils';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
-interface OrderLoadingStateProps {
-  message?: string;
-}
-
-export function OrderLoadingState({ message = 'Cargando pedido...' }: OrderLoadingStateProps) {
+export function OrderLoadingState() {
   return (
-    <div className={cn(
-      "flex flex-col items-center justify-center h-screen",
-      "gap-4"
-    )}>
-      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground dark:text-gray-400" />
-      <p className="text-muted-foreground dark:text-gray-300">{message}</p>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <PageHeaderSkeleton />
+      <DetailSkeleton />
     </div>
   );
 }

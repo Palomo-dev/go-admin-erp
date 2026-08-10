@@ -1,8 +1,17 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Send, Clock, CheckCircle, XCircle, DollarSign } from 'lucide-react';
+import {
+  Card,
+  CardContent } from '@/components/ui/card';
+import {
+  FileText,
+  Send,
+  Clock,
+  CheckCircle,
+  XCircle,
+  DollarSign
+} from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 
 interface OrdenesCompraStatsProps {

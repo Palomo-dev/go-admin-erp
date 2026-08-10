@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -94,32 +95,7 @@ export function EspaciosGrid({
   viewMode = 'grid',
 }: EspaciosGridProps) {
   if (isLoading) {
-    if (viewMode === 'list') {
-      return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <div className="animate-pulse space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded" />
-            ))}
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {[...Array(12)].map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-4">
-              <div className="animate-pulse space-y-3">
-                <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded mx-auto" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mx-auto" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <CardListSkeleton cards={12} columns="3" />;
   }
 
   if (spaces.length === 0) {

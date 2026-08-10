@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Wifi, Tv, Lock, Car, Bath, Flame, Wind, Phone, Laptop, Waves, Dumbbell, Coffee, PawPrint } from 'lucide-react';
 import spaceServicesService, { SpaceServiceView } from '@/lib/services/spaceServicesService';
 
@@ -44,10 +45,10 @@ export function SpaceServicesBadges({ spaceId, refreshTrigger = 0 }: SpaceServic
   if (isLoading) {
     return (
       <div className="space-y-2">
-        <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+        <Skeleton className="h-3 w-16 rounded" />
         <div className="flex flex-wrap gap-1.5">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-6 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" style={{ width: `${60 + i * 12}px` }} />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-6 w-24 rounded-full" />
           ))}
         </div>
       </div>

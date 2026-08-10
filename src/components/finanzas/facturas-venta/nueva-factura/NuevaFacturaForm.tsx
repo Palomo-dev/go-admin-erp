@@ -1077,7 +1077,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             />
           </div>
           <div className="lg:col-span-2 pt-2">
-            <div className={`p-2 sm:p-3 rounded-lg flex items-center justify-between ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : ''}`}>
+            <div className={`p-2 sm:p-3 rounded-lg flex flex-wrap items-center justify-between ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : ''}`}>
               <ElectronicInvoiceToggle
                 checked={sendToFactus}
                 onCheckedChange={setSendToFactus}

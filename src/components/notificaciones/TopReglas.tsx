@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Zap, ToggleLeft, ToggleRight } from 'lucide-react';
 import type { AlertRule } from '@/lib/services/notificacionesDashboardService';
 
@@ -25,7 +26,7 @@ export function TopReglas({ rules, isLoading, onToggleRule }: TopReglasProps) {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top Reglas</h2>
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-14 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+            <Skeleton key={i} className="h-14 w-full rounded-lg" />
           ))}
         </div>
       </div>

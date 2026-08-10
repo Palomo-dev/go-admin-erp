@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { supplierService } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,8 @@ interface ProductSearchDialogProps {
   branchId?: number;
   /** Mostrar botón "Crear Producto" fuera del diálogo */
   showCreateButton?: boolean;
+  /** Filtrar productos por proveedor */
+  supplierId?: number | null;
 }
 
 export function ProductSearchDialog({
@@ -40,6 +43,7 @@ export function ProductSearchDialog({
   selectedProductIds = [],
   branchId,
   showCreateButton = false,
+  supplierId = null,
 }: ProductSearchDialogProps) {
   const [products, setProducts] = useState<UnifiedProduct[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<UnifiedProduct[]>([]);
@@ -52,7 +56,26 @@ export function ProductSearchDialog({
   const [selectedParent, setSelectedParent] = useState<UnifiedProduct | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [supplierProductIds, setSupplierProductIds] = useState<Set<number>>(new Set());
+  const [supplierCosts, setSupplierCosts] = useState<Map<number, number>>(new Map());
+  const [showAllProducts, setShowAllProducts] = useState(false);
   const organizationId = getOrganizationId();
+
+  // Cargar IDs de productos del proveedor cuando cambia supplierId
+  useEffect(() => {
+    if (!supplierId) {
+      setSupplierProductIds(new Set());
+      setSupplierCosts(new Map());
+      return;
+    }
+    const loadSupplierProducts = async () => {
+      const supplierProducts = await supplierService.getProductsBySupplier(supplierId);
+      setSupplierProductIds(new Set(supplierProducts.map(p => p.product_id)));
+      setSupplierCosts(new Map(supplierProducts.map(p => [p.product_id, p.cost])));
+      setShowAllProducts(false);
+    };
+    loadSupplierProducts();
+  }, [supplierId]);
 
   // Debounce para la búsqueda
   useEffect(() => {
@@ -71,19 +94,24 @@ export function ProductSearchDialog({
 
   // Filtrar productos con debounce
   useEffect(() => {
+    // Base: todos los productos o solo los del proveedor
+    const baseProducts = showAllProducts || supplierProductIds.size === 0
+      ? products
+      : products.filter(p => supplierProductIds.has(p.id));
+
     if (debouncedSearch.trim()) {
       const search = debouncedSearch.toLowerCase();
-      const filtered = products.filter(p =>
+      const filtered = baseProducts.filter(p =>
         p.name.toLowerCase().includes(search) ||
         p.sku.toLowerCase().includes(search) ||
         p.description?.toLowerCase().includes(search)
       );
       setFilteredProducts(filtered);
     } else {
-      setFilteredProducts(products);
+      setFilteredProducts(baseProducts);
     }
     setCurrentPage(1);
-  }, [debouncedSearch, products]);
+  }, [debouncedSearch, products, showAllProducts, supplierProductIds]);
 
   // Función para cargar productos (RPC trae todo en 1 query server-side)
   const cargarProductos = async () => {
@@ -249,8 +277,14 @@ export function ProductSearchDialog({
       return;
     }
 
+    // Aplicar costo del proveedor si está disponible (modo compra)
+    const supplierCost = supplierCosts.get(product.id);
+    const productWithSupplierCost = (mode === 'purchase' && supplierCost && supplierCost > 0)
+      ? { ...product, cost: supplierCost }
+      : product;
+
     // Producto simple: seleccionar directamente
-    onProductSelect(product, modifiers);
+    onProductSelect(productWithSupplierCost, modifiers);
     setIsDialogOpen(false);
     setSearchTerm('');
 
@@ -331,9 +365,9 @@ export function ProductSearchDialog({
             </Button>
           </DialogTrigger>
 
-        <DialogContent className="max-w-6xl w-[95vw] sm:w-[90vw] max-h-[90vh] h-[80vh] sm:h-[90vh] overflow-hidden flex flex-col dark:bg-gray-800 dark:border-gray-700">
+        <DialogContent className="w-full max-w-[95vw] lg:max-w-6xl max-h-[90dvh] h-[80dvh] sm:h-[90dvh] overflow-hidden flex flex-col dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader className="pb-3">
-            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl text-gray-900 dark:text-white">
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-lg sm:text-xl text-gray-900 dark:text-white">
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="truncate">Catálogo de Productos</span>
               <Badge variant="outline" className="ml-2 text-xs dark:border-gray-600 dark:text-gray-300">
@@ -344,7 +378,7 @@ export function ProductSearchDialog({
 
           <div className="flex flex-col space-y-3 sm:space-y-4 flex-1 min-h-0 overflow-hidden">
             {/* Barra de búsqueda */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500" />
                 <Input
@@ -379,12 +413,25 @@ export function ProductSearchDialog({
               </Button>
             </div>
 
-            {/* Estadísticas */}
+            {/* Estadísticas y toggle de filtro por proveedor */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              <span className="truncate">
-                <span className="font-medium text-gray-900 dark:text-gray-100">{filteredProducts.length}</span> de {products.length} productos
-                <span className="hidden md:inline">{debouncedSearch && ` - Filtrando por "${debouncedSearch}"`}</span>
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="truncate">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{filteredProducts.length}</span> de {products.length} productos
+                  <span className="hidden md:inline">{debouncedSearch && ` - Filtrando por "${debouncedSearch}"`}</span>
+                </span>
+                {supplierProductIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllProducts(!showAllProducts)}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+                  >
+                    {showAllProducts
+                      ? `Solo del proveedor (${supplierProductIds.size})`
+                      : `Ver todos (${products.length})`}
+                  </button>
+                )}
+              </div>
               {selectedProductIds.length > 0 && (
                 <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 dark:bg-gray-700 dark:text-gray-300">
                   {selectedProductIds.length} seleccionados
@@ -453,7 +500,7 @@ export function ProductSearchDialog({
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1.5 sm:gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0 dark:border-gray-600 dark:text-gray-300">
                                   {product.sku}
                                 </Badge>
@@ -472,7 +519,7 @@ export function ProductSearchDialog({
                             )}
 
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3 sm:gap-4">
+                              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                                 {/* Precio/Costo principal */}
                                 <div>
                                   <div className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-500">
@@ -561,13 +608,13 @@ export function ProductSearchDialog({
 
             {/* Paginación */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   <span>Página {currentPage} de {totalPages}</span>
                   <span className="hidden sm:inline">·</span>
                   <span className="hidden sm:inline">{filteredProducts.length} productos</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
                   <Button
                     type="button"
                     variant="outline"

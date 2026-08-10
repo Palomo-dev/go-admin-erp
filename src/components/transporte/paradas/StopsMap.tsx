@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TransportStop } from '@/lib/services/transportService';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertTriangle } from 'lucide-react';
 
 interface StopsMapProps {
   stops: TransportStop[];
@@ -242,13 +243,7 @@ export function StopsMap({
   }, [selectedStop]);
 
   if (isLoading) {
-    return (
-      <Card className="h-[500px]">
-        <CardContent className="flex items-center justify-center h-full">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
-        </CardContent>
-      </Card>
-    );
+    return <Skeleton className="h-[500px] w-full rounded-lg" />;
   }
 
   // Si no hay API key, no mostrar el mapa (silencioso para producción)

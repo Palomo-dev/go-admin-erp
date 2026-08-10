@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, UserCircle, Search, X } from "lucide-react";
+import { UserCircle, Search, X } from "lucide-react";
 import { supabase } from "@/lib/supabase/config";
 import { cn } from "@/utils/Utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "next-themes";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CustomerCard } from "./CustomerCard";
 import { Customer } from "@/types/crm";
 
@@ -15,7 +15,6 @@ export function CustomerList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { theme } = useTheme();
   
   const getOrganizationId = () => {
     if (typeof window !== "undefined") {
@@ -85,7 +84,7 @@ export function CustomerList() {
   return (
     <div className={cn(
       "border rounded-md",
-      theme === "dark" ? "bg-background/50 border-slate-800" : "bg-white"
+      "bg-white dark:bg-background/50 border-slate-800"
     )}>
       <div className="p-4 border-b">
         <h3 className="text-lg font-medium">Clientes</h3>
@@ -115,8 +114,10 @@ export function CustomerList() {
 
       <div className="divide-y">
         {isLoading ? (
-          <div className="flex items-center justify-center p-6">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <div className="p-6 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
           </div>
         ) : error ? (
           <div className="p-4 text-sm text-destructive">

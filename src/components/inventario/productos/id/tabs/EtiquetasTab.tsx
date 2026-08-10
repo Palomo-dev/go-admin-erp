@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useRouter } from 'next/navigation';
 import { useOrganization, obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface EtiquetasTabProps {
   producto: any;
@@ -26,7 +27,7 @@ interface TagItem {
  * Pestaña para gestionar las etiquetas del producto
  */
 const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   const { organization } = useOrganization();
   
@@ -405,8 +406,7 @@ const EtiquetasTab: React.FC<EtiquetasTabProps> = ({ producto }) => {
         
         {loading ? (
           <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          </div>
+            <Skeleton className="h-8 w-8 mx-auto" /></div>
         ) : productTags.length === 0 ? (
           <div className="p-8 text-center rounded-md border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <Tag className="mx-auto h-12 w-12 text-gray-400" />

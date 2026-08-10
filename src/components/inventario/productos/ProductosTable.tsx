@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import {
+  useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTheme } from 'next-themes';
+
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
   TableRow 
 } from "@/components/ui/table";
 import { 
@@ -18,15 +19,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+  } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  BadgeCheck, 
-  Loader2, 
-  MoreHorizontal, 
-  Pencil, 
-  Eye, 
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  BadgeCheck,
+  MoreHorizontal,
+  Pencil,
+  Eye,
   Trash2,
   Copy,
   PackageIcon,
@@ -78,7 +78,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   selectedIds = [],
   onSelectionChange
 }) => {
-  const { theme } = useTheme();
+
   const orgCurrency = useOrgCurrency();
   // Formato sin decimales para la tabla usando la moneda de la organización
   const formatPrecioTabla = (value: number): string =>
@@ -426,7 +426,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 </TableCell>
                 <TableCell className="hidden md:table-cell font-mono text-xs sm:text-sm dark:text-gray-300">{producto.sku}</TableCell>
                 <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
-                  <div className="max-w-[150px] sm:max-w-none truncate">{producto.name}</div>
+                  <div className="max-w-[150px] sm:max-w-none break-words whitespace-normal">{producto.name}</div>
                 </TableCell>
                 <TableCell className="hidden md:table-cell text-xs sm:text-sm">
                   <div className="flex flex-wrap gap-1">

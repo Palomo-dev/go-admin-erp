@@ -46,7 +46,7 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
             <a 
               href={`mailto:${displayEmail}`} 
               className={cn(
-                "hover:underline truncate max-w-[200px]",
+                "hover:underline break-words whitespace-normal",
                 "hover:text-primary transition-colors dark:text-gray-300 dark:hover:text-blue-400"
               )}
             >

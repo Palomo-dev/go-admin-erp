@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { DollarSign, Car, CreditCard, Clock, RotateCcw } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 
@@ -56,6 +57,10 @@ export function PagosStats({ stats, isLoading }: PagosStatsProps) {
     },
   ];
 
+  if (isLoading) {
+    return <StatsSkeleton count={5} />;
+  }
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       {statItems.map((item, index) => (
@@ -64,12 +69,7 @@ export function PagosStats({ stats, isLoading }: PagosStatsProps) {
           className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
         >
           <CardContent className="p-4">
-            {isLoading ? (
-              <div className="animate-pulse">
-                <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
-            ) : (
+            {
               <div className="flex flex-wrap items-center gap-3">
                 <div className={`p-2 rounded-lg ${item.bgColor}`}>
                   <item.icon className={`h-5 w-5 ${item.textColor}`} />
@@ -79,7 +79,7 @@ export function PagosStats({ stats, isLoading }: PagosStatsProps) {
                   <p className="text-xs text-gray-500 dark:text-gray-400">{item.label}</p>
                 </div>
               </div>
-            )}
+            }
           </CardContent>
         </Card>
       ))}

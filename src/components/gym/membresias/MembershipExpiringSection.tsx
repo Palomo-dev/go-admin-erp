@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,22 +37,12 @@ export function MembershipExpiringSection({
     return (
       <Card className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800/50">
         <CardHeader className="pb-3">
-          <div className="animate-pulse">
-            <div className="h-5 bg-yellow-200 dark:bg-yellow-800/50 rounded w-full sm:w-40" />
-          </div>
+          <CardTitle className="text-base text-yellow-900 dark:text-yellow-100">
+            Próximos a vencer
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="animate-pulse flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
-                <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full sm:w-32" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24" />
-                </div>
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20" />
-              </div>
-            ))}
-          </div>
+          <CardListSkeleton cards={3} columns="1" />
         </CardContent>
       </Card>
     );

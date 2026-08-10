@@ -123,7 +123,7 @@ export function TaskTimer({ taskId, estimatedHours, variant = 'compact', onChang
   // Vista compacta (tarjetas Kanban / lista)
   if (variant === 'compact') {
     return (
-      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
         {running ? (
           <>
             <span className="text-[10px] font-mono text-green-600 dark:text-green-400 tabular-nums">{formatDuration(elapsed)}</span>

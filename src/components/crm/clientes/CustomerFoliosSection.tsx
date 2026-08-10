@@ -8,7 +8,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Receipt,
   Banknote,
-  Loader2,
   FileText,
   TrendingDown,
   TrendingUp,
@@ -17,6 +16,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatCurrency } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { FolioDetailDialog } from '@/components/pms/folios';
@@ -155,8 +155,15 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
       </div>
     );
   }

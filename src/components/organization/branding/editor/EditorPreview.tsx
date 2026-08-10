@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Globe, AlertCircle } from 'lucide-react';
+import { Globe, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { DevicePreview } from './EditorHeader';
 
 interface EditorPreviewProps {
@@ -73,11 +74,14 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
         >
           {/* Loading Overlay */}
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white z-10 dark:bg-gray-800">
-              <div className="text-center space-y-2">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto dark:text-blue-300" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t('loading')}</p>
+            <div className="absolute inset-0 flex flex-col gap-3 p-4 bg-white z-10 dark:bg-gray-800">
+              <Skeleton className="h-8 w-3/4 rounded" />
+              <Skeleton className="h-64 w-full rounded-lg" />
+              <div className="grid grid-cols-2 gap-3">
+                <Skeleton className="h-32 rounded-lg" />
+                <Skeleton className="h-32 rounded-lg" />
               </div>
+              <Skeleton className="h-24 w-full rounded-lg" />
             </div>
           )}
 

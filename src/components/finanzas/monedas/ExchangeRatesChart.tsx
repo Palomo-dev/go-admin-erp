@@ -770,7 +770,7 @@ const ExchangeRatesChart = ({ organizationId }: ExchangeRatesChartProps) => {
                         <TableCell className="text-xs sm:text-sm dark:text-gray-300 hidden sm:table-cell">
                           {log.organizations_success}/{log.organizations_total}
                         </TableCell>
-                        <TableCell className="max-w-xs truncate text-xs sm:text-sm dark:text-gray-400 hidden md:table-cell">
+                        <TableCell className="break-words whitespace-normal min-w-0 text-xs sm:text-sm dark:text-gray-400 hidden md:table-cell">
                           {log.error_message || formatLogDetails(log.details)}
                         </TableCell>
                       </TableRow>

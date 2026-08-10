@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, lazy, Suspense } from 'react';
-import { useTheme } from 'next-themes';
+import {
+  useState,
+  lazy,
+  Suspense } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { 
-  PencilIcon, 
-  Copy, 
-  Power, 
+import {
+  PencilIcon,
+  Copy,
+  Power,
   Trash2,
-  AlertTriangle, 
+  AlertTriangle,
   ArrowLeft,
   PackagePlus,
   ArrowLeftRight
@@ -55,7 +58,7 @@ interface DetalleProductoProps {
  * Contiene todas las secciones y pestañas para gestionar información de producto
  */
 const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const router = useRouter();
   const { organization, isLoading: loadingOrg } = useOrganization();
   const [activeTab, setActiveTab] = useState<string>('detalles');

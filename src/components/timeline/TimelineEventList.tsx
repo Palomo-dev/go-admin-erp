@@ -161,8 +161,8 @@ export function TimelineEventList({
 
       {/* Loading indicator para paginación */}
       {loading && events.length > 0 && (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+        <div className="py-4">
+          <Skeleton className="h-10 w-full rounded-md" />
         </div>
       )}
     </div>

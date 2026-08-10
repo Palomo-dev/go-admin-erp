@@ -509,7 +509,7 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
                 {/* Zona badge */}
                 {mesa.zone && (
                   <span
-                    className="text-gray-500 dark:text-gray-400 truncate max-w-full px-1"
+                    className="text-gray-500 dark:text-gray-400 break-words whitespace-normal px-1"
                     style={{ fontSize: 9 * zoom }}
                   >
                     {mesa.zone}

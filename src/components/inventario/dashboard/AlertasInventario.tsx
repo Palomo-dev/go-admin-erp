@@ -1,13 +1,14 @@
 'use client';
 
-import { FC } from 'react';
+import {
+  FC } from 'react';
 import { cn } from '@/utils/Utils';
-import { 
-  AlertTriangle, 
-  PackageX, 
-  Clock, 
-  FileText, 
-  Truck, 
+import {
+  AlertTriangle,
+  PackageX,
+  Clock,
+  FileText,
+  Truck,
   ShoppingCart,
   ChevronRight
 } from 'lucide-react';
@@ -148,7 +149,7 @@ const AlertasInventario: FC<AlertasInventarioProps> = ({ alerts, isLoading, clas
                   <p className={cn("font-medium text-sm", styles.text)}>
                     {alert.title}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 break-words whitespace-normal">
                     {alert.description}
                   </p>
                 </div>

@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
+import {ArrowLeft,
   ArrowLeftRight,
   ArrowRight,
   Calendar,
@@ -12,10 +11,8 @@ import {
   FileText,
   Building2,
   Download,
-  Loader2,
   XCircle,
-  Hash,
-} from 'lucide-react';
+  Hash} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { transferenciasService, BankTransfer } from '@/lib/services/transferenciasService';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface TransferenciaDetalleProps {
   id: string;
@@ -118,8 +116,8 @@ Notas: ${transfer.notes || 'N/A'}
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <DetailSkeleton />
       </div>
     );
   }
@@ -190,7 +188,7 @@ Notas: ${transfer.notes || 'N/A'}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 {/* From Account */}
                 <div className="flex-1 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                   <div className="flex items-center gap-2 mb-2">

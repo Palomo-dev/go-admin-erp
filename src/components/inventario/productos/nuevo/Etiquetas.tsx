@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Tag, X, Loader2, Plus, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface EtiquetasProps {
   formData: any
@@ -181,8 +182,7 @@ export default function Etiquetas({ formData, updateFormData }: EtiquetasProps) 
 
       {isLoadingTags ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </div>
+          <Skeleton className="h-6 w-8 mx-auto" /></div>
       ) : (
         <>
           {/* Búsqueda de etiquetas */}

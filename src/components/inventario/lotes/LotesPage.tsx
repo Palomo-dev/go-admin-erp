@@ -62,6 +62,7 @@ import {
 import { LotesService } from './LotesService';
 import { Lot, LotsStats, LotFilter } from './types';
 import { formatDate } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function LotesPage() {
   const { toast } = useToast();
@@ -387,8 +388,7 @@ export function LotesPage() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
+              <Skeleton className="h-8 w-8 mx-auto" /></div>
           ) : lotes.length === 0 ? (
             <div className="text-center py-10 text-gray-500 dark:text-gray-400">
               <Package2 className="h-12 w-12 mx-auto mb-4 opacity-50" />

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { CreditCard, CheckCircle, XCircle, PauseCircle, AlertTriangle } from 'lucide-react';
 
 interface PassesStatsProps {
@@ -80,6 +81,10 @@ export function PassesStats({ stats, isLoading }: PassesStatsProps) {
     return colors[color] || colors.blue;
   };
 
+  if (isLoading) {
+    return <StatsSkeleton count={5} />;
+  }
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {statItems.map((item) => {
@@ -100,7 +105,7 @@ export function PassesStats({ stats, isLoading }: PassesStatsProps) {
                   {item.label}
                 </p>
                 <p className={`text-xl font-bold ${colors.text}`}>
-                  {isLoading ? '...' : item.value}
+                  {item.value}
                 </p>
               </div>
             </div>

@@ -228,7 +228,7 @@ export function FacturasCompraFiltros({ onFiltrosChange }: FacturasCompraFiltros
             </span>
           )}
           {filtros.proveedor !== 'todos' && (
-            <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800 max-w-[200px] truncate">
+            <span className="inline-flex items-center px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800 break-words whitespace-normal min-w-0">
               Proveedor: {proveedores.find(p => p.id.toString() === filtros.proveedor)?.name || 'Desconocido'}
             </span>
           )}

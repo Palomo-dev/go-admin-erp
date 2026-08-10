@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Clock } from 'lucide-react';
 import type { OccupancyByHour } from '@/lib/services/parkingReportService';
 
@@ -28,7 +29,7 @@ export function OccupancyChart({ data, isLoading }: OccupancyChartProps) {
       <CardContent>
         {isLoading ? (
           <div className="h-64 flex items-center justify-center">
-            <div className="animate-pulse text-gray-400 dark:text-gray-500">Cargando...</div>
+            <Skeleton className="h-48 w-full" />
           </div>
         ) : (
           <div className="h-64 flex flex-wrap items-end gap-1">

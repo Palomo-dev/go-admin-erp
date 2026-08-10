@@ -8,7 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+  } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,23 +16,22 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  } from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { 
-  MoreHorizontal, 
-  Eye, 
-  ClipboardEdit, 
+  } from '@/components/ui/select';
+import {
+  MoreHorizontal,
+  Eye,
+  ClipboardEdit,
   ArrowRightLeft,
   AlertTriangle,
   PackageX,
   CheckCircle2,
-  Loader2,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -44,6 +43,7 @@ import {
 import { formatCurrency } from '@/utils/Utils';
 import type { StockLevel } from '@/lib/services/stockService';
 import Link from 'next/link';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface StockTableProps {
   data: StockLevel[];
@@ -218,9 +218,9 @@ export function StockTable({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando stock...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

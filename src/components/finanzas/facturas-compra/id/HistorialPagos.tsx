@@ -164,7 +164,7 @@ export function HistorialPagos({
             {/* Resumen de pagos */}
             {totalPagos > 0 && (
               <div className="mb-3 sm:mb-4 p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
                     <span className="text-sm sm:text-base font-medium text-green-800 dark:text-green-200">

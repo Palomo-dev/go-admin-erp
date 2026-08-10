@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import spaceServicesService, { OrgServiceView } from '@/lib/services/spaceServicesService';
 
 interface SpaceServicesChecklistProps {
@@ -46,8 +46,8 @@ export function SpaceServicesChecklist({
   if (isLoading) {
     return (
       <div className="flex flex-wrap items-center gap-2 py-2">
-        <Loader2 className="h-3 w-3 animate-spin text-gray-400 dark:text-gray-500" />
-        <span className="text-xs text-gray-400 dark:text-gray-500">Cargando servicios...</span>
+        <Skeleton className="h-3 w-3 rounded-full" />
+        <Skeleton className="h-3 w-32" />
       </div>
     );
   }

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTheme } from 'next-themes';
+
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supplierService, type SupplierInput } from '@/lib/services/supplierService';
@@ -38,7 +38,7 @@ interface ParsedSupplier extends SupplierInput {
 
 export function ImportarProveedores() {
   const router = useRouter();
-  const { theme } = useTheme();
+
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

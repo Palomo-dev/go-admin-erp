@@ -45,7 +45,7 @@ export function MesaDetailHeader({
             <Separator orientation="vertical" className="h-8 hidden sm:block" />
             <div className="min-w-0">
               <div className="flex items-center gap-2 sm:gap-3">
-                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-normal">
                   {mesaNombre}
                 </h1>
                 {session ? getEstadoBadge() : <Badge variant="secondary">Disponible</Badge>}

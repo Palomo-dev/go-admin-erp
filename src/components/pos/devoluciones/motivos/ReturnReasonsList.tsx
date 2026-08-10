@@ -168,7 +168,7 @@ export function ReturnReasonsList({
                 <TableCell className="font-medium dark:text-white">
                   {reason.name}
                 </TableCell>
-                <TableCell className="hidden md:table-cell text-gray-500 dark:text-gray-400 max-w-[200px] truncate">
+                <TableCell className="hidden md:table-cell text-gray-500 dark:text-gray-400 break-words whitespace-normal">
                   {reason.description || '-'}
                 </TableCell>
                 <TableCell className="text-center">

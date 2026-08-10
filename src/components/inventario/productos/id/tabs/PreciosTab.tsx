@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { supabase } from '@/lib/supabase/config';
 import { TrendingUp, CalendarIcon, Loader2, Save } from 'lucide-react';
 import { format } from 'date-fns';
@@ -93,6 +93,7 @@ const Tooltip: React.FC<TooltipProps> = () => null;
 const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({ children }) => <div>{children}</div>;
 
 import { formatCurrency } from '@/utils/Utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PreciosTabProps {
   producto: any;
@@ -146,7 +147,7 @@ function useOrganization() {
 }
 
 const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const { organization } = useOrganization();
   
   const [loading, setLoading] = useState<boolean>(true);
@@ -509,9 +510,8 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-4">
                   <div className="flex justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  </div>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Cargando historial...</p>
+                    <Skeleton className="h-6 w-8 mx-auto" /></div>
+                  <Skeleton className="h-4 w-24 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : priceHistory.length === 0 ? (

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DoorOpen, MapPin, Users, Check, Loader2 } from 'lucide-react';
+import { DoorOpen, MapPin, Users, Check } from 'lucide-react';
 
 interface Space {
   id: string;
@@ -101,20 +101,14 @@ export function StepSpaces({
 
       {/* Loading state */}
       {isLoading && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Buscando espacios disponibles...</span>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="p-4">
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2 mb-4" />
-                <Skeleton className="h-10 w-full" />
-              </Card>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="p-4 space-y-2">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-10 w-full" />
+            </Card>
+          ))}
         </div>
       )}
 

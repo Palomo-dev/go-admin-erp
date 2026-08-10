@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Settings2, PlusCircle, X, Trash2, AlertCircle, Check, ArrowUpCircle, ArrowDownCircle, Edit, ChevronUp, ChevronDown, GripVertical, Move, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase/config";
-import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,7 +42,6 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [stages, setStages] = useState<Stage[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const { theme } = useTheme();
 
   // Cargar las etapas cuando cambia el pipeline
   useEffect(() => {
@@ -414,7 +412,7 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
   }
 
   return (
-    <Card className={cn("mb-6", theme === "dark" ? "border-gray-800" : "border-gray-200")}>
+    <Card className={cn("mb-6", "border-gray-200 dark:border-gray-800")}>
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
@@ -462,7 +460,7 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
                   key={stage.id}
                   className={cn(
                     "flex items-center justify-between p-3 rounded-md",
-                    theme === "dark" ? "bg-gray-900" : "bg-gray-50"
+                    "bg-gray-50 dark:bg-gray-900"
                   )}
                 >
                   <div className="flex items-center gap-2">

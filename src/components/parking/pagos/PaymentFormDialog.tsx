@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Loader2,
@@ -364,9 +365,7 @@ export function PaymentFormDialog({
                 <TabsContent value="session" className="mt-4">
                   <ScrollArea className="h-64">
                     {isLoadingItems ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-                      </div>
+                      <CardListSkeleton cards={4} columns="1" />
                     ) : filteredSessions.length === 0 ? (
                       <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                         No hay sesiones pendientes
@@ -418,9 +417,7 @@ export function PaymentFormDialog({
                 <TabsContent value="pass" className="mt-4">
                   <ScrollArea className="h-64">
                     {isLoadingItems ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-                      </div>
+                      <CardListSkeleton cards={4} columns="1" />
                     ) : filteredPasses.length === 0 ? (
                       <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                         No hay pases pendientes

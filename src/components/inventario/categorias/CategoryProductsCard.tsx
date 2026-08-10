@@ -2,11 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Package, ChevronDown, ChevronUp, ExternalLink, Loader2 } from 'lucide-react';
+import { Package, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Product {
   id: number;
@@ -75,8 +80,7 @@ export default function CategoryProductsCard({ categoryId, organizationId }: Cat
         <CardContent className="pt-0">
           {loading ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            </div>
+              <Skeleton className="h-5 w-8 mx-auto" /></div>
           ) : products.length === 0 ? (
             <div className="text-center py-6 text-gray-500 dark:text-gray-400">
               <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -91,7 +95,7 @@ export default function CategoryProductsCard({ categoryId, organizationId }: Cat
                   className="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white break-words whitespace-normal group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {product.name}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">

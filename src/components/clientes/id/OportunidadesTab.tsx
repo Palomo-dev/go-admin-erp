@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Loader2 } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface Oportunidad {
   id: string;
@@ -80,12 +81,7 @@ export default function OportunidadesTab({ clienteId, organizationId }: Oportuni
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-        <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Cargando oportunidades...</p>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error) {
@@ -117,7 +113,7 @@ export default function OportunidadesTab({ clienteId, organizationId }: Oportuni
   return (
     <div className="space-y-4">
       {/* Resumen */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total</p>
           <p className="text-xl font-bold text-gray-900 dark:text-white">{oportunidades.length}</p>
@@ -146,7 +142,7 @@ export default function OportunidadesTab({ clienteId, organizationId }: Oportuni
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 dark:text-white truncate">
+                  <h4 className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">
                     {opp.name}
                   </h4>
                   <div className="flex flex-wrap items-center gap-2 mt-1">

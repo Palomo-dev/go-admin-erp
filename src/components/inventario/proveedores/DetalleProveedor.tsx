@@ -1,12 +1,22 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
-import { X, Mail, Phone, FileText, CalendarDays, ShoppingCart, Clock, BadgePercent } from 'lucide-react';
+
+import {
+  X,
+  Mail,
+  Phone,
+  FileText,
+  CalendarDays,
+  ShoppingCart,
+  Clock,
+  BadgePercent
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Proveedor, CompraProveedor } from './types';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DetalleProveedorProps {
   proveedor: Proveedor;
@@ -22,7 +32,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
   proveedor,
   onClose
 }) => {
-  const { theme } = useTheme();
+
   const [historialCompras, setHistorialCompras] = useState<CompraProveedor[]>([]);
   const [loadingHistorial, setLoadingHistorial] = useState(true);
   
@@ -74,15 +84,15 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
   const getColorEstado = (estado: string) => {
     switch (estado) {
       case 'received':
-        return theme === 'dark' ? 'text-green-400' : 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       case 'partial':
-        return theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600';
+        return 'text-yellow-600 dark:text-yellow-400';
       case 'cancelled':
-        return theme === 'dark' ? 'text-red-400' : 'text-red-600';
+        return 'text-red-600 dark:text-red-400';
       case 'sent':
-        return theme === 'dark' ? 'text-blue-400' : 'text-blue-600';
+        return 'text-blue-600 dark:text-blue-400';
       default:
-        return theme === 'dark' ? 'text-gray-400' : 'text-gray-600';
+        return 'text-gray-600 dark:text-gray-400';
     }
   };
   
@@ -113,13 +123,13 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className={`w-full max-w-4xl rounded-lg shadow-lg ${
-        theme === 'dark' ? 'bg-gray-900' : 'bg-white'
+        'bg-white dark:bg-gray-900'
       }`}>
         <div className={`flex items-center justify-between p-4 border-b ${
-          theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+          'border-gray-200 dark:border-gray-800'
         }`}>
           <h2 className={`text-xl font-semibold ${
-            theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+            'text-gray-900 dark:text-gray-100'
           }`}>
             Detalle del Proveedor
           </h2>
@@ -127,7 +137,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className={theme === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}
+            className={'hover:bg-gray-100 dark:hover:bg-gray-800'}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -136,10 +146,10 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
         <div className="p-6 grid grid-cols-1 gap-6 md:grid-cols-3">
           {/* Información general */}
           <div className={`rounded-md p-4 ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+            'bg-gray-100 dark:bg-gray-800'
           }`}>
             <h3 className={`text-lg font-medium mb-4 ${
-              theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+              'text-gray-800 dark:text-gray-200'
             }`}>
               Información General
             </h3>
@@ -147,7 +157,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
             <div className="space-y-3">
               <div>
                 <p className={`text-sm ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                  'text-gray-500 dark:text-gray-400'
                 }`}>
                   Nombre
                 </p>
@@ -157,7 +167,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               {proveedor.nit && (
                 <div>
                   <p className={`text-sm ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    'text-gray-500 dark:text-gray-400'
                   }`}>
                     NIT / Documento
                   </p>
@@ -168,7 +178,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               {proveedor.contact && (
                 <div>
                   <p className={`text-sm ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    'text-gray-500 dark:text-gray-400'
                   }`}>
                     Persona de Contacto
                   </p>
@@ -179,7 +189,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               {proveedor.phone && (
                 <div className="flex items-center gap-2">
                   <Phone className={`h-4 w-4 ${
-                    theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                    'text-blue-600 dark:text-blue-400'
                   }`} />
                   <p>{proveedor.phone}</p>
                 </div>
@@ -188,7 +198,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               {proveedor.email && (
                 <div className="flex items-center gap-2">
                   <Mail className={`h-4 w-4 ${
-                    theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                    'text-blue-600 dark:text-blue-400'
                   }`} />
                   <p>{proveedor.email}</p>
                 </div>
@@ -197,9 +207,9 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               {proveedor.created_at && (
                 <div className="flex items-center gap-2 text-sm">
                   <CalendarDays className={`h-4 w-4 ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    'text-gray-500 dark:text-gray-400'
                   }`} />
-                  <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                  <p className={'text-gray-500 dark:text-gray-400'}>
                     Registrado el {formatFecha(proveedor.created_at)}
                   </p>
                 </div>
@@ -210,16 +220,16 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className={`h-4 w-4 ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    'text-gray-500 dark:text-gray-400'
                   }`} />
                   <p className={`text-sm ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    'text-gray-500 dark:text-gray-400'
                   }`}>
                     Notas
                   </p>
                 </div>
                 <p className={`text-sm whitespace-pre-line ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                  'text-gray-600 dark:text-gray-300'
                 }`}>
                   {proveedor.notes}
                 </p>
@@ -229,10 +239,10 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
           
           {/* Condiciones de pago */}
           <div className={`rounded-md p-4 ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+            'bg-gray-100 dark:bg-gray-800'
           }`}>
             <h3 className={`text-lg font-medium mb-4 ${
-              theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+              'text-gray-800 dark:text-gray-200'
             }`}>
               Condiciones de Pago
             </h3>
@@ -240,11 +250,11 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <Clock className={`h-5 w-5 ${
-                  theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
+                  'text-yellow-600 dark:text-yellow-400'
                 }`} />
                 <div>
                   <p className={`text-sm ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    'text-gray-500 dark:text-gray-400'
                   }`}>
                     Días de crédito
                   </p>
@@ -257,11 +267,11 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               {proveedor.condiciones_pago?.limite_credito && (
                 <div className="flex items-center gap-3">
                   <ShoppingCart className={`h-5 w-5 ${
-                    theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                    'text-green-600 dark:text-green-400'
                   }`} />
                   <div>
                     <p className={`text-sm ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      'text-gray-500 dark:text-gray-400'
                     }`}>
                       Límite de crédito
                     </p>
@@ -275,7 +285,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               {proveedor.condiciones_pago?.metodo_pago_preferido && (
                 <div>
                   <p className={`text-sm ${
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    'text-gray-500 dark:text-gray-400'
                   }`}>
                     Método de pago preferido
                   </p>
@@ -289,11 +299,11 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
                proveedor.condiciones_pago.descuento_pronto_pago > 0 && (
                 <div className="flex items-center gap-3">
                   <BadgePercent className={`h-5 w-5 ${
-                    theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                    'text-blue-600 dark:text-blue-400'
                   }`} />
                   <div>
                     <p className={`text-sm ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      'text-gray-500 dark:text-gray-400'
                     }`}>
                       Descuento por pronto pago
                     </p>
@@ -308,10 +318,10 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
           
           {/* Indicador de cumplimiento */}
           <div className={`rounded-md p-4 ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+            'bg-gray-100 dark:bg-gray-800'
           }`}>
             <h3 className={`text-lg font-medium mb-4 ${
-              theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+              'text-gray-800 dark:text-gray-200'
             }`}>
               Cumplimiento
             </h3>
@@ -322,10 +332,10 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
                   <div 
                     className={`h-4 rounded-full ${
                       proveedor.cumplimiento >= 80
-                        ? theme === 'dark' ? 'bg-green-600' : 'bg-green-500'
+                        ? 'bg-green-500 dark:bg-green-600'
                         : proveedor.cumplimiento >= 60
-                          ? theme === 'dark' ? 'bg-yellow-600' : 'bg-yellow-500'
-                          : theme === 'dark' ? 'bg-red-600' : 'bg-red-500'
+                          ? 'bg-yellow-500 dark:bg-yellow-600'
+                          : 'bg-red-500 dark:bg-red-600'
                     }`}
                     style={{ width: `${proveedor.cumplimiento}%` }}
                   />
@@ -334,7 +344,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
                   {proveedor.cumplimiento}%
                 </p>
                 <p className={`text-center text-sm mt-1 ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                  'text-gray-500 dark:text-gray-400'
                 }`}>
                   {proveedor.cumplimiento >= 80
                     ? 'Excelente cumplimiento'
@@ -346,7 +356,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
               </>
             ) : (
               <p className={`text-center ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                'text-gray-500 dark:text-gray-400'
               }`}>
                 No hay datos de cumplimiento disponibles
               </p>
@@ -355,29 +365,29 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
           
           {/* Historial de compras */}
           <div className={`col-span-1 md:col-span-3 rounded-md p-4 ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+            'bg-gray-100 dark:bg-gray-800'
           }`}>
             <h3 className={`text-lg font-medium mb-4 ${
-              theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+              'text-gray-800 dark:text-gray-200'
             }`}>
               Historial de Compras
             </h3>
             
             {loadingHistorial ? (
-              <p className="text-center py-4">Cargando historial...</p>
+              <Skeleton className="h-4 w-24 mx-auto" />
             ) : historialCompras.length === 0 ? (
               <p className={`text-center py-4 ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                'text-gray-500 dark:text-gray-400'
               }`}>
                 No hay compras registradas para este proveedor
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className={`w-full ${
-                  theme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+                  'text-gray-800 dark:text-gray-200'
                 }`}>
                   <thead>
-                    <tr className={theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-300'}>
+                    <tr className={'border-b border-gray-300 dark:border-gray-700'}>
                       <th className="text-left py-2 px-4">ID</th>
                       <th className="text-left py-2 px-4">Fecha</th>
                       <th className="text-left py-2 px-4">Entrega Esperada</th>
@@ -389,7 +399,7 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
                     {historialCompras.map((compra) => (
                       <tr 
                         key={compra.id}
-                        className={theme === 'dark' ? 'border-b border-gray-700' : 'border-b border-gray-200'}
+                        className={'border-b border-gray-200 dark:border-gray-700'}
                       >
                         <td className="py-2 px-4">{compra.id}</td>
                         <td className="py-2 px-4">{formatFecha(compra.fecha)}</td>
@@ -408,14 +418,12 @@ const DetalleProveedor: React.FC<DetalleProveedorProps> = ({
         </div>
         
         <div className={`flex justify-end p-4 border-t ${
-          theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+          'border-gray-200 dark:border-gray-800'
         }`}>
           <Button
             onClick={onClose}
             className={`${
-              theme === 'dark' 
-                ? 'bg-gray-800 hover:bg-gray-700 text-gray-200' 
-                : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              'bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200'
             }`}
           >
             Cerrar

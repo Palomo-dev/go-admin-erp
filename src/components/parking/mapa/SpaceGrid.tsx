@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SpaceCard } from './SpaceCard';
 import type { ParkingSpace, ParkingZone } from '@/lib/services/parkingMapService';
 
@@ -25,10 +26,7 @@ export function SpaceGrid({
     return (
       <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
         {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-[100px] rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse"
-          />
+          <Skeleton key={i} className="h-[100px] w-full rounded-lg" />
         ))}
       </div>
     );

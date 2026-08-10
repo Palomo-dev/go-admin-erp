@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { 
-  ClipboardEdit, 
+import {
+  Button } from '@/components/ui/button';
+import {
+  ClipboardEdit,
   Plus,
   Package,
   ArrowRightLeft,

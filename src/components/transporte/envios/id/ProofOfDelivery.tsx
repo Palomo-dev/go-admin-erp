@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -104,10 +105,13 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
 
   if (isLoading) {
     return (
-      <Card className="p-4">
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
+      <Card className="p-4 space-y-3">
+        <Skeleton className="h-5 w-1/2" />
+        <div className="grid grid-cols-2 gap-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
         </div>
+        <Skeleton className="h-32 w-full" />
       </Card>
     );
   }

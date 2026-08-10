@@ -315,7 +315,7 @@ export function RecordatoriosPanel({ onRefresh }: RecordatoriosPanelProps) {
                             {recordatorio.customer_email ? (
                               <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
                                 <Mail className="h-2.5 w-2.5 mr-1" />
-                                <span className="truncate max-w-[150px]">{recordatorio.customer_email}</span>
+                                <span className="break-words whitespace-normal min-w-0">{recordatorio.customer_email}</span>
                               </div>
                             ) : (
                               <div className="flex items-center text-xs text-gray-400 dark:text-gray-500">

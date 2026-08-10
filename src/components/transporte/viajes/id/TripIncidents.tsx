@@ -1,6 +1,7 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Plus, Clock, CheckCircle } from 'lucide-react';
@@ -41,13 +42,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIncidentsProps) {
   if (isLoading) {
-    return (
-      <Card className="p-4 sm:p-8">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-300"></div>
-        </div>
-      </Card>
-    );
+    return <CardListSkeleton cards={3} columns="1" />;
   }
 
   return (

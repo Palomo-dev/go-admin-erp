@@ -458,7 +458,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
               {members.map((m) => (
                 <div key={m.userId} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 group">
                   <UserPlus className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                  <span className="text-sm flex-1 text-gray-700 dark:text-gray-300 truncate">{m.nombre}</span>
+                  <span className="text-sm flex-1 min-w-0 text-gray-700 dark:text-gray-300 break-words whitespace-normal">{m.nombre}</span>
                   <Select value={m.role} onValueChange={(v) => setMembers(prev => prev.map(x => x.userId === m.userId ? { ...x, role: v } : x))}>
                     <SelectTrigger className="h-7 w-24 text-xs border-0 bg-transparent p-1">
                       <SelectValue />

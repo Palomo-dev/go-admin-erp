@@ -7,16 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   Settings,
   CreditCard,
-  FileText,
   Percent,
   Hash,
   RefreshCw,
   ArrowLeft,
   ChevronRight,
-  Loader2,
   DollarSign,
   Receipt,
   Calculator,
@@ -129,7 +128,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       await ConfiguracionService.togglePaymentMethod(id, !currentState);
       toast({ title: 'Actualizado', description: 'Método de pago actualizado' });
       loadData(true);
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el método de pago',
@@ -143,7 +142,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       await ConfiguracionService.toggleServiceCharge(id, !currentState);
       toast({ title: 'Actualizado', description: 'Cargo de servicio actualizado' });
       loadData(true);
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo actualizar el cargo de servicio',
@@ -160,7 +159,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     try {
       await ConfiguracionService.saveCategoriesDisplayConfig(config);
       toast({ title: 'Actualizado', description: 'Visualización de categorías actualizada' });
-    } catch (error) {
+    } catch {
       setCategoriesDisplay(previous);
       toast({
         title: 'Error',
@@ -179,7 +178,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     try {
       await ConfiguracionService.saveBlindCashCountConfig({ blind_cash_count: value });
       toast({ title: 'Actualizado', description: value ? 'Arqueo ciego activado' : 'Arqueo ciego desactivado' });
-    } catch (error) {
+    } catch {
       setBlindCashCount(previous);
       toast({
         title: 'Error',
@@ -198,7 +197,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     try {
       await ConfiguracionService.saveRequireCashSessionConfig({ require_cash_session: value });
       toast({ title: 'Actualizado', description: value ? 'Se requiere caja abierta para vender' : 'Venta sin caja abierta permitida' });
-    } catch (error) {
+    } catch {
       setRequireCashSession(previous);
       toast({
         title: 'Error',
@@ -227,8 +226,9 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

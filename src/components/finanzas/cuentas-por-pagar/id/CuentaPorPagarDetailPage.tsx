@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, Calendar, Clock, DollarSign, User, Phone, Mail, FileText, AlertCircle, Building2, Receipt, Download } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, DollarSign, User, Phone, Mail, FileText, AlertCircle, Building2, Receipt, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -369,6 +369,18 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
               </div>
             )}
 
+            {account.supplier_uuid && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/app/inventario/proveedores/${account.supplier_uuid}`)}
+                className="dark:border-gray-600 dark:hover:bg-gray-800"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Ver Perfil del Proveedor
+              </Button>
+            )}
+
             <Separator className="dark:bg-gray-700" />
 
             {/* Invoice Info */}
@@ -378,7 +390,7 @@ Fecha de Generación: ${new Date().toLocaleDateString('es-CO')}
                   Factura de Compra
                 </h4>
                 <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between">
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">
                         {account.invoice_number}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
 import { 
   Card, 
   CardContent, 
@@ -27,14 +26,13 @@ import { BarChart, CalendarIcon, ChevronDownIcon, RefreshCw, TrendingUp, LineCha
 import { formatCurrency } from "@/utils/Utils";
 import { currencyService } from "@/lib/services/currencyService";
 import { MonthlyForecast, ForecastOpportunity, getMonthlyForecast } from "@/lib/services/forecastService";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import { TableSkeleton } from "@/components/common/PageSkeletons";
 
 interface MonthlyForecastViewProps {
   pipelineId: string;
 }
 
 const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId }) => {
-  const { theme } = useTheme();
   const [loading, setLoading] = useState<boolean>(true);
   const [monthlyForecasts, setMonthlyForecasts] = useState<MonthlyForecast[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
@@ -308,7 +306,7 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
         <Card className="py-8">
           <CardContent className="flex flex-col items-center justify-center">
             {loading ? (
-              <LoadingSpinner />
+              <TableSkeleton columns={6} rows={5} />
             ) : (
               <>
                 <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />

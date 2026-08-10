@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ShoppingBag } from 'lucide-react';
 
 // Interfaces para los elementos del timeline
@@ -303,10 +304,8 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
   // Renderizar estado de carga
   if (loading) {
     return (
-      <div className="w-full py-8">
-        <div className="w-full flex justify-center">
-          <div className="loading loading-spinner loading-md text-primary"></div>
-        </div>
+      <div className="py-4">
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

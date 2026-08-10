@@ -206,13 +206,13 @@ export function SupplierSelector({
                   displayedSuppliers.map((proveedor: SupplierBase) => (
                     <SelectItem key={proveedor.id} value={proveedor.id.toString()} className="text-sm dark:text-gray-100 dark:focus:bg-gray-700">
                       <div className="w-full py-0.5">
-                        <div className="font-medium text-xs sm:text-sm truncate text-gray-900 dark:text-gray-100">{proveedor.name}</div>
+                        <div className="font-medium text-xs sm:text-sm break-words whitespace-normal min-w-0 text-gray-900 dark:text-gray-100">{proveedor.name}</div>
                         <div className="flex gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                           {proveedor.nit && (
                             <span className="shrink-0">NIT: {proveedor.nit}</span>
                           )}
                           {proveedor.contact && (
-                            <span className="truncate">• {proveedor.contact}</span>
+                            <span className="break-words whitespace-normal min-w-0">• {proveedor.contact}</span>
                           )}
                         </div>
                       </div>

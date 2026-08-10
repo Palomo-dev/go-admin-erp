@@ -133,7 +133,7 @@ export function ReservasList({
                 {/* Info principal */}
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-900 dark:text-white truncate">
+                    <span className="font-semibold text-gray-900 dark:text-white break-words whitespace-normal">
                       {r.customer_name}
                     </span>
                     <Badge className={getStatusBadgeClasses(r.status)}>
@@ -175,7 +175,7 @@ export function ReservasList({
                   </div>
 
                   {(r.notes || r.special_requests) && (
-                    <p className="text-xs text-gray-500 dark:text-gray-500 italic truncate">
+                    <p className="text-xs text-gray-500 dark:text-gray-500 italic break-words whitespace-normal">
                       {r.special_requests || r.notes}
                     </p>
                   )}

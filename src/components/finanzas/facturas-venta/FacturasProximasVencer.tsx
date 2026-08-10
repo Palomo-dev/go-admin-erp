@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { parseLocalDate } from '@/utils/Utils';
-import { Loader2, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import {AlertTriangle, CheckCircle, Clock} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 
 // Tipo para los datos que vienen de Supabase
 interface FacturaData {
@@ -158,9 +159,7 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
-          </div>
+          <CardListSkeleton cards={3} columns="1" />
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-red-800 dark:text-red-400 text-sm border border-red-200 dark:border-red-800">
             {error}
@@ -188,10 +187,10 @@ export function FacturasProximasVencer({ diasLimite = 15 }) {
                 >
                   {/* Información de la factura */}
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">
+                    <div className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 break-words whitespace-normal min-w-0">
                       {factura.number}
                     </div>
-                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words whitespace-normal min-w-0 mt-0.5">
                       {factura.customer_name}
                     </div>
                     <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-500 mt-1">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, Globe } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -31,6 +31,7 @@ import {
   WidgetBehavior,
   BrandConfig
 } from '@/lib/services/chatChannelsService';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function WebsiteChannelSettingsPage() {
   const params = useParams();
@@ -433,10 +434,10 @@ export default function WebsiteChannelSettingsPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <DetailSkeleton />
+  </div>
+);
   }
 
   if (!channel) {

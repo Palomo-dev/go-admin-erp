@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -9,15 +9,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+  } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Eye, 
-  Truck,
-  PackageCheck,
-  XCircle
-} from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Eye, Truck, PackageCheck, XCircle } from 'lucide-react';
 import { InventoryTransfer } from './types';
 import { formatDate } from '@/utils/Utils';
 
@@ -44,7 +40,6 @@ export function TransferenciasTable({
   onCancelar 
 }: TransferenciasTableProps) {
   const router = useRouter();
-  const pathname = usePathname();
 
   const handleVerDetalle = (id: number) => {
     router.push(`/app/inventario/transferencias/${id}`);
@@ -52,8 +47,9 @@ export function TransferenciasTable({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="p-4 sm:p-6 space-y-4">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }

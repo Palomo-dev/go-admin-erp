@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { 
   Calendar, 
   Users, 
@@ -20,7 +21,6 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Loader2,
   BarChart3
 } from 'lucide-react';
 import { Instructor, getInstructorStats, getClasses, GymClass, getClassTypeLabel } from '@/lib/services/gymService';
@@ -140,8 +140,8 @@ export function InstructorDetailDialog({ open, onOpenChange, instructor }: Instr
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+            <div className="py-4">
+              <CardListSkeleton cards={3} columns="1" />
             </div>
           ) : (
             <Tabs defaultValue="stats" className="w-full">

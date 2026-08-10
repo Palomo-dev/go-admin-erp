@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, Check, X, Loader2, Copy, Edit, Link2 } from 'lucide-react';
 import Link from 'next/link';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import {
   integrationsService,
   IntegrationProvider,
@@ -1118,12 +1119,10 @@ export default function NuevaConexionPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
-          </div>
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <PageHeaderSkeleton />
+          <DetailSkeleton />
         </div>
       </div>
     );

@@ -1,23 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
+import { supplierService } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+
 import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
 import { SearchSelectCombobox, type SearchSelectOption } from '../SearchSelectCombobox';
 import { Store } from 'lucide-react';
@@ -35,8 +31,7 @@ import {
   Send,
   Loader2, 
   Building2, 
-  Truck, 
-  Calendar,
+  Truck,
   Plus,
   Trash2,
   Package
@@ -62,6 +57,7 @@ export function NuevaOrdenCompraForm() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Datos de selectores
   const [suppliers, setSuppliers] = useState<SearchSelectOption[]>([]);
@@ -73,21 +69,54 @@ export function NuevaOrdenCompraForm() {
   const [itemQuantity, setItemQuantity] = useState<string>('1');
   const [itemCost, setItemCost] = useState<string>('0');
 
+  // Productos filtrados por proveedor
+  const [supplierProductIds, setSupplierProductIds] = useState<Set<number>>(new Set());
+  const [supplierCosts, setSupplierCosts] = useState<Map<number, number>>(new Map());
+  const [showAllProducts, setShowAllProducts] = useState(false);
+
   // Cargar datos iniciales
   useEffect(() => {
     const loadData = async () => {
-      const organizationId = getOrganizationId();
-      const [suppliersData, branchesData, productsData] = await Promise.all([
-        purchaseOrderService.getSuppliers(organizationId),
-        purchaseOrderService.getBranches(organizationId),
-        purchaseOrderService.getProducts(organizationId)
-      ]);
-      setSuppliers(suppliersData);
-      setBranches(branchesData);
-      setProducts(productsData);
+      setIsLoading(true);
+      try {
+        const organizationId = getOrganizationId();
+        const [suppliersData, branchesData, productsData] = await Promise.all([
+          purchaseOrderService.getSuppliers(organizationId),
+          purchaseOrderService.getBranches(organizationId),
+          purchaseOrderService.getProducts(organizationId)
+        ]);
+        setSuppliers(suppliersData);
+        setBranches(branchesData);
+        setProducts(productsData);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
   }, []);
+
+  // Cargar productos del proveedor cuando se selecciona
+  useEffect(() => {
+    if (!supplierId) {
+      setSupplierProductIds(new Set());
+      setSupplierCosts(new Map());
+      return;
+    }
+    const loadSupplierProducts = async () => {
+      const supplierProducts = await supplierService.getProductsBySupplier(parseInt(supplierId));
+      const ids = new Set(supplierProducts.map(p => p.product_id));
+      const costs = new Map(supplierProducts.map(p => [p.product_id, p.cost]));
+      setSupplierProductIds(ids);
+      setSupplierCosts(costs);
+      setShowAllProducts(false);
+    };
+    loadSupplierProducts();
+  }, [supplierId]);
+
+  // Productos a mostrar: filtrados por proveedor o todos
+  const displayedProducts = showAllProducts || supplierProductIds.size === 0
+    ? products
+    : products.filter(p => supplierProductIds.has(p.id));
 
   // Agregar item
   const handleAddItem = () => {
@@ -208,6 +237,19 @@ export function NuevaOrdenCompraForm() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <Skeleton className="h-64 w-full lg:col-span-2" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -301,16 +343,34 @@ export function NuevaOrdenCompraForm() {
                 <div className="space-y-1">
                   <Label className="text-xs text-gray-500 dark:text-gray-400">Buscar Producto</Label>
                   <ProductSearchCombobox
-                    products={products}
+                    products={displayedProducts}
                     value={selectedProduct}
                     onSelect={(product) => {
                       setSelectedProduct(product ? product.id.toString() : '');
-                      if (product?.cost && product.cost > 0) {
-                        setItemCost(product.cost.toString());
+                      if (product) {
+                        const supplierCost = supplierCosts.get(product.id);
+                        if (supplierCost && supplierCost > 0) {
+                          setItemCost(supplierCost.toString());
+                        } else if (product.cost && product.cost > 0) {
+                          setItemCost(product.cost.toString());
+                        }
                       }
                     }}
                     placeholder="Buscar por nombre o SKU..."
                   />
+                  {supplierProductIds.size > 0 && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllProducts(!showAllProducts)}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {showAllProducts
+                          ? `Mostrar solo productos del proveedor (${supplierProductIds.size})`
+                          : `Mostrar todos los productos (${products.length})`}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 items-end">
                   <div className="flex-1 sm:w-32 space-y-1">
@@ -382,7 +442,7 @@ export function NuevaOrdenCompraForm() {
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-white truncate">{item.productName}</p>
+                                <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">{item.productName}</p>
                                 <p className="text-xs text-blue-600 dark:text-blue-400 font-mono">{item.sku}</p>
                               </div>
                             </div>

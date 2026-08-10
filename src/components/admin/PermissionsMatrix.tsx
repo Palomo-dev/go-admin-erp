@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePermissions, useRoles } from '@/hooks/useRoles';
-import { Permission, RoleWithPermissions } from '@/lib/services/roleService';
+import { RoleWithPermissions } from '@/lib/services/roleService';
 import { ModulePermissions } from '@/lib/services/permissionService';
 import { 
   Check, 
   X, 
   Search, 
-  Filter, 
   ChevronDown, 
   ChevronRight,
   Shield,
@@ -29,8 +29,7 @@ interface PermissionsMatrixProps {
 export default function PermissionsMatrix({ 
   role, 
   organizationId, 
-  onClose, 
-  onPermissionsUpdated 
+  onClose
 }: PermissionsMatrixProps) {
   const { permissions: modulePermissions, loading: permissionsLoading } = usePermissions();
   const { setRolePermissions, getRolePermissions } = useRoles(organizationId);
@@ -184,10 +183,12 @@ export default function PermissionsMatrix({
   if (loading || permissionsLoading) {
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-6xl shadow-lg rounded-md bg-white dark:bg-gray-800">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando permisos...</span>
+        <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-6xl shadow-lg rounded-md bg-white dark:bg-gray-800 space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-32 rounded-lg" />
+            ))}
           </div>
         </div>
       </div>

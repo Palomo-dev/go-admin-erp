@@ -35,6 +35,7 @@ import {
 } from '@/components/pms/espacios/id';
 import { AddProductDialog } from '@/components/pos/mesas/id/AddProductDialog';
 import type { ProductToAdd } from '@/components/pos/mesas/id/types';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { SpaceDialog } from '@/components/pms/espacios';
 import SpacesService, { type Space, type SpaceType } from '@/lib/services/spacesService';
 import SpaceConsumptionService from '@/lib/services/spaceConsumptionService';
@@ -44,7 +45,6 @@ import reservationBlocksService, { ReservationBlock } from '@/lib/services/reser
 import spaceImageService, { SpaceImage } from '@/lib/services/spaceImageService';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { RefreshCw } from 'lucide-react';
 import { TripAdvisorContentPanel } from '@/components/integraciones/tripadvisor';
 import ReservationExtrasService from '@/lib/services/reservationExtrasService';
 
@@ -444,13 +444,9 @@ export default function SpaceDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Cargando detalles del espacio...
-          </p>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

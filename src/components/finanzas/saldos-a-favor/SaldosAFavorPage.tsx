@@ -80,7 +80,7 @@ export function SaldosAFavorPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <Wallet className="h-6 w-6 text-blue-600 dark:text-blue-400" />

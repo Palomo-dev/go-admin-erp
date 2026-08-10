@@ -9,6 +9,11 @@ import ReservationListService, { type ReservationFilters, type ReservationListIt
 import CheckinService, { type CheckinReservation } from '@/lib/services/checkinService';
 import CheckoutService, { type CheckoutReservation } from '@/lib/services/checkoutService';
 import {
+  PageHeaderSkeleton,
+  StatsSkeleton,
+  TableSkeleton,
+} from '@/components/common/PageSkeletons';
+import {
   ReservationsHeader,
   ReservationsFilters,
   ReservationsTable,
@@ -540,8 +545,12 @@ export default function ReservasPage() {
 
   if (!organization) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <PageHeaderSkeleton />
+          <StatsSkeleton count={6} />
+          <TableSkeleton rows={5} columns={8} />
+        </div>
       </div>
     );
   }
@@ -563,9 +572,7 @@ export default function ReservasPage() {
         />
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-          </div>
+          <TableSkeleton rows={5} columns={8} />
         ) : (
           <>
             {/* Barra de acciones masivas */}

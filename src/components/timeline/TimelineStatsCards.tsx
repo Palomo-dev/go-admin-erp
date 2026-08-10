@@ -3,6 +3,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/utils/Utils';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import {
   Activity,
   Calendar,
@@ -52,20 +53,7 @@ export function TimelineStatsCards({ stats, loading }: TimelineStatsCardsProps) 
   ];
 
   if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardContent className="p-4">
-              <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
-                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={4} />;
   }
 
   return (

@@ -1,17 +1,21 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTheme } from 'next-themes';
-import { useToast } from '@/components/ui/use-toast';
+
+import {
+  useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { 
-  adjustmentService, 
-  type InventoryAdjustment, 
+  adjustmentService,
+  type InventoryAdjustment,
   type AdjustmentStats as AdjustmentStatsType 
 } from '@/lib/services/adjustmentService';
-import { AjustesHeader, AjustesStats, AjustesFilters, AjustesTable } from '@/components/inventario/ajustes';
-import { Loader2 } from 'lucide-react';
+import { AjustesHeader,
+  AjustesStats,
+  AjustesFilters,
+  AjustesTable } from '@/components/inventario/ajustes';
+
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
   AlertDialog,
@@ -23,9 +27,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function AjustesPage() {
-  const { theme } = useTheme();
+
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
 
@@ -253,9 +258,9 @@ export default function AjustesPage() {
   // Loading inicial
   if (loadingOrg || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

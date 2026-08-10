@@ -303,7 +303,7 @@ export function RecipeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
+      <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="dark:text-white">
             {recipe ? 'Editar Receta' : 'Nueva Receta'}
@@ -533,7 +533,7 @@ function IngredientRowCard({
           <div className="md:col-span-5 relative">
             {selectedProduct ? (
               <div className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-600">
-                <span className="text-sm font-medium dark:text-white truncate">
+                <span className="text-sm font-medium dark:text-white break-words whitespace-normal">
                   {formatProductDisplayName(selectedProduct)}
                 </span>
                 <button

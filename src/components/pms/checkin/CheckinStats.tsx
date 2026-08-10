@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { 
   Calendar, 
   CheckCircle2, 
@@ -18,15 +19,7 @@ interface CheckinStatsProps {
 
 export function CheckinStats({ stats, isLoading }: CheckinStatsProps) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {[...Array(5)].map((_, i) => (
-          <Card key={i} className="p-6 animate-pulse">
-            <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={5} />;
   }
 
   const statsConfig = [

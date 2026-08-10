@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Wallet, AlertCircle } from 'lucide-react';
+import { PageHeaderSkeleton, FilterBarSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Wallet, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import parkingPaymentService, {
   type ParkingPayment,
@@ -152,8 +153,10 @@ export default function PagosPage() {
   // Loading state
   if (orgLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="p-4 sm:p-6 space-y-4">
+        <PageHeaderSkeleton />
+        <FilterBarSkeleton />
+        <CardListSkeleton cards={6} columns="3" />
       </div>
     );
   }
@@ -195,10 +198,7 @@ export default function PagosPage() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-          <span className="ml-3 text-gray-500 dark:text-gray-400">Cargando pagos...</span>
-        </div>
+        <CardListSkeleton cards={6} columns="3" />
       ) : payments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">

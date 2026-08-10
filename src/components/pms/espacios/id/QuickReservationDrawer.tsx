@@ -24,6 +24,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Plus, Loader2, X, DollarSign, AlertTriangle, Link2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import type { Space } from '@/lib/services/spacesService';
 import ReservationsService from '@/lib/services/reservationsService';
@@ -275,7 +276,7 @@ export function QuickReservationDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-1/2 min-w-[400px] sm:max-w-none overflow-y-auto bg-white dark:bg-gray-900">
+      <SheetContent side="right" className="w-full sm:w-[500px] lg:w-[600px] overflow-y-auto bg-white dark:bg-gray-900">
         <SheetHeader>
           <SheetTitle>Nueva Reserva Rápida</SheetTitle>
           <SheetDescription>
@@ -511,7 +512,7 @@ export function QuickReservationDrawer({
                 disabled={isLoadingPaymentMethods || paymentMethods.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={isLoadingPaymentMethods ? "Cargando..." : "Seleccionar método"} />
+                  <SelectValue placeholder={isLoadingPaymentMethods ? <Skeleton className="h-4 w-32" /> : "Seleccionar método"} />
                 </SelectTrigger>
                 <SelectContent>
                   {paymentMethods.map((method) => (

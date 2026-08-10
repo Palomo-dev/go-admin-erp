@@ -19,10 +19,9 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useTheme } from 'next-themes';
-import { Search, Loader2, UserPlus } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Search, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/utils/Utils';
 
 interface Customer {
   id: string;
@@ -41,7 +40,6 @@ export function CustomersList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const { theme } = useTheme();
 
   // Obtener el ID de la organización activa desde localStorage
   const getOrganizationId = () => {
@@ -111,7 +109,7 @@ export function CustomersList() {
   }, [searchQuery, customers]);
 
   return (
-    <Card className={cn("w-full bg-white dark:bg-gray-800", theme === "dark" ? "border-gray-700" : "border-gray-200")}>
+    <Card className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="p-3 sm:p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
@@ -137,9 +135,10 @@ export function CustomersList() {
       </CardHeader>
       <CardContent className="p-3 sm:p-4 md:p-6 pt-0">
         {isLoading ? (
-          <div className="flex justify-center items-center py-6 sm:py-8">
-            <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-blue-600 dark:text-blue-400" />
-            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Cargando clientes...</span>
+          <div className="py-6 sm:py-8 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
           </div>
         ) : error ? (
           <div className="py-6 sm:py-8 text-center text-red-500 dark:text-red-400">

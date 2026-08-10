@@ -393,7 +393,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                         >
                           <span className="flex items-center gap-2 min-w-0">
                             <Usb className={cn('h-3 w-3 shrink-0', d.isPrinter ? 'text-green-500' : 'text-gray-400')} />
-                            <span className="truncate">{d.name || `${d.vendorId}:${d.productId}`}</span>
+                            <span className="break-words whitespace-normal">{d.name || `${d.vendorId}:${d.productId}`}</span>
                           </span>
                           <span className="shrink-0 ml-2 text-[10px] text-gray-400 font-mono">
                             {d.vendorId}:{d.productId}

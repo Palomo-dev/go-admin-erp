@@ -114,7 +114,7 @@ export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: Paym
   return (
     <Card className="dark:bg-gray-800/50 dark:border-gray-700">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -140,7 +140,7 @@ export function PaymentHistoryCard({ accountId, organizationId, onUpdate }: Paym
           </div>
           
           {/* Filtros */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-gray-500" />

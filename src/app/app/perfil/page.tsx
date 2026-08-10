@@ -4,6 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase, updatePassword } from '@/lib/supabase/config';
 import { User } from '@supabase/supabase-js';
 import { ChevronRight, Lock, Edit2, Save, Users, Bell, LogOut, UserX, Globe, Shield, PhoneCall, Mail, AlertTriangle, TrendingUp, ExternalLink } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -310,30 +312,30 @@ export default function PerfilUsuarioPage() {
     return (
       <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Skeleton sidebar */}
           <aside className="w-full lg:w-64 shrink-0">
-            <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">
-              <div className="flex flex-col items-center mb-6 p-4">
-                <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse mb-4" />
-                <div className="h-5 w-full sm:w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
-                <div className="h-4 w-full sm:w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <Card className="p-4 space-y-4">
+              <div className="flex flex-col items-center space-y-2">
+                <Skeleton className="h-20 w-20 rounded-full" />
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-40" />
               </div>
               <div className="space-y-2">
                 {[...Array(7)].map((_, i) => (
-                  <div key={i} className="h-10 bg-gray-100 dark:bg-gray-700/50 rounded-md animate-pulse" />
+                  <Skeleton key={i} className="h-10 w-full rounded-md" />
                 ))}
               </div>
-            </div>
+            </Card>
           </aside>
-          {/* Skeleton content */}
-          <main className="flex-grow bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-            <div className="h-7 w-full sm:w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
-            <div className="h-4 w-full sm:w-72 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-8" />
-            <div className="space-y-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-14 bg-gray-100 dark:bg-gray-700/50 rounded-lg animate-pulse" />
-              ))}
-            </div>
+          <main className="flex-1">
+            <Card className="p-6 space-y-4">
+              <Skeleton className="h-7 w-48" />
+              <Skeleton className="h-4 w-72" />
+              <div className="space-y-4">
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
+            </Card>
           </main>
         </div>
       </div>

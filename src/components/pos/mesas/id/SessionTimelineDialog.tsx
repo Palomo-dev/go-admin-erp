@@ -8,7 +8,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, History, PlusCircle, RefreshCcw, XCircle, Trash2 } from 'lucide-react';
+import { History, PlusCircle, RefreshCcw, XCircle, Trash2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SessionAuditService, type SessionAuditEvent } from './sessionAuditService';
 
 interface SessionTimelineDialogProps {
@@ -74,8 +75,10 @@ export function SessionTimelineDialog({ open, onOpenChange, tableId }: SessionTi
         </DialogHeader>
 
         {loading && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          <div className="py-8 space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-5/6" />
           </div>
         )}
 

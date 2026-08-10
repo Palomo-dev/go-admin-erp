@@ -1,9 +1,10 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Truck, Package, AlertTriangle, Clock, ExternalLink, Loader2 } from 'lucide-react';
+import { Truck, Package, AlertTriangle, Clock, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -33,13 +34,7 @@ const STATUS_REASONS: Record<string, string> = {
 
 export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsPanelProps) {
   if (isLoading) {
-    return (
-      <Card className="p-4">
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-300" />
-        </div>
-      </Card>
-    );
+    return <CardListSkeleton cards={3} columns="1" />;
   }
 
   return (

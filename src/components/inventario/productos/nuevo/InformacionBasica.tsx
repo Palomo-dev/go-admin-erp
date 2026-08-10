@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchSelect } from '@/components/ui/search-select'
 import { Package, Sparkles, Loader2, RefreshCw } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -304,9 +305,7 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
             Categoría
           </Label>
           {isLoadingData ? (
-            <div className="flex items-center justify-center h-10 border border-gray-300 dark:border-gray-700 rounded-md">
-              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-            </div>
+            <Skeleton className="h-10 w-full" />
           ) : (
             <SearchSelect
               options={categories.map((cat) => ({ value: cat.id.toString(), label: cat.name }))}
@@ -326,9 +325,7 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
             Unidad de Medida
           </Label>
           {isLoadingData ? (
-            <div className="flex items-center justify-center h-10 border border-gray-300 dark:border-gray-700 rounded-md">
-              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-            </div>
+            <Skeleton className="h-10 w-full" />
           ) : (
             <SearchSelect
               options={units.map((unit) => ({ value: unit.code, label: unit.name, sublabel: unit.code }))}
@@ -348,9 +345,7 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
             Impuesto
           </Label>
           {isLoadingData ? (
-            <div className="flex items-center justify-center h-10 border border-gray-300 dark:border-gray-700 rounded-md">
-              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-            </div>
+            <Skeleton className="h-10 w-full" />
           ) : (
             <SearchSelect
               options={taxes.map((tax) => ({ value: tax.id, label: tax.name, sublabel: `${tax.rate}%` }))}
@@ -370,9 +365,7 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
             Proveedor Principal
           </Label>
           {isLoadingData ? (
-            <div className="flex items-center justify-center h-10 border border-gray-300 dark:border-gray-700 rounded-md">
-              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-            </div>
+            <Skeleton className="h-10 w-full" />
           ) : (
             <SearchSelect
               options={suppliers.map((supplier) => ({ value: supplier.id.toString(), label: supplier.name }))}

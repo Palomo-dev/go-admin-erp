@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { AlertTriangle, ChevronRight, Download, RefreshCw } from 'lucide-react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { AlertTriangle, ChevronRight, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,16 +28,7 @@ export function ExpiringMemberships({ memberships, isLoading, onExport }: Expiri
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="animate-pulse flex flex-wrap items-center gap-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900">
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <CardListSkeleton cards={3} columns="1" />
         </CardContent>
       </Card>
     );

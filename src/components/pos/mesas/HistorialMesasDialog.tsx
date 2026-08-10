@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { History, Loader2, Users, DollarSign, Clock, ListChecks, RefreshCcw, ChevronDown, ChevronRight, Trash2, Unlock } from 'lucide-react';
+import { History, Users, DollarSign, Clock, ListChecks, RefreshCcw, ChevronDown, ChevronRight, Trash2, Unlock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn, formatCurrency } from '@/utils/Utils';
 import {
   MesasHistorialService,
@@ -292,8 +293,10 @@ export function HistorialMesasDialog({ open, onOpenChange }: HistorialMesasDialo
           </div>
 
           {loading && (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <div className="py-10 space-y-3 px-4">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-5/6" />
             </div>
           )}
 

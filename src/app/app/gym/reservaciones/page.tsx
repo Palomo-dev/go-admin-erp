@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Search, Calendar } from 'lucide-react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Search, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -301,9 +302,7 @@ export default function ReservacionesPage() {
       </Card>
 
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
-        </div>
+        <CardListSkeleton cards={6} columns="3" />
       ) : (
         <ReservationsList
           reservations={filteredReservations}

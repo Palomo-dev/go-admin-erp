@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
+import {
+  Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card,
+  CardContent,
+  CardHeader } from '@/components/ui/card';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -13,14 +16,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+  } from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+  } from '@/components/ui/dialog';
 import Link from 'next/link';
 import {
   ChefHat,
@@ -29,16 +32,16 @@ import {
   Edit,
   Trash2,
   Eye,
-  Loader2,
   RefreshCw,
   ArrowLeft,
   Package,
-  AlertCircle,
+  AlertCircle
 } from 'lucide-react';
 import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { RecipeDialog } from './RecipeDialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function RecetasPage() {
   const { organization } = useOrganization();
@@ -417,7 +420,7 @@ export function RecetasPage() {
 
       {/* Dialog de detalle */}
       <Dialog open={!!viewRecipe} onOpenChange={(open) => !open && setViewRecipe(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle className="dark:text-white flex items-center gap-2">
               <ChefHat className="h-5 w-5 text-orange-600" />
@@ -430,8 +433,7 @@ export function RecetasPage() {
 
           {viewLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            </div>
+              <Skeleton className="h-6 w-8 mx-auto" /></div>
           ) : viewRecipe ? (
             <div className="space-y-4">
               {/* Info general */}

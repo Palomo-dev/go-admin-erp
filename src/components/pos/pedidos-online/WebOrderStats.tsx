@@ -162,7 +162,7 @@ export function WebOrderStats({ stats, previousStats, isLoading, datePreset = 't
             <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center mb-2 ${item.color}`}>
               {item.icon}
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400 truncate">{item.label}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground dark:text-gray-400 break-words whitespace-normal">{item.label}</p>
             <div className="flex items-baseline gap-1.5 flex-wrap">
               <p className="text-lg sm:text-2xl font-bold dark:text-gray-100 tabular-nums">{item.value}</p>
               {previousStats && (

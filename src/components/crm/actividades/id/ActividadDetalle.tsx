@@ -19,9 +19,9 @@ import {
   User,
   Briefcase,
   Clock,
-  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -149,11 +149,10 @@ export function ActividadDetalle({ activityId }: ActividadDetalleProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando actividad...</p>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={3} />
+        <CardListSkeleton cards={2} columns="1" />
       </div>
     );
   }

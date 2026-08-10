@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import {
+  Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+  } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -19,11 +20,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Search, Download, RefreshCw, Loader2, ArrowDown, ArrowUp, Filter, X } from 'lucide-react';
+  } from '@/components/ui/table';
+import {
+  Search,
+  Download,
+  RefreshCw,
+  ArrowDown,
+  ArrowUp,
+  Filter,
+  X
+} from 'lucide-react';
 import { TrazabilidadService, type TrazabilidadEntry, type FiltrosTrazabilidad } from './TrazabilidadService';
 import { useToast } from '@/components/ui/use-toast';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const sourceLabels: Record<string, string> = {
   production: 'Producción',
@@ -295,8 +305,7 @@ export function TrazabilidadPage() {
 
         {loading ? (
           <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          </div>
+            <Skeleton className="h-8 w-8 mx-auto" /></div>
         ) : data.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
             <Search className="h-12 w-12 mb-3 opacity-50" />
@@ -346,7 +355,7 @@ export function TrazabilidadPage() {
                         {sourceLabels[item.source] || item.source}
                       </TableCell>
                       <TableCell className="text-sm dark:text-gray-300">{item.lot_code || '-'}</TableCell>
-                      <TableCell className="text-sm text-gray-500 dark:text-gray-400 max-w-[200px] truncate">
+                      <TableCell className="text-sm text-gray-500 dark:text-gray-400 max-w-[200px] break-words whitespace-normal">
                         {item.note || '-'}
                       </TableCell>
                     </TableRow>

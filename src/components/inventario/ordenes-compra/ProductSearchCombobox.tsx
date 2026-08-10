@@ -143,7 +143,7 @@ export function ProductSearchCombobox({
           
           {/* Info del producto */}
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900 dark:text-white truncate">
+            <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">
               {selectedProduct.parent_name && getVariantLabel(selectedProduct)
                 ? `${selectedProduct.parent_name} · ${getVariantLabel(selectedProduct)}`
                 : selectedProduct.name}
@@ -257,7 +257,7 @@ export function ProductSearchCombobox({
 
                           {/* Info */}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 dark:text-white truncate">
+                            <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">
                               {hasVariants && variantLabel ? variantLabel : product.name}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">

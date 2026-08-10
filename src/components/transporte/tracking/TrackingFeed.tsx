@@ -1,6 +1,7 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import {
   Truck,
@@ -13,7 +14,6 @@ import {
   Pause,
   RotateCcw,
   XCircle,
-  Loader2,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -82,12 +82,7 @@ const EVENT_LABELS: Record<string, string> = {
 
 export function TrackingFeed({ events, isLoading }: TrackingFeedProps) {
   if (isLoading) {
-    return (
-      <Card className="p-4 sm:p-8 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
-        <span className="ml-3 text-gray-600 dark:text-gray-300">Cargando eventos...</span>
-      </Card>
-    );
+    return <CardListSkeleton cards={4} columns="1" />;
   }
 
   if (events.length === 0) {

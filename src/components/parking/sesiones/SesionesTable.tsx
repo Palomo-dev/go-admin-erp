@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -115,14 +116,7 @@ export function SesionesTable({
   canEdit = false,
 }: SesionesTableProps) {
   if (isLoading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-500 dark:text-gray-400">Cargando sesiones...</span>
-        </div>
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={9} />;
   }
 
   if (sessions.length === 0) {

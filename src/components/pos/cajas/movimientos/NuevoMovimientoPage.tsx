@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { CajasService } from '../CajasService';
 import type { CashSession, CreateCashMovementData } from '../types';
@@ -81,11 +82,9 @@ export function NuevoMovimientoPage({ sessionUuid }: NuevoMovimientoPageProps) {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="container mx-auto max-w-2xl flex justify-center items-center h-64">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-          <span className="ml-3 text-lg dark:text-gray-300">Cargando...</span>
-        </div>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }

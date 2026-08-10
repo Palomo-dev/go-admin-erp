@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { 
   Bus, 
   Package, 
@@ -21,17 +22,7 @@ interface TransportStatsProps {
 
 export function TransportStats({ stats, isLoading }: TransportStatsProps) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4 sm:p-6">
-              <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={4} />;
   }
 
   if (!stats) return null;

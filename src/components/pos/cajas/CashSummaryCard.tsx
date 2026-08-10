@@ -5,6 +5,7 @@ import { DollarSign, TrendingUp, TrendingDown, Wallet, RotateCcw, Coins, UserCir
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
@@ -55,11 +56,10 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
             Resumen de Caja
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex justify-center items-center py-6">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent" />
-            <span className="ml-2 dark:text-gray-300">Calculando resumen...</span>
-          </div>
+        <CardContent className="space-y-3 py-6">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-10 w-full" />
         </CardContent>
       </Card>
     );
@@ -109,7 +109,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
             <UserCircle className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
             <div className="min-w-0">
               <p className="text-xs dark:text-gray-400 text-gray-500">Cajero</p>
-              <p className="text-sm font-medium dark:text-white text-gray-900 truncate">
+              <p className="text-sm font-medium dark:text-white text-gray-900 break-words whitespace-normal">
                 {session.opened_by_name || 'Usuario'}
               </p>
             </div>
@@ -122,7 +122,7 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
             )}
             <div className="min-w-0">
               <p className="text-xs dark:text-gray-400 text-gray-500">Sucursal</p>
-              <p className="text-sm font-medium dark:text-white text-gray-900 truncate">
+              <p className="text-sm font-medium dark:text-white text-gray-900 break-words whitespace-normal">
                 {session.branch_name || (session.branch_id ? `#${session.branch_id}` : 'Todas las sucursales')}
               </p>
             </div>

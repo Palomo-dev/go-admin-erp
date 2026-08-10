@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useOrganization } from '@/lib/hooks/useOrganization'
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons'
 import RolesManagement from '@/components/admin/RolesManagement'
 import RoleAssignment from '@/components/admin/RoleAssignment'
 import PermissionsManagement from '@/components/admin/PermissionsManagement'
 import RoleAnalytics from '@/components/admin/RoleAnalytics'
 import JobPositionsManagement from '@/components/admin/JobPositionsManagement'
-import { Shield, Users, Key, BarChart3, Loader2, Briefcase } from 'lucide-react'
+import { Shield, Users, Key, BarChart3, Briefcase } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function RolesAdminPage() {
@@ -16,11 +17,9 @@ export default function RolesAdminPage() {
 
   if (isLoading || !organization) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto" />
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Cargando...</p>
-        </div>
+      <div className="p-4 sm:p-6 min-h-screen bg-gray-50 dark:bg-gray-900 space-y-4">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     )
   }
@@ -49,38 +48,38 @@ export default function RolesAdminPage() {
       {/* Contenido con Tabs */}
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-            <TabsTrigger 
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <TabsTrigger
               value="roles"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Shield className="h-4 w-4 mr-2" />
               Roles
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="assignments"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Users className="h-4 w-4 mr-2" />
               Asignación
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="permissions"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Key className="h-4 w-4 mr-2" />
               Permisos
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="positions"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <Briefcase className="h-4 w-4 mr-2" />
               Cargos
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="analytics"
-              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
+              className="text-xs sm:text-sm px-1 sm:px-3 data-[state=active]:bg-blue-600 data-[state=active]:text-white dark:data-[state=active]:bg-blue-500"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Analíticas

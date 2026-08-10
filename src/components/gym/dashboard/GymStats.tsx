@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Users, AlertTriangle, XCircle, LogIn, DollarSign, TrendingUp } from 'lucide-react';
+import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/utils/Utils';
 import { formatCurrency } from '@/utils/Utils';
@@ -61,19 +62,7 @@ export function GymStats({ stats, isLoading }: GymStatsProps) {
   ];
 
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {[1, 2, 3, 4, 5, 6].map(i => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-lg mb-3" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3 mb-2" />
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsSkeleton count={6} />;
   }
 
   return (

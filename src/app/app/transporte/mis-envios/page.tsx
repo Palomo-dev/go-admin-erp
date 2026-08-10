@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { Loader2 } from 'lucide-react';
+import { CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
 import { supabase } from '@/lib/supabase/config';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import type { DeliveryShipment, DeliveryDriver } from '@/lib/services/deliveryIntegrationService';
@@ -334,8 +334,9 @@ export default function MisEnviosPage() {
 
   if (isLoading && !driverLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-300" />
+      <div className="space-y-3 sm:space-y-4">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

@@ -50,6 +50,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/Utils';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface OrdenCompraDetalleProps {
   orderUuid: string;
@@ -261,9 +262,9 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-500 dark:text-gray-400">Cargando orden...</span>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }
@@ -627,7 +628,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                     
                     {/* Info del producto */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-white truncate">
+                      <p className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">
                         {item.products?.name}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">

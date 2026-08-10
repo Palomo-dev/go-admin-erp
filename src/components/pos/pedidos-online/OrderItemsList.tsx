@@ -35,7 +35,7 @@ export function OrderItemsList({
         <div className="space-y-1 max-h-20 overflow-y-auto">
           {displayItems.map((item, idx) => (
             <div key={idx} className="flex justify-between">
-              <span className="truncate dark:text-gray-200">{item.quantity}x {item.product_name}</span>
+              <span className="break-words whitespace-normal dark:text-gray-200">{item.quantity}x {item.product_name}</span>
               <span className="text-muted-foreground dark:text-gray-400">${item.total.toLocaleString()}</span>
             </div>
           ))}
@@ -54,7 +54,7 @@ export function OrderItemsList({
           <div key={idx} className="flex items-center justify-between text-sm py-1">
             <div className="flex items-center gap-2">
               <span className="font-medium text-muted-foreground dark:text-gray-400">{item.quantity}x</span>
-              <span className="truncate max-w-[200px] dark:text-gray-200">{item.product_name}</span>
+              <span className="break-words whitespace-normal dark:text-gray-200">{item.product_name}</span>
             </div>
             <span className="font-medium dark:text-gray-100">${item.total.toLocaleString()}</span>
           </div>

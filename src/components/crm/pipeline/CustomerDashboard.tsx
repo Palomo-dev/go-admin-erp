@@ -4,7 +4,6 @@ import { useState } from "react";
 import { UserPlus, Filter } from "lucide-react";
 import { cn } from "@/utils/Utils";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "next-themes";
 import { CustomerList } from "./CustomerList";
 import { CustomerSummary } from "./CustomerSummary";
 import {
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function CustomerDashboard() {
-  const { theme } = useTheme();
   const [filterActive, setFilterActive] = useState(false);
 
   return (

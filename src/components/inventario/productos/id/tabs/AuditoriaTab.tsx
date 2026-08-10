@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTheme } from 'next-themes';
+
 import { useOrganization, obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { History, FileText, Loader2 } from 'lucide-react';
+import { History, FileText } from 'lucide-react';
 import { cn } from '@/components/ui/lib-utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Componente Avatar temporal hasta que se cree el componente real
 interface AvatarProps {
@@ -92,7 +93,7 @@ interface AuditLog {
  * Pestaña para mostrar el historial de cambios del producto
  */
 const AuditoriaTab: React.FC<AuditoriaTabProps> = ({ producto }) => {
-  const { theme } = useTheme();
+
   const { organization } = useOrganization();
   
   const [loading, setLoading] = useState<boolean>(true);
@@ -338,8 +339,7 @@ const AuditoriaTab: React.FC<AuditoriaTabProps> = ({ producto }) => {
       {/* Tabla de logs de auditoría */}
       {loading ? (
         <div className="flex justify-center items-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-        </div>
+          <Skeleton className="h-8 w-8 mx-auto" /></div>
       ) : logs.length === 0 ? (
         <div className="p-8 text-center rounded-md border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
           <History className="mx-auto h-12 w-12 text-gray-400" />
@@ -384,7 +384,7 @@ const AuditoriaTab: React.FC<AuditoriaTabProps> = ({ producto }) => {
                     {getActionBadge(log.action_type)}
                   </TableCell>
                   <TableCell>
-                    <div className="max-w-md truncate dark:text-gray-200" title={formatChanges(log.changes)}>
+                    <div className="max-w-md break-words whitespace-normal dark:text-gray-200" title={formatChanges(log.changes)}>
                       {formatChanges(log.changes)}
                     </div>
                   </TableCell>

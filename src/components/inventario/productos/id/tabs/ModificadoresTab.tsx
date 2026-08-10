@@ -20,6 +20,7 @@ import {
   type ProductModifierGroup,
   type ModifierSelectionMode,
 } from '@/lib/services/productModifiersService';
+import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface ModificadoresTabProps {
   producto: any;
@@ -171,8 +172,9 @@ const ModificadoresTab: React.FC<ModificadoresTabProps> = ({ producto }) => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <DetailSkeleton />
       </div>
     );
   }
@@ -190,7 +192,7 @@ const ModificadoresTab: React.FC<ModificadoresTabProps> = ({ producto }) => {
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <GripVertical className="h-4 w-4 text-gray-400 shrink-0" />
-              <CardTitle className="text-base truncate">{group.name}</CardTitle>
+              <CardTitle className="text-base break-words whitespace-normal">{group.name}</CardTitle>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <Select

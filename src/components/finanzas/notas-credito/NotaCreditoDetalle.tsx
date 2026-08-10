@@ -22,6 +22,7 @@ import {
   FileCheck,
   ExternalLink,
 } from 'lucide-react';
+import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -202,8 +203,8 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <DetailSkeleton />
       </div>
     );
   }
@@ -422,7 +423,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
                   {eInvoiceJob.cufe && (
                     <div className="text-right">
                       <p className="text-sm text-gray-500 dark:text-gray-400">CUFE</p>
-                      <p className="font-mono text-xs text-gray-900 dark:text-white max-w-[200px] truncate">
+                      <p className="font-mono text-xs text-gray-900 dark:text-white break-words whitespace-normal min-w-0">
                         {eInvoiceJob.cufe}
                       </p>
                     </div>

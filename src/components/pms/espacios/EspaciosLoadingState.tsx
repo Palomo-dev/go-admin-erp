@@ -1,17 +1,7 @@
 'use client';
 
-import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export function EspaciosLoadingState() {
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Cargando espacios...
-        </p>
-      </div>
-    </div>
-  );
+  return <CardListSkeleton cards={8} columns="3" />;
 }

@@ -306,7 +306,7 @@ export function TicketSearch({ onSaleSelect }: TicketSearchProps) {
                         <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
                           Cliente
                         </div>
-                        <div className="text-sm font-medium dark:text-gray-200 truncate">
+                        <div className="text-sm font-medium dark:text-gray-200 break-words whitespace-normal">
                           {selectedSale.customer?.full_name || 'Cliente General'}
                         </div>
                         {selectedSale.customer?.phone && (

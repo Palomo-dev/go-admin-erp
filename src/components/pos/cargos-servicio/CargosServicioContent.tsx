@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   ChargesList,
@@ -12,6 +11,7 @@ import {
   type ServiceChargeFilters,
 } from '@/components/pos/cargos-servicio';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { toast } from 'sonner';
 
 export function CargosServicioContent({ embedded = false }: { embedded?: boolean }) {
@@ -75,8 +75,9 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
 
   if (orgLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { Loader2 } from 'lucide-react';
+
 import AILabService, {
   LabSettings,
   LabTestResult,
@@ -19,6 +19,7 @@ import {
   LabResultPanel
 } from '@/components/chat/ia/laboratorio';
 import { IANavTabs } from '@/components/chat/ia/IANavTabs';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function AILaboratorioPage() {
   const router = useRouter();
@@ -151,13 +152,12 @@ export default function AILaboratorioPage() {
 
   if (loading && fragments.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando laboratorio...</p>
-        </div>
-      </div>
-    );
+  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <PageHeaderSkeleton />
+    <StatsSkeleton count={4} />
+    <CardListSkeleton cards={3} columns="1" />
+  </div>
+);
   }
 
   return (

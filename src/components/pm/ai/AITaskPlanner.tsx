@@ -338,9 +338,9 @@ export function AITaskPlanner({ projectId: initialProjectId, onTasksCreated, pro
               <button
                 key={i}
                 onClick={() => setPrompt(ex)}
-                className="text-xs px-2 py-1 rounded-full bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors truncate max-w-[250px]"
+                className="text-xs px-2 py-1 rounded-full bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors break-words whitespace-normal text-left max-w-full"
               >
-                {ex.slice(0, 60)}...
+                {ex}
               </button>
             ))}
           </div>
@@ -418,20 +418,20 @@ export function AITaskPlanner({ projectId: initialProjectId, onTasksCreated, pro
                     className="mt-1"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-medium text-gray-900 dark:text-white text-sm">{task.title}</h4>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <h4 className="font-medium text-gray-900 dark:text-white text-sm break-words whitespace-normal min-w-0">{task.title}</h4>
                       <Badge className={PRIORITY_COLORS[task.priority]}>{PRIORITY_LABELS[task.priority]}</Badge>
                       {task.estimated_hours > 0 && (
-                        <span className="text-xs text-gray-500 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />{task.estimated_hours}h
+                        <span className="text-xs text-gray-500 flex items-center gap-1 min-w-0 break-words whitespace-normal">
+                          <Clock className="h-3 w-3 shrink-0" />{task.estimated_hours}h
                         </span>
                       )}
                       {task.due_date && (
-                        <span className="text-xs text-gray-500">{new Date(task.due_date).toLocaleDateString('es-ES')}</span>
+                        <span className="text-xs text-gray-500 min-w-0 break-words whitespace-normal">{new Date(task.due_date).toLocaleDateString('es-ES')}</span>
                       )}
                     </div>
                     {task.description && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{task.description}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words whitespace-normal">{task.description}</p>
                     )}
                   </div>
                   {task.subtasks?.length > 0 && (

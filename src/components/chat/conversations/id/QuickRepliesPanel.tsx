@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Search, Zap, Send, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,8 +70,13 @@ export default function QuickRepliesPanel({
         {/* Lista de respuestas rápidas */}
         <ScrollArea className="flex-1">
           {loading ? (
-            <div className="flex items-center justify-center h-24">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+            <div className="p-2 space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
             </div>
           ) : filteredReplies.length === 0 ? (
             <div className="text-center py-8">

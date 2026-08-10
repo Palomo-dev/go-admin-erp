@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { useBranch } from '@/lib/context/BranchContext';
 import { VentasService } from './VentasService';
 import { VentasTable } from './VentasTable';
@@ -122,8 +123,10 @@ export function VentasPage() {
 
   if (orgLoading) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-[400px]">
+        <PageHeaderSkeleton />
+        <StatsSkeleton count={4} />
+        <CardListSkeleton cards={4} columns="1" />
       </div>
     );
   }

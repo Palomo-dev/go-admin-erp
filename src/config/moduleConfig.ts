@@ -72,7 +72,8 @@ export const moduleRoutes: Record<string, string> = {
   'transport': '/app/transporte',
   'calendar': '/app/calendario',
   'operations': '/app/timeline',
-  'pm': '/app/pm'
+  'pm': '/app/pm',
+  'configuracion': '/app/configuracion'
 };
 
 export interface ModuleSubroute {

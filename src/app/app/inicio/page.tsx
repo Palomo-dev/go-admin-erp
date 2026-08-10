@@ -252,20 +252,10 @@ export default function InicioPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-          <div className="animate-pulse space-y-6">
-            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48" />
-            <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-              ))}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-              ))}
-            </div>
-          </div>
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+          <PageHeaderSkeleton />
+          <StatsSkeleton count={10} />
+          <CardListSkeleton cards={3} columns="1" />
         </div>
       }
     >

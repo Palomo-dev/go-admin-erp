@@ -190,16 +190,16 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Asignación de Roles</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white break-words">Asignación de Roles</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 break-words">
             Gestiona los roles asignados a los miembros de tu organización
           </p>
         </div>
         
         {hasPendingChanges() && (
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-amber-600 dark:text-amber-400 font-medium">
               {Object.keys(pendingChanges).length} cambios pendientes
             </span>
@@ -236,9 +236,9 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Distribución de Roles</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {getRoleStats().map(({ role, count }) => (
-            <div key={role.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-              <div className={`p-2 rounded-lg ${role.is_system ? 'bg-blue-100' : 'bg-green-100'}`}>
-                <UserCheck className={`h-4 w-4 ${role.is_system ? 'text-blue-600' : 'text-green-600'}`} />
+            <div key={role.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+              <div className={`p-2 rounded-lg shrink-0 ${role.is_system ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+                <UserCheck className={`h-4 w-4 ${role.is_system ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'}`} />
               </div>
               <div>
                 <p className="font-medium text-gray-900 dark:text-white">{role.name}</p>
@@ -311,9 +311,9 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
               const hasChanges = pendingChanges[member.id] !== undefined;
               
               return (
-                <div key={member.id} className={`p-6 ${hasChanges ? 'bg-amber-50' : 'hover:bg-gray-50'} transition-colors`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
+                <div key={member.id} className={`p-4 sm:p-6 ${hasChanges ? 'bg-amber-50 dark:bg-amber-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'} transition-colors`}>
+                  <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
                       {/* Avatar */}
                       <div className="flex-shrink-0">
                         {member.profiles.avatar_url && getAvatarUrl(member.profiles.avatar_url) ? (
@@ -330,24 +330,24 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                       </div>
                       
                       {/* Información del usuario */}
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="text-lg font-medium text-gray-900 dark:text-white break-words">
                             {member.profiles.first_name} {member.profiles.last_name}
                           </h4>
                           {member.is_super_admin && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200">
                               Super Admin
                             </span>
                           )}
                           {hasChanges && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/20 text-amber-800">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200">
                               <AlertCircle className="h-3 w-3 mr-1" />
                               Cambio pendiente
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{member.profiles.email}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 break-words">{member.profiles.email}</p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                           Rol actual: <span className="font-medium">{member.roles.name}</span>
                         </p>
@@ -355,15 +355,15 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                     </div>
 
                     {/* Selector de rol */}
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <div className="relative flex-1 min-w-0 sm:flex-none">
                         <select
                           value={currentRoleId}
                           onChange={(e) => handleRoleChange(member.id, parseInt(e.target.value))}
-                          className={`appearance-none bg-white border rounded-md px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                          className={`appearance-none w-full sm:w-auto bg-white dark:bg-gray-800 dark:text-gray-100 border rounded-md px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
                             hasChanges 
-                              ? 'border-amber-300 bg-amber-50' 
-                              : 'border-gray-300'
+                              ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30' 
+                              : 'border-gray-300 dark:border-gray-600'
                           }`}
                         >
                           {roles.map(role => (
@@ -385,10 +385,10 @@ export default function RoleAssignment({ organizationId }: RoleAssignmentProps) 
                   
                   {/* Mostrar cambio propuesto */}
                   {hasChanges && (
-                    <div className="mt-3 p-3 bg-amber-100 dark:bg-amber-900/20 rounded-md border border-amber-200">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                        <span className="text-amber-800">
+                    <div className="mt-3 p-3 bg-amber-100 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-900/50">
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span className="text-amber-800 dark:text-amber-200 break-words">
                           Cambio propuesto: <strong>{member.roles.name}</strong> → <strong>{currentRole?.name}</strong>
                         </span>
                       </div>

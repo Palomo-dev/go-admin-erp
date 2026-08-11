@@ -247,7 +247,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-xl md:max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{printer ? 'Editar Impresora' : 'Nueva Impresora'}</DialogTitle>
         </DialogHeader>
@@ -327,14 +327,14 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                           key={p.name}
                           type="button"
                           onClick={() => selectSystemPrinter(p.name)}
-                          className="flex items-center justify-between w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                          className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
                         >
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center gap-2 min-w-0 break-words">
                             <PrinterIcon className="h-3 w-3 text-gray-400" />
                             {p.name}
                           </span>
                           {p.isDefault && (
-                            <span className="text-[10px] text-blue-500 font-medium">Predeterminada</span>
+                            <span className="text-[10px] text-blue-500 font-medium shrink-0">Predeterminada</span>
                           )}
                         </button>
                       ))}
@@ -357,9 +357,9 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                           key={p.ip}
                           type="button"
                           onClick={() => selectNetworkPrinter(p.ip, p.port)}
-                          className="flex items-center justify-between w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                          className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
                         >
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center gap-2 min-w-0 break-words">
                             <Wifi className="h-3 w-3 text-green-500" />
                             {p.ip}:{p.port}
                           </span>
@@ -389,9 +389,9 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                           key={`${d.vendorId}:${d.productId}`}
                           type="button"
                           onClick={() => selectUsbDevice(d)}
-                          className="flex items-center justify-between w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
+                          className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"
                         >
-                          <span className="flex items-center gap-2 min-w-0">
+                          <span className="flex items-center gap-2 min-w-0 break-words">
                             <Usb className={cn('h-3 w-3 shrink-0', d.isPrinter ? 'text-green-500' : 'text-gray-400')} />
                             <span className="break-words whitespace-normal">{d.name || `${d.vendorId}:${d.productId}`}</span>
                           </span>
@@ -412,7 +412,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
           </div>
 
           {form.connection_type === 'network' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>Dirección IP</Label>
                 <Input
@@ -479,7 +479,7 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
 
           <div>
             <Label className="mb-2 block">Estaciones asignadas</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {STATIONS.map((station) => (
                 <label key={station} className="flex items-center gap-2 text-sm cursor-pointer">
                   <Checkbox

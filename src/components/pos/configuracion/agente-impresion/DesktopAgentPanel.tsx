@@ -162,15 +162,15 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
   return (
     <div className={embedded ? "space-y-6" : "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6"}>
       {!embedded && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-start sm:items-center gap-3 flex-wrap">
           <Link href="/app/pos/configuracion">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3 min-w-0">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl shrink-0">
                 <Printer className="h-6 w-6 text-indigo-600" />
               </div>
               Agente de Impresión
@@ -194,10 +194,10 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
           {/* Estado del agente */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div
-                    className={`p-2 rounded-xl ${running ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}
+                    className={`p-2 rounded-xl shrink-0 ${running ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}
                   >
                     {running ? (
                       <Wifi className="h-5 w-5 text-green-600" />
@@ -205,25 +205,25 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
                       <WifiOff className="h-5 w-5 text-gray-400" />
                     )}
                   </div>
-                  <div>
-                    <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+                  <div className="min-w-0">
+                    <CardTitle className="text-base font-semibold text-gray-900 dark:text-white break-words">
                       Estado del agente
                     </CardTitle>
-                    <CardDescription className="text-xs text-gray-500 dark:text-gray-400">
+                    <CardDescription className="text-xs text-gray-500 dark:text-gray-400 break-words">
                       Go Admin Desktop {version && `v${version}`}
                     </CardDescription>
                   </div>
                 </div>
-                <Badge variant={running ? 'default' : 'secondary'} className={running ? 'bg-green-600' : ''}>
+                <Badge variant={running ? 'default' : 'secondary'} className={`shrink-0 ${running ? 'bg-green-600' : ''}`}>
                   {running ? 'Conectado' : 'Desconectado'}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {agentStatus?.organizationName && (
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="text-gray-500 dark:text-gray-400">Organización:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
+                  <span className="font-medium text-gray-900 dark:text-white min-w-0 break-words">
                     {agentStatus.organizationName}
                   </span>
                 </div>
@@ -287,7 +287,7 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
           {/* Selector de sucursales */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2 min-w-0">
                 <MapPin className="h-4 w-4 text-gray-400" />
                 Sucursales a escuchar
               </CardTitle>
@@ -337,13 +337,13 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
           {/* Auto-arranque */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2 min-w-0">
                 <Cpu className="h-4 w-4 text-gray-400" />
                 Arranque automático
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm text-gray-900 dark:text-white">Iniciar con Windows</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -358,8 +358,8 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
           {/* Impresoras del sistema */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2 min-w-0">
                   <Printer className="h-4 w-4 text-gray-400" />
                   Impresoras del sistema
                 </CardTitle>
@@ -388,13 +388,13 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
                   {printers.map((p, i) => (
                     <li
                       key={i}
-                      className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     >
-                      <span className="text-gray-900 dark:text-white flex items-center gap-2">
+                      <span className="text-gray-900 dark:text-white flex items-center gap-2 min-w-0 break-words">
                         <Printer className="h-3 w-3 text-gray-400" />
                         {p.name}
                       </span>
-                      {p.isDefault && <Badge variant="outline" className="text-xs">Predeterminada</Badge>}
+                      {p.isDefault && <Badge variant="outline" className="text-xs shrink-0">Predeterminada</Badge>}
                     </li>
                   ))}
                 </ul>
@@ -405,8 +405,8 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
           {/* Impresoras USB */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2 min-w-0">
                   <Usb className="h-4 w-4 text-gray-400" />
                   Impresoras USB
                 </CardTitle>
@@ -435,14 +435,14 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
                   {usbDevices.map((d, i) => (
                     <li
                       key={i}
-                      className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     >
-                      <span className="text-gray-900 dark:text-white flex items-center gap-2">
+                      <span className="text-gray-900 dark:text-white flex items-center gap-2 min-w-0 break-words">
                         <Usb className="h-3 w-3 text-gray-400" />
                         {d.name || `${d.vendorId}:${d.productId}`}
                       </span>
                       <div className="flex items-center gap-1">
-                        {d.viaWmi && <Badge variant="outline" className="text-xs">WMI</Badge>}
+                        {d.viaWmi && <Badge variant="outline" className="text-xs shrink-0">WMI</Badge>}
                         {d.isPrinter && <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950/30">Impresora</Badge>}
                       </div>
                     </li>
@@ -455,8 +455,8 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
           {/* Impresoras Bluetooth */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2 min-w-0">
                   <Bluetooth className="h-4 w-4 text-gray-400" />
                   Dispositivos Bluetooth
                 </CardTitle>
@@ -485,9 +485,9 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
                   {bluetoothDevices.map((d, i) => (
                     <li
                       key={i}
-                      className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     >
-                      <span className="text-gray-900 dark:text-white flex items-center gap-2">
+                      <span className="text-gray-900 dark:text-white flex items-center gap-2 min-w-0 break-words">
                         <Bluetooth className="h-3 w-3 text-gray-400" />
                         {d.name}
                       </span>
@@ -505,8 +505,8 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
           {/* Impresoras de red */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2 min-w-0">
                   <Network className="h-4 w-4 text-gray-400" />
                   Impresoras de red
                 </CardTitle>
@@ -535,9 +535,9 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
                   {networkPrinters.map((p, i) => (
                     <li
                       key={i}
-                      className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-sm py-1 px-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
                     >
-                      <span className="text-gray-900 dark:text-white flex items-center gap-2">
+                      <span className="text-gray-900 dark:text-white flex items-center gap-2 min-w-0 break-words">
                         <Network className="h-3 w-3 text-gray-400" />
                         {p.ip}:{p.port}
                       </span>

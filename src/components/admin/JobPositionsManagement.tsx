@@ -64,10 +64,10 @@ export default function JobPositionsManagement({ organizationId }: JobPositionsM
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Permisos por Cargo</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white break-words">Permisos por Cargo</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 break-words">
             Gestiona los permisos específicos de cada cargo. Los cargos se crean desde el módulo de HRM.
           </p>
         </div>
@@ -113,36 +113,36 @@ export default function JobPositionsManagement({ organizationId }: JobPositionsM
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {filteredPositions.map((position) => (
-              <div key={position.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 flex-1">
-                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <div key={position.id} className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div className="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 shrink-0">
                       <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-lg font-medium text-gray-900 dark:text-white">{position.name}</h4>
-                        <Badge variant="outline" className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-lg font-medium text-gray-900 dark:text-white break-words">{position.name}</h4>
+                        <Badge variant="outline" className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 break-words">
                           {position.code}
                         </Badge>
                       </div>
                       {position.description && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{position.description}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">{position.description}</p>
                       )}
-                      <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-500 dark:text-gray-400">
                         {position.department && (
-                          <span className="flex items-center">
-                            <Building2 className="h-4 w-4 mr-1" />
-                            {position.department.name}
+                          <span className="flex items-center min-w-0">
+                            <Building2 className="h-4 w-4 mr-1 shrink-0" />
+                            <span className="break-words">{position.department.name}</span>
                           </span>
                         )}
                         <span className="flex items-center">
-                          <Shield className="h-4 w-4 mr-1" />
+                          <Shield className="h-4 w-4 mr-1 shrink-0" />
                           {position.permission_count || 0} permisos
                         </span>
                         <span className="flex items-center">
-                          <Users className="h-4 w-4 mr-1" />
+                          <Users className="h-4 w-4 mr-1 shrink-0" />
                           {position.employee_count || 0} empleados
                         </span>
                       </div>
@@ -153,7 +153,7 @@ export default function JobPositionsManagement({ organizationId }: JobPositionsM
                   <Button
                     onClick={() => setSelectedPosition(position)}
                     variant="outline"
-                    className="ml-4 border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                    className="w-full sm:w-auto border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-900/30"
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Gestionar Permisos

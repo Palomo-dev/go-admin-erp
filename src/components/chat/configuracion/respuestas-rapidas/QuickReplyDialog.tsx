@@ -91,7 +91,7 @@ export default function QuickReplyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[600px] md:max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {reply ? 'Editar Respuesta Rápida' : 'Nueva Respuesta Rápida'}
@@ -160,7 +160,7 @@ export default function QuickReplyDialog({
 
           <div className="space-y-2">
             <Label>Tags internos (opcional)</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap gap-2">
               <Input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
@@ -194,12 +194,12 @@ export default function QuickReplyDialog({
             )}
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div>
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="is-active" className="text-sm font-medium">
                 Respuesta activa
               </Label>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
                 Las respuestas inactivas no aparecen en sugerencias
               </p>
             </div>

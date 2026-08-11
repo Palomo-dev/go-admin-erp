@@ -63,7 +63,7 @@ export default function TagDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[425px] max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {tag ? 'Editar Etiqueta' : 'Nueva Etiqueta'}

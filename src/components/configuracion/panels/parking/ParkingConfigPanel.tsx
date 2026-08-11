@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import parkingConfigService, { type ParkingConfig } from '@/lib/services/parkingConfigService';
 import {
   ConfigHeader,
@@ -92,8 +93,9 @@ export function ParkingConfigPanel() {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="space-y-8">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="2" />
       </div>
     );
   }

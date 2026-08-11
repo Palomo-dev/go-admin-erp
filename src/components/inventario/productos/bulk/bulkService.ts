@@ -139,6 +139,7 @@ export async function bulkUpdateStock(
         .eq('product_id', productId)
         .eq('branch_id', branchId)
         .is('lot_id', null)
+        .limit(1)
         .maybeSingle();
 
       if (existente) {

@@ -439,6 +439,8 @@ class AdjustmentService {
           .select('id, qty_on_hand')
           .eq('branch_id', adjustment.branch_id)
           .eq('product_id', item.product_id)
+          .is('lot_id', item.lot_id || null)
+          .limit(1)
           .maybeSingle();
 
         if (existingStock) {

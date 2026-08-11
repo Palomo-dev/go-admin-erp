@@ -774,7 +774,7 @@ class CheckoutService {
     const finalTotal = taxCalculation.finalTotal;
 
     // Determinar si está pagado completamente
-    const isPaid = totalPaid >= finalTotal || (folioBalance <= 0 && payments.length === 0);
+    const isPaid = totalPaid >= finalTotal && finalTotal > 0;
     const remainingBalance = Math.max(0, finalTotal - totalPaid);
 
     // Crear la venta
@@ -828,16 +828,6 @@ class CheckoutService {
     }
 
     console.log('createSaleFromFolio: Sale_items creados', saleItems.length);
-
-    // Vincular folio con la venta
-    const { error: folioLinkError } = await supabase
-      .from('folios')
-      .update({ sale_id: sale.id })
-      .eq('id', folioId);
-
-    if (folioLinkError) {
-      console.warn('createSaleFromFolio: Error vinculando folio con venta:', folioLinkError);
-    }
 
     // Registrar pagos en tabla payments
     const { data: baseCurrency } = await supabase

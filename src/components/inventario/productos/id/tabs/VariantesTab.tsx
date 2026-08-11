@@ -529,6 +529,8 @@ const VariantesTab: React.FC<VariantesTabProps> = ({ producto }) => {
               .select('id, qty_on_hand')
               .eq('product_id', editingVariante.id)
               .eq('branch_id', sb.branch_id)
+              .is('lot_id', null)
+              .limit(1)
               .maybeSingle();
 
             const previousQty = existingStock?.qty_on_hand || 0;

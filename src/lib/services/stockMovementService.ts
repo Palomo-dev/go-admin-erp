@@ -172,6 +172,7 @@ export const stockMovementService = {
         .eq('product_id', item.product_id)
         .eq('branch_id', branchId)
         .is('lot_id', null)
+        .limit(1)
         .maybeSingle();
 
       if (existing) {
@@ -233,6 +234,7 @@ export const stockMovementService = {
         .eq('product_id', item.product_id)
         .eq('branch_id', branchId)
         .is('lot_id', null)
+        .limit(1)
         .maybeSingle();
 
       if (existing) {
@@ -310,6 +312,7 @@ export const stockMovementService = {
         .eq('product_id', item.product_id)
         .eq('branch_id', branchId)
         .is('lot_id', null)
+        .limit(1)
         .maybeSingle();
 
       const unitCost = Number(item.unit_price) || 0;

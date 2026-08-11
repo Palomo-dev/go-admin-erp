@@ -608,7 +608,7 @@ class CheckoutService {
       console.warn('No se pudo establecer set_session_org_id antes de cerrar folio:', e);
     }
 
-    // Cerrar el folio
+    // Obtener el folio
     const { data: folio, error: folioQueryError } = await supabase
       .from('folios')
       .select('id')
@@ -619,6 +619,24 @@ class CheckoutService {
 
     console.log('Checkout - Folio encontrado:', folio?.id || 'null');
 
+    // 1. Crear venta y factura desde el folio ANTES de cerrarlo
+    //    (el trigger fn_auto_journal_folio_close verifica si ya existe factura)
+    if (folio) {
+      try {
+        await this.createSaleFromFolio(folio.id, reservationId, userId, generateInvoice, {
+          payments: data.payments,
+          taxIncluded: data.taxIncluded,
+          appliedTaxIds: data.appliedTaxIds,
+          totalPaid: data.totalPaid,
+          change: data.change,
+        });
+      } catch (saleError) {
+        console.error('Error creando venta desde folio:', saleError);
+        throw saleError;
+      }
+    }
+
+    // 2. Cerrar el folio DESPUÉS de crear la venta
     if (folio) {
       const { error: folioError } = await supabase
         .from('folios')
@@ -631,21 +649,6 @@ class CheckoutService {
       if (folioError) {
         console.error('Error cerrando folio:', { folioId: folio.id, error: folioError });
         throw folioError;
-      }
-    }
-
-    // Crear venta desde el folio si hay items
-    if (folio) {
-      try {
-        await this.createSaleFromFolio(folio.id, reservationId, userId, generateInvoice, {
-          payments: data.payments,
-          taxIncluded: data.taxIncluded,
-          appliedTaxIds: data.appliedTaxIds,
-          totalPaid: data.totalPaid,
-          change: data.change,
-        });
-      } catch (saleError) {
-        console.warn('⚠️ Error creando venta desde folio (no bloquea checkout):', saleError);
       }
     }
 
@@ -684,24 +687,39 @@ class CheckoutService {
       .eq('id', reservationId)
       .single();
 
-    if (!reservation) return;
+    if (!reservation) {
+      console.error('createSaleFromFolio: No se encontró la reserva', reservationId);
+      return;
+    }
 
-    const { data: folioItems } = await supabase
+    const { data: folioItems, error: folioItemsError } = await supabase
       .from('folio_items')
       .select('id, description, amount, product_id, quantity, unit_price, source, payment_status, charge_type')
       .eq('folio_id', folioId)
       .order('created_at', { ascending: true });
 
-    if (!folioItems || folioItems.length === 0) return;
+    if (folioItemsError) {
+      console.error('createSaleFromFolio: Error obteniendo folio_items:', folioItemsError);
+      throw folioItemsError;
+    }
+
+    if (!folioItems || folioItems.length === 0) {
+      console.log('createSaleFromFolio: No hay items en el folio, saltando venta');
+      return;
+    }
 
     // Filtrar: solo items room_charge y paid (los direct_payment ya tienen su propia venta en POS)
     const saleableItems = folioItems.filter(
       (item: any) => item.charge_type === 'room_charge' || (!item.charge_type && item.payment_status !== 'paid')
     );
 
-    if (saleableItems.length === 0) return;
+    if (saleableItems.length === 0) {
+      console.log('createSaleFromFolio: No hay items vendibles (room_charge), saltando venta');
+      return;
+    }
 
     const branchId = reservation.branch_id || getCurrentBranchId();
+    console.log('createSaleFromFolio: Iniciando venta', { folioId, reservationId, branchId, itemsCount: saleableItems.length });
 
     // Obtener el balance real del folio
     const { data: folioData } = await supabase
@@ -782,9 +800,11 @@ class CheckoutService {
       .single();
 
     if (saleError) {
-      console.error('Error creando sale desde folio:', saleError);
-      return;
+      console.error('createSaleFromFolio: Error creando sale:', saleError);
+      throw saleError;
     }
+
+    console.log('createSaleFromFolio: Sale creada', sale.id);
 
     // Crear sale_items solo desde los items vendibles
     const saleItems = saleableItems.map((item: any) => ({
@@ -803,14 +823,21 @@ class CheckoutService {
       .insert(saleItems);
 
     if (itemsError) {
-      console.error('Error creando sale_items desde folio:', itemsError);
+      console.error('createSaleFromFolio: Error creando sale_items:', itemsError);
+      throw itemsError;
     }
 
+    console.log('createSaleFromFolio: Sale_items creados', saleItems.length);
+
     // Vincular folio con la venta
-    await supabase
+    const { error: folioLinkError } = await supabase
       .from('folios')
       .update({ sale_id: sale.id })
       .eq('id', folioId);
+
+    if (folioLinkError) {
+      console.warn('createSaleFromFolio: Error vinculando folio con venta:', folioLinkError);
+    }
 
     // Registrar pagos en tabla payments
     const { data: baseCurrency } = await supabase
@@ -877,7 +904,8 @@ class CheckoutService {
         .single();
 
       if (invoiceError) {
-        console.warn('⚠️ Error generando factura (no bloquea checkout):', invoiceError);
+        console.error('createSaleFromFolio: Error generando factura:', invoiceError);
+        throw invoiceError;
       } else {
         // Crear invoice_items
         const invoiceItems = saleableItems.map((item: any) => ({

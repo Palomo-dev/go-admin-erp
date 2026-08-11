@@ -408,15 +408,13 @@ class AdjustmentService {
         throw new Error('Solo se pueden aplicar ajustes en estado borrador');
       }
 
-      const items = adjustment.adjustment_items || [];
+      const items = (adjustment.adjustment_items || []).filter(item => (item.difference || 0) !== 0);
 
-      // Crear movimientos de stock para cada item
-      for (const item of items) {
+      // Procesar todos los items en paralelo
+      await Promise.all(items.map(async (item) => {
         const difference = item.difference || 0;
-        
-        if (difference === 0) continue;
 
-        // Crear movimiento de stock
+        // 1. Crear movimiento de stock
         await supabase
           .from('stock_movements')
           .insert({
@@ -433,7 +431,7 @@ class AdjustmentService {
             updated_by: userId
           });
 
-        // Actualizar stock_levels
+        // 2. Upsert stock_levels (una sola llamada en lugar de select + update/insert)
         const { data: existingStock } = await supabase
           .from('stock_levels')
           .select('id, qty_on_hand')
@@ -444,7 +442,6 @@ class AdjustmentService {
           .maybeSingle();
 
         if (existingStock) {
-          // Actualizar registro existente
           await supabase
             .from('stock_levels')
             .update({
@@ -453,7 +450,6 @@ class AdjustmentService {
             })
             .eq('id', existingStock.id);
         } else {
-          // Crear nuevo registro
           await supabase
             .from('stock_levels')
             .insert({
@@ -465,7 +461,7 @@ class AdjustmentService {
               min_level: 0
             });
         }
-      }
+      }));
 
       // Actualizar estado del ajuste a 'posted' (CHECK constraint: draft/posted)
       const { error: updateError } = await supabase

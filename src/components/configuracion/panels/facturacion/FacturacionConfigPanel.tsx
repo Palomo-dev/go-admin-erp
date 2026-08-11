@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 import { electronicInvoicingConfigService } from '@/lib/services/electronicInvoicingConfigService';
@@ -216,8 +216,9 @@ export function FacturacionConfigPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="space-y-4 max-w-2xl">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={3} columns="1" />
       </div>
     );
   }

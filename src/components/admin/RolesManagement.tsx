@@ -121,10 +121,10 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Roles del Sistema</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white break-words">Roles del Sistema</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 break-words">
             Roles globales - Asigna permisos granulares por cargo en HRM
           </p>
         </div>
@@ -249,10 +249,10 @@ function RoleCard({ role, onEdit, onDelete, onClone, onManagePermissions }: Role
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className={`p-2 rounded-lg ${role.is_system ? 'bg-blue-100' : 'bg-green-100'}`}>
+    <div className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+      <div className="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className={`p-2 rounded-lg shrink-0 ${role.is_system ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
             {role.is_system ? (
               <Lock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             ) : (
@@ -260,25 +260,25 @@ function RoleCard({ role, onEdit, onDelete, onClone, onManagePermissions }: Role
             )}
           </div>
           
-          <div>
-            <div className="flex items-center space-x-2">
-              <h4 className="text-lg font-medium text-gray-900 dark:text-white">{role.name}</h4>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-lg font-medium text-gray-900 dark:text-white break-words">{role.name}</h4>
               {role.is_system && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
                   Sistema
                 </span>
               )}
             </div>
             {role.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{role.description}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">{role.description}</p>
             )}
-            <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500 dark:text-gray-400">
               <span className="flex items-center">
-                <Shield className="h-4 w-4 mr-1" />
+                <Shield className="h-4 w-4 mr-1 shrink-0" />
                 {role.permission_count || 0} permisos
               </span>
               <span className="flex items-center">
-                <Users className="h-4 w-4 mr-1" />
+                <Users className="h-4 w-4 mr-1 shrink-0" />
                 {role.member_count || 0} usuarios
               </span>
             </div>
@@ -373,8 +373,8 @@ function CreateRoleModal({ onClose, onSubmit }: CreateRoleModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-full sm:w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div className="fixed inset-0 bg-gray-600/50 dark:bg-black/70 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border w-[calc(100%-2rem)] sm:max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800 max-h-[90dvh] overflow-y-auto">
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Crear Nuevo Rol</h3>
           
@@ -406,17 +406,17 @@ function CreateRoleModal({ onClose, onSubmit }: CreateRoleModalProps) {
               />
             </div>
             
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
               >
                 Crear Rol
               </button>
@@ -447,8 +447,8 @@ function EditRoleModal({ role, onClose, onSubmit }: EditRoleModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-full sm:w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+    <div className="fixed inset-0 bg-gray-600/50 dark:bg-black/70 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border w-[calc(100%-2rem)] sm:max-w-md shadow-lg rounded-md bg-white dark:bg-gray-800 max-h-[90dvh] overflow-y-auto">
         <div className="mt-3">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Editar Rol</h3>
           
@@ -478,17 +478,17 @@ function EditRoleModal({ role, onClose, onSubmit }: EditRoleModalProps) {
               />
             </div>
             
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
               >
                 Guardar Cambios
               </button>

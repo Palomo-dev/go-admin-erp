@@ -413,11 +413,11 @@ export default function JobPositionPermissionsManager({
 
   if (loading || permissionsLoading) {
     return (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-6xl shadow-lg rounded-md bg-white">
+      <div className="fixed inset-0 bg-gray-600/50 dark:bg-black/70 overflow-y-auto h-full w-full z-50">
+        <div className="relative top-10 mx-auto p-4 sm:p-5 border w-[calc(100%-2rem)] sm:w-4/5 max-w-6xl shadow-lg rounded-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 max-h-[90dvh] overflow-y-auto">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <span className="ml-2 text-gray-600">Cargando permisos...</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando permisos...</span>
           </div>
         </div>
       </div>
@@ -425,35 +425,35 @@ export default function JobPositionPermissionsManager({
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-4 mx-auto p-5 border w-[95%] max-w-7xl shadow-lg rounded-md bg-white mb-4">
-        <div className="flex flex-col h-[90vh]">
+    <div className="fixed inset-0 bg-gray-600/50 dark:bg-black/70 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-4 mx-auto p-4 sm:p-5 border w-[calc(100%-2rem)] sm:w-[95%] max-w-7xl shadow-lg rounded-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 mb-4 max-h-[90dvh] overflow-y-auto">
+        <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900">
+          <div className="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-2 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="min-w-0">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white break-words">
                 Gestionar Permisos - {jobPositionName}
               </h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">
                 Los empleados con este cargo tendrán estos permisos
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 shrink-0"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-gray-200">
+          <div className="flex flex-wrap sm:flex-nowrap border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
             <button
               onClick={() => setActiveTab('permissions')}
-              className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 ${
+              className={`flex items-center flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 ${
                 activeTab === 'permissions'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
               <Shield className="h-4 w-4 mr-2" />
@@ -461,10 +461,10 @@ export default function JobPositionPermissionsManager({
             </button>
             <button
               onClick={() => setActiveTab('modules')}
-              className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 ${
+              className={`flex items-center flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 ${
                 activeTab === 'modules'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
               <LayoutGrid className="h-4 w-4 mr-2" />
@@ -472,10 +472,10 @@ export default function JobPositionPermissionsManager({
             </button>
             <button
               onClick={() => setActiveTab('pages')}
-              className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 ${
+              className={`flex items-center flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 ${
                 activeTab === 'pages'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
               <FileText className="h-4 w-4 mr-2" />
@@ -496,7 +496,7 @@ export default function JobPositionPermissionsManager({
                         placeholder="Buscar permisos o módulos..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
                   </div>
@@ -504,8 +504,8 @@ export default function JobPositionPermissionsManager({
                     onClick={() => setShowOnlySelected(!showOnlySelected)}
                     className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium ${
                       showOnlySelected
-                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                        ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-300'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700/50'
                     }`}
                   >
                     {showOnlySelected ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
@@ -513,18 +513,18 @@ export default function JobPositionPermissionsManager({
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={selectAllPermissions} className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50">
+                  <button onClick={selectAllPermissions} className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     Seleccionar todos
                   </button>
-                  <button onClick={deselectAllPermissions} className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50">
+                  <button onClick={deselectAllPermissions} className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     Deseleccionar todos
                   </button>
-                  <button onClick={resetToOriginal} className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white hover:bg-gray-50">
+                  <button onClick={resetToOriginal} className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <RotateCcw className="h-4 w-4 mr-1" />
                     Restaurar original
                   </button>
                 </div>
-                <div className="flex items-center space-x-6 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
                   <span>Total seleccionados: <strong>{selectedPermissions.length}</strong></span>
                   <span>Total disponibles: <strong>{modulePermissions.reduce((acc, m) => acc + m.permissions.length, 0)}</strong></span>
                   {hasChanges() && <span className="text-amber-600 font-medium">⚠ Hay cambios sin guardar</span>}
@@ -533,9 +533,9 @@ export default function JobPositionPermissionsManager({
               <div className="flex-1 overflow-y-auto py-4">
                 {filteredModules.length === 0 ? (
                   <div className="text-center py-12">
-                    <Shield className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No hay permisos</h3>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <Shield className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay permisos</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       {searchTerm ? 'No se encontraron permisos con el término de búsqueda.' : 'No hay permisos disponibles para mostrar.'}
                     </p>
                   </div>
@@ -550,33 +550,33 @@ export default function JobPositionPermissionsManager({
                         <div key={module.module} className="border border-gray-200 rounded-lg">
                           <div className="flex items-center justify-between p-4 bg-gray-50">
                             <div className="flex items-center space-x-3 flex-1 cursor-pointer" onClick={() => toggleModule(module.module)}>
-                              {isExpanded ? <ChevronDown className="h-5 w-5 text-gray-500" /> : <ChevronRight className="h-5 w-5 text-gray-500" />}
-                              <h4 className="text-lg font-medium text-gray-900">{module.moduleName}</h4>
-                              <span className="text-sm text-gray-500">({stats.selected}/{stats.total})</span>
+                              {isExpanded ? <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
+                              <h4 className="text-lg font-medium text-gray-900 dark:text-white break-words">{module.moduleName}</h4>
+                              <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">({stats.selected}/{stats.total})</span>
                             </div>
                             <input
                               type="checkbox"
                               checked={allSelected}
                               ref={(el) => { if (el) el.indeterminate = someSelected; }}
                               onChange={() => toggleModulePermissions(module)}
-                              className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                              className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded cursor-pointer"
                             />
                           </div>
                           {isExpanded && (
-                            <div className="p-4 bg-white">
+                            <div className="p-4 bg-white dark:bg-gray-800">
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {module.permissions.map((permission) => (
-                                  <label key={permission.id} className="flex items-start p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                                  <label key={permission.id} className="flex items-start p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer bg-white dark:bg-gray-800">
                                     <input
                                       type="checkbox"
                                       checked={selectedPermissions.includes(permission.id)}
                                       onChange={() => togglePermission(permission.id)}
                                       className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                     />
-                                    <div className="ml-3 flex-1">
-                                      <p className="text-sm font-medium text-gray-900">{permission.name}</p>
-                                      <p className="text-xs text-gray-500 mt-1">{permission.description}</p>
-                                      <p className="text-xs text-gray-400 mt-1 font-mono">{permission.code}</p>
+                                    <div className="ml-3 flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white break-words">{permission.name}</p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words">{permission.description}</p>
+                                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 font-mono break-all">{permission.code}</p>
                                     </div>
                                   </label>
                                 ))}
@@ -589,10 +589,10 @@ export default function JobPositionPermissionsManager({
                   </div>
                 )}
               </div>
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600">{selectedPermissions.length} permisos seleccionados</div>
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400">{selectedPermissions.length} permisos seleccionados</div>
                 <div className="flex space-x-3">
-                  <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">Cancelar</button>
+                  <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md w-full sm:w-auto">Cancelar</button>
                   <button
                     onClick={savePermissions}
                     disabled={!hasChanges()}
@@ -611,7 +611,7 @@ export default function JobPositionPermissionsManager({
           {activeTab === 'modules' && (
             <>
               <div className="py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-6 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
                   <span>Módulos activos: <strong>{moduleAccess.length}</strong></span>
                   <span>Visibles: <strong>{moduleAccess.filter(m => m.can_view).length}</strong></span>
                   <span>Accesibles: <strong>{moduleAccess.filter(m => m.can_access).length}</strong></span>
@@ -621,24 +621,24 @@ export default function JobPositionPermissionsManager({
                 {accessLoading ? (
                   <div className="flex items-center justify-center h-32">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-                    <span className="ml-2 text-gray-600">Cargando módulos...</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando módulos...</span>
                   </div>
                 ) : moduleAccess.length === 0 ? (
                   <div className="text-center py-12">
-                    <LayoutGrid className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No hay módulos activos</h3>
-                    <p className="mt-1 text-sm text-gray-500">La organización no tiene módulos activados.</p>
+                    <LayoutGrid className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay módulos activos</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">La organización no tiene módulos activados.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {moduleAccess.map((mod) => (
-                      <div key={mod.module_code} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <LayoutGrid className="h-5 w-5 text-gray-400" />
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-900">{getModuleName(mod.module_code)}</h4>
-                              <p className="text-xs text-gray-500 font-mono">{mod.module_code}</p>
+                      <div key={mod.module_code} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                          <div className="flex items-center space-x-3 min-w-0 flex-1">
+                            <LayoutGrid className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-medium text-gray-900 dark:text-white break-words">{getModuleName(mod.module_code)}</h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 font-mono break-all">{mod.module_code}</p>
                             </div>
                           </div>
                           <div className="flex items-center space-x-4">
@@ -646,28 +646,28 @@ export default function JobPositionPermissionsManager({
                               <button
                                 onClick={() => toggleModuleView(mod.module_code)}
                                 className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium ${
-                                  mod.can_view ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                  mod.can_view ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                                 }`}
                               >
                                 {mod.can_view ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                                 <span>Ver</span>
                               </button>
                               <span title="Controla si el módulo aparece visible en el menú lateral del usuario.">
-                                <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                                <Info className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" />
                               </span>
                             </label>
                             <label className="flex items-center space-x-2 cursor-pointer">
                               <button
                                 onClick={() => toggleModuleAccess(mod.module_code)}
                                 className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium ${
-                                  mod.can_access ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                                  mod.can_access ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                                 }`}
                               >
                                 {mod.can_access ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                                 <span>Acceder</span>
                               </button>
                               <span title="Controla si el usuario puede entrar a las páginas del módulo. Si está desactivado, el middleware bloqueará el acceso.">
-                                <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                                <Info className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" />
                               </span>
                             </label>
                           </div>
@@ -677,12 +677,12 @@ export default function JobPositionPermissionsManager({
                   </div>
                 )}
               </div>
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
                   Controla qué módulos puede ver y acceder este cargo
                 </div>
                 <div className="flex space-x-3">
-                  <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">Cancelar</button>
+                  <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md w-full sm:w-auto">Cancelar</button>
                   <button
                     onClick={saveModuleAccess}
                     className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
@@ -698,7 +698,7 @@ export default function JobPositionPermissionsManager({
           {activeTab === 'pages' && (
             <>
               <div className="py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-6 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
                   <span>Total páginas: <strong>{pageAccess.length}</strong></span>
                   <span>Visibles: <strong>{pageAccess.filter(p => p.can_view).length}</strong></span>
                   <span>Accesibles: <strong>{pageAccess.filter(p => p.can_access).length}</strong></span>
@@ -708,13 +708,13 @@ export default function JobPositionPermissionsManager({
                 {accessLoading ? (
                   <div className="flex items-center justify-center h-32">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-                    <span className="ml-2 text-gray-600">Cargando páginas...</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando páginas...</span>
                   </div>
                 ) : pageAccess.length === 0 ? (
                   <div className="text-center py-12">
-                    <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No hay páginas activas</h3>
-                    <p className="mt-1 text-sm text-gray-500">La organización no tiene páginas activadas en sus módulos.</p>
+                    <FileText className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No hay páginas activas</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">La organización no tiene páginas activadas en sus módulos.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -722,23 +722,23 @@ export default function JobPositionPermissionsManager({
                       const isExpanded = expandedAccessModules.has(moduleCode);
                       const moduleMod = moduleAccess.find(m => m.module_code === moduleCode);
                       return (
-                        <div key={moduleCode} className="border border-gray-200 rounded-lg">
-                          <div className="flex items-center justify-between p-4 bg-gray-50">
+                        <div key={moduleCode} className="border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-4 bg-gray-50 dark:bg-gray-900/50">
                             <div className="flex items-center space-x-3 flex-1 cursor-pointer" onClick={() => toggleAccessModule(moduleCode)}>
-                              {isExpanded ? <ChevronDown className="h-5 w-5 text-gray-500" /> : <ChevronRight className="h-5 w-5 text-gray-500" />}
-                              <h4 className="text-lg font-medium text-gray-900">{getModuleName(moduleCode)}</h4>
-                              <span className="text-sm text-gray-500">({pages.filter(p => p.can_view).length}/{pages.length})</span>
+                              {isExpanded ? <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-5 w-5 text-gray-500 dark:text-gray-400" />}
+                              <h4 className="text-lg font-medium text-gray-900 dark:text-white break-words">{getModuleName(moduleCode)}</h4>
+                              <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">({pages.filter(p => p.can_view).length}/{pages.length})</span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => toggleAllModuleView(moduleCode, true)}
-                                className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded hover:bg-green-200"
+                                className="px-2 py-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 rounded hover:bg-green-200 dark:hover:bg-green-900/50"
                               >
                                 Habilitar todo
                               </button>
                               <button
                                 onClick={() => toggleAllModuleView(moduleCode, false)}
-                                className="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded hover:bg-red-200"
+                                className="px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 rounded hover:bg-red-200 dark:hover:bg-red-900/50"
                               >
                                 Bloquear todo
                               </button>
@@ -748,35 +748,35 @@ export default function JobPositionPermissionsManager({
                             <div className="p-4 bg-white">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {pages.map((page) => (
-                                  <div key={page.page_href} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50">
+                                  <div key={page.page_href} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-white dark:bg-gray-800">
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-gray-900 truncate">{page.page_name}</p>
-                                      <p className="text-xs text-gray-400 font-mono truncate">{page.page_href}</p>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white break-words">{page.page_name}</p>
+                                      <p className="text-xs text-gray-400 dark:text-gray-500 font-mono break-all">{page.page_href}</p>
                                     </div>
                                     <div className="flex items-center space-x-2 ml-2">
                                       <button
                                         onClick={() => togglePageView(page.page_href)}
                                         className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium ${
-                                          page.can_view ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                          page.can_view ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                                         }`}
                                       >
                                         {page.can_view ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                                         <span>Ver</span>
                                       </button>
                                       <span title="Controla si esta página aparece visible en el menú lateral del usuario.">
-                                        <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                                        <Info className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" />
                                       </span>
                                       <button
                                         onClick={() => togglePageAccess(page.page_href)}
                                         className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium ${
-                                          page.can_access ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                                          page.can_access ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                                         }`}
                                       >
                                         {page.can_access ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                                         <span>Acceder</span>
                                       </button>
                                       <span title="Controla si el usuario puede entrar a esta página. Si está desactivado, el middleware bloqueará el acceso.">
-                                        <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                                        <Info className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" />
                                       </span>
                                     </div>
                                   </div>
@@ -790,12 +790,12 @@ export default function JobPositionPermissionsManager({
                   </div>
                 )}
               </div>
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
                   Controla qué páginas puede ver y acceder este cargo
                 </div>
                 <div className="flex space-x-3">
-                  <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">Cancelar</button>
+                  <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md w-full sm:w-auto">Cancelar</button>
                   <button
                     onClick={saveModuleAccess}
                     className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"

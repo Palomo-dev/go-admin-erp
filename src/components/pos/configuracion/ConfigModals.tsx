@@ -1,7 +1,7 @@
 'use client';
 
 import { lazy, Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
+import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   Dialog,
   DialogContent,
@@ -28,11 +28,7 @@ const DesktopAgentPanel = lazy(() =>
 );
 
 function ModalSkeleton() {
-  return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-    </div>
-  );
+  return <CardListSkeleton cards={4} columns="2" />;
 }
 
 interface ConfigModalProps {
@@ -40,13 +36,12 @@ interface ConfigModalProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   children: React.ReactNode;
-  maxWidth?: string;
 }
 
-function ConfigModal({ open, onOpenChange, title, children, maxWidth = 'max-w-4xl' }: ConfigModalProps) {
+function ConfigModal({ open, onOpenChange, title, children }: ConfigModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${maxWidth} max-h-[90vh] overflow-y-auto`}>
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-xl md:max-w-2xl lg:max-w-5xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -58,7 +53,7 @@ function ConfigModal({ open, onOpenChange, title, children, maxWidth = 'max-w-4x
 
 export function ConsecutivosModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   return (
-    <ConfigModal open={open} onOpenChange={onOpenChange} title="Consecutivos de Ventas" maxWidth="max-w-5xl">
+    <ConfigModal open={open} onOpenChange={onOpenChange} title="Consecutivos de Ventas">
       <ConsecutivosPage embedded />
     </ConfigModal>
   );
@@ -66,7 +61,7 @@ export function ConsecutivosModal({ open, onOpenChange }: { open: boolean; onOpe
 
 export function PropinasModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   return (
-    <ConfigModal open={open} onOpenChange={onOpenChange} title="Propinas" maxWidth="max-w-5xl">
+    <ConfigModal open={open} onOpenChange={onOpenChange} title="Propinas">
       <PropinasContent embedded />
     </ConfigModal>
   );
@@ -74,7 +69,7 @@ export function PropinasModal({ open, onOpenChange }: { open: boolean; onOpenCha
 
 export function CargosModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   return (
-    <ConfigModal open={open} onOpenChange={onOpenChange} title="Cargos de Servicio" maxWidth="max-w-4xl">
+    <ConfigModal open={open} onOpenChange={onOpenChange} title="Cargos de Servicio">
       <CargosServicioContent embedded />
     </ConfigModal>
   );
@@ -82,7 +77,7 @@ export function CargosModal({ open, onOpenChange }: { open: boolean; onOpenChang
 
 export function ImpresionesModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   return (
-    <ConfigModal open={open} onOpenChange={onOpenChange} title="Previsualizar Impresiones" maxWidth="max-w-4xl">
+    <ConfigModal open={open} onOpenChange={onOpenChange} title="Previsualizar Impresiones">
       <ImpresionesPage embedded />
     </ConfigModal>
   );
@@ -90,7 +85,7 @@ export function ImpresionesModal({ open, onOpenChange }: { open: boolean; onOpen
 
 export function AgenteModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   return (
-    <ConfigModal open={open} onOpenChange={onOpenChange} title="Agente de Impresión" maxWidth="max-w-4xl">
+    <ConfigModal open={open} onOpenChange={onOpenChange} title="Agente de Impresión">
       <DesktopAgentPanel embedded />
     </ConfigModal>
   );

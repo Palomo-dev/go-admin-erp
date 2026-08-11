@@ -238,14 +238,14 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       {/* Header - hidden when embedded */}
       {!embedded && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-start sm:items-center gap-3 flex-wrap">
             <Link href="/app/pos">
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3 min-w-0">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
                   <Settings className="h-6 w-6 text-blue-600" />
                 </div>
@@ -350,77 +350,77 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button type="button" onClick={() => setShowConsecutivos(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg shrink-0">
                     <Hash className="h-5 w-5 text-blue-600" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Consecutivos de Ventas</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Prefijos, padding, reset</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white break-words">Consecutivos de Ventas</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">Prefijos, padding, reset</p>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors shrink-0" />
               </div>
             </button>
 
             <button type="button" onClick={() => setShowPropinas(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg shrink-0">
                     <DollarSign className="h-5 w-5 text-green-600" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Propinas</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Configurar propinas</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white break-words">Propinas</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">Configurar propinas</p>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" />
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors shrink-0" />
               </div>
             </button>
 
             <button type="button" onClick={() => setShowCargos(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg shrink-0">
                     <Calculator className="h-5 w-5 text-purple-600" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Cargos de Servicio</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Configurar cargos</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white break-words">Cargos de Servicio</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">Configurar cargos</p>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors shrink-0" />
               </div>
             </button>
 
             <button type="button" onClick={() => setShowImpresiones(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg shrink-0">
                     <Printer className="h-5 w-5 text-cyan-600" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Previsualizar Impresiones</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Ver tickets antes de imprimir</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white break-words">Previsualizar Impresiones</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">Ver tickets antes de imprimir</p>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-cyan-600 transition-colors shrink-0" />
               </div>
             </button>
 
             <button type="button" onClick={() => setShowAgente(true)} className="text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group w-full">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg shrink-0">
                     <Monitor className="h-5 w-5 text-indigo-600" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Agente de Impresión</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Estado y configuración del agente</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white break-words">Agente de Impresión</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words">Estado y configuración del agente</p>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition-colors shrink-0" />
               </div>
             </button>
           </div>
@@ -439,12 +439,12 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <div>
-              <p className="font-medium text-gray-900 dark:text-white">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900 dark:text-white break-words">
                 Bloquear ventas sin caja abierta
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
                 {requireCashSession.require_cash_session
                   ? 'Las ventas están bloqueadas hasta abrir caja'
                   : 'Las ventas están permitidas sin caja abierta'}
@@ -471,12 +471,12 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <div>
-              <p className="font-medium text-gray-900 dark:text-white">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900 dark:text-white break-words">
                 Activar cierre ciego
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
                 {blindCashCount.blind_cash_count
                   ? 'El cajero no ve los montos esperados ni las diferencias'
                   : 'El cajero puede ver los montos esperados y diferencias'}

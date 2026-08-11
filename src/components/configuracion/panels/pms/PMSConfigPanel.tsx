@@ -13,6 +13,7 @@ import {
 } from '@/components/pms/configuracion';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Save } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export function PMSConfigPanel() {
   const { organization } = useOrganization();
@@ -81,15 +82,8 @@ export function PMSConfigPanel() {
   if (isLoading || !settings) {
     return (
       <div className="space-y-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-16 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-            <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-            <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-            <div className="h-64 bg-gray-200 dark:bg-gray-800 rounded-lg" />
-          </div>
-        </div>
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="2" />
       </div>
     );
   }

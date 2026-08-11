@@ -367,16 +367,16 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
   return (
     <div className="space-y-6">
       {/* Título y Acciones */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Analíticas de Roles</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white break-words">Analíticas de Roles</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 break-words">
             Estadísticas y métricas sobre roles, permisos y cargos en tu organización
           </p>
         </div>
         <Button
           onClick={exportToCSV}
-          className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
         >
           <Download className="h-4 w-4 mr-2" />
           Exportar CSV
@@ -386,7 +386,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
       {/* Filtros de Fecha */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white flex items-center">
+          <CardTitle className="text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Calendar className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
             Filtros de Fecha
           </CardTitle>
@@ -442,7 +442,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
                   <Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
-              <div className="ml-4 flex-1">
+              <div className="ml-4 flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Total de Roles
                 </p>
@@ -465,7 +465,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
                   <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
-              <div className="ml-4 flex-1">
+              <div className="ml-4 flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Total de Miembros
                 </p>
@@ -488,7 +488,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
                   <Key className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
-              <div className="ml-4 flex-1">
+              <div className="ml-4 flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Total de Permisos
                 </p>
@@ -511,7 +511,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
                   <Briefcase className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                 </div>
               </div>
-              <div className="ml-4 flex-1">
+              <div className="ml-4 flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Total de Cargos
                 </p>
@@ -533,7 +533,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
       {/* Distribución de roles */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white flex items-center">
+          <CardTitle className="text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <TrendingUp className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
             Distribución de Roles
           </CardTitle>
@@ -552,11 +552,11 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
                 
                 return (
                   <div key={index}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 mb-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-0 break-words">
                         {role.name}
                       </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">
                         {role.count} miembros ({percentage}%)
                       </span>
                     </div>
@@ -577,7 +577,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
       {/* Distribución de Cargos */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white flex items-center">
+          <CardTitle className="text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Briefcase className="h-5 w-5 mr-2 text-orange-600 dark:text-orange-400" />
             Cargos Más Usados
           </CardTitle>
@@ -596,11 +596,11 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
                 
                 return (
                   <div key={index}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 mb-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-0 break-words">
                         {position.name}
                       </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">
                         {position.count} empleados ({percentage}%)
                       </span>
                     </div>
@@ -624,7 +624,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
       {/* Permisos Más Otorgados */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white flex items-center">
+          <CardTitle className="text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <CheckCircle2 className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" />
             Permisos Más Otorgados
           </CardTitle>
@@ -639,17 +639,17 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
               {stats.topGrantedPermissions.map((perm, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800"
+                  className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800"
                 >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white break-words">
                       {perm.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize break-words">
                       {perm.module}
                     </p>
                   </div>
-                  <Badge variant="secondary" className="bg-green-600 text-white">
+                  <Badge variant="secondary" className="bg-green-600 text-white shrink-0">
                     {perm.count}
                   </Badge>
                 </div>
@@ -662,7 +662,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
       {/* Permisos Más Negados */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white flex items-center">
+          <CardTitle className="text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <XCircle className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
             Permisos Más Negados
           </CardTitle>
@@ -677,17 +677,17 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
               {stats.topDeniedPermissions.map((perm, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800"
+                  className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800"
                 >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white break-words">
                       {perm.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize break-words">
                       {perm.module}
                     </p>
                   </div>
-                  <Badge variant="secondary" className="bg-red-600 text-white">
+                  <Badge variant="secondary" className="bg-red-600 text-white shrink-0">
                     {perm.count}
                   </Badge>
                 </div>
@@ -701,7 +701,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
       {/* Actividad reciente */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white flex items-center">
+          <CardTitle className="text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
             <Activity className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
             Actividad Reciente
           </CardTitle>
@@ -758,11 +758,11 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
 
       {/* Diálogo de Detalle de Cambio */}
       {selectedChange && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <div className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
+          <Card className="w-[calc(100%-2rem)] sm:max-w-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 max-h-[90dvh] overflow-y-auto">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-gray-900 dark:text-white capitalize">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+                <CardTitle className="text-gray-900 dark:text-white capitalize break-words">
                   Detalle del Cambio: {selectedChange.action}
                 </CardTitle>
                 <Button
@@ -775,7 +775,7 @@ export default function RoleAnalytics({ organizationId }: RoleAnalyticsProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-gray-900 dark:text-white">Entidad</Label>
                   <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">{selectedChange.entity}</p>

@@ -81,22 +81,22 @@ export function RangosDianSection({
               {savedRanges.map((seq: Record<string, unknown>) => (
                 <div
                   key={seq.id as number}
-                  className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${editingRangeId === seq.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                  className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 border rounded-lg transition-colors ${editingRangeId === seq.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <span className={`px-2 py-0.5 text-xs font-medium rounded flex-shrink-0 ${seq.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {seq.is_active ? 'Activo' : 'Inactivo'}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-sm font-medium break-all">
                         {seq.prefix as string} - {documentTypeLabels[seq.document_type as string] || seq.document_type as string}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-gray-500 break-all">
                         ID Factus: {seq.factus_numbering_range_id} | Res: {seq.resolution_number || 'N/A'} | {seq.range_start || '?'} - {seq.range_end || '?'} | Actual: {seq.current_number}
                       </p>
                     </div>
                   </div>
-                  <Button onClick={() => onEditRange(seq)} variant="ghost" size="sm" className="flex-shrink-0 ml-2">
+                  <Button onClick={() => onEditRange(seq)} variant="ghost" size="sm" className="flex-shrink-0">
                     <Edit className="h-4 w-4" />
                   </Button>
                 </div>

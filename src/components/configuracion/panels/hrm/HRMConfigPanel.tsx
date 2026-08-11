@@ -9,7 +9,8 @@ import { SettingsForm, CurrenciesCard } from '@/components/hrm/configuracion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Globe, DollarSign } from 'lucide-react';
+import { RefreshCw, Globe, DollarSign } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export function HRMConfigPanel() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -100,14 +101,21 @@ export function HRMConfigPanel() {
 
   if (orgLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="space-y-8">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="2" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" size="icon" onClick={loadData}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+
       {/* Configuración General */}
       <div className="space-y-4">
         <h3 className="text-sm font-medium text-muted-foreground">Configuración General</h3>

@@ -829,16 +829,6 @@ class CheckoutService {
 
     console.log('createSaleFromFolio: Sale_items creados', saleItems.length);
 
-    // Vincular folio con la venta
-    const { error: folioLinkError } = await supabase
-      .from('folios')
-      .update({ sale_id: sale.id })
-      .eq('id', folioId);
-
-    if (folioLinkError) {
-      console.warn('createSaleFromFolio: Error vinculando folio con venta:', folioLinkError);
-    }
-
     // Registrar pagos en tabla payments
     const { data: baseCurrency } = await supabase
       .from('currencies')

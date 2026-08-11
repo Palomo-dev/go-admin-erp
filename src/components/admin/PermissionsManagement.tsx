@@ -128,10 +128,10 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Catálogo de Permisos</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <div className="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white break-words">Catálogo de Permisos</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 break-words">
             Visualiza todos los permisos disponibles en el sistema organizados por módulo
           </p>
         </div>
@@ -190,8 +190,8 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
               <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                 <Key className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Permisos</p>
+              <div className="ml-3 min-w-0">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 break-words">Total Permisos</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{permissions.length}</p>
               </div>
             </div>
@@ -203,8 +203,8 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
               <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                 <Filter className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Permisos Filtrados</p>
+              <div className="ml-3 min-w-0">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 break-words">Permisos Filtrados</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{filteredPermissions.length}</p>
               </div>
             </div>
@@ -216,8 +216,8 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
               <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                 <Package className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Módulos</p>
+              <div className="ml-3 min-w-0">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 break-words">Módulos</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{modules.length}</p>
               </div>
             </div>
@@ -230,13 +230,13 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
         {Object.entries(permissionsByModule).map(([moduleName, modulePermissions]) => (
           <Card key={moduleName} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 mb-4">
+                <div className="flex flex-wrap items-center gap-3 min-w-0">
                   <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                     <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white capitalize">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white capitalize break-words">
                       {moduleName}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -244,7 +244,7 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
                     </p>
                   </div>
                 </div>
-                <Badge className={getModuleColor(moduleName)}>
+                <Badge className={`shrink-0 ${getModuleColor(moduleName)}`}>
                   {moduleName}
                 </Badge>
               </div>

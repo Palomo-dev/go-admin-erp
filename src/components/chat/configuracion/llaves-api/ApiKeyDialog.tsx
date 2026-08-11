@@ -107,7 +107,7 @@ export default function ApiKeyDialog({
   if (generatedKey) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Llave de API Creada</DialogTitle>
           </DialogHeader>
@@ -129,8 +129,8 @@ export default function ApiKeyDialog({
 
             <div className="space-y-2">
               <Label>Tu llave de API:</Label>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm font-mono break-all text-gray-900 dark:text-gray-100">
+              <div className="flex items-center gap-2 min-w-0">
+                <code className="flex-1 min-w-0 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm font-mono break-all text-gray-900 dark:text-gray-100">
                   {generatedKey}
                 </code>
                 <Button
@@ -161,7 +161,7 @@ export default function ApiKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[500px] md:max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nueva Llave de API</DialogTitle>
         </DialogHeader>

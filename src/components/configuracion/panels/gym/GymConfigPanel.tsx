@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,8 +110,9 @@ export function GymConfigPanel() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="space-y-8">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={4} columns="2" />
       </div>
     );
   }

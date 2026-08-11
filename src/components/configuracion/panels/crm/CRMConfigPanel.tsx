@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { Loader2, MessageSquare, Tags, Key, Globe } from 'lucide-react';
+import { MessageSquare, Tags, Key, Globe } from 'lucide-react';
+import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -356,8 +357,9 @@ export function CRMConfigPanel() {
 
   if (isLoading && channels.length === 0 && tags.length === 0 && apiKeys.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="space-y-8">
+        <PageHeaderSkeleton />
+        <CardListSkeleton cards={6} columns="3" />
       </div>
     );
   }

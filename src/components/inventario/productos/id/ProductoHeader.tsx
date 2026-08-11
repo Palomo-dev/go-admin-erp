@@ -413,12 +413,12 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                       </span>
                     </div>
                   ) : (
-                    <p className="mt-1 text-2xl font-semibold dark:text-white">
+                    <div className="mt-1 text-2xl font-semibold dark:text-white">
                       {loadingStock ? 
                         <Skeleton className="h-6 w-8 mx-auto" />: 
                         totalStock.total
                       }
-                    </p>
+                    </div>
                   )}
                 </div>
               </TooltipProvider>

@@ -547,7 +547,7 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
 
       {/* Modal Crear/Editar */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[500px] max-h-[90dvh] overflow-y-auto bg-white dark:bg-gray-800">
           <DialogHeader>
             <DialogTitle className="text-gray-900 dark:text-white">
               {editando ? 'Editar Consecutivo' : 'Nuevo Consecutivo'}
@@ -606,7 +606,7 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label className="text-gray-700 dark:text-gray-300">Número Actual</Label>
                 <Input
@@ -649,8 +649,8 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-              <div>
+            <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div className="min-w-0">
                 <p className="font-medium text-gray-900 dark:text-white">Activo</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">El consecutivo está en uso</p>
               </div>
@@ -663,7 +663,7 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
             {/* Preview */}
             <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Preview del próximo consecutivo:</p>
-              <p className="text-xl font-mono font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-xl font-mono font-bold text-blue-600 dark:text-blue-400 break-all">
                 {ConsecutivosService.generatePreview(formData.prefix, formData.current_number + 1, formData.padding)}
               </p>
             </div>
@@ -733,7 +733,7 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
 
       {/* Dialog Importar */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[500px] max-h-[90dvh] overflow-y-auto bg-white dark:bg-gray-800">
           <DialogHeader>
             <DialogTitle className="text-gray-900 dark:text-white">Importar Consecutivos</DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400">

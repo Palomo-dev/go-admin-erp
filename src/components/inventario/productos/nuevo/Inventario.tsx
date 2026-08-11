@@ -55,9 +55,21 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
     }
   }
 
+  // Sucursales que aún no tienen una entrada de stock asignada
+  const getAvailableBranches = (excludeIndex?: number) => {
+    const usadas = new Set<number>(
+      formData.stock_inicial
+        .map((s: { branch_id: number }, i: number) => (i === excludeIndex ? null : s.branch_id))
+        .filter((id: number | null): id is number => id != null)
+    )
+    return branches.filter((b) => !usadas.has(b.id))
+  }
+
   const addStockEntry = () => {
+    const disponibles = getAvailableBranches()
+    if (disponibles.length === 0) return
     const newStock = {
-      branch_id: branches[0]?.id || 0,
+      branch_id: disponibles[0].id,
       qty_on_hand: 0,
       min_level: 0,
       avg_cost: formData.cost || 0
@@ -95,7 +107,7 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
         <Button
           type="button"
           onClick={addStockEntry}
-          disabled={isLoadingBranches || branches.length === 0 || formData.track_stock === false}
+          disabled={isLoadingBranches || branches.length === 0 || formData.track_stock === false || getAvailableBranches().length === 0}
           className="bg-blue-600 hover:bg-blue-700 text-white"
           size="sm"
         >
@@ -209,7 +221,7 @@ export default function Inventario({ formData, updateFormData, hasVariants = fal
                     onChange={(e) => updateStockEntry(index, 'branch_id', parseInt(e.target.value))}
                     className="w-full h-10 px-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
-                    {branches.map((branch) => (
+                    {getAvailableBranches(index).map((branch) => (
                       <option key={branch.id} value={branch.id}>
                         {branch.name}
                       </option>

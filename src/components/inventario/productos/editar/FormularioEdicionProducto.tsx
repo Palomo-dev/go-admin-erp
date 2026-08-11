@@ -176,14 +176,27 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         
         console.log("Stock data cargado:", stockData);
         
-        // Mapear el stock actual al formato esperado por el formulario
-        const stockInicial = stockData?.map((item: any) => ({
-          branch_id: item.branch_id,
-          branch_name: item.branches?.name, // Incluimos el nombre de la sucursal para mejor referencia
-          qty_on_hand: item.qty_on_hand || 0,
-          avg_cost: item.avg_cost || 0,
-          lot_id: item.lot_id
-        })) || [];
+        // Mapear el stock actual al formato esperado por el formulario.
+        // Se consolida por sucursal para evitar entradas duplicadas en pantalla
+        // si existieran varias filas (product_id, branch_id) en stock_levels.
+        const stockPorSucursal = new Map<number, any>();
+        (stockData || [])
+          .filter((item: any) => item.lot_id == null)
+          .forEach((item: any) => {
+            const existente = stockPorSucursal.get(item.branch_id);
+            if (existente) {
+              existente.qty_on_hand += Number(item.qty_on_hand) || 0;
+            } else {
+              stockPorSucursal.set(item.branch_id, {
+                branch_id: item.branch_id,
+                branch_name: item.branches?.name, // Incluimos el nombre de la sucursal para mejor referencia
+                qty_on_hand: Number(item.qty_on_hand) || 0,
+                avg_cost: item.avg_cost || 0,
+                lot_id: item.lot_id
+              });
+            }
+          });
+        const stockInicial = Array.from(stockPorSucursal.values());
         
         console.log("Stock inicial mapeado:", stockInicial);
         
@@ -570,6 +583,8 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
               .select('id')
               .eq('product_id', productoId)
               .eq('branch_id', bId)
+              .is('lot_id', null)
+              .limit(1)
               .maybeSingle();
             
             if (stockQueryError) throw stockQueryError;

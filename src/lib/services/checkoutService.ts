@@ -774,7 +774,7 @@ class CheckoutService {
     const finalTotal = taxCalculation.finalTotal;
 
     // Determinar si está pagado completamente
-    const isPaid = totalPaid >= finalTotal || (folioBalance <= 0 && payments.length === 0);
+    const isPaid = totalPaid >= finalTotal && finalTotal > 0;
     const remainingBalance = Math.max(0, finalTotal - totalPaid);
 
     // Crear la venta

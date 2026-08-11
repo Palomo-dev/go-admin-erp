@@ -556,9 +556,11 @@ export function CheckoutDialog({
 
       // Calcular montos por concepto
       const folioItemsAmount = pendingItems.reduce((sum, item) => sum + Number(item.amount), 0);
-      const lodgingPortion = Math.max(0, paymentTotal - folioItemsAmount);
 
       // 1. Pagar items del folio (consumos dentro de la habitación)
+      //    Esto marca los items como paid e inserta un payment con source='folio'
+      //    El hospedaje se paga después en createSaleFromFolio con source='sale'
+      //    para que la factura pueda ver los pagos y actualizar su balance
       if (folioItemsAmount > 0 && reservation.folio?.id) {
         await foliosService.payFolioItems(
           reservation.folio.id,
@@ -567,42 +569,6 @@ export function CheckoutDialog({
           null,
           userId || undefined
         );
-      }
-
-      // 2. Pagar hospedaje (reserva + noches extra + impuestos)
-      if (lodgingPortion > 0 && reservation.id) {
-        let orgId = getOrganizationId();
-        let branchId = getCurrentBranchId();
-
-        // Fallback: obtener organization_id de la reserva si no está en localStorage
-        if (!orgId || orgId === 0) {
-          const { data: resData } = await supabase
-            .from('reservations')
-            .select('organization_id, branch_id')
-            .eq('id', reservation.id)
-            .maybeSingle();
-          if (resData?.organization_id) {
-            orgId = resData.organization_id;
-            branchId = branchId || resData.branch_id || null;
-          }
-        }
-
-        const { error: lodgingError } = await supabase
-          .from('payments')
-          .insert({
-            organization_id: orgId,
-            branch_id: branchId,
-            source: 'pms',
-            source_id: reservation.id,
-            method: paymentMethod,
-            amount: lodgingPortion,
-            currency: 'USD',
-            status: 'completed',
-            reference: `CHECKOUT-${Date.now()}`,
-            created_by: userId || null,
-          });
-
-        if (lodgingError) throw lodgingError;
       }
 
       setPaymentData({

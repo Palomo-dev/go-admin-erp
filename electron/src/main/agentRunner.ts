@@ -67,7 +67,6 @@ function scheduleReconnect(): void {
         agentConfig.branchNames,
       );
       reconnectAttempts = 0;
-      showNotification('Go Admin Desktop', 'Agente reconectado correctamente');
     } catch (err) {
       console.error('[agent] Reconexión falló:', err);
       scheduleReconnect();
@@ -226,7 +225,6 @@ export async function startAgent(
       )
       .on('system', { event: 'disconnected' }, () => {
         console.warn('[agent] Realtime desconectado, iniciando reconexión...');
-        showNotification('Go Admin Desktop', 'Conexión perdida, reconectando...');
         scheduleReconnect();
       })
       .subscribe((status) => {

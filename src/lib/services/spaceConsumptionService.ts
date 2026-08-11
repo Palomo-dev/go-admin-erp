@@ -64,13 +64,14 @@ class SpaceConsumptionService {
       console.log('IDs de reservas encontradas:', reservationIds);
 
       // Paso 2: Buscar reserva activa entre esos IDs
+      // Si está checked_in, sigue activa sin importar la fecha de checkout (puede ser tardío)
       const { data: activeReservations, error: rError } = await supabase
         .from('reservations')
         .select('id, status, checkin, checkout')
         .in('id', reservationIds)
         .in('status', ['confirmed', 'checked_in'])
         .lte('checkin', today)
-        .gte('checkout', today)
+        .or(`checkout.gte.${today},status.eq.checked_in`)
         .order('checkin', { ascending: false })
         .limit(1);
 
@@ -84,12 +85,12 @@ class SpaceConsumptionService {
       
       console.log('Reserva activa encontrada:', reservation);
 
-      // Paso 3: Buscar folio asociado
+      // Paso 3: Buscar folio asociado (abierto o cerrado)
       const { data: folio } = await supabase
         .from('folios')
         .select('id')
         .eq('reservation_id', reservationId)
-        .eq('status', 'open')
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 

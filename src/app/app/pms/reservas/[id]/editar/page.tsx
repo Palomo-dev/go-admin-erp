@@ -59,6 +59,9 @@ export default function EditarReservaPage() {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [notes, setNotes] = useState('');
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [taxIncluded, setTaxIncluded] = useState(false);
+  const [appliedTaxIds, setAppliedTaxIds] = useState<string[]>([]);
+  const [spaceTypeRates, setSpaceTypeRates] = useState<Record<string, { dailyRate: number; rateSource: 'tarifa' | 'base_rate' }>>({});
 
   // Cargar datos de la reserva al inicio
   useEffect(() => {
@@ -505,6 +508,15 @@ export default function EditarReservaPage() {
               onNotesChange={setNotes}
               onNext={nextStep}
               onBack={prevStep}
+              taxIncluded={taxIncluded}
+              onTaxIncludedChange={setTaxIncluded}
+              appliedTaxIds={appliedTaxIds}
+              onAppliedTaxIdsChange={setAppliedTaxIds}
+              extras={extras}
+              nights={calculateNights()}
+              selectedSpacesData={availableSpaces.filter((s) => selectedSpaces.includes(s.id))}
+              spaceTypeRates={spaceTypeRates}
+              organizationId={organization?.id}
             />
           )}
 
@@ -524,6 +536,7 @@ export default function EditarReservaPage() {
               isSubmitting={isSubmitting}
               onConfirm={handleSubmit}
               onBack={prevStep}
+              taxIncluded={taxIncluded}
             />
           )}
         </Card>

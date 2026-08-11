@@ -47,6 +47,10 @@ import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { TripAdvisorContentPanel } from '@/components/integraciones/tripadvisor';
 import ReservationExtrasService from '@/lib/services/reservationExtrasService';
+import CheckinService, { type CheckinReservation } from '@/lib/services/checkinService';
+import CheckoutService, { type CheckoutReservation } from '@/lib/services/checkoutService';
+import { CheckinDialog, type CheckinData } from '@/components/pms/checkin';
+import { CheckoutDialog, type CheckoutDialogData } from '@/components/pms/checkout';
 
 export default function SpaceDetailPage() {
   const params = useParams();
@@ -73,6 +77,12 @@ export default function SpaceDetailPage() {
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
   const [showQuickReservationDrawer, setShowQuickReservationDrawer] = useState(false);
   const [showAddConsumptionDialog, setShowAddConsumptionDialog] = useState(false);
+  const [showCheckinDialog, setShowCheckinDialog] = useState(false);
+  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+  const [checkinReservation, setCheckinReservation] = useState<CheckinReservation | null>(null);
+  const [checkoutReservation, setCheckoutReservation] = useState<CheckoutReservation | null>(null);
+  const [isLoadingCheckinData, setIsLoadingCheckinData] = useState(false);
+  const [isLoadingCheckoutData, setIsLoadingCheckoutData] = useState(false);
   const [includedProductIds, setIncludedProductIds] = useState<Set<number>>(new Set());
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
   const [cleaningNotes, setCleaningNotes] = useState('');
@@ -442,6 +452,147 @@ export default function SpaceDetailPage() {
     }
   };
 
+  // Determinar si hay una reserva elegible para check-in (confirmed y checkin es hoy o pasado)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const checkinEligibleReservation = reservations.find((r) => {
+    if (r.status !== 'confirmed' && r.status !== 'pending') return false;
+    const checkinDate = new Date(r.checkin + 'T00:00:00');
+    return checkinDate <= today;
+  });
+
+  // Determinar si hay una reserva elegible para check-out (checked_in y checkout es hoy o pasado)
+  const checkoutEligibleReservation = reservations.find((r) => {
+    if (r.status !== 'checked_in') return false;
+    const checkoutDate = new Date(r.checkout + 'T00:00:00');
+    return checkoutDate <= today;
+  });
+
+  const handleCheckinClick = async () => {
+    if (!checkinEligibleReservation) return;
+    setIsLoadingCheckinData(true);
+    try {
+      const fullReservation = await CheckinService.getReservationForCheckin(checkinEligibleReservation.id);
+      if (fullReservation) {
+        setCheckinReservation(fullReservation);
+        setShowCheckinDialog(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: 'No se pudieron cargar los datos de la reserva para check-in',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Error al cargar datos de check-in',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingCheckinData(false);
+    }
+  };
+
+  const handleConfirmCheckin = async (data: CheckinData) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      await CheckinService.performCheckin({
+        reservationId: data.reservationId,
+        userId: user?.id,
+        notes: data.notes,
+        depositAmount: data.depositAmount,
+        signatureData: data.signatureData,
+        identificationType: data.identificationType,
+        identificationNumber: data.identificationNumber,
+        nationality: data.nationality,
+        originCity: data.originCity,
+        originCountry: data.originCountry,
+        destinationCity: data.destinationCity,
+        destinationCountry: data.destinationCountry,
+        updateCheckinDate: data.updateCheckinDate,
+      });
+
+      if (data.depositAmount > 0) {
+        await CheckinService.registerDeposit({
+          reservationId: data.reservationId,
+          amount: data.depositAmount,
+          method: data.depositMethod,
+          reference: data.depositReference,
+        });
+      }
+
+      toast({
+        title: 'Check-in Exitoso',
+        description: `Check-in realizado para ${checkinReservation?.customer_name}`,
+      });
+
+      await loadData();
+      setShowCheckinDialog(false);
+      setCheckinReservation(null);
+    } catch (error: any) {
+      toast({
+        title: 'Error al Realizar Check-in',
+        description: error.message || error.hint || 'No se pudo completar el check-in',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCheckoutClick = async () => {
+    if (!checkoutEligibleReservation) return;
+    setIsLoadingCheckoutData(true);
+    try {
+      const fullReservation = await CheckoutService.getReservationForCheckout(checkoutEligibleReservation.id);
+      if (fullReservation) {
+        setCheckoutReservation(fullReservation);
+        setShowCheckoutDialog(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: 'No se pudieron cargar los datos de la reserva para check-out',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Error al cargar datos de check-out',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingCheckoutData(false);
+    }
+  };
+
+  const handleConfirmCheckout = async (data: CheckoutDialogData) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      await CheckoutService.performCheckout({
+        ...data,
+        userId: user?.id,
+      });
+
+      toast({
+        title: '¡Check-out exitoso!',
+        description: 'La salida del huésped ha sido registrada correctamente',
+      });
+
+      await loadData();
+      setShowCheckoutDialog(false);
+      setCheckoutReservation(null);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo completar el check-out',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -477,6 +628,8 @@ export default function SpaceDetailPage() {
         onViewRevenue={handleViewRevenue}
         onNewReservation={() => setShowQuickReservationDrawer(true)}
         onAddConsumption={handleOpenConsumptionDialog}
+        onCheckin={checkinEligibleReservation ? handleCheckinClick : undefined}
+        onCheckout={checkoutEligibleReservation ? handleCheckoutClick : undefined}
       />
 
       {/* Content */}
@@ -680,6 +833,22 @@ export default function SpaceDetailPage() {
           includedProductIds={includedProductIds}
         />
       )}
+
+      {/* Diálogo de Check-in (compartido con /app/pms/checkin) */}
+      <CheckinDialog
+        open={showCheckinDialog}
+        onOpenChange={setShowCheckinDialog}
+        reservation={checkinReservation}
+        onConfirm={handleConfirmCheckin}
+      />
+
+      {/* Diálogo de Check-out (compartido con /app/pms/checkout) */}
+      <CheckoutDialog
+        open={showCheckoutDialog}
+        onOpenChange={setShowCheckoutDialog}
+        reservation={checkoutReservation}
+        onConfirm={handleConfirmCheckout}
+      />
     </div>
   );
 }

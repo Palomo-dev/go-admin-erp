@@ -363,7 +363,7 @@ Paneles creados: Parking, Timeline, Integraciones, Roles, Calendario, Gym, Notif
 
 ---
 
-### FASE 3: Paneles con sub-configuraciones (4 módulos) — REVISIÓN
+### FASE 3: Paneles con sub-configuraciones (4 módulos) ✅ DONE
 
 **Nuevo enfoque**: Sin tabs internas. Las sub-configuraciones se muestran como **cards/botones** que abren **modales** (estilo Stripe).
 
@@ -419,7 +419,7 @@ export function POSConfigPanel() {
 
 ---
 
-### FASE 4: Panel CRM + Drawer de detalle de canal
+### FASE 4: Panel CRM + Drawer de detalle de canal ✅ DONE
 
 1. `CRMConfigPanel` con cards: Canales, Etiquetas, API Keys, Widget
 2. `CanalesCard`: embebe `ChannelsList` + `CreateChannelDialog` + `WidgetCodeDialog` (ya existen)
@@ -431,7 +431,7 @@ export function POSConfigPanel() {
 
 ---
 
-### FASE 5: Actualizar navegación del sidebar
+### FASE 5: Actualizar navegación del sidebar ✅ DONE
 
 **`SidebarNavigation.tsx`** — cambiar hrefs de "Configuración" a la página central con search param:
 
@@ -460,7 +460,7 @@ export function POSConfigPanel() {
 
 ---
 
-### FASE 6: Redirects de compatibilidad
+### FASE 6: Redirects de compatibilidad ✅ DONE
 
 Convertir las 14+ rutas antiguas en redirects (preservando deep-links):
 
@@ -542,15 +542,16 @@ src/app/app/notificaciones/preferencias/    # ELIMINAR
 | Fase | Descripción | Archivos nuevos | Refactors | Complejidad |
 |------|------------|-----------------|-----------|-------------|
 | 1 | Infraestructura base | 8 | 0 | Media ✅ |
-| 1b | Refactor layout → tabs horizontales | 0 | 6 archivos | Media |
+| 1b | Refactor layout → tabs horizontales | 0 | 6 archivos | Media ✅ |
 | 2 | Paneles simples | 8+ | 0 (copiar lógica) | Baja ✅ |
-| 3 | Paneles con sub-configs + modales | 3 modales + 4 paneles | 4 componentes (embedded) | Media |
-| 4 | CRM + drawer canal | 6 | 1 (canales/[id]) | **Media-Alta** |
-| 5 | Navegación sidebar | 0 | 3 archivos | Baja |
-| 6 | Redirects | 0 | 16 rutas | Baja |
-| 7 | Eliminar rutas | 0 | 14 dirs | Baja |
+| 3 | Paneles con sub-configs + modales | 3 modales + 4 paneles | 4 componentes (embedded) | Media ✅ |
+| 4 | CRM + drawer canal | 6 | 1 (canales/[id]) | **Media-Alta** ✅ |
+| 5 | Navegación sidebar | 0 | 3 archivos | Baja ✅ |
+| 6 | Redirects | 0 | 16 rutas | Baja ✅ |
+| 7 | Eliminar rutas | 0 | 14 dirs | Baja ✅ |
+| 8 | Integración sidebar + permisos + BD | 0 | 3 archivos + migración BD | Baja ✅ |
 
-**Total**: ~30 archivos nuevos, 1 refactor real, ~20 modificados
+**Total**: ~30 archivos nuevos, 1 refactor real, ~23 modificados
 
 **Riesgo principal**: Fase 4 (drawer de canal CRM). Todo lo demás es reutilización directa.
 
@@ -579,3 +580,76 @@ Cada panel repite: `useOrganization()`, `useToast()`, estado isLoading/isRefresh
 - Eliminar tabs internas de paneles → contenido inline o modales
 - Agregar `embedded` a sub-componentes → ocultar headers/paddings
 - Sub-configs de POS → modales estilo Stripe
+
+---
+
+### FASE 8: Integración al sidebar, permisos por cargo y módulo core
+
+**Objetivo**: Hacer que `/app/configuracion` aparezca como item de nivel superior en el sidebar, con icono propio, y que su visibilidad/acceso se pueda controlar desde el gestor de permisos por cargo (`JobPositionPermissionsManager`).
+
+#### Decisión de diseño: ¿Módulo core o no?
+
+**Sí, se clasificó como core** (`is_core: true`). Razones:
+
+1. Si es core, aparece automáticamente para todas las organizaciones sin contar en el límite del plan.
+2. Al tener `moduleCode: 'configuracion'` en el sidebar, **sí se puede restringir por cargo** desde el `JobPositionPermissionsManager` (pestaña "Módulos" → toggle Ver/Acceder).
+3. Si NO tuviera `moduleCode` (item sin código), sería siempre visible y **no se podría restringir** — justo lo que se quiere evitar.
+
+#### Cambios en Base de Datos (Supabase)
+
+**Migración**: `add_configuracion_module`
+
+1. **Tabla `modules`**: Insertar módulo `configuracion` con:
+   - `code`: `'configuracion'`
+   - `name`: `'Configuración'`
+   - `is_core`: `true`
+   - `icon`: `'Settings'`
+   - `rank`: `150`
+   - `is_active`: `true`
+
+2. **Tabla `organization_modules`**: Activar `configuracion` para todas las organizaciones existentes (72 orgs).
+
+3. **Tabla `organization_module_pages`**: Insertar página `/app/configuracion` para todas las organizaciones (72 orgs).
+
+#### Cambios en código
+
+##### `src/components/app-layout/Sidebar/SidebarNavigation.tsx`
+- Agregado item "Configuración" en la sección `sectionSystem` (última posición):
+  ```tsx
+  {
+    name: "Configuración",
+    href: "/app/configuracion",
+    icon: <Settings size={18} />,
+    moduleCode: 'configuracion',
+  }
+  ```
+- El `moduleCode` permite que el filtro de `activeModuleCodes` y `jobPositionVisibleModules` lo controle.
+
+##### `src/config/moduleConfig.ts`
+- Agregado `'configuracion': Settings` a `moduleIcons`
+- Agregado `'configuracion': '/app/configuracion'` a `moduleRoutes`
+
+##### `src/components/hrm/JobPositionPermissionsManager.tsx`
+- Agregado `'configuracion': 'Configuración'` al mapeo `getModuleName` para que el gestor de permisos muestre el nombre legible.
+
+##### `src/lib/config/modulePages.ts` (ya existía)
+- `MODULE_PAGES['configuracion']` ya tenía `{ name: 'Configuración', href: '/app/configuracion' }`
+- `MODULE_HREF_TO_CODE['/app/configuracion']` ya tenía `'configuracion'`
+
+#### Cómo funciona el control de acceso
+
+1. **Organización**: El módulo `configuracion` es core, así que `getActiveModules()` siempre lo incluye.
+2. **Cargo**: Desde Roles y Permisos → gestionar permisos de un cargo → pestaña "Módulos":
+   - **Ver** (`can_view`): Controla si el item aparece en el sidebar del usuario.
+   - **Acceder** (`can_access`): Controla si el usuario puede entrar a `/app/configuracion`. Si está desactivado, el middleware bloquea el acceso.
+3. **Páginas**: La pestaña "Páginas" del gestor permite controlar visibilidad/acceso a `/app/configuracion` individualmente.
+
+#### Verificación
+
+- [x] Módulo `configuracion` insertado en BD (core, rank 150)
+- [x] 72 organizaciones activadas en `organization_modules`
+- [x] 72 páginas insertadas en `organization_module_pages`
+- [x] Item "Configuración" visible en sidebar (sección System)
+- [x] Icono `Settings` mostrado correctamente
+- [x] `JobPositionPermissionsManager` muestra "Configuración" en pestaña Módulos
+- [x] Se puede quitar visibilidad (`can_view`) y acceso (`can_access`) por cargo

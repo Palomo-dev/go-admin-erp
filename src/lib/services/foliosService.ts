@@ -20,6 +20,17 @@ export interface Folio {
       last_name: string;
       email: string;
     };
+    reservation_spaces?: Array<{
+      space_id: string;
+      spaces?: {
+        id: string;
+        label: string;
+        floor_zone?: string;
+        space_types?: {
+          name: string;
+        };
+      };
+    }>;
   };
   items?: FolioItem[];
   payments?: Payment[];
@@ -135,6 +146,17 @@ export class FoliosService {
               first_name,
               last_name,
               email
+            ),
+            reservation_spaces (
+              space_id,
+              spaces (
+                id,
+                label,
+                floor_zone,
+                space_types (
+                  name
+                )
+              )
             )
           )
         `)
@@ -194,10 +216,23 @@ export class FoliosService {
             checkin,
             checkout,
             customer_id,
+            organization_id,
+            branch_id,
             customers (
               first_name,
               last_name,
               email
+            ),
+            reservation_spaces (
+              space_id,
+              spaces (
+                id,
+                label,
+                floor_zone,
+                space_types (
+                  name
+                )
+              )
             )
           )
         `)
@@ -417,6 +452,19 @@ export class FoliosService {
   ): Promise<void> {
     try {
       // 1. Registrar el pago en payments
+      let organizationId = getOrganizationId();
+      let branchId = getCurrentBranchId();
+
+      // Fallback: si no hay organization_id en localStorage, obtenerlo del folio
+      if (!organizationId || organizationId === 0) {
+        const folio = await this.getFolioById(folioId);
+        const reservationData = folio?.reservations as any;
+        if (reservationData?.organization_id) {
+          organizationId = reservationData.organization_id;
+          branchId = branchId || reservationData.branch_id || null;
+        }
+      }
+
       const { error: paymentError } = await supabase
         .from('payments')
         .insert({
@@ -426,6 +474,8 @@ export class FoliosService {
           amount,
           currency: 'USD',
           status: 'completed',
+          organization_id: organizationId,
+          branch_id: branchId,
           created_by: createdBy || null,
         });
 

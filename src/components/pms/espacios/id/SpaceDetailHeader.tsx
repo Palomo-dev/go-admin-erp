@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, Edit, Wrench, Sparkles, TrendingUp, Plus, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Edit, Wrench, Sparkles, TrendingUp, Plus, ShoppingCart, LogIn, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Space } from '@/lib/services/spacesService';
@@ -15,6 +15,8 @@ interface SpaceDetailHeaderProps {
   onViewRevenue: () => void;
   onNewReservation: () => void;
   onAddConsumption: () => void;
+  onCheckin?: () => void;
+  onCheckout?: () => void;
 }
 
 const getStatusInfo = (status: string) => {
@@ -65,6 +67,8 @@ export function SpaceDetailHeader({
   onViewRevenue,
   onNewReservation,
   onAddConsumption,
+  onCheckin,
+  onCheckout,
 }: SpaceDetailHeaderProps) {
   const router = useRouter();
   const statusInfo = getStatusInfo(space.status);
@@ -104,6 +108,28 @@ export function SpaceDetailHeader({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {onCheckin && (
+              <Button
+                size="sm"
+                onClick={onCheckin}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <LogIn className="h-4 w-4 mr-2" />
+                Check-in
+              </Button>
+            )}
+
+            {onCheckout && (
+              <Button
+                size="sm"
+                onClick={onCheckout}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Check-out
+              </Button>
+            )}
+
             <Button
               size="sm"
               onClick={onNewReservation}

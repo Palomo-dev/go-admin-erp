@@ -1,23 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { 
-  CreditCard, 
-  Wallet, 
-  DollarSign, 
-  Building2, 
+import {
+  CreditCard,
+  Wallet,
+  DollarSign,
+  Building2,
   Check,
   Smartphone,
   Globe,
   Banknote,
   FileText,
 } from 'lucide-react';
+import { TaxSummary } from '@/components/pos/TaxSummary';
+import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import type { Cart, CartItem } from '@/components/pos/types';
+import { formatCurrency } from '@/utils/Utils';
 
 interface PaymentMethod {
   id: number;
@@ -37,6 +41,15 @@ interface StepPaymentProps {
   onNotesChange: (notes: string) => void;
   onNext: () => void;
   onBack: () => void;
+  taxIncluded: boolean;
+  onTaxIncludedChange: (included: boolean) => void;
+  appliedTaxIds: string[];
+  onAppliedTaxIdsChange: (ids: string[]) => void;
+  extras: any[];
+  nights: number;
+  selectedSpacesData: any[];
+  spaceTypeRates: Record<string, { dailyRate: number; rateSource: 'tarifa' | 'base_rate' }>;
+  organizationId?: number;
 }
 
 // Mapeo de códigos a nombres e iconos
@@ -65,6 +78,15 @@ export function StepPayment({
   onNotesChange,
   onNext,
   onBack,
+  taxIncluded,
+  onTaxIncludedChange,
+  appliedTaxIds,
+  onAppliedTaxIdsChange,
+  extras,
+  nights,
+  selectedSpacesData,
+  spaceTypeRates,
+  organizationId,
 }: StepPaymentProps) {
   const isValid = paymentMethod !== '';
 
@@ -86,6 +108,106 @@ export function StepPayment({
       settings: method.settings,
     };
   });
+
+  // Construir cart sintetico para TaxSummary
+  const syntheticCart: Cart | null = useMemo(() => {
+    if (!organizationId) return null;
+    try {
+      const branchId = getCurrentBranchId() || 0;
+      const now = new Date().toISOString();
+      const items: CartItem[] = [];
+
+      // Items de hospedaje
+      const groupedByType: Record<string, { count: number; rate: number }> = {};
+      for (const space of selectedSpacesData) {
+        const typeId = space.space_type_id || space.space_types?.id || 'unknown';
+        if (!groupedByType[typeId]) {
+          const rateInfo = spaceTypeRates[typeId];
+          groupedByType[typeId] = {
+            count: 0,
+            rate: rateInfo?.dailyRate ?? space.space_types?.base_rate ?? 0,
+          };
+        }
+        groupedByType[typeId].count++;
+      }
+
+      for (const [typeId, { count, rate }] of Object.entries(groupedByType)) {
+        const lodgingTotal = rate * nights * count;
+        if (lodgingTotal > 0) {
+          items.push({
+            id: `housing-${typeId}`,
+            cart_id: 'reservation',
+            product_id: 0,
+            product: {
+              id: 0,
+              organization_id: organizationId,
+              sku: 'HOUSING',
+              name: `Hospedaje (${nights} noches)`,
+              unit_code: 'night',
+              status: 'active',
+              created_at: now,
+              updated_at: now,
+              price: lodgingTotal,
+            },
+            quantity: 1,
+            unit_price: lodgingTotal,
+            total: lodgingTotal,
+            created_at: now,
+            updated_at: now,
+          });
+        }
+      }
+
+      // Items de extras
+      extras.forEach((extra, idx) => {
+        const extraTotal = extra.price * extra.quantity;
+        if (extraTotal > 0) {
+          items.push({
+            id: `extra-${idx}`,
+            cart_id: 'reservation',
+            product_id: 0,
+            product: {
+              id: 0,
+              organization_id: organizationId,
+              sku: 'EXTRA',
+              name: extra.name,
+              unit_code: 'unit',
+              status: 'active',
+              created_at: now,
+              updated_at: now,
+              price: extra.price,
+            },
+            quantity: extra.quantity,
+            unit_price: extra.price,
+            total: extraTotal,
+            created_at: now,
+            updated_at: now,
+          });
+        }
+      });
+
+      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+      return {
+        id: 'reservation-synthetic',
+        organization_id: organizationId,
+        branch_id: branchId,
+        status: 'active',
+        items,
+        subtotal,
+        tax_amount: 0,
+        tax_total: 0,
+        discount_amount: 0,
+        discount_total: 0,
+        total: subtotal,
+        created_at: now,
+        updated_at: now,
+        tax_included: taxIncluded,
+        applied_tax_ids: appliedTaxIds,
+      };
+    } catch {
+      return null;
+    }
+  }, [organizationId, selectedSpacesData, spaceTypeRates, nights, extras, taxIncluded, appliedTaxIds]);
 
   return (
     <div className="space-y-6">
@@ -114,6 +236,16 @@ export function StepPayment({
           </div>
         </div>
       </Card>
+
+      {/* Resumen de Impuestos */}
+      {syntheticCart && syntheticCart.items.length > 0 && (
+        <TaxSummary
+          cart={syntheticCart}
+          taxIncluded={taxIncluded}
+          onTaxIncludedChange={onTaxIncludedChange}
+          onAppliedTaxesChange={onAppliedTaxIdsChange}
+        />
+      )}
 
       {/* Método de pago */}
       <Card className="p-6">

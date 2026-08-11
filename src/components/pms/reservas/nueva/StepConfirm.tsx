@@ -46,6 +46,7 @@ interface StepConfirmProps {
   isSubmitting: boolean;
   onConfirm: () => void;
   onBack: () => void;
+  taxIncluded?: boolean;
 }
 
 export function StepConfirm({
@@ -63,6 +64,7 @@ export function StepConfirm({
   isSubmitting,
   onConfirm,
   onBack,
+  taxIncluded = false,
 }: StepConfirmProps) {
   const formatDate = (dateString: string) => {
     // Agregar hora para evitar problemas de zona horaria
@@ -277,6 +279,11 @@ export function StepConfirm({
             <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">
               ${totalEstimated.toFixed(2)}
             </p>
+            {taxIncluded && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Impuestos incluidos en el precio
+              </p>
+            )}
           </div>
           <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white">
             <DollarSign className="h-8 w-8" />

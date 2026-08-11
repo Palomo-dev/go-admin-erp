@@ -92,7 +92,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
           )
         `)
         .eq('organization_id', organization.id)
-        .in('status', ['confirmed', 'checked_in'])
+        .in('status', ['checked_in'])
         .order('checkin', { ascending: false })
         .limit(20);
 

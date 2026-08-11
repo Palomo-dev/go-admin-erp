@@ -4,7 +4,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, User, DollarSign, Calendar, FileText } from 'lucide-react';
+import { Eye, User, DollarSign, Calendar, FileText, DoorOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Folio } from '@/lib/services/foliosService';
@@ -98,6 +98,26 @@ export function FoliosList({ folios, onViewDetails }: FoliosListProps) {
                   <span className="ml-6">{folio.reservations.customers.email}</span>
                 </div>
               )}
+
+              {folio.reservations?.reservation_spaces &&
+                folio.reservations.reservation_spaces.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <DoorOpen className="h-4 w-4 flex-shrink-0" />
+                    <span>
+                      {folio.reservations.reservation_spaces
+                        .map((rs) => {
+                          const space = rs.spaces;
+                          if (!space) return '';
+                          const typeName = space.space_types?.name || '';
+                          return typeName
+                            ? `${space.label} (${typeName})`
+                            : space.label;
+                        })
+                        .filter(Boolean)
+                        .join(', ')}
+                    </span>
+                  </div>
+                )}
 
               <div className="flex flex-wrap items-center gap-2 text-gray-600 dark:text-gray-400">
                 <Calendar className="h-4 w-4 flex-shrink-0" />

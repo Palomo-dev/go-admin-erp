@@ -114,7 +114,7 @@ class CheckinService {
 
     // Transformar datos
     return (data || []).map((reservation: any) => {
-      const customer = reservation.customers;
+      const customer = Array.isArray(reservation.customers) ? reservation.customers[0] : reservation.customers;
       const spaces = reservation.reservation_spaces || [];
 
       const checkinDate = new Date(reservation.checkin + 'T00:00:00');

@@ -760,6 +760,73 @@ export const AppLayout = ({
     }
   }, []);
 
+  // Función de fallback con consultas separadas
+  const loadUserProfileFallback = useCallback(async (user: { id: string }, currentOrgId: number) => {
+    try {
+      console.log('🔄 Usando método fallback con consultas separadas');
+      
+      // Obtener perfil
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error al obtener perfil:', profileError);
+        return;
+      }
+
+      // Obtener organización
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', currentOrgId)
+        .single();
+
+      // Obtener rol del usuario
+      const { data: userRoleData, error: roleError } = await supabase
+        .from('organization_members')
+        .select('role_id')
+        .eq('user_id', user.id)
+        .eq('organization_id', currentOrgId)
+        .single();
+
+      let roleName = 'Usuario';
+      if (!roleError && userRoleData?.role_id) {
+        const { data: roleData } = await supabase
+          .from('roles')
+          .select('name')
+          .eq('id', userRoleData.role_id)
+          .single();
+        
+        roleName = roleData?.name || 'Usuario';
+      }
+
+      const finalUserData = {
+        name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || profileData.email,
+        email: profileData.email,
+        role: roleName,
+        avatar: profileData.avatar_url || ''
+      };
+
+      const finalOrgName = orgData?.name || '';
+
+      setUserData(finalUserData);
+      setOrgName(finalOrgName);
+      
+      // Guardar en cache también
+      saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
+
+      // Sincronizar el nombre real del perfil con el selector de cuentas guardadas
+      // (ver comentario equivalente en loadUserProfileOptimized).
+      const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
+      updateSavedAccountProfile(user.id, { name: finalUserData.name, avatarUrl: finalUserData.avatar });
+      
+    } catch (error) {
+      console.error('Error en fallback:', error);
+    }
+  }, [saveToCache]);
   // Función optimizada para cargar perfil con consulta unificada
   const loadUserProfileOptimized = useCallback(async () => {
     try {
@@ -973,73 +1040,6 @@ export const AppLayout = ({
     }
   }, [loadFromCache, saveToCache, loadUserProfileFallback]);
 
-  // Función de fallback con consultas separadas
-  const loadUserProfileFallback = useCallback(async (user: { id: string }, currentOrgId: number) => {
-    try {
-      console.log('🔄 Usando método fallback con consultas separadas');
-      
-      // Obtener perfil
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, email, avatar_url')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error al obtener perfil:', profileError);
-        return;
-      }
-
-      // Obtener organización
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', currentOrgId)
-        .single();
-
-      // Obtener rol del usuario
-      const { data: userRoleData, error: roleError } = await supabase
-        .from('organization_members')
-        .select('role_id')
-        .eq('user_id', user.id)
-        .eq('organization_id', currentOrgId)
-        .single();
-
-      let roleName = 'Usuario';
-      if (!roleError && userRoleData?.role_id) {
-        const { data: roleData } = await supabase
-          .from('roles')
-          .select('name')
-          .eq('id', userRoleData.role_id)
-          .single();
-        
-        roleName = roleData?.name || 'Usuario';
-      }
-
-      const finalUserData = {
-        name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || profileData.email,
-        email: profileData.email,
-        role: roleName,
-        avatar: profileData.avatar_url || ''
-      };
-
-      const finalOrgName = orgData?.name || '';
-
-      setUserData(finalUserData);
-      setOrgName(finalOrgName);
-      
-      // Guardar en cache también
-      saveToCache(finalUserData, finalOrgName, currentOrgId.toString());
-
-      // Sincronizar el nombre real del perfil con el selector de cuentas guardadas
-      // (ver comentario equivalente en loadUserProfileOptimized).
-      const { updateSavedAccountProfile } = await import('@/lib/auth/accountSwitcher');
-      updateSavedAccountProfile(user.id, { name: finalUserData.name, avatarUrl: finalUserData.avatar });
-      
-    } catch (error) {
-      console.error('Error en fallback:', error);
-    }
-  }, [saveToCache]);
 
   // Cargar datos del perfil del usuario y configurar suscripción
   useEffect(() => {

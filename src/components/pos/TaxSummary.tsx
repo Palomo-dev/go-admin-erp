@@ -45,6 +45,7 @@ interface TaxSummaryProps {
   taxIncluded: boolean;
   onTaxIncludedChange: (included: boolean) => void;
   onAppliedTaxesChange?: (taxIds: string[]) => void;
+  onTotalsChange?: (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number }) => void;
   className?: string;
 }
 
@@ -53,6 +54,7 @@ export function TaxSummary({
   taxIncluded, 
   onTaxIncludedChange, 
   onAppliedTaxesChange,
+  onTotalsChange,
   className 
 }: TaxSummaryProps) {
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
@@ -229,6 +231,11 @@ export function TaxSummary({
 
     calculateTaxBreakdown();
   }, [cart.items, organizationTaxes, appliedTaxes, taxIncluded]);
+
+  // Comunicar totales al padre cuando cambien
+  useEffect(() => {
+    onTotalsChange?.(calculatedTotals);
+  }, [calculatedTotals, onTotalsChange]);
 
   // Usar los totales calculados correctamente
   // calculateCartTaxes ya resta el descuento en lineTotal, NO restarlo de nuevo

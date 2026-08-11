@@ -71,6 +71,8 @@ export function NuevaReservaWizard({
   const [notes, setNotes] = useState('');
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [spaceTypeRates, setSpaceTypeRates] = useState<Record<string, { dailyRate: number; rateSource: 'tarifa' | 'base_rate' }>>({});
+  const [taxIncluded, setTaxIncluded] = useState(false);
+  const [appliedTaxIds, setAppliedTaxIds] = useState<string[]>([]);
 
   useEffect(() => {
     loadCategoriesForOrg();
@@ -310,6 +312,8 @@ export function NuevaReservaWizard({
         notes,
         metadata: {
           category: selectedCategory,
+          tax_included: taxIncluded,
+          applied_tax_ids: appliedTaxIds,
         },
         extras: extras.map((e: any) => ({
           organization_service_id: e.organization_service_id || null,
@@ -488,6 +492,15 @@ export function NuevaReservaWizard({
               onNotesChange={setNotes}
               onNext={goToNextStep}
               onBack={goToPrevStep}
+              taxIncluded={taxIncluded}
+              onTaxIncludedChange={setTaxIncluded}
+              appliedTaxIds={appliedTaxIds}
+              onAppliedTaxIdsChange={setAppliedTaxIds}
+              extras={extras}
+              nights={calculateNights()}
+              selectedSpacesData={availableSpaces.filter((s) => selectedSpaces.includes(s.id))}
+              spaceTypeRates={spaceTypeRates}
+              organizationId={organization?.id}
             />
           )}
 
@@ -507,6 +520,7 @@ export function NuevaReservaWizard({
               isSubmitting={isSubmitting}
               onConfirm={handleConfirmReservation}
               onBack={goToPrevStep}
+              taxIncluded={taxIncluded}
             />
           )}
         </Card>

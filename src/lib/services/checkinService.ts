@@ -431,6 +431,7 @@ class CheckinService {
 
   /**
    * Crear folio para la reserva si no existe
+   * También agrega el cargo de habitación (hospedaje) como folio_item
    */
   private async createFolioIfNeeded(reservationId: string): Promise<void> {
     // Verificar si ya existe un folio
@@ -442,16 +443,85 @@ class CheckinService {
 
     if (existingFolio) return;
 
-    // Crear folio con solo los campos que existen en la tabla
-    const { error } = await supabase.from('folios').insert([
-      {
-        reservation_id: reservationId,
-        status: 'open',
-        balance: 0,
-      },
-    ]);
+    // Obtener datos de la reserva para calcular el cargo de habitación
+    const { data: reservation } = await supabase
+      .from('reservations')
+      .select('checkin, checkout, total_estimated, organization_id, space_type_id, metadata')
+      .eq('id', reservationId)
+      .single();
+
+    if (!reservation) throw new Error('Reserva no encontrada');
+
+    // Crear folio
+    const { data: folio, error } = await supabase
+      .from('folios')
+      .insert([
+        {
+          reservation_id: reservationId,
+          status: 'open',
+          balance: 0,
+        },
+      ])
+      .select('id')
+      .single();
 
     if (error) throw error;
+
+    // Agregar cargo de habitación al folio
+    const totalEstimated = Number(reservation.total_estimated || 0);
+
+    if (totalEstimated > 0) {
+      const checkinDate = new Date(reservation.checkin + 'T00:00:00');
+      const checkoutDate = new Date(reservation.checkout + 'T00:00:00');
+      const nights = Math.ceil(
+        (checkoutDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const nightlyRate = nights > 0 ? totalEstimated / nights : totalEstimated;
+
+      // Intentar obtener la tarifa real usando el RPC
+      let rateSource = 'base_rate';
+      let calculatedTotal = totalEstimated;
+      try {
+        const { data: rateResult } = await supabase.rpc('calculate_reservation_total', {
+          p_organization_id: reservation.organization_id,
+          p_space_type_id: reservation.space_type_id,
+          p_checkin: reservation.checkin,
+          p_checkout: reservation.checkout,
+          p_plan: reservation.metadata?.plan || null,
+        });
+
+        if (rateResult?.[0]) {
+          calculatedTotal = parseFloat(rateResult[0].total_amount) || totalEstimated;
+          rateSource = rateResult[0].rate_source || 'base_rate';
+        }
+      } catch {
+        // Si falla, usar total_estimated de la reserva
+      }
+
+      const description = nights > 0
+        ? `Hospedaje - ${nights} ${nights === 1 ? 'noche' : 'noches'} × ${nightlyRate.toLocaleString('es-CO')}/noche`
+        : 'Hospedaje';
+
+      await supabase.from('folio_items').insert([
+        {
+          folio_id: folio.id,
+          source: 'room_charge',
+          description,
+          amount: calculatedTotal,
+          charge_type: 'room_charge',
+          payment_status: 'pending',
+        },
+      ]);
+
+      // Actualizar balance del folio
+      await supabase
+        .from('folios')
+        .update({
+          balance: calculatedTotal,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', folio.id);
+    }
   }
 
   /**

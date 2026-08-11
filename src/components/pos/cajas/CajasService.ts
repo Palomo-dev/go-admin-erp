@@ -955,6 +955,7 @@ export class CajasService {
         .select('id, total, status, payment_status, created_at, customer_id')
         .eq('organization_id', this.organizationId)
         .eq('branch_id', session.branch_id)
+        .neq('payment_status', 'pending')
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString())
         .order('created_at', { ascending: false });

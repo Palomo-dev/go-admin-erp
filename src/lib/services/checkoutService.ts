@@ -298,7 +298,7 @@ class CheckoutService {
       };
     }
 
-    const customer = reservation.customers || {};
+    const customer = (Array.isArray(reservation.customers) ? reservation.customers[0] : reservation.customers) || {};
     const spaces = (reservation.reservation_spaces || []).map((rs: any) => ({
       id: rs.spaces?.id || '',
       label: rs.spaces?.label || '',

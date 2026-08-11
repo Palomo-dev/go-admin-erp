@@ -65,7 +65,7 @@ export function ImpresionesPage({ embedded = false }: { embedded?: boolean }) {
   const handlePrintTest = () => {
     if (path === 'html') {
       if (!preview.html) return;
-      const win = window.open('', '_blank', `width=${paper.rollCssPx + 60},height=700`);
+      const win = window.open('', '_blank', `width=${paper.cssPx + 60},height=700`);
       if (!win) return;
       win.document.write(preview.html);
       win.document.close();
@@ -75,7 +75,7 @@ export function ImpresionesPage({ embedded = false }: { embedded?: boolean }) {
       };
     } else {
       if (!preview.text) return;
-      const win = window.open('', '_blank', `width=${paper.rollCssPx + 60},height=700`);
+      const win = window.open('', '_blank', `width=${paper.cssPx + 60},height=700`);
       if (!win) return;
       const fontSizePx =
         Math.floor((paper.cssPx / (paper.charsPerLine * COURIER_CHAR_ADVANCE_EM)) * 100) / 100;
@@ -88,7 +88,7 @@ export function ImpresionesPage({ embedded = false }: { embedded?: boolean }) {
             font-weight:700;
             line-height:1.35;
             white-space:pre;
-            padding:6px ${paper.safeMarginMm}mm;
+            padding:6px ${Math.round((paper.rollMm - paper.printableMm) / 2)}mm;
             color:#000;
             -webkit-print-color-adjust:exact;print-color-adjust:exact;
           }
@@ -199,7 +199,7 @@ export function ImpresionesPage({ embedded = false }: { embedded?: boolean }) {
               <div className="flex flex-wrap gap-2 ml-2">
                 <Badge variant="outline">Rollo {paper.rollMm} mm</Badge>
                 <Badge variant="outline">Imprimible {paper.printableMm} mm</Badge>
-                <Badge variant="outline">Margen {paper.safeMarginMm} mm</Badge>
+                <Badge variant="outline">Margen {Math.round((paper.rollMm - paper.printableMm) / 2)} mm</Badge>
                 <Badge variant="outline">{paper.charsPerLine} columnas</Badge>
               </div>
             </div>

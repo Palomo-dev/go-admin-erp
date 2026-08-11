@@ -70,9 +70,11 @@ export default function SucursalesPage() {
         </div>
       )}
 
-      <Suspense fallback={<BranchesSkeleton />}>
-        <BranchesTab orgId={orgId} userBranches={userBranches} />
-      </Suspense>
+      {orgId && (
+        <Suspense fallback={<BranchesSkeleton />}>
+          <BranchesTab orgId={orgId} userBranches={userBranches} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -66,7 +66,7 @@ export function ReporteSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:w-1/2 sm:min-w-[400px] overflow-y-auto bg-white dark:bg-gray-900"
+        className="w-full sm:w-3/4 lg:w-4/5 sm:min-w-[600px] overflow-y-auto bg-white dark:bg-gray-900"
       >
         <SheetHeader className="pr-8">
           <div className="flex items-start justify-between gap-4">

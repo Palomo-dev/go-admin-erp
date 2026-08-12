@@ -298,8 +298,8 @@ export function periodoSiguiente(periodo: PeriodoCierre): PeriodoCierre | null {
       siguiente = resolverPeriodo('diario', addDays(ref, 1));
   }
 
-  // No navegar al futuro si el período siguiente no ha terminado
-  if (new Date(siguiente.fechaFin + 'T23:59:59') > hoy) {
+  // No navegar al futuro si el período siguiente aún no ha comenzado
+  if (new Date(siguiente.fechaInicio + 'T00:00:00') > hoy) {
     return null;
   }
 

@@ -6,6 +6,21 @@
 import { supabase } from '@/lib/supabase/config';
 import type { PeriodoCierre, ReportData } from './types';
 
+/** Datos completos de la organización para el PDF */
+export interface OrgFullInfo {
+  id: number;
+  name: string;
+  legalName?: string;
+  nit?: string;
+  city?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  logoUrl?: string;
+  state?: string;
+  country?: string;
+}
+
 export interface CierreHistorico {
   id: string;
   report_id: string;
@@ -62,6 +77,7 @@ export async function registrarCierreConsolidado(params: {
         modulos,
       },
       result_snapshot: snapshot,
+      user_id: executedBy ?? null,
       executed_by: executedBy ?? null,
       row_count: reportes.length,
     })
@@ -97,4 +113,62 @@ export async function obtenerHistorialCierres(
   }
 
   return (data ?? []) as CierreHistorico[];
+}
+
+/**
+ * Obtiene los datos completos de la organización para el PDF.
+ */
+export async function obtenerDatosOrganizacion(organizationId: number): Promise<OrgFullInfo | null> {
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, name, legal_name, nit, city, address, phone, email, logo_url, state, country')
+    .eq('id', organizationId)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    name: data.name,
+    legalName: data.legal_name ?? undefined,
+    nit: data.nit ?? undefined,
+    city: data.city ?? undefined,
+    address: data.address ?? undefined,
+    phone: data.phone ?? undefined,
+    email: data.email ?? undefined,
+    logoUrl: data.logo_url ?? undefined,
+    state: data.state ?? undefined,
+    country: data.country ?? undefined,
+  };
+}
+
+/**
+ * Genera el número de documento secuencial para un cierre.
+ * Formato: CIERRE-{TIPO}-{YYYYMM}-{seq:03d}
+ * Ejemplo: CIERRE-MENSUAL-202608-001
+ */
+export async function generarNumeroDocumento(
+  organizationId: number,
+  periodo: PeriodoCierre,
+): Promise<string> {
+  const tipoUpper = periodo.tipo.toUpperCase();
+  const year = periodo.fechaInicio.slice(0, 4);
+  const month = periodo.fechaInicio.slice(5, 7);
+  const prefix = `cierre-${periodo.tipo}`;
+
+  // Contar cierres del mismo tipo en el mismo mes/año
+  const { count, error } = await supabase
+    .from('report_executions')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('report_id', prefix)
+    .gte('created_at', `${year}-${month}-01T00:00:00Z`)
+    .lt('created_at', `${year}-${String(Number(month) + 1).padStart(2, '0')}-01T00:00:00Z`);
+
+  if (error) {
+    console.warn('Error obteniendo correlativo de cierre:', error.message);
+  }
+
+  const seq = (count ?? 0) + 1;
+  return `CIERRE-${tipoUpper}-${year}${month}-${String(seq).padStart(3, '0')}`;
 }

@@ -1,87 +1,97 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ParkingConfigPanel = dynamic(() => import('../panels/parking/ParkingConfigPanel').then((m) => m.ParkingConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const TimelineConfigPanel = dynamic(() => import('../panels/timeline/TimelineConfigPanel').then((m) => m.TimelineConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const IntegracionesConfigPanel = dynamic(() => import('../panels/integraciones/IntegracionesConfigPanel').then((m) => m.IntegracionesConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const RolesConfigPanel = dynamic(() => import('../panels/roles/RolesConfigPanel').then((m) => m.RolesConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const CalendarioConfigPanel = dynamic(() => import('../panels/calendario/CalendarioConfigPanel').then((m) => m.CalendarioConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const GymConfigPanel = dynamic(() => import('../panels/gym/GymConfigPanel').then((m) => m.GymConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const NotificacionesConfigPanel = dynamic(() => import('../panels/notificaciones/NotificacionesConfigPanel').then((m) => m.NotificacionesConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const FacturacionConfigPanel = dynamic(() => import('../panels/facturacion/FacturacionConfigPanel').then((m) => m.FacturacionConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const HRMConfigPanel = dynamic(() => import('../panels/hrm/HRMConfigPanel').then((m) => m.HRMConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const PMSConfigPanel = dynamic(() => import('../panels/pms/PMSConfigPanel').then((m) => m.PMSConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const POSConfigPanel = dynamic(() => import('../panels/pos/POSConfigPanel').then((m) => m.POSConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const ChatConfigPanel = dynamic(() => import('../panels/chat/ChatConfigPanel').then((m) => m.ChatConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const CRMConfigPanel = dynamic(() => import('../panels/crm/CRMConfigPanel').then((m) => m.CRMConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const GeneralConfigPanel = dynamic(() => import('../panels/general/GeneralConfigPanel').then((m) => m.GeneralConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
 const WebsiteConfigPanel = dynamic(() => import('../panels/sitioweb/WebsiteConfigPanel').then((m) => m.WebsiteConfigPanel), {
-  loading: () => <LoadingSpinner />,
+  loading: () => <LoadingSkeleton />,
   ssr: false,
 });
 
-function LoadingSpinner() {
+function LoadingSkeleton() {
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+    <div className="space-y-6">
+      <div className="flex items-center justify-end gap-2">
+        <Skeleton className="h-9 w-9 rounded-md" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-48 w-full rounded-xl" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-48 w-full rounded-xl" />
+      </div>
     </div>
   );
 }

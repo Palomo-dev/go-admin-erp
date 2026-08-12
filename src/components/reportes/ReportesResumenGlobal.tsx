@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, ShoppingCart, FileText, TrendingUp, Package, Users } from 'lucide-react';
 import type { ReportData } from '@/lib/services/reportes/types';
 
@@ -8,6 +9,7 @@ const moneda = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'CO
 
 interface ReportesResumenGlobalProps {
   reportes: ReportData[];
+  isLoading?: boolean;
 }
 
 interface KPIGlobal {
@@ -16,7 +18,36 @@ interface KPIGlobal {
   icono: React.ReactNode;
 }
 
-export function ReportesResumenGlobal({ reportes }: ReportesResumenGlobalProps) {
+const KPI_ICONS = [
+  <DollarSign className="h-4 w-4" />,
+  <ShoppingCart className="h-4 w-4" />,
+  <Package className="h-4 w-4" />,
+  <TrendingUp className="h-4 w-4" />,
+  <FileText className="h-4 w-4" />,
+  <Users className="h-4 w-4" />,
+];
+
+export function ReportesResumenGlobal({ reportes, isLoading }: ReportesResumenGlobalProps) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                {KPI_ICONS[i]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-3 w-20 mb-1" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   const kpis = extractGlobalKPIs(reportes);
   if (!kpis.length) return null;
 
@@ -50,7 +81,7 @@ function extractGlobalKPIs(reportes: ReportData[]): KPIGlobal[] {
 
   find('cierre-caja', 'Ventas del Día', <DollarSign className="h-4 w-4" />);
   find('ventas-periodo', 'Ventas Período', <ShoppingCart className="h-4 w-4" />);
-  find('stock-critico', 'Stock Crítico', <Package className="h-4 w-4" />);
+  find('stock-critico', 'Total Productos', <Package className="h-4 w-4" />);
   find('crm-funnel', 'Pipeline CRM', <TrendingUp className="h-4 w-4" />);
   find('cxc-vencidas', 'CxC Vencidas', <FileText className="h-4 w-4" />);
   find('clientes-crecimiento', 'Clientes', <Users className="h-4 w-4" />);

@@ -45,38 +45,45 @@ export const clientesReports: ReportDefinition[] = [
         .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
 
       // Desglose mensual: últimos 12 meses hasta la fecha fin del período
+      // Usar count queries por mes en lugar de paginar todos los registros
       const fechaFin = new Date(`${periodo.fechaFin}T23:59:59Z`);
       const fechaInicio12m = new Date(fechaFin);
       fechaInicio12m.setMonth(fechaInicio12m.getMonth() - 11);
       fechaInicio12m.setDate(1);
       fechaInicio12m.setHours(0, 0, 0, 0);
 
-      const isoInicio12m = fechaInicio12m.toISOString();
-      const isoFin = fechaFin.toISOString();
-
-      // Paginar clientes para construir el desglose mensual
       const porMes: Record<string, number> = {};
-      let offset = 0;
-      const pageSize = 1000;
-      let hasMore = true;
 
-      while (hasMore) {
-        const { data: pageData, error: pageErr } = await supabase
+      // Generar claves de mes para los últimos 12 meses
+      const mesesKeys: string[] = [];
+      const tmpDate = new Date(fechaInicio12m);
+      while (tmpDate <= fechaFin) {
+        const key = `${tmpDate.getFullYear()}-${String(tmpDate.getMonth() + 1).padStart(2, '0')}-01`;
+        mesesKeys.push(key);
+        porMes[key] = 0;
+        tmpDate.setMonth(tmpDate.getMonth() + 1);
+      }
+
+      // Un count query por mes (12 queries máximo, mucho más rápido que paginar 18K registros)
+      const countPromises = mesesKeys.map((mesKey) => {
+        const mesStart = new Date(`${mesKey}T00:00:00Z`);
+        const mesEnd = new Date(mesStart);
+        mesEnd.setMonth(mesEnd.getMonth() + 1);
+        mesEnd.setDate(0);
+        mesEnd.setHours(23, 59, 59, 999);
+
+        return supabase
           .from('customers')
-          .select('created_at')
+          .select('*', { count: 'exact', head: true })
           .match(baseEq)
-          .gte('created_at', isoInicio12m)
-          .lte('created_at', isoFin)
-          .range(offset, offset + pageSize - 1);
-        if (pageErr) throw pageErr;
-        const rows = pageData ?? [];
-        for (const c of rows as Record<string, unknown>[]) {
-          const fecha = new Date(String(c.created_at));
-          const mesKey = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-01`;
-          porMes[mesKey] = (porMes[mesKey] ?? 0) + 1;
-        }
-        hasMore = rows.length === pageSize;
-        offset += pageSize;
+          .gte('created_at', mesStart.toISOString())
+          .lte('created_at', mesEnd.toISOString())
+          .then(({ count }) => ({ mesKey, count: count ?? 0 }));
+      });
+
+      const counts = await Promise.all(countPromises);
+      for (const { mesKey, count } of counts) {
+        porMes[mesKey] = count;
       }
 
       // Construir filas con acumulado y crecimiento

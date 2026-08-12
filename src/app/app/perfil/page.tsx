@@ -310,8 +310,8 @@ export default function PerfilUsuarioPage() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div className="w-full p-3 sm:p-4 md:p-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           <aside className="w-full lg:w-64 shrink-0">
             <Card className="p-4 space-y-4">
               <div className="flex flex-col items-center space-y-2">
@@ -343,8 +343,8 @@ export default function PerfilUsuarioPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
-      <div className="flex flex-col lg:flex-row gap-8">
+    <div className="w-full p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Barra lateral con opciones */}
         <aside className="w-full lg:w-64 shrink-0">
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">
@@ -358,8 +358,8 @@ export default function PerfilUsuarioPage() {
                     className="rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                    <span className="text-xl font-bold text-gray-500 dark:text-gray-300">
+                  <div className="w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center ring-2 ring-blue-300 dark:ring-blue-700">
+                    <span className="text-xl font-bold text-blue-600 dark:text-blue-300">
                       {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : 
                        profile?.first_name ? profile.first_name.charAt(0).toUpperCase() : '?'}
                     </span>
@@ -443,6 +443,8 @@ export default function PerfilUsuarioPage() {
           {currentSection === 'eliminar-cuenta' && (
             <EliminarCuentaSection 
               user={user}
+              organizations={organizations}
+              profileName={profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || undefined}
             />
           )}
 

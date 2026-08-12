@@ -14,6 +14,10 @@
       "env": {
         "SUPABASE_ACCESS_TOKEN": "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
       }
+    },
+    "meta-ads": {
+      "url": "https://mcp.facebook.com/ads",
+      "type": "url"
     }
   }
 }

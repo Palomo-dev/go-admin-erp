@@ -14,6 +14,7 @@ export interface RestaurantTable {
   state: TableState;
   position_x: number | null;
   position_y: number | null;
+  rotation?: number | null;
   created_at?: string;
   updated_at?: string;
 }

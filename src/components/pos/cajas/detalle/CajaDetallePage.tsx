@@ -20,7 +20,8 @@ import {
   Calculator,
   Download,
   Printer,
-  EyeOff
+  EyeOff,
+  ArrowDownCircle
 } from 'lucide-react';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -42,6 +43,7 @@ import { CajasService } from '../CajasService';
 import { CierreCajaDialog } from '../CierreCajaDialog';
 import { useBlindCloseMode } from '../useBlindCloseMode';
 import type { CashSession, CashMovement, CashCount, CashSummary } from '../types';
+import { getPaymentMethodLabel } from '../paymentMethodLabels';
 import { toast } from 'sonner';
 
 interface CajaDetallePageProps {
@@ -380,7 +382,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                     Object.entries(summary.income_by_method).map(([method, amount]) => (
                       <div key={method} className="flex justify-between py-2 border-b dark:border-gray-700">
                         <span className="text-gray-600 dark:text-gray-400">
-                          + Ventas en {method === 'cash' ? 'Efectivo' : method === 'card' ? 'Tarjeta' : method === 'transfer' ? 'Transferencia' : method === 'credit' ? 'Crédito' : method}
+                          + Ventas en {getPaymentMethodLabel(method)}
                         </span>
                         <span className="font-medium text-green-600 dark:text-green-400">+{formatCurrency(amount)}</span>
                       </div>
@@ -415,6 +417,24 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                     <div className="flex justify-between py-2 border-b dark:border-gray-700">
                       <span className="text-gray-600 dark:text-gray-400">Consumos de Habitaciones</span>
                       <span className="font-medium text-indigo-600 dark:text-indigo-400">{formatCurrency(summary.folio_consumptions_total)}</span>
+                    </div>
+                  )}
+                  {summary && summary.cash_receipts_total > 0 && (
+                    <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+                        <Receipt className="h-3.5 w-3.5 text-blue-500" />
+                        Recibos de Caja (Abonos CxC)
+                      </span>
+                      <span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(summary.cash_receipts_total)}</span>
+                    </div>
+                  )}
+                  {summary && summary.purchases_total > 0 && (
+                    <div className="flex justify-between py-2 border-b dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+                        <ArrowDownCircle className="h-3.5 w-3.5 text-red-500" />
+                        Pagos a Proveedores (CxP)
+                      </span>
+                      <span className="font-medium text-red-600 dark:text-red-400">-{formatCurrency(summary.purchases_total)}</span>
                     </div>
                   )}
                   <Separator />
@@ -475,8 +495,8 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
                                 "text-gray-600 dark:text-gray-400"
                               )} />
                             </div>
-                            <span className="capitalize dark:text-white">
-                              {method === 'cash' ? 'Efectivo' : method === 'card' ? 'Tarjeta' : method}
+                            <span className="dark:text-white">
+                              {getPaymentMethodLabel(method)}
                             </span>
                           </div>
                           <span className="font-semibold dark:text-white">{formatCurrency(amount)}</span>

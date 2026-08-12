@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { POSService } from '@/lib/services/posService';
+import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { stockMovementService } from '@/lib/services/stockMovementService';
-import { getPaymentMethodLabels } from '@/lib/services/paymentMethodHelper';
 import {
   calculateItemTaxes,
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -556,14 +556,14 @@ export class PedidosService {
       unit_price: number;
       total: number;
       notes: any;
-      products?: { name: string } | null;
-      sales?: { organization_id: number; branch_id: number | null; table_session_id: string | null } | null;
+      products?: { name: string }[] | null;
+      sales?: { organization_id: number; branch_id: number | null; table_session_id: string | null }[] | null;
     },
     motivo?: string
   ): Promise<void> {
     try {
       const { data: authData } = await supabase.auth.getUser();
-      const sale = item.sales;
+      const sale = item.sales?.[0];
       if (!sale) return;
 
       await supabase.from('ops_audit_log').insert({
@@ -576,7 +576,7 @@ export class PedidosService {
         previous_data: {
           sale_id: item.sale_id,
           product_id: item.product_id,
-          product_name: item.products?.name || 'Producto',
+          product_name: item.products?.[0]?.name || 'Producto',
           quantity: item.quantity,
           unit_price: item.unit_price,
           total: item.total,
@@ -984,7 +984,7 @@ export class PedidosService {
           })
           .eq('sale_id', saleId);
       } else {
-        const invoiceNumber = await POSService.generateInvoiceNumber();
+        const invoiceNumber = await generateInvoiceNumberUtil(saleData.organization_id, 'FACT');
 
         const { data: newInvoice, error: invoiceError } = await supabase
           .from('invoice_sales')
@@ -1096,44 +1096,8 @@ export class PedidosService {
         }
       }
 
-      // 6. Registrar movimiento de caja si hay sesión activa (todos los métodos de pago)
-      if (data.payments.length > 0) {
-        try {
-          const { data: activeSession } = await supabase
-            .from('cash_sessions')
-            .select('id')
-            .eq('organization_id', saleData.organization_id)
-            .eq('branch_id', saleData.branch_id)
-            .eq('status', 'open')
-            .order('opened_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (activeSession) {
-            const methodLabels = await getPaymentMethodLabels();
-
-            for (const payment of data.payments) {
-              if (payment.amount > 0) {
-                const methodLabel = methodLabels[payment.method] || payment.method;
-                await supabase
-                  .from('cash_movements')
-                  .insert({
-                    organization_id: saleData.organization_id,
-                    branch_id: saleData.branch_id,
-                    cash_session_id: activeSession.id,
-                    type: 'in',
-                    concept: `Venta Mesa #${saleId.slice(0, 8)} - ${methodLabel}`,
-                    amount: payment.amount,
-                    user_id: userId || saleData.user_id,
-                    notes: `Pago ${methodLabel.toLowerCase()} - Venta desde mesa`,
-                  });
-              }
-            }
-          }
-        } catch (cashError) {
-          console.error('Error registrando movimiento de caja:', cashError);
-        }
-      }
+      // Los pagos de ventas de mesa se registran en la tabla payments.
+      // No se crean cash_movements para evitar doble conteo en el cierre de caja.
 
       // Nota: el asiento contable (journal_entries + journal_lines) NO se crea aquí.
       // Ya existe un trigger de base de datos (trg_auto_journal_sale_pos ->

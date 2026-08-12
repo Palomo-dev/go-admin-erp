@@ -55,9 +55,11 @@ export default function InvitacionesPage() {
         </div>
       </div>
 
-      <Suspense fallback={<InvitationsSkeleton />}>
-        <InvitationsTab orgId={orgId} />
-      </Suspense>
+      {orgId && (
+        <Suspense fallback={<InvitationsSkeleton />}>
+          <InvitationsTab orgId={orgId} />
+        </Suspense>
+      )}
     </div>
   );
 }

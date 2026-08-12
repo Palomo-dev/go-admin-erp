@@ -468,14 +468,19 @@ export class CajasService {
       if (paymentsError) throw paymentsError;
 
       const PURCHASE_SOURCES = ['invoice_purchase', 'account_payable'];
-      // Sumar vuelto total entregado en ventas (no en compras)
+      const AR_SOURCE = 'account_receivable';
+      // Sumar vuelto total entregado en ventas (no en compras ni abonos)
       const changeTotal = (cashPayments || [])
-        .filter(p => !PURCHASE_SOURCES.includes(p.source))
+        .filter(p => !PURCHASE_SOURCES.includes(p.source) && p.source !== AR_SOURCE)
         .reduce((sum, payment) => sum + Number(payment.change_amount || 0), 0);
-      // salesCash = efectivo recibido - vuelto entregado
+      // salesCash = efectivo de ventas (sin abonos a cuentas por cobrar) - vuelto
       const salesCash = (cashPayments || [])
-        .filter(p => !PURCHASE_SOURCES.includes(p.source))
+        .filter(p => !PURCHASE_SOURCES.includes(p.source) && p.source !== AR_SOURCE)
         .reduce((sum, payment) => sum + Number(payment.amount), 0) - changeTotal;
+      // Recibos de caja en efectivo (abonos a cuentas por cobrar)
+      const cashReceiptsCash = (cashPayments || [])
+        .filter(p => p.source === AR_SOURCE)
+        .reduce((sum, payment) => sum + Number(payment.amount), 0);
       const purchasesCash = (cashPayments || [])
         .filter(p => PURCHASE_SOURCES.includes(p.source))
         .reduce((sum, payment) => sum + Number(payment.amount), 0);
@@ -518,7 +523,7 @@ export class CajasService {
         .filter(m => m.type === 'out')
         .reduce((sum, m) => sum + Number(m.amount), 0);
 
-      const expectedAmount = Number(session.initial_amount) + salesCash + cashIn - cashOut - purchasesCash - returnsTotal;
+      const expectedAmount = Number(session.initial_amount) + salesCash + cashReceiptsCash + cashIn - cashOut - purchasesCash - returnsTotal;
 
       // Obtener pagos agrupados por metodo, separando ingresos (ventas) de egresos (compras)
       let allPaymentsQuery = supabase
@@ -539,12 +544,18 @@ export class CajasService {
 
       const incomeByMethod: Record<string, number> = {};
       const expenseByMethod: Record<string, number> = {};
+      const cashReceiptsByMethod: Record<string, number> = {};
+      const purchasesByMethod: Record<string, number> = {};
       (allPayments || []).forEach(p => {
         const method = p.method || 'other';
         if (EXPENSE_SOURCES.includes(p.source)) {
           expenseByMethod[method] = (expenseByMethod[method] || 0) + Number(p.amount);
+          purchasesByMethod[method] = (purchasesByMethod[method] || 0) + Number(p.amount);
         } else {
           incomeByMethod[method] = (incomeByMethod[method] || 0) + Number(p.amount);
+        }
+        if (p.source === AR_SOURCE) {
+          cashReceiptsByMethod[method] = (cashReceiptsByMethod[method] || 0) + Number(p.amount);
         }
       });
 
@@ -559,6 +570,10 @@ export class CajasService {
         change_total: changeTotal,
         returns_total: returnsTotal,
         folio_consumptions_total: folioConsumptionsTotal,
+        cash_receipts_total: cashReceiptsCash,
+        cash_receipts_by_method: cashReceiptsByMethod,
+        purchases_total: Object.values(purchasesByMethod).reduce((sum, v) => sum + v, 0),
+        purchases_by_method: purchasesByMethod,
         payments_by_method: incomeByMethod,
         income_by_method: incomeByMethod,
         expense_by_method: expenseByMethod,

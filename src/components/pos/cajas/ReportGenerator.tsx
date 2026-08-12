@@ -8,6 +8,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSessionReport } from './types';
+import { getPaymentMethodLabel } from './paymentMethodLabels';
 import { toast } from 'sonner';
 
 interface ReportGeneratorProps {
@@ -15,18 +16,7 @@ interface ReportGeneratorProps {
   disabled?: boolean;
 }
 
-const METHOD_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  card: 'Tarjeta',
-  credit_card: 'Tarjeta Crédito',
-  debit_card: 'Tarjeta Débito',
-  transfer: 'Transferencia',
-  nequi: 'Nequi',
-  daviplata: 'Daviplata',
-  pse: 'PSE',
-  credit: 'Crédito',
-  other: 'Otros',
-};
+const METHOD_LABELS = getPaymentMethodLabel;
 
 export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   const [loading, setLoading] = useState(false);
@@ -145,6 +135,8 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
       ${summary.change_total > 0 ? `<tr><td>Vuelto Entregado</td><td class="amount-right">-${formatCurrency(summary.change_total)}</td></tr>` : ''}
       ${summary.returns_total > 0 ? `<tr><td>Devoluciones</td><td class="amount-right">-${formatCurrency(summary.returns_total)}</td></tr>` : ''}
       ${summary.folio_consumptions_total > 0 ? `<tr><td>Consumos de Habitaciones</td><td class="amount-right">${formatCurrency(summary.folio_consumptions_total)}</td></tr>` : ''}
+      ${summary.cash_receipts_total > 0 ? `<tr><td>Recibos de Caja (Abonos CxC)</td><td class="amount-right">${formatCurrency(summary.cash_receipts_total)}</td></tr>` : ''}
+      ${summary.purchases_total > 0 ? `<tr><td>Pagos a Proveedores (CxP)</td><td class="amount-right">-${formatCurrency(summary.purchases_total)}</td></tr>` : ''}
       <tr class="total-row"><td>EFECTIVO ESPERADO EN CAJA</td><td class="amount-right">${blindMode ? '***' : formatCurrency(summary.expected_amount)}</td></tr>
     </table>
     ${session.status === 'closed' && summary.counted_amount !== undefined && !blindMode ? `
@@ -161,13 +153,45 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
       <tr style="background: #eee;"><td class="method-label">METODO</td><td class="method-amount">INGRESOS</td><td class="method-amount">EGRESOS</td></tr>
       ${Object.keys({...incomeMethods, ...expenseMethods}).map(method => `
         <tr>
-          <td class="method-label">${METHOD_LABELS[method] || method}</td>
+          <td class="method-label">${METHOD_LABELS(method)}</td>
           <td class="method-amount">${incomeMethods[method] ? formatCurrency(incomeMethods[method]) : '-'}</td>
           <td class="method-amount">${expenseMethods[method] ? '-' + formatCurrency(expenseMethods[method]) : '-'}</td>
         </tr>
       `).join('')}
     </table>
   </div>
+
+  ${summary.cash_receipts_total > 0 ? `
+  <div class="section">
+    <div class="section-title">RECIBOS DE CAJA (ABONOS A CUENTAS POR COBRAR)</div>
+    <table class="methods-list">
+      <tr style="background: #eee;"><td class="method-label">METODO</td><td class="method-amount">MONTO</td></tr>
+      ${(Object.entries(summary.cash_receipts_by_method || {})).map(([method, amount]) => `
+        <tr>
+          <td class="method-label">${METHOD_LABELS(method)}</td>
+          <td class="method-amount">${formatCurrency(amount)}</td>
+        </tr>
+      `).join('')}
+      <tr class="total-row"><td class="method-label">TOTAL RECIBOS</td><td class="method-amount">${formatCurrency(summary.cash_receipts_total)}</td></tr>
+    </table>
+  </div>
+  ` : ''}
+
+  ${summary.purchases_total > 0 ? `
+  <div class="section">
+    <div class="section-title">PAGOS A PROVEEDORES (CUENTAS POR PAGAR)</div>
+    <table class="methods-list">
+      <tr style="background: #eee;"><td class="method-label">METODO</td><td class="method-amount">MONTO</td></tr>
+      ${(Object.entries(summary.purchases_by_method || {})).map(([method, amount]) => `
+        <tr>
+          <td class="method-label">${METHOD_LABELS(method)}</td>
+          <td class="method-amount">-${formatCurrency(amount)}</td>
+        </tr>
+      `).join('')}
+      <tr class="total-row"><td class="method-label">TOTAL PAGOS</td><td class="method-amount">-${formatCurrency(summary.purchases_total)}</td></tr>
+    </table>
+  </div>
+  ` : ''}
 
   <div class="section">
     <div class="section-title">RESUMEN DE VENTAS</div>
@@ -283,6 +307,8 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
     ${summary.change_total > 0 ? line('Vuelto', '-' + formatCurrency(summary.change_total)) : ''}
     ${summary.returns_total > 0 ? line('Devoluciones', '-' + formatCurrency(summary.returns_total)) : ''}
     ${summary.folio_consumptions_total > 0 ? line('Consumos Habitaciones', formatCurrency(summary.folio_consumptions_total)) : ''}
+    ${summary.cash_receipts_total > 0 ? line('Recibos de Caja', formatCurrency(summary.cash_receipts_total)) : ''}
+    ${summary.purchases_total > 0 ? line('Pagos Proveedores', '-' + formatCurrency(summary.purchases_total)) : ''}
     ${divider}
     ${line('ESPERADO', blindMode ? '***' : formatCurrency(summary.expected_amount))}
   </table>
@@ -296,9 +322,31 @@ export function ReportGenerator({ sessionId, disabled }: ReportGeneratorProps) {
   <div class="center bold">PAGOS POR METODO</div>
   <table>
     ${Object.keys({...incomeMethods, ...expenseMethods}).map(method => `
-      ${line(METHOD_LABELS[method] || method, formatCurrency(incomeMethods[method] || 0))}
+      ${line(METHOD_LABELS(method) || method, formatCurrency(incomeMethods[method] || 0))}
     `).join('')}
   </table>
+  ${summary.cash_receipts_total > 0 ? `
+  <hr>
+  <div class="center bold">RECIBOS DE CAJA</div>
+  <table>
+    ${(Object.entries(summary.cash_receipts_by_method || {})).map(([method, amount]) => `
+      ${line(METHOD_LABELS(method) || method, formatCurrency(amount))}
+    `).join('')}
+    ${divider}
+    ${line('TOTAL RECIBOS', formatCurrency(summary.cash_receipts_total))}
+  </table>
+  ` : ''}
+  ${summary.purchases_total > 0 ? `
+  <hr>
+  <div class="center bold">PAGOS A PROVEEDORES</div>
+  <table>
+    ${(Object.entries(summary.purchases_by_method || {})).map(([method, amount]) => `
+      ${line(METHOD_LABELS(method) || method, '-' + formatCurrency(amount))}
+    `).join('')}
+    ${divider}
+    ${line('TOTAL PAGOS', '-' + formatCurrency(summary.purchases_total))}
+  </table>
+  ` : ''}
   <hr>
   <div class="center bold">VENTAS</div>
   <table>

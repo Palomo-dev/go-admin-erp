@@ -55,9 +55,11 @@ export default function MiembrosPage() {
         </div>
       </div>
 
-      <Suspense fallback={<MembersSkeleton />}>
-        <MembersTab orgId={orgId} />
-      </Suspense>
+      {orgId && (
+        <Suspense fallback={<MembersSkeleton />}>
+          <MembersTab orgId={orgId} />
+        </Suspense>
+      )}
     </div>
   );
 }

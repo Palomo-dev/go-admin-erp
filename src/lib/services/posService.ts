@@ -4,7 +4,6 @@ import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/
 import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { stockMovementService } from '@/lib/services/stockMovementService';
-import { getPaymentMethodLabels } from '@/lib/services/paymentMethodHelper';
 import {
   Product,
   Customer,
@@ -1804,46 +1803,8 @@ export class POSService {
         }
       }
 
-      // Registrar movimientos de caja para todos los métodos de pago
-      if (payments.length > 0) {
-        try {
-          const branchId = getCurrentBranchId();
-          const { data: activeSession } = await supabase
-            .from('cash_sessions')
-            .select('id')
-            .eq('organization_id', cart.organization_id)
-            .eq('branch_id', branchId)
-            .eq('status', 'open')
-            .order('opened_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (activeSession) {
-            const methodLabels = await getPaymentMethodLabels();
-            const currentUserId = (await supabase.auth.getUser()).data.user?.id;
-
-            for (const payment of payments) {
-              if (payment.amount > 0) {
-                const methodLabel = methodLabels[payment.method] || payment.method;
-                await supabase
-                  .from('cash_movements')
-                  .insert({
-                    organization_id: cart.organization_id,
-                    branch_id: branchId,
-                    cash_session_id: activeSession.id,
-                    type: 'in',
-                    concept: `Venta POS #${saleData.id.slice(0, 8)} - ${methodLabel}`,
-                    amount: payment.amount,
-                    user_id: currentUserId || undefined,
-                    notes: `Pago ${methodLabel.toLowerCase()} - Venta desde POS`,
-                  });
-              }
-            }
-          }
-        } catch (cashError) {
-          console.error('Error registrando movimiento de caja:', cashError);
-        }
-      }
+      // Los pagos de ventas POS se registran en la tabla payments.
+      // No se crean cash_movements para evitar doble conteo en el cierre de caja.
 
       // Eliminar el carrito del localStorage
       await this.removeCart(cart.id);

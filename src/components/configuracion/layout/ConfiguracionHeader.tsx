@@ -12,7 +12,7 @@ export function ConfiguracionHeader({ module }: ConfiguracionHeaderProps) {
   const Icon = module.icon;
 
   return (
-    <div className="border-b px-6 py-4 flex items-center gap-3">
+    <div className="border-b border-gray-200 dark:border-gray-700 px-3 sm:px-6 py-4 flex items-center gap-3">
       <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
         <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
       </div>

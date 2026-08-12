@@ -278,6 +278,7 @@ export default function PaymentMethodsPage() {
             <CardContent className="px-3 sm:px-6">
               {organizationId ? (
                 <PaymentMethodForm
+                  key={selectedMethod ? `edit-${selectedMethod.id}` : 'new'}
                   organizationId={organizationId}
                   globalMethods={paymentMethods}
                   recommendedMethods={recommendedMethods}

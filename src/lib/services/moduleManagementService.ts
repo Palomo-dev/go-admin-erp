@@ -525,8 +525,8 @@ export const moduleManagementService = {
           
           const planInfo = planData?.[0];
           const maxModules = planInfo?.max_modules || 0;
-          const paidModules = org.organization_modules?.filter(om => 
-            om.modules && !om.modules.is_core
+          const paidModules = org.organization_modules?.filter(om =>
+            om.modules && !om.modules[0]?.is_core
           ).length || 0;
 
           if (paidModules > maxModules) {

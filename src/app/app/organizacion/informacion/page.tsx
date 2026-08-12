@@ -56,7 +56,7 @@ export default function InformacionPage() {
       </div>
 
       <Suspense fallback={<OrganizationInfoSkeleton />}>
-        <OrganizationInfoTab orgData={orgId} />
+        <OrganizationInfoTab orgData={orgId!} />
       </Suspense>
     </div>
   );

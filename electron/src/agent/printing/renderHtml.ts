@@ -374,6 +374,13 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
       ${payload.changeAmount && payload.changeAmount > 0 ? `<div class="payment-line change-line"><span>CAMBIO:</span><span>${formatMoney(payload.changeAmount)}</span></div>` : ''}
     </div>` : '';
 
+  const balanceHTML = payload.balance && payload.balance > 0
+    ? `<div class="payments">
+         ${payload.totalPaid && payload.totalPaid > 0 ? `<div class="payment-line"><span>Pagado:</span><span>${formatMoney(payload.totalPaid)}</span></div>` : ''}
+         <div class="payment-line change-line" style="font-weight:bold"><span>SALDO PENDIENTE:</span><span>${formatMoney(payload.balance)}</span></div>
+       </div>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -420,6 +427,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
 
   ${totalsHTML}
   ${paymentsHTML}
+  ${balanceHTML}
 
   <div class="footer">
     ${isPreCuenta

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function Page() {
-  redirect('/app/chat/ia/laboratorio');
+  redirect('/app/chat/ia/configuracion');
 }

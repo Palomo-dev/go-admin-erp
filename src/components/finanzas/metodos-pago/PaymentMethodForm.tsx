@@ -134,6 +134,9 @@ export default function PaymentMethodForm({
   // Cargar datos del método seleccionado
   useEffect(() => {
     if (selectedMethod) {
+      setIsNewMethod(false);
+      setGatewayConfig(selectedMethod.settings?.gateway_config || {});
+      setAccountMapping(selectedMethod.settings?.account_mapping || {});
       form.reset({
         payment_method_code: selectedMethod.payment_method_code,
         is_active: selectedMethod.is_active,
@@ -145,15 +148,26 @@ export default function PaymentMethodForm({
         website_description: selectedMethod.website_description || "",
         website_icon: selectedMethod.website_icon || "",
       });
-
-      if (selectedMethod.settings?.gateway_config) {
-        setGatewayConfig(selectedMethod.settings.gateway_config);
-      }
-      if (selectedMethod.settings?.account_mapping) {
-        setAccountMapping(selectedMethod.settings.account_mapping);
-      }
+    } else {
+      setIsNewMethod(false);
+      setGatewayConfig({});
+      setAccountMapping({});
+      form.reset({
+        payment_method_code: "",
+        is_active: true,
+        gateway: "",
+        requires_reference: false,
+        name: "",
+        code: "",
+        show_on_website: true,
+        website_display_order: 0,
+        website_display_name: "",
+        website_description: "",
+        website_icon: "",
+      });
     }
-  }, [selectedMethod, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMethod?.id]);
 
   // Manejar cambio en la selección de método de pago
   const handlePaymentMethodChange = (code: string) => {
@@ -280,6 +294,14 @@ export default function PaymentMethodForm({
           if (error) throw error;
         }
       } else {
+        // Si es un método personalizado (no manual), actualizar nombre en payment_methods
+        if (!MANUAL_METHODS.includes(selectedMethod.payment_method_code) && values.name) {
+          const { error: pmError } = await supabase
+            .from("payment_methods")
+            .update({ name: values.name, requires_reference: values.requires_reference })
+            .eq("code", selectedMethod.payment_method_code);
+          if (pmError) console.error("Error al actualizar payment_methods:", pmError);
+        }
         const { error } = await supabase
           .from("organization_payment_methods")
           .update({ is_active: values.is_active, settings, ...payloadWebsite, updated_at: new Date().toISOString() })
@@ -336,6 +358,75 @@ export default function PaymentMethodForm({
               )}
             />
           </div>
+        ) : selectedMethod && !MANUAL_METHODS.includes(selectedMethod.payment_method_code) ? (
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="payment_method_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm dark:text-gray-200">Método de pago</FormLabel>
+                  <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
+                    <span className="font-medium">
+                      {selectedMethod.payment_method?.name || field.value}
+                    </span>
+                    <Badge variant="secondary" className="ml-auto text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                      Editando
+                    </Badge>
+                  </div>
+                  <input type="hidden" {...field} />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm dark:text-gray-200">Nombre del método</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej. Pago Contraentrega" {...field} value={field.value || selectedMethod.payment_method?.name || ''} className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm dark:text-gray-200">Código interno</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej. pago_contraentrega" {...field} value={field.value || selectedMethod.payment_method_code || ''} className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm" />
+                    </FormControl>
+                    <FormDescription className="text-xs dark:text-gray-400">Sin espacios, único</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        ) : selectedMethod ? (
+          <FormField
+            control={form.control}
+            name="payment_method_code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm dark:text-gray-200">Método de pago</FormLabel>
+                <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300">
+                  <span className="font-medium">
+                    {selectedMethod.payment_method?.name || field.value}
+                  </span>
+                  <Badge variant="secondary" className="ml-auto text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                    Editando
+                  </Badge>
+                </div>
+                <input type="hidden" {...field} />
+              </FormItem>
+            )}
+          />
         ) : (
           <FormField
             control={form.control}
@@ -346,7 +437,6 @@ export default function PaymentMethodForm({
                 <Select 
                   onValueChange={(value) => { field.onChange(value); handlePaymentMethodChange(value); }}
                   value={field.value}
-                  disabled={selectedMethod !== null}
                 >
                   <FormControl>
                     <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm">
@@ -443,7 +533,6 @@ export default function PaymentMethodForm({
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
-                        disabled={!isNewMethod && selectedMethod !== null}
                         className="dark:border-gray-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                       />
                     </FormControl>

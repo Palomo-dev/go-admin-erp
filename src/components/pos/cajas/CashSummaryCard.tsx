@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, Wallet, RotateCcw, Coins, UserCircle, Store, Globe, EyeOff } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Wallet, RotateCcw, Coins, UserCircle, Store, Globe, EyeOff, Receipt, ArrowDownCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -10,6 +10,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSession, CashSummary } from './types';
+import { getPaymentMethodLabel } from './paymentMethodLabels';
 
 interface CashSummaryCardProps {
   session: CashSession;
@@ -202,6 +203,36 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                 </div>
               )}
 
+              {/* Recibos de caja (abonos a cuentas por cobrar) */}
+              {summary.cash_receipts_total > 0 && (
+                <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="flex-shrink-0 p-2 bg-blue-100 dark:bg-blue-800 rounded-full">
+                    <Receipt className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm dark:text-gray-300 text-gray-600">Recibos de Caja</p>
+                    <p className="font-bold text-blue-600 dark:text-blue-400">
+                      {formatCurrency(summary.cash_receipts_total)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Pagos a proveedores (cuentas por pagar) */}
+              {summary.purchases_total > 0 && (
+                <div className="flex items-center space-x-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  <div className="flex-shrink-0 p-2 bg-red-100 dark:bg-red-800 rounded-full">
+                    <ArrowDownCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm dark:text-gray-300 text-gray-600">Pagos a Proveedores</p>
+                    <p className="font-bold text-red-600 dark:text-red-400">
+                      -{formatCurrency(summary.purchases_total)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Devoluciones */}
               {summary.returns_total > 0 && (
                 <div className="flex items-center space-x-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
@@ -228,22 +259,10 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   </p>
                   <div className="space-y-1.5">
                     {Object.entries(summary.income_by_method).map(([method, amount]) => {
-                      const labels: Record<string, string> = {
-                        cash: 'Efectivo',
-                        card: 'Tarjeta',
-                        credit_card: 'Tarjeta Crédito',
-                        debit_card: 'Tarjeta Débito',
-                        transfer: 'Transferencia',
-                        nequi: 'Nequi',
-                        daviplata: 'Daviplata',
-                        pse: 'PSE',
-                        credit: 'Crédito',
-                        other: 'Otros',
-                      };
                       return (
                         <div key={method} className="flex justify-between items-center text-sm">
                           <span className="dark:text-gray-400 text-gray-600">
-                            {labels[method] || method}
+                            {getPaymentMethodLabel(method)}
                           </span>
                           <span className="font-medium dark:text-white text-gray-900">
                             {formatCurrency(amount)}
@@ -251,6 +270,30 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Desglose de pagos a proveedores por método */}
+            {summary.purchases_by_method && Object.keys(summary.purchases_by_method).length > 0 && (
+              <>
+                <Separator className="dark:bg-gray-700 bg-gray-200" />
+                <div>
+                  <p className="text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
+                    Pagos a proveedores por método:
+                  </p>
+                  <div className="space-y-1.5">
+                    {Object.entries(summary.purchases_by_method).map(([method, amount]) => (
+                      <div key={method} className="flex justify-between items-center text-sm">
+                        <span className="dark:text-gray-400 text-gray-600">
+                          {getPaymentMethodLabel(method)}
+                        </span>
+                        <span className="font-medium text-red-600 dark:text-red-400">
+                          -{formatCurrency(amount)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>

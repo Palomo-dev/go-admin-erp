@@ -5,14 +5,23 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Users, Clock, Save, Lock, Unlock, ZoomIn, ZoomOut, Maximize2, Crosshair, User as UserIcon, DollarSign, ChefHat } from 'lucide-react';
+import { Users, Clock, Save, Lock, Unlock, ZoomIn, ZoomOut, Maximize2, Crosshair, User as UserIcon, DollarSign, ChefHat, RotateCw } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import type { TableWithSession } from './types';
 
+export interface ZoneLayout {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 interface MesasFloorMapProps {
   mesas: TableWithSession[];
-  onSavePositions: (positions: { id: string; position_x: number; position_y: number }[]) => Promise<void>;
+  onSavePositions: (positions: { id: string; position_x: number; position_y: number; rotation?: number }[]) => Promise<void>;
+  onSaveZoneLayouts?: (layouts: { zone_name: string; position_x: number; position_y: number; width: number; height: number }[]) => Promise<void>;
   onMesaClick: (mesa: TableWithSession) => void;
+  initialZoneLayouts?: Record<string, ZoneLayout>;
 }
 
 const TABLE_W = 120;
@@ -26,6 +35,8 @@ const CANVAS_GROWTH_MARGIN = 400;
 
 // Paleta para distinguir zonas visualmente en el plano
 const ZONE_COLORS = ['#3B82F6', '#F97316', '#10B981', '#8B5CF6', '#EC4899', '#EAB308', '#06B6D4', '#84CC16'];
+const CHAIR_SIZE = 14;
+const CHAIR_GAP = 4;
 
 function snapToGrid(val: number): number {
   return Math.round(val / GRID_SIZE) * GRID_SIZE;
@@ -47,6 +58,51 @@ function getMesaSize(capacity: number): { w: number; h: number; shape: MesaShape
   return { w: 150, h: 100, shape: 'rect' };
 }
 
+interface ZoneBox {
+  zone: string;
+  color: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function getChairPositions(capacity: number, w: number, h: number, shape: MesaShape) {
+  const chairs: { x: number; y: number }[] = [];
+  if (shape === 'circle') {
+    const radius = w / 2 + CHAIR_SIZE / 2 + CHAIR_GAP;
+    for (let i = 0; i < capacity; i++) {
+      const angle = (i / capacity) * Math.PI * 2 - Math.PI / 2;
+      chairs.push({
+        x: w / 2 + Math.cos(angle) * radius - CHAIR_SIZE / 2,
+        y: h / 2 + Math.sin(angle) * radius - CHAIR_SIZE / 2,
+      });
+    }
+  } else {
+    const perimeter = 2 * (w + h);
+    const step = perimeter / capacity;
+    for (let i = 0; i < capacity; i++) {
+      let dist = i * step + step / 2;
+      let x: number, y: number;
+      if (dist < w) {
+        x = dist - CHAIR_SIZE / 2;
+        y = -CHAIR_SIZE - CHAIR_GAP;
+      } else if (dist < w + h) {
+        x = w + CHAIR_GAP;
+        y = dist - w - CHAIR_SIZE / 2;
+      } else if (dist < 2 * w + h) {
+        x = w - (dist - w - h) - CHAIR_SIZE / 2;
+        y = h + CHAIR_GAP;
+      } else {
+        x = -CHAIR_SIZE - CHAIR_GAP;
+        y = h - (dist - 2 * w - h) - CHAIR_SIZE / 2;
+      }
+      chairs.push({ x, y });
+    }
+  }
+  return chairs;
+}
+
 const VIEW_STORAGE_KEY = 'pos_mesas_floor_map_view';
 
 function loadStoredView(): { zoom: number; panOffset: { x: number; y: number } } | null {
@@ -62,11 +118,16 @@ function loadStoredView(): { zoom: number; panOffset: { x: number; y: number } }
   }
 }
 
-export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloorMapProps) {
+export function MesasFloorMap({ mesas, onSavePositions, onSaveZoneLayouts, onMesaClick, initialZoneLayouts }: MesasFloorMapProps) {
   const [editMode, setEditMode] = useState(false);
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [rotations, setRotations] = useState<Record<string, number>>({});
+  const [zoneOverrides, setZoneOverrides] = useState<Record<string, { x: number; y: number; w: number; h: number }>>(initialZoneLayouts ?? {});
   const [dragging, setDragging] = useState<string | null>(null);
+  const [draggingZone, setDraggingZone] = useState<string | null>(null);
+  const [resizingZone, setResizingZone] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [zoneDragOffset, setZoneDragOffset] = useState({ x: 0, y: 0 });
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hoveredMesaId, setHoveredMesaId] = useState<string | null>(null);
@@ -88,18 +149,45 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
     }
   }, [zoom, panOffset]);
 
-  // Inicializar posiciones desde las mesas
+  // Sincronizar zone layouts desde DB cuando llegan y no hay cambios pendientes
   useEffect(() => {
-    const pos: Record<string, { x: number; y: number }> = {};
-    mesas.forEach((mesa, idx) => {
-      pos[mesa.id] = {
-        x: mesa.position_x ?? (60 + (idx % 6) * (TABLE_W + 30)),
-        y: mesa.position_y ?? (60 + Math.floor(idx / 6) * (TABLE_H + 40)),
-      };
+    if (!hasChanges && initialZoneLayouts) {
+      setZoneOverrides(initialZoneLayouts);
+    }
+  }, [initialZoneLayouts, hasChanges]);
+
+  // Inicializar posiciones desde las mesas (merge: no sobrescribir existentes)
+  useEffect(() => {
+    setPositions((prev) => {
+      const next = { ...prev };
+      mesas.forEach((mesa, idx) => {
+        if (next[mesa.id] === undefined) {
+          next[mesa.id] = {
+            x: mesa.position_x ?? (60 + (idx % 6) * (TABLE_W + 30)),
+            y: mesa.position_y ?? (60 + Math.floor(idx / 6) * (TABLE_H + 40)),
+          };
+        } else {
+          // Actualizar desde DB solo si no hay cambios locales pendientes
+          if (!hasChanges) {
+            next[mesa.id] = {
+              x: mesa.position_x ?? next[mesa.id].x,
+              y: mesa.position_y ?? next[mesa.id].y,
+            };
+          }
+        }
+      });
+      return next;
     });
-    setPositions(pos);
-    setHasChanges(false);
-  }, [mesas]);
+    setRotations((prev) => {
+      const next = { ...prev };
+      mesas.forEach((mesa) => {
+        if (next[mesa.id] === undefined) {
+          next[mesa.id] = mesa.rotation ?? 0;
+        }
+      });
+      return next;
+    });
+  }, [mesas, hasChanges]);
 
   const getPos = (id: string) => positions[id] || { x: 0, y: 0 };
 
@@ -123,13 +211,24 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
     const PADDING = 24;
     return zonas
       .map((zone) => {
+        const override = zoneOverrides[zone];
+        if (override) {
+          return {
+            zone,
+            color: hashZoneColor(zone),
+            x: override.x,
+            y: override.y,
+            w: override.w,
+            h: override.h,
+          };
+        }
         const mesasZona = mesas.filter((m) => m.zone === zone);
         const pts = mesasZona
           .map((m) => ({ id: m.id, pos: getPos(m.id), size: getMesaSize(m.capacity) }))
           .filter((p) => positions[p.id] !== undefined);
         if (pts.length === 0) return null;
         const minX = Math.min(...pts.map((p) => p.pos.x)) - PADDING;
-        const minY = Math.min(...pts.map((p) => p.pos.y)) - PADDING - 24; // espacio para etiqueta
+        const minY = Math.min(...pts.map((p) => p.pos.y)) - PADDING - 24;
         const maxX = Math.max(...pts.map((p) => p.pos.x + p.size.w)) + PADDING;
         const maxY = Math.max(...pts.map((p) => p.pos.y + p.size.h)) + PADDING;
         return {
@@ -141,8 +240,8 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
           h: maxY - minY,
         };
       })
-      .filter((z): z is { zone: string; color: string; x: number; y: number; w: number; h: number } => z !== null);
-  }, [mesas, positions]);
+      .filter((z): z is ZoneBox => z !== null);
+  }, [mesas, positions, zoneOverrides]);
 
   // --- Drag handlers ---
   const handlePointerDown = useCallback(
@@ -184,8 +283,102 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
 
   const handlePointerUp = useCallback(() => {
     setDragging(null);
+    setDraggingZone(null);
+    setResizingZone(null);
     setIsPanning(false);
   }, []);
+
+  // --- Zone drag handlers ---
+  const handleZonePointerDown = useCallback(
+    (e: React.PointerEvent, zoneName: string) => {
+      if (!editMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const zb = zoneBounds.find((z) => z.zone === zoneName);
+      if (!zb) return;
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setDraggingZone(zoneName);
+      setZoneDragOffset({
+        x: (e.clientX - rect.left) / zoom - zb.x,
+        y: (e.clientY - rect.top) / zoom - zb.y,
+      });
+      // Guardar override inicial si no existe
+      setZoneOverrides((prev) => prev[zoneName] ? prev : {
+        ...prev,
+        [zoneName]: { x: zb.x, y: zb.y, w: zb.w, h: zb.h },
+      });
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    [editMode, zoneBounds, zoom],
+  );
+
+  const handleZonePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!draggingZone) return;
+      e.preventDefault();
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const newX = snapToGrid((e.clientX - rect.left) / zoom - zoneDragOffset.x);
+      const newY = snapToGrid((e.clientY - rect.top) / zoom - zoneDragOffset.y);
+      setZoneOverrides((prev) => ({
+        ...prev,
+        [draggingZone]: { ...prev[draggingZone], x: newX, y: newY },
+      }));
+      setHasChanges(true);
+    },
+    [draggingZone, zoneDragOffset, zoom],
+  );
+
+  // --- Zone resize handlers ---
+  const handleZoneResizeDown = useCallback(
+    (e: React.PointerEvent, zoneName: string) => {
+      if (!editMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setResizingZone(zoneName);
+      const zb = zoneBounds.find((z) => z.zone === zoneName);
+      if (zb) {
+        setZoneOverrides((prev) => prev[zoneName] ? prev : {
+          ...prev,
+          [zoneName]: { x: zb.x, y: zb.y, w: zb.w, h: zb.h },
+        });
+      }
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    [editMode, zoneBounds],
+  );
+
+  const handleZoneResizeMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!resizingZone) return;
+      e.preventDefault();
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const override = zoneOverrides[resizingZone];
+      if (!override) return;
+      const newW = Math.max(100, snapToGrid((e.clientX - rect.left) / zoom - override.x));
+      const newH = Math.max(80, snapToGrid((e.clientY - rect.top) / zoom - override.y));
+      setZoneOverrides((prev) => ({
+        ...prev,
+        [resizingZone]: { ...prev[resizingZone], w: newW, h: newH },
+      }));
+      setHasChanges(true);
+    },
+    [resizingZone, zoneOverrides, zoom],
+  );
+
+  // --- Rotation handler ---
+  const handleRotate = useCallback(
+    (mesaId: string) => {
+      setRotations((prev) => ({
+        ...prev,
+        [mesaId]: ((prev[mesaId] ?? 0) + 15) % 360,
+      }));
+      setHasChanges(true);
+    },
+    [],
+  );
 
   // Pan handlers (mover canvas cuando no está en modo edición)
   const handleCanvasPointerDown = useCallback(
@@ -231,8 +424,21 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
         id,
         position_x: Math.round(pos.x),
         position_y: Math.round(pos.y),
+        rotation: rotations[id] ?? 0,
       }));
       await onSavePositions(batch);
+
+      if (onSaveZoneLayouts && Object.keys(zoneOverrides).length > 0) {
+        const zoneBatch = Object.entries(zoneOverrides).map(([zone_name, zl]) => ({
+          zone_name,
+          position_x: Math.round(zl.x),
+          position_y: Math.round(zl.y),
+          width: Math.round(zl.w),
+          height: Math.round(zl.h),
+        }));
+        await onSaveZoneLayouts(zoneBatch);
+      }
+
       setHasChanges(false);
     } finally {
       setIsSaving(false);
@@ -389,6 +595,8 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
           onPointerDown={handleCanvasPointerDown}
           onPointerMove={(e) => {
             handlePointerMove(e);
+            handleZonePointerMove(e);
+            handleZoneResizeMove(e);
             handleCanvasPointerMove(e);
           }}
           onPointerUp={handlePointerUp}
@@ -406,7 +614,10 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
           {zoneBounds.map((zb) => (
             <div
               key={zb.zone}
-              className="absolute rounded-2xl border-2 border-dashed pointer-events-none"
+              className={cn(
+                'absolute rounded-2xl border-2 border-dashed',
+                editMode ? 'cursor-move pointer-events-auto' : 'pointer-events-none',
+              )}
               style={{
                 left: zb.x * zoom,
                 top: zb.y * zoom,
@@ -415,6 +626,7 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
                 borderColor: `${zb.color}80`,
                 backgroundColor: `${zb.color}0d`,
               }}
+              onPointerDown={(e) => handleZonePointerDown(e, zb.zone)}
             >
               <span
                 className="absolute -top-3 left-3 px-2 rounded text-[11px] font-semibold shadow-sm"
@@ -422,6 +634,14 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
               >
                 {zb.zone}
               </span>
+              {/* Handle de resize en modo edición */}
+              {editMode && (
+                <div
+                  className="absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full border-2 border-white shadow-md pointer-events-auto cursor-se-resize"
+                  style={{ backgroundColor: zb.color }}
+                  onPointerDown={(e) => handleZoneResizeDown(e, zb.zone)}
+                />
+              )}
             </div>
           ))}
 
@@ -431,89 +651,121 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
             const colors = getTableColors(mesa);
             const tiempo = getTiempo(mesa);
             const isDragging = dragging === mesa.id;
+            const rotation = rotations[mesa.id] ?? 0;
+            const chairs = getChairPositions(mesa.capacity, size.w, size.h, size.shape);
 
             return (
               <div
                 key={mesa.id}
-                className={cn(
-                  'absolute border-2 shadow-md transition-shadow select-none flex flex-col items-center justify-center',
-                  size.shape === 'circle' ? 'rounded-full' : 'rounded-xl',
-                  colors.bg,
-                  colors.border,
-                  isDragging && 'shadow-xl ring-2 ring-blue-500 z-50 opacity-90',
-                  editMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:shadow-lg',
-                )}
+                className="absolute"
                 style={{
                   left: pos.x * zoom,
                   top: pos.y * zoom,
                   width: size.w * zoom,
                   height: size.h * zoom,
+                  transform: `rotate(${rotation}deg)`,
+                  transformOrigin: 'center center',
                   touchAction: editMode ? 'none' : 'auto',
                 }}
-                onPointerDown={(e) => handlePointerDown(e, mesa.id)}
-                onClick={() => handleMesaClick(mesa)}
-                onMouseEnter={() => setHoveredMesaId(mesa.id)}
-                onMouseLeave={() => setHoveredMesaId((prev) => (prev === mesa.id ? null : prev))}
               >
-                {/* Tooltip con detalle al hacer hover (solo mesas con sesión) */}
-                {hoveredMesaId === mesa.id && mesa.session && !editMode && (
+                {/* Sillas visuales */}
+                {chairs.map((chair, i) => (
                   <div
-                    className="absolute z-50 left-1/2 -translate-x-1/2 -top-2 -translate-y-full bg-gray-900 text-white text-xs rounded-lg shadow-lg px-3 py-2 pointer-events-none whitespace-nowrap"
-                  >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <UserIcon className="h-3 w-3" />
-                      <span>{mesa.session.serverName || 'Sin mesero asignado'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Clock className="h-3 w-3" />
-                      <span>{tiempo || '0m'} abierta</span>
-                    </div>
-                    {mesa.totalAmount ? (
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <DollarSign className="h-3 w-3" />
-                        <span>${mesa.totalAmount.toLocaleString()}</span>
-                      </div>
-                    ) : null}
-                    {(mesa.session.pendingKitchenItems || 0) > 0 && (
-                      <div className="flex items-center gap-1.5 text-orange-300">
-                        <ChefHat className="h-3 w-3" />
-                        <span>{mesa.session.pendingKitchenItems} en cocina</span>
-                      </div>
+                    key={i}
+                    className={cn(
+                      'absolute rounded-full border',
+                      mesa.session && (mesa.session.customers ?? 0) > i
+                        ? 'bg-gray-400 dark:bg-gray-500 border-gray-500 dark:border-gray-400'
+                        : 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600',
                     )}
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-gray-900 rotate-45" />
-                  </div>
-                )}
+                    style={{
+                      left: chair.x * zoom,
+                      top: chair.y * zoom,
+                      width: CHAIR_SIZE * zoom,
+                      height: CHAIR_SIZE * zoom,
+                    }}
+                  />
+                ))}
 
-                {/* Nombre */}
-                <span
-                  className={cn('font-bold leading-tight text-center', colors.text)}
-                  style={{ fontSize: 14 * zoom }}
-                >
-                  {mesa.name}
-                </span>
-
-                {/* Info compacta */}
-                <div className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10 * zoom }}>
-                  <Users style={{ width: 10 * zoom, height: 10 * zoom }} className={colors.text} />
-                  <span className={colors.text}>
-                    {mesa.session?.customers || 0}/{mesa.capacity}
-                  </span>
-                  {tiempo && (
-                    <>
-                      <Clock style={{ width: 10 * zoom, height: 10 * zoom }} className={cn(colors.text, 'ml-1')} />
-                      <span className={colors.text}>{tiempo}</span>
-                    </>
+                {/* Cuerpo de la mesa */}
+                <div
+                  className={cn(
+                    'absolute inset-0 border-2 shadow-md transition-shadow select-none flex flex-col items-center justify-center',
+                    size.shape === 'circle' ? 'rounded-full' : 'rounded-xl',
+                    colors.bg,
+                    colors.border,
+                    isDragging && 'shadow-xl ring-2 ring-blue-500 z-50 opacity-90',
+                    editMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:shadow-lg',
                   )}
+                  onPointerDown={(e) => handlePointerDown(e, mesa.id)}
+                  onClick={() => handleMesaClick(mesa)}
+                  onMouseEnter={() => setHoveredMesaId(mesa.id)}
+                  onMouseLeave={() => setHoveredMesaId((prev) => (prev === mesa.id ? null : prev))}
+                >
+                  {/* Tooltip con detalle al hacer hover (solo mesas con sesión) */}
+                  {hoveredMesaId === mesa.id && mesa.session && !editMode && (
+                    <div
+                      className="absolute z-50 left-1/2 -translate-x-1/2 -top-2 -translate-y-full bg-gray-900 text-white text-xs rounded-lg shadow-lg px-3 py-2 pointer-events-none whitespace-nowrap"
+                      style={{ transform: `translate(-50%, -100%) rotate(${-rotation}deg)`, transformOrigin: 'center bottom' }}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <UserIcon className="h-3 w-3" />
+                        <span>{mesa.session.serverName || 'Sin mesero asignado'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{tiempo || '0m'} abierta</span>
+                      </div>
+                      {mesa.totalAmount ? (
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <DollarSign className="h-3 w-3" />
+                          <span>${mesa.totalAmount.toLocaleString()}</span>
+                        </div>
+                      ) : null}
+                      {(mesa.session.pendingKitchenItems || 0) > 0 && (
+                        <div className="flex items-center gap-1.5 text-orange-300">
+                          <ChefHat className="h-3 w-3" />
+                          <span>{mesa.session.pendingKitchenItems} en cocina</span>
+                        </div>
+                      )}
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-gray-900 rotate-45" />
+                    </div>
+                  )}
+
+                  {/* Nombre */}
+                  <span
+                    className={cn('font-bold leading-tight text-center', colors.text)}
+                    style={{ fontSize: 14 * zoom }}
+                  >
+                    {mesa.name}
+                  </span>
+
+                  {/* Info compacta */}
+                  <div className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10 * zoom }}>
+                    <Users style={{ width: 10 * zoom, height: 10 * zoom }} className={colors.text} />
+                    <span className={colors.text}>
+                      {mesa.session?.customers || 0}/{mesa.capacity}
+                    </span>
+                    {tiempo && (
+                      <>
+                        <Clock style={{ width: 10 * zoom, height: 10 * zoom }} className={cn(colors.text, 'ml-1')} />
+                        <span className={colors.text}>{tiempo}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
 
-                {/* Zona badge */}
-                {mesa.zone && (
-                  <span
-                    className="text-gray-500 dark:text-gray-400 break-words whitespace-normal px-1"
-                    style={{ fontSize: 9 * zoom }}
+                {/* Botón de rotación en modo edición */}
+                {editMode && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleRotate(mesa.id); }}
+                    className="absolute -top-2 -right-2 z-50 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors"
+                    style={{ transform: `rotate(${-rotation}deg)` }}
+                    title="Rotar 15°"
                   >
-                    {mesa.zone}
-                  </span>
+                    <RotateCw className="h-3.5 w-3.5" />
+                  </button>
                 )}
               </div>
             );
@@ -525,7 +777,7 @@ export function MesasFloorMap({ mesas, onSavePositions, onMesaClick }: MesasFloo
 
       {editMode && (
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-          Arrastra las mesas para reorganizar el plano. Las posiciones se ajustan a una cuadrícula de {GRID_SIZE}px. Haz clic en &quot;Guardar posiciones&quot; cuando termines.
+          Arrastra las mesas y zonas para reorganizar el plano. Usa el botón azul para rotar mesas. Las sillas se muestran según la capacidad. Haz clic en &quot;Guardar posiciones&quot; cuando termines.
         </p>
       )}
     </div>

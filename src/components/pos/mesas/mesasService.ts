@@ -246,14 +246,14 @@ export class MesasService {
    * Actualizar posiciones de múltiples mesas (batch)
    */
   static async actualizarPosiciones(
-    batch: { id: string; position_x: number; position_y: number }[]
+    batch: { id: string; position_x: number; position_y: number; rotation?: number }[]
   ): Promise<void> {
     try {
       const now = new Date().toISOString();
-      const promises = batch.map(({ id, position_x, position_y }) =>
+      const promises = batch.map(({ id, position_x, position_y, rotation }) =>
         supabase
           .from('restaurant_tables')
-          .update({ position_x, position_y, updated_at: now })
+          .update({ position_x, position_y, rotation: rotation ?? 0, updated_at: now })
           .eq('id', id)
       );
       const results = await Promise.all(promises);
@@ -261,6 +261,68 @@ export class MesasService {
       if (firstError?.error) throw firstError.error;
     } catch (error) {
       console.error('Error actualizando posiciones:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener layouts de zonas desde la DB
+   */
+  static async obtenerZoneLayouts(): Promise<Record<string, { x: number; y: number; w: number; h: number }>> {
+    const organizationId = getOrganizationId();
+    const branchFilter = getBranchFilter();
+    try {
+      let query = supabase
+        .from('restaurant_zone_layouts')
+        .select('zone_name, position_x, position_y, width, height')
+        .eq('organization_id', organizationId);
+      if (branchFilter) {
+        query = query.eq('branch_id', branchFilter);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      const result: Record<string, { x: number; y: number; w: number; h: number }> = {};
+      (data || []).forEach((row) => {
+        result[row.zone_name] = {
+          x: row.position_x,
+          y: row.position_y,
+          w: row.width,
+          h: row.height,
+        };
+      });
+      return result;
+    } catch (error) {
+      console.error('Error obteniendo zone layouts:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Guardar layouts de zonas (upsert batch)
+   */
+  static async guardarZoneLayouts(
+    layouts: { zone_name: string; position_x: number; position_y: number; width: number; height: number }[]
+  ): Promise<void> {
+    const organizationId = getOrganizationId();
+    const branchId = getCurrentBranchId();
+    try {
+      const now = new Date().toISOString();
+      const rows = layouts.map((l) => ({
+        organization_id: organizationId,
+        branch_id: branchId,
+        zone_name: l.zone_name,
+        position_x: Math.round(l.position_x),
+        position_y: Math.round(l.position_y),
+        width: Math.round(l.width),
+        height: Math.round(l.height),
+        updated_at: now,
+      }));
+      const { error } = await supabase
+        .from('restaurant_zone_layouts')
+        .upsert(rows, { onConflict: 'organization_id,branch_id,zone_name' });
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error guardando zone layouts:', error);
       throw error;
     }
   }

@@ -4,6 +4,7 @@ import { Bot, User } from 'lucide-react';
 import type { ReportData } from '@/lib/services/reportes/types';
 import { ReporteKPIs } from '../ReporteKPIs';
 import { ReporteTabla } from '../ReporteTabla';
+import { ReporteChart } from '../ReporteChart';
 
 export interface ChatMessageData {
   id: string;
@@ -54,6 +55,10 @@ export function ChatMessage({ message }: { message: ChatMessageData }) {
             )}
 
             <ReporteTabla data={message.reportData} />
+
+            {message.reportData.filas.length > 0 && (
+              <ReporteChart data={message.reportData} />
+            )}
           </div>
         )}
 

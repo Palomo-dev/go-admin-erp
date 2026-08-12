@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { ReporteKPI } from '@/lib/services/reportes/types';
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+
 import type { ReportData, ReporteColumna } from '@/lib/services/reportes/types';
 import { ReportePagination } from './ReportePagination';
 

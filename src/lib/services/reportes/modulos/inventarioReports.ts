@@ -173,9 +173,13 @@ export const inventarioReports: ReportDefinition[] = [
       const bajoMinimo = filas.filter((f) => f.estado === 'Bajo mínimo').length;
       const valorFaltanteTotal = filas.reduce((s, f) => s + Number(f.valor_faltante ?? 0), 0);
 
+      // Total de productos con stock trackeado (para contexto global)
+      const totalProductosTrackeado = (data ?? []).length;
+
       return buildReportData(
         'stock-critico', 'Stock Crítico', 'inventory', periodo,
         [
+          { titulo: 'Total Productos', valor: totalProductosTrackeado, formato: 'numero' },
           { titulo: 'Productos Críticos', valor: totalCriticos, formato: 'numero' },
           { titulo: 'Agotados', valor: agotados, formato: 'numero' },
           { titulo: 'Sin stock en sucursal', valor: sinStockSucursal, formato: 'numero' },

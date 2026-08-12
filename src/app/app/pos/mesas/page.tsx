@@ -58,6 +58,7 @@ export default function MesasPage() {
   const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'free' | 'occupied' | 'bill_requested' | 'reserved'>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [zoneLayouts, setZoneLayouts] = useState<Record<string, { x: number; y: number; w: number; h: number }>>({});
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -94,13 +95,15 @@ export default function MesasPage() {
   const cargarDatos = async () => {
     setIsLoading(true);
     try {
-      const [mesasData, zonasData] = await Promise.all([
+      const [mesasData, zonasData, zoneLayoutsData] = await Promise.all([
         MesasService.obtenerMesasConSesiones(),
         MesasService.obtenerZonas(),
+        MesasService.obtenerZoneLayouts(),
       ]);
 
       setMesas(mesasData);
       setZonas(zonasData);
+      setZoneLayouts(zoneLayoutsData);
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast({
@@ -426,13 +429,39 @@ export default function MesasPage() {
     }
   };
 
-  const handleSavePositions = async (batch: { id: string; position_x: number; position_y: number }[]) => {
+  const handleSavePositions = async (batch: { id: string; position_x: number; position_y: number; rotation?: number }[]) => {
     try {
       await MesasService.actualizarPosiciones(batch);
-      await cargarDatos();
+      // Actualizar estado local sin recarga completa
+      setMesas((prev) => prev.map((m) => {
+        const updated = batch.find((b) => b.id === m.id);
+        if (updated) {
+          return {
+            ...m,
+            position_x: updated.position_x,
+            position_y: updated.position_y,
+            rotation: updated.rotation ?? m.rotation,
+          };
+        }
+        return m;
+      }));
       toast({ title: 'Posiciones guardadas', description: 'El plano se actualizó correctamente' });
     } catch {
       toast({ title: 'Error', description: 'No se pudieron guardar las posiciones', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveZoneLayouts = async (layouts: { zone_name: string; position_x: number; position_y: number; width: number; height: number }[]) => {
+    try {
+      await MesasService.guardarZoneLayouts(layouts);
+      // Actualizar estado local
+      const newLayouts: Record<string, { x: number; y: number; w: number; h: number }> = {};
+      layouts.forEach((l) => {
+        newLayouts[l.zone_name] = { x: l.position_x, y: l.position_y, w: l.width, h: l.height };
+      });
+      setZoneLayouts((prev) => ({ ...prev, ...newLayouts }));
+    } catch {
+      toast({ title: 'Error', description: 'No se pudieron guardar las zonas', variant: 'destructive' });
     }
   };
 
@@ -504,7 +533,9 @@ export default function MesasPage() {
         <MesasFloorMap
           mesas={mesasFiltradas}
           onSavePositions={handleSavePositions}
+          onSaveZoneLayouts={handleSaveZoneLayouts}
           onMesaClick={(mesa) => handleMesaClick(mesa)}
+          initialZoneLayouts={zoneLayouts}
         />
       )}
 

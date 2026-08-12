@@ -548,7 +548,7 @@ export const ProfileDropdownMenu = ({ userData, handleSignOut, loading, isSideba
         </DropdownMenuItem>
         
         <DropdownMenuItem asChild>
-          <Link href="/app/organizacion/informacion" className="flex items-center text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-full">
+          <Link href="/app/configuracion" className="flex items-center text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-full">
             <Settings size={14} className="mr-2" />
             {t('settings')}
           </Link>

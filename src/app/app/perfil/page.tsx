@@ -443,6 +443,8 @@ export default function PerfilUsuarioPage() {
           {currentSection === 'eliminar-cuenta' && (
             <EliminarCuentaSection 
               user={user}
+              organizations={organizations}
+              profileName={profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || undefined}
             />
           )}
 

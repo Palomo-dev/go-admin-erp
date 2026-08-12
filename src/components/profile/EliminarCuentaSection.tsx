@@ -6,32 +6,59 @@ import { supabase } from '@/lib/supabase/config';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+
+interface OrgSimple {
+  id: string | number;
+  name: string;
+}
 
 interface EliminarCuentaSectionProps {
   user: User | null;
+  organizations?: OrgSimple[];
+  profileName?: string;
 }
 
-export default function EliminarCuentaSection({ user }: EliminarCuentaSectionProps) {
-  const [showModal, setShowModal] = useState(false);
+export default function EliminarCuentaSection({ user, organizations = [], profileName: profileNameProp }: EliminarCuentaSectionProps) {
+  const [open, setOpen] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmText, setConfirmText] = useState('');
+  const [orgNameConfirm, setOrgNameConfirm] = useState('');
+  const [profileNameConfirm, setProfileNameConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const router = useRouter();
-  
-  const handleOpenModal = () => {
-    setShowModal(true);
+
+  const profileName = profileNameProp
+    || user?.user_metadata?.full_name
+    || user?.user_metadata?.name
+    || user?.email?.split('@')[0]
+    || '';
+
+  const primaryOrgName = organizations[0]?.name ?? '';
+
+  const resetForm = () => {
     setPassword('');
     setConfirmText('');
+    setOrgNameConfirm('');
+    setProfileNameConfirm('');
     setError('');
   };
-  
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setPassword('');
-    setConfirmText('');
-    setError('');
+
+  const handleOpenChange = (value: boolean) => {
+    setOpen(value);
+    if (!value) resetForm();
   };
   
   const handleDeleteAccount = async () => {
@@ -50,7 +77,17 @@ export default function EliminarCuentaSection({ user }: EliminarCuentaSectionPro
       setError('Debe escribir ELIMINAR para confirmar la acción');
       return;
     }
-    
+
+    if (profileNameConfirm.trim() !== profileName) {
+      setError(`Debe escribir "${profileName}" exactamente como aparece en su perfil`);
+      return;
+    }
+
+    if (primaryOrgName && orgNameConfirm.trim() !== primaryOrgName) {
+      setError(`Debe escribir "${primaryOrgName}" exactamente como aparece en su organización`);
+      return;
+    }
+
     setLoading(true);
     setError('');
     
@@ -86,8 +123,8 @@ export default function EliminarCuentaSection({ user }: EliminarCuentaSectionPro
       // Paso 4: Redirigir al usuario a la página de inicio con un mensaje
       toast.success('Su solicitud de eliminación de cuenta ha sido registrada. Su cuenta será eliminada en los próximos días.');
       router.push('/');
-    } catch (error) {
-      console.error('Error al eliminar cuenta:', error);
+    } catch (err) {
+      console.error('Error al eliminar cuenta:', err);
       setError('Ha ocurrido un error al procesar su solicitud. Por favor, intente nuevamente.');
     } finally {
       setLoading(false);
@@ -126,91 +163,110 @@ export default function EliminarCuentaSection({ user }: EliminarCuentaSectionPro
               </ul>
             </div>
             <div className="mt-4">
-              <button
-                onClick={handleOpenModal}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Eliminar mi cuenta
-              </button>
+              <AlertDialog open={open} onOpenChange={handleOpenChange}>
+                <AlertDialogTrigger asChild>
+                  <button
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Eliminar mi cuenta
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="max-w-md">
+                  <AlertDialogHeader>
+                    <div className="flex items-center text-red-600 dark:text-red-400">
+                      <AlertTriangle className="w-6 h-6 mr-2" />
+                      <AlertDialogTitle>Confirmar eliminación de cuenta</AlertDialogTitle>
+                    </div>
+                    <AlertDialogDescription className="text-gray-600 dark:text-gray-300">
+                      Esta acción es irreversible. Para confirmar debe ingresar su contraseña, escribir el nombre de su perfil, el nombre de su organización y la palabra <strong>ELIMINAR</strong>.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Contraseña
+                      </label>
+                      <input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="profileNameConfirm" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Escriba el nombre de su perfil: <span className="font-bold text-gray-900 dark:text-gray-100">{profileName}</span>
+                      </label>
+                      <input
+                        id="profileNameConfirm"
+                        type="text"
+                        value={profileNameConfirm}
+                        onChange={(e) => setProfileNameConfirm(e.target.value)}
+                        className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
+                      />
+                    </div>
+
+                    {primaryOrgName && (
+                      <div>
+                        <label htmlFor="orgNameConfirm" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Escriba el nombre de su organización: <span className="font-bold text-gray-900 dark:text-gray-100">{primaryOrgName}</span>
+                        </label>
+                        <input
+                          id="orgNameConfirm"
+                          type="text"
+                          value={orgNameConfirm}
+                          onChange={(e) => setOrgNameConfirm(e.target.value)}
+                          className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label htmlFor="confirmText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Escriba &quot;ELIMINAR&quot; para confirmar
+                      </label>
+                      <input
+                        id="confirmText"
+                        type="text"
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
+                      />
+                    </div>
+
+                    {error && (
+                      <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                    )}
+                  </div>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleDeleteAccount();
+                      }}
+                      className="bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400"
+                      disabled={loading || !password || confirmText !== 'ELIMINAR' || profileNameConfirm.trim() !== profileName || (!!primaryOrgName && orgNameConfirm.trim() !== primaryOrgName)}
+                    >
+                      {loading ? (
+                        <span className="flex items-center">
+                          <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full" />
+                          Procesando...
+                        </span>
+                      ) : 'Eliminar permanentemente'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* Modal de confirmación */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
-            <div className="flex items-center text-red-600 dark:text-red-400 mb-4">
-              <AlertTriangle className="w-6 h-6 mr-2" />
-              <h3 className="text-lg font-semibold">Confirmar eliminación de cuenta</h3>
-            </div>
-            
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Esta acción es irreversible. Por favor, confirme que desea eliminar permanentemente su cuenta ingresando su contraseña y escribiendo <strong>ELIMINAR</strong> en el campo de confirmación.
-            </p>
-            
-            <div className="space-y-4 mb-6">
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Contraseña
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="confirmText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Escriba &quot;ELIMINAR&quot; para confirmar
-                </label>
-                <input
-                  id="confirmText"
-                  type="text"
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-              
-              {error && (
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {error}
-                </p>
-              )}
-            </div>
-            
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={handleCloseModal}
-                className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                disabled={loading}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                className="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400"
-                disabled={loading || password === '' || confirmText !== 'ELIMINAR'}
-              >
-                {loading ? (
-                  <span className="flex items-center">
-                    <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full"></span>
-                    Procesando...
-                  </span>
-                ) : 'Eliminar permanentemente'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

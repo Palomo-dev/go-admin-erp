@@ -216,7 +216,7 @@ export function FacturacionConfigPanel() {
 
   if (loading) {
     return (
-      <div className="space-y-4 max-w-2xl">
+      <div className="space-y-4 max-w-2xl mx-auto">
         <PageHeaderSkeleton />
         <CardListSkeleton cards={3} columns="1" />
       </div>
@@ -224,7 +224,7 @@ export function FacturacionConfigPanel() {
   }
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-4 max-w-2xl mx-auto">
       <CredencialesFactusSection
         config={config}
         onConfigChange={setConfig}

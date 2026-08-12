@@ -15,16 +15,10 @@ import { formatCurrency } from '@/utils/Utils';
 import { CajasService } from './CajasService';
 import { useBlindCloseMode } from './useBlindCloseMode';
 import type { CashSession, CashSummary, CloseCashSessionData, SessionPaymentDetail } from './types';
+import { getPaymentMethodLabel } from './paymentMethodLabels';
 import { toast } from 'sonner';
 
-const METHOD_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  card: 'Tarjeta',
-  transfer: 'Transferencia',
-  credit: 'Credito',
-  mixed: 'Mixto',
-  other: 'Otros',
-};
+const METHOD_LABELS = getPaymentMethodLabel;
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
   cash: <Banknote className="h-3.5 w-3.5" />,
@@ -294,7 +288,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                         <div key={method} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-1.5 dark:text-gray-300 text-gray-700">
                             {METHOD_ICONS[method] || <Wallet className="h-3.5 w-3.5" />}
-                            {METHOD_LABELS[method] || method}:
+                            {METHOD_LABELS(method)}:
                           </span>
                           <span className="font-medium text-green-600">
                             {formatCurrency(amount)}
@@ -302,6 +296,32 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Recibos de caja (abonos a cuentas por cobrar) */}
+                {summary && summary.cash_receipts_total > 0 && (
+                  <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <span className="text-xs font-medium flex items-center gap-1 dark:text-blue-400 text-blue-700">
+                      <Receipt className="h-3.5 w-3.5" /> Recibos de Caja (Abonos a Cuentas por Cobrar):
+                    </span>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="dark:text-gray-300 text-gray-700">Total recibido:</span>
+                      <span className="font-bold text-blue-600">{formatCurrency(summary.cash_receipts_total)}</span>
+                    </div>
+                    {summary.cash_receipts_by_method && Object.keys(summary.cash_receipts_by_method).length > 0 && (
+                      <div className="space-y-1">
+                        {Object.entries(summary.cash_receipts_by_method).map(([method, amount]) => (
+                          <div key={method} className="flex items-center justify-between text-xs">
+                            <span className="flex items-center gap-1.5 dark:text-gray-400 text-gray-600">
+                              {METHOD_ICONS[method] || <Wallet className="h-3 w-3" />}
+                              {METHOD_LABELS(method)}:
+                            </span>
+                            <span className="font-medium text-blue-600">{formatCurrency(amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -316,13 +336,21 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                         <div key={method} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-1.5 dark:text-gray-300 text-gray-700">
                             {METHOD_ICONS[method] || <Wallet className="h-3.5 w-3.5" />}
-                            {METHOD_LABELS[method] || method}:
+                            {METHOD_LABELS(method)}:
                           </span>
                           <span className="font-medium text-red-600">
                             {formatCurrency(amount)}
                           </span>
                         </div>
                       ))}
+                      <div className="flex items-center justify-between text-sm pt-1 border-t dark:border-gray-600">
+                        <span className="font-medium dark:text-gray-300 text-gray-700">
+                          Total Pagos a Proveedores:
+                        </span>
+                        <span className="font-bold text-red-600">
+                          -{formatCurrency(summary.purchases_total || 0)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -379,7 +407,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <Badge variant="outline" className="text-xs dark:border-gray-500">
-                            {METHOD_LABELS[mov.method] || mov.method}
+                            {METHOD_LABELS(mov.method)}
                           </Badge>
                           <span className={`font-medium ${mov.direction === 'in' ? 'text-green-600' : 'text-red-600'}`}>
                             {mov.direction === 'in' ? '+' : '-'}{formatCurrency(mov.amount)}
@@ -412,7 +440,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                         <div className="flex items-center justify-between">
                           <span className="flex items-center gap-2 text-sm font-medium dark:text-white text-gray-900">
                             {METHOD_ICONS[method] || <Wallet className="h-4 w-4" />}
-                            {METHOD_LABELS[method] || method}
+                            {METHOD_LABELS(method)}
                           </span>
                           {showExpectedBlind && (
                             <span className="text-xs dark:text-gray-400 text-gray-500">

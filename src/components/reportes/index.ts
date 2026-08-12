@@ -9,5 +9,6 @@ export { ReporteKPIs } from './ReporteKPIs';
 export { ReporteEmpty } from './ReporteEmpty';
 export { ReportesSkeleton } from './ReportesSkeleton';
 export { ReportePagination } from './ReportePagination';
+export { ReporteChart } from './ReporteChart';
 export { ReportesChatSheet } from './chat/ReportesChatSheet';
 export { ChatMessage } from './chat/ChatMessage';

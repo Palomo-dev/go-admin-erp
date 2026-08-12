@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useConfiguracionState } from '../hooks/useConfiguracionState';
 import { useActiveConfigModules } from '../hooks/useActiveConfigModules';
 import { CONFIG_MODULES } from '../config/configModulesRegistry';
@@ -22,17 +21,17 @@ export function ConfiguracionLayout() {
   if (loading) {
     return (
       <div className="flex flex-col h-[calc(100vh-4rem)]">
-        <div className="border-b px-6 py-4 flex items-center gap-3">
+        <div className="border-b border-gray-200 dark:border-gray-700 px-3 sm:px-6 py-4 flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-xl" />
           <div className="space-y-2">
             <Skeleton className="h-5 w-32" />
             <Skeleton className="h-4 w-48" />
           </div>
         </div>
-        <div className="px-6 py-3">
+        <div className="px-3 sm:px-6 py-3">
           <Skeleton className="h-10 w-full max-w-2xl" />
         </div>
-        <div className="flex-1 p-6 space-y-4">
+        <div className="flex-1 p-3 sm:p-6 space-y-4">
           <Skeleton className="h-64 w-full" />
         </div>
       </div>
@@ -55,9 +54,9 @@ export function ConfiguracionLayout() {
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       <ConfiguracionHeader module={effectiveModule} />
 
-      <div className="border-b px-6 py-2">
+      <div className="border-b border-gray-200 dark:border-gray-700 px-3 sm:px-6 py-2">
         <Tabs value={effectiveModuleId} onValueChange={setModule}>
-          <ScrollArea className="w-full">
+          <div className="overflow-x-auto">
             <TabsList className="bg-transparent h-auto p-0 gap-1">
               {displayModules.map((mod) => {
                 const Icon = mod.icon;
@@ -75,12 +74,11 @@ export function ConfiguracionLayout() {
                 );
               })}
             </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </div>
         </Tabs>
       </div>
 
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-1 overflow-y-auto p-3 sm:p-6">
         {effectiveModuleId ? (
           <ConfiguracionPanelRenderer moduleId={effectiveModuleId} />
         ) : (

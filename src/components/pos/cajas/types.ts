@@ -92,6 +92,14 @@ export interface CashSummary {
   returns_total: number;
   /** Total de consumos de habitaciones (folios PMS) durante la sesión */
   folio_consumptions_total: number;
+  /** Total de recibos de caja (abonos a cuentas por cobrar / facturas pendientes) */
+  cash_receipts_total: number;
+  /** Recibos de caja desglosados por método de pago */
+  cash_receipts_by_method?: Record<string, number>;
+  /** Total de pagos a proveedores (facturas de compra + cuentas por pagar) */
+  purchases_total: number;
+  /** Pagos a proveedores desglosados por método de pago */
+  purchases_by_method?: Record<string, number>;
   /** @deprecated usar income_by_method / expense_by_method */
   payments_by_method?: Record<string, number>;
   income_by_method?: Record<string, number>;

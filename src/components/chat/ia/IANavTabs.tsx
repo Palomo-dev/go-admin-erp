@@ -8,7 +8,7 @@ import { Settings, FlaskConical, ListChecks } from 'lucide-react';
 const iaTabs = [
   {
     name: 'Configuración',
-    href: '/app/configuracion?modulo=chat',
+    href: '/app/chat/ia/configuracion',
     icon: <Settings className="h-4 w-4" />,
   },
   {

@@ -515,6 +515,11 @@ export default function ParkingEspaciosPage() {
         space={editingSpace}
         zones={zones}
         onSave={handleSaveSpace}
+        organizationId={organization?.id}
+        branchId={branchId ?? undefined}
+        onZoneCreated={() => {
+          loadZones();
+        }}
       />
 
       <BulkActionsBar

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 interface InvitationWizardProps {
   inviteData: {
@@ -258,15 +259,11 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
           <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
             Teléfono *
           </label>
-          <input
-            type="tel"
+          <PhoneInput
             id="phoneNumber"
             value={formData.phoneNumber}
-            onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              validationErrors.phoneNumber ? 'border-red-300' : 'border-gray-300'
-            }`}
-            placeholder="+57 300 123 4567"
+            onChange={(v) => handleInputChange('phoneNumber', v)}
+            className={`mt-1 ${validationErrors.phoneNumber ? '[&_button]:border-red-300 [&_input]:border-red-300' : '[&_button]:border-gray-300 [&_input]:border-gray-300'}`}
           />
           {validationErrors.phoneNumber && (
             <p className="mt-1 text-sm text-red-600">{validationErrors.phoneNumber}</p>

@@ -4,15 +4,32 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/utils/Utils';
-import { Plus, RefreshCw, FolderTree, ArrowLeft } from 'lucide-react';
+import { Plus, RefreshCw, FolderTree, ArrowLeft, Download, Upload, ChevronDown } from 'lucide-react';
 
 interface CategoriesPageHeaderProps {
   isRefreshing: boolean;
   onRefresh: () => void;
+  onExportCSV: () => void;
+  onExportXLSX: () => void;
+  onExportPDF: () => void;
+  onImport: () => void;
 }
 
-export function CategoriesPageHeader({ isRefreshing, onRefresh }: CategoriesPageHeaderProps) {
+export function CategoriesPageHeader({
+  isRefreshing,
+  onRefresh,
+  onExportCSV,
+  onExportXLSX,
+  onExportPDF,
+  onImport,
+}: CategoriesPageHeaderProps) {
   const router = useRouter();
 
   return (
@@ -32,6 +49,33 @@ export function CategoriesPageHeader({ isRefreshing, onRefresh }: CategoriesPage
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onExportCSV}>
+                  <Download className="h-4 w-4 mr-2" />
+                  CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onExportXLSX}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Excel (XLSX)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onExportPDF}>
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" size="sm" onClick={onImport} className="border-gray-300 dark:border-gray-700">
+              <Upload className="h-4 w-4 mr-2" />
+              Importar
+            </Button>
             <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing} className="border-gray-300 dark:border-gray-700">
               <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
               Actualizar

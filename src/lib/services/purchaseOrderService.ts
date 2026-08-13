@@ -999,6 +999,7 @@ class PurchaseOrderService {
           .select('id, uuid, sku, name, unit_code, track_stock, is_parent, parent_product_id, variant_data, categories(name)')
           .eq('organization_id', organizationId)
           .eq('status', 'active')
+          .neq('product_type', 'service')
           .order('name')
           .range(offset, offset + PAGE_SIZE - 1);
 

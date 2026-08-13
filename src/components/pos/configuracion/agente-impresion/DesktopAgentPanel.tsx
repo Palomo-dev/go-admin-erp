@@ -11,12 +11,135 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Activity, Wifi, WifiOff, Printer, RefreshCw, Power, Monitor, Cpu, MapPin, Loader2, Usb, Bluetooth, Network } from 'lucide-react';
 import { useDesktopAgent } from '@/hooks/useDesktopAgent';
 import { getDesktopBridge, isDesktop, DesktopUsbDevice, DesktopBluetoothDevice, DesktopNetworkPrinter } from '@/lib/utils/desktop';
+import { isMobile } from '@/lib/utils/mobile';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 
 interface Branch {
   id: number;
   name: string;
+}
+
+/**
+ * Sección de impresora Bluetooth para móvil (Capacitor).
+ * Permite descubrir, conectar, imprimir prueba y abrir cajón.
+ */
+function MobilePrinterSection() {
+  const [discovering, setDiscovering] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [deviceName, setDeviceName] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Cargar deviceId guardado
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mobile_bluetooth_printer_id');
+      if (saved) setDeviceId(saved);
+      const savedName = localStorage.getItem('mobile_bluetooth_printer_name');
+      if (savedName) setDeviceName(savedName);
+    }
+  }, []);
+
+  const handleDiscover = async () => {
+    setDiscovering(true);
+    setMessage(null);
+    try {
+      const { discoverBluetoothPrinters } = await import('@/lib/services/mobilePrintService');
+      const device = await discoverBluetoothPrinters();
+      if (device) {
+        setDeviceId(device.deviceId);
+        setDeviceName(device.name || 'Impresora Bluetooth');
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('mobile_bluetooth_printer_id', device.deviceId);
+          localStorage.setItem('mobile_bluetooth_printer_name', device.name || 'Impresora Bluetooth');
+        }
+        setMessage(`Impresora seleccionada: ${device.name || device.deviceId}`);
+      } else {
+        setMessage('Selección cancelada');
+      }
+    } catch (err: any) {
+      setMessage(err?.message || 'Error descubriendo impresoras');
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handlePrintTest = async () => {
+    if (!deviceId) return;
+    setPrinting(true);
+    setMessage(null);
+    try {
+      const { printTestPage } = await import('@/lib/services/mobilePrintService');
+      const result = await printTestPage(deviceId);
+      if (result.success) {
+        setConnected(true);
+        setMessage('Página de prueba enviada correctamente');
+      } else {
+        setMessage(result.error || 'Error imprimiendo prueba');
+      }
+    } catch (err: any) {
+      setMessage(err?.message || 'Error');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const handleOpenDrawer = async () => {
+    if (!deviceId) return;
+    setPrinting(true);
+    setMessage(null);
+    try {
+      const { openCashDrawerBluetooth } = await import('@/lib/services/mobilePrintService');
+      const result = await openCashDrawerBluetooth(deviceId);
+      if (result.success) {
+        setMessage('Comando de apertura enviado');
+      } else {
+        setMessage(result.error || 'Error abriendo cajón');
+      }
+    } catch (err: any) {
+      setMessage(err?.message || 'Error');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {deviceName && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+          <Bluetooth className="h-5 w-5 text-blue-600" />
+          <div className="flex-1">
+            <p className="font-medium text-gray-900 dark:text-white">{deviceName}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{deviceId}</p>
+          </div>
+          {connected && <Badge className="bg-green-500">Conectado</Badge>}
+        </div>
+      )}
+
+      <Button onClick={handleDiscover} disabled={discovering} className="w-full">
+        {discovering ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Bluetooth className="h-4 w-4 mr-2" />}
+        {discovering ? 'Buscando...' : 'Descubrir impresora Bluetooth'}
+      </Button>
+
+      {deviceId && (
+        <div className="flex gap-2">
+          <Button onClick={handlePrintTest} disabled={printing} variant="outline" className="flex-1">
+            {printing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+            Imprimir prueba
+          </Button>
+          <Button onClick={handleOpenDrawer} disabled={printing} variant="outline" className="flex-1">
+            Abrir cajón
+          </Button>
+        </div>
+      )}
+
+      {message && (
+        <p className="text-sm text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-800 rounded">{message}</p>
+      )}
+    </div>
+  );
 }
 
 export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) {
@@ -158,6 +281,59 @@ export function DesktopAgentPanel({ embedded = false }: { embedded?: boolean }) 
   };
 
   const running = agentStatus?.running ?? false;
+
+  // Rama móvil (Capacitor): panel simplificado sin agente de escritorio
+  if (isMobile()) {
+    return (
+      <div className={embedded ? "space-y-6" : "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6"}>
+        {!embedded && (
+          <div className="flex items-start sm:items-center gap-3 flex-wrap">
+            <Link href="/app/pos/configuracion">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-3 min-w-0">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl shrink-0">
+                  <Printer className="h-6 w-6 text-indigo-600" />
+                </div>
+                Impresión Móvil
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400">POS / Configuración / Impresión Móvil</p>
+            </div>
+          </div>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bluetooth className="h-5 w-5 text-blue-600" />
+              Impresora Bluetooth
+            </CardTitle>
+            <CardDescription>
+              Configura una impresora térmica Bluetooth ESC/POS para imprimir tickets desde tu dispositivo móvil.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <MobilePrinterSection />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Network className="h-5 w-5 text-green-600" />
+              Impresora de Red
+            </CardTitle>
+            <CardDescription>
+              Las impresoras de red se configuran ingresando la IP manualmente desde el formulario de impresoras.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className={embedded ? "space-y-6" : "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6"}>

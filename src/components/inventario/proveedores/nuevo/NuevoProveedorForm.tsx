@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Save, Loader2, Building2, User, Phone, Mail, FileText, MapPin, CreditCard, Globe, Sparkles, Wand2, Landmark } from 'lucide-react';
 import ImageUploader from '@/components/common/ImageUploader';
 import Link from 'next/link';
+import { HabeasDataCheckbox } from '@/components/shared/DianLookupButton';
+import type { DianNormalizedData } from '@/lib/services/dianLookupService';
 
 interface NuevoProveedorFormProps {
   /** Cuando se provee, tras crear el proveedor se llama en lugar de navegar (uso en diálogos) */
@@ -41,6 +43,54 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingImg, setGeneratingImg] = useState(false);
+
+  // Autorizacion de tratamiento de datos (Habeas Data - Ley 1581/2012)
+  const [habeasDataAuth, setHabeasDataAuth] = useState(false);
+  const [consultandoDian, setConsultandoDian] = useState(false);
+
+  // Autocompletar formulario con datos de DIAN/RUES
+  const handleDianResult = (data: DianNormalizedData) => {
+    const updates: Partial<SupplierInput> = {};
+    if (data.name) updates.name = data.name;
+    if (data.email) updates.email = data.email;
+    if (data.phone) updates.phone = data.phone;
+    if (data.address) updates.address = data.address;
+    if (data.city) updates.city = data.city;
+    if (data.state) updates.state = data.state;
+    if (data.taxRegime) updates.tax_regime = data.taxRegime;
+    if (data.fiscalResponsibilities && data.fiscalResponsibilities.length > 0) {
+      updates.fiscal_responsibilities = data.fiscalResponsibilities;
+    }
+    if (Object.keys(updates).length > 0) {
+      setFormData(prev => ({ ...prev, ...updates }));
+    }
+  };
+
+  // Consultar DIAN/RUES (usada por onBlur y por el boton)
+  const consultarDocumento = async (docNumber?: string) => {
+    const numero = docNumber || formData.nit;
+    if (!numero || numero.length < 4 || !habeasDataAuth) return;
+    setConsultandoDian(true);
+    try {
+      const res = await fetch('/api/dian/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentType: formData.doc_type || 'tax_id',
+          documentNumber: numero,
+          organizationId: organization?.id,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        handleDianResult(json.data);
+      }
+    } catch (err) {
+      console.error('Error consulta DIAN:', err);
+    } finally {
+      setConsultandoDian(false);
+    }
+  };
 
   // Tipo de proveedor: persona natural o empresa
   const [supplierType, setSupplierType] = useState<'person' | 'company'>('company');
@@ -278,7 +328,36 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
                   </div>
                   <div>
                     <Label className="dark:text-gray-300">Número de Documento</Label>
-                    <Input value={formData.nit} onChange={(e) => handleChange('nit', e.target.value)} placeholder="123456789-0" className="dark:bg-gray-900 dark:border-gray-700" />
+                    <div className="flex gap-2">
+                      <Input
+                        value={formData.nit}
+                        onChange={(e) => handleChange('nit', e.target.value)}
+                        onBlur={() => consultarDocumento()}
+                        placeholder="123456789-0"
+                        className="dark:bg-gray-900 dark:border-gray-700"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => consultarDocumento()}
+                        disabled={!habeasDataAuth || consultandoDian || !formData.nit || formData.nit.length < 4}
+                        className="h-10 w-10 shrink-0"
+                        title="Consultar DIAN/RUES"
+                        aria-label="Consultar DIAN/RUES"
+                      >
+                        {consultandoDian ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Building2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <HabeasDataCheckbox
+                      checked={habeasDataAuth}
+                      onChange={setHabeasDataAuth}
+                      className="mt-1"
+                    />
                   </div>
                   <div>
                     <Label className="dark:text-gray-300">Persona de Contacto</Label>

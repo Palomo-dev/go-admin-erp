@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabase/config';
 
-export type RateUnit = 'minute' | 'hour' | 'day';
+export type RateUnit = 'minute' | 'hour' | 'day' | 'fraction';
 
 export interface ParkingRate {
   id: string;
-  organization_id: number;
+  organization_id?: number;
   vehicle_type: string;
   rate_name: string;
   unit: RateUnit;
@@ -12,8 +12,8 @@ export interface ParkingRate {
   grace_period_min?: number;
   is_active?: boolean;
   lost_ticket_fee?: number;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CalculatedFee {
@@ -117,6 +117,12 @@ class ParkingRateService {
         const days = Math.ceil(billableMinutes / 1440); // 1440 min = 1 día
         amount = days * rate.price;
         breakdown = `${days} día(s) × $${rate.price.toLocaleString()}/día`;
+        break;
+
+      case 'fraction':
+        const fractions = Math.ceil(billableMinutes / 15); // fracción de 15 min
+        amount = fractions * rate.price;
+        breakdown = `${fractions} fracción(es) × $${rate.price.toLocaleString()}/fracción`;
         break;
     }
 

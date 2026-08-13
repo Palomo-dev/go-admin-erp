@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Loader2 } from 'lucide-react';
 import { TransportCarrier } from '@/lib/services/transportService';
 
@@ -219,10 +220,11 @@ export function CarrierDialog({
 
             <div className="space-y-2">
               <Label htmlFor="contact_phone">Teléfono de Contacto</Label>
-              <Input
+              <PhoneInput
                 id="contact_phone"
-                {...register('contact_phone')}
-                placeholder="+57 300 123 4567"
+                value={watch('contact_phone') || ''}
+                onChange={(v) => setValue('contact_phone', v)}
+                placeholder="300 123 4567"
               />
             </div>
 

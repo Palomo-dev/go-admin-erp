@@ -1,7 +1,11 @@
+'use client';
+
+import ModuleRootRedirect from '@/components/inicio/ModuleRootRedirect';
+
+/**
+ * /app/chat redirige a la primera página activa del módulo Chat.
+ * El dashboard se consolidó en /app/inicio#chat.
+ */
 export default function ChatPage() {
-  return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold">Hello Chat</h1>
-    </div>
-  );
+  return <ModuleRootRedirect moduleCode="chat" />;
 }

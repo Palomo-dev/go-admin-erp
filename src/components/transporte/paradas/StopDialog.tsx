@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Loader2, Search, MapPin } from 'lucide-react';
 import { TransportStop } from '@/lib/services/transportService';
 import { googleMapsService, PlaceAutocompleteResult } from '@/lib/services/googleMapsService';
@@ -419,7 +420,12 @@ export function StopDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="contact_phone">Teléfono</Label>
-                <Input id="contact_phone" {...register('contact_phone')} placeholder="+57 300 123 4567" />
+                <PhoneInput
+                  id="contact_phone"
+                  value={watch('contact_phone') || ''}
+                  onChange={(v) => setValue('contact_phone', v)}
+                  placeholder="300 123 4567"
+                />
               </div>
             </div>
           </div>

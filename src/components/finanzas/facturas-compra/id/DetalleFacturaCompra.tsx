@@ -33,7 +33,7 @@ import {
   User,
   Percent
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { FacturasCompraService } from '../FacturasCompraService';
 import { InvoicePurchase } from '../types';
 import { RegistrarPagoModal } from '../RegistrarPagoModal';
@@ -82,8 +82,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [showAnularModal, setShowAnularModal] = useState(false);
   const [recepcionando, setRecepcionando] = useState(false);
-  const { toast } = useToast();
-  
+
   // Estados para cuentas por pagar y pagos
   const [cuentaPorPagar, setCuentaPorPagar] = useState<any | null>(null);
   const [pagos, setPagos] = useState<any[]>([]);
@@ -194,26 +193,15 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
       const resultado = await FacturasCompraService.recepcionarInventario(facturaId);
       
       if (resultado.success) {
-        toast({
-          title: "Inventario recepcionado",
-          description: resultado.mensaje,
-        });
+        toastSuccess("Inventario recepcionado", resultado.mensaje);
         // Recargar factura para actualizar el estado
         await cargarFactura();
       } else {
-        toast({
-          title: "Aviso",
-          description: resultado.mensaje,
-          variant: "destructive",
-        });
+        toastError("Aviso", resultado.mensaje);
       }
     } catch (error: any) {
       console.error('Error recepcionando inventario:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Error al recepcionar inventario",
-        variant: "destructive",
-      });
+      toastError("Error", error.message || "Error al recepcionar inventario");
     } finally {
       setRecepcionando(false);
     }
@@ -285,10 +273,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
       }))
     };
     PDFService.downloadPurchaseInvoicePDF(pdfData);
-    toast({
-      title: 'PDF Generado',
-      description: `La factura de compra ${factura.number_ext} está lista para descargar.`
-    });
+    toastSuccess('PDF Generado', `La factura de compra ${factura.number_ext} está lista para descargar.`);
   };
 
   const handleConfirmarFactura = async () => {

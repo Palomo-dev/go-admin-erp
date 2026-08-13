@@ -372,6 +372,7 @@ export class TransferenciasService {
       .select('id, uuid, name, sku, barcode, unit_code, track_stock, is_parent, parent_product_id, variant_data, categories(name)')
       .eq('organization_id', organizationId)
       .eq('status', 'active')
+      .neq('product_type', 'service')
       .order('name');
 
     if (error) {

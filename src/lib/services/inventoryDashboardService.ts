@@ -48,6 +48,22 @@ export interface BranchSummary {
   inventoryValue: number;
 }
 
+// ─── Tipos de filas relacionadas (evitan `any` en casts) ─────────────────────
+
+interface ProductRef {
+  id: number;
+  name?: string | null;
+  sku?: string | null;
+  is_parent?: boolean | null;
+  organization_id?: number;
+  status?: string;
+}
+
+interface BranchRef {
+  id: number;
+  name?: string | null;
+}
+
 export interface DashboardData {
   kpis: InventoryKPIs;
   alerts: StockAlert[];
@@ -62,7 +78,7 @@ class InventoryDashboardService {
   async getKPIs(organizationId: number, branchId?: number | null): Promise<InventoryKPIs> {
     try {
       // Consulta de productos activos
-      let productsQuery = supabase
+      const productsQuery = supabase
         .from('products')
         .select('id, status, is_parent', { count: 'exact' })
         .eq('organization_id', organizationId);
@@ -87,7 +103,8 @@ class InventoryDashboardService {
           avg_cost,
           products!inner(organization_id, status, is_parent)
         `)
-        .eq('products.organization_id', organizationId);
+        .eq('products.organization_id', organizationId)
+        .eq('products.status', 'active');
 
       if (branchId) {
         stockQuery = stockQuery.eq('branch_id', branchId);
@@ -106,7 +123,8 @@ class InventoryDashboardService {
 
       if (stockData) {
         stockData.forEach((item) => {
-          const product = item.products as any;
+          const productRaw = item.products as ProductRef | ProductRef[] | null;
+          const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
           // Filtrar productos padre en JavaScript (no en la consulta)
           if (product?.is_parent === true) return;
 
@@ -173,7 +191,7 @@ class InventoryDashboardService {
         `)
         .eq('products.organization_id', organizationId)
         .eq('products.status', 'active')
-        .gt('min_level', 0);
+        .or('qty_on_hand.lte.0,min_level.gt.0');
 
       if (branchId) {
         lowStockQuery = lowStockQuery.eq('branch_id', branchId);
@@ -187,12 +205,14 @@ class InventoryDashboardService {
 
       if (lowStockData) {
         lowStockData.forEach((item) => {
-          const product = item.products as any;
+          const productRaw = item.products as ProductRef | ProductRef[] | null;
+          const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
           if (product?.is_parent === true) return;
 
           const qty = Number(item.qty_on_hand) || 0;
           const minLevel = Number(item.min_level) || 0;
-          const branch = item.branches as any;
+          const branchRaw = item.branches as BranchRef | BranchRef[] | null;
+          const branch = Array.isArray(branchRaw) ? branchRaw[0] : branchRaw;
 
           if (qty <= 0) {
             alerts.push({
@@ -202,9 +222,9 @@ class InventoryDashboardService {
               title: 'Sin stock',
               description: `${product?.name} no tiene stock en ${branch?.name}`,
               productId: product?.id,
-              productName: product?.name,
+              productName: product?.name ?? undefined,
               branchId: branch?.id,
-              branchName: branch?.name,
+              branchName: branch?.name ?? undefined,
               quantity: qty,
               minLevel: minLevel,
             });
@@ -216,9 +236,9 @@ class InventoryDashboardService {
               title: 'Stock bajo',
               description: `${product?.name} tiene ${qty} unidades (mínimo: ${minLevel}) en ${branch?.name}`,
               productId: product?.id,
-              productName: product?.name,
+              productName: product?.name ?? undefined,
               branchId: branch?.id,
-              branchName: branch?.name,
+              branchName: branch?.name ?? undefined,
               quantity: qty,
               minLevel: minLevel,
             });
@@ -246,7 +266,8 @@ class InventoryDashboardService {
 
       if (expiringLots) {
         expiringLots.forEach((lot) => {
-          const product = lot.products as any;
+          const productRaw = lot.products as ProductRef | ProductRef[] | null;
+          const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
           const expiryDate = new Date(lot.expiry_date as string);
           const today = new Date();
           const daysToExpire = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -258,7 +279,7 @@ class InventoryDashboardService {
             title: 'Lote por vencer',
             description: `Lote ${lot.lot_code} de ${product?.name} vence en ${daysToExpire} días`,
             productId: product?.id,
-            productName: product?.name,
+            productName: product?.name ?? undefined,
             expiryDate: lot.expiry_date as string,
             daysToExpire,
           });
@@ -268,7 +289,7 @@ class InventoryDashboardService {
       // 3. Ajustes pendientes
       let adjustmentsQuery = supabase
         .from('inventory_adjustments')
-        .select('id, type, reason, status, created_at, branches!inner(name)')
+        .select('id, branch_id, type, reason, status, created_at, branches!inner(name)')
         .eq('organization_id', organizationId)
         .eq('status', 'pending');
 
@@ -280,15 +301,16 @@ class InventoryDashboardService {
 
       if (pendingAdjustments) {
         pendingAdjustments.forEach((adj) => {
-          const branch = adj.branches as any;
+          const branchRaw = adj.branches as BranchRef | BranchRef[] | null;
+          const branch = Array.isArray(branchRaw) ? branchRaw[0] : branchRaw;
           alerts.push({
             id: alertId++,
             type: 'pending_adjustment',
             severity: 'info',
             title: 'Ajuste pendiente',
             description: `Ajuste de ${adj.type} pendiente en ${branch?.name}`,
-            branchId: adj.id,
-            branchName: branch?.name,
+            branchId: adj.branch_id,
+            branchName: branch?.name ?? undefined,
           });
         });
       }
@@ -309,8 +331,10 @@ class InventoryDashboardService {
 
       if (pendingTransfers) {
         pendingTransfers.forEach((transfer) => {
-          const originBranch = transfer.origin_branch as any;
-          const destBranch = transfer.dest_branch as any;
+          const originRaw = transfer.origin_branch as BranchRef | BranchRef[] | null;
+          const destRaw = transfer.dest_branch as BranchRef | BranchRef[] | null;
+          const originBranch = Array.isArray(originRaw) ? originRaw[0] : originRaw;
+          const destBranch = Array.isArray(destRaw) ? destRaw[0] : destRaw;
           alerts.push({
             id: alertId++,
             type: 'pending_transfer',
@@ -326,12 +350,14 @@ class InventoryDashboardService {
         .from('purchase_orders')
         .select('id, status, expected_date, total, suppliers!inner(name), branches!inner(name)')
         .eq('organization_id', organizationId)
-        .in('status', ['pending', 'confirmed']);
+        .in('status', ['draft', 'sent', 'partial']);
 
       if (pendingPurchases) {
         pendingPurchases.forEach((po) => {
-          const supplier = po.suppliers as any;
-          const branch = po.branches as any;
+          const supplierRaw = po.suppliers as { name: string | null } | { name: string | null }[] | null;
+          const branchRaw = po.branches as BranchRef | BranchRef[] | null;
+          const supplier = Array.isArray(supplierRaw) ? supplierRaw[0] : supplierRaw;
+          const branch = Array.isArray(branchRaw) ? branchRaw[0] : branchRaw;
           const isOverdue = po.expected_date && new Date(po.expected_date) < new Date();
           alerts.push({
             id: alertId++,
@@ -381,16 +407,18 @@ class InventoryDashboardService {
       if (error) throw error;
 
       return (data || []).map((mov) => {
-        const product = mov.products as any;
-        const branch = mov.branches as any;
+        const product = mov.products as ProductRef | ProductRef[];
+        const branch = mov.branches as BranchRef | BranchRef[];
+        const p = Array.isArray(product) ? product[0] : product;
+        const b = Array.isArray(branch) ? branch[0] : branch;
         return {
           id: mov.id,
           type: mov.direction || 'unknown',
-          productId: product?.id,
-          productName: product?.name || 'Producto desconocido',
-          productSku: product?.sku || '',
-          branchId: branch?.id,
-          branchName: branch?.name || 'Sucursal desconocida',
+          productId: p?.id,
+          productName: p?.name || 'Producto desconocido',
+          productSku: p?.sku || '',
+          branchId: b?.id,
+          branchName: b?.name || 'Sucursal desconocida',
           quantity: Number(mov.qty) || 0,
           source: mov.source || '',
           createdAt: mov.created_at,
@@ -428,7 +456,8 @@ class InventoryDashboardService {
             products!inner(organization_id, status, is_parent)
           `)
           .eq('branch_id', branch.id)
-          .eq('products.organization_id', organizationId);
+          .eq('products.organization_id', organizationId)
+          .eq('products.status', 'active');
 
         if (stockError) {
           console.error(`Error consultando stock para branch ${branch.id}:`, stockError);
@@ -441,7 +470,8 @@ class InventoryDashboardService {
 
         if (stockData) {
           stockData.forEach((item) => {
-            const product = item.products as any;
+            const productRaw = item.products as ProductRef | ProductRef[] | null;
+            const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
             // Filtrar productos padre en JavaScript (no en la consulta)
             if (product?.is_parent === true) return;
 

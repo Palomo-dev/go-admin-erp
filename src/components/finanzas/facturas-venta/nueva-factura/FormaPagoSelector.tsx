@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/components/ui/use-toast';
+import { toastError } from '@/components/ui/use-toast';
 import { OrganizationPaymentMethod } from '@/components/finanzas/metodos-pago/payment-method-types';
 
 type FormaPagoSelectorProps = {
@@ -91,11 +91,7 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
       
     } catch (error) {
       console.error('Error al cargar métodos de pago:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los métodos de pago. Por favor, inténtelo de nuevo.",
-        variant: "destructive",
-      });
+      toastError("Error", "No se pudieron cargar los métodos de pago. Por favor, inténtelo de nuevo.");
     } finally {
       setIsLoading(false);
     }

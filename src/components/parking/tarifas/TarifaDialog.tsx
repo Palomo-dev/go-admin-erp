@@ -27,6 +27,8 @@ interface TarifaDialogProps {
   onOpenChange: (open: boolean) => void;
   rate: ParkingRate | null;
   onSave: (data: Partial<ParkingRate>) => Promise<void>;
+  /** Preseleccionar el tipo de vehículo al crear (cuando rate es null) */
+  defaultVehicleType?: VehicleType;
 }
 
 const vehicleTypes: { value: VehicleType; label: string }[] = [
@@ -47,6 +49,7 @@ export function TarifaDialog({
   onOpenChange,
   rate,
   onSave,
+  defaultVehicleType,
 }: TarifaDialogProps) {
   const [rateName, setRateName] = useState('');
   const [vehicleType, setVehicleType] = useState<VehicleType>('car');
@@ -70,14 +73,14 @@ export function TarifaDialog({
       setIsActive(rate.is_active !== false);
     } else {
       setRateName('');
-      setVehicleType('car');
+      setVehicleType(defaultVehicleType || 'car');
       setUnit('hour');
       setPrice('');
       setGracePeriod('0');
       setLostTicketFee('');
       setIsActive(true);
     }
-  }, [rate, open]);
+  }, [rate, open, defaultVehicleType]);
 
   const handleSubmit = async () => {
     if (!rateName.trim() || !price) return;

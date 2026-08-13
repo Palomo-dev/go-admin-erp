@@ -359,13 +359,10 @@ export class FacturasCompraService {
         // No lanzamos error aquí para no bloquear la creación de la factura
       }
 
-      // Actualizar inventario para productos con product_id válido
-      if (this.branchId) {
-        await this.actualizarInventarioPorCompra(factura.id, formData.items, this.branchId);
-      } else {
-        console.warn('No se pudo actualizar inventario: branchId no disponible');
-      }
-
+      // Nota: el inventario NO se actualiza aquí. La factura se crea como 'draft'
+      // y el stock solo debe aumentarse al confirmar (cambiar estado a 'received')
+      // en actualizarEstadoFactura, para evitar doble aumento de stock.
+      //
       // Nota: el asiento contable de devengo se crea automaticamente en la BD
       // mediante el trigger trg_auto_journal_purchase (fn_auto_journal_purchase)
       // cuando la factura pasa a status='received', usando accounting_rules.

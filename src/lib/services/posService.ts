@@ -1576,12 +1576,12 @@ export class POSService {
                 {
                   sale_id: saleData.id,
                   customer_id: cart.customer_id,
-                  sold_by_user_id: serialUserId,
+                  sold_by_user_id: serialUserId ?? undefined,
                   sale_channel: 'pos',
                   price_at_sale: item.unit_price,
                   branch_id: cart.branch_id,
                 },
-                serialUserId
+                serialUserId ?? undefined
               );
 
               if (!serialOk) {
@@ -1628,6 +1628,12 @@ export class POSService {
       } else {
         // Crear nueva factura (flujo normal)
         const invoiceNumber = await this.generateInvoiceNumber();
+        // Calcular commission_amount para la factura
+        const invoiceCommissionAmount = checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0
+          ? (checkoutData.commission_method === 'fixed_amount'
+              ? checkoutData.commission_rate
+              : Math.round((effectiveSubtotal > 0 ? effectiveSubtotal : finalTotal) * checkoutData.commission_rate / 100 * 100) / 100)
+          : 0;
         const { data: newInvoice, error: newInvError } = await supabase
           .from('invoice_sales')
           .insert({
@@ -1648,7 +1654,12 @@ export class POSService {
             payment_method: payments.length > 0 ? payments[0].method : 'cash',
             payment_terms: 0,
             created_by: (await supabase.auth.getUser()).data.user?.id,
-            notes: `Factura generada automáticamente desde POS - Venta #${saleData.id}`
+            notes: `Factura generada automáticamente desde POS - Venta #${saleData.id}`,
+            salesperson_id: checkoutData.salesperson_id || null,
+            commission_rate: checkoutData.commission_rate || 0,
+            commission_type: checkoutData.salesperson_id && checkoutData.commission_rate && checkoutData.commission_rate > 0 ? (checkoutData.commission_type || 'salesperson') : 'none',
+            commission_method: checkoutData.commission_method || 'percentage',
+            commission_amount: invoiceCommissionAmount
           })
           .select()
           .single();

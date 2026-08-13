@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { OrganizationInfoSkeleton } from './OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 interface OrganizationProps {
   id: number;
@@ -490,14 +491,12 @@ export default function OrganizationInfoTab({ orgData }: { orgData: number }) {
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 dark:bg-gray-900">
               <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('phone')}</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-50">
-                <input
-                  type="tel"
-                  name="phone"
+                <PhoneInput
                   id="phone"
+                  name="phone"
                   value={formData.phone || ''}
-                  onChange={handleChange}
-                  className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:border-gray-600 dark:focus:ring-blue-400 dark:focus:border-blue-400"
-                  placeholder="+1 (555) 123-4567"
+                  onChange={(v) => setFormData((prev) => ({ ...prev, phone: v }))}
+                  className="sm:text-sm [&_button]:border-gray-300 [&_input]:border-gray-300 [&_button]:dark:border-gray-600 [&_input]:dark:border-gray-600"
                 />
               </dd>
             </div>

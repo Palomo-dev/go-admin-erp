@@ -12,10 +12,11 @@ import {
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
+import { stockMovementService } from '@/lib/services/stockMovementService';
 
 interface AnularFacturaDialogProps {
   open: boolean;
@@ -34,7 +35,6 @@ interface AnularFacturaDialogProps {
  *   debe usarse una Nota de Crédito).
  */
 export function AnularFacturaDialog({ open, onOpenChange, factura, onSuccess }: AnularFacturaDialogProps) {
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [motivo, setMotivo] = useState('');
 
@@ -44,20 +44,12 @@ export function AnularFacturaDialog({ open, onOpenChange, factura, onSuccess }: 
 
   const handleSubmit = async () => {
     if (!motivo.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Debe ingresar un motivo para la anulación',
-        variant: 'destructive',
-      });
+      toastError('Error', 'Debe ingresar un motivo para la anulación');
       return;
     }
 
     if (tienePagos) {
-      toast({
-        title: 'No se puede anular',
-        description: 'La factura ya tiene pagos aplicados. Usa una Nota de Crédito en su lugar.',
-        variant: 'destructive',
-      });
+      toastError('No se puede anular', 'La factura ya tiene pagos aplicados. Usa una Nota de Crédito en su lugar.');
       return;
     }
 
@@ -95,21 +87,56 @@ export function AnularFacturaDialog({ open, onOpenChange, factura, onSuccess }: 
         console.error('Error al saldar cuentas por cobrar:', arError);
       }
 
-      toast({
-        title: 'Factura anulada',
-        description: `La factura ${factura.number} fue anulada correctamente.`,
-      });
+      // 3. Devolver el stock que se desconto al emitir la factura.
+      // Se busca si hubo movimientos de salida (direction='out') asociados a la
+      // factura (source_id = factura.id) o a la venta POS vinculada
+      // (source_id = factura.sale_id). Si los hay, se reingresa el stock con
+      // source='invoice_void' usando los items de invoice_items.
+      try {
+        const sourceIds = [factura.id];
+        if (factura.sale_id) sourceIds.push(String(factura.sale_id));
+
+        const { data: movimientosStock } = await supabase
+          .from('stock_movements')
+          .select('id')
+          .in('source_id', sourceIds)
+          .eq('direction', 'out')
+          .limit(1);
+
+        if (movimientosStock && movimientosStock.length > 0) {
+          const { data: itemsFactura } = await supabase
+            .from('invoice_items')
+            .select('product_id, qty, unit_price')
+            .eq('invoice_sales_id', factura.id);
+
+          const itemsConProducto = (itemsFactura || []).filter((item: any) => item.product_id);
+
+          if (itemsConProducto.length > 0) {
+            await stockMovementService.incrementOnPurchase(
+              Number(factura.organization_id),
+              Number(factura.branch_id),
+              factura.id,
+              itemsConProducto.map((item: any) => ({
+                product_id: item.product_id,
+                quantity: Number(item.qty) || 0,
+                unit_price: Number(item.unit_price) || 0,
+              })),
+              'invoice_void'
+            );
+          }
+        }
+      } catch (stockError: any) {
+        console.error('Error al devolver stock tras anular la factura:', stockError);
+      }
+
+      toastSuccess('Factura anulada', `La factura ${factura.number} fue anulada correctamente.`);
 
       onOpenChange(false);
       setMotivo('');
       if (onSuccess) onSuccess();
     } catch (error: any) {
       console.error('Error al anular la factura:', error);
-      toast({
-        title: 'Error',
-        description: `No se pudo anular la factura: ${error?.message || 'Error desconocido'}`,
-        variant: 'destructive',
-      });
+      toastError('Error', `No se pudo anular la factura: ${error?.message || 'Error desconocido'}`);
     } finally {
       setIsLoading(false);
     }

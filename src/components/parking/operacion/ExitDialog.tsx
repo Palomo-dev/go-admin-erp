@@ -20,12 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, LogOut, Clock, DollarSign, AlertTriangle, CreditCard, Banknote, Receipt, FileText, Calendar } from 'lucide-react';
+import { Loader2, LogOut, Clock, DollarSign, AlertTriangle, CreditCard, Banknote, Receipt, FileText, Calendar, Plus } from 'lucide-react';
 import CustomerSearchInput, { type Customer } from '../shared/CustomerSearchInput';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import type { ActiveSession } from './ActiveSessionsPanel';
 import type { ParkingRate } from './RatesPanel';
 import type { OrganizationPaymentMethod } from '@/lib/services/parkingPaymentService';
+import parkingRateService from '@/lib/services/parkingRateService';
+import { TarifaFormDialog } from '@/components/shared/form-dialogs/TarifaFormDialog';
 
 interface ExitDialogProps {
   open: boolean;
@@ -48,6 +50,8 @@ interface ExitDialogProps {
   organizationId?: number;
   hasInvoicing?: boolean;
   isLoading?: boolean;
+  /** Callback para refrescar tarifas tras crear una nueva desde el diálogo */
+  onRateCreated?: () => void;
 }
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
@@ -60,48 +64,8 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   debit_card: <CreditCard className="h-4 w-4" />,
 };
 
-function calculateAmount(
-  entryAt: string,
-  rate: ParkingRate | undefined,
-  isLostTicket: boolean,
-  lostTicketFee: number = 50000
-): { amount: number; duration: string; durationMinutes: number } {
-  const entry = new Date(entryAt);
-  const now = new Date();
-  const diffMs = now.getTime() - entry.getTime();
-  const durationMinutes = Math.floor(diffMs / (1000 * 60));
-  
-  const hours = Math.floor(durationMinutes / 60);
-  const minutes = durationMinutes % 60;
-  const duration = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
-
-  if (isLostTicket) {
-    return { amount: lostTicketFee, duration, durationMinutes };
-  }
-
-  if (!rate) {
-    return { amount: 0, duration, durationMinutes };
-  }
-
-  let amount = 0;
-  const gracePeriod = rate.grace_period_min || 0;
-
-  if (durationMinutes <= gracePeriod) {
-    amount = 0;
-  } else if (rate.unit === 'hour') {
-    const billableMinutes = durationMinutes - gracePeriod;
-    const billableHours = Math.ceil(billableMinutes / 60);
-    amount = billableHours * rate.price;
-  } else if (rate.unit === 'day') {
-    const billableDays = Math.ceil((durationMinutes - gracePeriod) / (60 * 24));
-    amount = billableDays * rate.price;
-  } else if (rate.unit === 'fraction') {
-    const fractions = Math.ceil((durationMinutes - gracePeriod) / 15);
-    amount = fractions * rate.price;
-  }
-
-  return { amount, duration, durationMinutes };
-}
+// Tarifa por defecto para ticket perdido
+const DEFAULT_LOST_TICKET_FEE = 50000;
 
 export function ExitDialog({
   open,
@@ -113,6 +77,7 @@ export function ExitDialog({
   hasInvoicing = false,
   onSubmit,
   isLoading,
+  onRateCreated,
 }: ExitDialogProps) {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isLostTicket, setIsLostTicket] = useState(false);
@@ -123,6 +88,7 @@ export function ExitDialog({
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [dueDays, setDueDays] = useState(30);
   const [submitting, setSubmitting] = useState(false);
+  const [tarifaDialogOpen, setTarifaDialogOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -139,15 +105,24 @@ export function ExitDialog({
 
   if (!session) return null;
 
+  // Filtrar tarifa aplicable: tipo de vehículo + activa
   const applicableRate = rates.find(
-    (r) => r.vehicle_type.toLowerCase() === session.vehicle_type.toLowerCase()
+    (r) =>
+      r.vehicle_type.toLowerCase() === session.vehicle_type.toLowerCase() &&
+      r.is_active !== false
   );
 
-  const { amount, duration } = calculateAmount(
-    session.entry_at,
-    applicableRate,
-    isLostTicket
+  // Calcular monto usando parkingRateService (DRY: maneja minute, hour, day, fraction)
+  const entryTime = new Date(session.entry_at);
+  const calculatedFee = parkingRateService.calculateFee(
+    applicableRate || null,
+    entryTime
   );
+  const duration = parkingRateService.formatDuration(calculatedFee.duration_minutes);
+
+  // Ticket perdido: usa lost_ticket_fee de la tarifa o tarifa por defecto
+  const lostTicketFee = applicableRate?.lost_ticket_fee || DEFAULT_LOST_TICKET_FEE;
+  const amount = isLostTicket ? lostTicketFee : calculatedFee.amount;
 
   const finalAmount = isException ? 0 : amount;
   const isPassHolder = session.is_pass_holder;
@@ -229,6 +204,19 @@ export function ExitDialog({
             </div>
           </div>
 
+          {/* Botón crear tarifa cuando no existe tarifa aplicable para el tipo de vehículo */}
+          {!isPassHolder && !applicableRate && organizationId && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTarifaDialogOpen(true)}
+              className="w-full border-dashed border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Crear Tarifa
+            </Button>
+          )}
+
           {!isPassHolder && (
             <>
               <Separator />
@@ -248,7 +236,7 @@ export function ExitDialog({
                   />
                   <Label htmlFor="lostTicket" className="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                     <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                    Pérdida de Ticket (+{formatCurrency(50000)})
+                    Pérdida de Ticket (+{formatCurrency(lostTicketFee)})
                   </Label>
                 </div>
 
@@ -407,7 +395,7 @@ export function ExitDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={submitting || isLoading || (isException && !exceptionReason.trim()) || (isCredit && !selectedCustomerId)}
+            disabled={submitting || isLoading || (isException && !exceptionReason.trim()) || (isCredit && !selectedCustomer?.id)}
             className="bg-blue-600 hover:bg-blue-700"
           >
             {submitting ? (
@@ -426,6 +414,19 @@ export function ExitDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Diálogo inline para crear tarifa cuando no existe */}
+      {organizationId && (
+        <TarifaFormDialog
+          open={tarifaDialogOpen}
+          onOpenChange={setTarifaDialogOpen}
+          organizationId={organizationId}
+          defaultVehicleType={session.vehicle_type}
+          onCreated={() => {
+            onRateCreated?.();
+          }}
+        />
+      )}
     </Dialog>
   );
 }

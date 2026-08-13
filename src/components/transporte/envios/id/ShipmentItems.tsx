@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Package, Plus, Trash2, Loader2, Tag, Percent, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { VariantSelectorDialog, type SelectedModifier } from '@/components/pos/VariantSelectorDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +57,10 @@ interface ProductSearchResult {
   unit_code?: string;
   description?: string;
   price: number;
+  is_parent?: boolean;
+  parent_product_id?: number;
+  variant_data?: Record<string, string>;
+  has_modifiers?: boolean;
 }
 
 interface ShipmentItemsProps {
@@ -77,6 +82,10 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
   const [productResults, setProductResults] = useState<ProductSearchResult[]>([]);
   const [searchingProducts, setSearchingProducts] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [showVariantDialog, setShowVariantDialog] = useState(false);
+  const [variantDialogProduct, setVariantDialogProduct] = useState<{ id: number; name: string; sku: string; price?: number } | null>(null);
+  const [selectedVariantData, setSelectedVariantData] = useState<Record<string, string> | null>(null);
+  const [selectedModifiers, setSelectedModifiers] = useState<SelectedModifier[]>([]);
   const [formData, setFormData] = useState({
     description: '',
     sku: '',
@@ -111,15 +120,48 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
     }));
     setProductResults([]);
     setProductSearch('');
+
+    // Si tiene variantes (es producto padre) o modificadores, abrir selector
+    if (product.is_parent || product.has_modifiers) {
+      setVariantDialogProduct({
+        id: product.id,
+        name: product.name,
+        sku: product.sku || '',
+        price: product.price,
+      });
+      setShowVariantDialog(true);
+    }
+  };
+
+  // Manejar selección de variante + modificadores desde VariantSelectorDialog
+  const handleVariantSelect = (variant: { id: number; sku: string; name: string; price: number | null; variant_data: Record<string, string> }, modifiers: SelectedModifier[] = []) => {
+    const modifiersExtra = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+    setSelectedProductId(variant.id);
+    setSelectedVariantData(variant.variant_data || null);
+    setSelectedModifiers(modifiers);
+    setFormData((prev) => ({
+      ...prev,
+      description: variant.name || prev.description,
+      sku: variant.sku || prev.sku,
+      unit_value: (variant.price != null ? Number(variant.price) : prev.unit_value) + modifiersExtra,
+    }));
+    setShowVariantDialog(false);
   };
 
   const handleSubmit = async () => {
     if (!formData.description) return;
-    
+
+    // Construir notes con variantes y modificadores de forma estructurada
+    const notesData: { variant_data?: Record<string, string>; modifiers?: SelectedModifier[] } = {};
+    if (selectedVariantData) notesData.variant_data = selectedVariantData;
+    if (selectedModifiers.length > 0) notesData.modifiers = selectedModifiers;
+    const structuredNotes = Object.keys(notesData).length > 0 ? JSON.stringify(notesData) : formData.notes;
+
     setIsSubmitting(true);
     try {
       await onAddItem({
         ...formData,
+        notes: structuredNotes,
         product_id: selectedProductId || undefined,
       });
       setShowDialog(false);
@@ -133,6 +175,8 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
         notes: '',
       });
       setSelectedProductId(null);
+      setSelectedVariantData(null);
+      setSelectedModifiers([]);
     } catch (error) {
       console.error('Error adding item:', error);
     } finally {
@@ -322,6 +366,8 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
           setSelectedProductId(null);
           setProductResults([]);
           setProductSearch('');
+          setSelectedVariantData(null);
+          setSelectedModifiers([]);
         }
       }}>
         <DialogContent>
@@ -426,6 +472,16 @@ export function ShipmentItems({ items, isLoading, canEdit, organizationId, onAdd
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Diálogo de selección de variantes y modificadores */}
+      {variantDialogProduct && (
+        <VariantSelectorDialog
+          open={showVariantDialog}
+          onOpenChange={setShowVariantDialog}
+          product={variantDialogProduct}
+          onSelectVariant={handleVariantSelect}
+        />
+      )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

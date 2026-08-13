@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -189,12 +190,12 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             {/* Teléfono */}
             <div className="space-y-2">
               <Label htmlFor="phone">Teléfono</Label>
-              <Input
+              <PhoneInput
                 id="phone"
                 name="phone"
                 value={formData.phone}
-                onChange={handleChange}
-                placeholder="Ej: +57 300 123 4567"
+                onChange={(v) => setFormData(prev => ({ ...prev, phone: v }))}
+                placeholder="300 123 4567"
               />
             </div>
 

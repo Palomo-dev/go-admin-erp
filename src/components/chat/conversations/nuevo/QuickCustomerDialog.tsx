@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { QuickCustomerData } from '@/lib/services/newConversationService';
 import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
 
@@ -130,12 +131,11 @@ export default function QuickCustomerDialog({
 
           <div className="space-y-2">
             <Label htmlFor="phone">Teléfono</Label>
-            <Input
+            <PhoneInput
               id="phone"
-              type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="+57 300 123 4567"
+              onChange={(v) => setFormData({ ...formData, phone: v })}
+              placeholder="300 123 4567"
             />
           </div>
 

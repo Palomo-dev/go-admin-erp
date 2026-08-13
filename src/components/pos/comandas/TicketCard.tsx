@@ -148,11 +148,11 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
   return (
     <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${cardUrgencyBorder[timeUrgency]}`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 border-b border-blue-200 dark:border-blue-800">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-3 sm:p-4 border-b border-blue-200 dark:border-blue-800">
+        <div className="flex items-start justify-between gap-2 flex-wrap">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
                 {tableName}
               </h3>
               {zoneName && (
@@ -161,7 +161,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-sm text-gray-600 dark:text-gray-400">
               <div className={`flex items-center gap-1 ${timeUrgencyClasses[timeUrgency]}`}>
                 <Clock className="h-4 w-4" />
                 <span>{timeElapsed} min</span>
@@ -180,7 +180,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
             {onReprint && (
               <Button
                 variant="outline"
@@ -202,7 +202,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
       </div>
 
       {/* Items */}
-      <div className="p-4 space-y-3">
+      <div className="p-3 sm:p-4 space-y-3">
         {ticket.kitchen_ticket_items?.map((item) => {
           const product = item.sale_items?.products;
           const stationInfo = getStationInfo(item.station);
@@ -267,11 +267,11 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                 </div>
                 
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className={`font-semibold ${isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'}`}>
                       {itemQuantity}x
                     </span>
-                    <span className={isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'}>
+                    <span className={`${isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'} break-words`}>
                       {productName}
                     </span>
                   </div>
@@ -329,7 +329,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
 
       {/* Footer */}
       {nextStatus && (
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-700">
           <Button
             onClick={() => onStatusChange(ticket.id, nextStatus)}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"

@@ -1,6 +1,8 @@
 import { signInWithGoogle } from '@/lib/supabase/config';
 import { supabase } from '@/lib/supabase/config';
 import { registerUserDevice } from '@/lib/auth/organizationAuth';
+import { isMobile } from '@/lib/utils/mobile';
+import { startMobileOAuth } from '@/lib/services/mobileAuthService';
 
 export interface GoogleLoginParams {
   setLoading: (loading: boolean) => void;
@@ -113,6 +115,17 @@ export const handleGoogleLogin = async ({
   setError(null);
   
   try {
+    // Flujo móvil (Capacitor): OAuth con deep link via browser externo
+    if (isMobile()) {
+      const url = await startMobileOAuth('google');
+      if (!url) {
+        throw new Error('No se pudo iniciar OAuth con Google en la app móvil');
+      }
+      // El resultado llega via deep link listener (useMobileAuth)
+      // No hacemos setLoading(false) aquí: el listener lo maneja
+      return;
+    }
+
     // Guardar la URL actual para redirección después del login
     const currentUrl = window.location.href;
     const redirectTo = currentUrl.includes('/auth/login') 

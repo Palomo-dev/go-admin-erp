@@ -25,6 +25,7 @@ import parkingPaymentService, {
 } from '@/lib/services/parkingPaymentService';
 import parkingFinanceService from '@/lib/services/parkingFinanceService';
 import parkingTicketService, { type EntryTicketData } from '@/lib/services/parkingTicketService';
+import type { ParkingZone } from '@/components/parking/espacios/types';
 
 interface ParkingSpace {
   id: string;
@@ -49,6 +50,7 @@ export default function ParkingOperacionPage() {
   const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [rates, setRates] = useState<ParkingRate[]>([]);
   const [spaces, setSpaces] = useState<ParkingSpace[]>([]);
+  const [zones, setZones] = useState<ParkingZone[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<OrganizationPaymentMethod[]>([]);
   const [hasInvoicing, setHasInvoicing] = useState(false);
   const [branchData, setBranchData] = useState<{ name: string; address?: string; phone?: string } | null>(null);
@@ -225,6 +227,24 @@ export default function ParkingOperacionPage() {
 
     return () => clearInterval(interval);
   }, [organization, branchId, isLoading, loadData]);
+
+  // Cargar zonas del parqueadero (para crear espacios desde EntryDialog)
+  useEffect(() => {
+    if (!branchId) return;
+    supabase
+      .from('parking_zones')
+      .select('id, branch_id, name, description, capacity, rate_multiplier, is_covered, is_vip, is_active, created_at, updated_at')
+      .eq('branch_id', branchId)
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error cargando zonas:', error);
+          return;
+        }
+        setZones(data || []);
+      });
+  }, [branchId]);
 
   // Buscar vehículo (búsqueda parcial)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -586,6 +606,10 @@ export default function ParkingOperacionPage() {
         availableSpaces={spaces.filter((s) => s.state === 'free')}
         initialPlate={searchedPlate}
         isLoading={isLoading}
+        organizationId={organization?.id}
+        branchId={branchId ?? undefined}
+        zones={zones}
+        onSpaceCreated={() => loadData()}
       />
 
       <ExitDialog
@@ -598,6 +622,7 @@ export default function ParkingOperacionPage() {
         hasInvoicing={hasInvoicing}
         onSubmit={handleExit}
         isLoading={isLoading}
+        onRateCreated={loadData}
       />
     </div>
   );

@@ -283,6 +283,16 @@
     "errorLoadingDashboard": "Impossible de charger les données du tableau de bord",
     "markShift": "Pointer",
     "quickAccess": "Accès Rapides",
+    "salesTrend": "Tendance des Ventes (30 jours)",
+    "noSalesData": "Aucune vente sur la période sélectionnée",
+    "welcome": "Bonjour{userName}",
+    "welcomeSub": "Vous avez {pending} tâches en attente aujourd'hui",
+    "welcomeSubNoPending": "Tout est à jour. Bon travail.",
+    "attentionRequired": "Attention requise aujourd'hui",
+    "noAlerts": "Aucune alerte critique. Tout est en ordre.",
+    "vsPreviousPeriod": "vs période précédente",
+    "compactMode": "Compact",
+    "expandedMode": "Étendu",
     "errors": {
       "moduleNotActivated": "Le module demandé n'est pas activé.",
       "insufficientPermissions": "Vous n'avez pas les permissions suffisantes.",
@@ -331,7 +341,13 @@
       "hoursAgo": "Il y a {hours}h",
       "daysAgo": "Il y a {days}j",
       "saleCompleted": "Vente terminée",
-      "saleStatus": "Vente {status}"
+      "saleStatus": "Vente {status}",
+      "filterAll": "Tous",
+      "filterPos": "POS",
+      "filterFinance": "Finances",
+      "filterCrm": "CRM",
+      "filterInventory": "Inventaire",
+      "filterPms": "PMS"
     },
     "onboarding": {
       "title": "Premiers pas",

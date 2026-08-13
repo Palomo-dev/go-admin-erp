@@ -12,11 +12,12 @@
  */
 
 import { getDesktopBridge } from '@/lib/utils/desktop';
+import { isMobile } from '@/lib/utils/mobile';
 import { PrintJobsService } from './printJobsService';
 
 export interface CashDrawerResult {
   success: boolean;
-  strategy: 'desktop_ipc' | 'webusb' | 'print_job' | 'none';
+  strategy: 'mobile_bluetooth' | 'desktop_ipc' | 'webusb' | 'print_job' | 'none';
   error?: string;
 }
 
@@ -31,6 +32,12 @@ class CashDrawerService {
    * @param branchId ID de la sucursal (necesario para el fallback de print_jobs)
    */
   static async open(branchId: number): Promise<CashDrawerResult> {
+    // 0. Móvil Bluetooth (Capacitor) — si es app móvil, intentar BLE primero
+    if (isMobile()) {
+      const mobileResult = await this.tryMobileBluetooth();
+      if (mobileResult.success) return mobileResult;
+    }
+
     // 1. Desktop IPC directo
     const desktopResult = await this.tryDesktopIPC();
     if (desktopResult.success) return desktopResult;
@@ -49,6 +56,38 @@ class CashDrawerService {
       strategy: 'none',
       error: 'No se pudo abrir el cajón: ninguna estrategia disponible',
     };
+  }
+
+  /**
+   * Estrategia 0: Móvil Bluetooth LE (Capacitor).
+   * Busca impresora Bluetooth emparejada y envía comando ESC/POS de apertura.
+   */
+  private static async tryMobileBluetooth(): Promise<CashDrawerResult> {
+    try {
+      const { openCashDrawerBluetooth } = await import('./mobilePrintService');
+
+      // Buscar deviceId de impresora Bluetooth configurada en localStorage
+      const printerDeviceId = typeof window !== 'undefined'
+        ? localStorage.getItem('mobile_bluetooth_printer_id')
+        : null;
+
+      if (!printerDeviceId) {
+        return { success: false, strategy: 'mobile_bluetooth', error: 'Sin impresora BLE configurada' };
+      }
+
+      const result = await openCashDrawerBluetooth(printerDeviceId);
+      return {
+        success: result.success,
+        strategy: 'mobile_bluetooth',
+        error: result.error,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        strategy: 'mobile_bluetooth',
+        error: err?.message || 'Error Bluetooth móvil',
+      };
+    }
   }
 
   /**
@@ -87,12 +126,13 @@ class CashDrawerService {
    */
   private static async tryWebUSB(): Promise<CashDrawerResult> {
     try {
-      if (typeof navigator === 'undefined' || !navigator.usb) {
+      const nav = navigator as Navigator & { usb?: { getDevices: () => Promise<any[]>; open: () => Promise<void>; selectConfiguration: (n: number) => Promise<void>; claimInterface: (n: number) => Promise<void>; transferOut: (endpoint: number, data: Uint8Array) => Promise<any>; close: () => Promise<void> } };
+      if (typeof navigator === 'undefined' || !nav.usb) {
         return { success: false, strategy: 'webusb', error: 'WebUSB no disponible' };
       }
 
       // Buscar impresoras USB ya autorizadas (vendorId comunes: 0x04b8 Epson, 0x0519 Star, 0x0fe6 ICS)
-      const devices = await navigator.usb.getDevices();
+      const devices = await nav.usb.getDevices();
       if (devices.length === 0) {
         return { success: false, strategy: 'webusb', error: 'Sin dispositivos USB autorizados' };
       }

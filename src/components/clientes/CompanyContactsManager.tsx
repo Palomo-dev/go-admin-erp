@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { toast } from 'sonner';
 import {
   User,
@@ -270,7 +271,7 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
         email: newPersonData.email || null,
         phone: newPersonData.phone || null,
         document_type: newPersonData.document_type,
-        document_number: newPersonData.document_number || null,
+        document_number: newPersonData.document_number || undefined,
         country_code: newPersonLocation.countryCode || undefined,
         state_code: newPersonLocation.stateCode || undefined,
         municipality_id: newPersonLocation.municipalityId || undefined,
@@ -897,10 +898,10 @@ function AddContactModal({
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">Teléfono</Label>
-                    <Input
+                    <PhoneInput
                       value={newPersonData.phone}
-                      onChange={(e) => onNewPersonChange({ ...newPersonData, phone: e.target.value })}
-                      placeholder="Ej: 300 123 4567"
+                      onChange={(v) => onNewPersonChange({ ...newPersonData, phone: v })}
+                      placeholder="300 123 4567"
                     />
                   </div>
                 </div>

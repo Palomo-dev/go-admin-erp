@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
@@ -464,11 +465,11 @@ export function AddressDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="recipient_phone">Teléfono del destinatario</Label>
-              <Input
+              <PhoneInput
                 id="recipient_phone"
                 value={formData.recipient_phone}
-                onChange={(e) => setFormData({ ...formData, recipient_phone: e.target.value })}
-                placeholder="+57 300 1234567"
+                onChange={(v) => setFormData({ ...formData, recipient_phone: v })}
+                placeholder="300 123 4567"
               />
             </div>
           </div>

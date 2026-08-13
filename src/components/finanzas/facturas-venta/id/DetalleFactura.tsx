@@ -64,7 +64,7 @@ import { PagosDetalle } from './PagosDetalle';
 import { RegistrarPagoDialog } from './RegistrarPagoDialog';
 import { NotaCreditoDialog } from './NotaCreditoDialog';
 import { AnularFacturaDialog } from './AnularFacturaDialog';
-import { useToast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError, toastInfo } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { PDFService, InvoiceDataForPDF } from '@/lib/services/pdfService';
@@ -128,7 +128,6 @@ interface OrganizationPDFData {
 
 export default function DetalleFactura({ factura }: { factura: any }) {
   const router = useRouter();
-  const { toast } = useToast();
   const [isPaid, setIsPaid] = useState(factura.status === 'paid');
   const [dialogPagoOpen, setDialogPagoOpen] = useState(false);
   const [dialogNotaCreditoOpen, setDialogNotaCreditoOpen] = useState(false);
@@ -420,17 +419,10 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         actualizarPagos();
       }
       
-      toast({
-        title: "Factura pagada",
-        description: "La factura ha sido marcada como pagada exitosamente.",
-      });
+      toastSuccess("Factura pagada", "La factura ha sido marcada como pagada exitosamente.");
     } catch (error: any) {
       console.error('Error al marcar como pagada:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Ocurrió un error inesperado",
-        variant: "destructive",
-      });
+      toastError("Error", error.message || "Ocurrió un error inesperado");
     }
   };
 
@@ -438,17 +430,11 @@ export default function DetalleFactura({ factura }: { factura: any }) {
 
   // Funciones para enviar la factura por diferentes medios
   const enviarPorEmail = () => {
-    toast({
-      title: 'Enviando factura',
-      description: `La factura ${facturaActual.number} será enviada por email al cliente.`,
-    });
+    toastInfo('Enviando factura', `La factura ${facturaActual.number} será enviada por email al cliente.`);
   };
 
   const enviarPorWhatsApp = () => {
-    toast({
-      title: 'Enviando factura',
-      description: `La factura ${facturaActual.number} será enviada por WhatsApp al cliente.`,
-    });
+    toastInfo('Enviando factura', `La factura ${facturaActual.number} será enviada por WhatsApp al cliente.`);
   };
 
   const generarPDF = async () => {
@@ -491,10 +477,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
     // Usar el servicio centralizado de PDF
     await PDFService.printInvoiceHTML(pdfData);
 
-    toast({
-      title: 'PDF Generado',
-      description: `La factura ${facturaActual.number} está lista para imprimir/descargar.`,
-    });
+    toastSuccess('PDF Generado', `La factura ${facturaActual.number} está lista para imprimir/descargar.`);
   };
   
   // Calcular el saldo pendiente usando facturaActual (actualizada tras pagos)
@@ -560,11 +543,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       .map((row: any) => `${row.products?.name || 'Producto'}: ${row.qty_on_hand}`)
       .join(', ');
 
-    toast({
-      title: 'Inventario en negativo',
-      description: `La factura se emitio, pero estas existencias quedaron bajo cero: ${detalle}. Revisa el inventario de la sucursal.`,
-      variant: 'destructive',
-    });
+    toastError('Inventario en negativo', `La factura se emitio, pero estas existencias quedaron bajo cero: ${detalle}. Revisa el inventario de la sucursal.`);
   };
 
   /**
@@ -588,6 +567,23 @@ export default function DetalleFactura({ factura }: { factura: any }) {
 
       if (itemsConProducto.length === 0) return;
 
+      // Evitar doble descuento: si la factura viene de una venta POS/web que ya
+      // desconto stock con source='sale' | 'mesa_sale' | 'web_sale', no se
+      // vuelve a descontar. Solo se descuenta cuando no hay movimientos previos
+      // (factura creada directamente desde finanzas sin venta asociada).
+      if (facturaActual.sale_id) {
+        const { data: movimientosPrevios } = await supabase
+          .from('stock_movements')
+          .select('id')
+          .eq('source_id', String(facturaActual.sale_id))
+          .in('source', ['sale', 'mesa_sale', 'web_sale'])
+          .limit(1);
+
+        if (movimientosPrevios && movimientosPrevios.length > 0) {
+          return;
+        }
+      }
+
       const resultado = await stockMovementService.decrementOnSale(
         Number(facturaActual.organization_id),
         Number(facturaActual.branch_id),
@@ -601,11 +597,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       );
 
       if (resultado.errors.length > 0) {
-        toast({
-          title: 'Inventario no actualizado por completo',
-          description: resultado.errors.join('; '),
-          variant: 'destructive',
-        });
+        toastError('Inventario no actualizado por completo', resultado.errors.join('; '));
       }
 
       // Respaldo: la validacion previa puede quedar desactualizada si otra caja
@@ -614,11 +606,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       await avisarSiQuedoStockNegativo(itemsConProducto.map((i: any) => i.product_id));
     } catch (stockError: any) {
       console.error('Error descontando stock al emitir la factura:', stockError);
-      toast({
-        title: 'La factura se emitio, pero el inventario no se actualizo',
-        description: stockError?.message || 'Revisa el stock de la sucursal manualmente',
-        variant: 'destructive',
-      });
+      toastError('La factura se emitio, pero el inventario no se actualizo', stockError?.message || 'Revisa el stock de la sucursal manualmente');
     }
   };
 
@@ -634,11 +622,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
           .map(f => `${f.product_name}: necesita ${f.required}, hay ${f.available}`)
           .join(' | ');
 
-        toast({
-          title: 'Sin existencias suficientes para emitir',
-          description: `${detalle}. Repon el inventario o ajusta las cantidades de la factura.`,
-          variant: 'destructive',
-        });
+        toastError('Sin existencias suficientes para emitir', `${detalle}. Repon el inventario o ajusta las cantidades de la factura.`);
         return;
       }
 
@@ -654,10 +638,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         status: 'issued'
       });
       
-      toast({
-        title: "Factura emitida",
-        description: "La factura ha sido emitida exitosamente.",
-      });
+      toastSuccess("Factura emitida", "La factura ha sido emitida exitosamente.");
 
       // Emitir es el momento en que la mercancia sale: hasta ahora ninguna
       // factura de venta descontaba inventario (el POS si lo hacia, finanzas no),
@@ -671,11 +652,7 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       
     } catch (error: any) {
       console.error('Error al emitir la factura:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Ocurrió un error al emitir la factura",
-        variant: "destructive",
-      });
+      toastError("Error", error.message || "Ocurrió un error al emitir la factura");
     }
   };
   
@@ -694,17 +671,10 @@ export default function DetalleFactura({ factura }: { factura: any }) {
       
       router.push(`/app/finanzas/facturas-venta/nuevo?${params.toString()}`);
       
-      toast({
-        title: "Duplicando factura",
-        description: "Se está creando una nueva factura basada en la seleccionada.",
-      });
+      toastInfo("Duplicando factura", "Se está creando una nueva factura basada en la seleccionada.");
     } catch (error: any) {
       console.error('Error al duplicar factura:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo duplicar la factura",
-        variant: "destructive",
-      });
+      toastError("Error", "No se pudo duplicar la factura");
     }
   };
 

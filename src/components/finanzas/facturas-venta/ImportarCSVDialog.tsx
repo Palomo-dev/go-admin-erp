@@ -24,7 +24,7 @@ import {
   Download,
   X
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
 
@@ -77,17 +77,12 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
   const [isLoading, setIsLoading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
-  const { toast } = useToast();
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (!selectedFile.name.endsWith('.csv')) {
-        toast({
-          title: 'Archivo inválido',
-          description: 'Por favor seleccione un archivo CSV',
-          variant: 'destructive',
-        });
+        toastError('Archivo inválido', 'Por favor seleccione un archivo CSV');
         return;
       }
       setFile(selectedFile);
@@ -164,11 +159,7 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
 
   const handleImport = async () => {
     if (parsedData.length === 0) {
-      toast({
-        title: 'Sin datos',
-        description: 'No hay facturas válidas para importar',
-        variant: 'destructive',
-      });
+      toastError('Sin datos', 'No hay facturas válidas para importar');
       return;
     }
 
@@ -244,11 +235,12 @@ export function ImportarCSVDialog({ isOpen, onClose, onImportComplete }: Importa
 
     setIsLoading(false);
 
-    toast({
-      title: 'Importación completada',
-      description: `${imported} facturas importadas${failed > 0 ? `, ${failed} con errores` : ''}`,
-      variant: failed > 0 ? 'destructive' : 'default',
-    });
+    const description = `${imported} facturas importadas${failed > 0 ? `, ${failed} con errores` : ''}`;
+    if (failed > 0) {
+      toastError('Importación completada', description);
+    } else {
+      toastSuccess('Importación completada', description);
+    }
 
     if (imported > 0) {
       onImportComplete();

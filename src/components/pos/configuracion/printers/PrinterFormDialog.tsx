@@ -33,6 +33,7 @@ import {
   type DesktopUsbResponse,
   type DesktopUsbDevice,
 } from '@/lib/utils/desktop';
+import { isMobile } from '@/lib/utils/mobile';
 
 const DISCOVERY_URL = 'http://localhost:3456';
 
@@ -124,6 +125,35 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
     setNetworkPrinters([]);
     setUsbDevices([]);
     setShowDetected(true);
+
+    // Rama móvil (Capacitor): descubrir impresoras Bluetooth LE
+    if (isMobile()) {
+      try {
+        const { discoverBluetoothPrinters } = await import('@/lib/services/mobilePrintService');
+        const device = await discoverBluetoothPrinters();
+        if (device) {
+          // Guardar deviceId en localStorage para uso posterior
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('mobile_bluetooth_printer_id', device.deviceId);
+          }
+          setForm((f) => ({
+            ...f,
+            connection_type: 'bluetooth',
+            mac_address: device.deviceId,
+            name: f.name || device.name || 'Impresora Bluetooth',
+          }));
+          setShowDetected(false);
+        } else {
+          setDetectError('No se seleccionó ninguna impresora Bluetooth');
+        }
+      } catch (err: any) {
+        setDetectError(err?.message || 'Error descubriendo impresoras Bluetooth');
+      } finally {
+        setDetecting(false);
+      }
+      return;
+    }
+
     try {
       const [printersRes, discoverRes, usbRes] = await fetchDetection();
 

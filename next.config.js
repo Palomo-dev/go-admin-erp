@@ -23,6 +23,9 @@ const nextConfig = {
       },
     ],
   },
+  // La app móvil (Capacitor) usa server.url remoto (igual que Electron),
+  // por lo que NO requiere static export ni cambios en next.config.js.
+  // Ver docs/PLAN_CAPACITOR_MOVIL.md para detalles de arquitectura.
   // Add any other configurations here
 }
 

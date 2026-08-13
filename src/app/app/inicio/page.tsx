@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { Home, RefreshCw, QrCode, Clock } from 'lucide-react';
+import { Home, RefreshCw, QrCode } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import {
@@ -18,9 +18,13 @@ import {
   DashboardKPIs,
   DashboardAtajos,
   DashboardActividad,
+  DashboardTendencia,
+  DashboardAlertas,
+  PeriodoSelector,
   OnboardingBanner,
+  DashboardModulos,
 } from '@/components/inicio';
-import type { DashboardData } from '@/components/inicio';
+import type { DashboardData, PeriodoDashboard } from '@/components/inicio';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 
 function InicioContent() {
@@ -38,6 +42,8 @@ function InicioContent() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [fechaHoy, setFechaHoy] = useState('');
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
+  const [periodo, setPeriodo] = useState<PeriodoDashboard>('hoy');
+  const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
     setMounted(true);
@@ -49,6 +55,17 @@ function InicioContent() {
         day: 'numeric',
       })
     );
+    // Nombre del usuario desde localStorage (seteado en login)
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('userData') : null;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const nombre = parsed?.full_name || parsed?.name || parsed?.firstName || '';
+        if (nombre) setUserName(`, ${nombre.split(' ')[0]}`);
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   const loadData = useCallback(async () => {
@@ -56,7 +73,7 @@ function InicioContent() {
     setIsLoading(true);
     try {
       const [data, modules] = await Promise.all([
-        inicioService.getDashboardData(organization.id),
+        inicioService.getDashboardData(organization.id, periodo),
         moduleManagementService.getActiveModules(organization.id).catch(() => null),
       ]);
       setDashboardData(data);
@@ -71,7 +88,7 @@ function InicioContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, toast]);
+  }, [organization?.id, toast, periodo]);
 
   useEffect(() => {
     loadData();
@@ -130,7 +147,7 @@ function InicioContent() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {t('dashboard')}
+              {t('welcome', { userName })}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
               {fechaHoy}
@@ -138,7 +155,9 @@ function InicioContent() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <PeriodoSelector value={periodo} onChange={setPeriodo} />
+
           <Link href="/marcar">
             <Button
               variant="outline"
@@ -175,88 +194,30 @@ function InicioContent() {
       {/* KPIs */}
       <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} />
 
-      {/* Actividad Reciente */}
+      {/* Alertas consolidadas de módulos */}
+      <DashboardAlertas
+        organizationId={organization?.id}
+        activeModuleCodes={activeModuleCodes}
+      />
+
+      {/* Actividad Reciente + Tendencia de Ventas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DashboardActividad
           data={dashboardData?.actividad ?? []}
           isLoading={isLoading}
         />
 
-        {/* Info rápida */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-              {t('quickAccess')}
-            </h3>
-          </div>
-
-          <div className="space-y-3">
-            {(!activeModuleCodes || activeModuleCodes.includes('pos')) && (
-              <Link href="/app/pos" className="block">
-                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 hover:shadow-sm transition-shadow">
-                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                    {t('quickLinks.posTitle')}
-                  </p>
-                  <p className="text-xs text-blue-500 dark:text-blue-400 mt-0.5">
-                    {t('quickLinks.posDesc')}
-                  </p>
-                </div>
-              </Link>
-            )}
-
-            {(!activeModuleCodes || activeModuleCodes.includes('pos')) && (
-              <Link href="/app/pos/mesas" className="block">
-                <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 hover:shadow-sm transition-shadow">
-                  <p className="text-sm font-medium text-orange-700 dark:text-orange-300">
-                    {t('quickLinks.tablesTitle')}
-                  </p>
-                  <p className="text-xs text-orange-500 dark:text-orange-400 mt-0.5">
-                    {t('quickLinks.tablesDesc')}
-                  </p>
-                </div>
-              </Link>
-            )}
-
-            {(!activeModuleCodes || activeModuleCodes.includes('inventory')) && (
-              <Link href="/app/inventario/productos" className="block">
-                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 hover:shadow-sm transition-shadow">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                    {t('quickLinks.productsTitle')}
-                  </p>
-                  <p className="text-xs text-green-500 dark:text-green-400 mt-0.5">
-                    {t('quickLinks.productsDesc')}
-                  </p>
-                </div>
-              </Link>
-            )}
-
-            {(!activeModuleCodes || activeModuleCodes.includes('reports')) && (
-              <Link href="/app/reportes" className="block">
-                <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 hover:shadow-sm transition-shadow">
-                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                    {t('quickLinks.reportsTitle')}
-                  </p>
-                  <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">
-                    {t('quickLinks.reportsDesc')}
-                  </p>
-                </div>
-              </Link>
-            )}
-
-            <Link href="/marcar" className="block">
-              <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 hover:shadow-sm transition-shadow">
-                <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                  {t('quickLinks.attendanceTitle')}
-                </p>
-                <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">
-                  {t('quickLinks.attendanceDesc')}
-                </p>
-              </div>
-            </Link>
-          </div>
-        </div>
+        {/* Tendencia de ventas (reemplaza al antiguo bloque "Accesos Rápidos" redundante) */}
+        {organization?.id && (
+          <DashboardTendencia organizationId={organization.id} dias={30} />
+        )}
       </div>
+
+      {/* Dashboards consolidados por módulo activo */}
+      <DashboardModulos
+        activeModuleCodes={activeModuleCodes}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

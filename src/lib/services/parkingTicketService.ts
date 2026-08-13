@@ -49,7 +49,7 @@ class ParkingTicketService {
   printEntryTicket(data: EntryTicketData): void {
     const printWindow = window.open('', '_blank', 'width=400,height=600');
     if (!printWindow) {
-      console.error('No se pudo abrir la ventana de impresión');
+      console.warn('[parkingTicket] No se pudo abrir la ventana de impresión (entrada)');
       return;
     }
 
@@ -291,22 +291,47 @@ class ParkingTicketService {
     try {
       printWindow.document.write(ticketHtml);
       printWindow.document.close();
-      // Usar setTimeout para dar tiempo al documento de renderizar
-      setTimeout(() => {
-        try {
-          printWindow.focus();
-          printWindow.print();
-        } catch {
-          // Ignorar errores de impresión silenciosamente
-        }
-        // Cerrar ventana después de imprimir
-        setTimeout(() => {
-          try { printWindow.close(); } catch {}
-        }, 500);
-      }, 250);
-    } catch {
-      // Ignorar errores silenciosamente para no afectar otros procesos
+    } catch (err) {
+      console.warn('[parkingTicket] Error escribiendo documento de entrada:', err);
+      return;
     }
+
+    // Referencias de timers para limpieza segura
+    const timers: { print?: ReturnType<typeof setTimeout>; close?: ReturnType<typeof setTimeout> } = {};
+    const cleanup = () => {
+      if (timers.print) clearTimeout(timers.print);
+      if (timers.close) clearTimeout(timers.close);
+    };
+    const doClose = () => {
+      try {
+        if (printWindow && !printWindow.closed) printWindow.close();
+      } catch (err) {
+        console.warn('[parkingTicket] Error cerrando ventana de entrada:', err);
+      }
+      cleanup();
+    };
+
+    // afterprint es más confiable que un setTimeout fijo para cerrar
+    try {
+      printWindow.addEventListener('afterprint', doClose, { once: true });
+    } catch (err) {
+      console.warn('[parkingTicket] No se pudo registrar afterprint (entrada):', err);
+    }
+
+    // Usar setTimeout para dar tiempo al documento de renderizar
+    timers.print = setTimeout(() => {
+      try {
+        if (!printWindow || printWindow.closed) { cleanup(); return; }
+        printWindow.focus();
+        printWindow.print();
+      } catch (err) {
+        console.warn('[parkingTicket] Error al imprimir ticket de entrada:', err);
+        cleanup();
+        return;
+      }
+      // Cerrar ventana después de imprimir (fallback si afterprint no dispara)
+      timers.close = setTimeout(doClose, 500);
+    }, 250);
   }
 
   /**
@@ -315,7 +340,7 @@ class ParkingTicketService {
   printExitTicket(data: ExitTicketData): void {
     const printWindow = window.open('', '_blank', 'width=400,height=700');
     if (!printWindow) {
-      console.error('No se pudo abrir la ventana de impresión');
+      console.warn('[parkingTicket] No se pudo abrir la ventana de impresión (salida)');
       return;
     }
 
@@ -438,16 +463,46 @@ class ParkingTicketService {
     try {
       printWindow.document.write(ticketHtml);
       printWindow.document.close();
-      setTimeout(() => {
-        try {
-          printWindow.focus();
-          printWindow.print();
-        } catch {}
-        setTimeout(() => {
-          try { printWindow.close(); } catch {}
-        }, 500);
-      }, 250);
-    } catch {}
+    } catch (err) {
+      console.warn('[parkingTicket] Error escribiendo documento de salida:', err);
+      return;
+    }
+
+    // Referencias de timers para limpieza segura
+    const timers: { print?: ReturnType<typeof setTimeout>; close?: ReturnType<typeof setTimeout> } = {};
+    const cleanup = () => {
+      if (timers.print) clearTimeout(timers.print);
+      if (timers.close) clearTimeout(timers.close);
+    };
+    const doClose = () => {
+      try {
+        if (printWindow && !printWindow.closed) printWindow.close();
+      } catch (err) {
+        console.warn('[parkingTicket] Error cerrando ventana de salida:', err);
+      }
+      cleanup();
+    };
+
+    // afterprint es más confiable que un setTimeout fijo para cerrar
+    try {
+      printWindow.addEventListener('afterprint', doClose, { once: true });
+    } catch (err) {
+      console.warn('[parkingTicket] No se pudo registrar afterprint (salida):', err);
+    }
+
+    timers.print = setTimeout(() => {
+      try {
+        if (!printWindow || printWindow.closed) { cleanup(); return; }
+        printWindow.focus();
+        printWindow.print();
+      } catch (err) {
+        console.warn('[parkingTicket] Error al imprimir ticket de salida:', err);
+        cleanup();
+        return;
+      }
+      // Fallback de cierre si afterprint no dispara
+      timers.close = setTimeout(doClose, 500);
+    }, 250);
   }
 }
 

@@ -8,7 +8,7 @@ import { MoreVertical, Eye, Printer, Mail, Send, AlertTriangle, ChevronDown, Che
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/components/ui/use-toast';
+import { toastError, toastInfo } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -107,7 +107,6 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
   const [facturaSeleccionadaId, setFacturaSeleccionadaId] = useState<string | null>(null);
   const [mostrarDetalles, setMostrarDetalles] = useState(false);
   const [filasExpandidas, setFilasExpandidas] = useState<Set<string>>(new Set());
-  const { toast } = useToast();
   
   // Estado para la paginación
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -394,18 +393,14 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
         console.error('Error al cargar facturas:', err);
         setError('Error al cargar las facturas: ' + err.message);
         
-        toast({
-          title: 'Error',
-          description: 'No se pudieron cargar las facturas',
-          variant: 'destructive',
-        });
+        toastError('Error', 'No se pudieron cargar las facturas');
       } finally {
         setCargando(false);
       }
     };
 
     cargarFacturas();
-  }, [toast]);
+  }, []);
 
   // Renderizado condicional para el estado de carga
   if (cargando) {
@@ -643,10 +638,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                         focus:bg-gray-100 dark:focus:bg-gray-700
                       "
                       onClick={() => {
-                        toast({
-                          title: "Enviar factura",
-                          description: `La factura ${factura.number} será enviada por email al cliente.`
-                        });
+                        toastInfo("Enviar factura", `La factura ${factura.number} será enviada por email al cliente.`);
                       }}
                     >
                       <Mail className="mr-2 h-4 w-4 flex-shrink-0" />
@@ -660,10 +652,7 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                         focus:bg-gray-100 dark:focus:bg-gray-700
                       "
                       onClick={() => {
-                        toast({
-                          title: "Enviar factura",
-                          description: `La factura ${factura.number} será enviada por WhatsApp al cliente.`
-                        });
+                        toastInfo("Enviar factura", `La factura ${factura.number} será enviada por WhatsApp al cliente.`);
                       }}
                     >
                       <Send className="mr-2 h-4 w-4 flex-shrink-0" />

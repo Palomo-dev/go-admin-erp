@@ -43,7 +43,7 @@ export function FilterBar({
   const dragScroll = useDragScroll<HTMLDivElement>();
 
   return (
-    <div className="mt-4 flex flex-wrap gap-3">
+    <div className="mt-3 sm:mt-4 flex flex-col gap-2 sm:gap-3">
       {/* Filtro por zona */}
       <div
         ref={dragScroll.ref}
@@ -53,8 +53,7 @@ export function FilterBar({
         onPointerLeave={dragScroll.onPointerLeave}
         onClickCapture={dragScroll.onClickCapture}
         className={cn(
-          'flex flex-wrap gap-2 w-full overflow-x-auto pb-1 scrollbar-hide cursor-grab active:cursor-grabbing select-none',
-          availableZones.length > 0 ? 'max-w-full' : ''
+          'flex flex-nowrap gap-2 w-full overflow-x-auto pb-1 scrollbar-hide cursor-grab active:cursor-grabbing select-none'
         )}
       >
         <Button
@@ -81,7 +80,7 @@ export function FilterBar({
       </div>
 
       {/* Filtro por estación de cocina */}
-      <div className="flex flex-wrap gap-2 w-full">
+      <div className="flex flex-nowrap gap-2 w-full overflow-x-auto pb-1 scrollbar-hide">
         <Button
           variant={stationFilter === 'all' ? 'default' : 'outline'}
           size="sm"
@@ -105,7 +104,7 @@ export function FilterBar({
       </div>
 
       {/* Filtro por estado */}
-      <div className="flex flex-wrap gap-2 w-full">
+      <div className="flex flex-nowrap gap-2 w-full overflow-x-auto pb-1 scrollbar-hide">
         <Button
           variant={statusFilter === 'all' ? 'default' : 'outline'}
           size="sm"

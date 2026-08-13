@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useToast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderWithItems, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
 import { supplierService } from '@/lib/services/supplierService';
@@ -53,7 +53,6 @@ interface OrderItem extends PurchaseOrderItemInput {
 
 export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps) {
   const router = useRouter();
-  const { toast } = useToast();
 
   // Estados del formulario
   const [supplierId, setSupplierId] = useState<string>('');
@@ -93,11 +92,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       ]);
 
       if (orderResult.error || !orderResult.data) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: orderResult.error?.message || 'Orden no encontrada'
-        });
+        toastError('Error', orderResult.error?.message || 'Orden no encontrada');
         router.push('/app/inventario/ordenes-compra');
         return;
       }
@@ -106,11 +101,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
 
       // Verificar que esté en draft
       if (order.status !== 'draft') {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Solo se pueden editar órdenes en borrador'
-        });
+        toastError('Error', 'Solo se pueden editar órdenes en borrador');
         router.push(`/app/inventario/ordenes-compra/${orderUuid}`);
         return;
       }
@@ -139,16 +130,12 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
       setProducts(productsData);
     } catch (error: any) {
       console.error('Error cargando datos:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo cargar la orden'
-      });
+      toastError('Error', error?.message || 'No se pudo cargar la orden');
       router.push('/app/inventario/ordenes-compra');
     } finally {
       setIsLoading(false);
     }
-  }, [orderUuid, router, toast]);
+  }, [orderUuid, router]);
 
   useEffect(() => {
     loadData();
@@ -178,7 +165,7 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
   // Agregar item
   const handleAddItem = () => {
     if (!selectedProduct) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Selecciona un producto' });
+      toastError('Error', 'Selecciona un producto');
       return;
     }
 
@@ -236,15 +223,15 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
   // Guardar orden
   const handleSubmit = async () => {
     if (!supplierId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Selecciona un proveedor' });
+      toastError('Error', 'Selecciona un proveedor');
       return;
     }
     if (!branchId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Selecciona una sucursal' });
+      toastError('Error', 'Selecciona una sucursal');
       return;
     }
     if (items.length === 0) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Agrega al menos un producto' });
+      toastError('Error', 'Agrega al menos un producto');
       return;
     }
 
@@ -270,19 +257,12 @@ export function EditarOrdenCompraForm({ orderUuid }: EditarOrdenCompraFormProps)
 
       if (error) throw error;
 
-      toast({
-        title: 'Orden actualizada',
-        description: 'Los cambios han sido guardados correctamente'
-      });
+      toastSuccess('Orden actualizada', 'Los cambios han sido guardados correctamente');
 
       router.push(`/app/inventario/ordenes-compra/${orderUuid}`);
     } catch (error: any) {
       console.error('Error actualizando orden:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo actualizar la orden'
-      });
+      toastError('Error', error?.message || 'No se pudo actualizar la orden');
     } finally {
       setIsSaving(false);
     }

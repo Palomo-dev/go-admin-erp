@@ -225,8 +225,8 @@ const CatalogoProveedores: React.FC = () => {
     setDeleteDialogOpen(true);
   };
 
-  // Función para exportar proveedores
-  const handleExport = async () => {
+  // Función para exportar proveedores a CSV
+  const handleExportCSV = async () => {
     try {
       const organizationId = getOrganizationId();
       const csv = await supplierService.exportSuppliersToCSV(organizationId);
@@ -255,7 +255,83 @@ const CatalogoProveedores: React.FC = () => {
         description: 'El archivo CSV ha sido descargado'
       });
     } catch (error) {
-      console.error('Error exportando:', error);
+      console.error('Error exportando CSV:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo exportar los proveedores'
+      });
+    }
+  };
+
+  // Función para exportar proveedores a XLSX
+  const handleExportXLSX = async () => {
+    try {
+      const organizationId = getOrganizationId();
+      const blob = await supplierService.exportSuppliersToXLSX(organizationId);
+
+      if (blob.size === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Sin datos',
+          description: 'No hay proveedores para exportar'
+        });
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `proveedores_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Exportación completada',
+        description: 'El archivo Excel ha sido descargado'
+      });
+    } catch (error) {
+      console.error('Error exportando XLSX:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo exportar los proveedores'
+      });
+    }
+  };
+
+  // Función para exportar proveedores a PDF
+  const handleExportPDF = async () => {
+    try {
+      const organizationId = getOrganizationId();
+      const blob = await supplierService.exportSuppliersToPDF(organizationId);
+
+      if (blob.size === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Sin datos',
+          description: 'No hay proveedores para exportar'
+        });
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `proveedores_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Exportación completada',
+        description: 'El archivo PDF ha sido descargado'
+      });
+    } catch (error) {
+      console.error('Error exportando PDF:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -268,7 +344,9 @@ const CatalogoProveedores: React.FC = () => {
     <div className="flex flex-col gap-4 sm:gap-5 lg:gap-6 text-gray-800 dark:text-gray-200">
       <ProveedoresPageHeader 
         onNuevoProveedor={() => router.push('/app/inventario/proveedores/nuevo')}
-        onExport={handleExport}
+        onExportCSV={handleExportCSV}
+        onExportXLSX={handleExportXLSX}
+        onExportPDF={handleExportPDF}
       />
       
       <FiltrosProveedores 

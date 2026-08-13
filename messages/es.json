@@ -283,6 +283,16 @@
     "errorLoadingDashboard": "No se pudieron cargar los datos del dashboard",
     "markShift": "Marcar Turno",
     "quickAccess": "Accesos Rápidos",
+    "salesTrend": "Tendencia de Ventas (30 días)",
+    "noSalesData": "Sin ventas en el período seleccionado",
+    "welcome": "Hola{userName}",
+    "welcomeSub": "Hoy tienes {pending} tareas pendientes",
+    "welcomeSubNoPending": "Todo al día. Buen trabajo.",
+    "attentionRequired": "Requiere atención hoy",
+    "noAlerts": "No hay alertas críticas. Todo está en orden.",
+    "vsPreviousPeriod": "vs período anterior",
+    "compactMode": "Compacto",
+    "expandedMode": "Expandido",
     "errors": {
       "moduleNotActivated": "El módulo solicitado no está activado.",
       "insufficientPermissions": "No tienes permisos suficientes.",
@@ -331,7 +341,13 @@
       "hoursAgo": "Hace {hours}h",
       "daysAgo": "Hace {days}d",
       "saleCompleted": "Venta completada",
-      "saleStatus": "Venta {status}"
+      "saleStatus": "Venta {status}",
+      "filterAll": "Todos",
+      "filterPos": "POS",
+      "filterFinance": "Finanzas",
+      "filterCrm": "CRM",
+      "filterInventory": "Inventario",
+      "filterPms": "PMS"
     },
     "onboarding": {
       "title": "Primeros pasos",

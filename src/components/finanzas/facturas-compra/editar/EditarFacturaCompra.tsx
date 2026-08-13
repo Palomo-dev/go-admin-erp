@@ -9,7 +9,7 @@ import { AlertCircle } from 'lucide-react';
 import { FacturasCompraService } from '../FacturasCompraService';
 import { InvoicePurchase } from '../types';
 import { NuevaFacturaForm } from '../nueva-factura/NuevaFacturaForm';
-import { toast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
 
 interface EditarFacturaCompraProps {
   facturaId: string;
@@ -69,10 +69,7 @@ export function EditarFacturaCompra({ facturaId }: EditarFacturaCompraProps) {
       // Actualizar la factura usando el servicio
       await FacturasCompraService.actualizarFactura(factura.id, datosFactura);
       
-      toast({
-        title: 'Factura actualizada',
-        description: 'La factura de compra se ha actualizado correctamente.',
-      });
+      toastSuccess('Factura actualizada', 'La factura de compra se ha actualizado correctamente.');
       
       // Redirigir al detalle de la factura
       router.push(`${basePath}/${factura.id}`);
@@ -81,11 +78,7 @@ export function EditarFacturaCompra({ facturaId }: EditarFacturaCompraProps) {
       console.error('Error actualizando factura:', error);
       setError(error.message || 'Error al actualizar la factura');
       
-      toast({
-        title: 'Error al actualizar',
-        description: error.message || 'Error al actualizar la factura',
-        variant: 'destructive',
-      });
+      toastError('Error al actualizar', error.message || 'Error al actualizar la factura');
     } finally {
       setSaving(false);
     }

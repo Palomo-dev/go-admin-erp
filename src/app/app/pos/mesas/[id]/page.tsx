@@ -978,6 +978,7 @@ export default function MesaDetallePage() {
       commission_type: checkoutData.commission_type,
       commission_method: checkoutData.commission_method,
       commission_amount: checkoutData.commission_amount,
+      serial_selections: checkoutData.serial_selections,
     });
 
     // Retornar como Sale para compatibilidad con CheckoutDialog

@@ -59,7 +59,7 @@ export function TicketsGrid({ tickets, onStatusChange, onItemStatusChange, onRep
 
           return (
             <div key={column.key} className="flex flex-col min-w-0">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-2">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-2 min-w-0">
                 <Badge className={column.badgeClass}>{columnTickets.length}</Badge>
                 {column.label}
               </h2>

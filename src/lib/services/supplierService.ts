@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Tipos para Proveedores
 export interface Supplier {
@@ -518,16 +521,62 @@ class SupplierService {
           continue;
         }
 
+        if (supplier.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supplier.email)) {
+          results.errors.push({ row: i + 1, error: 'Email inválido' });
+          continue;
+        }
+
+        if (supplier.supplier_type && supplier.supplier_type !== 'person' && supplier.supplier_type !== 'company') {
+          results.errors.push({ row: i + 1, error: 'Tipo debe ser "person" o "company"' });
+          continue;
+        }
+
+        let creditDays: number | null = null;
+        if (supplier.credit_days !== undefined && supplier.credit_days !== null) {
+          const parsed = typeof supplier.credit_days === 'number'
+            ? supplier.credit_days
+            : Number(String(supplier.credit_days).trim());
+          if (isNaN(parsed)) {
+            results.errors.push({ row: i + 1, error: 'Días Crédito debe ser numérico' });
+            continue;
+          }
+          creditDays = parsed;
+        }
+
+        let fiscalResponsibilities: string[] | null = null;
+        if (supplier.fiscal_responsibilities) {
+          fiscalResponsibilities = Array.isArray(supplier.fiscal_responsibilities)
+            ? supplier.fiscal_responsibilities
+            : String(supplier.fiscal_responsibilities).split(';').map(r => r.trim()).filter(Boolean);
+        }
+
         const { error } = await supabase
           .from('suppliers')
           .insert({
             organization_id: organizationId,
             name: supplier.name,
+            supplier_type: supplier.supplier_type || 'company',
+            doc_type: supplier.doc_type || null,
             nit: supplier.nit || null,
             contact: supplier.contact || null,
             phone: supplier.phone || null,
             email: supplier.email || null,
-            notes: supplier.notes || null
+            notes: supplier.notes || null,
+            description: supplier.description || null,
+            address: supplier.address || null,
+            city: supplier.city || null,
+            state: supplier.state || null,
+            country: supplier.country || 'Colombia',
+            postal_code: supplier.postal_code || null,
+            tax_id: supplier.tax_id || null,
+            tax_regime: supplier.tax_regime || null,
+            fiscal_responsibilities: fiscalResponsibilities,
+            payment_terms: supplier.payment_terms || null,
+            credit_days: creditDays,
+            website: supplier.website || null,
+            bank_name: supplier.bank_name || null,
+            bank_account: supplier.bank_account || null,
+            account_type: supplier.account_type || null,
           });
 
         if (error) {
@@ -783,22 +832,146 @@ class SupplierService {
       
       if (!data || data.length === 0) return '';
 
-      const headers = ['Nombre', 'NIT', 'Contacto', 'Teléfono', 'Email', 'Notas', 'Fecha Creación'];
+      const headers = ['Nombre', 'Tipo', 'NIT', 'Tipo Doc', 'Contacto', 'Teléfono', 'Email', 'Descripción', 'Dirección', 'Ciudad', 'Departamento', 'País', 'Código Postal', 'Tax ID', 'Régimen Tributario', 'Responsabilidades Fiscales', 'Términos de Pago', 'Días Crédito', 'Sitio Web', 'Activo', 'Rating', 'Banco', 'Cuenta Bancaria', 'Tipo Cuenta', 'Notas', 'Fecha Creación'];
+
+      const escapeCell = (value: string): string => {
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return `"${value}"`;
+      };
+
       const rows = data.map(s => [
-        s.name,
+        s.name || '',
+        s.supplier_type || 'company',
         s.nit || '',
+        s.doc_type || '',
         s.contact || '',
         s.phone || '',
         s.email || '',
+        s.description || '',
+        s.address || '',
+        s.city || '',
+        s.state || '',
+        s.country || '',
+        s.postal_code || '',
+        s.tax_id || '',
+        s.tax_regime || '',
+        (s.fiscal_responsibilities || []).join(';'),
+        s.payment_terms || '',
+        s.credit_days !== undefined && s.credit_days !== null ? String(s.credit_days) : '',
+        s.website || '',
+        s.is_active ? 'Sí' : 'No',
+        s.rating !== undefined && s.rating !== null ? String(s.rating) : '',
+        s.bank_name || '',
+        s.bank_account || '',
+        s.account_type || '',
         s.notes || '',
         new Date(s.created_at).toLocaleDateString('es-CO')
       ]);
 
-      const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
+      const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => escapeCell(cell)).join(','))].join('\n');
       return csvContent;
     } catch (error) {
       console.error('Error exportando proveedores:', error);
       return '';
+    }
+  }
+
+  /**
+   * Exportar proveedores a XLSX
+   */
+  async exportSuppliersToXLSX(organizationId: number): Promise<Blob> {
+    try {
+      const { data } = await this.getSuppliers(organizationId, {}, 1, 10000);
+
+      if (!data || data.length === 0) {
+        return new Blob([], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      }
+
+      const rows = data.map(s => ({
+        'Nombre': s.name || '',
+        'Tipo': s.supplier_type || 'company',
+        'NIT': s.nit || '',
+        'Tipo Doc': s.doc_type || '',
+        'Contacto': s.contact || '',
+        'Teléfono': s.phone || '',
+        'Email': s.email || '',
+        'Descripción': s.description || '',
+        'Dirección': s.address || '',
+        'Ciudad': s.city || '',
+        'Departamento': s.state || '',
+        'País': s.country || '',
+        'Código Postal': s.postal_code || '',
+        'Tax ID': s.tax_id || '',
+        'Régimen Tributario': s.tax_regime || '',
+        'Responsabilidades Fiscales': (s.fiscal_responsibilities || []).join(';'),
+        'Términos de Pago': s.payment_terms || '',
+        'Días Crédito': s.credit_days ?? '',
+        'Sitio Web': s.website || '',
+        'Activo': s.is_active ? 'Sí' : 'No',
+        'Rating': s.rating ?? '',
+        'Banco': s.bank_name || '',
+        'Cuenta Bancaria': s.bank_account || '',
+        'Tipo Cuenta': s.account_type || '',
+        'Notas': s.notes || '',
+        'Fecha Creación': new Date(s.created_at).toLocaleDateString('es-CO')
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Proveedores');
+      const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    } catch (error) {
+      console.error('Error exportando proveedores a XLSX:', error);
+      return new Blob([], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    }
+  }
+
+  /**
+   * Exportar proveedores a PDF
+   */
+  async exportSuppliersToPDF(organizationId: number): Promise<Blob> {
+    try {
+      const { data } = await this.getSuppliers(organizationId, {}, 1, 10000);
+
+      if (!data || data.length === 0) {
+        const doc = new jsPDF({ orientation: 'landscape' });
+        doc.text('No hay proveedores para exportar', 14, 20);
+        return doc.output('blob');
+      }
+
+      const headers = [['Nombre', 'Tipo', 'NIT', 'Contacto', 'Teléfono', 'Email', 'Ciudad', 'País', 'Días Crédito', 'Activo']];
+
+      const rowsArray = data.map(s => [
+        s.name || '',
+        s.supplier_type || 'company',
+        s.nit || '',
+        s.contact || '',
+        s.phone || '',
+        s.email || '',
+        s.city || '',
+        s.country || '',
+        s.credit_days !== undefined && s.credit_days !== null ? String(s.credit_days) : '',
+        s.is_active ? 'Sí' : 'No'
+      ]);
+
+      const doc = new jsPDF({ orientation: 'landscape' });
+      doc.text('Listado de Proveedores', 14, 20);
+      autoTable(doc, {
+        head: headers,
+        body: rowsArray,
+        startY: 26,
+        styles: { fontSize: 7 },
+        headStyles: { fillColor: [16, 185, 129] }
+      });
+      return doc.output('blob');
+    } catch (error) {
+      console.error('Error exportando proveedores a PDF:', error);
+      const doc = new jsPDF({ orientation: 'landscape' });
+      doc.text('Error al generar el listado', 14, 20);
+      return doc.output('blob');
     }
   }
 }

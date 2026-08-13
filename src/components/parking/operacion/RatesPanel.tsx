@@ -8,11 +8,16 @@ import { formatCurrency } from '@/utils/Utils';
 
 export interface ParkingRate {
   id: string;
+  organization_id?: number;
   vehicle_type: string;
   rate_name: string;
-  unit: 'hour' | 'day' | 'fraction';
+  unit: 'minute' | 'hour' | 'day' | 'fraction';
   price: number;
   grace_period_min: number;
+  is_active?: boolean;
+  lost_ticket_fee?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface RatesPanelProps {

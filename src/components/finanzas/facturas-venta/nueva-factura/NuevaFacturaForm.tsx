@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchSelect } from '@/components/ui/search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { ClienteSelector } from './ClienteSelector';
@@ -22,6 +22,7 @@ import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-elect
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 import { toLocalDateString, parseLocalDate, formatCurrency } from '@/utils/Utils';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
 
 // Tipo para un ítem de factura
 export type InvoiceItem = {
@@ -42,6 +43,8 @@ export type InvoiceItem = {
   product_name?: string; // Campo adicional para UI
   stock_qty?: number | null; // Stock disponible (para validación en UI)
   track_stock?: boolean | null; // Si el producto controla stock
+  track_serial?: boolean | null; // Si el producto requiere captura de seriales
+  product_sku?: string | null; // SKU del producto (para SerialSelectorDialog)
 };
 
 // Tipo para una factura
@@ -102,6 +105,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     return date;
   });
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  // Selecciones de seriales por product_id (mismo formato que el POS)
+  const [serialSelections, setSerialSelections] = useState<Record<number, number[]>>({});
   const [paymentTerms, setPaymentTerms] = useState<number>(30); // Ahora usamos número de días
   const [isCustomPaymentTerm, setIsCustomPaymentTerm] = useState<boolean>(false);
   const [paymentMethodCode, setPaymentMethodCode] = useState<string>('');
@@ -135,6 +140,31 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [subtotal, setSubtotal] = useState<number>(0);
   const [taxTotal, setTaxTotal] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
+
+  // Totales calculados desde los items (fuente de verdad para comisiones)
+  // Los estados subtotal/total pueden estar en 0 si la sincronización
+  // con ImpuestosFactura no ocurrió, pero los items siempre tienen el valor correcto.
+  const itemsTotalForCommission = useMemo(() =>
+    items.reduce((sum, it) => sum + (Number(it.total_line) || 0), 0),
+    [items]
+  );
+  const itemsSubtotalForCommission = useMemo(() => {
+    const taxFromItems = items.reduce((sum, it) => {
+      const qty = Number(it.qty) || 0;
+      const unitPrice = Number(it.unit_price) || 0;
+      const rate = Number(it.tax_rate) || 0;
+      const totalLine = Number(it.total_line) || 0;
+      const discount = Number(it.discount_amount) || 0;
+      if (rate <= 0) return sum;
+      const lineBase = qty * unitPrice - discount;
+      if (it.tax_included) {
+        const base = totalLine / (1 + rate / 100);
+        return sum + (totalLine - base);
+      }
+      return sum + (totalLine - lineBase);
+    }, 0);
+    return itemsTotalForCommission - taxFromItems;
+  }, [items, itemsTotalForCommission]);
 
   // Función para cargar monedas de la organización
   const loadCurrencies = useCallback(async () => {
@@ -309,18 +339,11 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         if (metodoPagoParam) setPaymentMethodCode(metodoPagoParam);
         if (notasParam) setNotes(notasParam);
         
-        toast({
-          title: "Factura duplicada",
-          description: "Se han cargado los datos de la factura original. Modifique según necesite.",
-        });
+        toastSuccess("Factura duplicada", "Se han cargado los datos de la factura original. Modifique según necesite.");
         
       } catch (error) {
         console.error('Error al cargar datos de duplicación:', error);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los datos de la factura a duplicar.",
-          variant: "destructive",
-        });
+        toastError("Error", "No se pudieron cargar los datos de la factura a duplicar.");
       }
     };
     
@@ -353,11 +376,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setIsDuplicateNumber(isDuplicate);
       
       if (isDuplicate) {
-        toast({
-          title: "Número duplicado",
-          description: "Este número de factura ya existe. Por favor, utilice otro número.",
-          variant: "destructive",
-        });
+        toastError("Número duplicado", "Este número de factura ya existe. Por favor, utilice otro número.");
       }
       
       return isDuplicate;
@@ -392,16 +411,13 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   // Función para generar número de factura
   const generateInvoiceNumber = async () => {
     try {
-      const formattedNumber = await generateInvoiceNumberUtil(organizationId, 'FACT');
+      // Pasar el número actual para que siempre genere uno diferente
+      const formattedNumber = await generateInvoiceNumberUtil(organizationId, 'FACT', invoiceNumber);
       setInvoiceNumber(formattedNumber);
       setIsDuplicateNumber(false); // Resetear el estado de duplicado al generar un nuevo número
     } catch (error) {
       console.error('Error al generar número de factura:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo generar el número de factura automáticamente.",
-        variant: "destructive",
-      });
+      toastError("Error", "No se pudo generar el número de factura automáticamente.");
     }
   };
 
@@ -432,11 +448,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const handleSaveInvoice = async () => {
     // Validar que se tenga el número de factura
     if (!invoiceNumber) {
-      toast({
-        title: "Error",
-        description: "Debe ingresar un número de factura.",
-        variant: "destructive",
-      });
+      toastError("Error", "Debe ingresar un número de factura.");
       return;
     }
     
@@ -444,41 +456,40 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     const currentUserId = await getCurrentUserId();
     
     if (!currentUserId) {
-      toast({
-        title: "Error",
-        description: "No se pudo obtener la información del usuario actual.",
-        variant: "destructive",
-      });
+      toastError("Error", "No se pudo obtener la información del usuario actual.");
       return;
     }
     
     if (!organizationId) {
-      toast({
-        title: "Error",
-        description: "No se pudo determinar la organización activa.",
-        variant: "destructive",
-      });
+      toastError("Error", "No se pudo determinar la organización activa.");
       return;
     }
     
     if (!selectedCustomerId) {
-      toast({
-        title: "Error",
-        description: "Debe seleccionar un cliente para la factura.",
-        variant: "destructive",
-      });
+      toastError("Error", "Debe seleccionar un cliente para la factura.");
       return;
     }
     
     if (items.length === 0) {
-      toast({
-        title: "Error",
-        description: "Debe agregar al menos un ítem a la factura.",
-        variant: "destructive",
-      });
+      toastError("Error", "Debe agregar al menos un ítem a la factura.");
       return;
     }
-    
+
+    // Validar que todos los productos con track_serial tengan seriales seleccionados
+    const serializedItems = items.filter(
+      (it) => it.track_serial === true && it.product_id != null
+    );
+    const serialSelectionsComplete = serializedItems.every(
+      (it) => (serialSelections[it.product_id as number]?.length ?? 0) === it.qty
+    );
+    if (serializedItems.length > 0 && !serialSelectionsComplete) {
+      toastError(
+        "Seriales requeridos",
+        "Hay productos que requieren captura de seriales. Selecciónalos antes de guardar la factura."
+      );
+      return;
+    }
+
     // En modo edición, omitir validación de duplicado (es el mismo número)
     if (!esEdicion) {
       const isDuplicate = await checkDuplicateInvoiceNumber(invoiceNumber);
@@ -536,7 +547,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none',
         commission_method: salespersonId && commissionRate > 0 ? commissionMethod : 'percentage',
         commission_amount: salespersonId && commissionRate > 0
-          ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((subtotal > 0 ? subtotal : total) * commissionRate / 100 * 100) / 100)
+          ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((safeSubtotal > 0 ? safeSubtotal : safeTotal) * commissionRate / 100 * 100) / 100)
           : 0,
         appliedTaxes,
         items: items.map(item => ({
@@ -550,7 +561,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           tax_included: item.tax_included || false,
           total_line: item.total_line,
           discount_amount: item.discount_amount || 0
-        }))
+        })),
+        serial_selections: serializedItems.length > 0 ? serialSelections : undefined
       };
       await onSubmit(datosFactura);
       return;
@@ -607,7 +619,37 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       // Verificar si alguna promesa tuvo error
       const saleItemsError = saleItemsResults.find(result => result.error);
       if (saleItemsError) throw saleItemsError.error;
-      
+
+      // 2.5. Vender seriales si hay productos serializados con seriales seleccionados
+      // (mismo flujo que el POS: serialTrackingService.sellSerials por cada producto)
+      if (serializedItems.length > 0 && serialSelections) {
+        try {
+          for (const item of serializedItems) {
+            const serialIds = serialSelections[item.product_id as number];
+            if (!serialIds || serialIds.length === 0) continue;
+
+            const { success: serialOk, errors: serialErrors } = await serialTrackingService.sellSerials(
+              serialIds,
+              {
+                sale_id: saleData.id,
+                customer_id: selectedCustomerId || undefined,
+                sold_by_user_id: currentUserId,
+                sale_channel: 'invoice',
+                price_at_sale: item.unit_price,
+                branch_id: branchId,
+              },
+              currentUserId
+            );
+
+            if (!serialOk) {
+              console.warn(`⚠️ Errores vendiendo seriales para producto ${item.product_id}:`, serialErrors);
+            }
+          }
+        } catch (serialError) {
+          console.warn('⚠️ Error vendiendo seriales (no bloquea la factura):', serialError);
+        }
+      }
+
       // 3. Crear objeto de factura con el sale_id
       const invoice: Invoice = {
         organization_id: Number(organizationId),
@@ -632,7 +674,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       
       // Añadir campos de comisión al insert
       const commissionAmountCalc = salespersonId && commissionRate > 0
-        ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((subtotal > 0 ? subtotal : total) * commissionRate / 100 * 100) / 100)
+        ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((safeSubtotal > 0 ? safeSubtotal : safeTotal) * commissionRate / 100 * 100) / 100)
         : 0;
       const invoiceWithCommission = {
         ...invoice,
@@ -677,11 +719,33 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       }));
 
       // 6. Guardar ítems de factura
+      // Si el insert falla por RLS o constraints, la factura queda sin items ni totales
+      // (causa raiz del bug de facturas con total=0). El fallback fn_sync_invoice_items_from_sale
+      // copia desde sale_items via RPC (SECURITY DEFINER, bypassa RLS) y el trigger
+      // fn_recalc_invoice_totals recalcula subtotal/total/balance automaticamente.
       const { error: itemsError } = await supabase
         .from('invoice_items')
         .insert(invoiceItemsToInsert);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.warn('Insert directo de invoice_items falló, sincronizando desde sale_items:', itemsError);
+        const { data: syncedCount, error: syncError } = await supabase
+          .rpc('fn_sync_invoice_items_from_sale', { p_invoice_id: invoiceData.id });
+        if (syncError) throw syncError;
+        if (!syncedCount || syncedCount === 0) throw itemsError;
+      } else {
+        // Verificar que los items se insertaron realmente (RLS puede filtrar silenciosamente)
+        const { count } = await supabase
+          .from('invoice_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('invoice_sales_id', invoiceData.id);
+        if (!count || count === 0) {
+          console.warn('invoice_items no se insertaron (posible RLS), sincronizando desde sale_items');
+          const { error: syncError } = await supabase
+            .rpc('fn_sync_invoice_items_from_sale', { p_invoice_id: invoiceData.id });
+          if (syncError) throw syncError;
+        }
+      }
       
       // 6.5. Guardar impuestos aplicados en invoice_applied_taxes
       const appliedTaxCodes = Object.keys(appliedTaxes).filter(code => appliedTaxes[code]);
@@ -750,11 +814,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             .map((f: any) => `${f.product_name}: necesita ${f.required}, hay ${f.available}`)
             .join(' | ');
 
-          toast({
-            title: 'Guardada, pero sin existencias para emitir',
-            description: `${detalle}. Repon el inventario antes de emitirla.`,
-            variant: 'destructive',
-          });
+          toastError('Guardada, pero sin existencias para emitir', `${detalle}. Repon el inventario antes de emitirla.`);
         }
       } catch (stockCheckError) {
         console.warn('No se pudo verificar el stock de la factura guardada:', stockCheckError);
@@ -769,29 +829,16 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           );
           
           if (result.success) {
-            toast({
-              title: "Factura creada y enviada a DIAN",
-              description: `La factura ${invoiceNumber} se ha creado y enviado para validación electrónica.`,
-            });
+            toastSuccess("Factura creada y enviada a DIAN", `La factura ${invoiceNumber} se ha creado y enviado para validación electrónica.`);
           } else {
-            toast({
-              title: "Factura creada",
-              description: `La factura se creó pero hubo un error al enviar a DIAN: ${result.error}`,
-              variant: "destructive",
-            });
+            toastError("Factura creada", `La factura se creó pero hubo un error al enviar a DIAN: ${result.error}`);
           }
         } catch (eInvoiceError) {
           console.error('Error al enviar a Factus:', eInvoiceError);
-          toast({
-            title: "Factura creada",
-            description: "La factura se creó correctamente pero no se pudo enviar a DIAN. Puede intentarlo desde el detalle de la factura.",
-          });
+          toastSuccess("Factura creada", "La factura se creó correctamente pero no se pudo enviar a DIAN. Puede intentarlo desde el detalle de la factura.");
         }
       } else {
-        toast({
-          title: "Éxito",
-          description: "La factura se ha creado correctamente.",
-        });
+        toastSuccess("Éxito", "La factura se ha creado correctamente.");
       }
       
       // Redireccionar a la vista de la factura
@@ -799,11 +846,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       
     } catch (error) {
       console.error('Error al guardar la factura:', error);
-      toast({
-        title: "Error",
-        description: `Ocurrió un error al guardar la factura: ${JSON.stringify(error)}`,
-        variant: "destructive",
-      });
+      toastError("Error", `Ocurrió un error al guardar la factura: ${JSON.stringify(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -956,11 +999,14 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
           Items de la Factura
         </h3>
-        <ItemsFactura 
-          items={items} 
+        <ItemsFactura
+          items={items}
           onItemsChange={handleItemsChange}
           taxIncluded={taxIncluded}
           branchId={branchId}
+          organizationId={organizationId ? Number(organizationId) : undefined}
+          serialSelections={serialSelections}
+          onSerialSelectionsChange={setSerialSelections}
         />
       </div>
       
@@ -1224,7 +1270,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
               </span>
               <span className="font-semibold text-blue-700 dark:text-blue-400">
                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: currency || 'COP' }).format(
-                  commissionMethod === 'fixed_amount' ? commissionRate : (subtotal > 0 ? subtotal : total) * commissionRate / 100
+                  commissionMethod === 'fixed_amount' ? commissionRate : (itemsSubtotalForCommission > 0 ? itemsSubtotalForCommission : itemsTotalForCommission) * commissionRate / 100
                 )}
               </span>
             </div>

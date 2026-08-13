@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CloudOff, CloudCheck, RefreshCw } from 'lucide-react';
+import { CloudOff, RefreshCw } from 'lucide-react';
+import { isMobile, getMobilePlugin } from '@/lib/utils/mobile';
 
 /**
- * Indicador de estado offline/online para el app de escritorio.
- * Se renderiza solo cuando se detecta el bridge de Electron.
+ * Indicador de estado offline/online para desktop (Electron) y móvil (Capacitor).
+ * En desktop se detecta via window.goAdminDesktop; en móvil via isMobile().
  */
 export function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState(true);
@@ -14,8 +15,11 @@ export function OfflineIndicator() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    // Solo activar en desktop app
-    if (typeof window === 'undefined' || !('goAdminDesktop' in window)) return;
+    // Solo activar en desktop app o móvil nativo
+    if (typeof window === 'undefined') return;
+    const isDesktopApp = 'goAdminDesktop' in window;
+    const isMobileApp = isMobile();
+    if (!isDesktopApp && !isMobileApp) return;
 
     const checkQueue = async () => {
       try {
@@ -56,6 +60,25 @@ export function OfflineIndicator() {
     if (!navigator.onLine) setShowBanner(true);
     checkQueue();
 
+    // En móvil, usar Network plugin de Capacitor para detección precisa
+    let networkCleanup: (() => void) | undefined;
+    if (isMobileApp) {
+      const network = getMobilePlugin('Network');
+      if (network?.getStatus && network?.addListener) {
+        network.getStatus().then((status) => {
+          setIsOnline(status.connected);
+          if (!status.connected) setShowBanner(true);
+        }).catch(() => { /* silencioso */ });
+        network.addListener('networkStatusChange', (status) => {
+          if (status.connected) {
+            handleOnline();
+          } else {
+            handleOffline();
+          }
+        }).catch(() => { /* silencioso */ });
+      }
+    }
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('goadmin:action-queued', handleActionQueued);
@@ -66,6 +89,7 @@ export function OfflineIndicator() {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('goadmin:action-queued', handleActionQueued);
       window.removeEventListener('goadmin:offline-synced', handleSynced);
+      networkCleanup?.();
     };
   }, []);
 

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { PhoneInput } from '@/components/ui/phone-input';
 import {
   Select,
   SelectContent,
@@ -402,11 +403,11 @@ export function TicketDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Teléfono</Label>
-                <Input
+                <PhoneInput
                   id="phone"
                   value={formData.passenger_phone}
-                  onChange={(e) => setFormData((p) => ({ ...p, passenger_phone: e.target.value }))}
-                  placeholder="3001234567"
+                  onChange={(v) => setFormData((p) => ({ ...p, passenger_phone: v }))}
+                  placeholder="300 123 4567"
                 />
               </div>
               <div className="space-y-2">

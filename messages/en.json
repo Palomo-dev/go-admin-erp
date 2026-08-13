@@ -283,6 +283,16 @@
     "errorLoadingDashboard": "Could not load dashboard data",
     "markShift": "Clock In/Out",
     "quickAccess": "Quick Access",
+    "salesTrend": "Sales Trend (30 days)",
+    "noSalesData": "No sales in the selected period",
+    "welcome": "Hello{userName}",
+    "welcomeSub": "You have {pending} pending tasks today",
+    "welcomeSubNoPending": "All up to date. Great job.",
+    "attentionRequired": "Requires attention today",
+    "noAlerts": "No critical alerts. Everything is in order.",
+    "vsPreviousPeriod": "vs previous period",
+    "compactMode": "Compact",
+    "expandedMode": "Expanded",
     "errors": {
       "moduleNotActivated": "The requested module is not activated.",
       "insufficientPermissions": "You do not have sufficient permissions.",
@@ -331,7 +341,13 @@
       "hoursAgo": "{hours}h ago",
       "daysAgo": "{days}d ago",
       "saleCompleted": "Sale completed",
-      "saleStatus": "Sale {status}"
+      "saleStatus": "Sale {status}",
+      "filterAll": "All",
+      "filterPos": "POS",
+      "filterFinance": "Finance",
+      "filterCrm": "CRM",
+      "filterInventory": "Inventory",
+      "filterPms": "PMS"
     },
     "onboarding": {
       "title": "Getting started",

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrder, type PurchaseOrderStats } from '@/lib/services/purchaseOrderService';
 import { describeSkippedItems } from '@/lib/services/stockMovementService';
@@ -28,7 +28,6 @@ import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkel
 
 export default function OrdenesCompraPage() {
   const router = useRouter();
-  const { toast } = useToast();
 
   // Estados
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -74,15 +73,11 @@ export default function OrdenesCompraPage() {
       setBranches(branchesData);
     } catch (error: any) {
       console.error('Error cargando datos:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudieron cargar las órdenes de compra'
-      });
+      toastError('Error', error?.message || 'No se pudieron cargar las órdenes de compra');
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, supplierFilter, branchFilter, toast]);
+  }, [statusFilter, supplierFilter, branchFilter]);
 
   useEffect(() => {
     loadData();
@@ -107,20 +102,13 @@ export default function OrdenesCompraPage() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Orden duplicada',
-        description: 'La orden de compra ha sido duplicada correctamente'
-      });
+      toastSuccess('Orden duplicada', 'La orden de compra ha sido duplicada correctamente');
 
       if (data) {
         router.push(`/app/inventario/ordenes-compra/${data.uuid}/editar`);
       }
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo duplicar la orden'
-      });
+      toastError('Error', error?.message || 'No se pudo duplicar la orden');
     }
   };
 
@@ -138,20 +126,13 @@ export default function OrdenesCompraPage() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Orden eliminada',
-        description: 'La orden de compra ha sido eliminada correctamente'
-      });
+      toastSuccess('Orden eliminada', 'La orden de compra ha sido eliminada correctamente');
 
       setOrders(orders.filter(o => o.uuid !== orderToDelete));
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo eliminar la orden'
-      });
+      toastError('Error', error?.message || 'No se pudo eliminar la orden');
     }
   };
 
@@ -167,25 +148,17 @@ export default function OrdenesCompraPage() {
 
         if (error) throw error;
 
-        toast({
-          title: 'Orden recibida',
-          description: 'Se recibio el pendiente y se sumo al stock de la sucursal'
-        });
+        toastSuccess('Orden recibida', 'Se recibio el pendiente y se sumo al stock de la sucursal');
 
         if (stock?.skippedItems.length) {
-          toast({
-            variant: 'destructive',
-            title: `${stock.skippedItems.length} item(s) no afectaron el inventario`,
-            description: describeSkippedItems(stock.skippedItems)
-          });
+          toastError(
+            `${stock.skippedItems.length} item(s) no afectaron el inventario`,
+            describeSkippedItems(stock.skippedItems)
+          );
         }
 
         if (stock?.errors.length) {
-          toast({
-            variant: 'destructive',
-            title: 'Errores al sumar stock',
-            description: stock.errors.join('; ')
-          });
+          toastError('Errores al sumar stock', stock.errors.join('; '));
         }
 
         loadData();
@@ -201,18 +174,11 @@ export default function OrdenesCompraPage() {
         cancelled: 'cancelada'
       };
 
-      toast({
-        title: 'Estado actualizado',
-        description: `La orden ha sido ${statusLabels[newStatus]}`
-      });
+      toastSuccess('Estado actualizado', `La orden ha sido ${statusLabels[newStatus]}`);
 
       loadData();
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo actualizar el estado'
-      });
+      toastError('Error', error?.message || 'No se pudo actualizar el estado');
     }
   };
 

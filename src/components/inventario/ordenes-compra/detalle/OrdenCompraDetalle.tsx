@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useToast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderWithItems } from '@/lib/services/purchaseOrderService';
 import { describeSkippedItems } from '@/lib/services/stockMovementService';
@@ -67,7 +67,6 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 
 export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const router = useRouter();
-  const { toast } = useToast();
 
   // Estados
   const [order, setOrder] = useState<PurchaseOrderWithItems | null>(null);
@@ -92,11 +91,7 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
 
       if (error) throw error;
       if (!data) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Orden de compra no encontrada'
-        });
+        toastError('Error', 'Orden de compra no encontrada');
         router.push('/app/inventario/ordenes-compra');
         return;
       }
@@ -138,16 +133,12 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
       }
     } catch (error: any) {
       console.error('Error cargando orden:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo cargar la orden'
-      });
+      toastError('Error', error?.message || 'No se pudo cargar la orden');
       router.push('/app/inventario/ordenes-compra');
     } finally {
       setIsLoading(false);
     }
-  }, [orderUuid, router, toast]);
+  }, [orderUuid, router]);
 
   useEffect(() => {
     loadData();
@@ -169,18 +160,11 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
         cancelled: 'cancelada'
       };
 
-      toast({
-        title: 'Estado actualizado',
-        description: `La orden ha sido ${statusLabels[newStatus]}`
-      });
+      toastSuccess('Estado actualizado', `La orden ha sido ${statusLabels[newStatus]}`);
 
       loadData();
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo actualizar el estado'
-      });
+      toastError('Error', error?.message || 'No se pudo actualizar el estado');
     } finally {
       setIsProcessing(false);
     }
@@ -196,20 +180,13 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
 
       if (error) throw error;
 
-      toast({
-        title: 'Orden duplicada',
-        description: 'La orden de compra ha sido duplicada correctamente'
-      });
+      toastSuccess('Orden duplicada', 'La orden de compra ha sido duplicada correctamente');
 
       if (data) {
         router.push(`/app/inventario/ordenes-compra/${data.uuid}/editar`);
       }
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo duplicar la orden'
-      });
+      toastError('Error', error?.message || 'No se pudo duplicar la orden');
     } finally {
       setIsProcessing(false);
     }
@@ -236,37 +213,25 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
 
       if (error) throw error;
 
-      toast({
-        title: 'Recepción registrada',
-        description: 'Las cantidades recibidas han sido actualizadas y sumadas al stock'
-      });
+      toastSuccess('Recepción registrada', 'Las cantidades recibidas han sido actualizadas y sumadas al stock');
 
       // Recibir sin mover inventario es el fallo silencioso que mas confunde:
       // la orden queda "recibida" pero el stock no cambia. Hay que decirlo.
       if (stock?.skippedItems.length) {
-        toast({
-          variant: 'destructive',
-          title: `${stock.skippedItems.length} item(s) no afectaron el inventario`,
-          description: describeSkippedItems(stock.skippedItems)
-        });
+        toastError(
+          `${stock.skippedItems.length} item(s) no afectaron el inventario`,
+          describeSkippedItems(stock.skippedItems)
+        );
       }
 
       if (stock?.errors.length) {
-        toast({
-          variant: 'destructive',
-          title: 'Errores al sumar stock',
-          description: stock.errors.join('; ')
-        });
+        toastError('Errores al sumar stock', stock.errors.join('; '));
       }
 
       setShowReceiveDialog(false);
       loadData();
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo registrar la recepción'
-      });
+      toastError('Error', error?.message || 'No se pudo registrar la recepción');
     } finally {
       setIsProcessing(false);
     }

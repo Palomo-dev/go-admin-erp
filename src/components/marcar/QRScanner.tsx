@@ -5,6 +5,7 @@ import { Camera, CameraOff, SwitchCamera, Loader2 } from 'lucide-react';
 import jsQR from 'jsqr';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isMobile, getMobilePlugin } from '@/lib/utils/mobile';
 
 interface QRScannerProps {
   onScan: (data: string) => void;
@@ -37,6 +38,22 @@ export function QRScanner({ onScan, isProcessing }: QRScannerProps) {
     try {
       setError(null);
       stopCamera();
+
+      // Rama móvil (Capacitor): usar BarcodeScanner nativo
+      if (isMobile()) {
+        const scanner = getMobilePlugin('BarcodeScanner');
+        if (scanner?.scan) {
+          setHasPermission(true);
+          setIsScanning(true);
+          const result = await scanner.scan();
+          if (result?.barcode) {
+            onScan(result.barcode);
+          }
+          setIsScanning(false);
+          return;
+        }
+        // Si plugin no disponible, caer al flujo web
+      }
 
       const constraints: MediaStreamConstraints = {
         video: {

@@ -71,7 +71,7 @@
       "terms": "Conditions d'utilisation",
       "and": "et",
       "privacy": "Politique de confidentialité",
-      "phoneDigitsOnly": "Le téléphone ne doit contenir que des chiffres",
+      "phoneDigitsOnly": "Format de téléphone invalide",
       "profilePhoto": "Photo de profil",
       "uploadPhoto": "Télécharger une photo",
       "acceptInvitation": "Accepter l'invitation",

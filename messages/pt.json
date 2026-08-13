@@ -71,7 +71,7 @@
       "terms": "Termos de serviço",
       "and": "e",
       "privacy": "Política de privacidade",
-      "phoneDigitsOnly": "O telefone deve conter apenas dígitos",
+      "phoneDigitsOnly": "Formato de telefone inválido",
       "profilePhoto": "Foto de perfil",
       "uploadPhoto": "Enviar foto",
       "acceptInvitation": "Aceitar convite",

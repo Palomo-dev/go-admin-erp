@@ -29,6 +29,7 @@ import {
   FileUp
 } from 'lucide-react';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
 interface ParsedSupplier extends SupplierInput {
   rowNumber: number;
@@ -51,8 +52,8 @@ export function ImportarProveedores() {
 
   // Descargar plantilla
   const handleDownloadTemplate = () => {
-    const headers = ['Nombre', 'NIT', 'Contacto', 'Telefono', 'Email', 'Notas'];
-    const exampleRow = ['Proveedor Ejemplo S.A.S', '900123456-7', 'Juan Pérez', '3001234567', 'proveedor@ejemplo.com', 'Notas adicionales'];
+    const headers = ['Nombre', 'Tipo', 'NIT', 'Tipo Doc', 'Contacto', 'Teléfono', 'Email', 'Descripción', 'Dirección', 'Ciudad', 'Departamento', 'País', 'Código Postal', 'Tax ID', 'Régimen Tributario', 'Responsabilidades Fiscales', 'Términos de Pago', 'Días Crédito', 'Sitio Web', 'Activo', 'Rating', 'Banco', 'Cuenta Bancaria', 'Tipo Cuenta', 'Notas'];
+    const exampleRow = ['Proveedor Ejemplo S.A.S', 'company', '900123456-7', 'NIT', 'Juan Pérez', '3001234567', 'proveedor@ejemplo.com', 'Distribuidor mayorista', 'Calle 123 #45-67', 'Bogotá', 'Cundinamarca', 'Colombia', '110111', '900123456-7', 'Común', 'R-99-PA;R-00-PN', '30 días', '30', 'https://ejemplo.com', 'Sí', '5', 'Banco de Bogotá', '123456789', 'Ahorros', 'Notas adicionales'];
     
     const csvContent = [
       headers.join(','),
@@ -78,18 +79,90 @@ export function ImportarProveedores() {
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
     const results: ParsedSupplier[] = [];
 
+    const headerIndex = (names: string[]): number => {
+      for (const n of names) {
+        const idx = headers.indexOf(n);
+        if (idx !== -1) return idx;
+      }
+      return -1;
+    };
+
+    const idxNombre = headerIndex(['nombre', 'name']);
+    const idxTipo = headerIndex(['tipo', 'supplier_type', 'tipo de proveedor']);
+    const idxNit = headerIndex(['nit']);
+    const idxTipoDoc = headerIndex(['tipo doc', 'doc_type', 'tipo documento']);
+    const idxContacto = headerIndex(['contacto', 'contact']);
+    const idxTelefono = headerIndex(['teléfono', 'telefono', 'phone']);
+    const idxEmail = headerIndex(['email', 'correo']);
+    const idxDescripcion = headerIndex(['descripción', 'descripcion', 'description']);
+    const idxDireccion = headerIndex(['dirección', 'direccion', 'address']);
+    const idxCiudad = headerIndex(['ciudad', 'city']);
+    const idxDepartamento = headerIndex(['departamento', 'state']);
+    const idxPais = headerIndex(['país', 'pais', 'country']);
+    const idxCodigoPostal = headerIndex(['código postal', 'codigo postal', 'postal_code']);
+    const idxTaxId = headerIndex(['tax id', 'tax_id']);
+    const idxRegimen = headerIndex(['régimen tributario', 'regimen tributario', 'tax_regime']);
+    const idxRespFiscales = headerIndex(['responsabilidades fiscales', 'fiscal_responsibilities']);
+    const idxTerminosPago = headerIndex(['términos de pago', 'terminos de pago', 'payment_terms']);
+    const idxDiasCredito = headerIndex(['días crédito', 'dias credito', 'credit_days']);
+    const idxSitioWeb = headerIndex(['sitio web', 'website']);
+    const idxActivo = headerIndex(['activo', 'is_active']);
+    const idxRating = headerIndex(['rating']);
+    const idxBanco = headerIndex(['banco', 'bank_name']);
+    const idxCuentaBancaria = headerIndex(['cuenta bancaria', 'bank_account']);
+    const idxTipoCuenta = headerIndex(['tipo cuenta', 'account_type']);
+    const idxNotas = headerIndex(['notas', 'notes']);
+
+    const getVal = (values: string[], idx: number): string => idx !== -1 ? (values[idx] || '') : '';
+
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
       const cleanValues = values.map(v => v.replace(/^"|"$/g, '').trim());
 
+      const supplierTypeRaw = getVal(cleanValues, idxTipo).toLowerCase();
+      const supplierType = supplierTypeRaw === 'person' || supplierTypeRaw === 'company'
+        ? (supplierTypeRaw as 'person' | 'company')
+        : undefined;
+
+      const creditDaysRaw = getVal(cleanValues, idxDiasCredito);
+      const creditDays = creditDaysRaw ? Number(creditDaysRaw) : undefined;
+
+      const ratingRaw = getVal(cleanValues, idxRating);
+      const rating = ratingRaw ? Number(ratingRaw) : undefined;
+
+      const activoRaw = getVal(cleanValues, idxActivo).toLowerCase();
+      const isActive = activoRaw === 'sí' || activoRaw === 'si' || activoRaw === 'true' || activoRaw === '1';
+
+      const respFiscalesRaw = getVal(cleanValues, idxRespFiscales);
+      const fiscalResponsibilities = respFiscalesRaw
+        ? respFiscalesRaw.split(';').map(r => r.trim()).filter(Boolean)
+        : undefined;
+
       const supplier: ParsedSupplier = {
         rowNumber: i + 1,
-        name: cleanValues[0] || '',
-        nit: cleanValues[1] || '',
-        contact: cleanValues[2] || '',
-        phone: cleanValues[3] || '',
-        email: cleanValues[4] || '',
-        notes: cleanValues[5] || '',
+        name: getVal(cleanValues, idxNombre),
+        supplier_type: supplierType,
+        nit: getVal(cleanValues, idxNit) || undefined,
+        doc_type: getVal(cleanValues, idxTipoDoc) || undefined,
+        contact: getVal(cleanValues, idxContacto) || undefined,
+        phone: getVal(cleanValues, idxTelefono) || undefined,
+        email: getVal(cleanValues, idxEmail) || undefined,
+        description: getVal(cleanValues, idxDescripcion) || undefined,
+        address: getVal(cleanValues, idxDireccion) || undefined,
+        city: getVal(cleanValues, idxCiudad) || undefined,
+        state: getVal(cleanValues, idxDepartamento) || undefined,
+        country: getVal(cleanValues, idxPais) || undefined,
+        postal_code: getVal(cleanValues, idxCodigoPostal) || undefined,
+        tax_id: getVal(cleanValues, idxTaxId) || undefined,
+        tax_regime: getVal(cleanValues, idxRegimen) || undefined,
+        fiscal_responsibilities: fiscalResponsibilities,
+        payment_terms: getVal(cleanValues, idxTerminosPago) || undefined,
+        credit_days: !isNaN(creditDays as number) ? creditDays : undefined,
+        website: getVal(cleanValues, idxSitioWeb) || undefined,
+        bank_name: getVal(cleanValues, idxBanco) || undefined,
+        bank_account: getVal(cleanValues, idxCuentaBancaria) || undefined,
+        account_type: getVal(cleanValues, idxTipoCuenta) || undefined,
+        notes: getVal(cleanValues, idxNotas) || undefined,
         isValid: true,
         errors: []
       };
@@ -105,8 +178,106 @@ export function ImportarProveedores() {
         supplier.errors.push('Email inválido');
       }
 
+      if (supplier.supplier_type && supplier.supplier_type !== 'person' && supplier.supplier_type !== 'company') {
+        supplier.isValid = false;
+        supplier.errors.push('Tipo debe ser "person" o "company"');
+      }
+
+      if (supplier.credit_days !== undefined && supplier.credit_days !== null && isNaN(supplier.credit_days)) {
+        supplier.isValid = false;
+        supplier.errors.push('Días Crédito debe ser numérico');
+      }
+
+      // Marcar is_active en el objeto si viene (se omite de SupplierInput pero se usa para validación)
+      void isActive;
+      void rating;
+
       results.push(supplier);
     }
+
+    return results;
+  };
+
+  // Procesar archivo XLSX
+  const parseXLSX = (rows: Record<string, unknown>[]): ParsedSupplier[] => {
+    const results: ParsedSupplier[] = [];
+
+    const getStr = (row: Record<string, unknown>, names: string[]): string => {
+      for (const n of names) {
+        const key = Object.keys(row).find(k => k.toLowerCase().trim() === n);
+        if (key && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+          return String(row[key]).trim();
+        }
+      }
+      return '';
+    };
+
+    rows.forEach((row, i) => {
+      const supplierTypeRaw = getStr(row, ['tipo', 'supplier_type', 'tipo de proveedor']).toLowerCase();
+      const supplierType = supplierTypeRaw === 'person' || supplierTypeRaw === 'company'
+        ? (supplierTypeRaw as 'person' | 'company')
+        : undefined;
+
+      const creditDaysRaw = getStr(row, ['días crédito', 'dias credito', 'credit_days']);
+      const creditDays = creditDaysRaw ? Number(creditDaysRaw) : undefined;
+
+      const respFiscalesRaw = getStr(row, ['responsabilidades fiscales', 'fiscal_responsibilities']);
+      const fiscalResponsibilities = respFiscalesRaw
+        ? respFiscalesRaw.split(';').map(r => r.trim()).filter(Boolean)
+        : undefined;
+
+      const supplier: ParsedSupplier = {
+        rowNumber: i + 2,
+        name: getStr(row, ['nombre', 'name']),
+        supplier_type: supplierType,
+        nit: getStr(row, ['nit']) || undefined,
+        doc_type: getStr(row, ['tipo doc', 'doc_type', 'tipo documento']) || undefined,
+        contact: getStr(row, ['contacto', 'contact']) || undefined,
+        phone: getStr(row, ['teléfono', 'telefono', 'phone']) || undefined,
+        email: getStr(row, ['email', 'correo']) || undefined,
+        description: getStr(row, ['descripción', 'descripcion', 'description']) || undefined,
+        address: getStr(row, ['dirección', 'direccion', 'address']) || undefined,
+        city: getStr(row, ['ciudad', 'city']) || undefined,
+        state: getStr(row, ['departamento', 'state']) || undefined,
+        country: getStr(row, ['país', 'pais', 'country']) || undefined,
+        postal_code: getStr(row, ['código postal', 'codigo postal', 'postal_code']) || undefined,
+        tax_id: getStr(row, ['tax id', 'tax_id']) || undefined,
+        tax_regime: getStr(row, ['régimen tributario', 'regimen tributario', 'tax_regime']) || undefined,
+        fiscal_responsibilities: fiscalResponsibilities,
+        payment_terms: getStr(row, ['términos de pago', 'terminos de pago', 'payment_terms']) || undefined,
+        credit_days: !isNaN(creditDays as number) ? creditDays : undefined,
+        website: getStr(row, ['sitio web', 'website']) || undefined,
+        bank_name: getStr(row, ['banco', 'bank_name']) || undefined,
+        bank_account: getStr(row, ['cuenta bancaria', 'bank_account']) || undefined,
+        account_type: getStr(row, ['tipo cuenta', 'account_type']) || undefined,
+        notes: getStr(row, ['notas', 'notes']) || undefined,
+        isValid: true,
+        errors: []
+      };
+
+      // Validaciones
+      if (!supplier.name) {
+        supplier.isValid = false;
+        supplier.errors.push('Nombre es requerido');
+      }
+
+      if (supplier.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supplier.email)) {
+        supplier.isValid = false;
+        supplier.errors.push('Email inválido');
+      }
+
+      if (supplier.supplier_type && supplier.supplier_type !== 'person' && supplier.supplier_type !== 'company') {
+        supplier.isValid = false;
+        supplier.errors.push('Tipo debe ser "person" o "company"');
+      }
+
+      if (supplier.credit_days !== undefined && supplier.credit_days !== null && isNaN(supplier.credit_days)) {
+        supplier.isValid = false;
+        supplier.errors.push('Días Crédito debe ser numérico');
+      }
+
+      results.push(supplier);
+    });
 
     return results;
   };
@@ -116,11 +287,14 @@ export function ImportarProveedores() {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith('.csv')) {
+    const isCSV = selectedFile.name.toLowerCase().endsWith('.csv');
+    const isXLSX = selectedFile.name.toLowerCase().endsWith('.xlsx') || selectedFile.name.toLowerCase().endsWith('.xls');
+
+    if (!isCSV && !isXLSX) {
       toast({
         variant: 'destructive',
         title: 'Archivo inválido',
-        description: 'Por favor selecciona un archivo CSV'
+        description: 'Por favor selecciona un archivo CSV o Excel (.xlsx)'
       });
       return;
     }
@@ -130,8 +304,20 @@ export function ImportarProveedores() {
     setImportResults(null);
 
     try {
-      const text = await selectedFile.text();
-      const data = parseCSV(text);
+      let data: ParsedSupplier[] = [];
+
+      if (isXLSX) {
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const wb = XLSX.read(arrayBuffer, { type: 'array' });
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+        data = parseXLSX(rows);
+      } else {
+        const text = await selectedFile.text();
+        data = parseCSV(text);
+      }
+
       setParsedData(data);
 
       if (data.length === 0) {
@@ -172,10 +358,27 @@ export function ImportarProveedores() {
 
       const suppliersToImport: SupplierInput[] = validSuppliers.map(s => ({
         name: s.name,
+        supplier_type: s.supplier_type,
         nit: s.nit,
+        doc_type: s.doc_type,
         contact: s.contact,
         phone: s.phone,
         email: s.email,
+        description: s.description,
+        address: s.address,
+        city: s.city,
+        state: s.state,
+        country: s.country,
+        postal_code: s.postal_code,
+        tax_id: s.tax_id,
+        tax_regime: s.tax_regime,
+        fiscal_responsibilities: s.fiscal_responsibilities,
+        payment_terms: s.payment_terms,
+        credit_days: s.credit_days,
+        website: s.website,
+        bank_name: s.bank_name,
+        bank_account: s.bank_account,
+        account_type: s.account_type,
         notes: s.notes
       }));
 
@@ -236,7 +439,7 @@ export function ImportarProveedores() {
             Importar Proveedores
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Importa proveedores masivamente desde un archivo CSV
+            Importa proveedores masivamente desde un archivo CSV o Excel
           </p>
         </div>
       </div>
@@ -252,7 +455,7 @@ export function ImportarProveedores() {
                 Seleccionar Archivo
               </CardTitle>
               <CardDescription className="dark:text-gray-400">
-                Sube un archivo CSV con los proveedores a importar
+                Sube un archivo CSV o Excel (.xlsx) con los proveedores a importar
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -266,7 +469,7 @@ export function ImportarProveedores() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileSelect}
                   className="hidden"
                   id="csv-upload"
@@ -290,7 +493,7 @@ export function ImportarProveedores() {
                       Arrastra un archivo o haz clic para seleccionar
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Solo archivos CSV
+                      Archivos CSV o Excel (.xlsx)
                     </p>
                   </label>
                 )}

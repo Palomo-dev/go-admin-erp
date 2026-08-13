@@ -291,6 +291,8 @@
     "attentionRequired": "Requires attention today",
     "noAlerts": "No critical alerts. Everything is in order.",
     "vsPreviousPeriod": "vs previous period",
+    "compactMode": "Compact",
+    "expandedMode": "Expanded",
     "errors": {
       "moduleNotActivated": "The requested module is not activated.",
       "insufficientPermissions": "You do not have sufficient permissions.",
@@ -339,7 +341,13 @@
       "hoursAgo": "{hours}h ago",
       "daysAgo": "{days}d ago",
       "saleCompleted": "Sale completed",
-      "saleStatus": "Sale {status}"
+      "saleStatus": "Sale {status}",
+      "filterAll": "All",
+      "filterPos": "POS",
+      "filterFinance": "Finance",
+      "filterCrm": "CRM",
+      "filterInventory": "Inventory",
+      "filterPms": "PMS"
     },
     "onboarding": {
       "title": "Getting started",

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { resetPassword } from '@/lib/supabase/config';
 import { checkAuthProvider, getProviderLabel } from '@/lib/auth';
 import { useTranslations } from 'next-intl';
+import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
 export default function ForgotPasswordPage() {
   const t = useTranslations('auth.forgotPassword');
@@ -127,19 +128,20 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8 relative overflow-hidden">
+      <AuthSceneBackground />
+      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 dark:border-gray-700 z-10">
         <div>
-          <h2 className="mt-2 sm:mt-4 md:mt-6 text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+          <h2 className="mt-2 sm:mt-4 md:mt-6 text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
             {t('title')}
           </h2>
-          <p className="mt-1 sm:mt-2 text-center text-xs sm:text-sm text-gray-600">
+          <p className="mt-1 sm:mt-2 text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
             {t('subtitle')}
           </p>
         </div>
         
         {message && (
-          <div className={`${message.type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'} px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative border`} role="alert">
+          <div className={`${message.type === 'success' ? 'bg-green-100 border-green-400 text-green-700 dark:bg-green-900/30 dark:border-green-500 dark:text-green-300' : 'bg-red-100 border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-500 dark:text-red-300'} px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative border`} role="alert">
             <span className="block sm:inline">{message.text}</span>
           </div>
         )}
@@ -147,7 +149,7 @@ export default function ForgotPasswordPage() {
         <form className="mt-4 sm:mt-6 md:mt-8 space-y-4 sm:space-y-6" onSubmit={handleResetPassword}>
           <div>
             <label htmlFor="email-address" className="sr-only">Correo electrónico</label>
-            <div className="flex items-center border border-blue-300 rounded-md">
+            <div className="flex items-center border border-blue-300 dark:border-gray-600 rounded-md">
               <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                   <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
@@ -160,7 +162,7 @@ export default function ForgotPasswordPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none"
+                className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none"
                 placeholder={t('email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -179,7 +181,7 @@ export default function ForgotPasswordPage() {
           </div>
           
           <div className="text-center">
-            <Link href="/auth/login" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/auth/login" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
               {t('backToLogin')}
             </Link>
           </div>
@@ -187,22 +189,22 @@ export default function ForgotPasswordPage() {
         
         {/* Sección de reenvío de email */}
         {emailSent && (
-          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg border">
+          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border">
             <div className="text-center">
               <div className="mb-2 sm:mb-3">
                 <svg className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1 sm:mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
                 {t('successTitle')}
               </h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
                 Hemos enviado las instrucciones a <strong>{email}</strong>
               </p>
               
               <div className="space-y-2 sm:space-y-3">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   ¿No recibiste el correo? Revisa tu carpeta de spam o correo no deseado.
                 </p>
                 
@@ -211,8 +213,8 @@ export default function ForgotPasswordPage() {
                   disabled={!canResend || loading}
                   className={`w-full py-2 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-colors ${
                     canResend && !loading
-                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                      : 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-200'
+                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 dark:border-gray-500'
+                      : 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-200 dark:bg-gray-700 dark:text-gray-500 dark:border-gray-600'
                   }`}
                 >
                   {loading

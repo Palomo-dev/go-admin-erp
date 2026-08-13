@@ -643,6 +643,36 @@ export const AppLayout = ({
     }
   }, []);
 
+  // Registrar push token en móvil (Capacitor) cuando hay sesión y org
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+
+    const registerPush = async () => {
+      const { isMobile } = await import('@/lib/utils/platform');
+      if (!isMobile() || cancelled) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId || cancelled) return;
+
+      try {
+        const { registerPushToken } = await import('@/lib/services/pushTokenService');
+        await registerPushToken(userId);
+        console.log('✅ [AppLayout] Push token registrado');
+      } catch (e) {
+        console.warn('⚠️ [AppLayout] Error registrando push token:', e);
+      }
+    };
+
+    // Delay para que la sesión esté lista tras login
+    const timer = setTimeout(registerPush, 3000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [orgId]);
+
   // Escuchar evento personalizado para refrescar módulos cuando se activan/desactivan
   useEffect(() => {
     const handleModulesRefresh = (event: Event) => {

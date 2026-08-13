@@ -3,6 +3,7 @@ import { Branch, BranchFormData, OpeningHours, BranchFeatures } from '@/types/br
 import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon, UserIcon } from '@heroicons/react/24/outline';
 import { ManagerSelector } from './ManagerSelector';
 import LocationSelector from '../common/LocationSelector';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 type BranchFormProps = {
   initialData?: Partial<Branch>;
@@ -222,7 +223,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 onChange={handleChange}
                 required
                 placeholder="Nombre de la sucursal"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
+                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
               />
             </div>
             <div>
@@ -254,7 +255,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                 value={form.address}
                 onChange={handleChange}
                 placeholder="Dirección completa"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
+                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
               />
             </div>
             <LocationSelector
@@ -286,7 +287,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.postal_code}
                   onChange={handleChange}
                   placeholder="Código postal"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
+                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
                 />
               </div>
             </div>
@@ -302,19 +303,13 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">
-                  <PhoneIcon className="h-4 w-4" />
-                </span>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  placeholder="+57 300 123 4567"
-                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
-                />
-              </div>
+              <PhoneInput
+                name="phone"
+                value={form.phone}
+                onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}
+                placeholder="300 123 4567"
+                inputClassName="focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300 h-10"
+              />
             </div>
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
@@ -328,7 +323,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                   value={form.email}
                   onChange={handleChange}
                   placeholder="sucursal@empresa.com"
-                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-white dark:text-gray-900 dark:border-gray-300"
+                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
                 />
               </div>
             </div>
@@ -417,7 +412,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                             value={dayHours.open || '09:00'}
                             onChange={(e) => handleHoursChange(day, 'open', e.target.value)}
                             disabled={dayHours.closed}
-                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-white dark:text-gray-900 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
+                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
                           />
                         </td>
                         <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}`}>
@@ -426,7 +421,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                             value={dayHours.close || '18:00'}
                             onChange={(e) => handleHoursChange(day, 'close', e.target.value)}
                             disabled={dayHours.closed}
-                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-white dark:text-gray-900 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
+                            className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
                           />
                         </td>
                       </tr>

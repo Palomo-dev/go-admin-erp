@@ -37,7 +37,8 @@ export interface AlertaDashboard {
 
 export interface ActividadReciente {
   id: string;
-  tipo: 'venta' | 'factura' | 'cliente' | 'producto' | 'reserva';
+  tipo: 'venta' | 'factura' | 'cliente' | 'producto' | 'reserva' | 'stock';
+  modulo: 'pos' | 'finance' | 'crm' | 'inventory' | 'pms_hotel';
   descripcion: string;
   monto?: number;
   fecha: string;
@@ -147,6 +148,10 @@ export const inicioService = {
       reservasRes,
       cuentasRes,
       actividadVentas,
+      actividadFacturasRes,
+      actividadClientesRes,
+      actividadStockRes,
+      actividadReservasRes,
       orgRes,
       branchesRes,
       membersRes,
@@ -220,10 +225,38 @@ export const inicioService = {
         .select('balance')
         .eq('organization_id', organizationId)
         .in('status', ['overdue', 'current', 'partial']),
-      // Actividad reciente (últimas ventas)
+      // Actividad reciente (últimas ventas POS)
       supabase
         .from('sales')
         .select('id, total, sale_date, status')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      // Actividad: facturas emitidas recientes
+      supabase
+        .from('invoice_sales')
+        .select('id, total, number, issue_date, status')
+        .eq('organization_id', organizationId)
+        .order('issue_date', { ascending: false })
+        .limit(5),
+      // Actividad: clientes nuevos recientes
+      supabase
+        .from('customers')
+        .select('id, full_name, created_at')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      // Actividad: movimientos de stock recientes
+      supabase
+        .from('stock_movements')
+        .select('id, direction, qty, source, note, created_at, products(name)')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      // Actividad: reservas recientes
+      supabase
+        .from('reservations')
+        .select('id, status, created_at')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(5),
@@ -309,14 +342,71 @@ export const inicioService = {
       facturasAnterior,
     };
 
-    // Actividad reciente
-    const actividad: ActividadReciente[] = (actividadVentas.data || []).map((v) => ({
-      id: v.id,
-      tipo: 'venta' as const,
-      descripcion: `Venta ${v.status === 'paid' ? 'completada' : v.status}`,
-      monto: Number(v.total),
-      fecha: v.sale_date,
-    }));
+    // Actividad reciente — consolidar ventas, facturas, clientes, stock y reservas
+    const actividad: ActividadReciente[] = [];
+
+    // Ventas POS
+    (actividadVentas.data || []).forEach((v) => {
+      actividad.push({
+        id: `venta-${v.id}`,
+        tipo: 'venta',
+        modulo: 'pos',
+        descripcion: `Venta ${v.status === 'paid' ? 'completada' : v.status}`,
+        monto: Number(v.total),
+        fecha: v.sale_date,
+      });
+    });
+
+    // Facturas emitidas
+    (actividadFacturasRes.data || []).forEach((f) => {
+      actividad.push({
+        id: `factura-${f.id}`,
+        tipo: 'factura',
+        modulo: 'finance',
+        descripcion: `Factura ${f.number || ''} ${f.status === 'paid' ? 'pagada' : f.status}`,
+        monto: Number(f.total),
+        fecha: f.issue_date,
+      });
+    });
+
+    // Clientes nuevos
+    (actividadClientesRes.data || []).forEach((c) => {
+      actividad.push({
+        id: `cliente-${c.id}`,
+        tipo: 'cliente',
+        modulo: 'crm',
+        descripcion: `Nuevo cliente: ${c.full_name || 'Sin nombre'}`,
+        fecha: c.created_at,
+      });
+    });
+
+    // Movimientos de stock
+    (actividadStockRes.data || []).forEach((s) => {
+      const productName = (s.products as { name?: string } | null)?.name || 'Producto';
+      const dirLabel = s.direction === 'in' ? 'Entrada' : 'Salida';
+      actividad.push({
+        id: `stock-${s.id}`,
+        tipo: 'stock',
+        modulo: 'inventory',
+        descripcion: `${dirLabel} stock: ${productName} (${s.qty})`,
+        fecha: s.created_at,
+      });
+    });
+
+    // Reservas
+    (actividadReservasRes.data || []).forEach((r) => {
+      actividad.push({
+        id: `reserva-${r.id}`,
+        tipo: 'reserva',
+        modulo: 'pms_hotel',
+        descripcion: `Reserva ${r.status}`,
+        fecha: r.created_at,
+      });
+    });
+
+    // Ordenar por fecha descendente y limitar a 15
+    actividad.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    actividad.splice(15);
 
     // Onboarding steps
     const onboarding: OnboardingStep[] = [

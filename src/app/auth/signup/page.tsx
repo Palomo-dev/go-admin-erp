@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase/config';
 import { extractGoogleUserNames } from '@/lib/auth/googleAuth';
 import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { useTranslations } from 'next-intl';
+import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
 // Definición de tipos
 interface SignupData {
@@ -772,12 +773,75 @@ function SignupContent() {
   // por el trigger de base de datos 'complete_signup_after_email_verification'
   // que se ejecuta cuando el email es confirmado por Supabase.
 
+  const formCardClass = [
+    currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl',
+    'w-full space-y-3 sm:space-y-5 md:space-y-6',
+    'bg-white dark:bg-gray-800 p-5 pb-20 sm:p-6 sm:pb-8 md:p-8 md:pb-10',
+    'rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative',
+    'border border-gray-100 dark:border-gray-700 my-4 max-h-[88vh] overflow-y-auto',
+    'lg:my-6 lg:max-w-2xl lg:p-8 lg:pb-12 z-10',
+  ].join(' ');
+
   return (
-    <div className="min-h-screen overflow-y-auto flex items-start sm:items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-4 sm:py-6 md:py-10 px-4 sm:px-6 md:px-8 lg:px-10">
-      <div className={`${currentStep === 4 ? 'max-w-3xl' : 'max-w-2xl'} w-full space-y-3 sm:space-y-5 md:space-y-6 bg-white dark:bg-gray-800 p-5 pb-20 sm:p-6 sm:pb-8 md:p-8 md:pb-10 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 dark:border-gray-700 my-4 max-h-[88vh] overflow-y-auto`}>
+    <div className="min-h-screen flex items-stretch justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
+      {/* Fondo decorativo animado: planeta, nubes, cohete, estrellas */}
+      <AuthSceneBackground />
+
+      {/* Panel de branding - solo desktop */}
+      <div className="hidden lg:flex lg:w-2/5 items-center justify-center p-12 relative z-10">
+        <div className="relative z-10 max-w-sm text-white">
+          {/* Logo grande */}
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center bg-white/15 backdrop-blur-sm rounded-2xl p-5 shadow-2xl ring-1 ring-white/20">
+              <div className="flex flex-col items-center justify-center space-y-0.5">
+                <div className="text-4xl font-black text-white tracking-tight leading-none">GO</div>
+                <div className="text-sm font-medium text-blue-100 tracking-wide uppercase">Admin</div>
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl xl:text-4xl font-bold mb-4 leading-tight">
+            {t('pageTitle')}
+          </h1>
+          <p className="text-base xl:text-lg text-blue-100 dark:text-gray-300 mb-8 leading-relaxed">
+            Crea tu cuenta y la de tu organización en pocos minutos.
+          </p>
+          {/* Pasos del proceso */}
+          <ul className="space-y-3 text-blue-50 dark:text-gray-300">
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">1</span>
+              <span className="text-sm">Datos personales</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">2</span>
+              <span className="text-sm">Organización</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">3</span>
+              <span className="text-sm">Sucursal principal</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">4</span>
+              <span className="text-sm">Plan y suscripción</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">5</span>
+              <span className="text-sm">Método de pago</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs font-semibold">6</span>
+              <span className="text-sm">Verificación de email</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Panel del formulario - flota sobre el fondo azul */}
+      <div className="w-full lg:w-3/5 flex items-start sm:items-center justify-center py-4 sm:py-6 md:py-10 px-4 sm:px-6 md:px-8 lg:px-10 lg:h-screen lg:overflow-y-auto lg:py-0 relative z-10">
+
+      <div className={formCardClass}>
         <div className="flex flex-col items-center">
           {/* Logo GO Admin con diseño moderno */}
-          <div className="mb-2 sm:mb-3">
+          <div className="mb-2 sm:mb-3 lg:hidden">
             <div className="relative">
               {/* Círculo decorativo con gradiente de fondo */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-lg blur-sm sm:blur-md opacity-30 animate-pulse"></div>
@@ -864,10 +928,10 @@ function SignupContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1.5">
                 {t('googleWelcome', { name: signupData.firstName })}
               </h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 px-3">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4 px-3">
                 {t('googleLinked')}
               </p>
             </div>
@@ -928,14 +992,15 @@ function SignupContent() {
         )}
         
         {/* Enlace a login */}
-        <div className="text-center mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-gray-100">
-          <p className="text-xs sm:text-sm text-gray-600">
+        <div className="text-center mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-gray-100 dark:border-gray-700">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
             {t('hasAccount')}{' '}
-            <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
               {t('login')}
             </Link>
           </p>
         </div>
+      </div>
       </div>
     </div>
   );

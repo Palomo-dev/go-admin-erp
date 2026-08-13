@@ -302,7 +302,7 @@ export default function ComandasPage() {
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="px-6">
+        <div className="px-3 sm:px-6">
           <FilterBar
             zoneFilter={zoneFilter}
             statusFilter={statusFilter}
@@ -322,7 +322,7 @@ export default function ComandasPage() {
       </div>
 
       {/* Contenido principal */}
-      <div className="px-6 py-6">
+      <div className="px-3 sm:px-6 py-4 sm:py-6">
         {isLoading ? (
           <LoadingState />
         ) : stationTickets.length === 0 ? (
@@ -344,7 +344,7 @@ export default function ComandasPage() {
 
             {/* Paginación */}
             {stationTickets.length > 0 && (
-              <Card className="p-4 mt-6">
+              <Card className="p-3 sm:p-4 mt-4 sm:mt-6">
                 <ComandasPagination
                   currentPage={currentPage}
                   totalPages={totalPages}

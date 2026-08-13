@@ -18,13 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Car, Bike, Truck, LogIn } from 'lucide-react';
+import { Loader2, Car, Bike, Truck, LogIn, Plus } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { EspacioFormDialog } from '@/components/shared/form-dialogs/EspacioFormDialog';
+import { ParkingZone, SpaceType } from '@/components/parking/espacios/types';
 
 interface ParkingSpace {
   id: string;
   label: string;
-  zone?: string;
+  zone?: string | null;
   type: string;
   state: string;
 }
@@ -41,6 +43,10 @@ interface EntryDialogProps {
   availableSpaces: ParkingSpace[];
   initialPlate?: string;
   isLoading?: boolean;
+  organizationId?: number;
+  branchId?: number;
+  zones?: ParkingZone[];
+  onSpaceCreated?: (space: ParkingSpace) => void;
 }
 
 const vehicleTypes = [
@@ -56,12 +62,17 @@ export function EntryDialog({
   availableSpaces,
   initialPlate = '',
   isLoading,
+  organizationId,
+  branchId,
+  zones,
+  onSpaceCreated,
 }: EntryDialogProps) {
   const [vehiclePlate, setVehiclePlate] = useState(initialPlate);
   const [vehicleType, setVehicleType] = useState('car');
   const [selectedSpace, setSelectedSpace] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [espacioDialogOpen, setEspacioDialogOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -170,6 +181,18 @@ export function EntryDialog({
                 No hay espacios disponibles para este tipo de vehículo
               </p>
             )}
+            {branchId && zones && zones.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEspacioDialogOpen(true)}
+                className="w-full border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Espacio
+              </Button>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -213,6 +236,21 @@ export function EntryDialog({
             </Button>
           </DialogFooter>
         </form>
+
+        {organizationId && branchId && zones && (
+          <EspacioFormDialog
+            open={espacioDialogOpen}
+            onOpenChange={setEspacioDialogOpen}
+            organizationId={organizationId}
+            branchId={branchId}
+            zones={zones}
+            defaultType={vehicleType as SpaceType}
+            onCreated={(s) => {
+              onSpaceCreated?.(s);
+              setEspacioDialogOpen(false);
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

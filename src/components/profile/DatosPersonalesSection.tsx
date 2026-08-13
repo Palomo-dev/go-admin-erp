@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { changeLanguage } from '@/i18n/provider';
 import { isValidLocale } from '@/i18n/config';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 interface Profile {
   id: string;
@@ -353,13 +354,12 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Teléfono
             </label>
-            <input
+            <PhoneInput
               id="phone"
-              type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={setPhone}
               disabled={!editing || loading}
-              className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-700/50 disabled:text-gray-500 dark:disabled:text-gray-400"
+              inputClassName="px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-700/50 disabled:text-gray-500 dark:disabled:text-gray-400"
             />
           </div>
           

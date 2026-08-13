@@ -14,8 +14,8 @@ interface PageHeaderProps {
 export function PageHeader({ onRefresh, isLoading, soundEnabled, onToggleSound }: PageHeaderProps) {
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 shadow-sm">
-      <div className="px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="px-3 sm:px-6 py-3 sm:py-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-3">
             <ChefHat className="h-8 w-8 text-blue-600 dark:text-blue-300" />
             <div>
@@ -28,7 +28,7 @@ export function PageHeader({ onRefresh, isLoading, soundEnabled, onToggleSound }
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {onToggleSound && (
               <Button
                 onClick={onToggleSound}
@@ -43,9 +43,10 @@ export function PageHeader({ onRefresh, isLoading, soundEnabled, onToggleSound }
               onClick={onRefresh}
               variant="outline"
               disabled={isLoading}
+              className="shrink-0"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Actualizar
+              <span className="hidden sm:inline">Actualizar</span>
             </Button>
           </div>
         </div>

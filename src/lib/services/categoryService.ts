@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -55,6 +58,21 @@ export interface CategoryStats {
   inactive: number;
   root: number;
   withChildren: number;
+}
+
+export interface CategoryImportRow {
+  name?: string;
+  parent_name?: string;
+  slug?: string;
+  color?: string;
+  icon?: string;
+  description?: string;
+  is_active?: boolean;
+  display_order?: number;
+  station?: string;
+  requires_preparation?: boolean;
+  meta_title?: string;
+  meta_description?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -383,6 +401,212 @@ const categoryService = {
       .eq('uuid', uuid);
 
     if (error) throw error;
+  },
+
+  /** Exporta las categorías a CSV (string) */
+  async exportCategoriesToCSV(organizationId: number): Promise<string> {
+    const categories = await this.getAll(organizationId);
+    const nameById = new Map<number, string>();
+    categories.forEach(c => nameById.set(c.id, c.name));
+
+    const headers = [
+      'Nombre',
+      'Categoría Padre',
+      'Slug',
+      'Color',
+      'Icono',
+      'Descripción',
+      'Activa',
+      'Orden',
+      'Estación',
+      'Requiere Preparación',
+      'Meta Título',
+      'Meta Descripción',
+    ];
+
+    const rows = categories.map(c => [
+      c.name,
+      c.parent_id !== null ? (nameById.get(c.parent_id) || '') : '',
+      c.slug,
+      c.color,
+      c.icon || '',
+      c.description || '',
+      c.is_active ? 'Sí' : 'No',
+      String(c.display_order),
+      c.station || '',
+      c.requires_preparation ? 'Sí' : 'No',
+      c.meta_title || '',
+      c.meta_description || '',
+    ]);
+
+    const escapeCell = (val: string) => `"${String(val).replace(/"/g, '""')}"`;
+    const csvLines = [headers.map(escapeCell).join(',')];
+    rows.forEach(r => csvLines.push(r.map(escapeCell).join(',')));
+
+    return csvLines.join('\n');
+  },
+
+  /** Exporta las categorías a XLSX (Blob) */
+  async exportCategoriesToXLSX(organizationId: number): Promise<Blob> {
+    const categories = await this.getAll(organizationId);
+    const nameById = new Map<number, string>();
+    categories.forEach(c => nameById.set(c.id, c.name));
+
+    const rows = categories.map(c => ({
+      'Nombre': c.name,
+      'Categoría Padre': c.parent_id !== null ? (nameById.get(c.parent_id) || '') : '',
+      'Slug': c.slug,
+      'Color': c.color,
+      'Icono': c.icon || '',
+      'Descripción': c.description || '',
+      'Activa': c.is_active ? 'Sí' : 'No',
+      'Orden': c.display_order,
+      'Estación': c.station || '',
+      'Requiere Preparación': c.requires_preparation ? 'Sí' : 'No',
+      'Meta Título': c.meta_title || '',
+      'Meta Descripción': c.meta_description || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Categorías');
+    const arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    return new Blob([arrayBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+  },
+
+  /** Exporta las categorías a PDF (Blob) */
+  async exportCategoriesToPDF(organizationId: number): Promise<Blob> {
+    const categories = await this.getAll(organizationId);
+    const nameById = new Map<number, string>();
+    categories.forEach(c => nameById.set(c.id, c.name));
+
+    const headers = [
+      'Nombre',
+      'Categoría Padre',
+      'Slug',
+      'Color',
+      'Icono',
+      'Descripción',
+      'Activa',
+      'Orden',
+      'Estación',
+      'Requiere Prep.',
+      'Meta Título',
+      'Meta Descripción',
+    ];
+
+    const body = categories.map(c => [
+      c.name,
+      c.parent_id !== null ? (nameById.get(c.parent_id) || '') : '',
+      c.slug,
+      c.color,
+      c.icon || '',
+      c.description || '',
+      c.is_active ? 'Sí' : 'No',
+      String(c.display_order),
+      c.station || '',
+      c.requires_preparation ? 'Sí' : 'No',
+      c.meta_title || '',
+      c.meta_description || '',
+    ]);
+
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.text('Listado de Categorías', 14, 15);
+    autoTable(doc, {
+      head: [headers],
+      body,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [99, 102, 241] },
+      startY: 22,
+    });
+
+    return doc.output('blob');
+  },
+
+  /** Importa categorías desde un array de filas */
+  async importCategories(
+    organizationId: number,
+    items: CategoryImportRow[]
+  ): Promise<{ success: number; errors: { row: number; error: string }[] }> {
+    const existing = await this.getAll(organizationId);
+    const nameToId = new Map<string, number>();
+    existing.forEach(c => nameToId.set(c.name.toLowerCase(), c.id));
+
+    const sorted = [...items].sort((a, b) => {
+      const aHasParent = a.parent_name ? 1 : 0;
+      const bHasParent = b.parent_name ? 1 : 0;
+      return aHasParent - bHasParent;
+    });
+
+    let success = 0;
+    const errors: { row: number; error: string }[] = [];
+
+    for (let i = 0; i < sorted.length; i++) {
+      const item = sorted[i];
+      const rowNumber = i + 1;
+
+      const name = (item.name || '').trim();
+      if (!name) {
+        errors.push({ row: rowNumber, error: 'El nombre es obligatorio' });
+        continue;
+      }
+
+      let parentId: number | null = null;
+      if (item.parent_name) {
+        const parentName = item.parent_name.trim().toLowerCase();
+        if (nameToId.has(parentName)) {
+          parentId = nameToId.get(parentName)!;
+        } else {
+          errors.push({ row: rowNumber, error: `No se encontró la categoría padre "${item.parent_name}"` });
+          continue;
+        }
+      }
+
+      const slug = item.slug || generateSlug(name);
+      const color = item.color || '#6366f1';
+      const isActive = item.is_active !== undefined ? item.is_active : true;
+      const displayOrder = item.display_order !== undefined ? item.display_order : 0;
+      const requiresPreparation = item.requires_preparation !== undefined ? item.requires_preparation : false;
+
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .insert({
+            organization_id: organizationId,
+            name,
+            slug,
+            parent_id: parentId,
+            rank: 0,
+            icon: item.icon || null,
+            color,
+            description: item.description || null,
+            is_active: isActive,
+            display_order: displayOrder,
+            meta_title: item.meta_title || null,
+            meta_description: item.meta_description || null,
+            metadata: {},
+            station: item.station || null,
+            requires_preparation: requiresPreparation,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          errors.push({ row: rowNumber, error: error.message });
+          continue;
+        }
+
+        nameToId.set(name.toLowerCase(), data.id);
+        success++;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Error al insertar';
+        errors.push({ row: rowNumber, error: message });
+      }
+    }
+
+    return { success, errors };
   },
 };
 

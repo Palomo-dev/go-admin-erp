@@ -149,7 +149,7 @@ export default function AbonadosPage() {
       end_date: new Date(Date.now() + (pass.pass_type?.duration_days || 30) * 24 * 60 * 60 * 1000)
         .toISOString().split('T')[0],
     };
-    setSelectedPass(duplicatedPass as ParkingPass);
+    setSelectedPass(duplicatedPass as unknown as ParkingPass);
     setShowFormDialog(true);
   };
 
@@ -196,7 +196,7 @@ export default function AbonadosPage() {
       end_date: new Date(Date.now() + (pass.pass_type?.duration_days || 30) * 24 * 60 * 60 * 1000)
         .toISOString().split('T')[0],
     };
-    setSelectedPass(renewedPass as ParkingPass);
+    setSelectedPass(renewedPass as unknown as ParkingPass);
     setShowFormDialog(true);
     toast({
       title: 'Renovación de pase',
@@ -333,6 +333,7 @@ export default function AbonadosPage() {
           pass={selectedPass}
           passTypes={passTypes}
           onSuccess={loadData}
+          onPlanCreated={loadData}
         />
       )}
 

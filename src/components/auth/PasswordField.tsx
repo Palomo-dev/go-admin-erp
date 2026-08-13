@@ -32,14 +32,14 @@ export default function PasswordField({
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
           {label}
         </label>
       )}
       
       <div className="relative">
-        <div className={`flex items-center border rounded-md ${
-          error ? 'border-red-300' : 'border-blue-300'
+        <div className={`flex items-center border rounded-md dark:bg-gray-800 ${
+          error ? 'border-red-300 dark:border-red-500' : 'border-blue-300 dark:border-gray-600'
         }`}>
           <span className="pl-3 pr-2 text-blue-500">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -51,14 +51,14 @@ export default function PasswordField({
             name={name}
             type={showPassword ? 'text' : 'password'}
             required={required}
-            className="w-full px-2 py-3 pr-10 focus:outline-none"
+            className="w-full px-2 py-3 pr-10 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
             placeholder={placeholder}
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />
           <button
             type="button"
-            className="absolute right-3 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200"
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? (
@@ -78,12 +78,12 @@ export default function PasswordField({
       </div>
       
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>
       )}
       
       {showStrengthIndicator && value && (
         <div className="mt-2">
-          <div className="text-xs text-gray-600 mb-1">Fortaleza de la contraseña:</div>
+          <div className="text-xs text-gray-600 dark:text-gray-300 mb-1">Fortaleza de la contraseña:</div>
           <div className="flex flex-wrap gap-1">
             {[
               { test: value.length >= 8, label: '8+ caracteres' },
@@ -96,8 +96,8 @@ export default function PasswordField({
                 key={index}
                 className={`text-xs px-2 py-1 rounded ${
                   requirement.test
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-500'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                 }`}
               >
                 {requirement.label}

@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import InvitationWizard from '@/components/auth/InvitationWizard';
 import { useTranslations } from 'next-intl';
+import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
 function InviteContent() {
   const router = useRouter();
@@ -126,10 +127,11 @@ function InviteContent() {
   
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 px-4">
-        <div className="text-center">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black px-4 relative overflow-hidden">
+        <AuthSceneBackground />
+        <div className="text-center relative z-10">
           <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
-          <p className="text-sm sm:text-base text-gray-600">{loadingMessage || t('validating')}</p>
+          <p className="text-sm sm:text-base text-white">{loadingMessage || t('validating')}</p>
         </div>
       </div>
     );
@@ -137,13 +139,14 @@ function InviteContent() {
   
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
-        <div className="bg-white shadow-lg sm:shadow-2xl rounded-lg sm:rounded-xl w-full max-w-md overflow-hidden">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('errorTitle')}</h2>
+      <div className="flex flex-col items-center justify-center min-h-screen p-3 sm:p-4 bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
+        <AuthSceneBackground />
+        <div className="bg-white dark:bg-gray-800 shadow-lg sm:shadow-2xl rounded-lg sm:rounded-xl w-full max-w-md overflow-hidden relative z-10">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">{t('errorTitle')}</h2>
           </div>
           <div className="p-4 sm:p-6">
-            <div className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 mb-3 sm:mb-4">
+            <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-500 p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
@@ -151,20 +154,20 @@ function InviteContent() {
                   </svg>
                 </div>
                 <div className="ml-2 sm:ml-3">
-                  <p className="text-xs sm:text-sm text-red-700">{error}</p>
+                  <p className="text-xs sm:text-sm text-red-700 dark:text-red-300">{error}</p>
                 </div>
               </div>
             </div>
           </div>
-          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t border-gray-200 space-y-2">
-            <button 
-              onClick={() => window.location.reload()} 
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 space-y-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               {tc('retry')}
             </button>
-            <button 
-              onClick={() => router.push('/auth/login')} 
+            <button
+              onClick={() => router.push('/auth/login')}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               {t('goToLogin')}
@@ -189,9 +192,10 @@ function InviteContent() {
   
   // Este caso no debería ocurrir, pero por seguridad
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center">
-        <p className="text-gray-600">{t('settingUp')}</p>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
+      <AuthSceneBackground />
+      <div className="text-center relative z-10">
+        <p className="text-white">{t('settingUp')}</p>
       </div>
     </div>
   );
@@ -203,9 +207,9 @@ function InviteContent() {
 export default function InvitePage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black">
         <div className="text-center">
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-white">Loading...</p>
         </div>
       </div>
     }>

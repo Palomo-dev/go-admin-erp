@@ -26,6 +26,7 @@ import {
   type ExportOrganizationInfo,
 } from '@/lib/services/inicio/dashboardSectionExport';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
+import { ModoCompactoContext } from './DashboardModulos';
 
 export interface ModuloSectionProps {
   /** Código del módulo (ej: 'crm', 'finance') */
@@ -50,6 +51,8 @@ export interface ModuloSectionProps {
   reportesContent?: React.ReactNode;
   /** Si la sección está cargando */
   isLoading?: boolean;
+  /** Modo compacto: muestra solo header inline sin contenido expandido */
+  compacto?: boolean;
 }
 
 export default function ModuloSection({
@@ -64,7 +67,11 @@ export default function ModuloSection({
   children,
   reportesContent,
   isLoading = false,
+  compacto: compactoProp = false,
 }: ModuloSectionProps) {
+  // Consumir modo compacto del context si no se pasa explícitamente
+  const compactoContext = React.useContext(ModoCompactoContext);
+  const compacto = compactoProp || compactoContext;
   const [activeTab, setActiveTab] = useState<'dashboard' | 'reportes'>('dashboard');
   const [isExporting, setIsExporting] = useState<'csv' | 'pdf' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -75,11 +82,16 @@ export default function ModuloSection({
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored !== null) setIsCollapsed(stored === 'true');
+      if (stored !== null) {
+        setIsCollapsed(stored === 'true');
+      } else if (compacto) {
+        // En modo compacto, colapsar por defecto si no hay preferencia guardada
+        setIsCollapsed(true);
+      }
     } catch {
       // ignore
     }
-  }, [STORAGE_KEY]);
+  }, [STORAGE_KEY, compacto]);
 
   const toggleCollapse = useCallback(() => {
     setIsCollapsed((prev) => {
@@ -139,7 +151,10 @@ export default function ModuloSection({
       aria-label={`Sección ${moduleName}`}
     >
       {/* Header de la sección */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <div className={cn(
+        'flex items-center justify-between gap-3',
+        compacto ? 'p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700' : 'flex-col sm:flex-row sm:items-center sm:justify-between mb-4',
+      )}>
         <button
           type="button"
           onClick={toggleCollapse}
@@ -148,10 +163,10 @@ export default function ModuloSection({
           aria-controls={`${moduleCode}-content`}
         >
           <div className={cn('p-2 rounded-lg', accentBg)}>
-            <Icon className={cn('h-5 w-5', accentColor)} />
+            <Icon className={cn(compacto ? 'h-4 w-4' : 'h-5 w-5', accentColor)} />
           </div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 className={cn('font-semibold text-gray-900 dark:text-white', compacto ? 'text-sm' : 'text-lg')}>
               {moduleName}
             </h2>
             <ChevronDown

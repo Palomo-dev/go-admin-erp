@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import FileUpload from '@/components/common/FileUpload';
 import { useTranslations } from 'next-intl';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 interface RegistrationFormProps {
   initialEmail?: string;
@@ -194,7 +195,7 @@ export default function RegistrationForm({
             value={formData.firstName}
             onChange={handleChange}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900 dark:border-gray-600"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
           />
         </div>
         <div>
@@ -208,7 +209,7 @@ export default function RegistrationForm({
             value={formData.lastName}
             onChange={handleChange}
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900 dark:border-gray-600"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
           />
         </div>
       </div>
@@ -227,7 +228,7 @@ export default function RegistrationForm({
           required
           className={`mt-1 block w-full px-3 py-2 border ${
             emailExists || validationErrors.email ? 'border-red-500 dark:border-red-500' : emailChecking ? 'border-yellow-400' : 'border-gray-300 dark:border-gray-600'
-          } rounded-md shadow-sm dark:bg-white dark:text-gray-900 ${
+          } rounded-md shadow-sm dark:bg-gray-700 dark:text-gray-100 ${
             isReadOnlyEmail ? 'bg-gray-50 text-gray-500 dark:bg-gray-100 dark:text-gray-500' : 'focus:outline-none focus:ring-blue-500 focus:border-blue-500'
           }`}
         />
@@ -258,14 +259,14 @@ export default function RegistrationForm({
         <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           {t('phone')} {!isEmployee && `(${tc('optional')})`}
         </label>
-        <input
+        <PhoneInput
           id="phoneNumber"
           name="phoneNumber"
-          type="tel"
           value={formData.phoneNumber}
-          onChange={handleChange}
+          onChange={(v) => setFormData(prev => ({ ...prev, phoneNumber: v }))}
           required={isEmployee}
-          className={`mt-1 block w-full px-3 py-2 border ${validationErrors.phoneNumber ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900`}
+          className={`mt-1 ${validationErrors.phoneNumber ? '[&_button]:border-red-500 [&_input]:border-red-500' : '[&_button]:border-gray-300 [&_input]:border-gray-300'} [&_button]:dark:border-gray-600 [&_input]:dark:border-gray-600`}
+          inputClassName="dark:bg-gray-700 dark:text-gray-100"
         />
         {validationErrors.phoneNumber && (
           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.phoneNumber}</p>
@@ -284,7 +285,7 @@ export default function RegistrationForm({
             value={formData.password}
             onChange={handleChange}
             required
-            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.password ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900`}
+            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.password ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100`}
           />
           <button
             type="button"
@@ -316,7 +317,7 @@ export default function RegistrationForm({
             value={formData.confirmPassword}
             onChange={handleChange}
             required
-            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900`}
+            className={`block w-full px-3 py-2 pr-10 border ${validationErrors.confirmPassword ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100`}
           />
           <button
             type="button"
@@ -372,7 +373,7 @@ export default function RegistrationForm({
           name="preferredLanguage"
           value={formData.preferredLanguage}
           onChange={(e) => setFormData(prev => ({ ...prev, preferredLanguage: e.target.value }))}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:text-gray-900 dark:border-gray-600"
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
         >
           <option value="es">🇪🇸 es - Español</option>
           <option value="en">🇺🇸 en - English</option>

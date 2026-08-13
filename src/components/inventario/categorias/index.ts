@@ -13,3 +13,4 @@ export { CategoriesToolbar } from './CategoriesToolbar';
 export { CategoriesTreeTable } from './CategoriesTreeTable';
 export { CategoriesLoadingSkeleton } from './CategoriesLoadingSkeleton';
 export { DeleteCategoryDialog } from './DeleteCategoryDialog';
+export { ImportCategoriesDialog } from './ImportCategoriesDialog';

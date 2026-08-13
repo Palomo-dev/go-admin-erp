@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { updatePassword, getSession, supabase } from '@/lib/supabase/config';
 import { useTranslations } from 'next-intl';
+import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
 function ResetPasswordContent() {
   const [password, setPassword] = useState('');
@@ -148,19 +149,20 @@ function ResetPasswordContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8 relative overflow-hidden">
+      <AuthSceneBackground />
+      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 dark:border-gray-700 z-10">
         <div>
-          <h2 className="mt-2 sm:mt-4 md:mt-6 text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+          <h2 className="mt-2 sm:mt-4 md:mt-6 text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
             {t('title')}
           </h2>
-          <p className="mt-1 sm:mt-2 text-center text-xs sm:text-sm text-gray-600">
+          <p className="mt-1 sm:mt-2 text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
             {t('subtitle')}
           </p>
         </div>
         
         {message && (
-          <div className={`${message.type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'} px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative border`} role="alert">
+          <div className={`${message.type === 'success' ? 'bg-green-100 border-green-400 text-green-700 dark:bg-green-900/30 dark:border-green-500 dark:text-green-300' : 'bg-red-100 border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-500 dark:text-red-300'} px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative border`} role="alert">
             <span className="block sm:inline">{message.text}</span>
           </div>
         )}
@@ -169,9 +171,9 @@ function ResetPasswordContent() {
           <form className="mt-4 sm:mt-6 md:mt-8 space-y-4 sm:space-y-6" onSubmit={handleResetPassword}>
             <div className="space-y-3 sm:space-y-4">
               <div>
-                <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('newPassword')}</label>
+                <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('newPassword')}</label>
                 <div className="relative">
-                  <div className="flex items-center border border-blue-300 rounded-md">
+                  <div className="flex items-center border border-blue-300 dark:border-gray-600 rounded-md">
                     <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                         <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
@@ -182,14 +184,14 @@ function ResetPasswordContent() {
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       required
-                      className="w-full px-2 py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base focus:outline-none"
+                      className="w-full px-2 py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none"
                       placeholder={t('newPassword')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
                     <button
                       type="button"
-                      className="absolute right-2 sm:right-3 text-gray-400 hover:text-gray-600"
+                      className="absolute right-2 sm:right-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
@@ -224,8 +226,8 @@ function ResetPasswordContent() {
                           key={index}
                           className={`text-xs px-2 py-1 rounded ${
                             requirement.test
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-500'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                           }`}
                         >
                           {requirement.label}
@@ -236,9 +238,9 @@ function ResetPasswordContent() {
                 )}
               </div>
               <div>
-                <label htmlFor="confirm-password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('confirmPassword')}</label>
+                <label htmlFor="confirm-password" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('confirmPassword')}</label>
                 <div className="relative">
-                  <div className="flex items-center border border-blue-300 rounded-md">
+                  <div className="flex items-center border border-blue-300 dark:border-gray-600 rounded-md">
                     <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                         <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
@@ -249,14 +251,14 @@ function ResetPasswordContent() {
                       name="confirm-password"
                       type={showConfirmPassword ? 'text' : 'password'}
                       required
-                      className="w-full px-2 py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base focus:outline-none"
+                      className="w-full px-2 py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none"
                       placeholder={t('confirmPassword')}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                     <button
                       type="button"
-                      className="absolute right-2 sm:right-3 text-gray-400 hover:text-gray-600"
+                      className="absolute right-2 sm:right-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? (
@@ -280,8 +282,8 @@ function ResetPasswordContent() {
                   <div className="mt-2">
                     <div className={`text-xs px-2 py-1 rounded flex items-center ${
                       password === confirmPassword
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                     }`}>
                       {password === confirmPassword ? (
                         <>
@@ -316,14 +318,14 @@ function ResetPasswordContent() {
           </form>
         ) : (
           <div className="mt-4 sm:mt-6 text-center">
-            <Link href="/auth/forgot-password" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/auth/forgot-password" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
               {t('requestNewLink')}
             </Link>
           </div>
         )}
         
         <div className="text-center mt-3 sm:mt-4">
-          <Link href="/auth/login" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500">
+          <Link href="/auth/login" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
             {t('backToLogin')}
           </Link>
         </div>
@@ -335,9 +337,9 @@ function ResetPasswordContent() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black">
         <div className="text-center">
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-white">Loading...</p>
         </div>
       </div>
     }>

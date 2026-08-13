@@ -18,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, ParkingSquare } from 'lucide-react';
+import { Loader2, ParkingSquare, Plus } from 'lucide-react';
 import { ParkingSpace, ParkingZone, SpaceType, SpaceState } from './types';
+import { ZonaFormDialog } from '@/components/shared/form-dialogs/ZonaFormDialog';
 
 interface EspacioDialogProps {
   open: boolean;
@@ -27,6 +28,9 @@ interface EspacioDialogProps {
   space: ParkingSpace | null;
   zones: ParkingZone[];
   onSave: (data: Partial<ParkingSpace>) => Promise<void>;
+  organizationId?: number;
+  branchId?: number;
+  onZoneCreated?: (zone: ParkingZone) => void;
 }
 
 const spaceTypes: { value: SpaceType; label: string }[] = [
@@ -50,12 +54,16 @@ export function EspacioDialog({
   space,
   zones,
   onSave,
+  organizationId,
+  branchId,
+  onZoneCreated,
 }: EspacioDialogProps) {
   const [label, setLabel] = useState('');
   const [type, setType] = useState<SpaceType>('car');
   const [state, setState] = useState<SpaceState>('free');
   const [zoneId, setZoneId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [zonaDialogOpen, setZonaDialogOpen] = useState(false);
 
   const isEditing = !!space;
 
@@ -92,6 +100,7 @@ export function EspacioDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -129,7 +138,19 @@ export function EspacioDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="zone">Zona</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="zone">Zona</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setZonaDialogOpen(true)}
+                className="h-8 text-xs bg-white dark:bg-gray-800"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Crear Zona
+              </Button>
+            </div>
             <Select 
               value={zoneId || '__none__'} 
               onValueChange={(v) => setZoneId(v === '__none__' ? '' : v)}
@@ -146,6 +167,11 @@ export function EspacioDialog({
                 ))}
               </SelectContent>
             </Select>
+            {zones.length === 0 && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                No hay zonas. Crea una con el botón superior.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -180,5 +206,18 @@ export function EspacioDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ZonaFormDialog
+      open={zonaDialogOpen}
+      onOpenChange={setZonaDialogOpen}
+      organizationId={organizationId}
+      branchId={branchId}
+      onCreated={(z) => {
+        onZoneCreated?.(z);
+        setZoneId(z.id);
+        setZonaDialogOpen(false);
+      }}
+    />
+    </>
   );
 }

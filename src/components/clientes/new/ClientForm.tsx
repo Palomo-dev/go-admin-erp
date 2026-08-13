@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/components/ui/use-toast';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { MergeModal } from './MergeModal';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 import LocationSelector, { type LocationData } from '@/components/common/LocationSelector';
@@ -18,6 +19,8 @@ import { cn } from '@/utils/Utils';
 import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera, ChevronDown } from 'lucide-react';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
+import { HabeasDataCheckbox } from '@/components/shared/DianLookupButton';
+import type { DianNormalizedData } from '@/lib/services/dianLookupService';
 
 interface ClientFormProps {
   organizationId: number;
@@ -115,6 +118,9 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [pendingContacts, setPendingContacts] = useState<any[]>([]);
+
+  // Autorizacion de tratamiento de datos (Habeas Data - Ley 1581/2012)
+  const [habeasDataAuth, setHabeasDataAuth] = useState(false);
 
   const [openSections, setOpenSections] = useState({
     personal: true,
@@ -303,6 +309,72 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Autocompletar formulario con datos de DIAN/RUES
+  const handleDianResult = (data: DianNormalizedData) => {
+    const updates: Partial<typeof formData> = {};
+
+    // Si es empresa (NIT), llenar razon social; si es persona, llenar nombres
+    if (customerType === 'company' || formData.documentType === 'tax_id') {
+      if (data.name) updates.companyName = data.name;
+    } else {
+      // Intentar separar nombre completo en first/last name
+      if (data.name) {
+        const partes = data.name.trim().split(/\s+/);
+        if (partes.length >= 2) {
+          updates.firstName = partes[0];
+          updates.lastName = partes.slice(1).join(' ');
+        } else {
+          updates.firstName = data.name;
+        }
+      }
+    }
+
+    if (data.dv) updates.dv = data.dv;
+    if (data.email) updates.email = data.email;
+    if (data.phone) updates.phone = data.phone;
+    if (data.address) updates.address = data.address;
+    if (data.city) {
+      // Actualizar ciudad en locationData si existe
+      setLocationData(prev => ({ ...prev, city: data.city!, state: data.state || prev.state }));
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setFormData(prev => ({ ...prev, ...updates }));
+    }
+
+    // Actualizar responsabilidades fiscales si vienen
+    if (data.fiscalResponsibilities && data.fiscalResponsibilities.length > 0) {
+      setSelectedFiscal(data.fiscalResponsibilities);
+    }
+  };
+
+  // Consultar DIAN/RUES (usada por onBlur y por el boton)
+  const [consultandoDian, setConsultandoDian] = useState(false);
+  const consultarDocumento = async (docNumber?: string) => {
+    const numero = docNumber || formData.documentNumber;
+    if (!numero || numero.length < 4 || !habeasDataAuth) return;
+    setConsultandoDian(true);
+    try {
+      const res = await fetch('/api/dian/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentType: formData.documentType,
+          documentNumber: numero,
+          organizationId,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        handleDianResult(json.data);
+      }
+    } catch (err) {
+      console.error('Error consulta DIAN:', err);
+    } finally {
+      setConsultandoDian(false);
+    }
   };
   
   
@@ -900,13 +972,37 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                   
                   <div className="space-y-2">
                     <Label htmlFor="documentNumber" className="text-sm font-medium">Número de Documento</Label>
-                    <Input 
-                      id="documentNumber" 
-                      name="documentNumber" 
-                      value={formData.documentNumber}
-                      onChange={handleChange}
-                      placeholder="Ej: 12345678"
-                      className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                    <div className="flex gap-2">
+                      <Input
+                        id="documentNumber"
+                        name="documentNumber"
+                        value={formData.documentNumber}
+                        onChange={handleChange}
+                        onBlur={() => consultarDocumento()}
+                        placeholder="Ej: 12345678"
+                        className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => consultarDocumento()}
+                        disabled={!habeasDataAuth || consultandoDian || !formData.documentNumber || formData.documentNumber.length < 4}
+                        className="h-10 w-10 shrink-0"
+                        title="Consultar DIAN/RUES"
+                        aria-label="Consultar DIAN/RUES"
+                      >
+                        {consultandoDian ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Building2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <HabeasDataCheckbox
+                      checked={habeasDataAuth}
+                      onChange={setHabeasDataAuth}
+                      className="mt-1"
                     />
                   </div>
 
@@ -1070,13 +1166,12 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       <Phone className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       Teléfono
                     </Label>
-                    <Input 
-                      id="phone" 
-                      name="phone" 
+                    <PhoneInput
+                      id="phone"
+                      name="phone"
                       value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="+57 300 123 4567"
-                      className="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                      onChange={(v) => setFormData(prev => ({ ...prev, phone: v }))}
+                      inputClassName="h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
-export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth' | 'system';
+export type PrinterConnectionType = 'usb' | 'network' | 'bluetooth' | 'system' | 'raw_spooler';
 export type PrinterStation = 'hot_kitchen' | 'cold_kitchen' | 'bar' | 'cashier' | 'all';
 export type PrinterPaperWidth = '58mm' | '80mm';
 

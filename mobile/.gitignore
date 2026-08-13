@@ -1,0 +1,29 @@
+# Capacitor / nativo
+android/
+ios/
+dist/
+out/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Capgo
+.capgo/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+google-services.json
+GoogleService-Info.plist
+release.keystore
+*.keystore
+.env
+.env.local

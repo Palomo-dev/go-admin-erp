@@ -16,7 +16,7 @@
  * dashboard se inyecta en las Fases 1-15; la Fase 0 muestra placeholders.
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Banknote,
   Package,
@@ -33,8 +33,16 @@ import {
   Calendar,
   Activity,
   MessageSquare,
+  Rows3,
+  LayoutGrid,
 } from 'lucide-react';
-import ModuloSection, { type ModuloSectionProps } from './ModuloSection';
+import { useTranslations } from 'next-intl';
+import { cn } from '@/utils/Utils';
+
+// ─── Context para propagar modo compacto a todas las secciones ───────────────
+export const ModoCompactoContext = React.createContext(false);
+import ModuloSection from './ModuloSection';
+import { LazySection } from './LazySection';
 import FinanzasSection from './sections/FinanzasSection';
 import InventarioSection from './sections/InventarioSection';
 import CrmSection from './sections/CrmSection';
@@ -255,7 +263,31 @@ export default function DashboardModulos({
   activeModuleCodes,
   isLoading = false,
 }: DashboardModulosProps) {
+  const t = useTranslations('home');
   const modulos = MODULOS_NEGOCIO;
+  const [compacto, setCompacto] = useState(false);
+
+  // Persistir preferencia de modo compacto/expandido
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('dashboard:modoCompacto');
+      if (stored !== null) setCompacto(stored === 'true');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleModo = useCallback(() => {
+    setCompacto((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('dashboard:modoCompacto', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   // Filtrar por módulos activos (si undefined, mostrar todos en skeleton)
   const modulosVisibles = activeModuleCodes
@@ -280,32 +312,59 @@ export default function DashboardModulos({
   }
 
   return (
-    <div className="space-y-8">
-      {/* Navegación rápida entre secciones */}
-      <SectionNav
-        modulos={modulos}
-        activeModuleCodes={activeModuleCodes}
-      />
+    <ModoCompactoContext.Provider value={compacto}>
+    <div className={cn(compacto ? 'space-y-3' : 'space-y-8')}>
+      {/* Navegación rápida + toggle de modo */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <SectionNav
+          modulos={modulos}
+          activeModuleCodes={activeModuleCodes}
+        />
 
-      {/* Secciones por módulo */}
+        <button
+          type="button"
+          onClick={toggleModo}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          aria-pressed={compacto}
+          title={compacto ? t('expandedMode') : t('compactMode')}
+        >
+          {compacto ? (
+            <>
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t('expandedMode')}</span>
+            </>
+          ) : (
+            <>
+              <Rows3 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t('compactMode')}</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Secciones por módulo (lazy load al entrar en viewport) */}
       {modulosVisibles.map((modulo) => {
         const SectionComponent = SECTION_COMPONENTS[modulo.code];
-        if (SectionComponent) {
-          return <SectionComponent key={modulo.code} />;
-        }
-        const sectionProps: ModuloSectionProps = {
-          moduleCode: modulo.code,
-          moduleName: modulo.name,
-          icon: modulo.icon,
-          accentColor: modulo.accentColor,
-          accentBg: modulo.accentBg,
-          hasReportes: modulo.hasReportes,
-          isLoading,
-        };
         return (
-          <ModuloSection key={modulo.code} {...sectionProps} />
+          <LazySection key={modulo.code} minHeight={compacto ? 60 : 220}>
+            {SectionComponent ? (
+              <SectionComponent />
+            ) : (
+              <ModuloSection
+                moduleCode={modulo.code}
+                moduleName={modulo.name}
+                icon={modulo.icon}
+                accentColor={modulo.accentColor}
+                accentBg={modulo.accentBg}
+                hasReportes={modulo.hasReportes}
+                isLoading={isLoading}
+                compacto={compacto}
+              />
+            )}
+          </LazySection>
         );
       })}
     </div>
+    </ModoCompactoContext.Provider>
   );
 }

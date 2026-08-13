@@ -34,6 +34,7 @@ import parkingService, {
   type ParkingPass,
   type ParkingPassType,
 } from '@/lib/services/parkingService';
+import { PlanFormDialog } from '@/components/parking/planes/PlanFormDialog';
 
 interface PassFormDialogProps {
   open: boolean;
@@ -42,6 +43,7 @@ interface PassFormDialogProps {
   pass: ParkingPass | null;
   passTypes: ParkingPassType[];
   onSuccess: () => void;
+  onPlanCreated?: () => void;
 }
 
 interface VehicleInput {
@@ -67,11 +69,13 @@ export function PassFormDialog({
   pass,
   passTypes,
   onSuccess,
+  onPlanCreated,
 }: PassFormDialogProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [showCustomerPopover, setShowCustomerPopover] = useState(false);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
 
   // Form state
   const [customerId, setCustomerId] = useState('');
@@ -204,7 +208,8 @@ export function PassFormDialog({
         v.is_primary = i === index;
       });
     } else {
-      (newVehicles[index] as any)[field] = value;
+      const vehicle = newVehicles[index];
+      (vehicle as unknown as Record<string, unknown>)[field as string] = value;
     }
     setVehicles(newVehicles);
   };
@@ -431,24 +436,44 @@ export function PassFormDialog({
 
           {/* Tipo de Plan */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Tipo de Plan *</Label>
-            <Select value={passTypeId} onValueChange={setPassTypeId}>
-              <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
-                <SelectValue placeholder="Selecciona un plan" />
-              </SelectTrigger>
-              <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                {passTypes.map((type) => (
-                  <SelectItem key={type.id} value={type.id}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{type.name}</span>
-                      <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                        {formatCurrency(type.price)} / {type.duration_days} días
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center justify-between">
+              <Label className="dark:text-gray-200">Tipo de Plan *</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+                onClick={() => setPlanDialogOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Crear Plan
+              </Button>
+            </div>
+            {passTypes.length === 0 ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No hay planes disponibles
+                </p>
+              </div>
+            ) : (
+              <Select value={passTypeId} onValueChange={setPassTypeId}>
+                <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
+                  <SelectValue placeholder="Selecciona un plan" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                  {passTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      <div className="flex items-center justify-between w-full">
+                        <span>{type.name}</span>
+                        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                          {formatCurrency(type.price)} / {type.duration_days} días
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Fechas y Precio */}
@@ -598,6 +623,18 @@ export function PassFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Diálogo inline para crear un plan sin salir del formulario */}
+      <PlanFormDialog
+        open={planDialogOpen}
+        onOpenChange={setPlanDialogOpen}
+        organizationId={organizationId}
+        plan={null}
+        onSuccess={() => {
+          setPlanDialogOpen(false);
+          onPlanCreated?.();
+        }}
+      />
     </Dialog>
   );
 }

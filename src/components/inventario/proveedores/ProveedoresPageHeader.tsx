@@ -2,13 +2,21 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Download, Upload, Truck } from 'lucide-react';
+import { PlusCircle, Download, Upload, Truck, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import Link from 'next/link';
 
 interface ProveedoresPageHeaderProps {
   onNuevoProveedor: () => void;
-  onExport?: () => void;
+  onExportCSV?: () => void;
+  onExportXLSX?: () => void;
+  onExportPDF?: () => void;
 }
 
 /**
@@ -16,7 +24,9 @@ interface ProveedoresPageHeaderProps {
  */
 const ProveedoresPageHeader: React.FC<ProveedoresPageHeaderProps> = ({ 
   onNuevoProveedor,
-  onExport
+  onExportCSV,
+  onExportXLSX,
+  onExportPDF
 }) => {
 
   return (
@@ -44,15 +54,30 @@ const ProveedoresPageHeader: React.FC<ProveedoresPageHeaderProps> = ({
           Nuevo Proveedor
         </Button>
         
-        {onExport && (
-          <Button 
-            variant="outline" 
-            onClick={onExport}
-            className="w-full sm:w-auto text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
+        {(onExportCSV || onExportXLSX || onExportPDF) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-auto text-sm dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onExportCSV && (
+                <DropdownMenuItem onClick={onExportCSV}>CSV (.csv)</DropdownMenuItem>
+              )}
+              {onExportXLSX && (
+                <DropdownMenuItem onClick={onExportXLSX}>Excel (.xlsx)</DropdownMenuItem>
+              )}
+              {onExportPDF && (
+                <DropdownMenuItem onClick={onExportPDF}>PDF (.pdf)</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         
         <Link href="/app/inventario/proveedores/importar">

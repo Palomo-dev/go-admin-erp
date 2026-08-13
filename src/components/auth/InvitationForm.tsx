@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PhoneInput } from '@/components/ui/phone-input';
 
 interface InvitationFormProps {
   inviteData: {
@@ -173,18 +174,13 @@ export default function InvitationForm({
               <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
                 Teléfono *
               </label>
-              <input
+              <PhoneInput
                 id="phoneNumber"
                 name="phoneNumber"
-                type="tel"
-                autoComplete="tel"
-                required
                 value={formData.phoneNumber}
-                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
-                  validationErrors.phoneNumber ? 'border-red-300' : 'border-gray-300'
-                } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                placeholder="+57 300 123 4567"
+                onChange={(v) => handleInputChange('phoneNumber', v)}
+                required
+                className={`mt-1 ${validationErrors.phoneNumber ? '[&_button]:border-red-300 [&_input]:border-red-300' : '[&_button]:border-gray-300 [&_input]:border-gray-300'}`}
               />
               {validationErrors.phoneNumber && (
                 <p className="mt-1 text-sm text-red-600">{validationErrors.phoneNumber}</p>

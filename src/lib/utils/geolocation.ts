@@ -1,5 +1,7 @@
 export type GeolocationPreference = 'allowed' | 'denied' | 'not_supported'
 
+import { isMobile, getMobilePlugin } from '@/lib/utils/mobile';
+
 /**
  * Obtiene la preferencia de geolocalización desde las cookies
  */
@@ -36,9 +38,28 @@ export function saveGeolocationPreference(preference: GeolocationPreference) {
  */
 export async function getLocationFromBrowser(): Promise<string | null> {
   const preference = getGeolocationPreference()
-  
-  if (preference !== 'allowed' || !navigator.geolocation) {
+
+  if (preference !== 'allowed') {
     return getLocationStatusMessage(preference)
+  }
+
+  // Rama móvil (Capacitor): usar plugin nativo de geolocalización
+  if (isMobile()) {
+    const geo = getMobilePlugin('Geolocation');
+    if (geo?.getCurrentPosition) {
+      try {
+        const position = await geo.getCurrentPosition({ enableHighAccuracy: false, timeout: 5000 });
+        return `Coordenadas GPS: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+      } catch (error: any) {
+        console.log('Error al obtener geolocalización nativa:', error.message);
+        return 'Error al obtener ubicación GPS';
+      }
+    }
+    // Si el plugin no está disponible, caer al flujo web
+  }
+
+  if (!navigator.geolocation) {
+    return getLocationStatusMessage('not_supported')
   }
 
   try {

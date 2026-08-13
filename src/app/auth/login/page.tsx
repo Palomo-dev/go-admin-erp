@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   handleEmailLogin,
   handleGoogleLogin,
@@ -18,12 +18,16 @@ import EmailNotConfirmedAlert from '@/components/auth/EmailNotConfirmedAlert';
 import { type GeolocationPreference, shouldShowGeolocationModal, saveGeolocationPreference } from '@/lib/utils/geolocation';
 import { useTranslations, useLocale } from 'next-intl';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
+import { useMobileAuth } from '@/hooks/useMobileAuth';
+import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
 function LoginContent() {
   const t = useTranslations('auth.login');
   const tc = useTranslations('common');
   const tErr = useTranslations('auth.errors');
   const locale = useLocale();
+  const router = useRouter();
+  const { isMobileApp, authResult, oauthError: mobileOAuthError } = useMobileAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -105,6 +109,25 @@ function LoginContent() {
       }, 1000)
     }
   }, [searchParams, userOrganizations]);
+
+  // Procesar resultado de OAuth via deep link (móvil Capacitor)
+  useEffect(() => {
+    if (!isMobileApp) return;
+    if (authResult?.success && authResult.next) {
+      router.push(authResult.next);
+    } else if (authResult && !authResult.success && authResult.error) {
+      setError(authResult.error);
+      setLoading(false);
+    }
+  }, [isMobileApp, authResult, router]);
+
+  // Mostrar errores de OAuth móvil
+  useEffect(() => {
+    if (isMobileApp && mobileOAuthError) {
+      setError(mobileOAuthError);
+      setLoading(false);
+    }
+  }, [isMobileApp, mobileOAuthError]);
 
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
 
@@ -261,11 +284,64 @@ function LoginContent() {
   }, []);
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100">
+    <div className="min-h-screen flex items-stretch justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden">
+      {/* Fondo decorativo animado: planeta, nubes, cohete, estrellas */}
+      <AuthSceneBackground />
+
+      {/* Panel de branding - solo desktop */}
+      <div className="hidden lg:flex lg:w-2/5 items-center justify-center p-10 relative z-10">
+        <div className="relative z-10 max-w-md text-white">
+          {/* Logo grande */}
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center bg-white/15 backdrop-blur-sm rounded-2xl p-5 shadow-2xl ring-1 ring-white/20">
+              <div className="flex flex-col items-center justify-center space-y-0.5">
+                <div className="text-4xl font-black text-white tracking-tight leading-none">GO</div>
+                <div className="text-sm font-medium text-blue-100 tracking-wide uppercase">Admin</div>
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl xl:text-4xl font-bold mb-4 leading-tight">
+            {t('welcomeBack')}
+          </h1>
+          <p className="text-base xl:text-lg text-blue-100 dark:text-gray-300 mb-8 leading-relaxed">
+            {t('subtitle')}
+          </p>
+          {/* Features */}
+          <ul className="space-y-3 text-blue-50 dark:text-gray-300">
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <span className="text-sm">Gestiona tu negocio en un solo lugar</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <span className="text-sm">POS, inventario, CRM y más en una sola plataforma</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <span className="text-sm">Reportes y analítica en tiempo real</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Panel del formulario - flota sobre el fondo azul */}
+      <div className="w-full lg:w-3/5 flex items-center justify-center py-6 sm:py-8 md:py-12 px-4 sm:px-6 md:px-8 lg:px-10 relative z-10">
+      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 dark:border-gray-700 lg:my-6 lg:p-8 lg:max-w-md">
         <div className="flex flex-col items-center">
           {/* Logo GO Admin con diseño moderno */}
-          <div className="mb-3 sm:mb-4">
+          <div className="mb-3 sm:mb-4 lg:hidden">
             <div className="relative">
               {/* Círculo decorativo con gradiente de fondo */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-lg sm:rounded-xl blur-md sm:blur-lg opacity-30 animate-pulse"></div>
@@ -287,10 +363,10 @@ function LoginContent() {
           </div>
           
           {/* Título mejorado */}
-          <h2 className="text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-1 sm:mb-2">
+          <h2 className="text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent mb-1 sm:mb-2">
             {t('welcomeBack')}
           </h2>
-          <p className="text-center text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
+          <p className="text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">
             {t('subtitle')}
           </p>
           
@@ -298,7 +374,7 @@ function LoginContent() {
         </div>
         
         {error && !emailNotConfirmed && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative" role="alert">
+          <div className="bg-red-100 border border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-500 dark:text-red-300 px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative" role="alert">
             <span className="block sm:inline">{error}</span>
             {error.includes('El usuario no existe') && (
               <div className="mt-2">
@@ -323,10 +399,10 @@ function LoginContent() {
         
         {/* Organization selection popup */}
         {showOrgPopup && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 px-4">
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Selecciona una organización</h3>
-              <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">Tu cuenta está asociada a múltiples organizaciones. Por favor selecciona una para continuar.</p>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-black/70 flex items-center justify-center z-50 px-4">
+            <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">Selecciona una organización</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">Tu cuenta está asociada a múltiples organizaciones. Por favor selecciona una para continuar.</p>
               
               <div className="max-h-60 overflow-y-auto">
                 {userOrganizations.map((org) => (
@@ -334,7 +410,7 @@ function LoginContent() {
                     key={org.id}
                     type="button"
                     onClick={() => onSelectOrganizationFromPopup(org)}
-                    className="flex items-center w-full text-left px-3 py-2 sm:px-4 sm:py-3 mb-2 hover:bg-gray-100 border border-gray-200 rounded-md"
+                    className="flex items-center w-full text-left px-3 py-2 sm:px-4 sm:py-3 mb-2 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-md"
                   >
                     {/* Organization logo or placeholder */}
                     <div className="flex-shrink-0 mr-2 sm:mr-3">
@@ -353,8 +429,8 @@ function LoginContent() {
                     
                     {/* Organization details */}
                     <div className="flex-grow min-w-0">
-                      <div className="font-medium text-sm sm:text-base text-gray-800 truncate">{org.name}</div>
-                      <div className="text-xs text-gray-500 truncate">{getOrgTypeLabel(org.type_id?.name || '', locale)}</div>
+                      <div className="font-medium text-sm sm:text-base text-gray-800 dark:text-gray-100 truncate">{org.name}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{getOrgTypeLabel(org.type_id?.name || '', locale)}</div>
                     </div>
                     
                     <div className="flex flex-col items-end ml-2 space-y-1">
@@ -414,7 +490,7 @@ function LoginContent() {
           
           <div className="space-y-3 sm:space-y-4">
             <div className="relative">
-              <div className="flex items-center border border-blue-300 rounded-md">
+              <div className="flex items-center border border-blue-300 dark:border-gray-600 rounded-md">
                 <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                     <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
@@ -426,7 +502,7 @@ function LoginContent() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none bg-white text-gray-900 placeholder:text-gray-400"
+                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
                   placeholder={t('emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -443,7 +519,7 @@ function LoginContent() {
               </div>
             )}
             <div className="relative">
-              <div className="flex items-center border border-blue-300 rounded-md">
+              <div className="flex items-center border border-blue-300 dark:border-gray-600 rounded-md">
                 <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                     <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
@@ -455,7 +531,7 @@ function LoginContent() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none bg-white text-gray-900 placeholder:text-gray-400"
+                  className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-400"
                   placeholder={t('passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -493,7 +569,7 @@ function LoginContent() {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
-              <label htmlFor="remember-me" className="ml-2 block text-xs sm:text-sm text-gray-700">
+              <label htmlFor="remember-me" className="ml-2 block text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 {t('rememberMe')}
               </label>
             </div>
@@ -516,9 +592,9 @@ function LoginContent() {
           </div>
           
           <div className="text-center mt-3 sm:mt-4">
-            <p className="text-xs sm:text-sm text-gray-600">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
               {t('noAccount')}{' '}
-              <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
                 {t('signUp')}
               </Link>
             </p>
@@ -526,13 +602,10 @@ function LoginContent() {
         </form>
 
         <div className="mt-4 sm:mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-xs sm:text-sm">
-              <span className="px-2 bg-white text-gray-500">{tc('or')}</span>
-            </div>
+          <div className="flex items-center gap-3 text-xs sm:text-sm">
+            <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
+            <span className="text-gray-500 dark:text-gray-400">{tc('or')}</span>
+            <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
           </div>
 
           <div className="mt-4 sm:mt-6 space-y-2">
@@ -540,7 +613,7 @@ function LoginContent() {
               type="button"
               onClick={onGoogleLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 rounded-md shadow-sm bg-white text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
 
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" viewBox="0 0 23 23">
@@ -555,7 +628,7 @@ function LoginContent() {
               type="button"
               onClick={onMicrosoftLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 rounded-md shadow-sm bg-white text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" viewBox="0 0 23 23">
                 <path fill="#f3f3f3" d="M0 0h23v23H0z" />
@@ -568,6 +641,7 @@ function LoginContent() {
             </button>
           </div>
         </div>
+      </div>
       </div>
       
       {/* Modal de Geolocalización */}

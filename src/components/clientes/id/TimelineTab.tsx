@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { formatCurrency } from '@/utils/Utils';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { ShoppingBag } from 'lucide-react';
 
 // Interfaces para los elementos del timeline
@@ -392,9 +393,7 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                       </span>
                     </div>
                     
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-                      {item.description}
-                    </p>
+                    <HtmlContentRenderer html={item.description} className="text-sm text-gray-600 dark:text-gray-300 mb-1" />
                     
                     {item.amount !== undefined && (
                       <div className="mt-2">

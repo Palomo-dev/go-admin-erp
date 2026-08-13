@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -630,12 +630,11 @@ export function AddressDialog({
           {/* Instrucciones */}
           <div className="space-y-2">
             <Label htmlFor="delivery_instructions">Instrucciones de entrega</Label>
-            <Textarea
-              id="delivery_instructions"
-              value={formData.delivery_instructions}
-              onChange={(e) => setFormData({ ...formData, delivery_instructions: e.target.value })}
+            <RichTextEditor
+              value={formData.delivery_instructions || ''}
+              onChange={(html) => setFormData({ ...formData, delivery_instructions: html })}
               placeholder="Notas especiales para la entrega..."
-              rows={3}
+              minHeight={60}
             />
           </div>
 

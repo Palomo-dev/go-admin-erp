@@ -14,8 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ReglasContablesService, AccountingRule, ChartAccount, SOURCE_TYPES, EVENT_TYPES } from './ReglasContablesService';
@@ -341,11 +341,12 @@ export function ReglasContablesPage() {
 
             <div className="space-y-2">
               <Label className="text-gray-700 dark:text-gray-300">Descripción</Label>
-              <Textarea
+              <RichTextEditor
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(html) => setFormData({ ...formData, description: html })}
                 placeholder="Descripción de la regla..."
                 className="dark:bg-gray-900 dark:border-gray-600"
+                minHeight={60}
               />
             </div>
 

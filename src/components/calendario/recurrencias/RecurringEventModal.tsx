@@ -22,7 +22,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import {
   Dialog,
   DialogContent,
@@ -283,12 +284,11 @@ export function RecurringEventModal({
 
                   <div>
                     <Label htmlFor="description">Descripción</Label>
-                    <Textarea
-                      id="description"
+                    <RichTextEditor
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(html) => setFormData({ ...formData, description: html })}
                       placeholder="Descripción opcional"
-                      rows={3}
+                      minHeight={60}
                     />
                   </div>
 
@@ -366,9 +366,7 @@ export function RecurringEventModal({
                       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Descripción
                       </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {event.description}
-                      </p>
+                      <HtmlContentRenderer html={event.description} className="text-sm text-gray-600 dark:text-gray-400" />
                     </div>
                   )}
 

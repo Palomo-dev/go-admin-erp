@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Settings, Tag, FileText, ExternalLink, Hash } from 'lucide-react';
 import { IntegrationProvider, IntegrationConnector } from '@/lib/services/integrationsService';
@@ -138,12 +138,11 @@ export function StepSettings({
           {/* Notas */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notas (opcional)</Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               value={(settings.notes as string) || ''}
-              onChange={(e) => handleSettingChange('notes', e.target.value)}
+              onChange={(html) => handleSettingChange('notes', html)}
               placeholder="Notas o comentarios sobre esta conexión..."
-              rows={3}
+              minHeight={60}
               className="max-w-lg"
             />
           </div>

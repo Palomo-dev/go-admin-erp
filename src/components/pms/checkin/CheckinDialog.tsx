@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Separator } from '@/components/ui/separator';
 import {
   Select,
@@ -771,12 +771,11 @@ export function CheckinDialog({
               <FileText className="h-5 w-5" />
               Notas del Check-in (Opcional)
             </h3>
-            <Textarea
+            <RichTextEditor
               placeholder="Observaciones, solicitudes especiales, condición de documentos, etc."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              className="resize-none"
+              onChange={(html) => setNotes(html)}
+              minHeight={80}
             />
           </div>
         </div>

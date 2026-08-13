@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -264,11 +264,11 @@ export function DeviceForm({
           {/* Ubicación */}
           <div className="space-y-2">
             <Label className="text-gray-700 dark:text-gray-300">Descripción de Ubicación</Label>
-            <Textarea
-              value={formData.location_description}
-              onChange={(e) => setFormData({ ...formData, location_description: e.target.value })}
+            <RichTextEditor
+              value={formData.location_description || ''}
+              onChange={(html) => setFormData({ ...formData, location_description: html })}
               placeholder="Ej: Puerta principal, junto a recepción"
-              rows={2}
+              minHeight={60}
               className="bg-white dark:bg-gray-900"
             />
           </div>

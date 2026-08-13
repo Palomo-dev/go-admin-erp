@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Users, DollarSign, Maximize, Tag } from 'lucide-react';
 import type { Space } from '@/lib/services/spacesService';
 import { SpaceServicesBadges } from './SpaceServicesBadges';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface SpaceBasicInfoProps {
   space: Space;
@@ -25,7 +26,7 @@ export function SpaceBasicInfo({ space, servicesRefreshTrigger = 0 }: SpaceBasic
       {space.description && (
         <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Descripción</p>
-          <p className="text-sm text-gray-700 dark:text-gray-300">{space.description}</p>
+          <HtmlContentRenderer html={space.description} className="text-sm text-gray-700 dark:text-gray-300" />
         </div>
       )}
 

@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -199,11 +199,11 @@ export function AddConnectionDialog({
           {/* Notas */}
           <div className="space-y-2">
             <Label className="text-gray-700 dark:text-gray-300">Notas (opcional)</Label>
-            <Textarea
+            <RichTextEditor
               placeholder="Notas adicionales sobre esta conexión..."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
+              onChange={(html) => setNotes(html)}
+              minHeight={60}
             />
           </div>
         </div>

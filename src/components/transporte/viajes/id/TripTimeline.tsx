@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -136,9 +137,7 @@ export function TripTimeline({ events, isLoading, onAddEvent }: TripTimelineProp
                       </div>
 
                       {event.description && (
-                        <p className="text-gray-700 dark:text-gray-300 text-sm mt-2">
-                          {event.description}
-                        </p>
+                        <HtmlContentRenderer html={event.description} className="text-gray-700 dark:text-gray-300 text-sm mt-2" />
                       )}
 
                       {event.transport_stops && (

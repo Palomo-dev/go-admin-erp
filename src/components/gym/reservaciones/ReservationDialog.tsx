@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -233,12 +233,11 @@ export function ReservationDialog({ open, onOpenChange, reservation, preselected
 
           <div>
             <Label htmlFor="notes">Notas</Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(html) => setNotes(html)}
               placeholder="Notas adicionales..."
-              rows={2}
+              minHeight={60}
             />
           </div>
 

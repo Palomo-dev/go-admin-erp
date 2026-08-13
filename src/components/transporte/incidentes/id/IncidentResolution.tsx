@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, AlertTriangle, FileText } from 'lucide-react';
 import { IncidentWithDetails } from '@/lib/services/incidentsService';
@@ -128,9 +129,7 @@ export function IncidentResolution({ incident }: IncidentResolutionProps) {
         {incident.notes && (
           <div className="space-y-2">
             <h4 className="font-medium text-gray-900 dark:text-white">Notas</h4>
-            <pre className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 whitespace-pre-wrap font-sans">
-              {incident.notes}
-            </pre>
+            <HtmlContentRenderer html={incident.notes} className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4" />
           </div>
         )}
       </CardContent>

@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { MessageSquare, Plus, Send, Loader2 } from 'lucide-react';
 
 export interface SessionNote {
@@ -75,11 +76,12 @@ export function SessionNotes({ notes, isLoading, onAddNote }: SessionNotesProps)
       <CardContent className="space-y-4">
         {showForm && (
           <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <Textarea
+            <RichTextEditor
               placeholder="Escribe una nota..."
               value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              className="min-h-[80px] bg-white dark:bg-gray-800"
+              onChange={(html) => setNewNote(html)}
+              className="bg-white dark:bg-gray-800"
+              minHeight={80}
             />
             <div className="flex justify-end gap-2">
               <Button
@@ -119,9 +121,7 @@ export function SessionNotes({ notes, isLoading, onAddNote }: SessionNotesProps)
                 key={note.id}
                 className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
               >
-                <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
-                  {note.content}
-                </p>
+                <HtmlContentRenderer html={note.content} className="text-gray-900 dark:text-white" />
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     {new Date(note.created_at).toLocaleString('es-ES', {

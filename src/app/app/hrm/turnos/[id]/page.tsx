@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -407,9 +408,9 @@ export default function TurnoDetailPage() {
             {shift.notes && (
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notas</p>
-                <p className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                  {shift.notes}
-                </p>
+                <div className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                  <HtmlContentRenderer html={shift.notes} />
+                </div>
               </div>
             )}
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -283,9 +284,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
                   </h4>
                   
                   {tarea.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words whitespace-normal">
-                      {tarea.description}
-                    </p>
+                    <HtmlContentRenderer html={tarea.description} className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words" />
                   )}
                   
                   <div className="mt-2 flex flex-wrap gap-2">

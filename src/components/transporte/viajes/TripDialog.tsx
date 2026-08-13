@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -322,12 +322,11 @@ export function TripDialog({
           {/* Notas */}
           <div className="grid gap-2">
             <Label htmlFor="notes">Notas</Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               placeholder="Notas adicionales del viaje..."
-              value={formData.notes}
-              onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
-              rows={3}
+              value={formData.notes || ''}
+              onChange={(html) => setFormData((p) => ({ ...p, notes: html }))}
+              minHeight={60}
             />
           </div>
         </div>

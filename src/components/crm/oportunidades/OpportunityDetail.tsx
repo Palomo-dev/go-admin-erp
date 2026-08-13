@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import {
   Select,
   SelectContent,
@@ -792,12 +793,12 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                           <SelectItem value="task">Tarea</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Textarea
+                      <RichTextEditor
                         value={newActivityNotes}
-                        onChange={(e) => setNewActivityNotes(e.target.value)}
+                        onChange={setNewActivityNotes}
                         placeholder="Escribe una nota o actividad..."
+                        minHeight={60}
                         className="flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                        rows={2}
                       />
                     </div>
                     <div className="flex justify-end">
@@ -940,7 +941,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                                 )}
                               </div>
                               {task.description && (
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{task.description}</p>
+                                <HtmlContentRenderer html={task.description} className="mt-1 text-xs text-gray-500 dark:text-gray-400" />
                               )}
                               <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
                                 {task.due_date && (
@@ -973,12 +974,12 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                 <CardContent className="pt-6 space-y-4">
                   {/* Nueva nota */}
                   <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-3 border border-gray-100 dark:border-gray-800">
-                    <Textarea
+                    <RichTextEditor
                       value={newNoteBody}
-                      onChange={(e) => setNewNoteBody(e.target.value)}
+                      onChange={setNewNoteBody}
                       placeholder="Escribe una nota..."
+                      minHeight={80}
                       className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                      rows={3}
                     />
                     <div className="flex justify-end">
                       <Button
@@ -1012,7 +1013,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm text-gray-700 dark:text-gray-300 flex-1">{note.body}</p>
+                            <HtmlContentRenderer html={note.body} className="text-sm text-gray-700 dark:text-gray-300 flex-1" />
                             <div className="flex items-center gap-1 shrink-0">
                               <button
                                 onClick={() => handleTogglePin(note.id, note.is_pinned)}
@@ -1094,7 +1095,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                                     </span>
                                   </div>
                                   {item.description && (
-                                    <p className="text-xs text-gray-600 dark:text-gray-400">{item.description}</p>
+                                    <HtmlContentRenderer html={item.description} className="text-xs text-gray-600 dark:text-gray-400" />
                                   )}
                                 </div>
                               </div>

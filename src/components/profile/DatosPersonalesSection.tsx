@@ -3,13 +3,31 @@
 import { useState, useRef, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
-import { Save, Edit2, Upload, X } from 'lucide-react';
+import { Save, Edit2, Upload, X, Mail } from 'lucide-react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
 import { changeLanguage } from '@/i18n/provider';
 import { isValidLocale } from '@/i18n/config';
 import { PhoneInput } from '@/components/ui/phone-input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 
 interface Profile {
   id: string;
@@ -48,7 +66,14 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
   const [uploading, setUploading] = useState(false);
   const [tempAvatar, setTempAvatar] = useState<string | null>(null);
-  
+
+  // Cambio de correo electrónico
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [changingEmail, setChangingEmail] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEdit = () => {
@@ -237,6 +262,58 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
     }
   };
 
+  const handleOpenEmailDialog = () => {
+    setNewEmail('');
+    setConfirmEmail('');
+    setShowEmailDialog(true);
+  };
+
+  const handleRequestEmailChange = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const trimmedNew = newEmail.trim().toLowerCase();
+    const trimmedConfirm = confirmEmail.trim().toLowerCase();
+
+    if (!emailRegex.test(trimmedNew)) {
+      toast.error('Ingresa un correo electrónico válido');
+      return;
+    }
+    if (trimmedNew === (user?.email || '').toLowerCase()) {
+      toast.error('El nuevo correo debe ser diferente al actual');
+      return;
+    }
+    if (trimmedNew !== trimmedConfirm) {
+      toast.error('Los correos no coinciden. Verifica que estén escritos igual.');
+      return;
+    }
+    setShowEmailConfirm(true);
+  };
+
+  const handleConfirmEmailChange = async () => {
+    setChangingEmail(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail.trim().toLowerCase(),
+      });
+
+      if (error) throw error;
+
+      setShowEmailConfirm(false);
+      setShowEmailDialog(false);
+      setNewEmail('');
+      setConfirmEmail('');
+      toast.success(
+        `Correo de confirmación enviado a ${newEmail.trim().toLowerCase()}. Revisa tu bandeja de entrada y haz clic en el enlace para completar el cambio.`,
+        { duration: 6000 }
+      );
+    } catch (error) {
+      console.error('Error al cambiar correo:', error);
+      const msg = error instanceof Error ? error.message : 'Intenta nuevamente en unos minutos.';
+      toast.error(`Error al cambiar el correo: ${msg}`);
+    } finally {
+      setChangingEmail(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -341,13 +418,23 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Correo electrónico
             </label>
-            <input
-              id="email"
-              type="email"
-              value={user?.email || ''}
-              disabled
-              className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400"
-            />
+            <div className="flex gap-2">
+              <input
+                id="email"
+                type="email"
+                value={user?.email || ''}
+                disabled
+                className="flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              />
+              <button
+                type="button"
+                onClick={handleOpenEmailDialog}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors whitespace-nowrap"
+              >
+                <Mail size={16} />
+                Cambiar
+              </button>
+            </div>
           </div>
           
           <div>
@@ -413,6 +500,115 @@ export default function DatosPersonalesSection({ profile, user, onProfileUpdated
           </div>
         )}
       </form>
+
+      {/* Dialog: Solicitar nuevo correo */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cambiar correo electrónico</DialogTitle>
+            <DialogDescription>
+              Ingresa tu nuevo correo electrónico. Te enviaremos un enlace de confirmación
+              a la nueva dirección para verificar que te pertenece.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Correo actual
+              </label>
+              <p className="text-sm text-gray-500 dark:text-gray-400 px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700/50">
+                {user?.email}
+              </p>
+            </div>
+            <div>
+              <label htmlFor="newEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Nuevo correo
+              </label>
+              <input
+                id="newEmail"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="nuevo@correo.com"
+                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="confirmEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Confirma el nuevo correo
+              </label>
+              <input
+                id="confirmEmail"
+                type="email"
+                value={confirmEmail}
+                onChange={(e) => setConfirmEmail(e.target.value)}
+                placeholder="repite el nuevo correo"
+                className={`w-full px-3 py-2 rounded-md border bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 ${
+                  confirmEmail && confirmEmail.trim().toLowerCase() !== newEmail.trim().toLowerCase()
+                    ? 'border-red-400 focus:ring-red-500'
+                    : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                }`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleRequestEmailChange();
+                  }
+                }}
+              />
+              {confirmEmail && confirmEmail.trim().toLowerCase() !== newEmail.trim().toLowerCase() && (
+                <p className="mt-1 text-xs text-red-600">Los correos no coinciden</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setShowEmailDialog(false)}
+              className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleRequestEmailChange}
+              className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Enviar confirmación
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AlertDialog: Confirmar cambio de correo */}
+      <AlertDialog open={showEmailConfirm} onOpenChange={setShowEmailConfirm}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro de cambiar tu correo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se enviará un enlace de confirmación a <strong>{newEmail.trim().toLowerCase()}</strong>.
+              Deberás abrir ese correo y hacer clic en el enlace para completar el cambio.
+              Tu correo actual (<strong>{user?.email}</strong>) seguirá activo hasta que confirmes el nuevo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={changingEmail}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmEmailChange}
+              disabled={changingEmail}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {changingEmail ? (
+                <span className="flex items-center">
+                  <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-b-2 border-white rounded-full"></span>
+                  Enviando...
+                </span>
+              ) : (
+                'Sí, cambiar mi correo'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

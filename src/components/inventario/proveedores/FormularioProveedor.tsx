@@ -5,8 +5,8 @@ import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Proveedor } from './types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { RichTextEditor } from '@/components/shared/RichTextEditor'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -229,13 +229,10 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             {/* Descripción */}
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="description">Descripción</Label>
-              <Textarea
-                id="description"
-                name="description"
+              <RichTextEditor
                 value={formData.description}
-                onChange={handleChange}
+                onChange={(html) => setFormData(prev => ({ ...prev, description: html }))}
                 placeholder="Descripción del proveedor y sus servicios"
-                rows={3}
                 className="resize-none"
               />
             </div>
@@ -485,13 +482,10 @@ const FormularioProveedor: React.FC<FormularioProveedorProps> = ({
             {/* Notas */}
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="notes">Notas Adicionales</Label>
-              <Textarea
-                id="notes"
-                name="notes"
+              <RichTextEditor
                 value={formData.notes}
-                onChange={handleChange}
+                onChange={(html) => setFormData(prev => ({ ...prev, notes: html }))}
                 placeholder="Notas internas sobre el proveedor"
-                rows={4}
                 className="resize-none"
               />
             </div>

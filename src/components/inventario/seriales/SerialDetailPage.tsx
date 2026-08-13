@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -459,11 +460,11 @@ export function SerialDetailPage({ serialId }: SerialDetailPageProps) {
           <div className="space-y-3">
             <div>
               <Label>Descripción del Daño</Label>
-              <Textarea
+              <RichTextEditor
                 value={damageNotes}
-                onChange={(e) => setDamageNotes(e.target.value)}
+                onChange={(html) => setDamageNotes(html)}
                 placeholder="Describa el problema..."
-                rows={3}
+                minHeight={60}
               />
             </div>
           </div>

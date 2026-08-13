@@ -6,7 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -195,7 +196,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
                 <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 dark:text-yellow-400 dark:fill-yellow-400" />
                 <span className="font-medium">{pod.customer_rating}/5</span>
                 {pod.customer_feedback && (
-                  <span className="text-gray-600 dark:text-gray-300">- {pod.customer_feedback}</span>
+                  <span className="text-gray-600 dark:text-gray-300">- <HtmlContentRenderer html={pod.customer_feedback} singleLine /></span>
                 )}
               </div>
             </div>
@@ -204,7 +205,7 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
           {pod.notes && (
             <div className="border-t pt-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">Notas:</p>
-              <p className="text-gray-700 dark:text-gray-300">{pod.notes}</p>
+              <HtmlContentRenderer html={pod.notes} className="text-gray-700 dark:text-gray-300" />
             </div>
           )}
         </div>
@@ -334,21 +335,21 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
 
             <div className="space-y-2">
               <Label>Comentarios del cliente</Label>
-              <Textarea
+              <RichTextEditor
                 value={formData.customer_feedback}
-                onChange={(e) => setFormData((p) => ({ ...p, customer_feedback: e.target.value }))}
+                onChange={(html) => setFormData((p) => ({ ...p, customer_feedback: html }))}
                 placeholder="Comentarios opcionales..."
-                rows={2}
+                minHeight={60}
               />
             </div>
 
             <div className="space-y-2">
               <Label>Notas</Label>
-              <Textarea
+              <RichTextEditor
                 value={formData.notes}
-                onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+                onChange={(html) => setFormData((p) => ({ ...p, notes: html }))}
                 placeholder="Notas adicionales..."
-                rows={2}
+                minHeight={60}
               />
             </div>
           </div>

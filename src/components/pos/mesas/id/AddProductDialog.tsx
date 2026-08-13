@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon, Check } from 'lucide-react';
@@ -644,14 +644,14 @@ export function AddProductDialog({
                         </div>
                       )}
 
-                      <Textarea
+                      <RichTextEditor
                         placeholder="Notas..."
                         value={item.notes}
-                        onChange={(e) =>
-                          updateCartNotes(item.product_id, e.target.value)
+                        onChange={(html) =>
+                          updateCartNotes(item.product_id, html)
                         }
-                        rows={2}
-                        className="text-xs resize-none"
+                        minHeight={60}
+                        className="text-xs"
                       />
                     </div>
                   ))}

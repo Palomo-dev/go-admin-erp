@@ -23,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { Loader2, Mail, Check, Plus, Trash } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -329,12 +329,11 @@ export function AutomationSettings({ pipelineId }: AutomationSettingsProps) {
                       <Label htmlFor={`task-description-${index}`} className="mb-1 block">
                         Descripción de la tarea
                       </Label>
-                      <Textarea
-                        id={`task-description-${index}`}
+                      <RichTextEditor
                         value={automation.task_description}
-                        onChange={(e) => handleAutomationChange(index, 'task_description', e.target.value)}
+                        onChange={(html) => handleAutomationChange(index, 'task_description', html)}
                         placeholder="Descripción detallada de la tarea"
-                        rows={2}
+                        minHeight={60}
                       />
                     </div>
                     

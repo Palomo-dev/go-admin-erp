@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -185,12 +185,11 @@ export function LoanForm({
             <Label htmlFor="description" className="text-gray-700 dark:text-gray-300">
               Descripción / Motivo
             </Label>
-            <Textarea
-              id="description"
+            <RichTextEditor
               value={formData.description}
-              onChange={(e) => handleChange('description', e.target.value)}
+              onChange={(html) => handleChange('description', html)}
               placeholder="Describa el motivo del préstamo"
-              rows={2}
+              minHeight={60}
               className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
             />
           </div>
@@ -335,12 +334,11 @@ export function LoanForm({
             <Label htmlFor="notes" className="text-gray-700 dark:text-gray-300">
               Notas Adicionales
             </Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
+              onChange={(html) => handleChange('notes', html)}
               placeholder="Notas o comentarios adicionales"
-              rows={2}
+              minHeight={60}
               className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
             />
           </div>

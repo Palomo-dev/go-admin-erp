@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -169,7 +169,7 @@ export function NuevoMovimientoPage({ sessionUuid }: NuevoMovimientoPageProps) {
               </div>
               <div className="space-y-2">
                 <Label>Notas (opcional)</Label>
-                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observaciones adicionales..." />
+                <RichTextEditor value={notes} onChange={(html) => setNotes(html)} placeholder="Observaciones adicionales..." />
               </div>
             </CardContent>
           </Card>

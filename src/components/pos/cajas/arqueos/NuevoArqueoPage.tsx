@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -432,11 +432,11 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
                   <CardTitle className="text-lg dark:text-white">Notas</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Textarea
+                  <RichTextEditor
                     value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    onChange={(html) => setNotes(html)}
                     placeholder="Observaciones del arqueo..."
-                    className="min-h-[100px]"
+                    minHeight={100}
                   />
                 </CardContent>
               </Card>

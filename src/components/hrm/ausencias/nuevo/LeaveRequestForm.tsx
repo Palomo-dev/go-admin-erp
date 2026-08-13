@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -300,11 +300,12 @@ export function LeaveRequestForm({
 
           <div className="space-y-2">
             <Label className="text-gray-700 dark:text-gray-300">Razón / Comentarios</Label>
-            <Textarea
+            <RichTextEditor
               value={formData.reason || ''}
-              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+              onChange={(html) => setFormData({ ...formData, reason: html })}
               placeholder="Describe la razón de tu ausencia..."
-              className="min-h-[100px] bg-white dark:bg-gray-900"
+              minHeight={100}
+              className="bg-white dark:bg-gray-900"
             />
           </div>
 

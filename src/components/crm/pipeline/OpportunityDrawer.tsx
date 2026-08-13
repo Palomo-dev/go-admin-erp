@@ -14,8 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { RichTextEditor } from "@/components/shared/RichTextEditor";
+import { HtmlContentRenderer } from "@/components/shared/HtmlContentRenderer";
 import { toast } from "@/components/ui/use-toast";
 import { opportunitiesService } from "@/components/crm/oportunidades/opportunitiesService";
 import type { Activity } from "@/components/crm/oportunidades/types";
@@ -679,11 +680,12 @@ export function OpportunityDrawer({
                           <option value="meeting">Reunión</option>
                           <option value="visit">Visita</option>
                         </select>
-                        <Textarea
+                        <RichTextEditor
                           value={newActivityNotes}
-                          onChange={(e) => setNewActivityNotes(e.target.value)}
+                          onChange={setNewActivityNotes}
                           placeholder="Descripción de la actividad..."
-                          className="text-sm min-h-[40px] flex-1"
+                          minHeight={60}
+                          className="flex-1"
                         />
                       </div>
                       <Button
@@ -824,11 +826,12 @@ export function OpportunityDrawer({
                     </h3>
                     {/* Formulario nueva nota */}
                     <div className="mb-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                      <Textarea
+                      <RichTextEditor
                         value={newNoteBody}
-                        onChange={(e) => setNewNoteBody(e.target.value)}
+                        onChange={setNewNoteBody}
                         placeholder="Escribe una nota..."
-                        className="text-sm min-h-[60px] mb-2"
+                        minHeight={60}
+                        className="mb-2"
                       />
                       <Button
                         size="sm"
@@ -859,7 +862,7 @@ export function OpportunityDrawer({
                               <StickyNote className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-gray-700 dark:text-gray-300">{note.body}</p>
+                              <HtmlContentRenderer html={note.body} className="text-sm text-gray-700 dark:text-gray-300" />
                               <div className="flex items-center justify-between mt-1">
                                 <span className="text-xs text-gray-500 dark:text-gray-400">
                                   {formatDateTime(note.created_at)}

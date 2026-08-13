@@ -13,8 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { SearchSelect } from '@/components/ui/search-select';
 import {
   Select,
@@ -322,13 +322,11 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
         
         <div className="space-y-2">
           <Label htmlFor="description">Descripción</Label>
-          <Textarea
-            id="description"
-            name="description"
+          <RichTextEditor
             value={formData.description}
-            onChange={handleInputChange}
+            onChange={(html) => setFormData(prev => ({ ...prev, description: html }))}
             placeholder="Descripción detallada del producto"
-            className="min-h-24 dark:bg-gray-800 dark:border-gray-700"
+            className="dark:bg-gray-800 dark:border-gray-700"
           />
         </div>
 

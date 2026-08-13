@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { completeSignupAfterEmailConfirmation } from '@/app/auth/callback/route';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -122,9 +123,42 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL('/auth/reset-password', request.url));
       }
 
-      // email_change: el correo ya fue actualizado por verifyOtp; cerrar sesión y
-      // pedir que inicie sesión de nuevo con el nuevo correo
+      // email_change: el correo ya fue actualizado por verifyOtp en auth.users.
+      // Sincronizar el nuevo email en profiles e invitations (pendientes) para que
+      // el usuario siga siendo encontrable por su nuevo correo en toda la app.
+      // Luego cerrar sesión y pedir que inicie sesión con el nuevo correo.
       if (type === 'email_change') {
+        const newEmail = user.email?.toLowerCase() || '';
+        const oldEmail = user.user_metadata?.email_change_current_email?.toLowerCase() || '';
+
+        if (newEmail) {
+          const admin = getSupabaseAdmin();
+          // 1. Actualizar profiles.email
+          const { error: profileError } = await admin
+            .from('profiles')
+            .update({ email: newEmail, updated_at: new Date().toISOString() })
+            .eq('id', user.id);
+          if (profileError) {
+            console.error('Error sincronizando profiles.email:', profileError);
+          } else {
+            console.log('✅ profiles.email actualizado a:', newEmail);
+          }
+
+          // 2. Actualizar invitations.email (solo pendientes) del correo viejo al nuevo
+          if (oldEmail) {
+            const { error: inviteError } = await admin
+              .from('invitations')
+              .update({ email: newEmail })
+              .eq('email', oldEmail)
+              .eq('status', 'pending');
+            if (inviteError) {
+              console.error('Error sincronizando invitations.email:', inviteError);
+            } else {
+              console.log('✅ invitations.email (pendientes) actualizado a:', newEmail);
+            }
+          }
+        }
+
         await supabase.auth.signOut();
         return NextResponse.redirect(
           new URL('/auth/login?success=email-changed&message=' + encodeURIComponent('Tu correo electrónico ha sido actualizado exitosamente. Por favor, inicia sesión con tu nuevo correo.'), request.url)

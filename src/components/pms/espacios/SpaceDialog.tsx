@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -401,13 +401,11 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
                     {generatingDesc ? 'Generando...' : 'Generar con IA'}
                   </Button>
                 </div>
-                <Textarea
-                  id="description"
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(html) => setFormData({ ...formData, description: html })}
                   placeholder="Ej: Habitación con vista al mar, cama king, balcón privado"
-                  rows={2}
-                  className="resize-none"
+                  minHeight={60}
                 />
               </div>
 
@@ -614,13 +612,11 @@ export function SpaceDialog({ open, onOpenChange, space, spaceTypes, availableZo
               {(formData.status === 'maintenance' || formData.status === 'out_of_order') && (
                 <>
                   <SectionTitle icon={AlertTriangle} label="Notas de Mantenimiento" />
-                  <Textarea
-                    id="maintenance_notes"
+                  <RichTextEditor
                     value={formData.maintenance_notes}
-                    onChange={(e) => setFormData({ ...formData, maintenance_notes: e.target.value })}
+                    onChange={(html) => setFormData({ ...formData, maintenance_notes: html })}
                     placeholder="Describe el problema o mantenimiento requerido"
-                    rows={3}
-                    className="resize-none"
+                    minHeight={60}
                   />
                 </>
               )}

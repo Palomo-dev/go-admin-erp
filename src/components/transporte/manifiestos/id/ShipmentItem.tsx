@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
@@ -217,7 +218,7 @@ export function ShipmentItem({
                 ) : (
                   <p className="text-sm text-gray-500 flex items-start gap-1 dark:text-gray-400">
                     <MessageSquare className="h-3 w-3 mt-0.5" />
-                    {manifestShipment.driver_notes}
+                    <HtmlContentRenderer html={manifestShipment.driver_notes} singleLine />
                   </p>
                 )}
               </div>

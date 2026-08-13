@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -1025,12 +1025,11 @@ export function CheckoutDialog({
           {/* Notas */}
           <div>
             <Label htmlFor="notes">Notas de Salida (Opcional)</Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               placeholder="Agregue cualquier observación sobre la salida del huésped..."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              onChange={(html) => setNotes(html)}
+              minHeight={60}
               className="mt-2"
             />
           </div>

@@ -26,6 +26,7 @@ import {
   GitBranch,
 } from 'lucide-react';
 import { type PMTask, type TaskTimeEntry, PRIORITY_COLORS, PRIORITY_LABELS, TASK_STATUS_COLORS, TASK_STATUS_LABELS, TASK_TYPE_LABELS } from '@/lib/services/pmService';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { pmService } from '@/lib/services/pmService';
 import { TaskTimer } from '@/components/pm/TaskTimer';
 import { useToast } from '@/components/ui/use-toast';
@@ -305,7 +306,7 @@ export function TaskListView({ tasks, onTaskClick, onTaskUpdate, users = [], pro
                   </div>
 
                   {task.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words whitespace-normal">{task.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
+                    <HtmlContentRenderer html={task.description} singleLine className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words" />
                   )}
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">

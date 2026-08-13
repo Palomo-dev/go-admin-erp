@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -548,17 +550,18 @@ export function ReservationDrawer({
                 Notas
               </Label>
               {isEditing ? (
-                <Textarea
+                <RichTextEditor
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(html) => setNotes(html)}
                   placeholder="Notas adicionales..."
-                  rows={3}
+                  minHeight={60}
                 />
               ) : (
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 min-h-[60px]">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {reservation.notes || 'Sin notas'}
-                  </p>
+                  <HtmlContentRenderer
+                    html={reservation.notes || 'Sin notas'}
+                    className="text-sm text-gray-600 dark:text-gray-400"
+                  />
                 </div>
               )}
             </div>

@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabase/config'
 import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { SearchSelect } from '@/components/ui/search-select'
+import { RichTextEditor } from '@/components/shared/RichTextEditor'
 import { Package, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -308,13 +308,11 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
               )}
             </Button>
           </div>
-          <Textarea
-            id="description"
+          <RichTextEditor
             value={formData.description}
-            onChange={(e) => updateFormData('description', e.target.value)}
+            onChange={(html) => updateFormData('description', html)}
             placeholder="Descripción detallada del producto..."
-            rows={4}
-            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 resize-none"
+            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
           />
         </div>
 

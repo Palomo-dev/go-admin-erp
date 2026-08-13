@@ -30,7 +30,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -319,7 +320,7 @@ export function CampanaDetallePage({ campaignId }: CampanaDetallePageProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>Contenido</Label>
-                    <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={6} className="bg-gray-50 dark:bg-gray-900" />
+                    <RichTextEditor value={content} onChange={setContent} placeholder="Contenido de la campaña" minHeight={120} className="dark:bg-gray-900" />
                   </div>
                 </>
               ) : (
@@ -344,7 +345,7 @@ export function CampanaDetallePage({ campaignId }: CampanaDetallePageProps) {
                   )}
                   {campaign.content && (
                     <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                      <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{campaign.content}</p>
+                      <HtmlContentRenderer html={campaign.content} className="text-gray-700 dark:text-gray-300" />
                     </div>
                   )}
                 </>

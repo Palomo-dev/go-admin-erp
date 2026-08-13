@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -153,12 +153,11 @@ export function ComponentForm({
             <Label htmlFor="description" className="text-gray-700 dark:text-gray-300">
               Descripción
             </Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleChange('description', e.target.value)}
+            <RichTextEditor
+              value={formData.description || ''}
+              onChange={(html) => handleChange('description', html)}
               placeholder="Descripción del componente"
-              rows={2}
+              minHeight={60}
               className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
             />
           </div>

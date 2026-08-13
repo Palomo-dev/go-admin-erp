@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -537,13 +537,12 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                   <Label htmlFor="notes" className="dark:text-gray-200 text-gray-700">
                     Observaciones del Cierre (Opcional)
                   </Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                  <RichTextEditor
+                    value={formData.notes || ''}
+                    onChange={(html) => handleInputChange('notes', html)}
                     placeholder="Observaciones del cierre, novedades, etc..."
                     className="dark:bg-gray-600 dark:border-gray-500 dark:text-white bg-white border-gray-300"
-                    rows={3}
+                    minHeight={60}
                   />
                 </div>
               </CardContent>

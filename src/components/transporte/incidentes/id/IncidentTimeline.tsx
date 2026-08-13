@@ -3,6 +3,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -138,9 +139,7 @@ export function IncidentTimeline({ events, isLoading, onAddEvent }: IncidentTime
                       </div>
 
                       {event.description && (
-                        <p className="text-gray-700 dark:text-gray-300 mb-2">
-                          {event.description}
-                        </p>
+                        <HtmlContentRenderer html={event.description} className="text-gray-700 dark:text-gray-300 mb-2" />
                       )}
 
                       <div className="flex flex-wrap gap-2 sm:gap-4 text-xs text-gray-500 dark:text-gray-400">

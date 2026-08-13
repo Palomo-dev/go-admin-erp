@@ -23,6 +23,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import {
   deliveryIntegrationService,
   type ProofOfDelivery,
@@ -182,9 +183,9 @@ export function ProofOfDeliveryView({
             <Separator />
             <div className="space-y-2">
               <p className="text-sm font-medium dark:text-gray-100">Comentarios del cliente</p>
-              <p className="text-sm text-muted-foreground dark:text-gray-400 bg-muted p-3 rounded-lg">
-                "{proof.customer_feedback}"
-              </p>
+              <div className="text-sm text-muted-foreground dark:text-gray-400 bg-muted p-3 rounded-lg">
+                <HtmlContentRenderer html={proof.customer_feedback} />
+              </div>
             </div>
           </>
         )}

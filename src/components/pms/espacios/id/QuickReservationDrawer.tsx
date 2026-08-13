@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -323,7 +323,7 @@ export function QuickReservationDrawer({
                   <Calendar
                     mode="single"
                     selected={checkin}
-                    onSelect={(date) => date && setCheckin(date)}
+                    onSelect={(date: Date | undefined) => date && setCheckin(date)}
                     initialFocus
                   />
                 </PopoverContent>
@@ -346,9 +346,9 @@ export function QuickReservationDrawer({
                   <Calendar
                     mode="single"
                     selected={checkout}
-                    onSelect={(date) => date && setCheckout(date)}
+                    onSelect={(date: Date | undefined) => date && setCheckout(date)}
                     initialFocus
-                    disabled={(date) => date < checkin}
+                    disabled={(date: Date) => date < checkin}
                   />
                 </PopoverContent>
               </Popover>
@@ -546,12 +546,11 @@ export function QuickReservationDrawer({
           {/* Notas */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notas</Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               placeholder="Notas adicionales sobre la reserva..."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              onChange={(html) => setNotes(html)}
+              minHeight={60}
             />
           </div>
 

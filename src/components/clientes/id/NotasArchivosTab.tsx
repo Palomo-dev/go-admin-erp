@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 // Interfaces para el componente
 interface Nota {
@@ -269,13 +271,13 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
           Agregar Nota
         </h3>
         <div>
-          <textarea
+          <RichTextEditor
             value={nuevaNota}
-            onChange={(e) => setNuevaNota(e.target.value)}
+            onChange={setNuevaNota}
             placeholder="Escriba una nota sobre este cliente..."
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-sm text-gray-900 dark:text-white focus:border-primary focus:ring-primary"
-            rows={4}
-          ></textarea>
+            minHeight={100}
+            className="dark:bg-gray-800 dark:border-gray-700"
+          />
           <div className="mt-3 flex justify-end">
             <button
               onClick={handleSaveNote}
@@ -353,9 +355,7 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
                     </span>
                   </div>
                 )}
-                <div className="mt-3 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                  {nota.body}
-                </div>
+                <HtmlContentRenderer html={nota.body} className="mt-3 text-gray-700 dark:text-gray-300" />
               </div>
             ))}
           </div>

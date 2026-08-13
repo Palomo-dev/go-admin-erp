@@ -71,7 +71,7 @@
       "terms": "Terms of service",
       "and": "and",
       "privacy": "Privacy policy",
-      "phoneDigitsOnly": "Phone number must contain only digits",
+      "phoneDigitsOnly": "Invalid phone format",
       "profilePhoto": "Profile photo",
       "uploadPhoto": "Upload photo",
       "acceptInvitation": "Accept invitation",

@@ -133,9 +133,9 @@ export default function RegistrationForm({
   const validatePhone = (phone: string): boolean => {
     // Allow empty phone if not required
     if (!isEmployee && !phone) return true;
-    
-    // Only allow digits
-    const phoneRegex = /^\d+$/;
+
+    // Permitir código de país (+), espacios, guiones y paréntesis
+    const phoneRegex = /^\+?[\d\s\-()]+$/;
     return phoneRegex.test(phone);
   };
 

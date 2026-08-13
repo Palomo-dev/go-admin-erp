@@ -18,7 +18,6 @@ export async function POST(request: Request) {
       invitationCode,
       invitedBy,
       origin,
-      resend = false,
     } = await request.json();
 
     if (!email || !invitationCode || !origin) {
@@ -37,13 +36,6 @@ export async function POST(request: Request) {
     });
 
     const inviteUrl = `${origin}/auth/invite?invite_code=${invitationCode}`;
-
-    if (existsInAuth && !resend) {
-      return NextResponse.json(
-        { error: 'already_exists', inviteUrl },
-        { status: 200 }
-      );
-    }
 
     // Si el usuario ya existe en auth.users, inviteUserByEmail genera un token
     // type=invite que falla en verifyOtp porque el usuario ya está confirmado.

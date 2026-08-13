@@ -39,3 +39,11 @@ next-env.d.ts
 # Temp files
 build_output.txt
 dev_server.txt
+temp*.txt
+git_out.txt
+
+# Temp PowerShell scripts (debugging/migration one-time)
+check-*.ps1
+build-electron.ps1
+fix-imports.ps1
+test-endpoints.ps1

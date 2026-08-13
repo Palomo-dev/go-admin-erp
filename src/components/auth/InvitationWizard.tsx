@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -32,7 +32,8 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+  const [isExistingUser, setIsExistingUser] = useState(false);
+
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -99,9 +100,44 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     }
   };
 
+  // Detectar si el usuario ya tiene perfil completo (usuario existente)
+  // En ese caso, se omite el step de contraseña y solo se confirma la membresía
+  useEffect(() => {
+    const checkExistingProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, phone')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile && profile.first_name && profile.last_name) {
+          setIsExistingUser(true);
+          setFormData(prev => ({
+            ...prev,
+            firstName: profile.first_name || '',
+            lastName: profile.last_name || '',
+            phoneNumber: profile.phone || '',
+          }));
+        }
+      } catch (err) {
+        console.log('No se pudo verificar perfil existente:', err);
+      }
+    };
+    checkExistingProfile();
+  }, []);
+
   const handleNextStep = () => {
     if (currentStep === 1 && validateStep1()) {
-      setCurrentStep(2);
+      // Usuario existente: omitir step de contraseña, ir directo al submit
+      if (isExistingUser) {
+        handleSubmit();
+      } else {
+        setCurrentStep(2);
+      }
     }
   };
 
@@ -112,7 +148,8 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
   };
 
   const handleSubmit = async () => {
-    if (!validateStep2()) return;
+    // Usuarios existentes no necesitan definir contraseña (ya la tienen)
+    if (!isExistingUser && !validateStep2()) return;
 
     setIsLoading(true);
     setError(null);
@@ -132,28 +169,30 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         }
       }
 
-      // 1. Actualizar contraseña del usuario existente (ya loggeado con credenciales temporales)
-      console.log('🔑 Actualizando contraseña del usuario...');
-      const { data: authData, error: authError } = await supabase.auth.updateUser({
-        password: formData.password
-      });
+      // 1. Actualizar contraseña SOLO para usuarios nuevos
+      // Los usuarios existentes ya tienen contraseña configurada
+      if (!isExistingUser) {
+        console.log('🔑 Actualizando contraseña del usuario...');
+        const { data: authData, error: authError } = await supabase.auth.updateUser({
+          password: formData.password
+        });
 
-      if (authError) {
-        console.log('Error actualizando contraseña:', authError);
-        if (authError.message?.includes('Auth session missing')) {
-          throw new Error(
-            'Tu sesión expiró mientras completabas el formulario. Por favor, vuelve a abrir el enlace de invitación desde tu correo electrónico para continuar.'
-          );
+        if (authError) {
+          console.log('Error actualizando contraseña:', authError);
+          if (authError.message?.includes('Auth session missing')) {
+            throw new Error(
+              'Tu sesión expiró mientras completabas el formulario. Por favor, vuelve a abrir el enlace de invitación desde tu correo electrónico para continuar.'
+            );
+          }
+          throw new Error(authError.message);
         }
-        throw new Error(authError.message);
-      }
 
-      if (!authData.user) {
-        throw new Error('Error al actualizar usuario');
-      }
+        if (!authData.user) {
+          throw new Error('Error al actualizar usuario');
+        }
 
-      console.log('✅ Contraseña actualizada exitosamente');
-      // Email ya está confirmado desde el login automático
+        console.log('✅ Contraseña actualizada exitosamente');
+      }
 
       // 3-5. Crear/actualizar perfil, crear/actualizar membresía en la organización
       // y marcar la invitación como utilizada, todo en UNA SOLA transacción atómica
@@ -194,7 +233,9 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">¡Bienvenido!</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          {isExistingUser ? 'Confirmar Invitación' : '¡Bienvenido!'}
+        </h2>
         <p className="mt-2 text-gray-600">
           Has sido invitado a unirte a <span className="font-semibold text-blue-600">{inviteData.organization_name}</span>
         </p>
@@ -202,6 +243,21 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
           Como <span className="font-medium">{inviteData.role_name}</span>
         </p>
       </div>
+
+      {isExistingUser && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <CheckCircleIcon className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-green-800">
+                Ya tienes una cuenta en GO Admin. Solo necesitas confirmar tus datos para unirte a esta organización.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-center">
@@ -273,9 +329,17 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
       <button
         onClick={handleNextStep}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        disabled={isLoading}
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Continuar
+        {isLoading ? (
+          <div className="flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+            Procesando...
+          </div>
+        ) : (
+          isExistingUser ? 'Aceptar Invitación' : 'Continuar'
+        )}
       </button>
     </div>
   );
@@ -404,9 +468,14 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         <CheckCircleIcon className="h-8 w-8 text-green-600" />
       </div>
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">¡Registro Completado!</h2>
+        <h2 className="text-2xl font-bold text-gray-900">
+          {isExistingUser ? '¡Invitación Aceptada!' : '¡Registro Completado!'}
+        </h2>
         <p className="mt-2 text-gray-600">
-          Tu cuenta ha sido creada exitosamente en <span className="font-semibold text-blue-600">{inviteData.organization_name}</span>
+          {isExistingUser
+            ? <>Te has unido a <span className="font-semibold text-blue-600">{inviteData.organization_name}</span> exitosamente</>
+            : <>Tu cuenta ha sido creada exitosamente en <span className="font-semibold text-blue-600">{inviteData.organization_name}</span></>
+          }
         </p>
         <p className="mt-2 text-sm text-gray-500">
           Serás redirigido al inicio de sesión en unos segundos...
@@ -416,11 +485,17 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
     </div>
   );
 
-  const steps = [
-    { number: 1, label: 'Datos Personales' },
-    { number: 2, label: 'Contraseña' },
-    { number: 3, label: 'Completado' },
-  ];
+  // Usuario existente: omitir step de contraseña en la barra de progreso
+  const steps = isExistingUser
+    ? [
+        { number: 1, label: 'Confirmar Datos' },
+        { number: 3, label: 'Completado' },
+      ]
+    : [
+        { number: 1, label: 'Datos Personales' },
+        { number: 2, label: 'Contraseña' },
+        { number: 3, label: 'Completado' },
+      ];
 
   const renderProgressBar = () => (
     <div className="mb-8">

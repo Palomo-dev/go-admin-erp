@@ -61,6 +61,7 @@ interface ImportRow {
   modifiers?: string;
   status: 'pending' | 'success' | 'error';
   error?: string;
+  warnings?: string[];
 }
 
 interface ImportStats {
@@ -98,6 +99,39 @@ function mapUnitCode(unit?: string): string {
     'metro cubico': 'M3', 'metro cúbico': 'M3', 'm3': 'M3',
   };
   return mapping[u] || 'UN';
+}
+
+/**
+ * Normaliza un nombre para comparación robusta:
+ * - lowercase
+ * - trim
+ * - colapsa espacios múltiples internos
+ * - elimina acentos/diacríticos (á→a, é→e, ñ→n, ü→u, etc.)
+ * - elimina caracteres no alfanuméricos excepto espacios
+ * Uso: construir claves de Map y buscar coincidencias tolerantes.
+ */
+function normalizeName(name?: string | null): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // quita diacríticos
+    .replace(/[^a-z0-9\s]/g, ' ')    // no alfanuméricos → espacio
+    .replace(/\s+/g, ' ')            // colapsa espacios
+    .trim();
+}
+
+/**
+ * Genera un slug a partir de un nombre (sin acentos, espacios→guiones).
+ */
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .trim();
 }
 
 export default function ImportarProductosPage() {
@@ -475,15 +509,19 @@ export default function ImportarProductosPage() {
       if (t.name.toLowerCase().includes('0%')) taxMap.set('iva 0%', t.id);
     }
 
-    // Obtener categorías de la organización para mapear por nombre
+    // Obtener categorías de la organización para mapear por nombre (y slug)
+    // Se indexa con normalizeName() para matching tolerante a acentos/espacios/mayúsculas
     const { data: orgCategories } = await supabase
       .from('categories')
-      .select('id, name')
+      .select('id, name, slug')
       .eq('organization_id', orgId);
 
     const categoryMap = new Map<string, number>();
     for (const c of orgCategories || []) {
-      categoryMap.set(c.name.toLowerCase().trim(), c.id);
+      const key = normalizeName(c.name);
+      if (key) categoryMap.set(key, c.id);
+      const slugKey = normalizeName(c.slug);
+      if (slugKey && !categoryMap.has(slugKey)) categoryMap.set(slugKey, c.id);
     }
 
     // Obtener proveedores de la organización para mapear por nombre
@@ -494,7 +532,8 @@ export default function ImportarProductosPage() {
 
     const supplierMap = new Map<string, number>();
     for (const s of orgSuppliers || []) {
-      supplierMap.set(s.name.toLowerCase().trim(), s.id);
+      const key = normalizeName(s.name);
+      if (key) supplierMap.set(key, s.id);
     }
 
     // Obtener etiquetas existentes de la organización
@@ -590,16 +629,81 @@ export default function ImportarProductosPage() {
           }
         }
 
-        // Mapear categoría por nombre
+        // Mapear categoría por nombre (normalizado) con fallback por slug.
+        // Si no existe → crearla automáticamente dentro de la organización.
+        const rowWarnings: string[] = [];
         let categoryId: number | null = null;
         if (row.category) {
-          categoryId = categoryMap.get(row.category.toLowerCase().trim()) || null;
+          const catKey = normalizeName(row.category);
+          if (catKey) {
+            categoryId = categoryMap.get(catKey) || null;
+            // Si no se encontró, crear la categoría automáticamente
+            if (!categoryId) {
+              const newSlug = slugify(row.category);
+              const { data: newCat, error: catErr } = await supabase
+                .from('categories')
+                .insert({
+                  organization_id: orgId,
+                  name: row.category.trim(),
+                  slug: newSlug,
+                })
+                .select('id')
+                .single();
+              if (catErr) {
+                // Posible conflicto de slug duplicado: reintentar con sufijo
+                const { data: newCat2, error: catErr2 } = await supabase
+                  .from('categories')
+                  .insert({
+                    organization_id: orgId,
+                    name: row.category.trim(),
+                    slug: `${newSlug}-${Date.now()}`,
+                  })
+                  .select('id')
+                  .single();
+                if (!catErr2 && newCat2) {
+                  categoryId = newCat2.id;
+                  categoryMap.set(catKey, newCat2.id);
+                } else {
+                  rowWarnings.push(`No se pudo crear la categoría "${row.category}"`);
+                }
+              } else if (newCat) {
+                categoryId = newCat.id;
+                categoryMap.set(catKey, newCat.id);
+                rowWarnings.push(`Categoría "${row.category}" creada automáticamente`);
+              }
+            }
+          }
         }
 
-        // Mapear proveedor por nombre
-        let supplierId: number | null = null;
+        // Mapear proveedor(es) por nombre (normalizado).
+        // Soporta múltiples proveedores separados por ';'.
+        // Si no existe → crearlo automáticamente dentro de la organización.
+        const supplierIds: number[] = [];
         if (row.supplier) {
-          supplierId = supplierMap.get(row.supplier.toLowerCase().trim()) || null;
+          const supplierNames = row.supplier.split(';').map(s => s.trim()).filter(Boolean);
+          for (const supName of supplierNames) {
+            const supKey = normalizeName(supName);
+            if (!supKey) continue;
+            let sid = supplierMap.get(supKey) || null;
+            if (!sid) {
+              const { data: newSup, error: supErr } = await supabase
+                .from('suppliers')
+                .insert({
+                  organization_id: orgId,
+                  name: supName,
+                })
+                .select('id')
+                .single();
+              if (!supErr && newSup) {
+                sid = newSup.id;
+                supplierMap.set(supKey, newSup.id);
+                rowWarnings.push(`Proveedor "${supName}" creado automáticamente`);
+              } else {
+                rowWarnings.push(`No se pudo crear el proveedor "${supName}"`);
+              }
+            }
+            if (sid) supplierIds.push(sid);
+          }
         }
 
         // Mapear SKU del producto padre a ID
@@ -807,14 +911,32 @@ export default function ImportarProductosPage() {
           });
         }
 
-        // Insertar relación con proveedor (solo para productos nuevos)
-        if (supplierId && wasInsert) {
-          await supabase.from('product_suppliers').insert({
-            product_id: productId,
-            supplier_id: supplierId,
-            cost: finalCost || 0,
-            is_preferred: true,
-          });
+        // Insertar/actualizar relaciones con proveedores (productos nuevos y existentes).
+        // Soporta múltiples proveedores (separados por ';' en el CSV).
+        // El primer proveedor se marca como is_preferred.
+        // En UPDATE se verifica existencia previa para evitar duplicados (constraint unique product_id+supplier_id).
+        if (supplierIds.length > 0) {
+          // En UPDATE, obtener relaciones existentes para no duplicar
+          const existingSupplierIds = new Set<number>();
+          if (!wasInsert) {
+            const { data: existingRels } = await supabase
+              .from('product_suppliers')
+              .select('supplier_id')
+              .eq('product_id', productId);
+            for (const r of existingRels || []) {
+              existingSupplierIds.add(r.supplier_id);
+            }
+          }
+          for (let si = 0; si < supplierIds.length; si++) {
+            const sid = supplierIds[si];
+            if (existingSupplierIds.has(sid)) continue; // ya existe la relación
+            await supabase.from('product_suppliers').insert({
+              product_id: productId,
+              supplier_id: sid,
+              cost: finalCost || 0,
+              is_preferred: si === 0, // el primero es el preferido
+            });
+          }
         }
 
         // Insertar notas (solo para productos nuevos)
@@ -847,7 +969,7 @@ export default function ImportarProductosPage() {
 
               if (!tagError && newTag) {
                 tagId = newTag.id;
-                tagMap.set(tagKey, tagId);
+                tagMap.set(tagKey, newTag.id);
               }
             }
 
@@ -981,7 +1103,7 @@ export default function ImportarProductosPage() {
           }
         }
 
-        updatedRows[i] = { ...row, status: 'success' };
+        updatedRows[i] = { ...row, status: 'success', warnings: rowWarnings.length > 0 ? rowWarnings : undefined };
         successCount++;
       } catch (error: any) {
         updatedRows[i] = { 
@@ -1479,23 +1601,31 @@ export default function ImportarProductosPage() {
                         <TableCell className="text-sm text-gray-500 font-mono">{row.parentSku || '-'}</TableCell>
                         <TableCell className="text-sm text-gray-500 max-w-[200px] truncate" title={row.modifiers}>{row.modifiers || '-'}</TableCell>
                         <TableCell>
-                          {row.status === 'pending' && (
-                            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                              Pendiente
-                            </Badge>
-                          )}
-                          {row.status === 'success' && (
-                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              OK
-                            </Badge>
-                          )}
-                          {row.status === 'error' && (
-                            <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                              <AlertCircle className="h-3 w-3 mr-1" />
-                              Error
-                            </Badge>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {row.status === 'pending' && (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                Pendiente
+                              </Badge>
+                            )}
+                            {row.status === 'success' && (
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                OK
+                              </Badge>
+                            )}
+                            {row.status === 'error' && (
+                              <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Error
+                              </Badge>
+                            )}
+                            {row.warnings && row.warnings.length > 0 && (
+                              <span className="text-xs text-amber-600 dark:text-amber-400" title={row.warnings.join('\n')}>
+                                <FileWarning className="h-3 w-3 inline mr-1" />
+                                {row.warnings.length} aviso{row.warnings.length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

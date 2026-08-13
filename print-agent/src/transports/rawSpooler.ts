@@ -16,6 +16,53 @@ import * as path from 'path';
 import * as os from 'os';
 import * as child_process from 'child_process';
 
+/**
+ * Consulta información de la impresora en Windows: driver, puerto y si soporta RAW.
+ * Retorna null si no se puede consultar (no Windows o impresora no encontrada).
+ */
+export async function getPrinterInfo(printerName: string): Promise<{ driverName: string; portName: string; printProcessor: string } | null> {
+  if (process.platform !== 'win32') return null;
+
+  const script = `
+Get-CimInstance Win32_Printer |
+  Where-Object { $_.Name -eq '${printerName.replace(/'/g, "''")}' } |
+  Select-Object DriverName, PortName, PrintProcessor |
+  ConvertTo-Json -Compress
+`.trim();
+
+  return new Promise((resolve) => {
+    const tmpFile = path.join(os.tmpdir(), `go-admin-ps-info-${Date.now()}.ps1`);
+    try {
+      fs.writeFileSync(tmpFile, script, 'utf8');
+    } catch {
+      resolve(null);
+      return;
+    }
+
+    child_process.exec(
+      `powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`,
+      { timeout: 10000, windowsHide: true, maxBuffer: 256 * 1024 },
+      (err, stdout) => {
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+        if (err || !stdout || !stdout.trim()) {
+          resolve(null);
+          return;
+        }
+        try {
+          const info = JSON.parse(stdout.trim());
+          resolve({
+            driverName: info?.DriverName || 'desconocido',
+            portName: info?.PortName || 'desconocido',
+            printProcessor: info?.PrintProcessor || 'desconocido',
+          });
+        } catch {
+          resolve(null);
+        }
+      }
+    );
+  });
+}
+
 const CSHARP_SOURCE = `
 using System;
 using System.Runtime.InteropServices;
@@ -51,7 +98,7 @@ public static class RawPrinter {
 
   public static int Send(string printerName, byte[] data) {
     IntPtr hPrinter;
-    if (OpenPrinter(printerName, out hPrinter, IntPtr.Zero) == 0) {
+    if ((int)OpenPrinter(printerName, out hPrinter, IntPtr.Zero) == 0) {
       throw new Exception("OpenPrinter failed: " + Marshal.GetLastWin32Error());
     }
     try {
@@ -101,23 +148,39 @@ export function sendRawToPrinter(printerName: string, buffer: Buffer): Promise<v
     const tempFile = path.join(tmpDir, `raw-${Date.now()}.bin`);
     fs.writeFileSync(tempFile, buffer);
 
+    // Log de diagnóstico: tamaño y primeros bytes del buffer
+    const hexPreview = buffer.slice(0, 16).toString('hex').match(/.{1,2}/g)?.join(' ') || '';
+    console.log(`[rawSpooler] Enviando ${buffer.length} bytes a "${printerName}" | preview: ${hexPreview}`);
+
     const script = POWERSHELL_SCRIPT(printerName, tempFile);
 
     const child = child_process.exec(
       `powershell -NoProfile -NonInteractive -Command "${script.replace(/"/g, '\\"')}"`,
       { windowsHide: true, timeout: 30000 },
-      (err, _stdout, stderr) => {
+      (err, stdout, stderr) => {
         // Limpiar el temporal
         try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
+
+        if (stdout && stdout.trim()) {
+          console.log(`[rawSpooler] stdout de PowerShell para "${printerName}": ${stdout.trim()}`);
+        }
 
         if (err) {
           reject(new Error(`RAW spooler error enviando a "${printerName}": ${err.message || err}`));
           return;
         }
         if (stderr && stderr.trim()) {
-          reject(new Error(`RAW spooler stderr para "${printerName}": ${stderr.trim()}`));
-          return;
+          // PowerShell a veces envía warnings a stderr aunque la operación exita.
+          // Si el mensaje contiene "WritePrinter" o "OpenPrinter" es un error real.
+          const isRealError = /OpenPrinter|StartDocPrinter|WritePrinter|EndDocPrinter|ClosePrinter|failed|error/i.test(stderr);
+          if (isRealError) {
+            reject(new Error(`RAW spooler stderr para "${printerName}": ${stderr.trim()}`));
+            return;
+          }
+          // Es solo un warning, loguear pero continuar
+          console.warn(`[rawSpooler] warning (no fatal) de PowerShell: ${stderr.trim()}`);
         }
+        console.log(`[rawSpooler] Bytes enviados correctamente a "${printerName}" (${buffer.length} bytes)`);
         resolve();
       }
     );

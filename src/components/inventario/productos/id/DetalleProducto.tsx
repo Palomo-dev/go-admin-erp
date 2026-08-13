@@ -2,7 +2,6 @@
 
 import {
   useState,
-  lazy,
   Suspense } from 'react';
 
 import { useRouter } from 'next/navigation';
@@ -14,7 +13,18 @@ import {
   AlertTriangle,
   ArrowLeft,
   PackagePlus,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Info,
+  Tags,
+  SlidersHorizontal,
+  Package,
+  Barcode,
+  Image as ImageIcon,
+  DollarSign,
+  Truck,
+  Tag,
+  StickyNote,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +45,7 @@ import EtiquetasTab from './tabs/EtiquetasTab';
 import NotasTab from './tabs/NotasTab';
 import AuditoriaTab from './tabs/AuditoriaTab';
 import ProveedoresTab from './tabs/ProveedoresTab';
+import SerialesTab from './tabs/SerialesTab';
 
 // Importaciones de componentes UI
 import { 
@@ -52,6 +63,26 @@ import {
 interface DetalleProductoProps {
   producto: any;
 }
+
+interface ProductTab {
+  value: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const PRODUCT_TABS: ProductTab[] = [
+  { value: 'detalles', label: 'Detalles', icon: Info },
+  { value: 'variantes', label: 'Variantes', icon: Tags },
+  { value: 'modificadores', label: 'Modificadores', icon: SlidersHorizontal },
+  { value: 'stock', label: 'Stock', icon: Package },
+  { value: 'seriales', label: 'Seriales', icon: Barcode },
+  { value: 'imagenes', label: 'Imágenes', icon: ImageIcon },
+  { value: 'precios', label: 'Precios', icon: DollarSign },
+  { value: 'proveedores', label: 'Proveedores', icon: Truck },
+  { value: 'etiquetas', label: 'Etiquetas', icon: Tag },
+  { value: 'notas', label: 'Notas', icon: StickyNote },
+  { value: 'auditoria', label: 'Auditoría', icon: History },
+];
 
 /**
  * Componente principal de la vista de detalle de producto
@@ -245,78 +276,90 @@ const DetalleProducto: React.FC<DetalleProductoProps> = ({ producto }) => {
         </AlertDialog>
       </div>
       
-      {/* Pestañas de contenido */}
-      <main className="flex-1 p-6 overflow-auto">
-        {/* Pestañas de producto */}
-        <div className="mt-6">
-          <Tabs defaultValue="detalles" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 md:grid-cols-10 h-auto gap-1.5 md:gap-1 p-1.5 md:p-1 dark:bg-gray-800 dark:border-gray-700">
-              <TabsTrigger value="detalles" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Detalles</TabsTrigger>
-              <TabsTrigger value="variantes" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Variantes</TabsTrigger>
-              <TabsTrigger value="modificadores" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Modificadores</TabsTrigger>
-              <TabsTrigger value="stock" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Stock</TabsTrigger>
-              <TabsTrigger value="imagenes" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Imágenes</TabsTrigger>
-              <TabsTrigger value="precios" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Precios</TabsTrigger>
-              <TabsTrigger value="proveedores" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Proveedores</TabsTrigger>
-              <TabsTrigger value="etiquetas" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Etiquetas</TabsTrigger>
-              <TabsTrigger value="notas" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Notas</TabsTrigger>
-              <TabsTrigger value="auditoria" className="text-xs sm:text-sm py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 dark:text-gray-300">Auditoría</TabsTrigger>
+      {/* Pestañas estilo configuración */}
+      <div className="border-b border-gray-200 dark:border-gray-700 py-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <div className="overflow-x-auto">
+            <TabsList className="bg-transparent h-auto p-0 gap-1">
+              {PRODUCT_TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20"
+                  >
+                    <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                      <Icon className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                    </div>
+                    <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                      {tab.label}
+                    </span>
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
-            
-            {/* Contenido de pestañas con Suspense para manejar la carga dinámica */}
-            <TabsContent value="detalles">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <DetallesTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="variantes">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <VariantesTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="modificadores">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <ModificadoresTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="stock">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <StockTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="imagenes">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <ImagenesTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="precios">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <PreciosTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="proveedores">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <ProveedoresTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="etiquetas">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <EtiquetasTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="notas">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <NotasTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-            <TabsContent value="auditoria">
-              <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
-                <AuditoriaTab producto={producto} />
-              </Suspense>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
+          </div>
+
+          {/* Contenido de pestañas */}
+          <TabsContent value="detalles">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <DetallesTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="variantes">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <VariantesTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="modificadores">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <ModificadoresTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="stock">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <StockTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="seriales">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <SerialesTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="imagenes">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <ImagenesTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="precios">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <PreciosTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="proveedores">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <ProveedoresTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="etiquetas">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <EtiquetasTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="notas">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <NotasTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+          <TabsContent value="auditoria">
+            <Suspense fallback={<div className="animate-pulse bg-gray-200 dark:bg-gray-800 h-64 rounded-md"></div>}>
+              <AuditoriaTab producto={producto} />
+            </Suspense>
+          </TabsContent>
+        </Tabs>
+      </div>
+
     </div>
   );
 };

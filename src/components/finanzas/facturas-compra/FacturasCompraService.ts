@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva, getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { stockMovementService, describeSkippedItems } from '@/lib/services/stockMovementService';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { 
   InvoicePurchase, 
   SupplierBase, 
@@ -307,6 +308,36 @@ export class FacturasCompraService {
             .from('invoice_purchase_applied_taxes')
             .insert(taxRows);
           if (taxInsertError) console.warn('Error guardando impuestos aplicados:', taxInsertError);
+        }
+      }
+
+      // Crear seriales para productos con tracking de serial
+      const itemsWithSerials = formData.items.filter(item => item.serial_numbers && item.serial_numbers.length > 0);
+      if (itemsWithSerials.length > 0) {
+        try {
+          const serialInputs: import('@/lib/services/serialTrackingService').SerialInput[] = [];
+          for (const item of itemsWithSerials) {
+            if (!item.product_id) continue;
+            for (const serial of item.serial_numbers!) {
+              serialInputs.push({
+                product_id: item.product_id,
+                organization_id: this.organizationId,
+                branch_id: this.branchId!,
+                serial,
+                supplier_id: formData.supplier_id ?? undefined,
+                purchase_invoice_id: factura.id,
+                cost_at_purchase: item.unit_price,
+              });
+            }
+          }
+          if (serialInputs.length > 0) {
+            const { errors: serialErrors } = await serialTrackingService.createSerials(serialInputs);
+            if (serialErrors.length > 0) {
+              console.warn('Algunos seriales no se pudieron crear:', serialErrors);
+            }
+          }
+        } catch (serialErr) {
+          console.error('Error creando seriales:', serialErr);
         }
       }
 

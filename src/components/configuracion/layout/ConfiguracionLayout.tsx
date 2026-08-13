@@ -20,7 +20,7 @@ export function ConfiguracionLayout() {
 
   if (loading) {
     return (
-      <div className="flex flex-col h-[calc(100vh-4rem)]">
+      <div className="flex flex-col h-full">
         <div className="border-b border-gray-200 dark:border-gray-700 px-3 sm:px-6 py-4 flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-xl" />
           <div className="space-y-2">
@@ -40,7 +40,7 @@ export function ConfiguracionLayout() {
 
   if (availableModules.length === 0) {
     return (
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-full">
         <ConfiguracionEmpty />
       </div>
     );
@@ -51,7 +51,7 @@ export function ConfiguracionLayout() {
   const effectiveModule = isValidModule ? currentModule : displayModules[0];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-full">
       <ConfiguracionHeader module={effectiveModule} />
 
       <div className="border-b border-gray-200 dark:border-gray-700 px-3 sm:px-6 py-2">

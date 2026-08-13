@@ -5,7 +5,7 @@ import { getPaperSpec } from './printing/paper';
 import { printKitchenTicket, buildPlainTextTicket, printSaleTicket, buildPlainTextSaleTicket, printShipmentGuide, buildPlainTextShipmentGuide, printElectronicInvoice, buildPlainTextElectronicInvoice } from './printing/renderEscpos';
 import { buildSaleTicketHTML, buildKitchenTicketHTML, buildShipmentGuideHTML, buildElectronicInvoiceHTML } from './printing/renderHtml';
 import { buildEscposBuffer, buildCashDrawerBuffer } from './printing/escposBuffer';
-import { sendRawToPrinter } from './transports/rawSpooler';
+import { sendRawToPrinter, getPrinterInfo } from './transports/rawSpooler';
 
 function renderToDevice(device_: any, jobType: PrintJobRow['job_type'], payload: PrintJobPayload, paper: PaperSpec): void {
   // CP858 = Latin-1 + Euro. Soporta Ñ, tildes, °, ¿, ¡, €.
@@ -352,6 +352,24 @@ async function printViaRawSpooler(printer: PrinterRow, jobType: PrintJobRow['job
 
   const buffer = await buildEscposBuffer(jobType, payload, paper);
   console.log(`[printer] printViaRawSpooler: buffer ESC/POS generado (${buffer.length} bytes)`);
+
+  // Diagnóstico: loguear driver y puerto de la impresora en Windows
+  const info = await getPrinterInfo(printerName);
+  if (info) {
+    console.log(
+      `[printer] printViaRawSpooler: Windows info para "${printerName}" -> ` +
+      `driver="${info.driverName}", port="${info.portName}", processor="${info.printProcessor}"`
+    );
+    if (info.printProcessor && !/raw/i.test(info.printProcessor)) {
+      console.warn(
+        `[printer] printViaRawSpooler: ADVERTENCIA - PrintProcessor="${info.printProcessor}" no es RAW. ` +
+        `Esto puede causar que los bytes ESC/POS no lleguen a la impresora. ` +
+        `Cambia el PrintProcessor a "RAW" en Propiedades de impresora > Avanzado.`
+      );
+    }
+  } else {
+    console.warn(`[printer] printViaRawSpooler: no se pudo obtener info de Windows para "${printerName}"`);
+  }
 
   await sendRawToPrinter(printerName, buffer);
   console.log(`[printer] printViaRawSpooler: enviado a "${printerName}"`);

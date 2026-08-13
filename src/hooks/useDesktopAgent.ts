@@ -28,6 +28,7 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoStartAttempted = useRef(false);
+  const agentRunningRef = useRef(false);
 
   const refreshStatus = useCallback(async () => {
     const bridge = getDesktopBridge();
@@ -35,6 +36,7 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
     try {
       const status = await bridge.status();
       setAgentStatus(status);
+      agentRunningRef.current = !!status?.running;
     } catch {
       /* silencioso */
     }
@@ -125,7 +127,7 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
       autoStartAttempted.current = true;
       (async () => {
         await refreshStatus();
-        if (!agentStatus?.running) {
+        if (!agentRunningRef.current) {
           await startAgentForCurrentOrg();
         }
       })();
@@ -133,7 +135,7 @@ export function useDesktopAgent(): UseDesktopAgentReturn {
 
     const interval = setInterval(refreshStatus, 15_000);
     return () => clearInterval(interval);
-  }, [isDesktopApp, refreshStatus, startAgentForCurrentOrg, agentStatus?.running]);
+  }, [isDesktopApp, refreshStatus, startAgentForCurrentOrg]);
 
   return {
     isDesktopApp,

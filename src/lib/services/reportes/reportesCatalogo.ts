@@ -24,6 +24,7 @@ import { clientesReports } from './modulos/clientesReports';
 import { rolesReports } from './modulos/rolesReports';
 import { pmReports } from './modulos/pmReports';
 import { operacionesReports } from './modulos/operacionesReports';
+import { serialTrackingReports } from './modulos/serialTrackingReports';
 
 // ============================================================
 // Metadatos de módulos (nombre visible + icono lucide)
@@ -58,7 +59,7 @@ const MODULO_META: Record<string, { nombre: string; icono: string }> = {
 const CATALOGO: Record<string, ReportDefinition[]> = {
   pos: ventasReports,
   finance: [...finanzasReports, ...contabilidadReports],
-  inventory: inventarioReports,
+  inventory: [...inventarioReports, ...serialTrackingReports],
   crm: crmReports,
   hrm: hrmReports,
   pms_hotel: pmsReports,

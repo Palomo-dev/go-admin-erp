@@ -201,6 +201,20 @@ export function ItemsListForm({
     }
   }, [items.length, onItemChange]);
   
+  // Manejar cambio de seriales
+  const handleSerialsChange = useCallback((index: number, serials: string[]) => {
+    setSelectedProducts(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], serials };
+      return updated;
+    });
+    
+    // Sincronizar con el formulario original
+    if (index < items.length) {
+      onItemChange(index, 'serial_numbers', serials);
+    }
+  }, [items.length, onItemChange]);
+  
   // Obtener IDs de productos ya seleccionados
   const selectedProductIds = selectedProducts.map(p => p.id);
 
@@ -244,6 +258,7 @@ export function ItemsListForm({
         onProductUpdate={handleProductUpdate}
         onProductRemove={handleProductRemove}
         onProductDescriptionEdit={handleDescriptionEdit}
+        onProductSerialsChange={handleSerialsChange}
       />
 
     </div>

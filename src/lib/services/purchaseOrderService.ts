@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { stockMovementService, type StockDecrementResult } from '@/lib/services/stockMovementService';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
 
 // Tipos para Órdenes de Compra
 export interface PurchaseOrder {
@@ -624,6 +625,154 @@ class PurchaseOrderService {
       return { success: true, error: null, stock: stockResult };
     } catch (error: any) {
       console.error('Error recibiendo items:', error?.message || error);
+      return { success: false, error: error as Error };
+    }
+  }
+
+  /**
+   * Recibir items con seriales (para productos que requieren tracking individual)
+   */
+  async receiveItemsWithSerials(
+    orderUuid: string,
+    organizationId: number,
+    itemsReceived: Array<{
+      itemId: number;
+      quantity: number;
+      serials?: string[];
+    }>
+  ): Promise<{ success: boolean; error: Error | null; stock?: StockDecrementResult }> {
+    try {
+      const { data: order } = await supabase
+        .from('purchase_orders')
+        .select('id, branch_id, supplier_id')
+        .eq('uuid', orderUuid)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (!order) {
+        return { success: false, error: new Error('Orden no encontrada') };
+      }
+
+      const orderId = order.id;
+      const branchId = order.branch_id;
+      const supplierId = order.supplier_id;
+
+      const itemIds = itemsReceived.map(i => i.itemId);
+      const { data: currentItems } = await supabase
+        .from('purchase_order_items')
+        .select('id, product_id, unit_cost, received_quantity')
+        .in('id', itemIds)
+        .eq('purchase_order_id', orderId);
+
+      const currentMap = new Map((currentItems || []).map(i => [i.id, i]));
+
+      for (const item of itemsReceived) {
+        const { error } = await supabase
+          .from('purchase_order_items')
+          .update({
+            received_quantity: item.quantity,
+            serials_received: item.serials || [],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', item.itemId)
+          .eq('purchase_order_id', orderId);
+
+        if (error) throw error;
+      }
+
+      let stockResult: StockDecrementResult | undefined;
+      try {
+        const stockItems = itemsReceived
+          .map(item => {
+            const current = currentMap.get(item.itemId);
+            if (!current || !current.product_id) return null;
+            const prevQty = Number(current.received_quantity) || 0;
+            const newQty = Number(item.quantity) || 0;
+            const delta = newQty - prevQty;
+            if (delta <= 0) return null;
+            return {
+              product_id: current.product_id,
+              quantity: delta,
+              unit_price: Number(current.unit_cost) || 0,
+            };
+          })
+          .filter((item): item is { product_id: number; quantity: number; unit_price: number } => item !== null);
+
+        if (stockItems.length > 0) {
+          stockResult = await stockMovementService.incrementOnPurchase(
+            organizationId,
+            branchId,
+            orderId,
+            stockItems,
+            'purchase_order'
+          );
+        }
+      } catch (stockError: any) {
+        console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
+        stockResult = {
+          success: false,
+          skipped: 0,
+          skippedItems: [],
+          errors: [stockError?.message || 'Error desconocido sumando stock'],
+        };
+      }
+
+      // Crear seriales en la base de datos
+      for (const item of itemsReceived) {
+        if (!item.serials || item.serials.length === 0) continue;
+
+        const current = currentMap.get(item.itemId);
+        if (!current || !current.product_id) continue;
+
+        const prevQty = Number(current.received_quantity) || 0;
+        const newQty = Number(item.quantity) || 0;
+        const delta = newQty - prevQty;
+
+        // Solo crear seriales por la cantidad nueva recibida (delta)
+        const serialsToCreate = item.serials.slice(0, delta);
+
+        for (const serialText of serialsToCreate) {
+          const { error: serialError } = await serialTrackingService.createSerial({
+            product_id: current.product_id,
+            organization_id: organizationId,
+            branch_id: branchId,
+            serial: serialText,
+            supplier_id: supplierId,
+            purchase_order_id: orderId,
+            cost_at_purchase: Number(current.unit_cost) || 0,
+          });
+
+          if (serialError) {
+            console.warn(`⚠️ Error creando serial ${serialText}:`, serialError.message);
+          }
+        }
+      }
+
+      // Verificar recepcion total/parcial
+      const { data: allItems } = await supabase
+        .from('purchase_order_items')
+        .select('quantity, received_quantity')
+        .eq('purchase_order_id', orderId);
+
+      if (allItems) {
+        const isComplete = allItems.every((item: { quantity: number; received_quantity: number }) => item.received_quantity >= item.quantity);
+        const isPartial = allItems.some((item: { quantity: number; received_quantity: number }) => item.received_quantity > 0);
+
+        const newStatus = isComplete ? 'received' : (isPartial ? 'partial' : 'sent');
+        await this.setStatus(orderUuid, organizationId, newStatus);
+
+        if (isComplete) {
+          try {
+            await this.generateInvoiceFromPurchaseOrder(orderId, organizationId, branchId);
+          } catch (invError) {
+            console.warn('⚠️ Error generando factura automática (no bloquea recepción):', invError);
+          }
+        }
+      }
+
+      return { success: true, error: null, stock: stockResult };
+    } catch (error: any) {
+      console.error('Error recibiendo items con seriales:', error?.message || error);
       return { success: false, error: error as Error };
     }
   }

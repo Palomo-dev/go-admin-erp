@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { CalendarIcon, Save, Loader2, PackageCheck } from 'lucide-react';
+import { CalendarIcon, Save, Loader2, PackageCheck, Barcode, ShieldCheck, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -59,6 +59,10 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     product_type: producto.product_type || 'product',
     brand: producto.brand || '',
     reference: producto.reference || '',
+    track_serial: producto.track_serial || false,
+    warranty_months: producto.warranty_months ?? null,
+    auto_generate_serial: producto.auto_generate_serial || false,
+    serial_pattern: producto.serial_pattern || '',
   });
   
   // Cargar datos de categorías, unidades y proveedores al montar el componente
@@ -122,6 +126,16 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
     setFormData({ ...formData, track_stock: checked });
   };
   
+  // Generar código de barras único (EAN-13)
+  const generateBarcode = () => {
+    const digits = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10));
+    // Calcular dígito verificador (EAN-13 checksum)
+    const sum = digits.reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 1 : 3), 0);
+    const checksum = (10 - (sum % 10)) % 10;
+    const barcode = [...digits, checksum].join('');
+    setFormData({ ...formData, barcode });
+  };
+
   // Guardar cambios en el producto
   const handleSaveChanges = async () => {
     setLoading(true);
@@ -132,7 +146,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
         .update({
           name: formData.name,
           sku: formData.sku,
-          barcode: formData.barcode,
+          barcode: formData.barcode || null,
           description: formData.description,
           category_id: formData.category_id || null,
           unit_code: formData.unit_code || null,
@@ -141,6 +155,10 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           product_type: formData.product_type,
           brand: formData.brand || null,
           reference: formData.reference || null,
+          track_serial: formData.track_serial,
+          warranty_months: formData.warranty_months ?? null,
+          auto_generate_serial: formData.auto_generate_serial,
+          serial_pattern: formData.serial_pattern || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', producto.id)
@@ -237,14 +255,26 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           
           <div className="space-y-2">
             <Label htmlFor="barcode">Código de Barras</Label>
-            <Input
-              id="barcode"
-              name="barcode"
-              value={formData.barcode}
-              onChange={handleInputChange}
-              placeholder="Código de barras (opcional)"
-              className="font-mono dark:bg-gray-800 dark:border-gray-700"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="barcode"
+                name="barcode"
+                value={formData.barcode}
+                onChange={handleInputChange}
+                placeholder="Código de barras (opcional)"
+                className="font-mono dark:bg-gray-800 dark:border-gray-700 flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={generateBarcode}
+                title="Generar código de barras"
+                className="shrink-0"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
           <div className="space-y-2">
@@ -384,6 +414,102 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
             />
           </div>
         </div>
+      </div>
+
+      {/* Sección de Trazabilidad de Seriales y Garantía */}
+      <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+            <Barcode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-medium">Trazabilidad de Seriales y Garantía</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Configura el seguimiento de números de serie y garantías
+            </p>
+          </div>
+        </div>
+
+        {/* Switch track_serial */}
+        <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+          <div className="flex items-center gap-3">
+            <Barcode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div>
+              <Label className="text-sm font-medium text-gray-900 dark:text-white">
+                Requiere número de serial
+              </Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Activa el seguimiento individual de cada unidad
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={formData.track_serial}
+            onCheckedChange={(checked) => setFormData({ ...formData, track_serial: checked })}
+          />
+        </div>
+
+        {/* Campos condicionales cuando track_serial está activo */}
+        {formData.track_serial && (
+          <div className="space-y-4 pl-2 border-l-2 border-blue-200 dark:border-blue-800 ml-2">
+            {/* Meses de garantía */}
+            <div className="space-y-2">
+              <Label htmlFor="warranty_months" className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />
+                Meses de garantía
+              </Label>
+              <Input
+                id="warranty_months"
+                type="number"
+                min="0"
+                value={formData.warranty_months ?? ''}
+                onChange={(e) => setFormData({ ...formData, warranty_months: e.target.value ? parseInt(e.target.value) : null })}
+                placeholder="Ej: 12, 24, 36"
+                className="dark:bg-gray-800 dark:border-gray-700"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Duración de la garantía en meses desde la fecha de venta
+              </p>
+            </div>
+
+            {/* Auto-generar serial */}
+            <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="h-5 w-5 text-amber-500" />
+                <div>
+                  <Label className="text-sm font-medium text-gray-900 dark:text-white">
+                    Auto-generar seriales
+                  </Label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Genera números de serie automáticamente al recibir stock
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={formData.auto_generate_serial}
+                onCheckedChange={(checked) => setFormData({ ...formData, auto_generate_serial: checked })}
+              />
+            </div>
+
+            {/* Patrón de serial */}
+            {formData.auto_generate_serial && (
+              <div className="space-y-2">
+                <Label htmlFor="serial_pattern">Patrón de generación</Label>
+                <Input
+                  id="serial_pattern"
+                  name="serial_pattern"
+                  value={formData.serial_pattern}
+                  onChange={handleInputChange}
+                  placeholder="Ej: {PROD}-{YYYY}-{####}"
+                  className="font-mono dark:bg-gray-800 dark:border-gray-700"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Variables: {'{PROD}'} = SKU, {'{YYYY}'} = año, {'{####}'} = número secuencial
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Metadatos y botón guardar */}

@@ -241,6 +241,7 @@ export function ProductSearchDialog({
           track_stock: track,
           stock_qty: qty,
           is_out_of_stock: mode === 'sale' && Boolean(branchId) && track && qty <= 0,
+          track_serial: product.track_serial === true,
         };
       });
 

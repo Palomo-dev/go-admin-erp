@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Users, Settings, Clock, LockOpen, Lock, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Users, Settings, Clock, Lock, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,12 +16,17 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { Product, Customer, Cart, Sale, CartItemModifier } from '@/components/pos/types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
-import { VentasService, DailySummary, CashSession } from '@/components/pos/ventas';
+import { VentasService, DailySummary } from '@/components/pos/ventas';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import KitchenService from '@/lib/services/kitchenService';
 import { getUserName } from '@/lib/services/userService';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
+import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
+import { CierreCajaDialog } from '@/components/pos/cajas/CierreCajaDialog';
+import { CajasService } from '@/components/pos/cajas/CajasService';
+import { useBlindCloseMode } from '@/components/pos/cajas/useBlindCloseMode';
+import type { CashSession } from '@/components/pos/cajas/types';
 
 export default function POSPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -36,6 +41,41 @@ export default function POSPage() {
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+  const { showExpected } = useBlindCloseMode();
+
+  // Cargar userId y rol del usuario actual
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setCurrentUserId(user.id);
+          const { data: memberData } = await supabase
+            .from('organization_members')
+            .select('is_super_admin, role_id, roles(name)')
+            .eq('user_id', user.id)
+            .eq('organization_id', organization?.id || 0)
+            .eq('is_active', true)
+            .single();
+          if (memberData) {
+            const roleName = (memberData.roles as any)?.name?.toLowerCase() || ''
+            const isAdmin = memberData.is_super_admin ||
+              roleName.includes('admin') ||
+              roleName.includes('owner') ||
+              memberData.role_id === 2;
+            setIsOrgAdmin(isAdmin);
+          }
+        }
+      } catch (err) {
+        console.warn('Error loading user info:', err);
+      }
+    };
+    if (organization?.id) {
+      loadUserInfo();
+    }
+  }, [organization]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -49,13 +89,29 @@ export default function POSPage() {
     try {
       const [summary, session] = await Promise.all([
         VentasService.getDailySummary(),
-        VentasService.getCurrentCashSession(branchFilter)
+        CajasService.getActiveSession()
       ]);
       setDailySummary(summary);
       setCashSession(session);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
+  };
+
+  const handleSessionOpened = (session: CashSession) => {
+    setCashSession(session);
+    loadDashboardData();
+    toast.success('Caja abierta exitosamente', {
+      description: `Monto inicial: ${formatCurrency(session.initial_amount)}`
+    });
+  };
+
+  const handleSessionClosed = (session: CashSession) => {
+    setCashSession(null);
+    loadDashboardData();
+    toast.success('Caja cerrada exitosamente', {
+      description: showExpected ? `Diferencia: ${formatCurrency(Math.abs(session.difference || 0))}` : 'Caja cerrada'
+    });
   };
 
   const initializePOS = async () => {
@@ -377,25 +433,33 @@ export default function POSPage() {
               
               {/* Info y Badges - Responsive */}
               <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4">
-                {/* Estado de Caja */}
-                <div className={cn(
-                  "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
-                  cashSession 
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
-                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                )}>
-                  {cashSession ? (
-                    <>
-                      <LockOpen className="h-3 w-3" />
-                      <span className="hidden sm:inline">Caja Abierta</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-3 w-3" />
-                      <span className="hidden sm:inline">Caja Cerrada</span>
-                    </>
-                  )}
-                </div>
+                {/* Botones de Caja - Abrir/Cerrar */}
+                {cashSession ? (
+                  (() => {
+                    const canClose = isOrgAdmin || cashSession.opened_by === currentUserId;
+                    if (!canClose) {
+                      return (
+                        <Button
+                          disabled
+                          size="sm"
+                          className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                          title="Solo el cajero que abrió la caja o un administrador puede cerrarla"
+                        >
+                          <Lock className="h-4 w-4 mr-1" />
+                          <span className="hidden sm:inline">Cerrar Caja</span>
+                        </Button>
+                      );
+                    }
+                    return (
+                      <CierreCajaDialog
+                        session={cashSession}
+                        onSessionClosed={handleSessionClosed}
+                      />
+                    );
+                  })()
+                ) : (
+                  <AperturaCajaDialog onSessionOpened={handleSessionOpened} />
+                )}
 
                 {/* Hora */}
                 <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">

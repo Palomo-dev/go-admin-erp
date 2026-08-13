@@ -169,7 +169,7 @@ export function ReporteSheet({
                         setComparing(true);
                       }
                     }}
-                    className={`h-8 text-xs ${comparing ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                    className={`h-9 text-xs touch-manipulation ${comparing ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
                     title={comparing ? 'Quitar comparación' : 'Comparar con período anterior'}
                   >
                     <GitCompareArrows className="h-3.5 w-3.5 mr-1" />
@@ -181,7 +181,7 @@ export function ReporteSheet({
                       variant="outline"
                       size="sm"
                       onClick={() => onExportPDF(data, comparing ? comparisonData ?? undefined : undefined)}
-                      className="h-8 text-xs print:hidden"
+                      className="h-9 text-xs print:hidden touch-manipulation"
                     >
                       <FileDown className="h-3.5 w-3.5 mr-1" />
                       PDF
@@ -190,9 +190,9 @@ export function ReporteSheet({
 
                   <button
                     onClick={() => onOpenChange(false)}
-                    className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    className="p-2.5 -mr-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors touch-manipulation"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                     <span className="sr-only">Cerrar</span>
                   </button>
                 </div>
@@ -326,7 +326,7 @@ export function ReporteSheet({
                           size="sm"
                           onClick={() => loadComparison()}
                           disabled={comparisonLoading}
-                          className="h-7 text-xs px-2 bg-blue-600 hover:bg-blue-700 text-white"
+                          className="h-8 text-xs px-2 bg-blue-600 hover:bg-blue-700 text-white touch-manipulation"
                         >
                           {comparisonLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Aplicar'}
                         </Button>
@@ -419,7 +419,10 @@ export function ReporteSheet({
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => onOpenChange(false)}
           />
-          <div className="absolute inset-x-3 top-[5%] bottom-[5%] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 fade-in duration-200">
+          <div
+            className="absolute inset-x-3 top-[5%] bottom-[5%] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 fade-in duration-200 z-10 touch-manipulation"
+            onClick={(e) => e.stopPropagation()}
+          >
             {renderContent()}
           </div>
         </>

@@ -106,8 +106,8 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
       <Label htmlFor="payment-method" className="text-sm font-medium text-gray-700 dark:text-gray-300">
         Forma de Pago
       </Label>
-      <Select 
-        value={formaPago} 
+      <Select
+        value={formaPago || undefined}
         onValueChange={onChange}
         disabled={isLoading || metodosPago.length === 0}
       >

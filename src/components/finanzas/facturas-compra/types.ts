@@ -201,6 +201,7 @@ export interface InvoiceItemForm {
   tax_rate: number;
   tax_code?: string | null;
   discount_amount: number;
+  serial_numbers?: string[];
 }
 
 // Opciones para componentes de selección

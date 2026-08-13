@@ -131,6 +131,13 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
     updateFormData('sku', newSku)
   }
 
+  const generateBarcode = () => {
+    const digits = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10))
+    const sum = digits.reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 1 : 3), 0)
+    const checksum = (10 - (sum % 10)) % 10
+    updateFormData('barcode', [...digits, checksum].join(''))
+  }
+
   const handleImproveDescription = async () => {
     if (!formData.name.trim()) {
       return
@@ -208,13 +215,25 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
           <Label htmlFor="barcode" className="text-gray-700 dark:text-gray-300">
             Código de Barras
           </Label>
-          <Input
-            id="barcode"
-            value={formData.barcode}
-            onChange={(e) => updateFormData('barcode', e.target.value)}
-            placeholder="Ej: 7501234567890"
-            className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
-          />
+          <div className="flex gap-2">
+            <Input
+              id="barcode"
+              value={formData.barcode}
+              onChange={(e) => updateFormData('barcode', e.target.value)}
+              placeholder="Ej: 7501234567890"
+              className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={generateBarcode}
+              title="Generar código de barras"
+              className="shrink-0 border-gray-300 dark:border-gray-700"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Tipo de Producto */}

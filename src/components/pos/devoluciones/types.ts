@@ -72,6 +72,7 @@ export interface SaleItemForReturn {
     name: string;
     sku: string;
     image?: string | null;
+    track_serial?: boolean;
   };
   quantity: number;
   unit_price: number;
@@ -79,6 +80,13 @@ export interface SaleItemForReturn {
   tax_amount?: number;
   discount_amount?: number;
   returned_quantity?: number; // Para tracking de devoluciones previas
+  serials?: SoldSerialInfo[]; // Seriales vendidos para productos serializados
+}
+
+export interface SoldSerialInfo {
+  id: number;
+  serial: string;
+  status: string;
 }
 
 export interface PaymentForReturn {
@@ -97,6 +105,7 @@ export interface RefundData {
     return_quantity: number;
     refund_amount: number;
     reason: string;
+    serial_number_ids?: number[];
   }[];
   refund_method: 'cash' | 'credit_note' | 'original_method';
   total_refund: number;

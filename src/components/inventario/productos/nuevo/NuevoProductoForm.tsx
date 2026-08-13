@@ -16,6 +16,7 @@ import Imagenes from './Imagenes'
 import Variantes from './Variantes'
 import Notas from './Notas'
 import Etiquetas from './Etiquetas'
+import TrazabilidadSeccion from './TrazabilidadSeccion'
 
 interface ProductFormData {
   // Información básica
@@ -74,6 +75,12 @@ interface ProductFormData {
   // Notas y etiquetas
   notes: string
   tags: number[]
+
+  // Trazabilidad de seriales
+  track_serial: boolean
+  serial_pattern: string | null
+  auto_generate_serial: boolean
+  warranty_months: number | null
 }
 
 interface NuevoProductoFormProps {
@@ -113,7 +120,11 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
     has_variants: false,
     variants: [],
     notes: '',
-    tags: []
+    tags: [],
+    track_serial: false,
+    serial_pattern: null,
+    auto_generate_serial: false,
+    warranty_months: null
   })
 
   const updateFormData = (field: string, value: any) => {
@@ -200,7 +211,11 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           track_stock: formData.track_stock,
           product_type: formData.product_type,
           brand: formData.brand || null,
-          reference: formData.reference || null
+          reference: formData.reference || null,
+          track_serial: formData.track_serial,
+          serial_pattern: formData.serial_pattern || null,
+          auto_generate_serial: formData.auto_generate_serial,
+          warranty_months: formData.warranty_months ?? null
         })
         .select('id, uuid')
         .single()
@@ -251,17 +266,34 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
       }
 
       // 6. Guardar proveedor principal
+      console.log('[DEBUG] supplier_id:', formData.supplier_id, 'cost:', formData.cost)
       if (formData.supplier_id) {
-        const { error: supplierError } = await supabase
-          .from('product_suppliers')
-          .insert({
-            product_id: product.id,
-            supplier_id: formData.supplier_id,
-            cost: formData.cost,
-            is_preferred: true
+        try {
+          const { error: supplierError } = await supabase
+            .from('product_suppliers')
+            .insert({
+              product_id: product.id,
+              supplier_id: formData.supplier_id,
+              cost: formData.cost || 0,
+              is_preferred: true
+            })
+          
+          if (supplierError) {
+            console.error('[DEBUG] Error guardando proveedor:', supplierError)
+            toast({
+              title: "⚠️ Proveedor no guardado",
+              description: supplierError.message || 'Error al guardar el proveedor principal',
+              variant: "destructive"
+            })
+          }
+        } catch (supplierCatchError: any) {
+          console.error('[DEBUG] Excepción guardando proveedor:', supplierCatchError)
+          toast({
+            title: "⚠️ Proveedor no guardado",
+            description: supplierCatchError?.message || 'Error inesperado al guardar proveedor',
+            variant: "destructive"
           })
-        
-        if (supplierError) throw supplierError
+        }
       }
 
       // 7. Guardar stock inicial por sucursal (SOLO si NO tiene variantes)
@@ -600,6 +632,16 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
         <Card className="border-gray-200 dark:border-gray-800">
           <CardContent className="pt-6">
             <Variantes 
+              formData={formData}
+              updateFormData={updateFormData}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Trazabilidad de Seriales */}
+        <Card className="border-gray-200 dark:border-gray-800">
+          <CardContent className="pt-6">
+            <TrazabilidadSeccion
               formData={formData}
               updateFormData={updateFormData}
             />

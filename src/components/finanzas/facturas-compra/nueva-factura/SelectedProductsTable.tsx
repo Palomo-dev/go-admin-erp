@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, Edit3, Package } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import type { UnifiedProduct } from '@/components/shared/product-search';
+import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
+import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 
 // Tipo para productos seleccionados con cantidades y descuentos
 export interface SelectedProduct extends UnifiedProduct {
@@ -17,6 +19,7 @@ export interface SelectedProduct extends UnifiedProduct {
   discount_amount: number;
   tax_rate: number;
   description_override?: string; // Descripción personalizada
+  serials?: string[]; // Seriales capturados
 }
 
 interface SelectedProductsTableProps {
@@ -26,6 +29,7 @@ interface SelectedProductsTableProps {
   onProductUpdate: (index: number, field: keyof SelectedProduct, value: any) => void;
   onProductRemove: (index: number) => void;
   onProductDescriptionEdit: (index: number, description: string) => void;
+  onProductSerialsChange?: (index: number, serials: string[]) => void;
 }
 
 export function SelectedProductsTable({
@@ -34,7 +38,8 @@ export function SelectedProductsTable({
   errors,
   onProductUpdate,
   onProductRemove,
-  onProductDescriptionEdit
+  onProductDescriptionEdit,
+  onProductSerialsChange
 }: SelectedProductsTableProps) {
   
   const calculateLineTotal = (product: SelectedProduct): number => {
@@ -231,6 +236,21 @@ export function SelectedProductsTable({
                   </div>
                 </div>
               </div>
+
+              {/* Captura de seriales si el producto requiere tracking */}
+              {product.track_serial && !isManualItem(product) && onProductSerialsChange && (
+                <SerialCaptureSection
+                  productId={product.id}
+                  productName={product.name}
+                  productSku={product.sku}
+                  organizationId={getOrganizationId()}
+                  branchId={getCurrentBranchId() ?? 0}
+                  quantity={Math.floor(product.quantity)}
+                  serials={product.serials || []}
+                  onSerialsChange={(newSerials) => onProductSerialsChange(index, newSerials)}
+                  compact
+                />
+              )}
 
               {/* Información adicional */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">

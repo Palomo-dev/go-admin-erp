@@ -10,7 +10,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization'
 import { supabase } from '@/lib/supabase/config'
 import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast, toastLoading, toastSuccess } from '@/components/ui/use-toast'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
@@ -23,6 +23,7 @@ import Imagenes from '../nuevo/Imagenes'
 import Variantes from '../nuevo/Variantes'
 import Notas from '../nuevo/Notas'
 import Etiquetas from '../nuevo/Etiquetas'
+import TrazabilidadSeccion from '../nuevo/TrazabilidadSeccion'
 
 // Esquema de validación con Zod (mismo que en FormularioProducto)
 const productoSchema = z.object({
@@ -64,6 +65,12 @@ const productoSchema = z.object({
   tags: z.array(z.number()).optional(),
   has_variants: z.boolean().optional(),
   variants: z.array(z.any()).optional(),
+
+  // Trazabilidad de seriales
+  track_serial: z.boolean().optional(),
+  serial_pattern: z.string().nullable().optional(),
+  auto_generate_serial: z.boolean().optional(),
+  warranty_months: z.number().nullable().optional(),
 });
 
 // Define una interfaz para la estructura de stockItem
@@ -118,7 +125,11 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       notes: '',
       tags: [],
       has_variants: false,
-      variants: []
+      variants: [],
+      track_serial: false,
+      serial_pattern: null,
+      auto_generate_serial: false,
+      warranty_months: null
     }
   });
 
@@ -167,6 +178,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
             lot_id,
             qty_on_hand,
             qty_reserved,
+            min_level,
             avg_cost,
             branches:branch_id(id, name)
           `)
@@ -191,6 +203,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
                 branch_id: item.branch_id,
                 branch_name: item.branches?.name, // Incluimos el nombre de la sucursal para mejor referencia
                 qty_on_hand: Number(item.qty_on_hand) || 0,
+                min_level: Number(item.min_level) || 0,
                 avg_cost: item.avg_cost || 0,
                 lot_id: item.lot_id
               });
@@ -346,7 +359,11 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           notes: notesData?.note || '',
           tags: tagIds,
           has_variants: hasVariants,
-          variants: existingVariants
+          variants: existingVariants,
+          track_serial: producto.track_serial || false,
+          serial_pattern: producto.serial_pattern || null,
+          auto_generate_serial: producto.auto_generate_serial || false,
+          warranty_months: producto.warranty_months ?? null
         });
         
       } catch (error: any) {
@@ -376,11 +393,9 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
     console.log(`[${saveId}] Iniciando proceso de guardado de producto`);
     
     // Mostrar notificación de proceso iniciado
-    toast({
-      title: "Guardando",
-      description: "Procesando datos del producto...",
-    });
+    const loadingToast = toastLoading("Guardando", "Procesando datos del producto...");
     if (!organization_id) {
+      loadingToast.dismiss();
       toast({
         title: "Error",
         description: "No se ha seleccionado una organización",
@@ -390,6 +405,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
     }
 
     if (!productoId) {
+      loadingToast.dismiss();
       toast({
         title: "Error",
         description: "No se ha identificado el producto a actualizar",
@@ -417,6 +433,10 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         product_type: data.product_type || 'product',
         brand: data.brand || null,
         reference: data.reference || null,
+        track_serial: data.track_serial || false,
+        serial_pattern: data.serial_pattern || null,
+        auto_generate_serial: data.auto_generate_serial || false,
+        warranty_months: data.warranty_months ?? null,
         updated_at: new Date().toISOString(),
       };
 
@@ -541,6 +561,31 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         }
       }
       
+      // 1d. Actualizar proveedor principal en product_suppliers
+      if (data.supplier_id !== undefined) {
+        // Eliminar proveedor preferido actual
+        await supabase
+          .from('product_suppliers')
+          .delete()
+          .eq('product_id', productoId)
+          .eq('is_preferred', true);
+
+        // Si se seleccionó un proveedor, insertarlo
+        if (data.supplier_id) {
+          const { error: supplierError } = await supabase
+            .from('product_suppliers')
+            .insert({
+              product_id: productoId,
+              supplier_id: data.supplier_id,
+              cost: data.cost || 0,
+              is_preferred: true,
+            });
+          if (supplierError) {
+            console.error('[Editar Producto] Error guardando proveedor:', supplierError);
+          }
+        }
+      }
+
       // 2. Imágenes se manejan a través de formData (no requiere ref)
       
       // 3. Variantes, notas y etiquetas se manejan a través de formData (no requiere refs)
@@ -858,10 +903,8 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       }
       
       // Mostrar mensaje de éxito
-      toast({
-        title: "Éxito",
-        description: "Producto actualizado correctamente",
-      });
+      loadingToast.dismiss();
+      toastSuccess("Éxito", "Producto actualizado correctamente");
       
       // Redireccionar a los detalles del producto usando UUID
       setTimeout(() => {
@@ -871,6 +914,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
     } catch (error: any) {
       console.error('Error al actualizar el producto:', error);
       
+      loadingToast.dismiss();
       toast({
         title: "Error",
         description: error.message || "Ocurrió un error al actualizar el producto",
@@ -935,6 +979,8 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
                 <Imagenes formData={formData} updateFormData={updateFormData} />
                 <Variantes formData={formData} updateFormData={updateFormData} />
                 
+                <TrazabilidadSeccion formData={formData} updateFormData={updateFormData} />
+
                 <Notas formData={formData} updateFormData={updateFormData} />
 
                 <Etiquetas formData={formData} updateFormData={updateFormData} />

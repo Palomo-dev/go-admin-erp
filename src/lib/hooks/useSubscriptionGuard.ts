@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 
@@ -15,6 +15,7 @@ export function useSubscriptionGuard() {
   const router = useRouter();
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
+  const lastCheckedOrgRef = useRef<string | null>(null);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -29,6 +30,14 @@ export function useSubscriptionGuard() {
         // Obtener org_id desde localStorage
         const orgIdStr = localStorage.getItem('currentOrganizationId');
         if (!orgIdStr) {
+          setChecked(true);
+          return;
+        }
+
+        // Skip si ya verificamos para esta organización — el estado de
+        // suscripción no cambia entre navegaciones, solo cuando cambia la org.
+        // Esto evita 2 queries a Supabase en CADA cambio de ruta.
+        if (lastCheckedOrgRef.current === orgIdStr) {
           setChecked(true);
           return;
         }
@@ -61,6 +70,7 @@ export function useSubscriptionGuard() {
           .single();
 
         if (!sub) {
+          lastCheckedOrgRef.current = orgIdStr;
           setChecked(true);
           return;
         }
@@ -90,6 +100,7 @@ export function useSubscriptionGuard() {
           return;
         }
 
+        lastCheckedOrgRef.current = orgIdStr;
         setChecked(true);
       } catch (error) {
         console.error('Error in useSubscriptionGuard:', error);

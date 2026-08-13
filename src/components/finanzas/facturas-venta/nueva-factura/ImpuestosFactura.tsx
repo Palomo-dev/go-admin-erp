@@ -263,7 +263,8 @@ export function ImpuestosFactura({
         setApplyDefaultTax(initialAppliedTaxCodes.includes(defaultTaxItem.code));
       }
     }
-  }, [organizationTaxes, onAppliedTaxesChange, initialAppliedTaxCodes]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationTaxes, onAppliedTaxesChange, JSON.stringify(initialAppliedTaxCodes)]);
   
   // Usamos useRef para almacenar los valores anteriores sin causar re-renders
   const prevValuesRef = useRef({
@@ -346,7 +347,8 @@ export function ImpuestosFactura({
       onTotalCalculated(total);
       onTaxTotalsChange(appliedTaxTotals);
     }
-  }, [subtotal, taxTotal, total, appliedTaxTotals, taxIncluded, onSubtotalCalculated, onTaxTotalCalculated, onTotalCalculated, onTaxTotalsChange]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal, taxTotal, total, JSON.stringify(appliedTaxTotals), taxIncluded, onSubtotalCalculated, onTaxTotalCalculated, onTotalCalculated, onTaxTotalsChange]);
   
   // Cargar impuestos de la organización
   useEffect(() => {

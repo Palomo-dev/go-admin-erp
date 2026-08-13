@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toast } from '@/components/ui/use-toast';
@@ -25,6 +25,7 @@ type Cliente = {
   customer_type?: string;
   first_name?: string;
   last_name?: string;
+  avatar_url?: string | null;
   primary_contact_name?: string | null;
   primary_contact_position?: string | null;
 };
@@ -36,12 +37,12 @@ type ClienteSelectorProps = {
 
 export function ClienteSelector({ selectedCustomerId, onCustomerChange }: ClienteSelectorProps) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
+  const [searchResults, setSearchResults] = useState<Cliente[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const organizationId = getOrganizationId();
+  const loadingSelectedRef = useRef<string | null>(null);
   
   // Cargar clientes al iniciar
   useEffect(() => {
@@ -50,18 +51,22 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
     }
   }, [organizationId]);
 
+  // Resultados derivados: si no hay búsqueda, mostrar todos; si hay, mostrar resultados de búsqueda
+  const clientesFiltrados = useMemo(() => {
+    if (searchTerm.trim() === '') return clientes;
+    return searchResults;
+  }, [searchTerm, clientes, searchResults]);
+
   // Buscar clientes en Supabase basado en término de búsqueda
   useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+
     const buscarClientes = async () => {
       if (!organizationId) return;
       
-      // Si no hay término de búsqueda, mostramos todos los clientes
-      if (searchTerm.trim() === '') {
-        setClientesFiltrados(clientes);
-        return;
-      }
-      
-      // Establecemos estado de carga
       setIsLoading(true);
       
       try {
@@ -69,7 +74,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
         
         const { data, error } = await supabase
           .from('customers')
-          .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name')
+          .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name, avatar_url')
           .eq('organization_id', organizationId)
           .or(`full_name.ilike.${termino},email.ilike.${termino},phone.ilike.${termino},company_name.ilike.${termino},trade_name.ilike.${termino},identification_number.ilike.${termino}`)
           .order('full_name', { ascending: true })
@@ -118,12 +123,13 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
             phone: cliente.phone,
             organization_id: cliente.organization_id || organizationId,
             customer_type: cliente.customer_type,
+            avatar_url: cliente.avatar_url,
             primary_contact_name: contact?.name || null,
             primary_contact_position: contact?.position || null,
           };
         });
         
-        setClientesFiltrados(clientesFormateados);
+        setSearchResults(clientesFormateados);
       } catch (error) {
         console.error('Error al buscar clientes:', error);
       } finally {
@@ -137,16 +143,21 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
     }, 300);
     
     return () => clearTimeout(timeoutId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, organizationId]);
   
   // Cargar un cliente específico si es necesario
-  const cargarClienteSeleccionado = async () => {
+  const cargarClienteSeleccionado = useCallback(async () => {
     if (!selectedCustomerId) return;
+    
+    // Prevenir llamadas duplicadas con ref
+    if (loadingSelectedRef.current === selectedCustomerId) return;
+    loadingSelectedRef.current = selectedCustomerId;
     
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name')
+        .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name, avatar_url')
         .eq('id', selectedCustomerId)
         .single();
       
@@ -155,12 +166,10 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       if (data) {
         // Agregar a la lista sin duplicados
         setClientes(prev => {
-          // Si ya existe, actualizar para asegurar datos frescos
           const clienteExiste = prev.some(c => c.id === data.id);
           if (clienteExiste) {
-            return prev.map(c => c.id === data.id ? data : c);
+            return prev; // Misma referencia, React bail out
           }
-          // Si no existe, agregar a la lista
           return [...prev, data];
         });
       }
@@ -171,8 +180,10 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
         description: "No se pudo cargar la información del cliente seleccionado.",
         variant: "destructive",
       });
+    } finally {
+      loadingSelectedRef.current = null;
     }
-  };
+  }, [selectedCustomerId]);
 
   // Función para cargar clientes
   const cargarClientes = async () => {
@@ -180,7 +191,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       setIsLoading(true);
       const { data, error } = await supabase
         .from('customers')
-        .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name')
+        .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name, avatar_url')
         .eq('organization_id', organizationId)
         .order('full_name', { ascending: true })
         .limit(100); // Limitamos la carga inicial a 100 clientes para mejor rendimiento
@@ -196,11 +207,11 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
         organization_id: cliente.organization_id || organizationId,
         customer_type: cliente.customer_type,
         first_name: cliente.first_name,
-        last_name: cliente.last_name
+        last_name: cliente.last_name,
+        avatar_url: cliente.avatar_url
       }));
       
       setClientes(clientesFormateados);
-      setClientesFiltrados(clientesFormateados);
     } catch (error) {
       console.error('Error al cargar clientes:', error);
       toast({
@@ -215,17 +226,10 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
   
   // Cargar cliente seleccionado si no está en la lista
   useEffect(() => {
-    if (selectedCustomerId && clientes.length > 0 && !clientes.some(c => c.id === selectedCustomerId)) {
-      cargarClienteSeleccionado();
-    }
-  }, [selectedCustomerId, clientes]);
-
-  // Asegurar que siempre se cargue el cliente seleccionado
-  useEffect(() => {
     if (selectedCustomerId) {
       cargarClienteSeleccionado();
     }
-  }, [selectedCustomerId]);
+  }, [selectedCustomerId, cargarClienteSeleccionado]);
 
   // Cuando el diálogo compartido crea un cliente, refrescar lista y seleccionarlo
   const handleClienteCreado = async (customer: any) => {
@@ -238,11 +242,9 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       <div className="flex gap-2">
         <div className="flex-grow">
           <Select
-            value={selectedCustomerId?.toString() || ''}
+            value={selectedCustomerId?.toString() || undefined}
             onValueChange={(value) => onCustomerChange(value || null)}
             disabled={isLoading}
-            open={isSelectOpen}
-            onOpenChange={setIsSelectOpen}
           >
             <SelectTrigger className="
               w-full text-sm
@@ -250,12 +252,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
               border-gray-300 dark:border-gray-600
               text-gray-900 dark:text-gray-100
             ">
-              <SelectValue placeholder="Buscar cliente">
-                {selectedCustomerId ? (
-                  clientes.find(c => c.id === selectedCustomerId)?.full_name || 
-                  <span className="italic text-gray-500 dark:text-gray-400">Cargando cliente...</span>
-                ) : null}
-              </SelectValue>
+              <SelectValue placeholder="Buscar cliente" />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <div className="p-2 sticky top-0 bg-white dark:bg-gray-800 z-10">
@@ -289,12 +286,29 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
                 ) : (
                   clientesFiltrados.map((cliente) => (
                     <SelectItem key={cliente.id} value={cliente.id.toString()} className="text-gray-900 dark:text-gray-100">
-                      <div>
-                        <div className="font-medium text-sm">{cliente.full_name}</div>
-                        {cliente.customer_type === 'company' && cliente.primary_contact_name && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">Contacto: {cliente.primary_contact_name}{cliente.primary_contact_position ? ` (${cliente.primary_contact_position})` : ''}</div>
-                        )}
-                        {cliente.email && <div className="text-xs text-gray-600 dark:text-gray-400">{cliente.email}</div>}
+                      <div className="flex items-center gap-2">
+                        <div className="flex-shrink-0">
+                          {cliente.avatar_url ? (
+                            <img
+                              src={cliente.avatar_url}
+                              alt={cliente.full_name}
+                              className="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-gray-600"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center border border-blue-200 dark:border-blue-800">
+                              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                {cliente.full_name?.charAt(0)?.toUpperCase() || '?'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm">{cliente.full_name}</div>
+                          {cliente.customer_type === 'company' && cliente.primary_contact_name && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Contacto: {cliente.primary_contact_name}{cliente.primary_contact_position ? ` (${cliente.primary_contact_position})` : ''}</div>
+                          )}
+                          {cliente.email && <div className="text-xs text-gray-600 dark:text-gray-400">{cliente.email}</div>}
+                        </div>
                       </div>
                     </SelectItem>
                   ))
@@ -335,10 +349,27 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       {selectedCustomerId && (
         <div className="text-sm space-y-1">
           {clientes.filter(c => c.id === selectedCustomerId).map((cliente) => (
-            <div key={cliente.id}>
-              <p className="font-medium">{cliente.full_name}</p>
-              {cliente.email && <p className="text-gray-600 dark:text-gray-400">Email: {cliente.email}</p>}
-              {cliente.phone && <p className="text-gray-600 dark:text-gray-400">Teléfono: {cliente.phone}</p>}
+            <div key={cliente.id} className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                {cliente.avatar_url ? (
+                  <img
+                    src={cliente.avatar_url}
+                    alt={cliente.full_name}
+                    className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center border-2 border-blue-200 dark:border-blue-800">
+                    <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      {cliente.full_name?.charAt(0)?.toUpperCase() || '?'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <p className="font-medium">{cliente.full_name}</p>
+                {cliente.email && <p className="text-gray-600 dark:text-gray-400">Email: {cliente.email}</p>}
+                {cliente.phone && <p className="text-gray-600 dark:text-gray-400">Teléfono: {cliente.phone}</p>}
+              </div>
             </div>
           ))}
         </div>

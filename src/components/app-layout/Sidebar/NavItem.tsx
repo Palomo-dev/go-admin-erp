@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight, FileText, Settings, Users, LogOut, Plus, List, Home, User, CreditCard, BarChart2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Settings, Users, LogOut, Plus, List, Home, User, CreditCard, BarChart2, ClipboardList } from 'lucide-react';
 import { NavItemComponentProps } from '../types';
 
 // Importamos los componentes de Dropdown Menu de shadcn-ui
@@ -31,6 +31,7 @@ const getSubmenuIcon = (name: string) => {
     'Configuración': <Settings size={16} />,
     'Reportes': <BarChart2 size={16} />,
     'Facturas': <FileText size={16} />,
+    'Cotizaciones': <ClipboardList size={16} />,
     'Pagos': <CreditCard size={16} />,
     'Lista': <List size={16} />,
     'Agregar': <Plus size={16} />,

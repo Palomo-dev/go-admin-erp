@@ -33,6 +33,8 @@ module.exports = {
         'fade-in': 'fadeIn 0.2s ease-in',
         'bounce-gentle': 'bounceGentle 0.6s ease-out',
         'slide-up': 'slideUp 0.3s ease-out',
+        'pop-in': 'scaleGlow 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'draw-check': 'drawCheck 0.5s 0.4s ease-out forwards',
       },
       keyframes: {
         slideInRight: {
@@ -51,6 +53,16 @@ module.exports = {
         slideUp: {
           '0%': { transform: 'translateY(100%)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        scaleGlow: {
+          '0%': { transform: 'scale(0)', opacity: '0', filter: 'drop-shadow(0 0 0 rgba(34, 197, 94, 0))' },
+          '50%': { transform: 'scale(1.1)', opacity: '1', filter: 'drop-shadow(0 0 12px rgba(34, 197, 94, 0.6))' },
+          '70%': { transform: 'scale(0.97)', filter: 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.4))' },
+          '100%': { transform: 'scale(1)', filter: 'drop-shadow(0 0 0 rgba(34, 197, 94, 0))' },
+        },
+        drawCheck: {
+          '0%': { strokeDashoffset: '60' },
+          '100%': { strokeDashoffset: '0' },
         },
       },
     },

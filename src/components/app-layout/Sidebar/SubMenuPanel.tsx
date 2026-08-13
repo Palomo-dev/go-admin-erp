@@ -3,7 +3,7 @@ import React, { memo, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft, PanelLeftClose, PanelLeft } from 'lucide-react';
-import { SubMenuPanelProps } from '../types';
+import { SubMenuPanelProps, NavItemProps } from '../types';
 import { 
   Home, 
   User, 
@@ -80,6 +80,9 @@ import {
   Bell as BellIcon,
   ChefHat,
   Factory,
+  QrCode,
+  ShieldCheck,
+  ListChecks,
 } from 'lucide-react';
 
 // Mapa de iconos mejorado para los submenús
@@ -125,6 +128,7 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     
     // Finanzas
     'Facturas de venta': <FileText size={16} />,
+    'Cotizaciones': <ClipboardList size={16} />,
     'Facturas de compra': <Receipt size={16} />,
     'Notas de crédito': <FileText size={16} />,
     'Ingresos': <TrendingUp size={16} />,
@@ -163,6 +167,8 @@ const getSubmenuIcon = (name: string): React.ReactNode => {
     'Variantes - Tipos': <Layers size={16} />,
     'Variantes - Valores': <List size={16} />,
     'Lotes': <Package size={16} />,
+    'Seriales': <QrCode size={16} />,
+    'Garantías': <ShieldCheck size={16} />,
     'Imágenes': <Image size={16} />,
     'Proveedores': <Truck size={16} />,
     'Órdenes de Compra': <ClipboardList size={16} />,
@@ -337,7 +343,7 @@ const SubMenuPanelComponent = ({
     // (ya sea por coincidencia exacta o por prefijo).
     // Esto evita el doble highlight en rutas anidadas (ej: contabilidad/plan-cuentas, contabilidad/asientos/405)
     if (pathname?.startsWith(itemHref + '/')) {
-      const hasMoreSpecificMatch = activeModule.submenu.some(
+      const hasMoreSpecificMatch = activeModule.submenu?.some(
         sub => sub.href !== itemHref
           && sub.href.length > itemHref.length
           && (pathname === sub.href || pathname?.startsWith(sub.href + '/'))

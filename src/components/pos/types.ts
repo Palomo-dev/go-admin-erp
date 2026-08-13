@@ -40,6 +40,7 @@ export interface Product {
   updated_at: string;
   tag_id?: number;
   parent_product_id?: number;
+  track_serial?: boolean;
 }
 
 export interface Customer {
@@ -254,6 +255,7 @@ export interface CheckoutData {
   };
   driver_id?: string;
   shipping_fee?: number;
+  serial_selections?: Record<number, number[]>;
 }
 
 // Para impuestos

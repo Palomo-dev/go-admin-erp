@@ -183,7 +183,10 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith(loadUrl) || url.startsWith('https://app.goadmin.io')) {
+    // about:blank se usa para ventanas de impresión (window.open('', '_blank'))
+    // que generan el diálogo de impresión del navegador. Sin esto, reimprimir
+    // desde el POS no muestra el diálogo.
+    if (url === 'about:blank' || url.startsWith(loadUrl) || url.startsWith('https://app.goadmin.io')) {
       return { action: 'allow' };
     }
     return { action: 'deny' };

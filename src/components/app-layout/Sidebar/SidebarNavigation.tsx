@@ -88,10 +88,12 @@ import {
   FolderKanban,
   ChefHat,
   Factory,
+  QrCode,
+  ShieldCheck,
 } from 'lucide-react';
 import AccountSwitcher from '../AccountSwitcher';
 import { NavSection } from './NavSection';
-import { SidebarNavigationProps } from '../types';
+import { SidebarNavigationProps, NavSection as NavSectionType } from '../types';
 import { useTranslations } from 'next-intl';
 
 // Componente para la navegación lateral
@@ -110,7 +112,7 @@ const SidebarNavigationComponent = ({
   const t = useTranslations('nav');
   
   // Memoizar las secciones de navegación para evitar re-creaciones costosas
-  const navSections = useMemo(() => [
+  const navSections = useMemo<NavSectionType[]>(() => [
     {
       title: t('sectionMain'),
       items: [
@@ -167,6 +169,7 @@ const SidebarNavigationComponent = ({
           submenu: [
             { name: "Dashboard", href: "/app/finanzas", icon: <BarChart3 size={16} /> },
             { name: "Facturas de venta", href: "/app/finanzas/facturas-venta", icon: <FileText size={16} /> },
+            { name: "Cotizaciones", href: "/app/finanzas/cotizaciones", icon: <ClipboardList size={16} /> },
             { name: "Facturas de compra", href: "/app/finanzas/facturas-compra", icon: <Receipt size={16} /> },
             { name: "Notas de crédito", href: "/app/finanzas/notas-credito", icon: <FileText size={16} /> },
             { name: "Ingresos", href: "/app/finanzas/ingresos", icon: <TrendingUp size={16} /> },
@@ -215,6 +218,8 @@ const SidebarNavigationComponent = ({
             { name: "Variantes - Tipos", href: "/app/inventario/variantes/tipos", icon: <Layers size={16} /> },
             { name: "Variantes - Valores", href: "/app/inventario/variantes/valores", icon: <Tag size={16} /> },
             { name: "Lotes", href: "/app/inventario/lotes", icon: <Package size={16} /> },
+            { name: "Seriales", href: "/app/inventario/seriales", icon: <QrCode size={16} /> },
+            { name: "Garantías", href: "/app/inventario/garantias", icon: <ShieldCheck size={16} /> },
             { name: "Imágenes", href: "/app/inventario/imagenes", icon: <ImageIcon size={16} /> },
             { name: "Proveedores", href: "/app/inventario/proveedores", icon: <Truck size={16} /> },
             { name: "Órdenes de Compra", href: "/app/inventario/ordenes-compra", icon: <ClipboardList size={16} /> },

@@ -179,4 +179,24 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+function toastSuccess(title: string, description?: string) {
+  return toast({ title, description, variant: "success" })
+}
+
+function toastError(title: string, description?: string) {
+  return toast({ title, description, variant: "destructive" })
+}
+
+function toastWarning(title: string, description?: string) {
+  return toast({ title, description, variant: "warning" })
+}
+
+function toastInfo(title: string, description?: string) {
+  return toast({ title, description, variant: "info" })
+}
+
+function toastLoading(title: string, description?: string) {
+  return toast({ title, description, variant: "loading" })
+}
+
+export { useToast, toast, toastSuccess, toastError, toastWarning, toastInfo, toastLoading }

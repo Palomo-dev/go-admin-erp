@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { formatCurrency } from '@/utils/Utils';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { warrantyClaimsService } from '@/lib/services/warrantyClaimsService';
 import { 
   Return,
   SaleForReturn, 
@@ -10,7 +12,8 @@ import {
   ReturnSearchFilters,
   SaleSearchFilters,
   PaginatedReturnResponse,
-  PaginatedSaleResponse 
+  PaginatedSaleResponse,
+  SoldSerialInfo
 } from './types';
 
 // Función helper para obtener URL pública de imagen
@@ -189,7 +192,7 @@ export class DevolucionesService {
         // Obtener datos básicos de productos
         const { data: products, error: productsError } = await supabase
           .from('products')
-          .select('id, name, sku')
+          .select('id, name, sku, track_serial')
           .in('id', productIds);
         
         if (productsError) {
@@ -249,14 +252,17 @@ export class DevolucionesService {
               id: product.id,
               name: product.name,
               sku: product.sku,
-              image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null
+              image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null,
+              track_serial: product.track_serial || false
             } : {
               id: 0,
               name: 'Producto no encontrado',
               sku: '',
-              image: null
+              image: null,
+              track_serial: false
             },
-            returned_quantity: 0 // Se calculará en obtenerDetalleVenta
+            returned_quantity: 0, // Se calculará en obtenerDetalleVenta
+            serials: [] // Se llenarán después si el producto tiene track_serial
           };
         });
         
@@ -296,6 +302,29 @@ export class DevolucionesService {
           }))
         };
       });
+
+      // Cargar seriales vendidos para productos serializados
+      const serialProductIds = productsData.filter(p => p.track_serial).map(p => p.id);
+      if (serialProductIds.length > 0) {
+        const { data: soldSerials } = await supabase
+          .from('serial_numbers')
+          .select('id, serial, status, product_id, sale_id')
+          .in('product_id', serialProductIds)
+          .in('sale_id', availableSaleIds)
+          .eq('status', 'sold');
+
+        if (soldSerials) {
+          for (const sale of transformedData) {
+            for (const item of sale.items) {
+              if (item.product.track_serial) {
+                item.serials = soldSerials
+                  .filter(s => s.product_id === item.product_id && s.sale_id === sale.id)
+                  .map(s => ({ id: s.id, serial: s.serial, status: s.status }));
+              }
+            }
+          }
+        }
+      }
 
       // Aplicar filtro de búsqueda por texto después de obtener los datos
       let filteredData = transformedData;
@@ -393,7 +422,7 @@ export class DevolucionesService {
         // Obtener productos
         const { data: products } = await supabase
           .from('products')
-          .select('id, name, sku')
+          .select('id, name, sku, track_serial')
           .in('id', productIds);
         productsData = products || [];
 
@@ -456,19 +485,22 @@ export class DevolucionesService {
               id: product.id,
               name: product.name,
               sku: product.sku,
-              image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null
+              image: productImages[product.id] ? getStorageImageUrl(productImages[product.id]) : null,
+              track_serial: product.track_serial || false
             } : {
               id: 0,
               name: 'Producto no encontrado',
               sku: '',
-              image: null
+              image: null,
+              track_serial: false
             },
             quantity: Number(item.quantity),
             unit_price: Number(item.unit_price),
             total: Number(item.total),
             tax_amount: item.tax_amount ? Number(item.tax_amount) : undefined,
             discount_amount: item.discount_amount ? Number(item.discount_amount) : undefined,
-            returned_quantity: returnedQuantities[item.id] || 0
+            returned_quantity: returnedQuantities[item.id] || 0,
+            serials: [] as SoldSerialInfo[]
           };
         }),
         payments: (payments || []).map((payment: any) => ({
@@ -479,6 +511,27 @@ export class DevolucionesService {
           reference: payment.reference
         }))
       };
+
+      // Cargar seriales vendidos para productos serializados
+      const serialProductIds = productsData.filter(p => p.track_serial).map(p => p.id);
+      if (serialProductIds.length > 0) {
+        const { data: soldSerials } = await supabase
+          .from('serial_numbers')
+          .select('id, serial, status, product_id, sale_id')
+          .in('product_id', serialProductIds)
+          .eq('sale_id', saleId)
+          .eq('status', 'sold');
+
+        if (soldSerials) {
+          for (const item of transformedData.items) {
+            if (item.product.track_serial) {
+              item.serials = soldSerials
+                .filter(s => s.product_id === item.product_id)
+                .map(s => ({ id: s.id, serial: s.serial, status: s.status }));
+            }
+          }
+        }
+      }
 
       return transformedData;
 
@@ -604,8 +657,8 @@ export class DevolucionesService {
         throw returnError;
       }
 
-      // Actualizar stock si es necesario
-      await this.actualizarStockDevolucion(refundData.items);
+      // Actualizar stock y seriales
+      await this.actualizarStockDevolucion(refundData.items, saleId, saleData.customer_id);
 
       console.log('✅ Devolución procesada exitosamente');
       return returnResult;
@@ -713,15 +766,123 @@ export class DevolucionesService {
   }
 
   /**
-   * Actualizar stock por devolución
+   * Actualizar stock y seriales por devolución
    */
-  private static async actualizarStockDevolucion(items: RefundData['items']) {
+  private static async actualizarStockDevolucion(
+    items: RefundData['items'],
+    saleId?: string,
+    customerId?: string
+  ) {
     try {
-      // Este método se implementará cuando se defina la lógica de stock
-      // Por ahora es un placeholder
-      console.log('Actualizando stock para devolución:', items);
+      const organizationId = this.getOrganizationId();
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      for (const item of items) {
+        if (!item.product_id) continue;
+
+        // Verificar si el producto tiene tracking de seriales
+        const { data: product } = await supabase
+          .from('products')
+          .select('track_serial')
+          .eq('id', item.product_id)
+          .maybeSingle();
+
+        if (!product?.track_serial) continue;
+
+        // Si se pasaron serial_number_ids explícitos, usarlos; si no, buscar por venta
+        let soldSerials: { id: number; serial: string; status: string; sold_to_customer_id: string | null }[] | null = null;
+
+        if (item.serial_number_ids && item.serial_number_ids.length > 0) {
+          const { data: explicitSerials, error: explicitError } = await supabase
+            .from('serial_numbers')
+            .select('id, serial, status, sold_to_customer_id')
+            .eq('organization_id', organizationId)
+            .in('id', item.serial_number_ids);
+
+          if (explicitError) {
+            console.warn(`Error obteniendo seriales explícitos para product_id ${item.product_id}:`, explicitError);
+            continue;
+          }
+          soldSerials = explicitSerials;
+        } else {
+          // Buscar seriales vendidos asociados a esta venta y producto
+          let serialQuery = supabase
+            .from('serial_numbers')
+            .select('id, serial, status, sold_to_customer_id')
+            .eq('organization_id', organizationId)
+            .eq('product_id', item.product_id)
+            .eq('status', 'sold');
+
+          if (saleId) {
+            serialQuery = serialQuery.eq('sale_id', saleId);
+          }
+
+          const { data: foundSerials, error: serialError } = await serialQuery.limit(item.return_quantity);
+          if (serialError) {
+            console.warn(`Error buscando seriales para product_id ${item.product_id}:`, serialError);
+            continue;
+          }
+          soldSerials = foundSerials;
+        }
+
+        if (!soldSerials || soldSerials.length === 0) {
+          console.warn(`No se encontraron seriales vendidos para product_id ${item.product_id}`);
+          continue;
+        }
+
+        const isWarrantyReason = ['garantia', 'defectuoso', 'dañado'].includes(item.reason);
+
+        for (const serial of soldSerials) {
+          if (isWarrantyReason) {
+            // Cambiar estado a warranty_claim y crear reclamo
+            await serialTrackingService.updateStatus(serial.id, 'warranty_claim', {
+              event_type: 'warranty_claim',
+              source_table: 'returns',
+              source_id: saleId ?? undefined,
+              notes: `Devolución por ${item.reason}`,
+              performed_by: userId,
+            });
+
+            await warrantyClaimsService.createClaim({
+              organization_id: organizationId,
+              serial_number_id: serial.id,
+              customer_id: serial.sold_to_customer_id ?? customerId ?? null,
+              claim_date: new Date().toISOString(),
+              claim_reason: item.reason,
+              description: `Reclamo creado automáticamente desde devolución. Sale: ${saleId ?? 'N/A'}`,
+              status: 'pending',
+              created_by: userId ?? null,
+            });
+
+            console.log(`✅ Serial ${serial.serial} movido a warranty_claim y reclamo creado`);
+          } else {
+            // Devolución normal: cambiar estado a returned y luego a in_stock
+            await serialTrackingService.returnSerial(serial.id, item.reason, userId);
+
+            // Limpiar datos de venta y devolver a stock
+            await supabase
+              .from('serial_numbers')
+              .update({
+                status: 'in_stock',
+                sold_to_customer_id: null,
+                sold_by_user_id: null,
+                sale_id: null,
+                web_order_id: null,
+                invoice_sale_id: null,
+                sale_channel: 'in_stock',
+                sale_date: null,
+                updated_at: new Date().toISOString(),
+                updated_by: userId ?? null,
+              })
+              .eq('id', serial.id);
+
+            console.log(`✅ Serial ${serial.serial} devuelto a stock`);
+          }
+        }
+      }
     } catch (error) {
-      console.error('Error actualizando stock:', error);
+      console.error('Error actualizando stock y seriales:', error);
     }
   }
 

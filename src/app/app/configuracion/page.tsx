@@ -8,7 +8,7 @@ export default function ConfiguracionPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-col h-[calc(100vh-4rem)]">
+        <div className="flex flex-col h-full">
           <div className="border-b px-6 py-4 space-y-2">
             <Skeleton className="h-6 w-48" />
             <Skeleton className="h-4 w-64" />

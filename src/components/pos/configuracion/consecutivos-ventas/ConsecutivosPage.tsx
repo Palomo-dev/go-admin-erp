@@ -352,21 +352,21 @@ export function ConsecutivosPage({ embedded = false }: { embedded?: boolean }) {
       )}
 
       {embedded && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Consecutivos de Ventas</h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => loadData(true)} disabled={isRefreshing}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => loadData(true)} disabled={isRefreshing} className="shrink-0">
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
+            <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)} className="shrink-0">
               <Upload className="h-4 w-4 mr-2" />
               Importar
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExport}>
+            <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0">
               <Download className="h-4 w-4 mr-2" />
               Exportar
             </Button>
-            <Button size="sm" onClick={openModalNuevo} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button size="sm" onClick={openModalNuevo} className="bg-blue-600 hover:bg-blue-700 text-white shrink-0">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo
             </Button>

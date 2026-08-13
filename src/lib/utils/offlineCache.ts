@@ -81,10 +81,16 @@ export async function getCachedResponse(url: string, method: string): Promise<{ 
           return;
         }
 
-        const age = Date.now() - entry.timestamp;
-        if (age > CACHE_TTL_MS) {
-          resolve(null);
-          return;
+        // Solo verificar TTL si estamos online (refrescar datos periódicamente).
+        // Si estamos offline, servir el cache sin importar antigüedad.
+        // Usar navigator.onLine como fuente de verdad.
+        const actuallyOnline = typeof navigator !== 'undefined' ? navigator.onLine : isOnline;
+        if (actuallyOnline) {
+          const age = Date.now() - entry.timestamp;
+          if (age > CACHE_TTL_MS) {
+            resolve(null);
+            return;
+          }
         }
 
         resolve({ data: entry.data, status: entry.status });
@@ -261,6 +267,12 @@ export function setOnline(online: boolean): void {
 }
 
 export function isAppOnline(): boolean {
+  // Usar navigator.onLine como fuente de verdad, no solo la variable interna.
+  // La variable isOnline solo se actualiza via eventos online/offline o setOnline(),
+  // pero navigator.onLine refleja el estado real de red en todo momento.
+  if (typeof navigator !== 'undefined') {
+    return navigator.onLine;
+  }
   return isOnline;
 }
 

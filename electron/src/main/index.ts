@@ -51,6 +51,12 @@ if (!gotLock) {
     // Desactivar spellcheck para reducir overhead en inputs
     session.defaultSession.setSpellCheckerEnabled(false);
 
+    // ── Cache persistente para soporte offline ──
+    // Garantiza que los assets JS/CSS de Next.js (_next/static/) se mantengan
+    // en disco y estén disponibles sin conexión a internet.
+    // setCacheMode no disponible en todas las versiones de Electron
+    // session.defaultSession.setCacheMode('persistent');
+
     registerIpcHandlers();
 
     // Splash screen mientras carga

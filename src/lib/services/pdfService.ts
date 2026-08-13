@@ -124,15 +124,25 @@ export class PDFService {
       'issued': 'Emitida',
       'paid': 'Pagada',
       'partial': 'Pago Parcial',
-      'void': 'Anulada'
+      'void': 'Anulada',
+      'quotation': 'Cotización',
+      'sent': 'Enviada',
+      'accepted': 'Aceptada',
+      'rejected': 'Rechazada',
+      'expired': 'Vencida',
+      'converted': 'Convertida'
     };
+
+    const isQuotation = data.status === 'quotation';
+    const docTitle = isQuotation ? 'COTIZACIÓN' : 'FACTURA';
+    const docNumberLabel = isQuotation ? 'Cotización' : 'Factura';
 
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Factura ${data.number}</title>
+        <title>${docTitle} ${data.number}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; color: #333; }
@@ -194,12 +204,12 @@ export class PDFService {
             <div class="invoice-title">
               <div style="display:flex;align-items:flex-start;gap:12px;">
                 <div style="text-align:right;">
-                  <h1>FACTURA</h1>
+                  <h1>${docTitle}</h1>
                   <div class="invoice-number">${data.number}</div>
-                  <span class="status status-${data.status}">${statusText[data.status] || data.status}</span>
+                  <span class="status status-${isQuotation ? 'issued' : data.status}">${statusText[data.status] || data.status}</span>
                 </div>
                 <div style="flex-shrink:0;">
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(qrData)}" alt="QR Factura" style="width:80px;height:80px;" />
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(qrData)}" alt="QR ${docTitle}" style="width:80px;height:80px;" />
                   <div style="font-size:9px;color:#6b7280;text-align:center;margin-top:2px;">Escanear para ver</div>
                 </div>
               </div>
@@ -219,7 +229,7 @@ export class PDFService {
               ${data.organization?.email ? `<p>${data.organization.email}</p>` : ''}
             </div>
             <div class="info-box">
-              <h3>Facturar a</h3>
+              <h3>${isQuotation ? 'Cotizar a' : 'Facturar a'}</h3>
               <p class="name">${data.customer?.full_name || 'Cliente'}</p>
               ${data.customer?.tax_id ? `<p>NIT/CC: ${data.customer.tax_id}</p>` : ''}
               ${data.customer?.address ? `<p>${data.customer.address}</p>` : ''}
@@ -293,7 +303,7 @@ export class PDFService {
                 <span>- ${formatCurrency(data.credit_applied)}</span>
               </div>
             ` : ''}
-            ${data.balance > 0 ? `
+            ${isQuotation ? '' : (data.balance > 0 ? `
               <div class="balance">
                 <span>Saldo Pendiente</span>
                 <span>${formatCurrency(data.balance)}</span>
@@ -303,7 +313,7 @@ export class PDFService {
                 <span>Pagado</span>
                 <span>${formatCurrency(data.total - (data.balance || 0))}</span>
               </div>
-            `}
+            `)}
           </div>
           
           ${data.notes ? `
@@ -314,7 +324,7 @@ export class PDFService {
           ` : ''}
           
           <div class="footer">
-            <p>Gracias por su preferencia</p>
+            <p>${isQuotation ? 'Gracias por su interés' : 'Gracias por su preferencia'}</p>
             <p>Este documento fue generado electrónicamente</p>
           </div>
         </div>

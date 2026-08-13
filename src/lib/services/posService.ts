@@ -4,6 +4,7 @@ import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/
 import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculationForLog, type TaxCalculationItem } from '@/lib/utils/taxCalculations';
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { stockMovementService } from '@/lib/services/stockMovementService';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import {
   Product,
   Customer,
@@ -36,18 +37,21 @@ export class POSService {
   private static organizationId = getOrganizationId();
   private static branchId: number | null = null;
 
-  // Obtener branch_id dinámicamente (caché simple)
+  // Obtener branch_id dinámicamente (con detección de cambio de sucursal)
   private static async getBranchId(): Promise<number> {
-    if (this.branchId) return this.branchId;
-
-    // 1. Intentar obtener de localStorage (sucursal seleccionada por el usuario)
+    // 1. Verificar si el usuario cambió de sucursal en localStorage
     const localBranchId = getCurrentBranchId();
     if (localBranchId) {
-      this.branchId = localBranchId;
+      if (this.branchId !== localBranchId) {
+        this.branchId = localBranchId;
+      }
       return localBranchId;
     }
 
-    // 2. Consultar la primera branch de la organización
+    // 2. Si no hay sucursal en localStorage, usar cache si existe
+    if (this.branchId) return this.branchId;
+
+    // 3. Consultar la primera branch de la organización
     try {
       const { data, error } = await supabase
         .from('branches')
@@ -169,7 +173,7 @@ export class POSService {
     includeVariants?: boolean;
   }) {
     try {
-      const currentBranchId = getCurrentBranchId();
+      const currentBranchId = await this.getBranchId();
 
       let query = supabase
       .from('products')
@@ -325,7 +329,8 @@ export class POSService {
         // Sumar stock propio + stock de variantes hijas
         const stockQty = (stock?.qty_on_hand ?? 0) + (variantStock?.qty_on_hand ?? 0);
         const reservedQty = (stock?.qty_reserved ?? 0) + (variantStock?.qty_reserved ?? 0);
-        const isOutOfStock = product.track_stock === true && stockQty <= 0;
+        const hasStockData = stock !== undefined || variantStock !== undefined;
+        const isOutOfStock = product.track_stock === true && hasStockData && stockQty <= 0;
         // Ordenar precios por effective_from descendente para tomar el mas reciente
         const sortedPrices = (product.product_prices || []).sort(
           (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
@@ -1557,6 +1562,38 @@ export class POSService {
         } catch (stockError) {
           console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
         }
+
+        // Vender seriales si hay productos serializados con seriales seleccionados
+        if (checkoutData.serial_selections) {
+          try {
+            const serialUserId = await getCurrentUserId();
+            for (const item of cart.items) {
+              const serialIds = checkoutData.serial_selections[item.product_id];
+              if (!serialIds || serialIds.length === 0) continue;
+
+              const { success: serialOk, errors: serialErrors } = await serialTrackingService.sellSerials(
+                serialIds,
+                {
+                  sale_id: saleData.id,
+                  customer_id: cart.customer_id,
+                  sold_by_user_id: serialUserId,
+                  sale_channel: 'pos',
+                  price_at_sale: item.unit_price,
+                  branch_id: cart.branch_id,
+                },
+                serialUserId
+              );
+
+              if (!serialOk) {
+                console.warn(`⚠️ Errores vendiendo seriales para producto ${item.product_id}:`, serialErrors);
+              } else {
+                console.log(`✅ ${serialIds.length} seriales vendidos para producto ${item.product_id}`);
+              }
+            }
+          } catch (serialError) {
+            console.warn('⚠️ Error vendiendo seriales (no bloquea la venta):', serialError);
+          }
+        }
       }
 
       // Crear o actualizar la factura (invoice_sales)
@@ -2492,6 +2529,49 @@ export class POSService {
         }
       } catch (stockError) {
         console.warn('⚠️ Error devolviendo stock (no bloquea la anulación):', stockError);
+      }
+
+      // 10.6: Devolver seriales a stock (cancelación con nota de crédito)
+      try {
+        const { data: soldSerials, error: serialError } = await supabase
+          .from('serial_numbers')
+          .select('id, serial, status, sale_id, sold_to_customer_id')
+          .eq('organization_id', this.organizationId)
+          .eq('sale_id', saleData.id)
+          .eq('status', 'sold');
+
+        if (!serialError && soldSerials && soldSerials.length > 0) {
+          const userId = await getCurrentUserId();
+          for (const serial of soldSerials) {
+            await serialTrackingService.updateStatus(serial.id, 'in_stock', {
+              event_type: 'returned',
+              source_table: 'invoice_sales',
+              source_id: creditNoteData.id,
+              notes: `Cancelación con nota de crédito ${creditNoteData.number}`,
+              performed_by: userId ?? undefined,
+            });
+
+            await supabase
+              .from('serial_numbers')
+              .update({
+                status: 'in_stock',
+                sold_to_customer_id: null,
+                sold_by_user_id: null,
+                sale_id: null,
+                web_order_id: null,
+                invoice_sale_id: null,
+                sale_channel: 'in_stock',
+                sale_date: null,
+                updated_at: new Date().toISOString(),
+                updated_by: userId,
+              })
+              .eq('id', serial.id);
+
+            console.log(`✅ Serial ${serial.serial} devuelto a stock por cancelación`);
+          }
+        }
+      } catch (serialError) {
+        console.warn('⚠️ Error devolviendo seriales (no bloquea la anulación):', serialError);
       }
 
       // 11. Actualizar el carrito (cambiar estado a cancelled)

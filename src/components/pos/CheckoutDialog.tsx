@@ -30,6 +30,7 @@ import { electronicInvoicingService } from '@/lib/services/electronicInvoicingSe
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
+import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -71,6 +72,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showSerialSelector, setShowSerialSelector] = useState(false);
+  const [serialSelections, setSerialSelections] = useState<Record<number, number[]>>({});
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const [sendToFactus, setSendToFactus] = useState(false);
   const [electronicInvoiceData, setElectronicInvoiceData] = useState<{
@@ -594,8 +597,21 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
 
+  const serializedItems = cart.items.filter(
+    (item) => item.product?.track_serial === true
+  );
+  const hasSerialItems = serializedItems.length > 0;
+  const serialSelectionsComplete = serializedItems.every(
+    (item) => (serialSelections[item.product_id]?.length ?? 0) === item.quantity
+  );
+
   const handleCheckout = async () => {
     if (!canComplete) return;
+
+    if (hasSerialItems && !serialSelectionsComplete) {
+      setShowSerialSelector(true);
+      return;
+    }
 
     setIsProcessing(true);
     try {
@@ -682,6 +698,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         } : undefined,
         driver_id: deliveryType === 'delivery_own' ? (selectedDriverId || undefined) : undefined,
         shipping_fee: shippingFee > 0 ? shippingFee : undefined,
+        serial_selections: hasSerialItems && serialSelectionsComplete ? serialSelections : undefined,
       };
 
       const sale = onProcessPayment 
@@ -1172,7 +1189,20 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               <DialogTitle>Recibo de venta</DialogTitle>
             </DialogHeader>
             <div className="p-4 sm:p-6">
-              <CheckCircle className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 text-green-600 dark:text-green-400" />
+              <div className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4">
+                <svg viewBox="0 0 52 52" className="h-full w-full text-green-600 dark:text-green-400" fill="none" stroke="currentColor">
+                  <circle cx="26" cy="26" r="24" strokeWidth="3" className="opacity-20" />
+                  <path
+                    d="M14 27 L22 35 L38 17"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray="60"
+                    className="animate-draw-check"
+                    style={{ strokeDashoffset: 60 }}
+                  />
+                </svg>
+              </div>
               <h2 className="text-xl sm:text-2xl font-bold mb-2 dark:text-white text-gray-900">
                 ¡Venta Completada!
               </h2>
@@ -1966,6 +1996,19 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             </DialogFooter>
           </>
         )}
+      {hasSerialItems && (
+        <SerialSelectorDialog
+          open={showSerialSelector}
+          onOpenChange={setShowSerialSelector}
+          items={cart.items}
+          organizationId={cart.organization_id}
+          branchId={cart.branch_id}
+          onConfirm={(selections) => {
+            setSerialSelections(selections);
+            setShowSerialSelector(false);
+          }}
+        />
+      )}
       </DialogContent>
     </Dialog>
   );

@@ -384,9 +384,9 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
                     </p>
                   ) : (
                     <div className="space-y-1">
-                      {usbDevices.map((d) => (
+                      {usbDevices.map((d, idx) => (
                         <button
-                          key={`${d.vendorId}:${d.productId}`}
+                          key={`${d.vendorId}:${d.productId}:${idx}`}
                           type="button"
                           onClick={() => selectUsbDevice(d)}
                           className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white dark:hover:bg-gray-700 transition-colors"

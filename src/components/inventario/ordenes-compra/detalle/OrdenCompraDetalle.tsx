@@ -30,10 +30,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { 
-  ArrowLeft, 
-  Loader2, 
-  Pencil, 
+import {
+  ArrowLeft,
+  Loader2,
+  Pencil,
   Copy,
   Send,
   Package,
@@ -49,6 +49,7 @@ import {
   Receipt,
   CreditCard
 } from 'lucide-react';
+import { SerialCaptureSection } from '@/components/shared/SerialCaptureSection';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
@@ -74,6 +75,8 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
   const [showReceiveDialog, setShowReceiveDialog] = useState(false);
   const [receivedQuantities, setReceivedQuantities] = useState<Record<number, number>>({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [itemSerials, setItemSerials] = useState<Record<number, string[]>>({});
+  const [productsWithSerial, setProductsWithSerial] = useState<Set<number>>(new Set());
 
   // Estados para factura y cuenta por pagar vinculadas
   const [linkedInvoice, setLinkedInvoice] = useState<{ id: number; number_ext: string; total: number; status: string } | null>(null);
@@ -102,10 +105,18 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
 
       // Inicializar cantidades recibidas
       const quantities: Record<number, number> = {};
+      const serialsMap: Record<number, string[]> = {};
+      const serialProducts = new Set<number>();
       data.items.forEach(item => {
         quantities[item.id] = item.received_quantity || 0;
+        serialsMap[item.id] = (item as any).serials_received || [];
+        if ((item as any).requires_serial || (item.products as any)?.track_serial) {
+          serialProducts.add(item.id);
+        }
       });
       setReceivedQuantities(quantities);
+      setItemSerials(serialsMap);
+      setProductsWithSerial(serialProducts);
 
       // Buscar factura vinculada y cuenta por pagar
       if (data.id) {
@@ -213,14 +224,15 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
 
       const itemsToReceive = Object.entries(receivedQuantities).map(([itemId, quantity]) => ({
         itemId: parseInt(itemId),
-        quantity
+        quantity,
+        serials: itemSerials[parseInt(itemId)] || []
       }));
 
-      const { error, stock } = await purchaseOrderService.receiveItems(
-        order.uuid,
-        organizationId,
-        itemsToReceive
-      );
+      // Usar metodo con seriales si hay productos que lo requieren, sino el normal
+      const hasSerialItems = itemsToReceive.some(i => i.serials && i.serials.length > 0);
+      const { error, stock } = hasSerialItems
+        ? await purchaseOrderService.receiveItemsWithSerials(order.uuid, organizationId, itemsToReceive)
+        : await purchaseOrderService.receiveItems(order.uuid, organizationId, itemsToReceive.map(({ serials, ...rest }) => rest));
 
       if (error) throw error;
 
@@ -679,6 +691,28 @@ export function OrdenCompraDetalle({ orderUuid }: OrdenCompraDetalleProps) {
                       />
                     </div>
                   </div>
+
+                  {/* Captura de seriales si el producto requiere tracking */}
+                  {productsWithSerial.has(item.id) && received > 0 && (
+                    <div className="mt-3">
+                      <SerialCaptureSection
+                        productId={item.product_id}
+                        productName={item.products?.name || 'Producto'}
+                        productSku={item.products?.sku}
+                        organizationId={getOrganizationId()}
+                        branchId={order.branch_id}
+                        quantity={received}
+                        serials={itemSerials[item.id] || []}
+                        onSerialsChange={(newSerials) =>
+                          setItemSerials(prev => ({ ...prev, [item.id]: newSerials }))
+                        }
+                        supplierId={order.supplier_id}
+                        purchaseOrderId={order.id}
+                        costAtPurchase={item.unit_cost}
+                        compact
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}

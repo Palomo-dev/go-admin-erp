@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import { config } from './config';
 import { buildCashDrawerBuffer } from './printing/escposBuffer';
-import { sendRawToPrinter } from './transports/rawSpooler';
+import { sendRawToPrinter, getPrinterInfo } from './transports/rawSpooler';
 
 export interface SystemPrinter {
   name: string;
@@ -604,6 +604,71 @@ Get-CimInstance Win32_PnPEntity |
       return;
     }
 
+    // POST /test-print — envía un test ESC/POS simple a la impresora
+    // Body: { "printerName": "POS-80C" } (requerido)
+    if (url === '/test-print' && req.method === 'POST') {
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      let printerName: string | undefined;
+      try {
+        const parsed = JSON.parse(body);
+        printerName = parsed.printerName;
+      } catch { /* ignore */ }
+
+      if (!printerName) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'printerName es requerido' }));
+        return;
+      }
+
+      try {
+        // ESC @ = init, luego texto de prueba, luego feed + cut
+        const testBuffer = Buffer.concat([
+          Buffer.from([0x1b, 0x40]), // ESC @ = init
+          Buffer.from('*** TEST PRINT GO ADMIN ***\n', 'ascii'),
+          Buffer.from('Si ves esto, la impresora funciona.\n', 'ascii'),
+          Buffer.from([0x1b, 0x64, 0x03]), // ESC d 3 = feed 3 lines
+          Buffer.from([0x1d, 0x56, 0x00]), // GS V 0 = cut
+        ]);
+
+        const info = await getPrinterInfo(printerName);
+        await sendRawToPrinter(printerName, testBuffer);
+        console.log(`[discovery] test-print: enviado a "${printerName}" (${testBuffer.length} bytes)`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, bytesSent: testBuffer.length, printerInfo: info }));
+      } catch (err: any) {
+        console.error('[discovery] test-print error:', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+      return;
+    }
+
+    // GET /printer-info?name=... — info de la impresora en Windows
+    if (url === '/printer-info' && req.method === 'GET') {
+      const parsedUrl = new URL(req.url || '', `http://localhost:${config.discoveryPort}`);
+      const printerName = parsedUrl.searchParams.get('name');
+      if (!printerName) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Parámetro "name" es requerido' }));
+        return;
+      }
+      try {
+        const info = await getPrinterInfo(printerName);
+        if (!info) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `No se encontró la impresora "${printerName}" en Windows` }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ printerName, ...info }));
+      } catch (err: any) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));
   });
@@ -628,7 +693,9 @@ Get-CimInstance Win32_PnPEntity |
     console.log(`[discovery]   GET /discover  - escanear red local (puerto 9100)`);
     console.log(`[discovery]   GET /usb       - dispositivos USB (vendor/product id)`);
     console.log(`[discovery]   GET /bluetooth - dispositivos Bluetooth emparejados`);
-    console.log(`[discovery]   GET /debug-usb - diagnóstico raw de PowerShell USB`);
+    console.log(`[discovery]   GET /debug-usb   - diagnóstico raw de PowerShell USB`);
+    console.log(`[discovery]   POST /test-print  - test de impresión ESC/POS`);
+    console.log(`[discovery]   GET /printer-info - info de impresora en Windows`);
   });
 
   return server;

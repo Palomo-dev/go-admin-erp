@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DevolucionesService } from './devolucionesService';
 import { ReturnReasonsService } from './motivos/returnReasonsService';
-import { SaleForReturn, RefundData, SaleItemForReturn, ReturnReason } from './types';
+import { SaleForReturn, RefundData, SaleItemForReturn, ReturnReason, SoldSerialInfo } from './types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { toast } from 'sonner';
 
@@ -51,6 +51,9 @@ interface ReturnItemData {
   reason: string;
   selected: boolean;
   max_returnable: number; // cantidad - ya devuelto
+  track_serial: boolean;
+  available_serials: SoldSerialInfo[];
+  selected_serial_ids: number[];
 }
 
 export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
@@ -90,7 +93,10 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       refund_amount: 0,
       reason: '',
       selected: false,
-      max_returnable: item.quantity - (item.returned_quantity || 0)
+      max_returnable: item.quantity - (item.returned_quantity || 0),
+      track_serial: item.product.track_serial || false,
+      available_serials: item.serials || [],
+      selected_serial_ids: [] as number[]
     })).filter(item => item.max_returnable > 0); // Solo items que se pueden devolver
 
     setReturnItems(items);
@@ -142,6 +148,26 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
     }));
   };
 
+  const handleSerialToggle = (itemId: string, serialId: number) => {
+    setReturnItems(prev => prev.map(item => {
+      if (item.sale_item_id === itemId) {
+        const isSelected = item.selected_serial_ids.includes(serialId);
+        const newSerialIds = isSelected
+          ? item.selected_serial_ids.filter(id => id !== serialId)
+          : [...item.selected_serial_ids, serialId];
+        const newQty = newSerialIds.length;
+        return {
+          ...item,
+          selected_serial_ids: newSerialIds,
+          return_quantity: newQty,
+          refund_amount: item.unit_price * newQty,
+          selected: newQty > 0
+        };
+      }
+      return item;
+    }));
+  };
+
   const validateForm = (): boolean => {
     const selectedItems = returnItems.filter(item => item.selected && item.return_quantity > 0);
     
@@ -162,6 +188,24 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       return false;
     }
 
+    // Validar que items serializados tengan seriales seleccionados
+    const serialItemsWithoutSerials = selectedItems.filter(
+      item => item.track_serial && item.selected_serial_ids.length === 0
+    );
+    if (serialItemsWithoutSerials.length > 0) {
+      toast.error('Los productos serializados deben tener al menos un serial seleccionado');
+      return false;
+    }
+
+    // Validar que la cantidad coincida con los seriales seleccionados
+    const serialQtyMismatch = selectedItems.filter(
+      item => item.track_serial && item.selected_serial_ids.length !== item.return_quantity
+    );
+    if (serialQtyMismatch.length > 0) {
+      toast.error('La cantidad a devolver debe coincidir con los seriales seleccionados');
+      return false;
+    }
+
     return true;
   };
 
@@ -179,7 +223,8 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           product_id: item.product_id,
           return_quantity: item.return_quantity,
           refund_amount: item.refund_amount,
-          reason: item.reason
+          reason: item.reason,
+          serial_number_ids: item.track_serial ? item.selected_serial_ids : undefined
         })),
         refund_method: refundMethod,
         total_refund: totalRefund,
@@ -315,6 +360,11 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             Cantidad original: {item.original_quantity}
                           </div>
+                          {item.track_serial && item.available_serials.length > 0 && (
+                            <Badge variant="secondary" className="mt-1 text-xs">
+                              Serializado
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
@@ -326,15 +376,32 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={item.max_returnable}
-                          value={item.return_quantity}
-                          onChange={(e) => handleQuantityChange(item.sale_item_id, parseInt(e.target.value) || 0)}
-                          disabled={!item.selected}
-                          className="w-20 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        />
+                        {item.track_serial && item.available_serials.length > 0 ? (
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {item.available_serials.map(serial => (
+                              <label
+                                key={serial.id}
+                                className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 px-2 py-1 rounded"
+                              >
+                                <Checkbox
+                                  checked={item.selected_serial_ids.includes(serial.id)}
+                                  onCheckedChange={() => handleSerialToggle(item.sale_item_id, serial.id)}
+                                />
+                                <span className="dark:text-gray-300 font-mono">{serial.serial}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.max_returnable}
+                            value={item.return_quantity}
+                            onChange={(e) => handleQuantityChange(item.sale_item_id, parseInt(e.target.value) || 0)}
+                            disabled={!item.selected}
+                            className="w-20 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          />
+                        )}
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
                         <div className="font-bold text-orange-600 dark:text-orange-400">

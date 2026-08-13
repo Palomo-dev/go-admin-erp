@@ -43,6 +43,7 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
   finance: [
     { name: 'Dashboard', href: '/app/finanzas' },
     { name: 'Facturas de venta', href: '/app/finanzas/facturas-venta' },
+    { name: 'Cotizaciones', href: '/app/finanzas/cotizaciones' },
     { name: 'Facturas de compra', href: '/app/finanzas/facturas-compra' },
     { name: 'Notas de crédito', href: '/app/finanzas/notas-credito' },
     { name: 'Ingresos', href: '/app/finanzas/ingresos' },
@@ -85,6 +86,8 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Variantes - Tipos', href: '/app/inventario/variantes/tipos' },
     { name: 'Variantes - Valores', href: '/app/inventario/variantes/valores' },
     { name: 'Lotes', href: '/app/inventario/lotes' },
+    { name: 'Seriales', href: '/app/inventario/seriales' },
+    { name: 'Garantías', href: '/app/inventario/garantias' },
     { name: 'Imágenes', href: '/app/inventario/imagenes' },
     { name: 'Proveedores', href: '/app/inventario/proveedores' },
     { name: 'Órdenes de Compra', href: '/app/inventario/ordenes-compra' },

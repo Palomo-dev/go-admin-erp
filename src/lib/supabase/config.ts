@@ -1,5 +1,5 @@
 import { createClient, type Provider } from '@supabase/supabase-js'
-import { isAppOnline, getCachedResponse, setCachedResponse, queueAction } from '@/lib/utils/offlineCache'
+import { isAppOnline, getCachedResponse, setCachedResponse, queueAction, setOnline } from '@/lib/utils/offlineCache'
 
 // Extrae la referencia del proyecto de la URL de Supabase
 export const getProjectRef = () => {
@@ -244,11 +244,30 @@ export const createSupabaseClient = () => {
 
         // ── Offline cache solo en desktop app ──
         const isDesktopApp = typeof window !== 'undefined' && 'goAdminDesktop' in window;
-        if (isDesktopApp && !isAuthRequest) {
-          const online = isAppOnline();
+        const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+        const useOfflineLogic = isDesktopApp && !isOnline;
+        if (useOfflineLogic) {
+          // ── Auth offline: servir sesión desde localStorage ──
+          if (isAuthRequest) {
+            const projectRef = getProjectRef();
+            const storageKey = projectRef ? `sb-${projectRef}-auth-token` : 'sb-auth-token';
+            const storedSession = localStorage.getItem(storageKey);
+            if (storedSession) {
+              return new Response(storedSession, {
+                status: 200,
+                headers: { 'Content-Type': 'application/json', 'X-Offline-Cache': 'true' },
+              });
+            }
+            return new Response(JSON.stringify({ error: { message: 'Offline: no stored session' } }), {
+              status: 401,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+
+          if (!isAuthRequest) {
 
           // GET: servir de cache si estamos offline
-          if (method === 'GET' && !online) {
+          if (method === 'GET') {
             const cached = await getCachedResponse(urlString, method);
             if (cached) {
               return new Response(cached.data, {
@@ -263,7 +282,7 @@ export const createSupabaseClient = () => {
           }
 
           // POST/PATCH/PUT/DELETE: encolar si estamos offline
-          if (method !== 'GET' && !online) {
+          if (method !== 'GET') {
             const bodyStr = options?.body ? (typeof options.body === 'string' ? options.body : '') : '';
             const headers: Record<string, string> = {};
             if (options?.headers) {
@@ -279,13 +298,38 @@ export const createSupabaseClient = () => {
               headers: { 'Content-Type': 'application/json' },
             });
           }
+          } // fin if (!isAuthRequest)
         }
 
         // ── Fetch normal con reintentos ──
+        // Cuando hay conexión, comportarse exactamente como la versión web:
+        // sin AbortController, sin timeout, sin cache de IndexedDB.
+        // Toda la lógica de offline solo se activa cuando navigator.onLine === false.
+        // isOnline y useOfflineLogic ya fueron declarados arriba.
+
         return new Promise((resolve, reject) => {
           const attemptFetch = async (retriesLeft: number, delay: number) => {
+            // AbortController solo cuando estamos offline — para detectar cuelgues
+            // de DNS/TCP y hacer fallback a cache. Cuando hay conexión, no usar
+            // timeout para que el comportamiento sea idéntico a la versión web.
+            const controller = useOfflineLogic ? new AbortController() : null;
+            let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+            if (controller) {
+              timeoutId = setTimeout(() => controller.abort(), 15000);
+              if (options?.signal) {
+                if (options.signal.aborted) controller.abort();
+                else options.signal.addEventListener('abort', () => controller.abort());
+              }
+            }
+
+            const fetchOptions = controller
+              ? { ...options, signal: controller.signal }
+              : options;
+
             try {
-              const response = await nativeFetch(url, options);
+              const response = await nativeFetch(url, fetchOptions);
+              if (timeoutId) clearTimeout(timeoutId);
 
               if (response.status === 429 && retriesLeft > 0 && !isAuthRequest) {
                 console.log(`Límite de solicitudes alcanzado, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
@@ -293,41 +337,70 @@ export const createSupabaseClient = () => {
                 return attemptFetch(retriesLeft - 1, delay * 2);
               }
 
-              // Cachear respuestas GET exitosas en desktop app (background, sin bloquear)
+              // Cachear respuestas GET exitosas en desktop app:
+              // - Offline: inmediatamente (para fallback de timeout)
+              // - Online: diferido con requestIdleCallback para no afectar latencia
               if (isDesktopApp && method === 'GET' && response.ok && !isAuthRequest) {
-                try {
-                  const cloned = response.clone();
-                  const text = await cloned.text();
-                  if (text && text.length > 0) {
-                    setCachedResponse(urlString, method, text, response.status);
-                  }
-                } catch {
-                  // Silenciar errores de cache
+                const cloned = response.clone();
+                const doCache = () => {
+                  cloned.text().then(text => {
+                    if (text && text.length > 0 && text.length < 500_000) {
+                      setCachedResponse(urlString, method, text, response.status);
+                    }
+                  }).catch(() => {});
+                };
+                if (useOfflineLogic) {
+                  doCache();
+                } else if (typeof requestIdleCallback !== 'undefined') {
+                  requestIdleCallback(() => doCache(), { timeout: 5000 });
+                } else {
+                  setTimeout(doCache, 0);
                 }
               }
 
               resolve(response);
             } catch (error: any) {
+              if (timeoutId) clearTimeout(timeoutId);
+
+              const isTimeout = controller?.signal?.aborted && !options?.signal?.aborted;
               const isAborted = error?.name === 'AbortError' || options?.signal?.aborted;
+
+              // Timeout en desktop app offline: usar cache como fallback
+              if (isTimeout && useOfflineLogic) {
+                console.log('[fetch] Timeout en desktop app offline, usando cache como fallback');
+
+                if (method === 'GET' && !isAuthRequest) {
+                  try {
+                    const cached = await getCachedResponse(urlString, method);
+                    if (cached) {
+                      return resolve(new Response(cached.data, {
+                        status: cached.status,
+                        headers: { 'Content-Type': 'application/json', 'X-Offline-Cache': 'true' },
+                      }));
+                    }
+                  } catch {}
+                }
+                reject(error);
+                return;
+              }
+
               if (retriesLeft > 0 && !isAborted) {
                 console.log(`Error en solicitud, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);
                 await new Promise(res => setTimeout(res, delay));
                 return attemptFetch(retriesLeft - 1, delay * 2);
               }
 
-              // Último intento fallido: intentar cache para GET en desktop
-              if (isDesktopApp && method === 'GET' && !isAuthRequest) {
+              // Último intento fallido: intentar cache para GET en desktop offline
+              if (useOfflineLogic && method === 'GET' && !isAuthRequest) {
                 try {
                   const cached = await getCachedResponse(urlString, method);
                   if (cached) {
-                    return new Response(cached.data, {
+                    return resolve(new Response(cached.data, {
                       status: cached.status,
                       headers: { 'Content-Type': 'application/json', 'X-Offline-Cache': 'true' },
-                    });
+                    }));
                   }
-                } catch {
-                  // Silenciar
-                }
+                } catch {}
               }
 
               reject(error);

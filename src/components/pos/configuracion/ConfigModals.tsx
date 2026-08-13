@@ -41,7 +41,7 @@ interface ConfigModalProps {
 function ConfigModal({ open, onOpenChange, title, children }: ConfigModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-xl md:max-w-2xl lg:max-w-5xl max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-1rem)] max-w-[95vw] p-3 sm:p-4 md:p-6 sm:max-w-xl md:max-w-2xl lg:max-w-5xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
 
 function getSupabaseClient(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -189,6 +190,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Auto-asignar y reservar seriales para productos serializados (FIFO)
+    const serialWarnings: string[] = [];
+    try {
+      for (const item of itemsWithTotals) {
+        if (!item.product_id) continue;
+
+        const { data: product } = await supabase
+          .from('products')
+          .select('track_serial')
+          .eq('id', item.product_id)
+          .maybeSingle();
+
+        if (!product?.track_serial) continue;
+
+        const availableSerials = await serialTrackingService.getAvailableSerials(
+          item.product_id,
+          body.organization_id,
+          body.branch_id
+        );
+
+        if (availableSerials.length < item.quantity) {
+          serialWarnings.push(
+            `Producto "${item.product_name}": solo ${availableSerials.length} seriales disponibles, se requieren ${item.quantity}`
+          );
+          continue;
+        }
+
+        const serialIdsToReserve = availableSerials.slice(0, item.quantity).map(s => s.id);
+        const { success: reserveOk, errors: reserveErrors } = await serialTrackingService.reserveSerials(
+          serialIdsToReserve,
+          order.id
+        );
+
+        if (!reserveOk) {
+          serialWarnings.push(`Producto "${item.product_name}": error reservando seriales: ${reserveErrors.join(', ')}`);
+        } else {
+          console.log(`✅ ${serialIdsToReserve.length} seriales reservados para producto ${item.product_id} en web order ${order.id}`);
+        }
+      }
+    } catch (serialError: any) {
+      console.warn('⚠️ Error en auto-asignacion de seriales (no bloquea pedido):', serialError?.message);
+      serialWarnings.push('Error general en asignacion de seriales');
+    }
+
     // Obtener pedido completo con items
     const { data: fullOrder } = await supabase
       .from('web_orders')
@@ -203,6 +248,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Pedido creado exitosamente',
       order: fullOrder,
+      serial_warnings: serialWarnings.length > 0 ? serialWarnings : undefined,
     }, { status: 201 });
 
   } catch (error) {

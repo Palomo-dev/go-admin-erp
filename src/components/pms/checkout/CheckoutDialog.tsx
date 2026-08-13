@@ -1321,7 +1321,20 @@ export function CheckoutDialog({
 
         {step === 'success' && (
           <div className="flex flex-col items-center justify-center py-8 gap-3">
-            <CheckCircle2 className="h-16 w-16 text-green-500" />
+            <div className="h-16 w-16">
+              <svg viewBox="0 0 52 52" className="h-full w-full text-green-500" fill="none" stroke="currentColor">
+                <circle cx="26" cy="26" r="24" strokeWidth="3" className="opacity-20" />
+                <path
+                  d="M14 27 L22 35 L38 17"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray="60"
+                  className="animate-draw-check"
+                  style={{ strokeDashoffset: 60 }}
+                />
+              </svg>
+            </div>
             <p className="text-lg font-semibold text-green-600">Pago completado</p>
             <p className="text-sm text-gray-500">El pago se ha registrado correctamente</p>
             {change > 0 && (

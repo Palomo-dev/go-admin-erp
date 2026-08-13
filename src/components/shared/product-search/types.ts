@@ -19,6 +19,8 @@ export type UnifiedProduct = {
   track_stock?: boolean;
   stock_qty?: number;
   is_out_of_stock?: boolean;
+  // Tracking de seriales
+  track_serial?: boolean;
   // Variantes y modificadores
   is_parent?: boolean;
   has_variants?: boolean;

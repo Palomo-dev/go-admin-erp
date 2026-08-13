@@ -67,6 +67,12 @@ export interface InvoiceItem {
   discount_amount?: number;
   created_at?: string;
   updated_at?: string;
+  // Relación joinada desde products (opcional, vía select de Supabase)
+  products?: {
+    id?: number;
+    sku?: string;
+    name?: string;
+  };
 }
 
 export interface AccountPayable {

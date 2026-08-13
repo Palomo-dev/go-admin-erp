@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { stockMovementService } from '@/lib/services/stockMovementService';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
 
 export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected';
 export type DeliveryType = 'pickup' | 'delivery_own' | 'delivery_third_party';
@@ -494,6 +495,16 @@ class WebOrdersService {
         console.warn('⚠️ Error liberando reservas:', stockResult.errors);
       }
       console.log(`📦 Reservas liberadas (web order ${orderId}): ${items.length - stockResult.skipped} items`);
+
+      // Liberar seriales reservados asociados al pedido
+      try {
+        const serialsResult = await serialTrackingService.releaseReservedSerials(orderId);
+        if (!serialsResult.success) {
+          console.warn('⚠️ Error liberando seriales reservados:', serialsResult.errors);
+        }
+      } catch (serialError) {
+        console.warn('⚠️ Error liberando seriales reservados (no bloquea cancelación):', serialError);
+      }
     } catch (error) {
       console.warn('⚠️ Error liberando stock reservado (no bloquea cancelación):', error);
     }
@@ -584,6 +595,34 @@ class WebOrdersService {
         .from('web_orders')
         .update({ sale_id: sale.id })
         .eq('id', orderId);
+
+      // Descontar stock físico de los items vendidos
+      if (order.items && order.items.length > 0) {
+        const stockItems = order.items
+          .filter(item => item.product_id !== null)
+          .map(item => ({
+            product_id: item.product_id as number,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+          }));
+
+        if (stockItems.length > 0) {
+          await stockMovementService.decrementOnSale(
+            order.organization_id,
+            order.branch_id,
+            sale.id,
+            stockItems,
+            'web_sale'
+          );
+
+          // Liberar la reserva de stock que se había hecho al crear el pedido
+          await stockMovementService.releaseStockReservation(
+            order.branch_id,
+            orderId,
+            stockItems
+          );
+        }
+      }
 
       return { saleId: sale.id };
     } catch (error) {

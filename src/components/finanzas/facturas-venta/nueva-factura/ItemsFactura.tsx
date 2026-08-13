@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, AlertCircle, Package } from 'lucide-react';
 import { ProductSearchDialog, type UnifiedProduct, type SelectedModifier } from '@/components/shared/product-search';
 import {
   Table,
@@ -15,15 +16,48 @@ import {
 } from '@/components/ui/table';
 import { InvoiceItem } from './NuevaFacturaForm';
 import { formatCurrency } from '@/utils/Utils';
+import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
+import type { CartItem } from '@/components/pos/types';
 
 type ItemsFacturaProps = {
   items: InvoiceItem[];
   onItemsChange: (items: InvoiceItem[]) => void;
   taxIncluded?: boolean;
   branchId?: number;
+  organizationId?: number;
+  serialSelections: Record<number, number[]>;
+  onSerialSelectionsChange: (selections: Record<number, number[]>) => void;
 };
 
-export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId }: ItemsFacturaProps) {
+export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branchId, organizationId, serialSelections, onSerialSelectionsChange }: ItemsFacturaProps) {
+  const [showSerialSelector, setShowSerialSelector] = useState(false);
+
+  // Items que requieren captura de seriales
+  const serializedItems = useMemo(
+    () => items.filter((it) => it.track_serial === true && it.product_id != null),
+    [items]
+  );
+  const hasSerialItems = serializedItems.length > 0;
+
+  // Mapear InvoiceItem[] -> CartItem[] para el SerialSelectorDialog
+  const serialDialogItems: CartItem[] = useMemo(() => {
+    return serializedItems.map((it, idx) => ({
+      id: `serial-${it.product_id}-${idx}`,
+      cart_id: 'invoice',
+      product_id: it.product_id as number,
+      product: {
+        id: it.product_id as number,
+        name: it.product_name || it.description,
+        sku: it.product_sku || '',
+        track_serial: true,
+      } as unknown as CartItem['product'],
+      quantity: it.qty,
+      unit_price: it.unit_price,
+      total: it.total_line,
+      created_at: '',
+      updated_at: '',
+    }));
+  }, [serializedItems]);
 
   // Agregar ítem directamente a la factura (producto simple o variante seleccionada)
   const agregarItemDirecto = (product: UnifiedProduct, modifiers: SelectedModifier[] = []) => {
@@ -65,6 +99,8 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
       product_name: description,
       stock_qty: product.stock_qty ?? null,
       track_stock: product.track_stock ?? false,
+      track_serial: product.track_serial ?? false,
+      product_sku: product.sku ?? null,
     };
     
     onItemsChange([...items, newItem]);
@@ -149,7 +185,7 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           showCreateButton
         />
 
-        <Button 
+        <Button
           variant="outline"
           size="sm"
           onClick={agregarItemManual}
@@ -164,6 +200,27 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
           <Plus className="h-4 w-4 mr-2" />
           <span className="text-sm">Agregar Ítem Manual</span>
         </Button>
+
+        {hasSerialItems && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSerialSelector(true)}
+            className="
+              w-full sm:w-auto
+              bg-blue-50 dark:bg-blue-900/20
+              border-blue-300 dark:border-blue-700
+              hover:bg-blue-100 dark:hover:bg-blue-900/30
+              text-blue-700 dark:text-blue-300
+            "
+          >
+            <Package className="h-4 w-4 mr-2" />
+            <span className="text-sm">Capturar Seriales</span>
+            {serializedItems.length > 0 && (
+              <Badge className="ml-2 bg-blue-600 text-white">{serializedItems.length}</Badge>
+            )}
+          </Button>
+        )}
       </div>
       
       {/* Tabla de ítems */}
@@ -202,6 +259,29 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
                         text-gray-900 dark:text-gray-100
                       "
                     />
+                    {item.track_serial && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-[10px]">
+                          <Package className="h-3 w-3 mr-1" />
+                          Serial
+                        </Badge>
+                        {item.product_id != null && (() => {
+                          const selectedCount = serialSelections[item.product_id as number]?.length ?? 0;
+                          const isComplete = selectedCount === item.qty;
+                          return (
+                            <Badge
+                              className={`text-[10px] ${
+                                isComplete
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                  : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                              }`}
+                            >
+                              {selectedCount}/{item.qty} seriales
+                            </Badge>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="relative">
@@ -312,6 +392,20 @@ export function ItemsFactura({ items, onItemsChange, taxIncluded = false, branch
         </Table>
         </div>
       </div>
+
+      {hasSerialItems && organizationId != null && branchId != null && (
+        <SerialSelectorDialog
+          open={showSerialSelector}
+          onOpenChange={setShowSerialSelector}
+          items={serialDialogItems}
+          organizationId={organizationId}
+          branchId={branchId}
+          onConfirm={(selections) => {
+            onSerialSelectionsChange(selections);
+            setShowSerialSelector(false);
+          }}
+        />
+      )}
 
     </div>
   );

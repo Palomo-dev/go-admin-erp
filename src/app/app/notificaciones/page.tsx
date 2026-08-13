@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,11 +12,7 @@ import {
   type NotificationChannel,
   type NotificationRow,
 } from '@/lib/services/notificacionesDashboardService';
-import {
-  PageHeaderSkeleton,
-  StatsSkeleton,
-  CardListSkeleton,
-} from '@/components/common/PageSkeletons';
+import { Loader2 } from 'lucide-react';
 import {
   NotificacionesHeader,
   NotificacionesKPIs,
@@ -62,7 +58,7 @@ export default function NotificacionesPage() {
           .single();
 
         if (data) {
-          const roleName = (data as any).roles?.name?.toLowerCase() || '';
+          const roleName = (data as { roles?: { name?: string } | null }).roles?.name?.toLowerCase() || '';
           const admin = data.is_super_admin || roleName === 'admin' || roleName === 'owner' || roleName === 'super admin' || roleName === 'admin de organización';
           setIsAdmin(admin);
           if (!admin) {
@@ -178,10 +174,8 @@ export default function NotificacionesPage() {
   // Loading mientras verifica rol
   if (checkingRole) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <StatsSkeleton count={4} />
-        <CardListSkeleton cards={3} columns="1" />
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }
@@ -189,10 +183,8 @@ export default function NotificacionesPage() {
   // Si no es admin, no renderizar el dashboard (ya fue redirigido)
   if (!isAdmin) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <StatsSkeleton count={4} />
-        <CardListSkeleton cards={3} columns="1" />
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }

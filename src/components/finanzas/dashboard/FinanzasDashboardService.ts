@@ -54,6 +54,54 @@ export interface DashboardFilters {
   sucursalId?: number;
 }
 
+// ─── Tipos de filas de Supabase (evitan `any` en callbacks) ──────────────────
+
+interface InvoiceSaleRow {
+  customer_id: string;
+  total: number | string | null;
+  customers?: { id: string; full_name: string | null }[] | null;
+}
+
+interface InvoicePurchaseRow {
+  supplier_id: string;
+  total: number | string | null;
+  suppliers?: { id: string; name: string | null }[] | null;
+}
+
+interface InvoiceDateRow {
+  issue_date: string | null;
+  total: number | string | null;
+}
+
+interface AccountsReceivableAgingRow {
+  balance: number | string | null;
+  due_date: string | null;
+}
+
+interface ArInstallmentRow {
+  amount: number | string | null;
+}
+
+interface ApInstallmentRow {
+  amount: number | string | null;
+}
+
+interface FacturaPorVencerRow {
+  id: string;
+  invoice_id: string | null;
+  due_date: string | null;
+  balance: number | string | null;
+  customers?: { full_name: string | null }[] | null;
+}
+
+interface InvoiceSequenceRow {
+  id: string;
+  prefix: string;
+  current_number: number;
+  max_number: number;
+  resolution_end_date: string;
+}
+
 class FinanzasDashboardService {
   
   async getKPIs(organizationId: number, filters: DashboardFilters): Promise<KPIData> {
@@ -64,8 +112,8 @@ class FinanzasDashboardService {
       .from('invoice_sales')
       .select('total')
       .eq('organization_id', organizationId)
-      .gte('invoice_date', fechaInicio)
-      .lte('invoice_date', fechaFin)
+      .gte('issue_date', fechaInicio)
+      .lte('issue_date', fechaFin)
       .in('status', ['paid', 'partial']);
     
     const ingresosFacturas = ventasData?.reduce((sum, v) => sum + (Number(v.total) || 0), 0) || 0;
@@ -99,8 +147,8 @@ class FinanzasDashboardService {
       .from('invoice_purchase')
       .select('total')
       .eq('organization_id', organizationId)
-      .gte('invoice_date', fechaInicio)
-      .lte('invoice_date', fechaFin)
+      .gte('issue_date', fechaInicio)
+      .lte('issue_date', fechaFin)
       .in('status', ['paid', 'partial']);
     
     const egresos = comprasData?.reduce((sum, c) => sum + (Number(c.total) || 0), 0) || 0;
@@ -116,23 +164,42 @@ class FinanzasDashboardService {
     
     const carteraVencida = carteraVencidaData?.reduce((sum, c) => sum + (Number(c.balance) || 0), 0) || 0;
     
-    // Caja (sesiones de caja activas)
+    // Caja (sesiones de caja abiertas: initial_amount + movimientos in - movimientos out)
     const { data: cajaData } = await supabase
       .from('cash_sessions')
-      .select('current_balance')
+      .select('id, initial_amount')
       .eq('organization_id', organizationId)
       .eq('status', 'open');
-    
-    const caja = cajaData?.reduce((sum, c) => sum + (Number(c.current_balance) || 0), 0) || 0;
-    
+
+    let caja = 0;
+    if (cajaData && cajaData.length > 0) {
+      const sessionIds = cajaData.map((s) => s.id);
+      const { data: movimientosData } = await supabase
+        .from('cash_movements')
+        .select('cash_session_id, type, amount')
+        .in('cash_session_id', sessionIds);
+
+      const movimientosPorSesion = new Map<number, number>();
+      for (const m of movimientosData || []) {
+        const actual = movimientosPorSesion.get(m.cash_session_id) || 0;
+        const delta = m.type === 'in' ? Number(m.amount) || 0 : -(Number(m.amount) || 0);
+        movimientosPorSesion.set(m.cash_session_id, actual + delta);
+      }
+
+      caja = cajaData.reduce(
+        (sum, s) => sum + (Number(s.initial_amount) || 0) + (movimientosPorSesion.get(s.id) || 0),
+        0,
+      );
+    }
+
     // Bancos
     const { data: bancosData } = await supabase
       .from('bank_accounts')
-      .select('current_balance')
+      .select('balance')
       .eq('organization_id', organizationId)
       .eq('is_active', true);
-    
-    const bancos = bancosData?.reduce((sum, b) => sum + (Number(b.current_balance) || 0), 0) || 0;
+
+    const bancos = bancosData?.reduce((sum, b) => sum + (Number(b.balance) || 0), 0) || 0;
     
     // Cuentas por cobrar total
     const { data: cxcData } = await supabase
@@ -172,20 +239,20 @@ class FinanzasDashboardService {
       .select(`
         customer_id,
         total,
-        customers!inner(id, name)
+        customers!inner(id, full_name)
       `)
       .eq('organization_id', organizationId)
-      .gte('invoice_date', fechaInicio)
-      .lte('invoice_date', fechaFin);
+      .gte('issue_date', fechaInicio)
+      .lte('issue_date', fechaFin);
     
     if (!data) return [];
     
     // Agrupar por cliente
     const clienteMap = new Map<string, { nombre: string; monto: number }>();
     
-    data.forEach((item: any) => {
+    data.forEach((item: InvoiceSaleRow) => {
       const customerId = item.customer_id;
-      const customerName = item.customers?.full_name || 'Sin nombre';
+      const customerName = item.customers?.[0]?.full_name || 'Sin nombre';
       const total = Number(item.total) || 0;
       
       if (clienteMap.has(customerId)) {
@@ -217,17 +284,17 @@ class FinanzasDashboardService {
         suppliers!inner(id, name)
       `)
       .eq('organization_id', organizationId)
-      .gte('invoice_date', fechaInicio)
-      .lte('invoice_date', fechaFin);
+      .gte('issue_date', fechaInicio)
+      .lte('issue_date', fechaFin);
     
     if (!data) return [];
     
     // Agrupar por proveedor
     const proveedorMap = new Map<string, { nombre: string; monto: number }>();
     
-    data.forEach((item: any) => {
+    data.forEach((item: InvoicePurchaseRow) => {
       const supplierId = item.supplier_id;
-      const supplierName = item.suppliers?.name || 'Sin nombre';
+      const supplierName = item.suppliers?.[0]?.name || 'Sin nombre';
       const total = Number(item.total) || 0;
       
       if (proveedorMap.has(supplierId)) {
@@ -254,32 +321,32 @@ class FinanzasDashboardService {
     // Obtener ventas agrupadas por mes
     const { data: ventasData } = await supabase
       .from('invoice_sales')
-      .select('invoice_date, total')
+      .select('issue_date, total')
       .eq('organization_id', organizationId)
-      .gte('invoice_date', fechaInicio)
-      .lte('invoice_date', fechaFin);
+      .gte('issue_date', fechaInicio)
+      .lte('issue_date', fechaFin);
     
     // Obtener compras agrupadas por mes
     const { data: comprasData } = await supabase
       .from('invoice_purchase')
-      .select('invoice_date, total')
+      .select('issue_date, total')
       .eq('organization_id', organizationId)
-      .gte('invoice_date', fechaInicio)
-      .lte('invoice_date', fechaFin);
+      .gte('issue_date', fechaInicio)
+      .lte('issue_date', fechaFin);
     
     // Agrupar por mes
     const mesMap = new Map<string, { ventas: number; compras: number }>();
     
-    ventasData?.forEach((v: any) => {
-      const mes = v.invoice_date?.substring(0, 7) || '';
+    ventasData?.forEach((v: InvoiceDateRow) => {
+      const mes = v.issue_date?.substring(0, 7) || '';
       if (!mesMap.has(mes)) {
         mesMap.set(mes, { ventas: 0, compras: 0 });
       }
       mesMap.get(mes)!.ventas += Number(v.total) || 0;
     });
     
-    comprasData?.forEach((c: any) => {
-      const mes = c.invoice_date?.substring(0, 7) || '';
+    comprasData?.forEach((c: InvoiceDateRow) => {
+      const mes = c.issue_date?.substring(0, 7) || '';
       if (!mesMap.has(mes)) {
         mesMap.set(mes, { ventas: 0, compras: 0 });
       }
@@ -310,7 +377,8 @@ class FinanzasDashboardService {
       '+90 días': 0
     };
     
-    data.forEach((item: any) => {
+    data.forEach((item: AccountsReceivableAgingRow) => {
+      if (!item.due_date) return;
       const dueDate = parseLocalDate(item.due_date);
       const diasVencido = Math.floor((hoy.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
       const balance = Number(item.balance) || 0;
@@ -355,7 +423,7 @@ class FinanzasDashboardService {
         .lte('due_date', mesFin)
         .eq('status', 'pending');
       
-      const ingresos = ingresosData?.reduce((sum, i: any) => sum + (Number(i.amount) || 0), 0) || 0;
+      const ingresos = ingresosData?.reduce((sum, i: ArInstallmentRow) => sum + (Number(i.amount) || 0), 0) || 0;
       
       // Egresos proyectados (cuotas CxP)
       const { data: egresosData } = await supabase
@@ -366,7 +434,7 @@ class FinanzasDashboardService {
         .lte('due_date', mesFin)
         .eq('status', 'pending');
       
-      const egresos = egresosData?.reduce((sum, e: any) => sum + (Number(e.amount) || 0), 0) || 0;
+      const egresos = egresosData?.reduce((sum, e: ApInstallmentRow) => sum + (Number(e.amount) || 0), 0) || 0;
       
       const mesNombre = fecha.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
       
@@ -390,21 +458,22 @@ class FinanzasDashboardService {
     // Facturas por vencer (próximos 7 días)
     const { data: facturasPorVencer } = await supabase
       .from('accounts_receivable')
-      .select('id, invoice_id, due_date, balance, customers(name)')
+      .select('id, invoice_id, due_date, balance, customers(full_name)')
       .eq('organization_id', organizationId)
       .gte('due_date', hoyStr)
       .lte('due_date', en7Dias)
       .gt('balance', 0)
       .limit(5);
     
-    facturasPorVencer?.forEach((f: any) => {
+    facturasPorVencer?.forEach((f: FacturaPorVencerRow) => {
+      if (!f.due_date) return;
       alertas.push({
         id: `factura-${f.id}`,
         tipo: 'factura_vencer',
         titulo: 'Factura por vencer',
-        descripcion: `${f.customers?.full_name || 'Cliente'} - Vence: ${parseLocalDate(f.due_date).toLocaleDateString('es-CO')}`,
+        descripcion: `${f.customers?.[0]?.full_name || 'Cliente'} - Vence: ${parseLocalDate(f.due_date).toLocaleDateString('es-CO')}`,
         prioridad: 'media',
-        fecha: f.due_date,
+        fecha: f.due_date ?? undefined,
         enlace: `/app/finanzas/cuentas-por-cobrar/${f.id}`
       });
     });
@@ -437,7 +506,7 @@ class FinanzasDashboardService {
       .eq('organization_id', organizationId)
       .eq('is_active', true);
     
-    secuencias?.forEach((seq: any) => {
+    secuencias?.forEach((seq: InvoiceSequenceRow) => {
       const porcentajeUsado = (seq.current_number / seq.max_number) * 100;
       const fechaVence = new Date(seq.resolution_end_date);
       const diasRestantes = Math.floor((fechaVence.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
@@ -465,25 +534,9 @@ class FinanzasDashboardService {
       }
     });
     
-    // Saldo bajo en bancos
-    const { data: bancosData } = await supabase
-      .from('bank_accounts')
-      .select('id, account_name, current_balance, minimum_balance')
-      .eq('organization_id', organizationId)
-      .eq('is_active', true);
-    
-    bancosData?.forEach((banco: any) => {
-      if (banco.minimum_balance && Number(banco.current_balance) < Number(banco.minimum_balance)) {
-        alertas.push({
-          id: `banco-${banco.id}`,
-          tipo: 'saldo_bajo',
-          titulo: 'Saldo bajo en cuenta',
-          descripcion: `${banco.account_name}: $${Number(banco.current_balance).toLocaleString('es-CO')}`,
-          prioridad: 'media',
-          enlace: '/app/finanzas/bancos'
-        });
-      }
-    });
+    // Saldo bajo en bancos (sin minimum_balance en schema — omitir alerta)
+    // bank_accounts tiene: name, balance, is_active (no minimum_balance)
+    // TODO: si se agrega minimum_balance en el futuro, restaurar esta alerta
     
     // Ordenar por prioridad
     const prioridadOrden = { alta: 0, media: 1, baja: 2 };

@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import {
   DollarSign,
   TrendingUp,
+  TrendingDown,
   Users,
   Package,
   Receipt,
@@ -27,6 +29,8 @@ const kpiConfig = [
     icon: DollarSign,
     color: 'blue',
     isCurrency: true,
+    href: '/app/pos',
+    deltaKey: 'ventasAnterior' as const,
   },
   {
     key: 'ventasMes' as const,
@@ -34,6 +38,8 @@ const kpiConfig = [
     icon: TrendingUp,
     color: 'green',
     isCurrency: true,
+    href: '/app/finanzas',
+    deltaKey: null,
   },
   {
     key: 'clientesActivos' as const,
@@ -41,6 +47,8 @@ const kpiConfig = [
     icon: Users,
     color: 'purple',
     isCurrency: false,
+    href: '/app/crm',
+    deltaKey: null,
   },
   {
     key: 'productosActivos' as const,
@@ -48,6 +56,8 @@ const kpiConfig = [
     icon: Package,
     color: 'orange',
     isCurrency: false,
+    href: '/app/inventario/productos',
+    deltaKey: null,
   },
   {
     key: 'facturasHoy' as const,
@@ -55,6 +65,8 @@ const kpiConfig = [
     icon: Receipt,
     color: 'cyan',
     isCurrency: false,
+    href: '/app/finanzas/facturas',
+    deltaKey: 'facturasAnterior' as const,
   },
   {
     key: 'empleadosActivos' as const,
@@ -62,6 +74,8 @@ const kpiConfig = [
     icon: UserCheck,
     color: 'indigo',
     isCurrency: false,
+    href: '/app/hrm/empleados',
+    deltaKey: null,
   },
   {
     key: 'reservasActivas' as const,
@@ -69,6 +83,8 @@ const kpiConfig = [
     icon: Hotel,
     color: 'teal',
     isCurrency: false,
+    href: '/app/pms',
+    deltaKey: null,
   },
   {
     key: 'cuentasPorCobrar' as const,
@@ -76,6 +92,8 @@ const kpiConfig = [
     icon: CreditCard,
     color: 'red',
     isCurrency: true,
+    href: '/app/finanzas/cuentas-por-cobrar',
+    deltaKey: null,
   },
 ];
 
@@ -124,6 +142,7 @@ const colorMap: Record<string, { bg: string; icon: string; text: string }> = {
 
 export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
   const t = useTranslations('home.kpis');
+  const tHome = useTranslations('home');
   const locale = useLocale();
 
   if (isLoading) {
@@ -143,11 +162,25 @@ export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
         const Icon = kpi.icon;
         const value = data ? data[kpi.key] : 0;
 
-        return (
-          <div
-            key={kpi.key}
-            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
-          >
+        // Cálculo de delta % vs período anterior
+        let deltaPct: number | null = null;
+        if (kpi.deltaKey && data && data[kpi.deltaKey] !== undefined) {
+          const anterior = data[kpi.deltaKey] as number;
+          if (anterior > 0) {
+            deltaPct = ((value - anterior) / anterior) * 100;
+          } else if (value > 0) {
+            deltaPct = 100; // subió desde 0
+          }
+        }
+
+        const isPositive = deltaPct !== null && deltaPct >= 0;
+        // Para cuentas por cobrar, "subir" es malo; pero aquí no aplica delta
+        const deltaColor = isPositive
+          ? 'text-green-600 dark:text-green-400'
+          : 'text-red-600 dark:text-red-400';
+
+        const content = (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all h-full">
             <div className="flex items-center gap-3 mb-2">
               <div className={`p-2 rounded-lg ${colors.bg}`}>
                 <Icon className={`h-4 w-4 ${colors.icon}`} />
@@ -161,8 +194,30 @@ export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
                 ? formatCurrency(value)
                 : value.toLocaleString(locale)}
             </p>
+            {deltaPct !== null && (
+              <div className={`flex items-center gap-1 text-xs mt-1 ${deltaColor}`}>
+                {isPositive ? (
+                  <TrendingUp className="h-3 w-3" />
+                ) : (
+                  <TrendingDown className="h-3 w-3" />
+                )}
+                <span>
+                  {isPositive ? '+' : ''}
+                  {deltaPct.toFixed(1)}% {tHome('vsPreviousPeriod')}
+                </span>
+              </div>
+            )}
           </div>
         );
+
+        if (kpi.href) {
+          return (
+            <Link key={kpi.key} href={kpi.href} className="block">
+              {content}
+            </Link>
+          );
+        }
+        return <div key={kpi.key}>{content}</div>;
       })}
     </div>
   );

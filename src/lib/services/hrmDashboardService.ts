@@ -50,15 +50,57 @@ class HRMDashboardService {
     this.organizationId = organizationId;
   }
 
+  // Obtiene los IDs de organization_members de la organización.
+  // employments no tiene organization_id, se vincula vía organization_member_id.
+  private async getMemberIds(): Promise<number[]> {
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('organization_id', this.organizationId)
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Error fetching member ids:', error);
+      return [];
+    }
+
+    return (data || []).map((m) => m.id as number);
+  }
+
+  // Obtiene los IDs de employee_loans de la organización.
+  // loan_installments no tiene organization_id, se vincula vía loan_id.
+  private async getLoanIds(): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('employee_loans')
+      .select('id')
+      .eq('organization_id', this.organizationId);
+
+    if (error) {
+      console.error('Error fetching loan ids:', error);
+      return [];
+    }
+
+    return (data || []).map((l) => l.id as string);
+  }
+
   async getKPIs(): Promise<HRMKPIs> {
     const today = new Date().toISOString().split('T')[0];
+    const memberIds = await this.getMemberIds();
 
-    // Empleados activos
-    const { count: activeEmployees } = await supabase
+    // Empleados activos (filtrar por organization_member_id de esta org)
+    let activeEmployeesQuery = supabase
       .from('employments')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'active')
       .is('termination_date', null);
+
+    if (memberIds.length > 0) {
+      activeEmployeesQuery = activeEmployeesQuery.in('organization_member_id', memberIds);
+    } else {
+      activeEmployeesQuery = activeEmployeesQuery.eq('organization_member_id', -1);
+    }
+
+    const { count: activeEmployees } = await activeEmployeesQuery;
 
     // Ausencias hoy (leave_requests activas para hoy)
     const { count: absencesToday } = await supabase
@@ -110,6 +152,7 @@ class HRMDashboardService {
   async getAlerts(): Promise<HRMAlert[]> {
     const alerts: HRMAlert[] = [];
     const today = new Date().toISOString().split('T')[0];
+    const memberIds = await this.getMemberIds();
 
     // Timesheets por aprobar
     const { count: pendingTimesheets } = await supabase
@@ -171,12 +214,21 @@ class HRMDashboardService {
       });
     }
 
-    // Préstamos vencidos (cuotas vencidas)
-    const { count: overdueLoans } = await supabase
+    // Préstamos vencidos (cuotas vencidas) — filtrar por loans de esta org
+    const loanIds = await this.getLoanIds();
+    let overdueLoansQuery = supabase
       .from('loan_installments')
       .select('id', { count: 'exact', head: true })
       .lt('due_date', today)
       .eq('status', 'pending');
+
+    if (loanIds.length > 0) {
+      overdueLoansQuery = overdueLoansQuery.in('loan_id', loanIds);
+    } else {
+      overdueLoansQuery = overdueLoansQuery.eq('loan_id', '00000000-0000-0000-0000-000000000000');
+    }
+
+    const { count: overdueLoans } = await overdueLoansQuery;
 
     if (overdueLoans && overdueLoans > 0) {
       alerts.push({
@@ -189,18 +241,26 @@ class HRMDashboardService {
       });
     }
 
-    // Contratos por vencer (próximos 30 días)
+    // Contratos por vencer (próximos 30 días) — filtrar por members de esta org
     const thirtyDaysLater = new Date();
     thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
     const thirtyDaysStr = thirtyDaysLater.toISOString().split('T')[0];
 
-    const { count: expiringContracts } = await supabase
+    let expiringContractsQuery = supabase
       .from('employments')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'active')
       .not('contract_end_date', 'is', null)
       .lte('contract_end_date', thirtyDaysStr)
       .gte('contract_end_date', today);
+
+    if (memberIds.length > 0) {
+      expiringContractsQuery = expiringContractsQuery.in('organization_member_id', memberIds);
+    } else {
+      expiringContractsQuery = expiringContractsQuery.eq('organization_member_id', -1);
+    }
+
+    const { count: expiringContracts } = await expiringContractsQuery;
 
     if (expiringContracts && expiringContracts > 0) {
       alerts.push({

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { toast } from '@/components/ui/use-toast';
+import { toastError } from '@/components/ui/use-toast';
 import {
   Select,
   SelectContent,
@@ -175,11 +175,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       }
     } catch (error) {
       console.error('Error al cargar cliente seleccionado:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo cargar la información del cliente seleccionado.",
-        variant: "destructive",
-      });
+      toastError("Error", "No se pudo cargar la información del cliente seleccionado.");
     } finally {
       loadingSelectedRef.current = null;
     }
@@ -214,11 +210,7 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       setClientes(clientesFormateados);
     } catch (error) {
       console.error('Error al cargar clientes:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los clientes. Intente nuevamente.",
-        variant: "destructive",
-      });
+      toastError("Error", "No se pudieron cargar los clientes. Intente nuevamente.");
     } finally {
       setIsLoading(false);
     }

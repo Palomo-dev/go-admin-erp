@@ -26,7 +26,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { opportunitiesService } from './opportunitiesService';
 import { Pipeline, Stage, Customer, CreateOpportunityInput, Opportunity } from './types';
 import { CustomerSearchSelect } from './CustomerSearchSelect';
-import { ProductSearchSelect } from './ProductSearchSelect';
+import { ProductSearchDialog, type UnifiedProduct, type SelectedModifier } from '@/components/shared/product-search';
 import { PipelineSearchSelect } from './PipelineSearchSelect';
 import { SpaceSearchSelect } from './SpaceSearchSelect';
 import { supabase } from '@/lib/supabase/config';
@@ -47,6 +47,7 @@ interface ProductLine {
   product_name: string;
   quantity: number;
   unit_price: number;
+  modifiers?: SelectedModifier[];
 }
 
 interface SpaceLine {
@@ -228,13 +229,6 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     }
   };
 
-  const addProductLine = () => {
-    setProductLines([
-      ...productLines,
-      { product_id: 0, product_name: '', quantity: 1, unit_price: 0 },
-    ]);
-  };
-
   const updateProductLine = (index: number, field: keyof ProductLine, value: any) => {
     const updated = [...productLines];
     updated[index] = { ...updated[index], [field]: value };
@@ -249,6 +243,24 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     }
 
     setProductLines(updated);
+  };
+
+  // Manejar selección desde ProductSearchDialog (con variantes y modificadores)
+  const handleProductSelect = (product: UnifiedProduct, modifiers: SelectedModifier[] = []) => {
+    const modifiersExtra = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
+    const productName = modifiers.length > 0
+      ? `${product.name} (${modifiers.map((m) => m.name).join(', ')})`
+      : product.name;
+    setProductLines([
+      ...productLines,
+      {
+        product_id: product.id,
+        product_name: productName,
+        quantity: 1,
+        unit_price: (product.price || 0) + modifiersExtra,
+        modifiers: modifiers.length > 0 ? modifiers : undefined,
+      },
+    ]);
   };
 
   const removeProductLine = (index: number) => {
@@ -671,16 +683,11 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           <Card className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-gray-900 dark:text-white text-base">Productos</CardTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addProductLine}
-                className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Agregar
-              </Button>
+              <ProductSearchDialog
+                mode="sale"
+                currency={currency}
+                onProductSelect={handleProductSelect}
+              />
             </CardHeader>
             <CardContent className="space-y-3">
               {productLines.length === 0 ? (
@@ -695,14 +702,9 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                   >
                     <div className="flex items-center gap-2">
                       <div className="flex-1">
-                        <ProductSearchSelect
-                          products={products}
-                          selectedProductId={line.product_id || 0}
-                          onSelect={(productId) => {
-                            updateProductLine(index, 'product_id', productId);
-                          }}
-                          placeholder="Seleccionar producto"
-                        />
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {line.product_name || 'Producto sin seleccionar'}
+                        </p>
                       </div>
                       <Button
                         type="button"

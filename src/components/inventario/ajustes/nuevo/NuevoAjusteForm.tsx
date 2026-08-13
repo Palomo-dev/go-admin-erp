@@ -121,9 +121,11 @@ export function NuevoAjusteForm() {
         while (true) {
           const { data: pageData, error: pageError } = await supabase
             .from('products')
-            .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data')
+            .select('id, uuid, sku, name, status, is_parent, parent_product_id, variant_data, track_stock')
             .eq('organization_id', organization.id)
             .eq('status', 'active')
+            .eq('track_stock', true)
+            .neq('product_type', 'service')
             .order('name')
             .range(offset, offset + PAGE_SIZE - 1);
 
@@ -367,6 +369,26 @@ export function NuevoAjusteForm() {
 
   // Agregar producto a la lista
   const handleAddProduct = async (product: ProductOption | ProductForAdjustment) => {
+    // Verificar que el producto tenga seguimiento de stock (track_stock = true)
+    try {
+      const { data: prodData } = await supabase
+        .from('products')
+        .select('track_stock')
+        .eq('id', product.id)
+        .single();
+
+      if (prodData && prodData.track_stock === false) {
+        toast({
+          variant: 'destructive',
+          title: 'Producto sin seguimiento de stock',
+          description: `"${product.name}" no tiene activado el seguimiento de stock (track_stock = false). No se puede ajustar su inventario.`
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando track_stock:', error);
+    }
+
     // Si ya tiene current_qty y avg_cost, usarlos directamente
     if ('current_qty' in product && 'avg_cost' in product) {
       const newItem: AdjustmentItemInput = {

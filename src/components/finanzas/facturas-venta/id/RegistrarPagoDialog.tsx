@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { CalendarIcon } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
@@ -61,7 +61,6 @@ interface FormattedPaymentMethod {
 }
 
 export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: RegistrarPagoDialogProps) {
-  const { toast } = useToast();
   const organizationId = getOrganizationId();
 
   // Estados del formulario
@@ -145,11 +144,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
   // Función para registrar el pago
   const handleSubmit = async () => {
     if (!organizationId || !metodoPago || !monto) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos",
-        variant: "destructive",
-      });
+      toastError("Error", "Por favor completa todos los campos requeridos");
       return;
     }
 
@@ -157,22 +152,14 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
     if (factura.issue_date) {
       const fechaEmision = new Date(factura.issue_date).toISOString().split('T')[0];
       if (fechaPago < fechaEmision) {
-        toast({
-          title: "Error de validación",
-          description: `La fecha de pago no puede ser anterior a la fecha de emisión (${fechaEmision})`,
-          variant: "destructive",
-        });
+        toastError("Error de validación", `La fecha de pago no puede ser anterior a la fecha de emisión (${fechaEmision})`);
         return;
       }
     }
 
     const montoNumerico = parseFloat(monto);
     if (isNaN(montoNumerico) || montoNumerico <= 0) {
-      toast({
-        title: "Error de validación",
-        description: "El monto debe ser un número mayor a cero",
-        variant: "destructive",
-      });
+      toastError("Error de validación", "El monto debe ser un número mayor a cero");
       return;
     }
 
@@ -267,10 +254,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
       // reflejado via el pago (payments) y su asiento automatico; registrar un
       // cash_movement adicional duplicaria el ingreso (trigger fn_auto_journal_cash_movement).
 
-      toast({
-        title: "Pago registrado",
-        description: `Se ha registrado un pago por ${formatCurrency(montoNumerico)} exitosamente`,
-      });
+      toastSuccess("Pago registrado", `Se ha registrado un pago por ${formatCurrency(montoNumerico)} exitosamente`);
 
       // Cerrar el diálogo y llamar a onSuccess si está definido
       onOpenChange(false);
@@ -298,11 +282,7 @@ export function RegistrarPagoDialog({ open, onOpenChange, factura, onSuccess }: 
         mensajeError = "Error desconocido en la operación. Por favor, intente nuevamente.";
       }
       
-      toast({
-        title: "Error al registrar pago",
-        description: mensajeError,
-        variant: "destructive",
-      });
+      toastError("Error al registrar pago", mensajeError);
     } finally {
       setIsLoading(false);
     }

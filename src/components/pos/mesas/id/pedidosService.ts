@@ -3,6 +3,7 @@ import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganizati
 import { POSService } from '@/lib/services/posService';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { stockMovementService } from '@/lib/services/stockMovementService';
+import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import {
   calculateItemTaxes,
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -879,6 +880,7 @@ export class PedidosService {
       commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
       commission_method?: 'percentage' | 'fixed_amount';
       commission_amount?: number;
+      serial_selections?: Record<number, number[]>;
     }
   ): Promise<{ id: string; total: number; status: string }> {
     try {
@@ -1134,6 +1136,44 @@ export class PedidosService {
         }
       } catch (stockError) {
         console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
+      }
+
+      // 7.1. Vender seriales si hay productos serializados con seriales seleccionados
+      if (data.serial_selections) {
+        try {
+          const serialUserId = await supabase.auth.getUser().then(u => u.data.user?.id);
+          // Obtener items de la venta para mapear product_id -> unit_price
+          const { data: saleItemsForSerials } = await supabase
+            .from('sale_items')
+            .select('product_id, unit_price')
+            .eq('sale_id', saleId);
+
+          for (const item of saleItemsForSerials ?? []) {
+            const serialIds = data.serial_selections[item.product_id];
+            if (!serialIds || serialIds.length === 0) continue;
+
+            const { success: serialOk, errors: serialErrors } = await serialTrackingService.sellSerials(
+              serialIds,
+              {
+                sale_id: saleId,
+                customer_id: saleData.customer_id ?? undefined,
+                sold_by_user_id: serialUserId ?? undefined,
+                sale_channel: 'table',
+                price_at_sale: Number(item.unit_price),
+                branch_id: saleData.branch_id,
+              },
+              serialUserId ?? undefined
+            );
+
+            if (!serialOk) {
+              console.warn(`⚠️ Errores vendiendo seriales para producto ${item.product_id}:`, serialErrors);
+            } else {
+              console.log(`✅ ${serialIds.length} seriales vendidos (mesa) para producto ${item.product_id}`);
+            }
+          }
+        } catch (serialError) {
+          console.warn('⚠️ Error vendiendo seriales (no bloquea la venta):', serialError);
+        }
       }
 
       // 8. Crear registro de comisión si aplica

@@ -39,7 +39,7 @@ export interface TodayDeparture {
   spaces: string[];
   checkout: string;
   balance: number;
-  status: string;
+  status?: string;
 }
 
 export interface CalendarEvent {
@@ -55,16 +55,94 @@ export interface DateRangeFilter {
   to: Date;
 }
 
+// ─── Tipos de filas de Supabase (evitan `any` en callbacks) ──────────────────
+
+interface ReservationArrivalRow {
+  id: string;
+  metadata?: { code?: string } | null;
+  customers?: { first_name?: string | null; last_name?: string | null; email?: string | null }[] | null;
+  checkin: string;
+  checkout: string;
+  status: string;
+  total_estimated?: number | null;
+  reservation_spaces?: { spaces?: { label?: string }[] | null }[] | null;
+}
+
+interface ReservationDepartureRow {
+  id: string;
+  metadata?: { code?: string } | null;
+  customers?: { first_name?: string | null; last_name?: string | null }[] | null;
+  checkout: string;
+  status?: string;
+  reservation_spaces?: { spaces?: { label?: string }[] | null }[] | null;
+  folios?: { balance?: number | null }[] | null;
+}
+
+interface ReservationPaymentRow {
+  id: string;
+  folios?: { balance?: number | null }[] | null;
+}
+
+interface CalendarArrivalRow {
+  id: string;
+  checkin: string;
+  metadata?: { code?: string } | null;
+  customers?: { first_name?: string | null; last_name?: string | null }[] | null;
+  reservation_spaces?: { spaces?: { label?: string }[] | null }[] | null;
+}
+
+interface CalendarBlockRow {
+  id: string;
+  date_from: string;
+  reason?: string | null;
+  spaces?: { label?: string }[] | null;
+}
+
+interface MaintenanceOrderRow {
+  id: string;
+  description?: string | null;
+  created_at?: string | null;
+  spaces?: { label?: string }[] | null;
+}
+
 class PMSDashboardService {
+  // Obtiene los IDs de sucursales pertenecientes a la organización.
+  // Necesario porque spaces y maintenance_orders se filtran por branch_id,
+  // no por organization_id.
+  private async getBranchIds(organizationId: number): Promise<number[]> {
+    const { data, error } = await supabase
+      .from('branches')
+      .select('id')
+      .eq('organization_id', organizationId);
+
+    if (error) {
+      console.error('Error fetching branch ids:', error);
+      return [];
+    }
+
+    return (data || []).map((b) => b.id as number);
+  }
+
   async getDashboardStats(organizationId: number, dateRange?: DateRangeFilter): Promise<DashboardStats> {
     const fromDate = dateRange ? dateRange.from.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     const toDate = dateRange ? dateRange.to.toISOString().split('T')[0] : fromDate;
 
+    // Obtener branch_ids de la organización para filtrar spaces correctamente
+    const branchIds = await this.getBranchIds(organizationId);
+
     // Get total spaces
-    const { data: spacesData, error: spacesError } = await supabase
+    let spacesQuery = supabase
       .from('spaces')
-      .select('id, status, branch_id')
-      .eq('branch_id', organizationId);
+      .select('id, status, branch_id');
+
+    if (branchIds.length > 0) {
+      spacesQuery = spacesQuery.in('branch_id', branchIds);
+    } else {
+      // Sin sucursales: devolver vacío para evitar traer spaces de otras orgs
+      spacesQuery = spacesQuery.eq('branch_id', -1);
+    }
+
+    const { data: spacesData, error: spacesError } = await spacesQuery;
 
     if (spacesError) {
       console.error('Error fetching spaces:', spacesError);
@@ -149,14 +227,14 @@ class PMSDashboardService {
       throw error;
     }
 
-    return (data || []).map((r: any) => ({
+    return (data || []).map((r: ReservationArrivalRow) => ({
       id: r.id,
       code: r.metadata?.code || r.id.substring(0, 8).toUpperCase(),
-      customerName: r.customers ? `${r.customers.first_name || ''} ${r.customers.last_name || ''}`.trim() : 'Sin cliente',
-      customerEmail: r.customers?.email || '',
+      customerName: r.customers?.[0] ? `${r.customers[0].first_name || ''} ${r.customers[0].last_name || ''}`.trim() : 'Sin cliente',
+      customerEmail: r.customers?.[0]?.email || '',
       checkin: r.checkin,
       checkout: r.checkout,
-      spaces: r.reservation_spaces?.map((rs: any) => rs.spaces?.label).filter(Boolean) || [],
+      spaces: r.reservation_spaces?.map((rs) => rs.spaces?.[0]?.label).filter(Boolean) as string[] || [],
       status: r.status,
       totalEstimated: r.total_estimated || 0,
     }));
@@ -200,11 +278,11 @@ class PMSDashboardService {
       throw error;
     }
 
-    return (data || []).map((r: any) => ({
+    return (data || []).map((r: ReservationDepartureRow) => ({
       id: r.id,
       code: r.metadata?.code || r.id.substring(0, 8).toUpperCase(),
-      customerName: r.customers ? `${r.customers.first_name || ''} ${r.customers.last_name || ''}`.trim() : 'Sin cliente',
-      spaces: r.reservation_spaces?.map((rs: any) => rs.spaces?.label).filter(Boolean) || [],
+      customerName: r.customers?.[0] ? `${r.customers[0].first_name || ''} ${r.customers[0].last_name || ''}`.trim() : 'Sin cliente',
+      spaces: r.reservation_spaces?.map((rs) => rs.spaces?.[0]?.label).filter(Boolean) as string[] || [],
       checkout: r.checkout,
       balance: r.folios?.[0]?.balance || 0,
       status: r.status,
@@ -269,8 +347,8 @@ class PMSDashboardService {
       .eq('checkout', today)
       .eq('status', 'checked_in');
 
-    const withBalance = pendingPayments?.filter((r: any) => 
-      r.folios?.some((f: any) => f.balance > 0)
+    const withBalance = pendingPayments?.filter((r: ReservationPaymentRow) =>
+      r.folios?.some((f) => (f.balance ?? 0) > 0)
     );
 
     if (withBalance && withBalance.length > 0) {
@@ -294,6 +372,7 @@ class PMSDashboardService {
     const todayStr = today.toISOString().split('T')[0];
     const weekEndStr = weekEnd.toISOString().split('T')[0];
 
+    const branchIds = await this.getBranchIds(organizationId);
     const events: CalendarEvent[] = [];
 
     // Arrivals this week
@@ -311,13 +390,13 @@ class PMSDashboardService {
       .lte('checkin', weekEndStr)
       .in('status', ['confirmed', 'tentative']);
 
-    arrivals?.forEach((r: any) => {
+    arrivals?.forEach((r: CalendarArrivalRow) => {
       events.push({
         id: `arrival-${r.id}`,
-        title: r.customers ? `${r.customers.first_name || ''} ${r.customers.last_name || ''}`.trim() : 'Llegada',
+        title: r.customers?.[0] ? `${r.customers[0].first_name || ''} ${r.customers[0].last_name || ''}`.trim() : 'Llegada',
         date: r.checkin,
         type: 'arrival',
-        spaceLabel: r.reservation_spaces?.[0]?.spaces?.label,
+        spaceLabel: r.reservation_spaces?.[0]?.spaces?.[0]?.label,
       });
     });
 
@@ -336,13 +415,13 @@ class PMSDashboardService {
       .lte('checkout', weekEndStr)
       .eq('status', 'checked_in');
 
-    departures?.forEach((r: any) => {
+    departures?.forEach((r: ReservationDepartureRow) => {
       events.push({
         id: `departure-${r.id}`,
-        title: r.customers ? `${r.customers.first_name || ''} ${r.customers.last_name || ''}`.trim() : 'Salida',
+        title: r.customers?.[0] ? `${r.customers[0].first_name || ''} ${r.customers[0].last_name || ''}`.trim() : 'Salida',
         date: r.checkout,
         type: 'departure',
-        spaceLabel: r.reservation_spaces?.[0]?.spaces?.label,
+        spaceLabel: r.reservation_spaces?.[0]?.spaces?.[0]?.label,
       });
     });
 
@@ -354,30 +433,31 @@ class PMSDashboardService {
       .gte('date_from', todayStr)
       .lte('date_from', weekEndStr);
 
-    blocks?.forEach((b: any) => {
+    blocks?.forEach((b: CalendarBlockRow) => {
       events.push({
         id: `block-${b.id}`,
         title: b.reason || 'Bloqueo',
         date: b.date_from,
         type: 'block',
-        spaceLabel: b.spaces?.label,
+        spaceLabel: b.spaces?.[0]?.label,
       });
     });
 
     // Maintenance this week
+    const maintenanceBranchIds = branchIds.length > 0 ? branchIds : [-1];
     const { data: maintenanceOrders } = await supabase
       .from('maintenance_orders')
       .select('id, description, created_at, spaces(label)')
-      .eq('branch_id', organizationId)
+      .in('branch_id', maintenanceBranchIds)
       .in('status', ['pending', 'in_progress']);
 
-    maintenanceOrders?.forEach((m: any) => {
+    maintenanceOrders?.forEach((m: MaintenanceOrderRow) => {
       events.push({
         id: `maintenance-${m.id}`,
         title: m.description?.substring(0, 30) || 'Mantenimiento',
         date: m.created_at?.split('T')[0] || todayStr,
         type: 'maintenance',
-        spaceLabel: m.spaces?.label,
+        spaceLabel: m.spaces?.[0]?.label,
       });
     });
 
@@ -385,4 +465,5 @@ class PMSDashboardService {
   }
 }
 
-export default new PMSDashboardService();
+const pmsDashboardServiceInstance = new PMSDashboardService();
+export default pmsDashboardServiceInstance;

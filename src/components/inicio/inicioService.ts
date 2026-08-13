@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase/config';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
+export type PeriodoDashboard = 'hoy' | '7d' | '30d' | '90d' | 'año';
+
 export interface DashboardKPIData {
   ventasHoy: number;
   ventasMes: number;
@@ -11,6 +13,26 @@ export interface DashboardKPIData {
   empleadosActivos: number;
   reservasActivas: number;
   cuentasPorCobrar: number;
+  // Deltas vs período anterior (opcional, solo si periodo != 'hoy')
+  ventasAnterior?: number;
+  facturasAnterior?: number;
+  cuentasAnterior?: number;
+}
+
+export interface PuntoTendencia {
+  fecha: string; // ISO date (YYYY-MM-DD)
+  total: number;
+}
+
+export interface AlertaDashboard {
+  id: string;
+  severidad: 'alta' | 'media' | 'baja';
+  modulo: string;
+  titulo: string;
+  descripcion: string;
+  monto?: number;
+  href: string;
+  icono: string;
 }
 
 export interface ActividadReciente {
@@ -52,12 +74,65 @@ function daysAgo(days: number): string {
   return d.toISOString();
 }
 
+// Devuelve [inicio, fin] del período actual y [inicioAnterior, finAnterior] del período anterior
+function rangoPeriodo(periodo: PeriodoDashboard): {
+  inicio: string;
+  fin: string;
+  inicioAnterior: string;
+  finAnterior: string;
+} {
+  const ahora = new Date();
+  const fin = ahora.toISOString();
+  switch (periodo) {
+    case 'hoy': {
+      const inicio = startOfToday();
+      const inicioAnterior = daysAgo(1);
+      const finAnterior = startOfToday();
+      return { inicio, fin, inicioAnterior, finAnterior };
+    }
+    case '7d': {
+      const inicio = daysAgo(7);
+      const inicioAnterior = daysAgo(14);
+      const finAnterior = daysAgo(7);
+      return { inicio, fin, inicioAnterior, finAnterior };
+    }
+    case '30d': {
+      const inicio = daysAgo(30);
+      const inicioAnterior = daysAgo(60);
+      const finAnterior = daysAgo(30);
+      return { inicio, fin, inicioAnterior, finAnterior };
+    }
+    case '90d': {
+      const inicio = daysAgo(90);
+      const inicioAnterior = daysAgo(180);
+      const finAnterior = daysAgo(90);
+      return { inicio, fin, inicioAnterior, finAnterior };
+    }
+    case 'año': {
+      const inicio = daysAgo(365);
+      const inicioAnterior = daysAgo(730);
+      const finAnterior = daysAgo(365);
+      return { inicio, fin, inicioAnterior, finAnterior };
+    }
+    default: {
+      const inicio = startOfToday();
+      const inicioAnterior = daysAgo(1);
+      const finAnterior = startOfToday();
+      return { inicio, fin, inicioAnterior, finAnterior };
+    }
+  }
+}
+
 // ─── Servicio ────────────────────────────────────────────────────────────────
 
 export const inicioService = {
-  async getDashboardData(organizationId: number): Promise<DashboardData> {
+  async getDashboardData(
+    organizationId: number,
+    periodo: PeriodoDashboard = 'hoy'
+  ): Promise<DashboardData> {
     const today = startOfToday();
     const last30Days = daysAgo(30);
+    const { inicioAnterior, finAnterior } = rangoPeriodo(periodo);
 
     // Ejecutar queries en paralelo para mayor velocidad
     const [
@@ -77,6 +152,9 @@ export const inicioService = {
       membersRes,
       taxesRes,
       modulesRes,
+      ventasAnteriorRes,
+      webOrdersAnteriorRes,
+      facturasAnteriorRes,
     ] = await Promise.all([
       // Ventas POS hoy
       supabase
@@ -136,12 +214,12 @@ export const inicioService = {
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId)
         .in('status', ['confirmed', 'checked_in']),
-      // Cuentas por cobrar
+      // Cuentas por cobrar (status reales: overdue, current, partial, paid)
       supabase
         .from('accounts_receivable')
         .select('balance')
         .eq('organization_id', organizationId)
-        .in('status', ['pending', 'partial']),
+        .in('status', ['overdue', 'current', 'partial']),
       // Actividad reciente (últimas ventas)
       supabase
         .from('sales')
@@ -178,6 +256,31 @@ export const inicioService = {
         .eq('organization_id', organizationId)
         .eq('is_active', true)
         .not('module_code', 'in', '("clientes","organizations","roles")'),
+      // ─── Queries del período anterior (para deltas) ───────────────────────────
+      // Ventas POS período anterior
+      supabase
+        .from('sales')
+        .select('total')
+        .eq('organization_id', organizationId)
+        .gte('sale_date', inicioAnterior)
+        .lt('sale_date', finAnterior)
+        .in('status', ['paid', 'completed']),
+      // Pedidos web período anterior
+      supabase
+        .from('web_orders')
+        .select('total')
+        .eq('organization_id', organizationId)
+        .gte('created_at', inicioAnterior)
+        .lt('created_at', finAnterior)
+        .or('payment_status.eq.paid,status.eq.delivered')
+        .not('status', 'in', '("cancelled","rejected")'),
+      // Facturas período anterior
+      supabase
+        .from('invoice_sales')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .gte('issue_date', inicioAnterior)
+        .lt('issue_date', finAnterior),
     ]);
 
     // KPIs — sumar ventas POS + pedidos web
@@ -186,6 +289,12 @@ export const inicioService = {
     const ventasWebHoy = (webOrdersHoyRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
     const ventasWebMes = (webOrdersMesRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
     const cuentasPorCobrar = (cuentasRes.data || []).reduce((s, c) => s + Number(c.balance || 0), 0);
+
+    // Deltas del período anterior (ventas, facturas)
+    const ventasPosAnterior = (ventasAnteriorRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
+    const ventasWebAnterior = (webOrdersAnteriorRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
+    const ventasAnterior = ventasPosAnterior + ventasWebAnterior;
+    const facturasAnterior = facturasAnteriorRes.count || 0;
 
     const kpis: DashboardKPIData = {
       ventasHoy: ventasPosHoy + ventasWebHoy,
@@ -196,6 +305,8 @@ export const inicioService = {
       empleadosActivos: empleadosRes.count || 0,
       reservasActivas: reservasRes.count || 0,
       cuentasPorCobrar,
+      ventasAnterior,
+      facturasAnterior,
     };
 
     // Actividad reciente
@@ -273,5 +384,137 @@ export const inicioService = {
       onboarding,
       organizacionCreatedAt: orgRes.data?.created_at || null,
     };
+  },
+
+  // ─── Tendencia de ventas diarias (para gráfico) ────────────────────────────
+  // Devuelve un array de { fecha, total } con las ventas agregadas por día
+  // de los últimos `dias` días (incluyendo hoy).
+  async getTendenciaVentas(
+    organizationId: number,
+    dias: number = 30
+  ): Promise<PuntoTendencia[]> {
+    const desde = daysAgo(dias - 1); // incluir hoy
+    const [salesRes, webOrdersRes] = await Promise.all([
+      supabase
+        .from('sales')
+        .select('total, sale_date')
+        .eq('organization_id', organizationId)
+        .gte('sale_date', desde)
+        .in('status', ['paid', 'completed']),
+      supabase
+        .from('web_orders')
+        .select('total, created_at')
+        .eq('organization_id', organizationId)
+        .gte('created_at', desde)
+        .or('payment_status.eq.paid,status.eq.delivered')
+        .not('status', 'in', '("cancelled","rejected")'),
+    ]);
+
+    // Agregar por día (YYYY-MM-DD)
+    const porDia = new Map<string, number>();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Inicializar todos los días del rango con 0
+    for (let i = dias - 1; i >= 0; i--) {
+      const d = new Date(hoy);
+      d.setDate(d.getDate() - i);
+      porDia.set(d.toISOString().slice(0, 10), 0);
+    }
+
+    // Sumar ventas POS
+    (salesRes.data || []).forEach((v) => {
+      const dia = (v.sale_date || '').slice(0, 10);
+      if (porDia.has(dia)) {
+        porDia.set(dia, (porDia.get(dia) || 0) + Number(v.total || 0));
+      }
+    });
+
+    // Sumar pedidos web
+    (webOrdersRes.data || []).forEach((v) => {
+      const dia = (v.created_at || '').slice(0, 10);
+      if (porDia.has(dia)) {
+        porDia.set(dia, (porDia.get(dia) || 0) + Number(v.total || 0));
+      }
+    });
+
+    return Array.from(porDia.entries()).map(([fecha, total]) => ({ fecha, total }));
+  },
+
+  // ─── Alertas consolidadas de módulos ───────────────────────────────────────
+  // Devuelve alertas reales de: cuentas vencidas, stock bajo, reservas pendientes
+  async getAlertas(organizationId: number): Promise<AlertaDashboard[]> {
+    const alertas: AlertaDashboard[] = [];
+
+    const [cuentasVencidasRes, stockRes, reservasRes] = await Promise.all([
+      // Cuentas por cobrar vencidas
+      supabase
+        .from('accounts_receivable')
+        .select('balance, days_overdue')
+        .eq('organization_id', organizationId)
+        .eq('status', 'overdue'),
+      // Stock bajo: productos con seguimiento de stock y qty_on_hand <= min_level
+      supabase
+        .from('stock_levels')
+        .select('qty_on_hand, min_level, product_id, products!inner(organization_id, name, track_stock)')
+        .eq('products.organization_id', organizationId)
+        .eq('products.track_stock', true)
+        .gt('min_level', 0),
+      // Reservas que requieren check-in (confirmed de hoy)
+      supabase
+        .from('reservations')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('status', 'confirmed'),
+    ]);
+
+    // Alerta: cuentas vencidas
+    const cuentasVencidas = cuentasVencidasRes.data || [];
+    if (cuentasVencidas.length > 0) {
+      const totalVencido = cuentasVencidas.reduce((s, c) => s + Number(c.balance || 0), 0);
+      const maxDias = Math.max(...cuentasVencidas.map((c) => c.days_overdue || 0));
+      alertas.push({
+        id: 'cuentas-vencidas',
+        severidad: totalVencido > 1000 ? 'alta' : 'media',
+        modulo: 'finance',
+        titulo: 'Cuentas por cobrar vencidas',
+        descripcion: `${cuentasVencidas.length} cuenta(s) vencida(s) · ${maxDias} día(s) máx.`,
+        monto: totalVencido,
+        href: '/app/finanzas/cuentas-por-cobrar',
+        icono: 'CreditCard',
+      });
+    }
+
+    // Alerta: stock bajo
+    const stockBajo = (stockRes.data || []).filter(
+      (s) => Number(s.qty_on_hand) <= Number(s.min_level),
+    );
+    if (stockBajo.length > 0) {
+      alertas.push({
+        id: 'stock-bajo',
+        severidad: stockBajo.length > 5 ? 'alta' : 'media',
+        modulo: 'inventory',
+        titulo: 'Stock bajo',
+        descripcion: `${stockBajo.length} producto(s) con stock por debajo del mínimo`,
+        href: '/app/inventario/productos',
+        icono: 'Package',
+      });
+    }
+
+    // Alerta: reservas pendientes de check-in
+    const reservasPendientes = reservasRes.count || 0;
+    if (reservasPendientes > 0) {
+      alertas.push({
+        id: 'reservas-pendientes',
+        severidad: 'baja',
+        modulo: 'pms_hotel',
+        titulo: 'Reservas confirmadas',
+        descripcion: `${reservasPendientes} reserva(s) confirmada(s) pendiente(s) de check-in`,
+        href: '/app/pms',
+        icono: 'BedDouble',
+      });
+    }
+
+    return alertas;
   },
 };

@@ -12,7 +12,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { FacturasCompraService } from '../FacturasCompraService';
@@ -41,7 +41,6 @@ export function AnularFacturaCompraDialog({
   factura,
   onSuccess,
 }: AnularFacturaCompraDialogProps) {
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [motivo, setMotivo] = useState('');
 
@@ -52,39 +51,24 @@ export function AnularFacturaCompraDialog({
   const handleSubmit = async () => {
     if (!factura) return;
     if (!motivo.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Debe ingresar un motivo para la anulación',
-        variant: 'destructive',
-      });
+      toastError('Error', 'Debe ingresar un motivo para la anulación');
       return;
     }
     if (tienePagos) {
-      toast({
-        title: 'No se puede anular',
-        description: 'La factura ya tiene pagos registrados.',
-        variant: 'destructive',
-      });
+      toastError('No se puede anular', 'La factura ya tiene pagos registrados.');
       return;
     }
 
     setIsLoading(true);
     try {
       await FacturasCompraService.anularFactura(factura.id, motivo.trim());
-      toast({
-        title: 'Factura anulada',
-        description: `La factura ${factura.number_ext} fue anulada correctamente.`,
-      });
+      toastSuccess('Factura anulada', `La factura ${factura.number_ext} fue anulada correctamente.`);
       onOpenChange(false);
       setMotivo('');
       if (onSuccess) onSuccess();
     } catch (error: any) {
       console.error('Error al anular la factura de compra:', error);
-      toast({
-        title: 'Error',
-        description: `No se pudo anular la factura: ${error?.message || 'Error desconocido'}`,
-        variant: 'destructive',
-      });
+      toastError('Error', `No se pudo anular la factura: ${error?.message || 'Error desconocido'}`);
     } finally {
       setIsLoading(false);
     }

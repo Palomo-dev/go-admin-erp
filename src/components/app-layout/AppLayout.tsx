@@ -118,12 +118,11 @@ const getOrganizationLogoUrl = (logoPath: string) => {
 
 // Configuración de módulos con submenús para Multi-Column Layout
 const MODULES_WITH_SUBMENU: NavItemProps[] = [
-  { 
-    name: "CRM", 
-    href: "/app/crm", 
+  {
+    name: "CRM",
+    href: "/app/crm/clientes",
     icon: <Users size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/crm", icon: <Home size={16} /> },
       { name: "Clientes", href: "/app/crm/clientes", icon: <Users size={16} /> },
       { name: "Pipeline", href: "/app/crm/pipeline", icon: <Target size={16} /> },
       { name: "Oportunidades", href: "/app/crm/oportunidades", icon: <TrendingUp size={16} /> },
@@ -131,16 +130,14 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Actividades", href: "/app/crm/actividades", icon: <Activity size={16} /> },
       { name: "Segmentos", href: "/app/crm/segmentos", icon: <Tag size={16} /> },
       { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
-      { name: "Reportes", href: "/app/crm/reportes", icon: <BarChart3 size={16} /> },
       { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> }
     ]
   },
-  { 
-    name: "HRM", 
-    href: "/app/hrm", 
+  {
+    name: "HRM",
+    href: "/app/hrm/empleados",
     icon: <UserCog size={18} />,
     submenu: [
-      { name: "Panel HRM", href: "/app/hrm", icon: <Home size={16} /> },
       { name: "Empleados", href: "/app/hrm/empleados", icon: <Users size={16} /> },
       { name: "Departamentos", href: "/app/hrm/departamentos", icon: <Building2 size={16} /> },
       { name: "Cargos", href: "/app/hrm/cargos", icon: <Briefcase size={16} /> },
@@ -151,16 +148,14 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Nómina", href: "/app/hrm/nomina", icon: <DollarSign size={16} /> },
       { name: "Compensación", href: "/app/hrm/compensacion", icon: <HandCoins size={16} /> },
       { name: "Préstamos", href: "/app/hrm/prestamos", icon: <Wallet size={16} /> },
-      { name: "Reportes", href: "/app/hrm/reportes", icon: <BarChart3 size={16} /> },
       { name: "Reglas País", href: "/app/hrm/reglas-pais", icon: <Globe size={16} /> }
     ]
   },
-  { 
-    name: "Finanzas", 
-    href: "/app/finanzas", 
+  {
+    name: "Finanzas",
+    href: "/app/finanzas/facturas-venta",
     icon: <FileText size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/finanzas", icon: <BarChart3 size={16} /> },
       { name: "Facturas de venta", href: "/app/finanzas/facturas-venta", icon: <FileText size={16} /> },
       { name: "Cotizaciones", href: "/app/finanzas/cotizaciones", icon: <ClipboardList size={16} /> },
       { name: "Facturas de compra", href: "/app/finanzas/facturas-compra", icon: <Receipt size={16} /> },
@@ -185,19 +180,17 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Activos Fijos", href: "/app/finanzas/activos-fijos", icon: <Package size={16} /> },
       { name: "Presupuestos", href: "/app/finanzas/presupuestos", icon: <Target size={16} /> },
       { name: "Facturación Electrónica", href: "/app/finanzas/facturacion-electronica", icon: <Zap size={16} /> },
-      { name: "Reportes", href: "/app/finanzas/reportes", icon: <BarChart3 size={16} /> },
       { name: "Impuestos", href: "/app/finanzas/impuestos", icon: <Percent size={16} /> },
       { name: "Monedas", href: "/app/finanzas/monedas", icon: <Globe size={16} /> },
       { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> },
       { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> }
     ]
   },
-  { 
-    name: "Inventario", 
-    href: "/app/inventario", 
+  {
+    name: "Inventario",
+    href: "/app/inventario/productos",
     icon: <Package size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/inventario", icon: <Home size={16} /> },
       { name: "Productos", href: "/app/inventario/productos", icon: <Package size={16} /> },
       { name: "Stock", href: "/app/inventario/stock", icon: <Layers size={16} /> },
       { name: "Movimientos", href: "/app/inventario/movimientos", icon: <ArrowLeftRight size={16} /> },
@@ -218,7 +211,6 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Recetas", href: "/app/inventario/recetas", icon: <ChefHat size={16} /> },
       { name: "Producción", href: "/app/inventario/produccion", icon: <Factory size={16} /> },
       { name: "Distribución", href: "/app/inventario/distribucion", icon: <Truck size={16} /> },
-      { name: "Reportes", href: "/app/inventario/reportes", icon: <BarChart3 size={16} /> },
       { name: "Trazabilidad", href: "/app/inventario/reportes/trazabilidad", icon: <Search size={16} /> },
       { name: "Costo Recetas", href: "/app/inventario/reportes/costo-recetas", icon: <DollarSign size={16} /> }
     ]
@@ -241,15 +233,13 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Cupones", href: "/app/pos/cupones", icon: <Gift size={16} /> },
       { name: "Promociones", href: "/app/pos/promociones", icon: <Percent size={16} /> },
       { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar", icon: <DollarSign size={16} /> },
-      { name: "Reportes", href: "/app/pos/reportes", icon: <BarChart3 size={16} /> },
     ]
   },
-  { 
-    name: "PMS", 
-    href: "/app/pms", 
+  {
+    name: "PMS",
+    href: "/app/pms/calendario",
     icon: <Building2 size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/pms", icon: <Home size={16} /> },
       { name: "Calendario", href: "/app/pms/calendario", icon: <CalendarDays size={16} /> },
       { name: "Reservas", href: "/app/pms/reservas", icon: <BookOpen size={16} /> },
       { name: "Grupos", href: "/app/pms/grupos", icon: <Users size={16} /> },
@@ -269,21 +259,20 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Parquedero", href: "/app/pms/parking", icon: <ParkingCircle size={16} /> },
     ]
   },
-  { 
-    name: "Proyectos", 
-    href: "/app/pm", 
+  {
+    name: "Proyectos",
+    href: "/app/pm/proyectos",
     icon: <FolderKanban size={18} />,
     moduleCode: 'pm',
     submenu: [
-      { name: "Dashboard", href: "/app/pm", icon: <Home size={16} /> },
       { name: "Proyectos", href: "/app/pm/proyectos", icon: <FolderKanban size={16} /> },
       { name: "Metas", href: "/app/pm/metas", icon: <Target size={16} /> },
       { name: "Tareas", href: "/app/pm/tareas", icon: <ClipboardList size={16} /> },
     ]
   },
-  { 
-    name: "Chat", 
-    href: "/app/chat", 
+  {
+    name: "Chat",
+    href: "/app/chat/bandeja",
     icon: <MessageCircle size={18} />,
     submenu: [
       { name: "Bandeja", href: "/app/chat/bandeja", icon: <Inbox size={16} /> },
@@ -330,28 +319,25 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Roles y Permisos", href: "/app/roles", icon: <Shield size={16} /> }
     ]
   },
-  { 
-    name: "Gimnasio", 
-    href: "/app/gym", 
+  {
+    name: "Gimnasio",
+    href: "/app/gym/checkin",
     icon: <Dumbbell size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/gym", icon: <Home size={16} /> },
       { name: "Check-in", href: "/app/gym/checkin", icon: <LogIn size={16} /> },
       { name: "Membresías", href: "/app/gym/membresias", icon: <Users size={16} /> },
       { name: "Planes", href: "/app/gym/planes", icon: <CreditCard size={16} /> },
       { name: "Clases", href: "/app/gym/clases", icon: <Calendar size={16} /> },
       { name: "Horarios", href: "/app/gym/horarios", icon: <Clock size={16} /> },
       { name: "Reservaciones", href: "/app/gym/reservaciones", icon: <CalendarCheck size={16} /> },
-      { name: "Instructores", href: "/app/gym/instructores", icon: <User size={16} /> },
-      { name: "Reportes", href: "/app/gym/reportes", icon: <BarChart3 size={16} /> }
+      { name: "Instructores", href: "/app/gym/instructores", icon: <User size={16} /> }
     ]
   },
-  { 
-    name: "Parqueadero", 
-    href: "/app/parking", 
+  {
+    name: "Parqueadero",
+    href: "/app/parking/operacion",
     icon: <ParkingCircle size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/parking", icon: <Home size={16} /> },
       { name: "Operación", href: "/app/parking/operacion", icon: <ParkingCircle size={16} /> },
       { name: "Sesiones", href: "/app/parking/sesiones", icon: <Clock size={16} /> },
       { name: "Abonados", href: "/app/parking/abonados", icon: <Users size={16} /> },
@@ -360,16 +346,14 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Tarifas", href: "/app/parking/tarifas", icon: <Receipt size={16} /> },
       { name: "Espacios", href: "/app/parking/espacios", icon: <LayoutGrid size={16} /> },
       { name: "Zonas", href: "/app/parking/zonas", icon: <MapPin size={16} /> },
-      { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> },
-      { name: "Reportes", href: "/app/parking/reportes", icon: <BarChart3 size={16} /> },
+      { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> }
     ]
   },
-  { 
-    name: "Transporte", 
-    href: "/app/transporte", 
+  {
+    name: "Transporte",
+    href: "/app/transporte/transportadoras",
     icon: <Truck size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/transporte", icon: <Home size={16} /> },
       { name: "Transportadoras", href: "/app/transporte/transportadoras", icon: <Truck size={16} /> },
       { name: "Vehículos", href: "/app/transporte/vehiculos", icon: <Truck size={16} /> },
       { name: "Conductores", href: "/app/transporte/conductores", icon: <User size={16} /> },
@@ -389,12 +373,12 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Incidentes", href: "/app/transporte/incidentes", icon: <Shield size={16} /> },
     ]
   },
-  { 
-    name: "Notificaciones", 
-    href: "/app/notificaciones", 
+  {
+    name: "Notificaciones",
+    href: "/app/notificaciones",
     icon: <Bell size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/notificaciones", icon: <Home size={16} /> },
+      { name: "Notificaciones", href: "/app/notificaciones", icon: <Bell size={16} /> },
       { name: "Bandeja", href: "/app/notificaciones/bandeja", icon: <Inbox size={16} /> },
       { name: "Alertas", href: "/app/notificaciones/alertas", icon: <Bell size={16} /> },
       { name: "Reglas", href: "/app/notificaciones/reglas", icon: <Shield size={16} /> },

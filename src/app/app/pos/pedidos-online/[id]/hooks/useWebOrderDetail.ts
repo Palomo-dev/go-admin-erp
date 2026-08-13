@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
-import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
+import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
 
 interface UseWebOrderDetailReturn {
   order: WebOrder | null;
@@ -222,7 +222,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     if (!cancelReason.trim()) return;
     setActionLoading(true);
     try {
-      await updateOrderStatus('cancelled', { cancellation_reason: cancelReason });
+      await webOrdersService.cancelOrder(orderId, cancelReason);
       toast({ title: 'Pedido cancelado' });
       setCancelDialogOpen(false);
       setCancelReason('');

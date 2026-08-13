@@ -542,6 +542,9 @@ class ShipmentsService {
         name,
         unit_code,
         description,
+        is_parent,
+        parent_product_id,
+        variant_data,
         product_prices(price)
       `)
       .eq('organization_id', organizationId)
@@ -550,6 +553,17 @@ class ShipmentsService {
       .limit(10);
 
     if (error) throw error;
+
+    // Consultar modificadores en lote para los productos encontrados
+    const productIds = (data || []).map((p: any) => p.id);
+    const modifiersSet = new Set<number>();
+    if (productIds.length > 0) {
+      const { data: modData } = await supabase
+        .from('product_modifier_groups')
+        .select('product_id')
+        .in('product_id', productIds);
+      (modData || []).forEach((g: any) => modifiersSet.add(g.product_id));
+    }
 
     return (data || []).map((p: any) => {
       const activePrice = p.product_prices?.find((pp: any) =>
@@ -562,6 +576,10 @@ class ShipmentsService {
         unit_code: p.unit_code?.trim() || undefined,
         description: p.description || undefined,
         price: activePrice?.price ? Number(activePrice.price) : 0,
+        is_parent: p.is_parent || false,
+        parent_product_id: p.parent_product_id || undefined,
+        variant_data: p.variant_data || undefined,
+        has_modifiers: modifiersSet.has(p.id),
       };
     });
   }

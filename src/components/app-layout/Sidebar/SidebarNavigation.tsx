@@ -122,13 +122,12 @@ const SidebarNavigationComponent = ({
     {
       title: t('sectionManagement'),
       items: [
-        { 
-          name: t('crm'), 
-          href: "/app/crm", 
+        {
+          name: t('crm'),
+          href: "/app/crm/clientes",
           icon: <Users size={18} />,
           moduleCode: 'crm',
           submenu: [
-            { name: "Dashboard", href: "/app/crm", icon: <Home size={16} /> },
             { name: "Clientes", href: "/app/crm/clientes", icon: <Users size={16} /> },
             { name: "Pipeline", href: "/app/crm/pipeline", icon: <Target size={16} /> },
             { name: "Oportunidades", href: "/app/crm/oportunidades", icon: <TrendingUp size={16} /> },
@@ -136,17 +135,15 @@ const SidebarNavigationComponent = ({
             { name: "Actividades", href: "/app/crm/actividades", icon: <Activity size={16} /> },
             { name: "Segmentos", href: "/app/crm/segmentos", icon: <Tag size={16} /> },
             { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
-            { name: "Reportes", href: "/app/crm/reportes", icon: <BarChart3 size={16} /> },
             { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> }
           ]
         },
-        { 
-          name: t('hrm'), 
-          href: "/app/hrm", 
+        {
+          name: t('hrm'),
+          href: "/app/hrm/empleados",
           icon: <UserCog size={18} />,
           moduleCode: 'hrm',
           submenu: [
-            { name: "Panel HRM", href: "/app/hrm", icon: <Home size={16} /> },
             { name: "Empleados", href: "/app/hrm/empleados", icon: <Users size={16} /> },
             { name: "Departamentos", href: "/app/hrm/departamentos", icon: <Building2 size={16} /> },
             { name: "Cargos", href: "/app/hrm/cargos", icon: <Briefcase size={16} /> },
@@ -157,17 +154,15 @@ const SidebarNavigationComponent = ({
             { name: "Nómina", href: "/app/hrm/nomina", icon: <DollarSign size={16} /> },
             { name: "Compensación", href: "/app/hrm/compensacion", icon: <HandCoins size={16} /> },
             { name: "Préstamos", href: "/app/hrm/prestamos", icon: <Wallet size={16} /> },
-            { name: "Reportes", href: "/app/hrm/reportes", icon: <BarChart3 size={16} /> },
             { name: "Reglas País", href: "/app/hrm/reglas-pais", icon: <Globe size={16} /> }
           ]
         },
-        { 
-          name: t('finance'), 
-          href: "/app/finanzas", 
+        {
+          name: t('finance'),
+          href: "/app/finanzas/facturas-venta",
           icon: <FileText size={18} />,
           moduleCode: 'finance',
           submenu: [
-            { name: "Dashboard", href: "/app/finanzas", icon: <BarChart3 size={16} /> },
             { name: "Facturas de venta", href: "/app/finanzas/facturas-venta", icon: <FileText size={16} /> },
             { name: "Cotizaciones", href: "/app/finanzas/cotizaciones", icon: <ClipboardList size={16} /> },
             { name: "Facturas de compra", href: "/app/finanzas/facturas-compra", icon: <Receipt size={16} /> },
@@ -192,20 +187,18 @@ const SidebarNavigationComponent = ({
             { name: "Activos Fijos", href: "/app/finanzas/activos-fijos", icon: <Package size={16} /> },
             { name: "Presupuestos", href: "/app/finanzas/presupuestos", icon: <Target size={16} /> },
             { name: "Facturación Electrónica", href: "/app/finanzas/facturacion-electronica", icon: <Zap size={16} /> },
-            { name: "Reportes", href: "/app/finanzas/reportes", icon: <BarChart3 size={16} /> },
             { name: "Impuestos", href: "/app/finanzas/impuestos", icon: <Percent size={16} /> },
             { name: "Monedas", href: "/app/finanzas/monedas", icon: <Globe size={16} /> },
             { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> },
             { name: "Comisiones", href: "/app/finanzas/comisiones", icon: <HandCoins size={16} /> }
           ]
         },
-        { 
-          name: t('inventory'), 
-          href: "/app/inventario", 
+        {
+          name: t('inventory'),
+          href: "/app/inventario/productos",
           icon: <Package size={18} />,
           moduleCode: 'inventory',
           submenu: [
-            { name: "Dashboard", href: "/app/inventario", icon: <Home size={16} /> },
             { name: "Productos", href: "/app/inventario/productos", icon: <Package size={16} /> },
             { name: "Stock", href: "/app/inventario/stock", icon: <Layers size={16} /> },
             { name: "Movimientos", href: "/app/inventario/movimientos", icon: <ArrowLeftRight size={16} /> },
@@ -226,18 +219,16 @@ const SidebarNavigationComponent = ({
             { name: "Recetas", href: "/app/inventario/recetas", icon: <ChefHat size={16} /> },
             { name: "Producción", href: "/app/inventario/produccion", icon: <Factory size={16} /> },
             { name: "Distribución", href: "/app/inventario/distribucion", icon: <Truck size={16} /> },
-            { name: "Reportes", href: "/app/inventario/reportes", icon: <BarChart3 size={16} /> },
             { name: "Trazabilidad", href: "/app/inventario/reportes/trazabilidad", icon: <Search size={16} /> },
             { name: "Costo Recetas", href: "/app/inventario/reportes/costo-recetas", icon: <DollarSign size={16} /> }
           ]
         },
-        { 
-          name: 'Proyectos', 
-          href: "/app/pm", 
+        {
+          name: 'Proyectos',
+          href: "/app/pm/proyectos",
           icon: <FolderKanban size={18} />,
           moduleCode: 'pm',
           submenu: [
-            { name: "Dashboard", href: "/app/pm", icon: <Home size={16} /> },
             { name: "Proyectos", href: "/app/pm/proyectos", icon: <FolderKanban size={16} /> },
             { name: "Metas", href: "/app/pm/metas", icon: <Target size={16} /> },
             { name: "Tareas", href: "/app/pm/tareas", icon: <ClipboardList size={16} /> },
@@ -267,16 +258,14 @@ const SidebarNavigationComponent = ({
             { name: "Cupones", href: "/app/pos/cupones", icon: <Gift size={16} /> },
             { name: "Promociones", href: "/app/pos/promociones", icon: <Percent size={16} /> },
             { name: "Cuentas por Cobrar", href: "/app/pos/cuentas-por-cobrar", icon: <DollarSign size={16} /> },
-            { name: "Reportes", href: "/app/pos/reportes", icon: <BarChart3 size={16} /> },
           ]
         },
-        { 
-          name: t('pms'), 
-          href: "/app/pms", 
+        {
+          name: t('pms'),
+          href: "/app/pms/calendario",
           icon: <Building2 size={18} />,
           moduleCode: 'pms_hotel',
           submenu: [
-            { name: "Dashboard", href: "/app/pms", icon: <Home size={16} /> },
             { name: "Calendario", href: "/app/pms/calendario", icon: <CalendarDays size={16} /> },
             { name: "Reservas", href: "/app/pms/reservas", icon: <BookOpen size={16} /> },
             { name: "Grupos", href: "/app/pms/grupos", icon: <Users size={16} /> },
@@ -296,9 +285,9 @@ const SidebarNavigationComponent = ({
             { name: "Parquedero", href: "/app/pms/parking", icon: <ParkingCircle size={16} /> },
           ]
         },
-        { 
-          name: t('chat'), 
-          href: "/app/chat", 
+        {
+          name: t('chat'),
+          href: "/app/chat/bandeja",
           icon: <MessageCircle size={18} />,
           moduleCode: 'chat',
           submenu: [
@@ -310,13 +299,12 @@ const SidebarNavigationComponent = ({
             { name: "Auditoría", href: "/app/chat/auditoria", icon: <Shield size={16} /> },
           ]
         },
-        { 
-          name: t('transport'), 
-          href: "/app/transporte", 
+        {
+          name: t('transport'),
+          href: "/app/transporte/transportadoras",
           icon: <Bus size={18} />,
           moduleCode: 'transport',
           submenu: [
-            { name: "Dashboard", href: "/app/transporte", icon: <Home size={16} /> },
             { name: "Transportadoras", href: "/app/transporte/transportadoras", icon: <Truck size={16} /> },
             { name: "Vehículos", href: "/app/transporte/vehiculos", icon: <Bus size={16} /> },
             { name: "Conductores", href: "/app/transporte/conductores", icon: <User size={16} /> },
@@ -336,30 +324,27 @@ const SidebarNavigationComponent = ({
             { name: "Incidentes", href: "/app/transporte/incidentes", icon: <Shield size={16} /> },
           ]
         },
-        { 
-          name: t('gym'), 
-          href: "/app/gym", 
+        {
+          name: t('gym'),
+          href: "/app/gym/checkin",
           icon: <Dumbbell size={18} />,
           moduleCode: 'gym',
           submenu: [
-            { name: "Dashboard", href: "/app/gym", icon: <Home size={16} /> },
             { name: "Check-in", href: "/app/gym/checkin", icon: <LogIn size={16} /> },
             { name: "Membresías", href: "/app/gym/membresias", icon: <Users size={16} /> },
             { name: "Planes", href: "/app/gym/planes", icon: <CreditCard size={16} /> },
             { name: "Clases", href: "/app/gym/clases", icon: <Calendar size={16} /> },
             { name: "Horarios", href: "/app/gym/horarios", icon: <Clock size={16} /> },
             { name: "Reservaciones", href: "/app/gym/reservaciones", icon: <CalendarCheck size={16} /> },
-            { name: "Instructores", href: "/app/gym/instructores", icon: <User size={16} /> },
-            { name: "Reportes", href: "/app/gym/reportes", icon: <BarChart3 size={16} /> },
+            { name: "Instructores", href: "/app/gym/instructores", icon: <User size={16} /> }
           ]
         },
-        { 
-          name: t('parking'), 
-          href: "/app/parking", 
+        {
+          name: t('parking'),
+          href: "/app/parking/operacion",
           icon: <ParkingCircle size={18} />,
           moduleCode: 'parking',
           submenu: [
-            { name: "Dashboard", href: "/app/parking", icon: <Home size={16} /> },
             { name: "Operación", href: "/app/parking/operacion", icon: <ParkingCircle size={16} /> },
             { name: "Sesiones", href: "/app/parking/sesiones", icon: <Clock size={16} /> },
             { name: "Abonados", href: "/app/parking/abonados", icon: <Users size={16} /> },
@@ -368,8 +353,7 @@ const SidebarNavigationComponent = ({
             { name: "Tarifas", href: "/app/parking/tarifas", icon: <Receipt size={16} /> },
             { name: "Espacios", href: "/app/parking/espacios", icon: <LayoutGrid size={16} /> },
             { name: "Zonas", href: "/app/parking/zonas", icon: <MapPin size={16} /> },
-            { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> },
-            { name: "Reportes", href: "/app/parking/reportes", icon: <BarChart3 size={16} /> },
+            { name: "Mapa", href: "/app/parking/mapa", icon: <LayoutGrid size={16} /> }
           ]
         }
       ]
@@ -426,13 +410,13 @@ const SidebarNavigationComponent = ({
     {
       title: t('sectionSystem'),
       items: [
-        { 
-          name: t('notifications'), 
-          href: userData?.role && ['admin', 'owner', 'super admin', 'admin de organización'].includes(userData.role.toLowerCase()) ? "/app/notificaciones" : "/app/notificaciones/bandeja", 
+        {
+          name: t('notifications'),
+          href: userData?.role && ['admin', 'owner', 'super admin', 'admin de organización'].includes(userData.role.toLowerCase()) ? "/app/notificaciones" : "/app/notificaciones/bandeja",
           icon: <Bell size={18} />,
           moduleCode: 'notifications',
           submenu: userData?.role && ['admin', 'owner', 'super admin', 'admin de organización'].includes(userData.role.toLowerCase()) ? [
-            { name: "Dashboard", href: "/app/notificaciones", icon: <Home size={16} /> },
+            { name: "Notificaciones", href: "/app/notificaciones", icon: <Bell size={16} /> },
             { name: "Bandeja", href: "/app/notificaciones/bandeja", icon: <Inbox size={16} /> },
             { name: "Alertas", href: "/app/notificaciones/alertas", icon: <Bell size={16} /> },
             { name: "Reglas", href: "/app/notificaciones/reglas", icon: <Shield size={16} /> },

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileX2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { useToast } from '@/components/ui/use-toast';
+import { toastError } from '@/components/ui/use-toast';
 
 interface PageProps {
   params: Promise<{
@@ -23,7 +23,6 @@ export default function FacturaDetallesPage({ params }: PageProps) {
   const [factura, setFactura] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const { toast } = useToast();
   const organizationId = getOrganizationId();
 
   useEffect(() => {
@@ -99,18 +98,14 @@ export default function FacturaDetallesPage({ params }: PageProps) {
         setFactura(facturaCompleta);
       } catch (error: any) {
         console.error('Error al cargar la factura:', error);
-        toast({
-          title: 'Error al cargar la factura',
-          description: error.message || 'No se pudo cargar la información de la factura',
-          variant: 'destructive',
-        });
+        toastError('Error al cargar la factura', error.message || 'No se pudo cargar la información de la factura');
       } finally {
         setLoading(false);
       }
     };
 
     cargarFactura();
-  }, [invoiceId, organizationId, toast]);
+  }, [invoiceId, organizationId]);
 
   if (loading) {
     return (

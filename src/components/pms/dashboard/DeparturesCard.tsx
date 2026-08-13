@@ -16,7 +16,7 @@ interface TodayDeparture {
   spaces: string[];
   checkout: string;
   balance: number;
-  status: string;
+  status?: string;
 }
 
 interface DeparturesCardProps {

@@ -628,6 +628,7 @@ class AdjustmentService {
         `)
         .eq('organization_id', organizationId)
         .eq('status', 'active')
+        .neq('product_type', 'service')
         .eq('stock_levels.branch_id', branchId);
 
       if (searchTerm) {

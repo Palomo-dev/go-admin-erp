@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { FileText, Download, Plus, Upload, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { toast } from '@/components/ui/use-toast';
+import { toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { ImportarCSVDialog } from './ImportarCSVDialog';
 
@@ -25,11 +25,7 @@ export function PageHeader({ onRefresh }: PageHeaderProps) {
       
       // Verificar que hay una organización activa
       if (!organizationId) {
-        toast({
-          title: "Error",
-          description: "No se pudo determinar la organización activa. Por favor, seleccione una organización.",
-          variant: "destructive",
-        });
+        toastError("Error", "No se pudo determinar la organización activa. Por favor, seleccione una organización.");
         return;
       }
       
@@ -37,11 +33,7 @@ export function PageHeader({ onRefresh }: PageHeaderProps) {
       router.push(`/app/finanzas/facturas-venta/nuevo`);
     } catch (error) {
       console.error('Error al crear nueva factura:', error);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al intentar crear una nueva factura. Por favor, inténtelo de nuevo.",
-        variant: "destructive",
-      });
+      toastError("Error", "Ocurrió un error al intentar crear una nueva factura. Por favor, inténtelo de nuevo.");
     }
   };
 

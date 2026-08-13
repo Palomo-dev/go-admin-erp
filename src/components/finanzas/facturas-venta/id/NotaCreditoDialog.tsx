@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
+import { toastError, toastSuccess, toastInfo } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
@@ -38,7 +38,6 @@ interface NotaCreditoDialogProps {
 }
 
 export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSuccess }: NotaCreditoDialogProps) {
-  const { toast } = useToast();
   const organizationId = getOrganizationId();
 
   // Estados del formulario
@@ -79,11 +78,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
       
     } catch (error: any) {
       console.error('Error al generar número de nota de crédito:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo generar el número de nota de crédito',
-        variant: 'destructive'
-      });
+      toastError('Error', 'No se pudo generar el número de nota de crédito');
     }
   };
 
@@ -162,67 +157,39 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     const currentUserId = session?.user?.id;
     
     if (!currentUserId) {
-      toast({
-        title: "Error",
-        description: "No se pudo obtener la información del usuario actual.",
-        variant: "destructive"
-      });
+      toastError("Error", "No se pudo obtener la información del usuario actual.");
       return;
     }
     
     if (!organizationId) {
-      toast({
-        title: "Error",
-        description: "No se pudo determinar la organización",
-        variant: "destructive"
-      });
+      toastError("Error", "No se pudo determinar la organización");
       return;
     }
     
     // Validaciones
     if (!notaNumero.trim()) {
-      toast({
-        title: "Error",
-        description: "Debe ingresar un número de nota de crédito",
-        variant: "destructive"
-      });
+      toastError("Error", "Debe ingresar un número de nota de crédito");
       return;
     }
     
     if (!motivo.trim()) {
-      toast({
-        title: "Error",
-        description: "Debe ingresar un motivo para la nota de crédito",
-        variant: "destructive"
-      });
+      toastError("Error", "Debe ingresar un motivo para la nota de crédito");
       return;
     }
 
     if (modo === 'valor' && !conceptoValor.trim()) {
-      toast({
-        title: "Error",
-        description: "Debe ingresar un concepto para la nota de crédito por valor",
-        variant: "destructive"
-      });
+      toastError("Error", "Debe ingresar un concepto para la nota de crédito por valor");
       return;
     }
     
     if (montoTotal <= 0) {
-      toast({
-        title: "Error",
-        description: "Debe seleccionar al menos un ítem y especificar cantidades válidas",
-        variant: "destructive"
-      });
+      toastError("Error", "Debe seleccionar al menos un ítem y especificar cantidades válidas");
       return;
     }
     
     // Comprobar que la factura existe
     if (!factura || !factura.id) {
-      toast({
-        title: "Error",
-        description: "No se encontró la factura original",
-        variant: "destructive"
-      });
+      toastError("Error", "No se encontró la factura original");
       return;
     }
 
@@ -232,11 +199,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
     );
     
     if (!itemsValidos) {
-      toast({
-        title: "Error",
-        description: "Debes tener al menos un ítem con cantidad mayor que cero",
-        variant: "destructive",
-      });
+      toastError("Error", "Debes tener al menos un ítem con cantidad mayor que cero");
       return;
     }
 
@@ -322,10 +285,21 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
 
         if (itemValorError) throw itemValorError;
 
+        // Verificar que el item se insertó (RLS puede filtrar silenciosamente)
+        const { count: itemCount } = await supabase
+          .from('invoice_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('invoice_sales_id', notaCreditoId);
+        if (!itemCount || itemCount === 0) {
+          console.warn('invoice_items no se insertó (posible RLS) en NC por valor');
+        }
+
         // Confirmar totales de la nota de crédito (sin impuesto)
+        // Se hace siempre: si el item se insertó, el trigger ya calculó los totales,
+        // pero este update asegura que queden correctos incluso si el trigger falló.
         await supabase
           .from('invoice_sales')
-          .update({ subtotal: -monto, tax_total: 0, total: -monto })
+          .update({ subtotal: -monto, tax_total: 0, total: -monto, balance: 0 })
           .eq('id', notaCreditoId);
 
         // Actualizar saldo de la factura original
@@ -351,44 +325,27 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
             .eq('id', arV.id);
         }
 
-        toast({
-          title: 'Nota de crédito generada',
-          description: `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(monto)} exitosamente`,
-        });
+        toastSuccess('Nota de crédito generada', `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(monto)} exitosamente`);
 
         // Enviar automáticamente a DIAN si la factura original fue aceptada
         try {
           const dianStatus = await notasCreditoService.checkOriginalInvoiceDianStatus(factura.id);
           if (dianStatus.accepted) {
-            toast({
-              title: 'Enviando a DIAN',
-              description: 'La factura original fue aceptada por DIAN. Enviando nota de crédito...',
-            });
+            toastInfo('Enviando a DIAN', 'La factura original fue aceptada por DIAN. Enviando nota de crédito...');
             const factusResult = await notasCreditoService.sendToFactus(
               notaCreditoId,
               Number(organizationId),
               motivo
             );
             if (factusResult.success) {
-              toast({
-                title: 'Nota de crédito enviada a DIAN',
-                description: `CUFE: ${factusResult.data?.cufe?.substring(0, 16) || ''}...`,
-              });
+              toastSuccess('Nota de crédito enviada a DIAN', `CUFE: ${factusResult.data?.cufe?.substring(0, 16) || ''}...`);
             } else {
-              toast({
-                title: 'Envío a DIAN pendiente',
-                description: `La nota de crédito se creó pero no se pudo enviar a DIAN: ${factusResult.error}. Puede reintentar desde el detalle.`,
-                variant: 'destructive',
-              });
+              toastError('Envío a DIAN pendiente', `La nota de crédito se creó pero no se pudo enviar a DIAN: ${factusResult.error}. Puede reintentar desde el detalle.`);
             }
           }
         } catch (dianError: any) {
           console.error('Error en envío automático a DIAN:', dianError);
-          toast({
-            title: 'Envío a DIAN pendiente',
-            description: 'La nota de crédito se creó pero el envío a DIAN falló. Puede reintentar desde el detalle.',
-            variant: 'destructive',
-          });
+          toastError('Envío a DIAN pendiente', 'La nota de crédito se creó pero el envío a DIAN falló. Puede reintentar desde el detalle.');
         }
 
         onOpenChange(false);
@@ -457,17 +414,30 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
         const { error: itemsError } = await supabase
           .from('invoice_items')
           .insert(itemsNotaCredito);
-          
+
         if (itemsError) throw itemsError;
+
+        // Verificar que los items se insertaron (RLS puede filtrar silenciosamente)
+        const { count: itemCount } = await supabase
+          .from('invoice_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('invoice_sales_id', notaCreditoId);
+        if (!itemCount || itemCount === 0) {
+          console.warn('invoice_items no se insertaron (posible RLS) en NC por items');
+        }
       }
-      
+
       // 3. Actualizar totales de la nota de crédito
+      // Se hace siempre: si los items se insertaron, el trigger ya calculó los totales,
+      // pero este update asegura que queden correctos (negativos) incluso si el trigger
+      // los calculó con signo positivo desde qty*unit_price.
       const { error: updateError } = await supabase
         .from('invoice_sales')
         .update({
           subtotal: -subtotal,
           tax_total: -taxTotal,
-          total: -(subtotal + taxTotal)
+          total: -(subtotal + taxTotal),
+          balance: 0
         })
         .eq('id', notaCreditoId);
         
@@ -525,44 +495,27 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
         if (arUpdateError) console.error('Error al actualizar cuentas por cobrar:', arUpdateError);
       }
 
-      toast({
-        title: "Nota de crédito generada",
-        description: `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(subtotal + taxTotal)} exitosamente`,
-      });
+      toastSuccess("Nota de crédito generada", `Se ha generado la nota de crédito ${notaNumero} por ${formatCurrency(subtotal + taxTotal)} exitosamente`);
 
       // Enviar automáticamente a DIAN si la factura original fue aceptada
       try {
         const dianStatus = await notasCreditoService.checkOriginalInvoiceDianStatus(factura.id);
         if (dianStatus.accepted) {
-          toast({
-            title: 'Enviando a DIAN',
-            description: 'La factura original fue aceptada por DIAN. Enviando nota de crédito...',
-          });
+          toastInfo('Enviando a DIAN', 'La factura original fue aceptada por DIAN. Enviando nota de crédito...');
           const factusResult = await notasCreditoService.sendToFactus(
             notaCreditoId,
             Number(organizationId),
             motivo
           );
           if (factusResult.success) {
-            toast({
-              title: 'Nota de crédito enviada a DIAN',
-              description: `CUFE: ${factusResult.data?.cufe?.substring(0, 16) || ''}...`,
-            });
+            toastSuccess('Nota de crédito enviada a DIAN', `CUFE: ${factusResult.data?.cufe?.substring(0, 16) || ''}...`);
           } else {
-            toast({
-              title: 'Envío a DIAN pendiente',
-              description: `La nota de crédito se creó pero no se pudo enviar a DIAN: ${factusResult.error}. Puede reintentar desde el detalle.`,
-              variant: 'destructive',
-            });
+            toastError('Envío a DIAN pendiente', `La nota de crédito se creó pero no se pudo enviar a DIAN: ${factusResult.error}. Puede reintentar desde el detalle.`);
           }
         }
       } catch (dianError: any) {
         console.error('Error en envío automático a DIAN:', dianError);
-        toast({
-          title: 'Envío a DIAN pendiente',
-          description: 'La nota de crédito se creó pero el envío a DIAN falló. Puede reintentar desde el detalle.',
-          variant: 'destructive',
-        });
+        toastError('Envío a DIAN pendiente', 'La nota de crédito se creó pero el envío a DIAN falló. Puede reintentar desde el detalle.');
       }
 
       // Cerrar el diálogo y llamar a onSuccess si está definido
@@ -583,11 +536,7 @@ export function NotaCreditoDialog({ open, onOpenChange, factura, items, onSucces
         mensajeError = `${mensajeError}: ${error.message}`;
       }
       
-      toast({
-        title: 'Error',
-        description: mensajeError,
-        variant: 'destructive',
-      });
+      toastError('Error', mensajeError);
     } finally {
       setIsLoading(false);
     }

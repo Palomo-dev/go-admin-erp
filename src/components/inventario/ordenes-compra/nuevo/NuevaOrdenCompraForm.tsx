@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useToast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
 import { supplierService } from '@/lib/services/supplierService';
@@ -47,7 +47,6 @@ interface OrderItem extends PurchaseOrderItemInput {
 
 export function NuevaOrdenCompraForm() {
   const router = useRouter();
-  const { toast } = useToast();
 
   // Estados del formulario
   const [supplierId, setSupplierId] = useState<string>('');
@@ -121,7 +120,7 @@ export function NuevaOrdenCompraForm() {
   // Agregar item
   const handleAddItem = () => {
     if (!selectedProduct) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Selecciona un producto' });
+      toastError('Error', 'Selecciona un producto');
       return;
     }
 
@@ -179,15 +178,15 @@ export function NuevaOrdenCompraForm() {
   // Guardar orden
   const handleSubmit = async (sendToSupplier: boolean = false) => {
     if (!supplierId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Selecciona un proveedor' });
+      toastError('Error', 'Selecciona un proveedor');
       return;
     }
     if (!branchId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Selecciona una sucursal' });
+      toastError('Error', 'Selecciona una sucursal');
       return;
     }
     if (items.length === 0) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Agrega al menos un producto' });
+      toastError('Error', 'Agrega al menos un producto');
       return;
     }
 
@@ -215,23 +214,19 @@ export function NuevaOrdenCompraForm() {
 
       if (data) {
         setHasSaved(true);
-        toast({
-          title: sendToSupplier ? 'Orden enviada' : 'Orden creada',
-          description: sendToSupplier 
+        toastSuccess(
+          sendToSupplier ? 'Orden enviada' : 'Orden creada',
+          sendToSupplier
             ? 'La orden ha sido creada y enviada al proveedor'
             : 'La orden ha sido guardada como borrador'
-        });
+        );
         router.push(`/app/inventario/ordenes-compra/${data.uuid}`);
       } else {
         router.push('/app/inventario/ordenes-compra');
       }
     } catch (error: any) {
       console.error('Error creando orden:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error?.message || 'No se pudo crear la orden de compra'
-      });
+      toastError('Error', error?.message || 'No se pudo crear la orden de compra');
     } finally {
       setIsSaving(false);
     }

@@ -10,7 +10,7 @@ import { FileText, ArrowLeft, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { NuevaFacturaForm } from '../nueva-factura/NuevaFacturaForm';
-import { useToast } from '@/components/ui/use-toast';
+import { toastSuccess, toastError } from '@/components/ui/use-toast';
 
 interface EditarFacturaVentaProps {
   facturaId: string;
@@ -18,7 +18,6 @@ interface EditarFacturaVentaProps {
 
 export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [factura, setFactura] = useState<any>(null);
@@ -96,6 +95,18 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
       const pagosRealizados = totalActual - balanceActual;
       const nuevoBalance = Number(datosFactura.total) - pagosRealizados;
 
+      // Recalcular commission_amount basándose en el total real y el método
+      const commissionRateNum = Number(datosFactura.commission_rate) || 0;
+      const commissionMethod = datosFactura.commission_method || 'percentage';
+      const baseComision = Number(datosFactura.subtotal) > 0
+        ? Number(datosFactura.subtotal)
+        : Number(datosFactura.total) || 0;
+      const commissionAmountRecalc = datosFactura.salesperson_id && commissionRateNum > 0
+        ? (commissionMethod === 'fixed_amount'
+            ? commissionRateNum
+            : Math.round(baseComision * commissionRateNum / 100 * 100) / 100)
+        : 0;
+
       const { error: updateError } = await supabase
         .from('invoice_sales')
         .update({
@@ -114,10 +125,10 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
           total: Number(datosFactura.total) || 0,
           balance: nuevoBalance,
           salesperson_id: datosFactura.salesperson_id || null,
-          commission_rate: Number(datosFactura.commission_rate) || 0,
+          commission_rate: commissionRateNum,
           commission_type: datosFactura.commission_type || 'none',
-          commission_method: datosFactura.commission_method || 'percentage',
-          commission_amount: Number(datosFactura.commission_amount) || 0
+          commission_method: commissionMethod,
+          commission_amount: commissionAmountRecalc
         })
         .eq('id', factura.id);
 
@@ -217,19 +228,12 @@ export function EditarFacturaVenta({ facturaId }: EditarFacturaVentaProps) {
         }
       }
 
-      toast({
-        title: 'Factura actualizada',
-        description: 'La factura de venta se ha actualizado correctamente.',
-      });
+      toastSuccess('Factura actualizada', 'La factura de venta se ha actualizado correctamente.');
 
       router.push(`/app/finanzas/facturas-venta/${factura.id}`);
     } catch (error: any) {
       console.error('Error actualizando factura:', error);
-      toast({
-        title: 'Error al actualizar',
-        description: error.message || 'Error al actualizar la factura',
-        variant: 'destructive',
-      });
+      toastError('Error al actualizar', error.message || 'Error al actualizar la factura');
     } finally {
       setSaving(false);
     }

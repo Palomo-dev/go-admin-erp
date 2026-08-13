@@ -1,7 +1,7 @@
 # Excluir sub-proyectos que no son parte del build web de Vercel
+# NOTA: print-agent/ NO se excluye porque src/ lo importa via alias @printing
 mobile/
 electron/
-print-agent/
 
 # Archivos temporales
 build_output.txt

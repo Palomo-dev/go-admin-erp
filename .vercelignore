@@ -1,0 +1,9 @@
+# Excluir sub-proyectos que no son parte del build web de Vercel
+mobile/
+electron/
+print-agent/
+
+# Archivos temporales
+build_output.txt
+dev_server.txt
+*.log

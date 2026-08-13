@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import puppeteer from 'puppeteer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -175,7 +174,8 @@ export async function POST(
 </body>
 </html>`;
 
-    // Generar PDF con puppeteer
+    // Generar PDF con puppeteer (dynamic import para reducir memoria del build)
+    const puppeteer = (await import('puppeteer')).default;
     let browser;
     try {
       browser = await puppeteer.launch({

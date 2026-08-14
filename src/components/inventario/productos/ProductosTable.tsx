@@ -36,7 +36,12 @@ import {
   X,
   Layers,
   SlidersHorizontal,
-  Wrench
+  Wrench,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  ImageIcon,
+  Filter
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
@@ -87,20 +92,105 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   // Estado para la paginación
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
-  
+
+  // Estado para ordenamiento de columnas
+  type SortField = 'name' | 'price' | 'stock' | 'category' | 'status' | 'sku';
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Estado para filtros rápidos
+  const [filterHasImage, setFilterHasImage] = useState<'all' | 'with' | 'without'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'discontinued'>('all');
+
   // Estado para almacenar las imágenes principales de los productos
   const [productImages, setProductImages] = useState<Record<string | number, string>>({});
-  
-  // Reiniciar a página 1 cuando cambia la lista de productos (búsqueda, filtros, etc.)
+
+  // Función para alternar ordenamiento al hacer click en un header
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Icono de ordenamiento para un campo
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="inline ml-1 h-3 w-3 text-gray-400 cursor-pointer" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="inline ml-1 h-3 w-3 text-blue-600 cursor-pointer" />
+      : <ArrowDown className="inline ml-1 h-3 w-3 text-blue-600 cursor-pointer" />;
+  };
+
+  // Aplicar filtros y ordenamiento a los productos
+  const processedProductos = React.useMemo(() => {
+    let result = [...productos];
+
+    // Filtro por imágenes
+    if (filterHasImage === 'with') {
+      result = result.filter(p => productImages[String(p.id)] || (p.product_images && p.product_images.length > 0));
+    } else if (filterHasImage === 'without') {
+      result = result.filter(p => !productImages[String(p.id)] && !(p.product_images && p.product_images.length > 0));
+    }
+
+    // Filtro por estado
+    if (filterStatus !== 'all') {
+      result = result.filter(p => p.status?.toLowerCase() === filterStatus);
+    }
+
+    // Ordenamiento
+    if (sortField) {
+      result.sort((a, b) => {
+        let valA: string | number, valB: string | number;
+        switch (sortField) {
+          case 'name':
+            valA = a.name?.toLowerCase() || '';
+            valB = b.name?.toLowerCase() || '';
+            break;
+          case 'price':
+            valA = a.price ?? 0;
+            valB = b.price ?? 0;
+            break;
+          case 'stock':
+            valA = a.stock ?? -1;
+            valB = b.stock ?? -1;
+            break;
+          case 'category':
+            valA = a.category?.name?.toLowerCase() || '';
+            valB = b.category?.name?.toLowerCase() || '';
+            break;
+          case 'status':
+            valA = a.status?.toLowerCase() || '';
+            valB = b.status?.toLowerCase() || '';
+            break;
+          case 'sku':
+            valA = a.sku?.toLowerCase() || '';
+            valB = b.sku?.toLowerCase() || '';
+            break;
+          default:
+            return 0;
+        }
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [productos, sortField, sortDirection, filterHasImage, filterStatus, productImages]);
+
+  // Reiniciar a página 1 cuando cambia la lista de productos, filtros u ordenamiento
   useEffect(() => {
     setCurrentPage(1);
-  }, [productos]);
+  }, [productos, filterHasImage, filterStatus, sortField, sortDirection]);
 
-  // Cálculo de productos por página
+  // Cálculo de productos por página (usa processedProductos con filtros y ordenamiento)
   const indexOfLastProduct = currentPage * pageSize;
   const indexOfFirstProduct = indexOfLastProduct - pageSize;
-  const currentProductos = productos.slice(indexOfFirstProduct, indexOfLastProduct);
-  const totalPages = Math.ceil(productos.length / pageSize);
+  const currentProductos = processedProductos.slice(indexOfFirstProduct, indexOfLastProduct);
+  const totalPages = Math.ceil(processedProductos.length / pageSize);
 
   // Lógica de selección múltiple
   const numericIds = currentProductos
@@ -310,6 +400,65 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
 
   return (
     <div className="rounded-lg border shadow-sm overflow-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+      {/* Barra de filtros rápidos */}
+      <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+          <Filter className="h-3.5 w-3.5" />
+          <span>Filtros:</span>
+        </div>
+        {/* Filtro por imágenes */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
+              <ImageIcon className="h-3 w-3" />
+              {filterHasImage === 'all' ? 'Todas las imágenes' : filterHasImage === 'with' ? 'Con imagen' : 'Sin imagen'}
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="dark:bg-gray-800 dark:border-gray-700">
+            <DropdownMenuItem onClick={() => setFilterHasImage('all')} className="cursor-pointer dark:text-gray-200">
+              Todas las imágenes
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterHasImage('with')} className="cursor-pointer dark:text-gray-200">
+              Con imagen
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterHasImage('without')} className="cursor-pointer dark:text-gray-200">
+              Sin imagen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* Filtro por estado */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
+              {filterStatus === 'all' ? 'Todos los estados' : filterStatus === 'active' ? 'Activos' : filterStatus === 'inactive' ? 'Inactivos' : 'Descontinuados'}
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="dark:bg-gray-800 dark:border-gray-700">
+            <DropdownMenuItem onClick={() => setFilterStatus('all')} className="cursor-pointer dark:text-gray-200">Todos los estados</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterStatus('active')} className="cursor-pointer dark:text-gray-200">Activos</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterStatus('inactive')} className="cursor-pointer dark:text-gray-200">Inactivos</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFilterStatus('discontinued')} className="cursor-pointer dark:text-gray-200">Descontinuados</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* Contador de resultados */}
+        <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">
+          {processedProductos.length} de {productos.length} productos
+        </span>
+        {/* Limpiar filtros */}
+        {(filterHasImage !== 'all' || filterStatus !== 'all' || sortField) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-red-500 hover:text-red-600"
+            onClick={() => { setFilterHasImage('all'); setFilterStatus('all'); setSortField(null); }}
+          >
+            <X className="h-3 w-3 mr-1" /> Limpiar
+          </Button>
+        )}
+      </div>
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader className="bg-gray-50 dark:bg-gray-800">
@@ -366,14 +515,44 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 </TableHead>
               )}
               <TableHead className="w-[60px] sm:w-[80px] text-xs sm:text-sm dark:text-gray-300">Imagen</TableHead>
-              <TableHead className="hidden md:table-cell w-[80px] sm:w-[100px] text-xs sm:text-sm dark:text-gray-300">Código</TableHead>
-              <TableHead className="text-xs sm:text-sm dark:text-gray-300">Nombre</TableHead>
+              <TableHead
+                className="hidden md:table-cell w-[80px] sm:w-[100px] text-xs sm:text-sm dark:text-gray-300 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                onClick={() => toggleSort('sku')}
+              >
+                Código<SortIcon field="sku" />
+              </TableHead>
+              <TableHead
+                className="text-xs sm:text-sm dark:text-gray-300 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                onClick={() => toggleSort('name')}
+              >
+                Nombre<SortIcon field="name" />
+              </TableHead>
               <TableHead className="hidden md:table-cell text-xs sm:text-sm dark:text-gray-300">Atributos</TableHead>
-              <TableHead className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">Categoría</TableHead>
-              <TableHead className="text-right text-xs sm:text-sm dark:text-gray-300">Precio</TableHead>
+              <TableHead
+                className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                onClick={() => toggleSort('category')}
+              >
+                Categoría<SortIcon field="category" />
+              </TableHead>
+              <TableHead
+                className="text-right text-xs sm:text-sm dark:text-gray-300 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                onClick={() => toggleSort('price')}
+              >
+                Precio<SortIcon field="price" />
+              </TableHead>
               <TableHead className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">Costo</TableHead>
-              <TableHead className="text-center text-xs sm:text-sm dark:text-gray-300">Stock</TableHead>
-              <TableHead className="hidden sm:table-cell text-xs sm:text-sm dark:text-gray-300">Estado</TableHead>
+              <TableHead
+                className="text-center text-xs sm:text-sm dark:text-gray-300 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                onClick={() => toggleSort('stock')}
+              >
+                Stock<SortIcon field="stock" />
+              </TableHead>
+              <TableHead
+                className="hidden sm:table-cell text-xs sm:text-sm dark:text-gray-300 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                onClick={() => toggleSort('status')}
+              >
+                Estado<SortIcon field="status" />
+              </TableHead>
               <TableHead className="w-[60px] sm:w-[80px] text-right text-xs sm:text-sm dark:text-gray-300">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -395,7 +574,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   </TableCell>
                 )}
                 <TableCell>
-                  <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-md overflow-hidden border dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <Link
+                    href={`/app/inventario/productos/${producto.uuid || producto.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="block relative h-12 w-12 sm:h-14 sm:w-14 rounded-md overflow-hidden border dark:border-gray-600 bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:ring-2 hover:ring-blue-500 transition-all"
+                    title={`Ver detalle de ${producto.name}`}
+                  >
                     {productImages[String(producto.id)] ? (
                       <img
                         src={productImages[String(producto.id)]}
@@ -422,11 +606,18 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                     ) : (
                       <span className="text-gray-400 dark:text-gray-500 text-xs">Sin imagen</span>
                     )}
-                  </div>
+                  </Link>
                 </TableCell>
                 <TableCell className="hidden md:table-cell font-mono text-xs sm:text-sm dark:text-gray-300">{producto.sku}</TableCell>
                 <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
-                  <div className="max-w-[150px] sm:max-w-none break-words whitespace-normal">{producto.name}</div>
+                  <Link
+                    href={`/app/inventario/productos/${producto.uuid || producto.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="max-w-[150px] sm:max-w-none break-words whitespace-normal hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+                    title={`Ver detalle de ${producto.name}`}
+                  >
+                    {producto.name}
+                  </Link>
                 </TableCell>
                 <TableCell className="hidden md:table-cell text-xs sm:text-sm">
                   <div className="flex flex-wrap gap-1">

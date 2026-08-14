@@ -9,6 +9,22 @@ import { useTaskReminders } from '@/lib/hooks/useTaskReminders';
 import { TaskReminders } from './TaskReminders';
 import { useRouter } from 'next/navigation';
 import { NotificationDetailSheet } from '@/components/notificaciones/NotificationDetailSheet';
+import { useOptimizedModules } from '@/hooks/useOptimizedModules';
+
+// Tipos de notificación relacionados con tareas del módulo PM
+const TASK_NOTIFICATION_TYPES = new Set([
+  'task_assigned',
+  'task_completed',
+  'task_agent',
+  'task_rescheduled',
+  'task_reschedule_summary',
+]);
+
+// Verifica si una notificación pertenece al módulo de tareas (PM)
+const isTaskNotification = (notification: Notification): boolean => {
+  const type = notification.payload?.type;
+  return !!type && TASK_NOTIFICATION_TYPES.has(type);
+};
 
 interface Notification {
   id: string;
@@ -45,6 +61,12 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const notificationMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  // Verificar si el módulo PM (tareas) está activo para la organización
+  const { canAccessModule } = useOptimizedModules(
+    organizationId ? parseInt(organizationId, 10) : undefined
+  );
+  const isPmActive = canAccessModule('pm');
   
   // Obtener ID del usuario actual
   const [userId, setUserId] = useState<string | null>(null);
@@ -220,9 +242,9 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
         aria-label="Ver notificaciones"
       >
         <Bell className="h-5 w-5" />
-        {(myUnreadCount > 0 || taskReminders.length > 0) && (
+        {(myUnreadCount > 0 || (isPmActive && taskReminders.length > 0)) && (
           <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-            {myUnreadCount + taskReminders.length}
+            {myUnreadCount + (isPmActive ? taskReminders.length : 0)}
           </span>
         )}
       </button>
@@ -237,9 +259,9 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base sm:text-sm font-semibold sm:font-medium text-gray-900 dark:text-gray-100">Notificaciones y Recordatorios</h3>
-              {(myUnreadCount > 0 || taskReminders.length > 0) && (
+              {(myUnreadCount > 0 || (isPmActive && taskReminders.length > 0)) && (
                 <span className="text-sm sm:text-xs font-medium text-gray-600 dark:text-gray-400">
-                  {myUnreadCount + taskReminders.length} pendiente{(myUnreadCount + taskReminders.length) !== 1 ? 's' : ''}
+                  {myUnreadCount + (isPmActive ? taskReminders.length : 0)} pendiente{(myUnreadCount + (isPmActive ? taskReminders.length : 0)) !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -262,22 +284,24 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
                   </span>
                 )}
               </button>
-              <button
-                onClick={() => setActiveTab('tasks')}
-                className={`flex-1 flex items-center justify-center px-3 py-2 sm:py-1.5 text-sm sm:text-xs font-medium rounded-md transition-colors min-h-[40px] sm:min-h-0 ${
-                  activeTab === 'tasks'
-                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 active:bg-gray-200 dark:active:bg-gray-600'
-                }`}
-              >
-                <Clock className="h-4 w-4 sm:h-3 sm:w-3 mr-1.5 sm:mr-1" />
-                <span className="truncate">Tareas</span>
-                {taskReminders.length > 0 && (
-                  <span className="ml-1.5 sm:ml-1 bg-orange-500 text-white rounded-full px-2 sm:px-1.5 py-0.5 text-xs font-bold">
-                    {taskReminders.length}
-                  </span>
-                )}
-              </button>
+              {isPmActive && (
+                <button
+                  onClick={() => setActiveTab('tasks')}
+                  className={`flex-1 flex items-center justify-center px-3 py-2 sm:py-1.5 text-sm sm:text-xs font-medium rounded-md transition-colors min-h-[40px] sm:min-h-0 ${
+                    activeTab === 'tasks'
+                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 active:bg-gray-200 dark:active:bg-gray-600'
+                  }`}
+                >
+                  <Clock className="h-4 w-4 sm:h-3 sm:w-3 mr-1.5 sm:mr-1" />
+                  <span className="truncate">Tareas</span>
+                  {taskReminders.length > 0 && (
+                    <span className="ml-1.5 sm:ml-1 bg-orange-500 text-white rounded-full px-2 sm:px-1.5 py-0.5 text-xs font-bold">
+                      {taskReminders.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
             
             {/* Sub-tabs: Mías / Todas (solo visible en tab Notificaciones) */}
@@ -367,7 +391,11 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
             {activeTab === 'notifications' ? (
               // Contenido de notificaciones
               (() => {
-                const displayNotifs = notifSubTab === 'mine' ? notifications : allNotifications;
+                const rawNotifs = notifSubTab === 'mine' ? notifications : allNotifications;
+                // Ocultar notificaciones de tareas si el módulo PM no está activo
+                const displayNotifs = isPmActive
+                  ? rawNotifs
+                  : rawNotifs.filter(n => !isTaskNotification(n));
                 return loading ? (
                   <div className="p-6 sm:p-4 text-center text-base sm:text-sm text-gray-500 dark:text-gray-400">
                     Cargando...

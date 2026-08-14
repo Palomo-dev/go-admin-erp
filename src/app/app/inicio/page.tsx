@@ -25,7 +25,9 @@ import {
   DashboardModulos,
 } from '@/components/inicio';
 import type { DashboardData, PeriodoDashboard } from '@/components/inicio';
+import { useDynamicGreeting } from '@/components/inicio/useDynamicGreeting';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
+import { supabase } from '@/lib/supabase/config';
 
 function InicioContent() {
   const searchParams = useSearchParams();
@@ -44,6 +46,7 @@ function InicioContent() {
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
   const [periodo, setPeriodo] = useState<PeriodoDashboard>('hoy');
   const [userName, setUserName] = useState<string>('');
+  const greeting = useDynamicGreeting(userName, locale);
 
   useEffect(() => {
     setMounted(true);
@@ -55,17 +58,27 @@ function InicioContent() {
         day: 'numeric',
       })
     );
-    // Nombre del usuario desde localStorage (seteado en login)
+    // Nombre del usuario desde cache de AppLayout (appLayout_userData_cache)
+    // con fallback a Supabase auth si el cache aún no se ha poblado
     try {
-      const raw = typeof window !== 'undefined' ? localStorage.getItem('userData') : null;
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const nombre = parsed?.full_name || parsed?.name || parsed?.firstName || '';
-        if (nombre) setUserName(`, ${nombre.split(' ')[0]}`);
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('appLayout_userData_cache') : null;
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const nombre = parsed?.data?.name || '';
+        if (nombre) {
+          setUserName(nombre.split(' ')[0]);
+          return;
+        }
       }
     } catch {
       // ignore
     }
+    // Fallback: consultar Supabase auth si no hay cache
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const meta = user?.user_metadata || {};
+      const nombre = meta.first_name || meta.firstName || meta.full_name || meta.name || '';
+      if (nombre) setUserName(nombre.split(' ')[0]);
+    }).catch(() => {});
   }, []);
 
   const loadData = useCallback(async () => {
@@ -147,7 +160,7 @@ function InicioContent() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {t('welcome', { userName })}
+              {greeting || t('welcome', { userName: '' })}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
               {fechaHoy}

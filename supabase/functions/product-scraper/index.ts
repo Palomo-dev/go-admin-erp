@@ -1457,6 +1457,12 @@ async function createVariantChildren(
         effective_from: ahora,
       });
     }
+
+    // Copiar imágenes del padre al hijo (las variantes comparten galería del producto)
+    if (p.images && p.images.length > 0) {
+      await uploadProductImages(child.id, p.images, p.name);
+    }
+
     creados++;
   }
   return creados;
@@ -1845,7 +1851,7 @@ Deno.serve(async (req: Request) => {
       }
       const mode: DuplicateMode = ["skip", "update", "create"].includes(duplicate_mode) ? duplicate_mode : "skip";
       const results = [];
-      for (const p of products.slice(0, 2000)) {
+      for (const p of products.slice(0, 5000)) {
         results.push(await importProduct(p, organization_id, branch_id || null, source_url || "", mode));
       }
       const exitosos = results.filter((r) => r.ok).length;

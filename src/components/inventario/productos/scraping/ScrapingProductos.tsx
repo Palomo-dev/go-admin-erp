@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Globe,
   Loader2,
@@ -133,6 +133,28 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
   const [duplicateMode, setDuplicateMode] = useState<'skip' | 'update' | 'create'>('skip');
   const [enriqueciendo, setEnriqueciendo] = useState<Set<number>>(new Set());
   const [enriqueciendoTodo, setEnriqueciendoTodo] = useState(false);
+  const [enrichProgreso, setEnrichProgreso] = useState<{ actual: number; total: number } | null>(null);
+  const cancelarEnrichRef = useRef(false);
+  // Paginación progresiva: cargar más productos a medida que se hace scroll
+  const [visibleCount, setVisibleCount] = useState(50);
+  const PAGE_INCREMENT = 50;
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // IntersectionObserver para cargar más productos cuando el sentinel es visible
+  useEffect(() => {
+    if (observerRef.current) observerRef.current.disconnect();
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < productos.length) {
+          setVisibleCount((prev) => Math.min(prev + PAGE_INCREMENT, productos.length));
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+    if (loadMoreRef.current) observerRef.current.observe(loadMoreRef.current);
+    return () => { if (observerRef.current) observerRef.current.disconnect(); };
+  }, [visibleCount, productos.length]);
   const [resultado, setResultado] = useState<{
     exitosos: number;
     fallidos: number;
@@ -146,12 +168,15 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
   } | null>(null);
 
   const reset = () => {
+    cancelarEnrichRef.current = false;
+    setVisibleCount(50);
     setPaso('url');
     setUrl('');
     setProductos([]);
     setSeleccionados([]);
     setEnriqueciendo(new Set());
     setEnriqueciendoTodo(false);
+    setEnrichProgreso(null);
     setResultado(null);
     setProgresoImport(null);
   };
@@ -208,26 +233,36 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     }
   };
 
-  // Enriquecer productos incompletos o con pocas imágenes con URL de detalle.
-  // Antes solo enriquecía sin imágenes/precio; ahora también si tiene < 3 imágenes
-  // para capturar la galería completa desde la página de detalle.
+  // Enriquecer SOLO productos incompletos (sin precio o sin imágenes) con URL de detalle.
+  // Para catálogos grandes (4000+ productos) el enriquecimiento individual es muy lento,
+  // así que se limita a MAX_ENRICH productos y solo los que no tienen datos básicos.
+  // Los productos de Shopify ya vienen con imágenes y precio desde el endpoint público.
+  const MAX_ENRICH = 100;
   const enrichAll = async (prods: ScrapedProduct[]) => {
     const incompleto = (p: ScrapedProduct) =>
-      !p.price || p.price <= 0 || !(p.images && p.images.length > 0) || (p.images?.length || 0) < 3;
+      !p.price || p.price <= 0 || !(p.images && p.images.length > 0);
     const pendientes = prods
       .map((p, i) => ({ i, url: p.url, p }))
       .filter((x): x is { i: number; url: string; p: ScrapedProduct } => !!x.url && incompleto(x.p))
-      .map(({ i, url }) => ({ i, url }));
+      .map(({ i, url }) => ({ i, url }))
+      .slice(0, MAX_ENRICH);
     if (pendientes.length === 0) return;
+    cancelarEnrichRef.current = false;
     setEnriqueciendoTodo(true);
+    setEnrichProgreso({ actual: 0, total: pendientes.length });
     try {
       const CONCURRENCIA = 5;
+      let completados = 0;
       for (let b = 0; b < pendientes.length; b += CONCURRENCIA) {
+        if (cancelarEnrichRef.current) break;
         const lote = pendientes.slice(b, b + CONCURRENCIA);
         await Promise.all(lote.map(({ i, url: u }) => enrichOne(i, u)));
+        completados += lote.length;
+        setEnrichProgreso({ actual: completados, total: pendientes.length });
       }
     } finally {
       setEnriqueciendoTodo(false);
+      setEnrichProgreso(null);
     }
   };
 
@@ -287,6 +322,7 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
 
       setProductos(prods);
       setSeleccionados(prods.map((_, i) => i));
+      setVisibleCount(PAGE_INCREMENT);
       setPaso('preview');
       // Enriquecer en segundo plano con datos de cada página de detalle
       enrichAll(prods);
@@ -301,10 +337,12 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     }
   };
 
-  // Tamaño de lote grande para reducir número de llamadas (la Edge Function acepta hasta 2000)
-  const BATCH_SIZE = 500;
-  // Concurrencia de lotes en paralelo para acelerar la importación
-  const PARALLEL_LOTS = 3;
+  // Tamaño de lote reducido para evitar 504 Gateway Timeout de la Edge Function.
+  // Cada producto requiere descarga+upload de imágenes, que toma tiempo.
+  // 50 productos por lote = ~30-60s por request, dentro del timeout de 150s.
+  const BATCH_SIZE = 50;
+  // Concurrencia reducida a 2 para no sobrecargar la Edge Function
+  const PARALLEL_LOTS = 2;
 
   const handleImportar = async () => {
     if (!organization?.id || seleccionados.length === 0) return;
@@ -502,7 +540,7 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
                 </Select>
               </div>
             </div>
-            {productos.map((p, i) => (
+            {productos.slice(0, visibleCount).map((p, i) => (
               <div
                 key={i}
                 className={`flex gap-3 p-3 rounded-lg border transition-colors ${
@@ -621,6 +659,19 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
                 </div>
               </div>
             ))}
+            {/* Sentinel para infinite scroll - carga más productos al hacer scroll */}
+            {visibleCount < productos.length && (
+              <div ref={loadMoreRef} className="flex justify-center items-center py-4">
+                <div className="text-xs text-gray-400 dark:text-gray-500 animate-pulse">
+                  Cargando más productos... ({visibleCount}/{productos.length})
+                </div>
+              </div>
+            )}
+            {visibleCount >= productos.length && productos.length > PAGE_INCREMENT && (
+              <div className="text-center py-3 text-xs text-gray-400 dark:text-gray-500">
+                Todos los productos cargados ({productos.length})
+              </div>
+            )}
           </div>
         )}
 
@@ -684,25 +735,33 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Atrás
               </Button>
-              <Button
-                onClick={handleImportar}
-                disabled={importando || seleccionados.length === 0 || enriqueciendoTodo}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {importando ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importando {seleccionados.length} productos...
-                  </>
-                ) : enriqueciendoTodo ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Obteniendo detalles de cada producto...
-                  </>
-                ) : (
-                  <>Importar {seleccionados.length} seleccionados</>
-                )}
-              </Button>
+              {enriqueciendoTodo ? (
+                <Button
+                  variant="destructive"
+                  onClick={() => { cancelarEnrichRef.current = true; }}
+                  className="ml-auto"
+                >
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {enrichProgreso
+                    ? `Enriqueciendo ${enrichProgreso.actual}/${enrichProgreso.total}... (Cancelar)`
+                    : 'Obteniendo detalles... (Cancelar)'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleImportar}
+                  disabled={importando || seleccionados.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {importando ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Importando {seleccionados.length} productos...
+                    </>
+                  ) : (
+                    <>Importar {seleccionados.length} seleccionados</>
+                  )}
+                </Button>
+              )}
             </>
           )}
           {paso === 'resultado' && (

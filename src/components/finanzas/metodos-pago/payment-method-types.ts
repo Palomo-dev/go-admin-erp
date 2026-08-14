@@ -43,7 +43,10 @@ export const PAYMENT_GATEWAYS = {
   STRIPE: 'stripe',
   PAYU: 'payu',
   MERCADOPAGO: 'mercadopago',
-  WOMPI: 'wompi'
+  WOMPI: 'wompi',
+  BANCOLOMBIA: 'bancolombia',
+  BREB: 'breb',
+  REDEBAN: 'redeban'
 };
 
 export const PAYMENT_GATEWAY_OPTIONS = [
@@ -51,7 +54,10 @@ export const PAYMENT_GATEWAY_OPTIONS = [
   { label: "Stripe", value: PAYMENT_GATEWAYS.STRIPE },
   { label: "PayU", value: PAYMENT_GATEWAYS.PAYU },
   { label: "Mercado Pago", value: PAYMENT_GATEWAYS.MERCADOPAGO },
-  { label: "Wompi", value: PAYMENT_GATEWAYS.WOMPI }
+  { label: "Wompi", value: PAYMENT_GATEWAYS.WOMPI },
+  { label: "Bancolombia", value: PAYMENT_GATEWAYS.BANCOLOMBIA },
+  { label: "Bre-B (Mono)", value: PAYMENT_GATEWAYS.BREB },
+  { label: "Redeban", value: PAYMENT_GATEWAYS.REDEBAN }
 ];
 
 export const ACCOUNTING_DEFAULT_MAPPINGS = [
@@ -70,5 +76,8 @@ export const SYSTEM_PAYMENT_METHODS = {
   CHECK: 'check',
   PAYPAL: 'paypal',
   STRIPE: 'stripe',
-  MERCADOPAGO: 'mp'
+  MERCADOPAGO: 'mp',
+  BANCOLOMBIA_QR: 'bancolombia_qr',
+  BREB_QR: 'breb_qr',
+  REDEBAN_QR: 'redeban_qr'
 };

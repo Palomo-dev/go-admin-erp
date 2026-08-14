@@ -246,16 +246,16 @@ class IntegrationsService {
       error_count_24h: number;
       last_error_message: string | null;
       last_error_at: string | null;
-      connector?: {
-        name?: string;
-        provider?: { name?: string };
-      };
+      connector: Array<{
+        name: string;
+        provider: Array<{ name: string }>;
+      }>;
     };
 
-    return (connections || []).map((c: TopProblemRow) => ({
+    return (connections as TopProblemRow[] | null || []).map((c) => ({
       connection_id: c.id,
       connection_name: c.name,
-      provider_name: c.connector?.provider?.name || c.connector?.name || 'Desconocido',
+      provider_name: c.connector?.[0]?.provider?.[0]?.name || c.connector?.[0]?.name || 'Desconocido',
       error_count: c.error_count_24h,
       last_error: c.last_error_message || 'Sin mensaje',
       last_error_at: c.last_error_at || '',
@@ -584,15 +584,15 @@ class IntegrationsService {
     type PaymentMethodRow = {
       id: number;
       payment_method_code: string;
-      payment_method?: { name?: string } | null;
+      payment_method: Array<{ name: string }> | null;
     };
 
     return {
       channels: channelsResult.data || [],
-      paymentMethods: (paymentMethodsResult.data || []).map((pm: PaymentMethodRow) => ({
+      paymentMethods: (paymentMethodsResult.data as PaymentMethodRow[] | null || []).map((pm) => ({
         id: pm.id,
         code: pm.payment_method_code,
-        name: pm.payment_method?.name || pm.payment_method_code,
+        name: pm.payment_method?.[0]?.name || pm.payment_method_code,
       })),
     };
   }
@@ -713,6 +713,9 @@ class IntegrationsService {
         payu: 'payu',
         mercadopago: 'mp',
         paypal: 'paypal',
+        bancolombia: 'bancolombia_qr',
+        breb: 'breb_qr',
+        redeban: 'redeban_qr',
       };
 
       const methodCode = PROVIDER_TO_METHOD[provider.code];
@@ -933,24 +936,6 @@ class IntegrationsService {
     }
 
     return results;
-  }
-
-  /**
-   * Obtiene todos los proveedores disponibles
-   */
-  async getProviders(): Promise<IntegrationProvider[]> {
-    const { data, error } = await supabase
-      .from('integration_providers')
-      .select('*')
-      .eq('is_active', true)
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching providers:', error);
-      return [];
-    }
-
-    return data || [];
   }
 
   /**

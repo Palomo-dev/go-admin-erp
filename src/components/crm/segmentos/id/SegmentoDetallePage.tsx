@@ -19,8 +19,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -240,7 +241,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>Descripción</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200" />
+                    <RichTextEditor value={description} onChange={setDescription} className="dark:bg-gray-900 dark:border-gray-700" />
                   </div>
                   <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                     <div>
@@ -261,7 +262,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                     </span>
                   </div>
                   {segment.description && (
-                    <p className="text-gray-700 dark:text-gray-300">{segment.description}</p>
+                    <HtmlContentRenderer html={segment.description} className="text-gray-700 dark:text-gray-300" />
                   )}
                   <div className="text-sm text-gray-500 dark:text-gray-400">
                     Última ejecución: {segment.last_run_at ? formatDate(segment.last_run_at) : 'Nunca'}

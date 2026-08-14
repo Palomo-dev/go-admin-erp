@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -403,12 +404,11 @@ export function IncidentDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="notes">Notas</Label>
-                <Textarea
-                  id="notes"
+                <RichTextEditor
                   value={formData.notes || ''}
-                  onChange={(e) => handleChange('notes', e.target.value)}
+                  onChange={(html) => handleChange('notes', html)}
                   placeholder="Notas adicionales, evidencias, seguimiento..."
-                  rows={6}
+                  minHeight={60}
                 />
               </div>
             </TabsContent>

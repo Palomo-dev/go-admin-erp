@@ -5,6 +5,7 @@ import { getOptimizedSession, refreshSessionToken, clearSessionCache, performHea
 import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { Session } from '@supabase/supabase-js';
+import { supabase } from '../supabase/config';
 
 // Constants for session management
 // TEMPORALMENTE DESHABILITADO: Conflicto con middleware
@@ -244,6 +245,37 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     initSession();
   }, []);
+
+  // Listener global: detectar cuando la sesión se invalida desde otra pestaña
+  // (ej. cambio de correo confirmado en /auth/verify que hace signOut).
+  // Sin este listener, la pestaña original queda en estado inconsistente
+  // y los hooks que llaman supabase.auth.getUser() fallan con "Usuario no autenticado".
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_OUT' && !session) {
+          // La sesión se invalidó (cambio de correo, logout desde otra pestaña, etc.)
+          setState(prev => ({
+            ...prev,
+            session: null,
+            loading: false,
+            showRenewalPopup: false,
+            countdown: COUNTDOWN_DURATION,
+          }));
+          // Redirigir a login solo si estamos dentro de /app
+          if (typeof window !== 'undefined' && window.location.pathname.startsWith('/app')) {
+            router.push('/auth/login?reason=session-invalidated');
+          }
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          setState(prev => ({ ...prev, session, loading: false }));
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
   
   // Function to refresh session
   const refreshSession = async () => {

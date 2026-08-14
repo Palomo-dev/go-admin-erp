@@ -51,6 +51,25 @@ interface ScrapedProduct {
   variants?: { name: string; values: string[] }[];
 }
 
+// Respuestas tipadas de la Edge Function product-scraper
+interface ProductScraperPreviewResponse {
+  products?: ScrapedProduct[];
+  error?: string;
+}
+
+interface ProductScraperEnrichResponse {
+  product?: ScrapedProduct;
+  error?: string;
+}
+
+interface ProductScraperImportResponse {
+  exitosos?: number;
+  fallidos?: number;
+  errores?: { name: string; error?: string }[];
+  results?: { ok: boolean; name: string; action?: string; error?: string }[];
+  error?: string;
+}
+
 // Tokeniza un nombre de producto a palabras significativas (sin tildes ni signos)
 const tokenizarNombre = (s: string): Set<string> =>
   new Set(
@@ -141,11 +160,11 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
   const enrichOne = async (index: number, productUrl: string) => {
     setEnriqueciendo((prev) => new Set(prev).add(index));
     try {
-      const { data, error } = await supabase.functions.invoke('product-scraper', {
+      const { data, error } = await supabase.functions.invoke<ProductScraperEnrichResponse>('product-scraper', {
         body: { action: 'enrich', url: productUrl },
       });
       if (!error && data?.product) {
-        const e = data.product as ScrapedProduct;
+        const e = data.product;
         setProductos((prev) =>
           prev.map((p, i) => {
             if (i !== index) return p;
@@ -189,10 +208,12 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     }
   };
 
-  // Enriquecer SOLO los productos incompletos con URL de detalle (los de API nativa ya vienen completos)
+  // Enriquecer productos incompletos o con pocas imágenes con URL de detalle.
+  // Antes solo enriquecía sin imágenes/precio; ahora también si tiene < 3 imágenes
+  // para capturar la galería completa desde la página de detalle.
   const enrichAll = async (prods: ScrapedProduct[]) => {
     const incompleto = (p: ScrapedProduct) =>
-      !p.price || p.price <= 0 || !(p.images && p.images.length > 0);
+      !p.price || p.price <= 0 || !(p.images && p.images.length > 0) || (p.images?.length || 0) < 3;
     const pendientes = prods
       .map((p, i) => ({ i, url: p.url, p }))
       .filter((x): x is { i: number; url: string; p: ScrapedProduct } => !!x.url && incompleto(x.p))
@@ -230,9 +251,10 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     setAnalizando(true);
     try {
       // Timeout de seguridad: si el sitio es muy pesado/bloqueado, no dejar la UI colgada
-      const TIMEOUT_MS = 120000;
+      // 180s para dar tiempo a descargar catálogos grandes (4000+ productos con paginación paralela)
+      const TIMEOUT_MS = 180000;
       const { data, error } = await Promise.race([
-        supabase.functions.invoke('product-scraper', {
+        supabase.functions.invoke<ProductScraperPreviewResponse>('product-scraper', {
           body: { action: 'preview', url },
         }),
         new Promise<never>((_, reject) =>
@@ -241,7 +263,7 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
             TIMEOUT_MS,
           ),
         ),
-      ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
+      ]);
 
       if (error) {
         let msg = error.message || 'Error al analizar la página';
@@ -251,9 +273,9 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
         } catch (_) { /* usar mensaje genérico */ }
         throw new Error(msg);
       }
-      if (data.error) throw new Error(data.error);
+      if (data?.error) throw new Error(data.error);
 
-      const prods: ScrapedProduct[] = data.products || [];
+      const prods: ScrapedProduct[] = data?.products || [];
       if (prods.length === 0) {
         toast({
           variant: 'destructive',
@@ -279,7 +301,10 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     }
   };
 
-  const BATCH_SIZE = 50;
+  // Tamaño de lote grande para reducir número de llamadas (la Edge Function acepta hasta 2000)
+  const BATCH_SIZE = 500;
+  // Concurrencia de lotes en paralelo para acelerar la importación
+  const PARALLEL_LOTS = 3;
 
   const handleImportar = async () => {
     if (!organization?.id || seleccionados.length === 0) return;
@@ -290,51 +315,62 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     let exitososAcum = 0;
     let fallidosAcum = 0;
     const erroresAcum: { name: string; error?: string }[] = [];
+    let lotesCompletados = 0;
+
+    // Procesa un lote individual y acumula resultados
+    const procesarLote = async (loteIndex: number): Promise<void> => {
+      const inicio = loteIndex * BATCH_SIZE;
+      const fin = Math.min(inicio + BATCH_SIZE, productosAImportar.length);
+      const loteProductos = productosAImportar.slice(inicio, fin);
+
+      const { data, error } = await supabase.functions.invoke<ProductScraperImportResponse>('product-scraper', {
+        body: {
+          action: 'import',
+          products: loteProductos,
+          organization_id: organization.id,
+          branch_id: branch_id || null,
+          source_url: url,
+          duplicate_mode: duplicateMode,
+        },
+      });
+
+      if (error) {
+        let msg = error.message || 'Error al importar lote';
+        try {
+          const errBody = await (error as any).context?.json?.();
+          if (errBody?.error) msg = errBody.error;
+        } catch (_) { /* usar mensaje genérico */ }
+        throw new Error(`Lote ${loteIndex + 1}/${totalLotes}: ${msg}`);
+      }
+      if (data?.error) throw new Error(`Lote ${loteIndex + 1}/${totalLotes}: ${data.error}`);
+
+      exitososAcum += data?.exitosos || 0;
+      fallidosAcum += data?.fallidos || 0;
+      if (data?.errores) erroresAcum.push(...data.errores);
+
+      lotesCompletados += 1;
+      setProgresoImport({
+        loteActual: lotesCompletados,
+        totalLotes,
+        importados: exitososAcum,
+        total: productosAImportar.length,
+      });
+    };
 
     try {
-      for (let lote = 0; lote < totalLotes; lote++) {
-        const inicio = lote * BATCH_SIZE;
-        const fin = Math.min(inicio + BATCH_SIZE, productosAImportar.length);
-        const loteProductos = productosAImportar.slice(inicio, fin);
-
-        setProgresoImport({
-          loteActual: lote + 1,
-          totalLotes,
-          importados: exitososAcum,
-          total: productosAImportar.length,
-        });
-
-        const { data, error } = await supabase.functions.invoke('product-scraper', {
-          body: {
-            action: 'import',
-            products: loteProductos,
-            organization_id: organization.id,
-            branch_id: branch_id || null,
-            source_url: url,
-            duplicate_mode: duplicateMode,
-          },
-        });
-
-        if (error) {
-          let msg = error.message || 'Error al importar lote';
-          try {
-            const errBody = await (error as any).context?.json?.();
-            if (errBody?.error) msg = errBody.error;
-          } catch (_) { /* usar mensaje genérico */ }
-          throw new Error(`Lote ${lote + 1}/${totalLotes}: ${msg}`);
+      // Procesar lotes en paralelo (PARALLEL_LOTS concurrentes)
+      for (let lote = 0; lote < totalLotes; lote += PARALLEL_LOTS) {
+        const lotesEnParalelo: number[] = [];
+        for (let i = lote; i < Math.min(lote + PARALLEL_LOTS, totalLotes); i++) {
+          lotesEnParalelo.push(i);
         }
-        if (data.error) throw new Error(`Lote ${lote + 1}/${totalLotes}: ${data.error}`);
-
-        exitososAcum += data.exitosos || 0;
-        fallidosAcum += data.fallidos || 0;
-        if (data.errores) erroresAcum.push(...data.errores);
-
         setProgresoImport({
-          loteActual: lote + 1,
+          loteActual: lotesCompletados,
           totalLotes,
           importados: exitososAcum,
           total: productosAImportar.length,
         });
+        await Promise.all(lotesEnParalelo.map((idx) => procesarLote(idx)));
       }
 
       setResultado({

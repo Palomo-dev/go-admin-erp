@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/components/ui/use-toast';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -1279,13 +1279,12 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                     <FileText className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     Notas Internas
                   </Label>
-                  <Textarea 
-                    id="notes" 
-                    name="notes" 
+                  <RichTextEditor
                     value={formData.notes}
-                    onChange={handleChange}
+                    onChange={(html) => setFormData(prev => ({ ...prev, notes: html }))}
                     placeholder="Información relevante sobre el cliente, preferencias, historial, etc."
-                    className="min-h-[150px] bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                    minHeight={150}
+                    className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Estas notas son solo para uso interno y no son visibles para el cliente

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -425,12 +425,11 @@ export function EventModal({
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Descripción</Label>
-                  <Textarea
-                    id="description"
+                  <RichTextEditor
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(html) => setFormData({ ...formData, description: html })}
                     placeholder="Descripción opcional"
-                    rows={3}
+                    minHeight={60}
                     className="dark:bg-gray-800 dark:border-gray-700"
                   />
                 </div>

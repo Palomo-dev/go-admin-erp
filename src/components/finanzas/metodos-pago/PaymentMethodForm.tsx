@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/collapsible";
 import { AlertCircle, Loader2, Globe, MapPin, ChevronDown, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 import AccountMappingForm from "@/components/finanzas/metodos-pago/AccountMappingForm";
 import Link from "next/link";
@@ -583,12 +583,12 @@ export default function PaymentMethodForm({
                     <FormItem>
                       <FormLabel className="text-sm dark:text-gray-200">Instrucciones para el cliente</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Ej: Paga al recibir tu pedido en efectivo o con tarjeta al repartidor..." 
-                          {...field}
+                        <RichTextEditor
                           value={field.value || ''}
-                          rows={2}
-                          className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm resize-none"
+                          onChange={field.onChange}
+                          placeholder="Ej: Paga al recibir tu pedido en efectivo o con tarjeta al repartidor..."
+                          className="dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100 text-sm"
+                          minHeight={60}
                         />
                       </FormControl>
                     </FormItem>

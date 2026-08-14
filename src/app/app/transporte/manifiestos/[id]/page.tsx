@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -566,7 +567,7 @@ export default function ManifestDetailPage() {
           {manifest.notes && (
             <Card className="p-4">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Notas</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{manifest.notes}</p>
+              <HtmlContentRenderer html={manifest.notes} className="text-sm text-gray-600 dark:text-gray-400" />
             </Card>
           )}
         </div>
@@ -715,7 +716,7 @@ export default function ManifestDetailPage() {
                               {/* Notas del conductor */}
                               {ms.driver_notes && (
                                 <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded text-sm text-gray-600 dark:text-gray-400">
-                                  <strong>Notas:</strong> {ms.driver_notes}
+                                  <strong>Notas:</strong> <HtmlContentRenderer html={ms.driver_notes} singleLine />
                                 </div>
                               )}
 

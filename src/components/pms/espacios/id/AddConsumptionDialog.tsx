@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Minus, Search, X, ShoppingCart, Package } from 'lucide-react';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -486,14 +486,14 @@ export function AddConsumptionDialog({
                         </span>
                       </div>
 
-                      <Textarea
+                      <RichTextEditor
                         placeholder="Notas..."
                         value={item.notes}
-                        onChange={(e) =>
-                          updateCartNotes(cartKey, e.target.value)
+                        onChange={(html) =>
+                          updateCartNotes(cartKey, html)
                         }
-                        rows={2}
-                        className="text-xs resize-none"
+                        minHeight={60}
+                        className="text-xs"
                       />
                     </div>
                   ))}

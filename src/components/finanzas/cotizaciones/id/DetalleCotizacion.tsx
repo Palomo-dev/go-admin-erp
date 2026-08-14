@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { ArrowLeft, Printer, Mail, FileCheck2, Copy, Pencil, Send, Loader2, FileText, ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -404,7 +405,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
             <TableBody>
               {(cotActual.quotation_items || []).map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="text-gray-900 dark:text-gray-100">{item.description}</TableCell>
+                  <TableCell className="text-gray-900 dark:text-gray-100"><HtmlContentRenderer html={item.description} /></TableCell>
                   <TableCell className="text-right">{item.qty}</TableCell>
                   <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
                   <TableCell className="text-right">
@@ -455,9 +456,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
               <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
                 Términos y Condiciones
               </h3>
-              <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
-                {cotActual.terms_conditions}
-              </p>
+              <HtmlContentRenderer html={cotActual.terms_conditions} className="text-sm text-gray-900 dark:text-gray-100" />
             </Card>
           )}
           {cotActual.notes && (
@@ -465,9 +464,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
               <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
                 Notas Internas
               </h3>
-              <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
-                {cotActual.notes}
-              </p>
+              <HtmlContentRenderer html={cotActual.notes} className="text-sm text-gray-900 dark:text-gray-100" />
             </Card>
           )}
         </div>

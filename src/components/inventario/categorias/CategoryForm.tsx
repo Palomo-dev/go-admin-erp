@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -278,12 +279,11 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                     {generatingDesc ? 'Generando...' : 'Generar con IA'}
                   </Button>
                 </div>
-                <Textarea
+                <RichTextEditor
                   value={formData.description}
-                  onChange={e => handleDescriptionChange(e.target.value)}
+                  onChange={html => handleDescriptionChange(html)}
                   placeholder="Descripción de la categoría (opcional)"
-                  rows={3}
-                  className="dark:bg-gray-800 dark:border-gray-700 resize-none"
+                  className="dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
 

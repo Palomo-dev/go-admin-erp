@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -289,7 +290,7 @@ export default function PaqueteDetallePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {pkg.description && (
-              <p className="text-gray-600 dark:text-gray-300">{pkg.description}</p>
+              <HtmlContentRenderer html={pkg.description} className="text-gray-600 dark:text-gray-300" />
             )}
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

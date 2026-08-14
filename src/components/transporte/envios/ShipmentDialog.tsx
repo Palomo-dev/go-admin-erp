@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -620,11 +620,11 @@ export function ShipmentDialog({
           {/* Notas */}
           <div className="space-y-2">
             <Label>Notas</Label>
-            <Textarea
+            <RichTextEditor
               value={formData.notes}
-              onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+              onChange={(html) => setFormData((p) => ({ ...p, notes: html }))}
               placeholder="Notas adicionales..."
-              rows={2}
+              minHeight={60}
             />
           </div>
         </div>

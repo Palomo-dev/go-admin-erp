@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Dialog,
   DialogContent,
@@ -332,12 +333,11 @@ export function ReservaFormDialog({
             <Label htmlFor="specialRequests" className="dark:text-gray-300">
               Solicitudes especiales
             </Label>
-            <Textarea
-              id="specialRequests"
+            <RichTextEditor
               value={specialRequests}
-              onChange={(e) => setSpecialRequests(e.target.value)}
+              onChange={(html) => setSpecialRequests(html)}
               placeholder="Silla para bebé, cumpleaños, alergias..."
-              rows={2}
+              minHeight={60}
               className="dark:bg-gray-900 dark:border-gray-600"
             />
           </div>

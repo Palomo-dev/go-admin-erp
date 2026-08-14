@@ -12,8 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -401,12 +401,11 @@ export function CreateClaimDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor="claim-description">Descripción (opcional)</Label>
-                  <Textarea
-                    id="claim-description"
-                    placeholder="Describe el problema en detalle..."
+                  <RichTextEditor
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={3}
+                    onChange={(html) => setDescription(html)}
+                    placeholder="Describe el problema en detalle..."
+                    minHeight={60}
                   />
                 </div>
               </div>

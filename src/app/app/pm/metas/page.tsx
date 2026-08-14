@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { pmService, type Goal } from '@/lib/services/pmService';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { getAssignableUsers } from '@/lib/services/userService';
@@ -205,7 +206,7 @@ export default function GoalsPage() {
                 </CardHeader>
                 <CardContent>
                   {goal.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal mb-3">{goal.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
+                    <HtmlContentRenderer html={goal.description} singleLine className="text-xs text-gray-500 dark:text-gray-400 break-words mb-3" />
                   )}
                   <div className="mb-3">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">

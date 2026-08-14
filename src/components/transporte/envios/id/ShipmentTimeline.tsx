@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import {
   Dialog,
   DialogContent,
@@ -220,7 +221,7 @@ export function ShipmentTimeline({ events, isLoading, canAddEvent, onAddEvent }:
                     </span>
                   </div>
                   {event.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{event.description}</p>
+                    <HtmlContentRenderer html={event.description} className="text-sm text-gray-600 dark:text-gray-400" />
                   )}
                   {event.actor_type && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">

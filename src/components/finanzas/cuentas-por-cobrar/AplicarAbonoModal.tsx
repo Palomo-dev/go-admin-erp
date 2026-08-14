@@ -9,8 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreditCard, DollarSign, User, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { CuentaPorCobrar } from './types';
@@ -360,13 +360,12 @@ export function AplicarAbonoModal({ open, onOpenChange, cuenta, onSuccess }: Apl
                 <Label htmlFor="notes" className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                   Notas
                 </Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Comentarios adicionales sobre el abono..."
+                <RichTextEditor
                   value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  rows={3}
+                  onChange={(html) => handleInputChange('notes', html)}
+                  placeholder="Comentarios adicionales sobre el abono..."
                   className="text-sm sm:text-base dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                  minHeight={60}
                 />
               </div>
             </CardContent>

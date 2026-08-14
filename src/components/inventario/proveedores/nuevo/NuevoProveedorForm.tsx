@@ -9,8 +9,8 @@ import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save, Loader2, Building2, User, Phone, Mail, FileText, MapPin, CreditCard, Globe, Sparkles, Wand2, Landmark } from 'lucide-react';
 import ImageUploader from '@/components/common/ImageUploader';
@@ -384,7 +384,7 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
                       {generatingDesc ? 'Generando...' : 'Generar con IA'}
                     </Button>
                   </div>
-                  <Textarea value={formData.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Descripción del proveedor, productos que ofrece..." className="dark:bg-gray-900 dark:border-gray-700" rows={3} />
+                  <RichTextEditor value={formData.description} onChange={(html) => handleChange('description', html)} placeholder="Descripción del proveedor, productos que ofrece..." className="dark:bg-gray-900 dark:border-gray-700" />
                 </div>
               </CardContent>
             </Card>
@@ -536,7 +536,7 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Textarea value={formData.notes} onChange={(e) => handleChange('notes', e.target.value)} placeholder="Información adicional sobre el proveedor..." className="dark:bg-gray-900 dark:border-gray-700" rows={3} />
+                <RichTextEditor value={formData.notes} onChange={(html) => handleChange('notes', html)} placeholder="Información adicional sobre el proveedor..." className="dark:bg-gray-900 dark:border-gray-700" />
               </CardContent>
             </Card>
           </div>

@@ -10,8 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Table,
   TableBody,
@@ -368,13 +368,12 @@ export function AprobacionPagosModal({
                         <Label htmlFor={`comentario-${pago.id}`} className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                           Comentarios de aprobación/rechazo
                         </Label>
-                        <Textarea
-                          id={`comentario-${pago.id}`}
-                          placeholder="Agregar comentarios sobre la decisión..."
-                          rows={2}
+                        <RichTextEditor
                           value={comentarios[pago.id] || ''}
-                          onChange={(e) => handleComentarioChange(pago.id, e.target.value)}
+                          onChange={(html) => handleComentarioChange(pago.id, html)}
+                          placeholder="Agregar comentarios sobre la decisión..."
                           className="mt-1.5 text-xs sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                          minHeight={60}
                         />
                       </div>
                     </CardContent>

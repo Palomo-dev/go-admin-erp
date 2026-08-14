@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -149,7 +149,7 @@ export function TaskDialog({
                 <Calendar
                   mode="single"
                   selected={taskDate}
-                  onSelect={(date) => date && setTaskDate(date)}
+                  onSelect={(date: Date | undefined) => date && setTaskDate(date)}
                   initialFocus
                   locale={es}
                 />
@@ -196,12 +196,11 @@ export function TaskDialog({
           {/* Notas */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notas</Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               placeholder="Notas adicionales sobre la limpieza..."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              onChange={(html) => setNotes(html)}
+              minHeight={60}
             />
           </div>
 

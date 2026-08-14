@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -293,11 +293,10 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
               </div>
               <div>
                 <Label className="dark:text-gray-200">Descripción</Label>
-                <Textarea
+                <RichTextEditor
                   value={formData.description || ''}
-                  onChange={(e) => handleChange('description', e.target.value)}
+                  onChange={(html) => handleChange('description', html)}
                   placeholder="Descripción de la promoción..."
-                  rows={3}
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>

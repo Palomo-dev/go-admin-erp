@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { pmService, type Project, PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, PRIORITY_LABELS, PRIORITY_COLORS } from '@/lib/services/pmService';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { getAssignableUsers } from '@/lib/services/userService';
 import Link from 'next/link';
 import ProjectCreationPanel from '@/components/pm/ProjectCreationPanel';
@@ -193,7 +194,7 @@ export default function ProjectsPage() {
                 </CardHeader>
                 <CardContent>
                   {project.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal mb-3">{project.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}</p>
+                    <HtmlContentRenderer html={project.description} singleLine className="text-xs text-gray-500 dark:text-gray-400 break-words mb-3" />
                   )}
                   <div className="mb-3">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">

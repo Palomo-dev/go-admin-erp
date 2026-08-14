@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Plus, Clock, CheckCircle } from 'lucide-react';
@@ -88,9 +89,7 @@ export function TripIncidents({ incidents, isLoading, onReportIncident }: TripIn
                       {incident.title}
                     </h4>
                     {incident.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {incident.description}
-                      </p>
+                      <HtmlContentRenderer html={incident.description} className="text-sm text-gray-600 dark:text-gray-400 mt-1" />
                     )}
                     <div className="flex items-center gap-2 sm:gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                       <span className="flex items-center gap-1">

@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -146,11 +147,11 @@ export default function ShipmentDetailPage() {
           .eq('id', driverId)
           .single();
 
-        if (driverData?.employment?.organization_member?.user_id) {
+        if (driverData?.employment?.[0]?.organization_member?.[0]?.user_id) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('first_name, last_name, phone, email, avatar_url')
-            .eq('id', driverData.employment.organization_member.user_id)
+            .eq('id', driverData.employment[0].organization_member[0].user_id)
             .single();
           if (profile) {
             setDriverInfo({
@@ -311,7 +312,7 @@ export default function ShipmentDetailPage() {
   const handleRegisterCOD = async () => {
     if (!shipment || !organizationId) return;
     try {
-      await shipmentsService.registerCODPayment(shipmentId, organizationId!, shipment.total_cost);
+      await shipmentsService.registerCODPayment(shipmentId, organizationId!, shipment.total_cost || 0);
       toast({ title: 'Pago COD registrado' });
       loadData();
     } catch (error) {
@@ -623,7 +624,7 @@ export default function ShipmentDetailPage() {
                 {shipment.delivery_instructions && (
                   <div className="md:col-span-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
                     <p className="font-medium text-xs mb-1">Instrucciones:</p>
-                    <p>{shipment.delivery_instructions}</p>
+                    <HtmlContentRenderer html={shipment.delivery_instructions} />
                   </div>
                 )}
                 {driverInfo && (
@@ -799,7 +800,7 @@ export default function ShipmentDetailPage() {
           {shipment.notes && (
             <Card className="p-4">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Notas</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{shipment.notes}</p>
+              <HtmlContentRenderer html={shipment.notes} className="text-sm text-gray-600 dark:text-gray-400" />
             </Card>
           )}
 

@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CreditCard, Car, Bike, Truck, Sparkles, Users } from 'lucide-react';
@@ -171,12 +171,12 @@ export function PlanFormDialog({
           {/* Descripción */}
           <div className="space-y-2">
             <Label className="dark:text-gray-200">Descripción</Label>
-            <Textarea
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(html) => setDescription(html)}
               placeholder="Descripción del plan..."
-              rows={2}
-              className="dark:bg-gray-700 dark:border-gray-600 resize-none"
+              minHeight={60}
+              className="dark:bg-gray-700 dark:border-gray-600"
             />
           </div>
 

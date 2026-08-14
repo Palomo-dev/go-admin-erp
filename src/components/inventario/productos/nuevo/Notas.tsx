@@ -1,8 +1,8 @@
 "use client"
 
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { FileText } from 'lucide-react'
+import { RichTextEditor } from '@/components/shared/RichTextEditor'
 
 interface NotasProps {
   formData: any
@@ -30,13 +30,11 @@ export default function Notas({ formData, updateFormData }: NotasProps) {
         <Label htmlFor="notes" className="text-gray-700 dark:text-gray-300">
           Notas
         </Label>
-        <Textarea
-          id="notes"
+        <RichTextEditor
           value={formData.notes}
-          onChange={(e) => updateFormData('notes', e.target.value)}
+          onChange={(html) => updateFormData('notes', html)}
           placeholder="Instrucciones especiales, características adicionales, advertencias, etc."
-          rows={6}
-          className="border-gray-300 dark:border-gray-700 dark:bg-gray-800 resize-none"
+          className="border-gray-300 dark:border-gray-700 dark:bg-gray-800"
         />
         <p className="text-xs text-gray-500 dark:text-gray-400">
           Estas notas serán visibles en el detalle del producto

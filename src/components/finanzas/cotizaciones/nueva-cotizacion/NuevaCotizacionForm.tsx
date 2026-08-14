@@ -6,8 +6,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Loader2, Save } from 'lucide-react';
 import { useToast, toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId, obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
@@ -36,6 +36,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [saving, setSaving] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [serialSelections, setSerialSelections] = useState<Record<number, number[]>>({});
   const [taxIncluded, setTaxIncluded] = useState(false);
   const [appliedTaxes, setAppliedTaxes] = useState<{ [key: string]: boolean }>({});
   const [taxTotals, setTaxTotals] = useState<{ [key: string]: any }>({});
@@ -352,7 +353,14 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
           <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Items de la Cotización
           </h2>
-          <ItemsFactura items={items} onItemsChange={setItems} taxIncluded={taxIncluded} branchId={branchId} />
+          <ItemsFactura
+            items={items}
+            onItemsChange={setItems}
+            taxIncluded={taxIncluded}
+            branchId={branchId}
+            serialSelections={serialSelections}
+            onSerialSelectionsChange={setSerialSelections}
+          />
         </Card>
 
         {/* Impuestos y totales */}
@@ -408,22 +416,22 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-sm font-medium">Notas internas (no visibles en PDF)</Label>
-              <Textarea
+              <RichTextEditor
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={setNotes}
                 placeholder="Notas internas para el equipo..."
-                rows={3}
                 className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+                minHeight={80}
               />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">Términos y condiciones (visibles en PDF)</Label>
-              <Textarea
+              <RichTextEditor
                 value={termsConditions}
-                onChange={(e) => setTermsConditions(e.target.value)}
+                onChange={setTermsConditions}
                 placeholder="Términos y condiciones de la cotización..."
-                rows={4}
                 className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+                minHeight={100}
               />
             </div>
           </div>

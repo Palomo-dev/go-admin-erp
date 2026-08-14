@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -160,12 +160,11 @@ export function PlanDialog({ open, onOpenChange, plan, onSave }: PlanDialogProps
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Descripción</Label>
-                  <Textarea
-                    id="description"
+                  <RichTextEditor
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(html) => setFormData(prev => ({ ...prev, description: html }))}
                     placeholder="Descripción del plan..."
-                    rows={2}
+                    minHeight={60}
                     className="bg-gray-50 dark:bg-gray-900"
                   />
                 </div>

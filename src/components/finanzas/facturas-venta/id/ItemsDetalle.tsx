@@ -3,6 +3,7 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/utils/Utils';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface Item {
   id: string;
@@ -91,11 +92,11 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                         return (
                           <div className="flex flex-col">
                             <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
-                            <span className="break-words whitespace-normal min-w-0">{item.description}</span>
+                            <HtmlContentRenderer html={item.description} className="break-words whitespace-normal min-w-0" />
                           </div>
                         );
                       }
-                      return <span className="break-words whitespace-normal min-w-0">{item.description}</span>;
+                      return <HtmlContentRenderer html={item.description} className="break-words whitespace-normal min-w-0" />;
                     })()}
                   </div>
                 </TableCell>

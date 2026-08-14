@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -135,12 +135,11 @@ export function IncidentDialog({
 
           <div className="space-y-2">
             <Label htmlFor="description">Descripción</Label>
-            <Textarea
-              id="description"
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(html) => setDescription(html)}
               placeholder="Describe el incidente con detalle..."
-              className="min-h-[100px]"
+              minHeight={100}
             />
           </div>
         </div>

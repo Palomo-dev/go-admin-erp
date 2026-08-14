@@ -15,8 +15,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -182,12 +182,11 @@ export function SegmentoNuevoPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-700 dark:text-gray-300">Descripción</Label>
-                <Textarea
+                <RichTextEditor
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={setDescription}
                   placeholder="Describe el propósito del segmento..."
-                  rows={3}
-                  className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
+                  className="dark:bg-gray-900 dark:border-gray-700"
                 />
               </div>
               <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">

@@ -7,7 +7,7 @@ import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Dialog,
   DialogContent,
@@ -221,12 +221,12 @@ export function ActividadForm({
             <Label className="text-gray-700 dark:text-gray-300">
               Notas / Descripción
             </Label>
-            <Textarea
+            <RichTextEditor
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={setNotes}
               placeholder="Describe la actividad..."
-              rows={4}
-              className="bg-gray-50 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700"
+              minHeight={60}
+              className="bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
             />
           </div>
 

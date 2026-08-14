@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -386,7 +387,7 @@ export default function PrestamoDetallePage() {
             {loan.description && (
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Descripción</p>
-                <p className="text-gray-900 dark:text-white">{loan.description}</p>
+                <HtmlContentRenderer html={loan.description} className="text-gray-900 dark:text-white" />
               </div>
             )}
 

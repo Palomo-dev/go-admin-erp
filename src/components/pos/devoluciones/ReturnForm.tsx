@@ -5,7 +5,7 @@ import { ArrowLeft, Package, CreditCard, DollarSign, MessageSquare, Calculator, 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -491,23 +491,22 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
 
                   <div>
                     <Label className="dark:text-gray-300">Motivo General *</Label>
-                    <Textarea
+                    <RichTextEditor
                       placeholder="Describir el motivo general de la devolución..."
                       value={reason}
-                      onChange={(e) => setReason(e.target.value)}
+                      onChange={(html) => setReason(html)}
                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      rows={3}
                     />
                   </div>
 
                   <div>
                     <Label className="dark:text-gray-300">Notas Adicionales</Label>
-                    <Textarea
+                    <RichTextEditor
                       placeholder="Notas adicionales (opcional)..."
                       value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
+                      onChange={(html) => setNotes(html)}
                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      rows={2}
+                      minHeight={60}
                     />
                   </div>
                 </div>

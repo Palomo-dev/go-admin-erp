@@ -10,6 +10,7 @@ import {
 import { Calendar, ChefHat, Utensils } from 'lucide-react';
 import { type Category } from '@/lib/services/categoryService';
 import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface CategoryInfoCardProps {
   category: Category;
@@ -35,7 +36,9 @@ export default function CategoryInfoCard({ category, parent }: CategoryInfoCardP
         {category.description && (
           <div>
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descripción</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300">{category.description}</p>
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              <HtmlContentRenderer html={category.description} />
+            </div>
           </div>
         )}
 

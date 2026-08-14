@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { MessageSquare } from 'lucide-react';
 import { GymSettings } from '@/lib/services/gymSettingsService';
 
@@ -26,41 +26,41 @@ export function MessagesCard({ settings, onChange }: MessagesCardProps) {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label>Mensaje de bienvenida</Label>
-          <Textarea
+          <RichTextEditor
             value={settings.welcomeMessage}
-            onChange={(e) => onChange('welcomeMessage', e.target.value)}
+            onChange={(html) => onChange('welcomeMessage', html)}
             placeholder="Mensaje al hacer check-in exitoso"
-            rows={2}
+            minHeight={60}
           />
         </div>
 
         <div className="space-y-2">
           <Label>Mensaje de membresía expirada</Label>
-          <Textarea
+          <RichTextEditor
             value={settings.expiredMessage}
-            onChange={(e) => onChange('expiredMessage', e.target.value)}
+            onChange={(html) => onChange('expiredMessage', html)}
             placeholder="Mensaje cuando la membresía ha expirado"
-            rows={2}
+            minHeight={60}
           />
         </div>
 
         <div className="space-y-2">
           <Label>Mensaje de acceso bloqueado</Label>
-          <Textarea
+          <RichTextEditor
             value={settings.blockedMessage}
-            onChange={(e) => onChange('blockedMessage', e.target.value)}
+            onChange={(html) => onChange('blockedMessage', html)}
             placeholder="Mensaje cuando el acceso está bloqueado"
-            rows={2}
+            minHeight={60}
           />
         </div>
 
         <div className="space-y-2">
           <Label>Recordatorio de renovación</Label>
-          <Textarea
+          <RichTextEditor
             value={settings.renewalReminder}
-            onChange={(e) => onChange('renewalReminder', e.target.value)}
+            onChange={(html) => onChange('renewalReminder', html)}
             placeholder="Mensaje de recordatorio de renovación"
-            rows={2}
+            minHeight={60}
           />
         </div>
       </CardContent>

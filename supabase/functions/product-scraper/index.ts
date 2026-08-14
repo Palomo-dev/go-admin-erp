@@ -13,8 +13,10 @@ const openaiKey = Deno.env.get("OPENAI_API_KEY")!;
 const supabase = createClient(supabaseUrl, serviceKey);
 
 const DEFAULT_UNIT_CODE = "UN";
-const MAX_IMAGES_PER_PRODUCT = 8;
+const MAX_IMAGES_PER_PRODUCT = 12;
 const MAX_VARIANT_CHILDREN = 50;
+// Mínimo de imágenes para considerar un producto "completo" y no enriquecerlo
+const MIN_IMAGES_FOR_COMPLETE = 3;
 
 type DuplicateMode = "skip" | "update" | "create";
 
@@ -473,6 +475,35 @@ function htmlToPlain(html: string, maxLen = 1200): string {
 }
 
 // Shopify: /collections/<handle>/products.json?limit=250&page=N (catálogo completo)
+// Convierte un producto crudo de Shopify al formato ScrapedProduct
+function shopifyProductToScraped(p: any, origin: string): ScrapedProduct {
+  const variant = (p.variants && p.variants[0]) || {};
+  const price = parsePrice(variant.price);
+  const compare = parsePrice(variant.compare_at_price);
+  const images: string[] = Array.isArray(p.images)
+    ? p.images.map((im: any) => im?.src).filter((s: any): s is string => !!s)
+    : [];
+  const variants = (p.options || [])
+    .filter((o: any) => o?.name && !/^title$/i.test(o.name) && !(o.values?.length === 1 && /default title/i.test(o.values[0])))
+    .map((o: any) => ({ name: o.name, values: o.values || [] }));
+  return {
+    name: p.title,
+    description: htmlToPlain(p.body_html || ""),
+    price: price || undefined,
+    compare_price: compare && price && compare > price ? compare : undefined,
+    sku: variant.sku || undefined,
+    barcode: variant.barcode || undefined,
+    brand: p.vendor || undefined,
+    category: p.product_type || undefined,
+    tags: Array.isArray(p.tags) ? p.tags.slice(0, 10) : undefined,
+    images,
+    variants: variants.length ? variants : undefined,
+    url: `${origin}/products/${p.handle}`,
+  };
+}
+
+// Shopify: /collections/<handle>/products.json?limit=250&page=N (catálogo completo)
+// Paginación paralela por lotes para acelerar la descarga de catálogos grandes (4000+ productos)
 async function fetchShopifyCatalog(url: string): Promise<ScrapedProduct[] | null> {
   let origin = "", path = "";
   try {
@@ -485,43 +516,42 @@ async function fetchShopifyCatalog(url: string): Promise<ScrapedProduct[] | null
   const colMatch = path.match(/\/collections\/[^/]+/);
   const base = colMatch ? `${origin}${colMatch[0]}/products.json` : `${origin}/products.json`;
 
+  const MAX_PAGES = 30;
+  const PARALLEL_BATCH = 5;
   const out: ScrapedProduct[] = [];
-  for (let page = 1; page <= 20; page++) {
-    let data: any;
-    try {
-      const res = await fetch(`${base}?limit=250&page=${page}`, { headers: BROWSER_HEADERS });
-      if (!res.ok) break;
-      const ct = res.headers.get("content-type") || "";
-      if (!ct.includes("json")) break;
-      data = await res.json();
-    } catch (_) { break; }
-    const products: any[] = data?.products || [];
-    if (products.length === 0) break;
-    for (const p of products) {
-      const variant = (p.variants && p.variants[0]) || {};
-      const price = parsePrice(variant.price);
-      const compare = parsePrice(variant.compare_at_price);
-      const images: string[] = Array.isArray(p.images)
-        ? p.images.map((im: any) => im?.src).filter((s: any): s is string => !!s)
-        : [];
-      const variants = (p.options || [])
-        .filter((o: any) => o?.name && !/^title$/i.test(o.name) && !(o.values?.length === 1 && /default title/i.test(o.values[0])))
-        .map((o: any) => ({ name: o.name, values: o.values || [] }));
-      out.push({
-        name: p.title,
-        description: htmlToPlain(p.body_html || ""),
-        price: price || undefined,
-        compare_price: compare && price && compare > price ? compare : undefined,
-        sku: variant.sku || undefined,
-        brand: p.vendor || undefined,
-        category: p.product_type || undefined,
-        tags: Array.isArray(p.tags) ? p.tags.slice(0, 10) : undefined,
-        images,
-        variants: variants.length ? variants : undefined,
-        url: `${origin}/products/${p.handle}`,
-      });
+  let reachedEnd = false;
+
+  for (let startPage = 1; startPage <= MAX_PAGES && !reachedEnd; startPage += PARALLEL_BATCH) {
+    const pagesToFetch: number[] = [];
+    for (let p = startPage; p < startPage + PARALLEL_BATCH && p <= MAX_PAGES; p++) {
+      pagesToFetch.push(p);
     }
-    if (products.length < 250) break;
+    const batchResults = await Promise.all(
+      pagesToFetch.map(async (page): Promise<ScrapedProduct[]> => {
+        try {
+          const res = await fetch(`${base}?limit=250&page=${page}`, { headers: BROWSER_HEADERS });
+          if (!res.ok) return [];
+          const ct = res.headers.get("content-type") || "";
+          if (!ct.includes("json")) return [];
+          const data = await res.json();
+          const products: any[] = data?.products || [];
+          return products.map((p) => shopifyProductToScraped(p, origin));
+        } catch (_) { return []; }
+      })
+    );
+    for (let i = 0; i < batchResults.length; i++) {
+      const prods = batchResults[i];
+      if (prods.length === 0) {
+        reachedEnd = true;
+        break;
+      }
+      out.push(...prods);
+      // Si una página trae menos de 250, es la última
+      if (prods.length < 250) {
+        reachedEnd = true;
+        break;
+      }
+    }
   }
   return out.length ? out : null;
 }
@@ -1105,8 +1135,52 @@ async function extractWithAI(direct: string | null, jina: string | null, url: st
   return await validateProductsImages(merged);
 }
 
+// Shopify: si la URL es /products/{handle}, intentar /products/{handle}.json
+// que devuelve TODAS las imágenes y variantes exactas sin necesidad de IA
+async function enrichShopifyProduct(url: string): Promise<ScrapedProduct | null> {
+  try {
+    const u = new URL(url);
+    const productMatch = u.pathname.match(/\/products\/([^/]+)/);
+    if (!productMatch) return null;
+    const handle = productMatch[1];
+    const jsonUrl = `${u.origin}/products/${handle}.json`;
+    const res = await fetch(jsonUrl, { headers: BROWSER_HEADERS });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const p = data?.product;
+    if (!p) return null;
+    const variant = (p.variants && p.variants[0]) || {};
+    const images: string[] = Array.isArray(p.images)
+      ? p.images.map((im: any) => im?.src).filter((s: any): s is string => !!s)
+      : [];
+    const variants = (p.options || [])
+      .filter((o: any) => o?.name && !/^title$/i.test(o.name) && !(o.values?.length === 1 && /default title/i.test(o.values[0])))
+      .map((o: any) => ({ name: o.name, values: o.values || [] }));
+    return {
+      name: p.title,
+      description: htmlToPlain(p.body_html || ""),
+      price: parsePrice(variant.price) || undefined,
+      compare_price: parsePrice(variant.compare_at_price) || undefined,
+      sku: variant.sku || undefined,
+      barcode: variant.barcode || undefined,
+      brand: p.vendor || undefined,
+      category: p.product_type || undefined,
+      tags: Array.isArray(p.tags) ? p.tags.slice(0, 10) : undefined,
+      images,
+      variants: variants.length ? variants : undefined,
+      url,
+    };
+  } catch (_) { return null; }
+}
+
 async function enrichProduct(url: string): Promise<ScrapedProduct | null> {
-  // Para detalle de producto, fetch directo es suficiente y más rápido
+  // 1) Intentar endpoint nativo de Shopify primero (galería completa exacta)
+  const shopifyData = await enrichShopifyProduct(url);
+  if (shopifyData && (shopifyData.images?.length || 0) > 0) {
+    return normalizePrices(shopifyData);
+  }
+
+  // 2) Fallback: scraping del HTML/markdown con IA
   let content: string;
   let isMarkdown = false;
   try {
@@ -1179,9 +1253,11 @@ Reglas:
   }
 
   // D: galería con imagen principal (og:image / JSON-LD) primero, luego las que halló la IA
-  const galeria = [...detail.images, ...(prod.images || [])];
+  // Extraer también imágenes del HTML completo (no solo las que la IA seleccionó)
+  const allPageImages = isMarkdown ? [] : extractImages(content, url);
+  const galeria = [...detail.images, ...(prod.images || []), ...allPageImages];
   const candidatas = [...new Set(galeria)];
-  prod.images = candidatas.length > 0 ? await filterWorkingImages(candidatas, 10, 14) : prod.images;
+  prod.images = candidatas.length > 0 ? await filterWorkingImages(candidatas, MAX_IMAGES_PER_PRODUCT, 20) : prod.images;
 
   return normalizePrices(prod);
 }
@@ -1196,38 +1272,50 @@ function regexPriceFromText(text: string): number | null {
 }
 
 async function uploadImage(imageUrl: string, productId: number, index: number): Promise<string | null> {
-  try {
-    const res = await fetch(imageUrl, {
-      headers: { "User-Agent": BROWSER_HEADERS["User-Agent"] },
-    });
-    if (!res.ok) {
-      console.log(`[uploadImage] Falló descarga (${res.status}) para producto ${productId}: ${imageUrl.substring(0, 100)}`);
+  const MAX_RETRIES = 2;
+  const TIMEOUT_MS = 15000;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(imageUrl, {
+        headers: { "User-Agent": BROWSER_HEADERS["User-Agent"] },
+        signal: ctrl.signal,
+      });
+      if (!res.ok) {
+        if (attempt < MAX_RETRIES) { clearTimeout(timer); continue; }
+        console.log(`[uploadImage] Falló descarga (${res.status}) para producto ${productId}: ${imageUrl.substring(0, 100)}`);
+        return null;
+      }
+      const contentType = res.headers.get("content-type") || "image/jpeg";
+      if (!contentType.startsWith("image/")) {
+        console.log(`[uploadImage] Content-type no es imagen (${contentType}) para producto ${productId}: ${imageUrl.substring(0, 100)}`);
+        return null;
+      }
+      const buffer = await res.arrayBuffer();
+      if (buffer.byteLength > 5 * 1024 * 1024) {
+        console.log(`[uploadImage] Imagen demasiado grande (${buffer.byteLength} bytes) para producto ${productId}`);
+        return null;
+      }
+      const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+      const path = `products/${productId}/scraped_${Date.now()}_${index}.${ext}`;
+      const { error } = await supabase.storage
+        .from("product-images")
+        .upload(path, buffer, { contentType, upsert: false });
+      if (error) {
+        console.log(`[uploadImage] Error subiendo a storage para producto ${productId}: ${error.message}`);
+        return null;
+      }
+      return path;
+    } catch (e) {
+      if (attempt < MAX_RETRIES) { clearTimeout(timer); continue; }
+      console.log(`[uploadImage] Excepción (intento ${attempt + 1}) para producto ${productId}: ${(e as Error).message}`);
       return null;
+    } finally {
+      clearTimeout(timer);
     }
-    const contentType = res.headers.get("content-type") || "image/jpeg";
-    if (!contentType.startsWith("image/")) {
-      console.log(`[uploadImage] Content-type no es imagen (${contentType}) para producto ${productId}: ${imageUrl.substring(0, 100)}`);
-      return null;
-    }
-    const buffer = await res.arrayBuffer();
-    if (buffer.byteLength > 5 * 1024 * 1024) {
-      console.log(`[uploadImage] Imagen demasiado grande (${buffer.byteLength} bytes) para producto ${productId}`);
-      return null;
-    }
-    const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-    const path = `products/${productId}/scraped_${Date.now()}_${index}.${ext}`;
-    const { error } = await supabase.storage
-      .from("product-images")
-      .upload(path, buffer, { contentType, upsert: false });
-    if (error) {
-      console.log(`[uploadImage] Error subiendo a storage para producto ${productId}: ${error.message}`);
-      return null;
-    }
-    return path;
-  } catch (e) {
-    console.log(`[uploadImage] Excepción para producto ${productId}: ${(e as Error).message}`);
-    return null;
   }
+  return null;
 }
 
 // Normaliza una URL de imagen para detectar duplicados (mismo archivo en distinto tamaño o con query params)
@@ -1516,6 +1604,10 @@ async function updateExistingProduct(
   if (p.description) updateData.description = p.description;
   if (categoryId) updateData.category_id = categoryId;
   if (p.barcode) updateData.barcode = p.barcode;
+  const cleanBrand = limpiarPlaceholder(p.brand);
+  if (cleanBrand) updateData.brand = cleanBrand;
+  const cleanRef = limpiarPlaceholder(p.sku);
+  if (cleanRef) updateData.reference = cleanRef;
   if (p.variants && p.variants.length > 0) {
     updateData.is_parent = true;
   }
@@ -1568,12 +1660,12 @@ async function updateExistingProduct(
     }
   }
 
-  // Imágenes: agregar las que falten si tiene menos de 3
+  // Imágenes: agregar las que falten si tiene menos del máximo configurado
   const { data: existingImgs } = await supabase
     .from("product_images")
     .select("id")
     .eq("product_id", existingId);
-  if (!existingImgs || existingImgs.length < 3) {
+  if (!existingImgs || existingImgs.length < MAX_IMAGES_PER_PRODUCT) {
     await uploadProductImages(existingId, p.images || [], p.name);
   }
 
@@ -1640,6 +1732,8 @@ async function importProduct(
         tag_id: tagId,
         is_parent: hasVariants || false,
         variant_data: hasVariants ? { types: p.variants } : null,
+        brand: limpiarPlaceholder(p.brand) || null,
+        reference: limpiarPlaceholder(p.sku) || null,
       })
       .select("id")
       .single();
@@ -1751,7 +1845,7 @@ Deno.serve(async (req: Request) => {
       }
       const mode: DuplicateMode = ["skip", "update", "create"].includes(duplicate_mode) ? duplicate_mode : "skip";
       const results = [];
-      for (const p of products.slice(0, 500)) {
+      for (const p of products.slice(0, 2000)) {
         results.push(await importProduct(p, organization_id, branch_id || null, source_url || "", mode));
       }
       const exitosos = results.filter((r) => r.ok).length;

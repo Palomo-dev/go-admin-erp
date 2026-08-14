@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -449,12 +449,11 @@ export function ClassDialog({
 
                   <div className="sm:col-span-2">
                     <Label htmlFor="description">Descripción</Label>
-                    <Textarea
-                      id="description"
+                    <RichTextEditor
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(html) => setFormData({ ...formData, description: html })}
                       placeholder="Descripción de la clase..."
-                      rows={3}
+                      minHeight={60}
                     />
                   </div>
                 </div>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
 import {
   CreditCard,
@@ -383,11 +383,11 @@ export function StepPayment({
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Notas Adicionales
         </h3>
-        <Textarea
+        <RichTextEditor
           placeholder="Agrega notas sobre la reserva, preferencias del huésped, etc."
           value={notes}
-          onChange={(e) => onNotesChange(e.target.value)}
-          rows={4}
+          onChange={onNotesChange}
+          minHeight={80}
         />
       </Card>
 

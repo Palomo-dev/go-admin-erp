@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Save, FileText } from 'lucide-react';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 
 interface NotesTabProps {
   initialNotes: string;
@@ -43,12 +43,11 @@ export function NotesTab({ initialNotes, onSave }: NotesTabProps) {
           </h3>
         </div>
 
-        <Textarea
+        <RichTextEditor
           placeholder="Agrega notas internas sobre esta reserva..."
           value={notes}
-          onChange={(e) => handleChange(e.target.value)}
-          rows={10}
-          className="resize-none"
+          onChange={handleChange}
+          minHeight={200}
         />
 
         <div className="flex items-center justify-between mt-4">

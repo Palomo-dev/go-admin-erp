@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -305,11 +305,11 @@ export function RotationForm({
 
           <div className="space-y-2">
             <Label className="text-gray-700 dark:text-gray-300">Descripción</Label>
-            <Textarea
+            <RichTextEditor
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(html) => setFormData({ ...formData, description: html })}
               placeholder="Ej: 4 días trabajo, 4 días libres"
-              rows={2}
+              minHeight={60}
               className="bg-white dark:bg-gray-900"
             />
           </div>

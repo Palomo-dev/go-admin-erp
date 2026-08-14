@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Dialog,
   DialogContent,
@@ -248,11 +248,11 @@ export function RegisterEventDialog({
 
               <div className="space-y-2">
                 <Label>Descripción</Label>
-                <Textarea
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                  onChange={(html) => setFormData((p) => ({ ...p, description: html }))}
                   placeholder="Detalles adicionales del evento..."
-                  rows={2}
+                  minHeight={60}
                 />
               </div>
 

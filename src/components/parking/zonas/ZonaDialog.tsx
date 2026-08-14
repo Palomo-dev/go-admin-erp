@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, MapPin } from 'lucide-react';
 import { ParkingZone } from './types';
@@ -104,12 +104,11 @@ export function ZonaDialog({
 
           <div className="space-y-2">
             <Label htmlFor="description">Descripción</Label>
-            <Textarea
-              id="description"
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(html) => setDescription(html)}
               placeholder="Descripción opcional de la zona..."
-              rows={2}
+              minHeight={60}
             />
           </div>
 

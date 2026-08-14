@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SearchSelect } from '@/components/ui/search-select';
 import { Loader2, Wifi, Printer as PrinterIcon, Check, Usb } from 'lucide-react';
@@ -524,11 +524,11 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
 
           <div>
             <Label>Notas</Label>
-            <Textarea
+            <RichTextEditor
               value={form.notes || ''}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              onChange={(html) => setForm((f) => ({ ...f, notes: html }))}
               placeholder="Marca, modelo, ubicación, etc."
-              rows={2}
+              minHeight={60}
             />
           </div>
         </div>

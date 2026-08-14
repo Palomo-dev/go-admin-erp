@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Dialog,
   DialogContent,
@@ -321,13 +321,12 @@ export function RegistrarPagoModal({
             <Label htmlFor="notes" className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
               Notas
             </Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
+              onChange={(html) => handleInputChange('notes', html)}
               placeholder="Notas adicionales sobre el pago..."
-              className="text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500 min-h-[60px] sm:min-h-[72px]"
-              rows={3}
+              className="text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder:text-gray-500"
+              minHeight={60}
             />
           </div>
 

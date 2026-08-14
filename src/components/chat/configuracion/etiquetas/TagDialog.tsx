@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Loader2 } from 'lucide-react';
 import { TAG_COLORS, type ConversationTag } from '@/lib/services/inboxConfigService';
 
@@ -104,13 +104,12 @@ export default function TagDialog({
 
           <div className="space-y-2">
             <Label htmlFor="description">Descripción (opcional)</Label>
-            <Textarea
-              id="description"
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(html) => setDescription(html)}
               placeholder="Describe el uso de esta etiqueta..."
-              rows={3}
-              className="bg-white dark:bg-gray-800 resize-none"
+              minHeight={60}
+              className="bg-white dark:bg-gray-800"
             />
           </div>
 

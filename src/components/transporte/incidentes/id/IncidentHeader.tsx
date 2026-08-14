@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -204,7 +205,7 @@ export function IncidentHeader({
 
               {/* Descripción */}
               {incident.description && (
-                <p className="text-gray-700 dark:text-gray-300">{incident.description}</p>
+                <HtmlContentRenderer html={incident.description} className="text-gray-700 dark:text-gray-300" />
               )}
 
               {/* Metadatos */}

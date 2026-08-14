@@ -10,6 +10,7 @@ import { ShoppingCart, Image as ImageIcon, Plus, Receipt } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { supabase } from '@/lib/supabase/config';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import SpaceConsumptionService from '@/lib/services/spaceConsumptionService';
 import type { FolioItem } from '@/lib/services/foliosService';
 
@@ -99,8 +100,8 @@ export function SpaceFolioSummary({ spaceId, onAddConsumption, refreshTrigger }:
 
     let images = product.product_images;
 
-    // Si no hay imágenes y el producto tiene parent_product_id, buscar imágenes del padre
-    if ((!images || images.length === 0) && product.parent_product_id) {
+    // Si no hay imágenes y el producto tiene parent_product, buscar imágenes del padre
+    if ((!images || images.length === 0) && product.parent_product) {
       // Las imágenes del padre se cargan por separado si es necesario
       // Por ahora usamos las imágenes del producto directo
       return null;
@@ -201,7 +202,10 @@ export function SpaceFolioSummary({ spaceId, onAddConsumption, refreshTrigger }:
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
-                            {item.product?.name || item.description}
+                            <HtmlContentRenderer
+                              html={item.product?.name || item.description}
+                              singleLine
+                            />
                           </h4>
                           <span className="font-bold text-sm text-blue-600 dark:text-blue-400 shrink-0">
                             {formatCurrency(Number(item.amount))}

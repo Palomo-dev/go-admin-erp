@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -158,13 +158,11 @@ export function OrderDialog({
           {/* Descripción */}
           <div className="space-y-2">
             <Label htmlFor="description">Descripción *</Label>
-            <Textarea
-              id="description"
+            <RichTextEditor
               placeholder="Describe el problema o trabajo a realizar..."
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              required
+              onChange={(html) => setDescription(html)}
+              minHeight={60}
             />
           </div>
 
@@ -243,12 +241,11 @@ export function OrderDialog({
           {/* Materiales */}
           <div className="space-y-2">
             <Label htmlFor="materials">Materiales Utilizados</Label>
-            <Textarea
-              id="materials"
+            <RichTextEditor
               placeholder="Lista de materiales usados en la reparación..."
               value={materials}
-              onChange={(e) => setMaterials(e.target.value)}
-              rows={2}
+              onChange={(html) => setMaterials(html)}
+              minHeight={60}
             />
           </div>
 

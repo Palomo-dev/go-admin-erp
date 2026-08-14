@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -232,12 +232,11 @@ export function AssignmentForm({
             <Label htmlFor="notes" className="text-gray-700 dark:text-gray-300">
               Notas
             </Label>
-            <Textarea
-              id="notes"
+            <RichTextEditor
               value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
+              onChange={(html) => handleChange('notes', html)}
               placeholder="Notas adicionales sobre la asignación"
-              rows={3}
+              minHeight={60}
               className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
             />
           </div>

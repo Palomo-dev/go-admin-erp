@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -187,12 +187,11 @@ export function AddEventDialog({
 
           <div className="space-y-2">
             <Label htmlFor="description">Descripción / Notas</Label>
-            <Textarea
-              id="description"
+            <RichTextEditor
               placeholder="Detalles adicionales del evento..."
-              value={formData.description}
-              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-              rows={3}
+              value={formData.description || ''}
+              onChange={(html) => setFormData((p) => ({ ...p, description: html }))}
+              minHeight={60}
             />
           </div>
         </div>

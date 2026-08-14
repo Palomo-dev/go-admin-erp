@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -142,14 +144,14 @@ export function DeliveryAttempts({ attempts, isLoading, canRegister, onRegisterA
                       {failureReason?.label || attempt.failure_reason_code}
                     </p>
                     {attempt.failure_reason_text && (
-                      <p className="text-gray-600 mt-1 dark:text-gray-300">{attempt.failure_reason_text}</p>
+                      <HtmlContentRenderer html={attempt.failure_reason_text} className="text-gray-600 mt-1 dark:text-gray-300" />
                     )}
                   </div>
                 )}
                 
                 {attempt.driver_notes && (
                   <p className="text-sm text-gray-600 mt-2 dark:text-gray-300">
-                    <strong>Notas:</strong> {attempt.driver_notes}
+                    <strong>Notas:</strong> <HtmlContentRenderer html={attempt.driver_notes} singleLine />
                   </p>
                 )}
 
@@ -230,11 +232,11 @@ export function DeliveryAttempts({ attempts, isLoading, canRegister, onRegisterA
 
             <div className="space-y-2">
               <Label>Notas del conductor</Label>
-              <Textarea
+              <RichTextEditor
                 value={formData.driver_notes}
-                onChange={(e) => setFormData((p) => ({ ...p, driver_notes: e.target.value }))}
+                onChange={(html) => setFormData((p) => ({ ...p, driver_notes: html }))}
                 placeholder="Observaciones..."
-                rows={2}
+                minHeight={60}
               />
             </div>
           </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -568,11 +568,11 @@ export function ShiftCreateForm({
           {/* Notas */}
           <div className="space-y-2">
             <Label className="text-gray-700 dark:text-gray-300">Notas</Label>
-            <Textarea
+            <RichTextEditor
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(html) => setFormData({ ...formData, notes: html })}
               placeholder="Agregar notas adicionales..."
-              rows={2}
+              minHeight={60}
               className="bg-white dark:bg-gray-900"
             />
           </div>

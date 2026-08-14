@@ -10,8 +10,8 @@ import { supplierService } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
@@ -313,12 +313,11 @@ export function NuevaOrdenCompraForm() {
 
               <div className="space-y-2">
                 <Label className="dark:text-gray-300">Notas</Label>
-                <Textarea
+                <RichTextEditor
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(html) => setNotes(html)}
                   placeholder="Notas adicionales para la orden..."
                   className="dark:bg-gray-900 dark:border-gray-700"
-                  rows={3}
                 />
               </div>
             </CardContent>

@@ -14,6 +14,7 @@ import { loadProductImages, getPublicUrl, ProductImageType } from '@/lib/supabas
 
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface ProductoHeaderProps {
   producto: any;
@@ -429,9 +430,9 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                 <h3 className="mb-1 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Descripción
                 </h3>
-                <p className="text-sm rounded-md p-2 bg-gray-50 dark:bg-gray-800 dark:text-gray-300">
-                  {producto.description}
-                </p>
+                <div className="text-sm rounded-md p-2 bg-gray-50 dark:bg-gray-800 dark:text-gray-300">
+                  <HtmlContentRenderer html={producto.description} />
+                </div>
               </div>
             )}
           </div>

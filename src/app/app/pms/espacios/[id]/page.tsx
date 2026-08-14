@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -710,12 +710,11 @@ export default function SpaceDetailPage() {
 
             <div className="grid gap-2">
               <Label htmlFor="cleaning_notes">Notas (opcional)</Label>
-              <Textarea
-                id="cleaning_notes"
+              <RichTextEditor
                 value={cleaningNotes}
-                onChange={(e) => setCleaningNotes(e.target.value)}
+                onChange={(html) => setCleaningNotes(html)}
                 placeholder="Instrucciones especiales o notas..."
-                rows={3}
+                minHeight={60}
               />
             </div>
           </div>
@@ -783,13 +782,11 @@ export default function SpaceDetailPage() {
               <Label htmlFor="maintenance_notes">
                 Descripción del Problema <span className="text-red-500">*</span>
               </Label>
-              <Textarea
-                id="maintenance_notes"
+              <RichTextEditor
                 value={maintenanceNotes}
-                onChange={(e) => setMaintenanceNotes(e.target.value)}
+                onChange={(html) => setMaintenanceNotes(html)}
                 placeholder="Ej: Reparación de aire acondicionado, cambio de cerraduras, pintura..."
-                rows={4}
-                required
+                minHeight={80}
               />
             </div>
           </div>

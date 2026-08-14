@@ -25,6 +25,7 @@ import { formatCurrency, formatDate } from '@/utils/Utils';
 import Link from 'next/link';
 import Image from 'next/image';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface ProductSupplierRelation {
   id: number;
@@ -212,7 +213,9 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
               {supplier.description && (
                 <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{supplier.description}</p>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <HtmlContentRenderer html={supplier.description} />
+                  </div>
                 </div>
               )}
 
@@ -222,7 +225,9 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                     <FileText className="h-4 w-4 text-gray-500" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Notas</span>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{supplier.notes}</p>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <HtmlContentRenderer html={supplier.notes} />
+                  </div>
                 </div>
               )}
             </CardContent>

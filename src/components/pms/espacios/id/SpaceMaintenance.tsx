@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Wrench, AlertTriangle, Clock, CheckCircle, Play, Pause, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 
 interface MaintenanceOrder {
   id: string;
@@ -122,9 +123,10 @@ export function SpaceMaintenance({ orders, onUpdateStatus }: SpaceMaintenancePro
                     <div className="flex flex-wrap items-start gap-2">
                       <StatusIcon className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {order.description}
-                        </p>
+                        <HtmlContentRenderer
+                          html={order.description}
+                          className="font-medium text-gray-900 dark:text-gray-100"
+                        />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Creada el {format(new Date(order.created_at), 'dd MMM yyyy', { locale: es })}
                         </p>
@@ -227,9 +229,10 @@ export function SpaceMaintenance({ orders, onUpdateStatus }: SpaceMaintenancePro
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {order.description}
-                    </p>
+                    <HtmlContentRenderer
+                      html={order.description}
+                      className="text-sm font-medium text-gray-900 dark:text-gray-100"
+                    />
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {format(new Date(order.created_at), 'dd MMM yyyy', { locale: es })}
                       {order.resolved_at && (

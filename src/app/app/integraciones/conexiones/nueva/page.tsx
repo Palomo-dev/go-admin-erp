@@ -206,7 +206,7 @@ export default function NuevaConexionPage() {
           const existingCreds = await integrationsService.getCredentials(connection.id);
           if (existingCreds.length > 0) {
             // Proveedores con múltiples credenciales separadas (purpose como clave)
-            const multiKeyProviders = ['wompi', 'mercadopago', 'payu', 'stripe', 'paypal', 'sendgrid', 'whatsapp', 'booking', 'expedia'];
+            const multiKeyProviders = ['wompi', 'mercadopago', 'payu', 'stripe', 'paypal', 'sendgrid', 'whatsapp', 'booking', 'expedia', 'bancolombia', 'breb', 'redeban'];
             const providerCode = provider?.code || '';
 
             if (multiKeyProviders.includes(providerCode)) {
@@ -1020,6 +1020,9 @@ export default function NuevaConexionPage() {
           mercadopago: ['mp'],
           stripe: ['card'],
           paypal: ['paypal'],
+          bancolombia: ['bancolombia_qr'],
+          breb: ['breb_qr'],
+          redeban: ['redeban_qr'],
         };
 
         const methodCodes = PROVIDER_PAYMENT_METHODS[wizardData.provider.code] || [];

@@ -61,6 +61,9 @@ const PAYMENT_INTEGRATIONS = [
   { code: 'mercadopago', name: 'Mercado Pago', providerId: 'ef7a28a1-f698-4518-91ed-c15166728bd3' },
   { code: 'stripe', name: 'Stripe', providerId: '7d9abb20-5bbb-410c-b4da-c2231511be34' },
   { code: 'paypal', name: 'PayPal', providerId: '18bee38f-9d27-4360-b2e3-3274bbb0b2d9' },
+  { code: 'bancolombia_qr', name: 'Bancolombia QR', providerId: '4befaa82-4a82-459d-bb9c-f508aa953542' },
+  { code: 'breb_qr', name: 'Bre-B (Mono)', providerId: '487d94de-4273-4b42-a49b-27250ed05fc7' },
+  { code: 'redeban_qr', name: 'Redeban QR', providerId: 'a32ba5c2-064a-4041-b368-c4a2f1f8e4c9' },
 ];
 
 // Esquema de validación

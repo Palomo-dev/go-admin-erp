@@ -373,7 +373,15 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
               organizationId={organizationId}
               items={items}
               taxIncluded={taxIncluded}
-              onTaxIncludedChange={setTaxIncluded}
+              onTaxIncludedChange={(value) => {
+                setTaxIncluded(value);
+                // Actualizar todos los ítems existentes para que usen el nuevo valor
+                const updatedItems = items.map(item => ({
+                  ...item,
+                  tax_included: value
+                }));
+                setItems(updatedItems);
+              }}
               onAppliedTaxesChange={setAppliedTaxes}
               onTaxTotalsChange={setTaxTotals}
               onSubtotalCalculated={setSubtotal}

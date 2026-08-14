@@ -48,7 +48,15 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
   const [isDesktopOpen, setIsDesktopOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+  // Un item está activo si la ruta coincide con su href o con alguno de sus subitems.
+  // Esto es necesario porque algunos módulos tienen href apuntando a una subpágina
+  // específica (ej: /app/inventario/productos), y sin esta verificación el item no
+  // se resaltaría al estar en otra subpágina del mismo módulo (ej: categorías).
+  const isActive = pathname === item.href
+    || pathname?.startsWith(item.href + '/')
+    || (item.submenu?.some(
+      sub => pathname === sub.href || pathname?.startsWith(sub.href + '/')
+    ) ?? false);
   
   // Función para determinar si un subitem está activo usando longest-prefix-match
   const isSubItemActive = (subItemHref: string): boolean => {

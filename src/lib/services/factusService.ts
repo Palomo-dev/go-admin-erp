@@ -146,6 +146,11 @@ export interface FactusNumberingRange {
   is_expired: boolean;
 }
 
+export interface FactusAcquirerResponse {
+  name: string;
+  email: string;
+}
+
 /**
  * Obtiene la URL base según el ambiente
  */
@@ -511,6 +516,48 @@ export async function getUnitMeasures(
 }
 
 /**
+ * Consulta datos de adquiriente en DIAN via Factus
+ * GET /v2/dian/acquirer
+ *
+ * Devuelve nombre y email del adquiriente desde la base oficial de DIAN.
+ * No devuelve telefono, direccion, responsabilidades fiscales, etc.
+ *
+ * Rate limit: 80 req/min por usuario.
+ */
+export async function getAcquirer(
+  environment: 'sandbox' | 'production',
+  accessToken: string,
+  identificationDocumentCode: string,
+  identificationNumber: string
+): Promise<FactusAcquirerResponse> {
+  const baseUrl = getBaseUrl(environment);
+  const url = `${baseUrl}/v2/dian/acquirer?identification_document_code=${encodeURIComponent(identificationDocumentCode)}&identification_number=${encodeURIComponent(identificationNumber)}`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Factus getAcquirer error ${response.status}: ${errorBody}`);
+  }
+
+  const result = await response.json();
+  const data = result?.data;
+  if (!data || (!data.name && !data.email)) {
+    throw new Error('Adquiriente no encontrado en DIAN');
+  }
+
+  return {
+    name: data.name || '',
+    email: data.email || '',
+  };
+}
+
+/**
  * Mapea el tipo de identificación del sistema a código DIAN (string)
  */
 export function mapIdentificationType(type: string | undefined): string {
@@ -651,6 +698,7 @@ const factusService = {
   getNumberingRanges,
   getMunicipalities,
   getUnitMeasures,
+  getAcquirer,
   mapIdentificationType,
   mapDocumentType,
   mapPaymentMethod,

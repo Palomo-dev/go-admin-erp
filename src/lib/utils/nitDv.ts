@@ -84,17 +84,38 @@ export function parsearNit(nitInput: string): { nit: string; dv: string | null }
  */
 export function mapearTipoDocADian(tipoDocInterno: string): string {
   const mapeo: Record<string, string> = {
+    // Codigos internos genericos
     national_id: '13', // Cedula de ciudadania
     tax_id: '31', // NIT
     passport: '41', // Pasaporte
     foreign_id: '42', // Doc identificacion extranjero
     other: '31',
-    // Codigos DIAN directos (si ya vienen numericos)
+    // Codigos DIAN directos (numericos)
     '13': '13',
     '31': '31',
     '41': '41',
     '42': '42',
     '91': '91', // NUIP
+    // Codigos cortos de country_identification_types (COL, minusculas)
+    cc: '13', // Cedula de ciudadania
+    ce: '22', // Cedula de extranjeria
+    ti: '12', // Tarjeta de identidad
+    rc: '11', // Registro civil
+    te: '21', // Tarjeta de extranjeria
+    pep: '47', // PEP
+    nuip: '91', // NUIP
+    die: '42', // Doc identificacion extranjero
+    nit: '31', // NIT
+    nit_ext: '50', // NIT de otro pais
+    // Mayusculas por seguridad
+    CC: '13',
+    CE: '22',
+    TI: '12',
+    NIT: '31',
+    PP: '41',
+    RC: '11',
+    TE: '21',
+    NUIP: '91',
   };
   return mapeo[tipoDocInterno] || '31';
 }

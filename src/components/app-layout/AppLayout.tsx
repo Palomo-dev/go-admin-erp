@@ -420,14 +420,24 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
 // Función para detectar el módulo activo basado en la ruta
 const getActiveModule = (pathname: string | null): NavItemProps | null => {
   if (!pathname) return null;
-  
+
   // Buscar el módulo que coincida con la ruta actual
   for (const navModule of MODULES_WITH_SUBMENU) {
     if (pathname === navModule.href || pathname.startsWith(navModule.href + '/')) {
       return navModule;
     }
+    // Verificar también los items del submenú: algunos módulos tienen href
+    // apuntando a una subpágina específica (ej: /app/inventario/productos),
+    // por lo que la detección por href falla en otras subpáginas (ej: categorías).
+    if (navModule.submenu) {
+      for (const subItem of navModule.submenu) {
+        if (pathname === subItem.href || pathname.startsWith(subItem.href + '/')) {
+          return navModule;
+        }
+      }
+    }
   }
-  
+
   return null;
 };
 

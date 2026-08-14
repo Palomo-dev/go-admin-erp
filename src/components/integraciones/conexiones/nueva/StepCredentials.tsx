@@ -412,6 +412,79 @@ const PROVIDER_CREDENTIAL_OVERRIDES: Record<string, {
       },
     ],
   },
+  bancolombia: {
+    label: 'Bancolombia API directa',
+    description: 'Credenciales del portal de desarrolladores de Bancolombia (sandbox o producción)',
+    helpUrl: 'https://developer-portal-public-sbx.apps.ambientesbc.com',
+    helpText: 'Solicita acceso en el portal sandbox → crea aplicación → obtén client_id y client_secret',
+    fields: [
+      {
+        key: 'client_id',
+        label: 'Client ID',
+        placeholder: 'UUID del portal Bancolombia...',
+        type: 'text',
+        hint: 'ID de la aplicación creada en el portal de desarrolladores',
+      },
+      {
+        key: 'client_secret',
+        label: 'Client Secret',
+        placeholder: '••••••••••••',
+        type: 'password',
+        hint: 'Secreto de la aplicación (solo visible una vez al crearla)',
+      },
+      {
+        key: 'commerce_transfer_button_id',
+        label: 'Commerce Transfer Button ID',
+        placeholder: 'w0mp1B0toN...',
+        type: 'text',
+        hint: 'HASH que identifica el botón de transferencia del comercio',
+      },
+    ],
+  },
+  breb: {
+    label: 'Bre-B vía Mono',
+    description: 'Credenciales de Mono para pagos inmediatos Bre-B',
+    helpUrl: 'https://mi.cuentamono.com',
+    helpText: 'Genera tus credenciales OAuth 2.0 en el dashboard de Mono → API Keys',
+    fields: [
+      {
+        key: 'client_id',
+        label: 'Client ID',
+        placeholder: 'client_id de Mono...',
+        type: 'text',
+        hint: 'ID de la aplicación en Mono (sandbox o producción)',
+      },
+      {
+        key: 'client_secret',
+        label: 'Client Secret',
+        placeholder: '••••••••••••',
+        type: 'password',
+        hint: 'Secreto de la aplicación en Mono',
+      },
+    ],
+  },
+  redeban: {
+    label: 'Redeban Multicolor',
+    description: 'Credenciales del dashboard de Redeban para QR dinámico',
+    helpUrl: 'https://dashboard-stg.redeban.com',
+    helpText: 'Obtén tus credenciales en Dashboard Redeban → Configuración → API',
+    fields: [
+      {
+        key: 'server_app_code',
+        label: 'Server App Code',
+        placeholder: 'Ej: APP_CODE_123...',
+        type: 'text',
+        hint: 'Código de aplicación del servidor (nunca en frontend)',
+      },
+      {
+        key: 'server_app_key',
+        label: 'Server App Key',
+        placeholder: '••••••••••••',
+        type: 'password',
+        hint: 'Llave secreta del servidor para generar Auth-Token',
+      },
+    ],
+  },
 };
 
 const PURPOSE_OPTIONS = [

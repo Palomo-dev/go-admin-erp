@@ -20,6 +20,9 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cashapp: 'Cash App',
   '001': 'Sistecredito',
   '002': 'P. QR',
+  bancolombia_qr: 'Bancolombia QR',
+  breb_qr: 'Bre-B (Pago Inmediato)',
+  redeban_qr: 'Redeban QR',
   mixed: 'Mixto',
   other: 'Otros',
 };

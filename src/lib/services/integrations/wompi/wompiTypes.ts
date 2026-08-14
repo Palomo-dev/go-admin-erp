@@ -121,12 +121,19 @@ export interface WompiDaviplataPaymentMethod {
   payment_description: string;
 }
 
+export interface WompiBancolombiaQrPaymentMethod {
+  type: 'BANCOLOMBIA_QR';
+  payment_description: string;
+  sandbox_status?: 'APPROVED' | 'DECLINED' | 'ERROR';
+}
+
 export type WompiPaymentMethod =
   | WompiCardPaymentMethod
   | WompiNequiPaymentMethod
   | WompiPSEPaymentMethod
   | WompiBancolombiaTransferPaymentMethod
-  | WompiDaviplataPaymentMethod;
+  | WompiDaviplataPaymentMethod
+  | WompiBancolombiaQrPaymentMethod;
 
 // --- Crear transacción ---
 

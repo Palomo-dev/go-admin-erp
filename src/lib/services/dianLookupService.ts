@@ -1,22 +1,25 @@
 /**
- * Servicio de consulta DIAN/RUES con soporte multi-proveedor (Verifik + CoreSoft)
+ * Servicio de consulta DIAN/RUES con soporte multi-proveedor (Verifik + CoreSoft + Factus)
  * y cache en Supabase (tabla dian_lookup_cache, TTL 24h).
  *
  * Proveedores soportados:
  * - Verifik: https://docs.verifik.co (firma digital, RUES completo)
  * - CoreSoft: https://coresoft.solutions/api-rut.html (plan unico DIAN+RUES)
+ * - Factus: https://developers.factus.com.co (endpoint adquirientes DIAN, nombre + email)
  *
  * Variables de entorno requeridas:
  * - DIAN_PROVIDER: "verifik" | "coresoft" (default: "verifik")
  * - VERIFIK_TOKEN: Bearer token de Verifik
  * - CORESOFT_API_KEY: API key de CoreSoft
+ * - FACTUS_CLIENT_ID, FACTUS_CLIENT_SECRET, FACTUS_USERNAME, FACTUS_PASSWORD, FACTUS_ENVIRONMENT
  *
  * Flujo:
  * 1. Validar DV localmente (modulo 11) antes de consultar API
  * 2. Verificar cache en dian_lookup_cache (TTL 24h)
  * 3. Si no hay cache, consultar proveedor primario
  * 4. Si falla, intentar proveedor secundario (fallback)
- * 5. Normalizar respuesta y guardar en cache
+ * 5. Si falla, intentar Factus como ultimo fallback (nombre + email)
+ * 6. Normalizar respuesta y guardar en cache
  */
 
 import { supabase } from '@/lib/supabase/config';
@@ -73,18 +76,21 @@ export interface DianNormalizedData {
   metadata?: Record<string, unknown>;
 }
 
-type Provider = 'verifik' | 'coresoft';
+type Provider = 'verifik' | 'coresoft' | 'factus';
 
 // ============ Configuracion ============
 
 function getProvider(): Provider {
   const p = process.env.DIAN_PROVIDER?.toLowerCase();
-  return p === 'coresoft' ? 'coresoft' : 'verifik';
+  if (p === 'coresoft') return 'coresoft';
+  if (p === 'factus') return 'factus';
+  return 'verifik';
 }
 
 function getProviderToken(provider: Provider): string | null {
   if (provider === 'verifik') return process.env.VERIFIK_TOKEN || null;
   if (provider === 'coresoft') return process.env.CORESOFT_API_KEY || null;
+  if (provider === 'factus') return process.env.FACTUS_CLIENT_ID || null; // truthy si hay credenciales
   return null;
 }
 
@@ -373,6 +379,60 @@ function normalizarCoreSoft(
   return result;
 }
 
+/**
+ * Consulta Factus: endpoint de adquirientes DIAN
+ * Endpoint: GET https://api{,-sandbox}.factus.com.co/v2/dian/acquirer
+ *
+ * Devuelve solo nombre y email desde la base oficial de DIAN.
+ * No devuelve telefono, direccion, responsabilidades, regimen, CIIU, RUES.
+ * Es el unico proveedor que entrega email para personas naturales.
+ */
+async function consultarFactus(
+  documentType: string,
+  documentNumber: string
+): Promise<{ data: DianNormalizedData; raw: Record<string, unknown> }> {
+  // Importacion dinamica para evitar dependencia circular con factusTokenManager
+  const { getValidToken, getCredentials } = await import('@/lib/services/factusTokenManager');
+  const factusServiceModule = await import('@/lib/services/factusService');
+
+  const credentials = getCredentials();
+  if (!credentials) throw new Error('Credenciales de Factus no configuradas');
+
+  const accessToken = await getValidToken();
+  if (!accessToken) throw new Error('No se pudo obtener token de Factus');
+
+  const acquirerData = await factusServiceModule.default.getAcquirer(
+    credentials.environment,
+    accessToken,
+    documentType,
+    documentNumber
+  );
+
+  const normalized = normalizarFactus(acquirerData, documentType, documentNumber);
+  return { data: normalized, raw: { acquirer: acquirerData } };
+}
+
+function normalizarFactus(
+  acquirerData: { name: string; email: string },
+  documentType: string,
+  documentNumber: string
+): DianNormalizedData {
+  const result: DianNormalizedData = {
+    documentType,
+    documentNumber,
+    name: acquirerData.name || undefined,
+    email: acquirerData.email || undefined,
+  };
+
+  // Calcular DV si es NIT
+  if (documentType === '31') {
+    const dv = calcularDv(documentNumber);
+    if (dv !== null) result.dv = String(dv);
+  }
+
+  return result;
+}
+
 // ============ API publica ============
 
 /**
@@ -387,7 +447,6 @@ export async function consultarDian(req: DianLookupRequest): Promise<DianLookupR
   }
 
   const providerPrimario = getProvider();
-  const providerSecundario: Provider = providerPrimario === 'verifik' ? 'coresoft' : 'verifik';
 
   // 1. Verificar cache del proveedor primario
   const cached = await getFromCache(documentType, documentNumber, providerPrimario);
@@ -395,8 +454,12 @@ export async function consultarDian(req: DianLookupRequest): Promise<DianLookupR
     return { success: true, provider: providerPrimario, fromCache: true, data: cached.data, rawResponse: cached.rawResponse };
   }
 
-  // 2. Consultar proveedor primario, con fallback al secundario
-  const providers: Provider[] = [providerPrimario, providerSecundario];
+  // 2. Consultar proveedores en orden, sin duplicar el primario
+  const todosProveedores: Provider[] = ['verifik', 'coresoft', 'factus'];
+  const providers: Provider[] = [
+    providerPrimario,
+    ...todosProveedores.filter(p => p !== providerPrimario),
+  ];
   let ultimoError = '';
 
   for (const provider of providers) {
@@ -405,8 +468,10 @@ export async function consultarDian(req: DianLookupRequest): Promise<DianLookupR
       let resultado: { data: DianNormalizedData; raw: Record<string, unknown> };
       if (provider === 'verifik') {
         resultado = await consultarVerifik(documentType, documentNumber);
-      } else {
+      } else if (provider === 'coresoft') {
         resultado = await consultarCoreSoft(documentType, documentNumber);
+      } else {
+        resultado = await consultarFactus(documentType, documentNumber);
       }
 
       // 3. Guardar en cache
@@ -433,7 +498,7 @@ export async function consultarDian(req: DianLookupRequest): Promise<DianLookupR
     provider: '',
     fromCache: false,
     data: {} as DianNormalizedData,
-    error: ultimoError || 'No se pudo consultar DIAN/RUES. Verifique configuracion de API keys.',
+    error: ultimoError || 'No se pudo consultar DIAN/RUES. Verifique configuracion de API keys (Verifik, CoreSoft, Factus).',
   };
 }
 

@@ -218,7 +218,43 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       loadDrivers();
     }
   }, [open]);
-  
+
+  // Limpiar estados de éxito/recibo cuando el dialog se cierra.
+  // Sin esto, al reabrir el dialog para una nueva venta se mostraba la
+  // pantalla de "Venta Completada" de la venta anterior (showReceipt/completedSale
+  // persistían) y el carrito no se reiniciaba correctamente.
+  useEffect(() => {
+    if (!open) {
+      setShowReceipt(false);
+      setCompletedSale(null);
+      setSendToFactus(false);
+      setElectronicInvoiceData(null);
+      setPayments([]);
+      setSerialSelections({});
+      setTipAmount(0);
+      setTipPercentage(null);
+      setServerId('');
+      setSalespersonId('');
+      setCommissionRate(0);
+      setCommissionType('salesperson');
+      setCommissionMethod('percentage');
+      setDeliveryType('pickup');
+      setDeliveryAddress('');
+      setDeliveryCity('');
+      setDeliveryContactName('');
+      setDeliveryContactPhone('');
+      setDeliveryInstructions('');
+      setSelectedDriverId('');
+      setAddressSearch('');
+      setAddressResults([]);
+      setShowAddressDropdown(false);
+      setShippingRates([]);
+      setSelectedRateId('');
+      setShippingFee(0);
+      setShipmentPaymentStatus('paid');
+    }
+  }, [open]);
+
   // Auto-llenar dirección del cliente al seleccionar delivery_own
   useEffect(() => {
     if (deliveryType !== 'delivery_own') return;

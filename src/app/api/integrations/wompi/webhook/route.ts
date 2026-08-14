@@ -196,6 +196,24 @@ async function processTransactionUpdate(
     })
     .eq('id', payment.id);
 
+  // Si es BANCOLOMBIA_QR y fue aprobado, actualizar payment_qr_sessions
+  if (status === 'APPROVED' && event.data.transaction.payment_method_type === 'BANCOLOMBIA_QR') {
+    try {
+      await getSupabaseAdmin()
+        .from('payment_qr_sessions')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          external_payment_id: transactionId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('reference', reference)
+        .eq('provider_code', 'wompi');
+    } catch (qrErr) {
+      console.error('[Wompi Webhook] Error actualizando payment_qr_sessions:', qrErr);
+    }
+  }
+
   // Marcar evento como procesado
   await getSupabaseAdmin()
     .from('integration_events')

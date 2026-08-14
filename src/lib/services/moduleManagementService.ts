@@ -555,13 +555,21 @@ export const moduleManagementService = {
   /**
    * Obtener páginas activas de módulos para una organización
    * Retorna un mapa: module_code -> Set de page_href activos
+   *
+   * IMPORTANTE: si un módulo tiene registros en organization_module_pages
+   * (aunque sean todos is_active=false), debe aparecer en el resultado con
+   * un array (posiblemente vacío). Esto permite que isPageActive distinga:
+   *   - undefined  → módulo sin registros → todas activas por defecto
+   *   - []         → módulo con registros pero todas inactivas
+   *   - ['a','b']  → solo 'a' y 'b' activas
    */
   async getActiveModulePages(organizationId: number, supabaseClient = supabase): Promise<Record<string, string[]>> {
+    // Consultar TODOS los registros (activos e inactivos) para saber qué
+    // módulos tienen registros. Luego incluir solo las páginas activas.
     const { data, error } = await supabaseClient
       .from('organization_module_pages')
-      .select('module_code, page_href')
-      .eq('organization_id', organizationId)
-      .eq('is_active', true);
+      .select('module_code, page_href, is_active')
+      .eq('organization_id', organizationId);
 
     if (error) {
       console.error('Error getting active module pages:', error);
@@ -570,8 +578,12 @@ export const moduleManagementService = {
 
     const result: Record<string, string[]> = {};
     for (const row of data || []) {
+      // Asegurar que el módulo aparezca en el resultado (incluso si array vacío)
       if (!result[row.module_code]) result[row.module_code] = [];
-      result[row.module_code].push(row.page_href);
+      // Solo incluir las páginas activas
+      if (row.is_active) {
+        result[row.module_code].push(row.page_href);
+      }
     }
     return result;
   },
@@ -631,7 +643,13 @@ export const moduleManagementService = {
   },
 
   /**
-   * Toggle individual de una página/submódulo
+   * Toggle individual de una página/submódulo.
+   *
+   * Al hacer toggle de una página, se consultan los estados actuales de todas
+   * las páginas del módulo y se hace upsert de todas, manteniendo el estado
+   * de las demás y cambiando solo la página objetivo. Esto asegura que el
+   * mapa de páginas activas siempre tenga registros completos y
+   * getActiveModulePages funcione correctamente.
    */
   async toggleModulePage(
     organizationId: number,
@@ -642,56 +660,42 @@ export const moduleManagementService = {
     supabaseClient = supabase
   ): Promise<ModulePageToggleResult> {
     try {
-      // Verificar si ya existen registros para este módulo en la organización
-      const { data: existingRows, error: checkError } = await supabaseClient
+      // 1. Consultar el estado actual de todas las páginas del módulo
+      const { data: existingPages } = await supabaseClient
         .from('organization_module_pages')
-        .select('page_href')
+        .select('page_href, page_name, is_active')
         .eq('organization_id', organizationId)
         .eq('module_code', moduleCode);
 
-      if (checkError) throw checkError;
-
-      // Si no hay registros previos, inicializar todas las páginas del módulo como activas
-      if (!existingRows || existingRows.length === 0) {
-        const modulePagesList = MODULE_PAGES[moduleCode] || [];
-        if (modulePagesList.length > 0) {
-          const rows = modulePagesList.map(page => ({
-            organization_id: organizationId,
-            module_code: moduleCode,
-            page_href: page.href,
-            page_name: page.name,
-            is_active: page.href !== pageHref ? true : isActive,
-            enabled_at: page.href !== pageHref ? new Date().toISOString() : (isActive ? new Date().toISOString() : null),
-            disabled_at: page.href === pageHref && !isActive ? new Date().toISOString() : null,
-          }));
-
-          const { error: insertError } = await supabaseClient
-            .from('organization_module_pages')
-            .upsert(rows, {
-              onConflict: 'organization_id,module_code,page_href',
-            });
-
-          if (insertError) throw insertError;
-
-          return {
-            success: true,
-            message: isActive ? 'Página activada' : 'Página desactivada',
-          };
-        }
+      // 2. Construir el mapa de estados actuales
+      const currentState = new Map<string, { page_name: string; is_active: boolean }>();
+      for (const row of existingPages || []) {
+        currentState.set(row.page_href, { page_name: row.page_name, is_active: row.is_active });
       }
 
-      // Si ya existen registros, hacer toggle normal de la página individual
-      const { error } = await supabaseClient
-        .from('organization_module_pages')
-        .upsert({
+      // 3. Construir las filas para upsert: todas las páginas conocidas del módulo
+      const knownPages = MODULE_PAGES[moduleCode] || [];
+      const now = new Date().toISOString();
+      const rows = knownPages.map(page => {
+        const isTargetPage = page.href === pageHref;
+        const current = currentState.get(page.href);
+        // La página objetivo usa el nuevo estado; las demás mantienen su estado actual
+        const finalIsActive = isTargetPage ? isActive : (current ? current.is_active : true);
+        return {
           organization_id: organizationId,
           module_code: moduleCode,
-          page_href: pageHref,
-          page_name: pageName,
-          is_active: isActive,
-          enabled_at: isActive ? new Date().toISOString() : null,
-          disabled_at: !isActive ? new Date().toISOString() : null,
-        }, {
+          page_href: page.href,
+          page_name: page.name,
+          is_active: finalIsActive,
+          enabled_at: finalIsActive ? now : null,
+          disabled_at: !finalIsActive ? now : null,
+        };
+      });
+
+      // 4. Upsert de todas las páginas
+      const { error } = await supabaseClient
+        .from('organization_module_pages')
+        .upsert(rows, {
           onConflict: 'organization_id,module_code,page_href',
         });
 

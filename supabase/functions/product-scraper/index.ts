@@ -502,6 +502,41 @@ function shopifyProductToScraped(p: any, origin: string): ScrapedProduct {
   };
 }
 
+// WooCommerce (Store API pública): convierte un producto crudo de /wp-json/wc/store/products al formato ScrapedProduct
+function woocommerceProductToScraped(p: any, origin: string): ScrapedProduct {
+  const prices = p.prices || {};
+  const minorUnit = typeof prices.currency_minor_unit === "number" ? prices.currency_minor_unit : 0;
+  const divisor = Math.pow(10, minorUnit);
+  const price = prices.price ? parsePrice(parseInt(prices.price, 10) / divisor) : null;
+  const regular = prices.regular_price ? parsePrice(parseInt(prices.regular_price, 10) / divisor) : null;
+  const shortDesc = htmlToPlain(p.short_description || "");
+  const longDesc = htmlToPlain(p.description || "");
+  const description = shortDesc.length >= longDesc.length ? shortDesc : longDesc;
+  const images: string[] = Array.isArray(p.images)
+    ? p.images.map((im: any) => im?.src).filter((s: any): s is string => !!s)
+    : [];
+  const tags: string[] = Array.isArray(p.tags)
+    ? p.tags.map((t: any) => t?.name).filter((s: any): s is string => !!s).slice(0, 10)
+    : [];
+  const variants = (p.attributes || [])
+    .filter((a: any) => a?.variation === true && a?.name && Array.isArray(a.options) && a.options.length > 0)
+    .map((a: any) => ({ name: a.name, values: a.options }));
+  return {
+    name: p.name,
+    description: description || undefined,
+    price: price || undefined,
+    compare_price: regular && price && regular > price ? regular : undefined,
+    sku: p.sku || undefined,
+    brand: Array.isArray(p.brands) && p.brands[0]?.name ? p.brands[0].name : undefined,
+    category: Array.isArray(p.categories) && p.categories[0]?.name ? p.categories[0].name : undefined,
+    tags: tags.length ? tags : undefined,
+    images,
+    stock: p.is_in_stock ? 1 : 0,
+    variants: variants.length ? variants : undefined,
+    url: p.permalink || undefined,
+  };
+}
+
 // Shopify: /collections/<handle>/products.json?limit=250&page=N (catálogo completo)
 // Paginación paralela por lotes para acelerar la descarga de catálogos grandes (4000+ productos)
 async function fetchShopifyCatalog(url: string): Promise<ScrapedProduct[] | null> {
@@ -552,6 +587,67 @@ async function fetchShopifyCatalog(url: string): Promise<ScrapedProduct[] | null
         break;
       }
     }
+  }
+  return out.length ? out : null;
+}
+
+// WooCommerce: /wp-json/wc/store/products?per_page=100&page=N (Store API pública, sin auth)
+// Paginación paralela por lotes usando el header X-WP-TotalPages
+async function fetchWooCommerceCatalog(url: string): Promise<ScrapedProduct[] | null> {
+  let origin = "";
+  try {
+    const u = new URL(url);
+    origin = u.origin;
+  } catch (_) { return null; }
+
+  const base = `${origin}/wp-json/wc/store/products`;
+  const headers = { ...BROWSER_HEADERS, "Accept": "application/json" };
+
+  // Primera página: detecta si es WooCommerce y lee el total de páginas
+  let totalPages = 1;
+  let firstBatch: any[] = [];
+  try {
+    const res = await fetch(`${base}?per_page=100&page=1`, { headers });
+    if (!res.ok) return null;
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("json")) return null;
+    const data = await res.json();
+    if (!Array.isArray(data)) return null;
+    firstBatch = data;
+    const tpHeader = res.headers.get("X-WP-TotalPages") || res.headers.get("x-wp-totalpages");
+    if (tpHeader) totalPages = Math.min(Number(tpHeader) || 1, 50);
+  } catch (_) { return null; }
+
+  const out: ScrapedProduct[] = firstBatch.map((p) => woocommerceProductToScraped(p, origin));
+  if (firstBatch.length === 0) return null;
+
+  // Paginación paralela por lotes de 5 (a partir de la página 2)
+  const MAX_PAGES = totalPages;
+  const PARALLEL_BATCH = 5;
+  for (let startPage = 2; startPage <= MAX_PAGES; startPage += PARALLEL_BATCH) {
+    const pagesToFetch: number[] = [];
+    for (let pg = startPage; pg < startPage + PARALLEL_BATCH && pg <= MAX_PAGES; pg++) {
+      pagesToFetch.push(pg);
+    }
+    const batchResults = await Promise.all(
+      pagesToFetch.map(async (page): Promise<ScrapedProduct[]> => {
+        try {
+          const res = await fetch(`${base}?per_page=100&page=${page}`, { headers });
+          if (!res.ok) return [];
+          const ct = res.headers.get("content-type") || "";
+          if (!ct.includes("json")) return [];
+          const data = await res.json();
+          if (!Array.isArray(data)) return [];
+          return data.map((p) => woocommerceProductToScraped(p, origin));
+        } catch (_) { return []; }
+      })
+    );
+    let empty = true;
+    for (const prods of batchResults) {
+      if (prods.length > 0) empty = false;
+      out.push(...prods);
+    }
+    if (empty) break;
   }
   return out.length ? out : null;
 }
@@ -838,6 +934,8 @@ async function fetchAlgoliaCatalog(url: string): Promise<ScrapedProduct[] | null
 async function fetchNativeCatalog(url: string): Promise<ScrapedProduct[] | null> {
   const shopify = await fetchShopifyCatalog(url);
   if (shopify && shopify.length) return shopify;
+  const woo = await fetchWooCommerceCatalog(url);
+  if (woo && woo.length) return woo;
   const vtex = await fetchVtexCatalog(url);
   if (vtex && vtex.length) return vtex;
   const algolia = await fetchAlgoliaCatalog(url);
@@ -1173,11 +1271,36 @@ async function enrichShopifyProduct(url: string): Promise<ScrapedProduct | null>
   } catch (_) { return null; }
 }
 
+// WooCommerce: si la URL es /producto/{slug} o /product/{slug}, consulta la Store API por slug
+async function enrichWooCommerceProduct(url: string): Promise<ScrapedProduct | null> {
+  try {
+    const u = new URL(url);
+    const slugMatch = u.pathname.match(/\/(?:producto|product)\/([^/]+)/);
+    if (!slugMatch) return null;
+    const slug = slugMatch[1];
+    const res = await fetch(`${u.origin}/wp-json/wc/store/products?slug=${encodeURIComponent(slug)}`, {
+      headers: { ...BROWSER_HEADERS, "Accept": "application/json" },
+    });
+    if (!res.ok) return null;
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.includes("json")) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return woocommerceProductToScraped(data[0], u.origin);
+  } catch (_) { return null; }
+}
+
 async function enrichProduct(url: string): Promise<ScrapedProduct | null> {
   // 1) Intentar endpoint nativo de Shopify primero (galería completa exacta)
   const shopifyData = await enrichShopifyProduct(url);
   if (shopifyData && (shopifyData.images?.length || 0) > 0) {
     return normalizePrices(shopifyData);
+  }
+
+  // 1b) Intentar endpoint nativo de WooCommerce (Store API por slug)
+  const wooData = await enrichWooCommerceProduct(url);
+  if (wooData && (wooData.images?.length || 0) > 0) {
+    return normalizePrices(wooData);
   }
 
   // 2) Fallback: scraping del HTML/markdown con IA

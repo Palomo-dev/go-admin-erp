@@ -10,13 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ToastAction } from '@/components/ui/toast';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast, toastSuccess, toastError } from '@/components/ui/use-toast';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { MergeModal } from './MergeModal';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 import LocationSelector, { type LocationData } from '@/components/common/LocationSelector';
 import { cn } from '@/utils/Utils';
-import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera, ChevronDown } from 'lucide-react';
+import { User, Mail, Phone, MapPin, FileText, Tag, Building2, CreditCard, Users, Loader2, Save, X, Check, Camera, ChevronDown, Search } from 'lucide-react';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { HabeasDataCheckbox } from '@/components/shared/DianLookupButton';
@@ -120,7 +120,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const [pendingContacts, setPendingContacts] = useState<any[]>([]);
 
   // Autorizacion de tratamiento de datos (Habeas Data - Ley 1581/2012)
-  const [habeasDataAuth, setHabeasDataAuth] = useState(false);
+  const [habeasDataAuth, setHabeasDataAuth] = useState(true);
 
   const [openSections, setOpenSections] = useState({
     personal: true,
@@ -369,9 +369,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
       const json = await res.json();
       if (json.success && json.data) {
         handleDianResult(json.data);
+        const cacheLabel = json.fromCache ? ' (cache)' : '';
+        toastSuccess('Autocompletado', `Datos obtenidos desde DIAN${cacheLabel}`);
+      } else if (json.error) {
+        toastError('Sin resultados', json.error);
       }
     } catch (err) {
       console.error('Error consulta DIAN:', err);
+      toastError('Error', 'No se pudo consultar DIAN');
     } finally {
       setConsultandoDian(false);
     }
@@ -988,14 +993,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                         size="icon"
                         onClick={() => consultarDocumento()}
                         disabled={!habeasDataAuth || consultandoDian || !formData.documentNumber || formData.documentNumber.length < 4}
-                        className="h-10 w-10 shrink-0"
+                        className="h-10 w-10 shrink-0 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-40 disabled:bg-gray-50 dark:disabled:bg-gray-900 disabled:border-gray-200 dark:disabled:border-gray-700 disabled:text-gray-400"
                         title="Consultar DIAN/RUES"
                         aria-label="Consultar DIAN/RUES"
                       >
                         {consultandoDian ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Building2 className="h-4 w-4" />
+                          <Search className="h-4 w-4" />
                         )}
                       </Button>
                     </div>

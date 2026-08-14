@@ -161,7 +161,9 @@ export default function CajasPage() {
     loadActiveSessions();
     loadOpenSessionsCount();
     loadHistory();
-    setActiveSession(null);
+    // Recargar la sesión activa desde Supabase en lugar de asumir null,
+    // ya que podría existir otra caja abierta (global o de otra sucursal).
+    loadActiveSession();
     setRefreshTrigger(prev => prev + 1);
     toast.success('Caja cerrada exitosamente', {
       description: showExpected ? `Diferencia: ${formatCurrency(Math.abs(session.difference || 0))}` : 'Caja cerrada'

@@ -47,3 +47,6 @@ check-*.ps1
 build-electron.ps1
 fix-imports.ps1
 test-endpoints.ps1
+
+# Supabase CLI temp files
+supabase/.temp/

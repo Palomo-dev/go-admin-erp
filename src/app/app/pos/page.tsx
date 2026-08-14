@@ -596,6 +596,7 @@ export default function POSPage() {
         {/* Dialog de checkout */}
         {checkoutCart && (
           <CheckoutDialog
+            key={checkoutCart.id}
             cart={checkoutCart}
             open={showCheckout}
             onOpenChange={setShowCheckout}

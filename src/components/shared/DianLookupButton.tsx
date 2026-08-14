@@ -68,7 +68,10 @@ export function DianLookupButton({
         return;
       }
 
-      const providerLabel = data.provider === 'verifik' ? 'Verifik' : 'CoreSoft';
+      const providerLabel = data.provider === 'verifik' ? 'Verifik'
+        : data.provider === 'coresoft' ? 'CoreSoft'
+        : data.provider === 'factus' ? 'Factus'
+        : data.provider;
       const cacheLabel = data.fromCache ? ' (cache)' : '';
       toast.success(`Datos obtenidos desde ${providerLabel}${cacheLabel}`);
 

@@ -1578,6 +1578,316 @@ Configurar las mismas variables en **Vercel Dashboard → Settings → Environme
 
 ---
 
+## Endpoint de Adquirientes - Autocompletado de Clientes (2026-08-14)
+
+### Resumen
+
+Factus expone un endpoint que consulta la base oficial de la DIAN para devolver el **nombre** y **correo electrónico** de un adquiriente a partir de su tipo y número de documento. Como ya pagamos por Factus para facturación electrónica, podemos reutilizar este endpoint para autocompletar clientes sin contratar un proveedor adicional.
+
+### Endpoint oficial (v2)
+
+```
+GET /v2/dian/acquirer
+```
+
+- **Sandbox**: `https://api-sandbox.factus.com.co/v2/dian/acquirer`
+- **Producción**: `https://api.factus.com.co/v2/dian/acquirer`
+
+### Parámetros (query string)
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| `identification_document_code` | string | Código DIAN del tipo de documento (`13`=CC, `31`=NIT, `41`=Pasaporte, etc.) |
+| `identification_number` | string | Número de documento sin DV ni guiones |
+
+Ejemplo:
+```
+GET /v2/dian/acquirer?identification_document_code=13&identification_number=1399995
+Authorization: Bearer {access_token}
+Accept: application/json
+```
+
+### Respuesta (HTTP 200)
+
+```json
+{
+  "status": "OK",
+  "message": "Solicitud exitosa",
+  "data": {
+    "name": "Nombre Cédula de ciudadanía 5",
+    "email": "Mail_Cédula de ciudadanía[email protected]"
+  }
+}
+```
+
+**Campos devueltos:**
+- `data.name` — Nombre o razón social del adquiriente
+- `data.email` — Correo electrónico registrado en DIAN
+
+### ⚠️ Limitaciones importantes
+
+El endpoint **SOLO devuelve nombre y email**. NO devuelve:
+- ❌ Teléfono
+- ❌ Dirección física
+- ❌ Responsabilidades fiscales (O-13, O-15, O-23, etc.)
+- ❌ Régimen tributario
+- ❌ CIIU / actividad económica
+- ❌ Municipio
+- ❌ Dígito de verificación (DV)
+- ❌ Datos RUES (representantes, establecimientos, matrícula)
+
+### Datos de prueba (sandbox)
+
+| Tipo doc | Número | Nombre | Email |
+|----------|--------|--------|-------|
+| 11 | 1199991 | Nombre Registro civil 1 | Mail_Registro[email protected] |
+| 12 | 1299991 | Nombre Tarjeta de identidad 1 | Mail_Tarjeta de[email protected] |
+| 13 | 1399991 | Nombre Cédula de ciudadanía 1 | Mail_Cédula de ciudadanía[email protected] |
+| 13 | 1399995 | Nombre Cédula de ciudadanía 5 | Mail_Cédula de ciudadanía[email protected] |
+| 31 | 1699991 | Nombre NIT 1 | Mail_NIT[email protected] |
+
+### Autenticación
+
+Requiere token OAuth2 de Factus (mismo token que se usa para facturación). El `factusTokenManager.ts` ya centraliza la gestión del token:
+
+```typescript
+import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
+
+const token = await getValidToken();
+const credentials = getCredentials();
+```
+
+El token dura 1 hora y se refresca automáticamente.
+
+### Rate limit
+
+- **80 solicitudes por minuto** por usuario
+- Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`
+- Error al exceder: HTTP 429 (Too Many Requests)
+
+### Códigos de error
+
+| Código | Significado | Acción |
+|--------|-------------|--------|
+| 200 | OK | Procesar respuesta |
+| 401 | Token inválido/expirado | Refrescar token |
+| 404 | Adquiriente no encontrado | Mostrar "no encontrado" al usuario |
+| 422 | Parámetros inválidos | Validar tipo/número de documento |
+| 429 | Rate limit excedido | Esperar `Retry-After` segundos |
+| 500 | Error interno Factus | Reintentar o usar fallback |
+
+### Diferencia v1 vs v2
+
+| Aspecto | v1 | v2 |
+|---------|----|----|
+| Parámetro | `identification_document_id` (int) | `identification_document_code` (string) |
+| Valores | IDs numéricos (1, 2, 3...) | Códigos DIAN (11, 12, 13, 31...) |
+
+**El código actual ya usa v2** (`mapIdentificationType` devuelve códigos string como `'13'`, `'31'`).
+
+### Restricciones de uso (DIAN)
+
+Según la documentación de DIAN, los datos obtenidos solo pueden usarse para:
+- Emisión de Factura Electrónica de Venta (FEV)
+- Documento Equivalente Electrónico (DEE)
+
+No hay prohibición explícita para autocompletar clientes en el CRM, pero el uso debe ser razonable y relacionado con facturación. El rate limit de 80 req/min gestiona el abuso.
+
+### ¿Consume créditos del plan?
+
+⚠️ **No documentado públicamente.** La documentación de Factus no especifica si este endpoint consume créditos. Recomendación: contactar a Factus para confirmar, y monitorear el consumo después de las primeras consultas.
+
+### Plan de implementación
+
+#### Fase 1: Agregar método a `factusService.ts`
+
+```typescript
+export interface FactusAcquirerResponse {
+  name: string;
+  email: string;
+}
+
+/**
+ * Consulta datos de adquiriente en DIAN via Factus
+ * GET /v2/dian/acquirer
+ */
+export async function getAcquirer(
+  environment: 'sandbox' | 'production',
+  accessToken: string,
+  identificationDocumentCode: string,
+  identificationNumber: string
+): Promise<FactusAcquirerResponse> {
+  const baseUrl = getBaseUrl(environment);
+  const url = `${baseUrl}/v2/dian/acquirer?identification_document_code=${identificationDocumentCode}&identification_number=${identificationNumber}`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Factus getAcquirer ${response.status}: ${errorBody}`);
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+```
+
+Agregar al objeto `factusService`:
+```typescript
+const factusService = {
+  // ... métodos existentes
+  getAcquirer,
+};
+```
+
+#### Fase 2: Crear API route dedicada
+
+**Archivo nuevo**: `src/app/api/factus/acquirer/route.ts`
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { getValidToken, getCredentials } from '@/lib/services/factusTokenManager';
+import factusService from '@/lib/services/factusService';
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const documentType = searchParams.get('documentType'); // "13", "31", etc.
+  const documentNumber = searchParams.get('documentNumber');
+
+  if (!documentType || !documentNumber) {
+    return NextResponse.json(
+      { error: 'documentType y documentNumber son requeridos' },
+      { status: 400 }
+    );
+  }
+
+  const credentials = getCredentials();
+  if (!credentials) {
+    return NextResponse.json(
+      { error: 'Credenciales de Factus no configuradas' },
+      { status: 500 }
+    );
+  }
+
+  const accessToken = await getValidToken();
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: 'No se pudo obtener token de Factus' },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const data = await factusService.getAcquirer(
+      credentials.environment,
+      accessToken,
+      documentType,
+      documentNumber
+    );
+
+    return NextResponse.json({
+      success: true,
+      provider: 'factus',
+      data,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+```
+
+#### Fase 3: Integrar en `dianLookupService.ts` como proveedor terciario
+
+Agregar `'factus'` al tipo `Provider` e implementar la consulta:
+
+```typescript
+type Provider = 'verifik' | 'coresoft' | 'factus';
+
+// En el flujo de fallback:
+// 1. Verifik (primario) - RUES completo, responsabilidades fiscales
+// 2. CoreSoft (fallback 1) - régimen, teléfono, dirección
+// 3. Factus (fallback 2) - nombre + email (gratis si ya se paga facturación)
+```
+
+#### Fase 4: Variables de entorno
+
+No requiere variables nuevas. Ya están configuradas:
+```env
+FACTUS_CLIENT_ID=...
+FACTUS_CLIENT_SECRET=...
+FACTUS_USERNAME=...
+FACTUS_PASSWORD=...
+FACTUS_ENVIRONMENT=sandbox
+```
+
+### Comparativa: Factus vs Verifik vs CoreSoft para autocompletado
+
+| Dato | Verifik | CoreSoft | Factus |
+|------|---------|----------|--------|
+| Nombre/razón social | ✅ | ✅ | ✅ |
+| Email | ❌ | ❌ | ✅ |
+| Teléfono | ❌ | ✅ | ❌ |
+| Dirección | ❌ | ✅ | ❌ |
+| Responsabilidades fiscales | ❌ | ✅ (texto) | ❌ |
+| Régimen tributario | ❌ | ✅ (texto) | ❌ |
+| CIIU | ❌ | ❌ | ❌ |
+| RUES (representantes, matrícula) | ✅ | ✅ | ❌ |
+| Firma digital/auditoría | ✅ | ❌ | ❌ |
+| Costo adicional | Sí (créditos) | Sí (plan COP) | Incluido en plan facturación |
+| Rate limit | Variable | Por plan | 80 req/min |
+
+### Estrategia de fallback recomendada
+
+```
+1. Verificar cache (dian_lookup_cache, TTL 24h)
+2. Verifik (primario) → RUES completo + responsabilidades + representantes
+3. CoreSoft (fallback 1) → régimen + teléfono + dirección
+4. Factus (fallback 2) → nombre + email (gratis, ya pagado)
+5. Combinar resultados: cada proveedor llena los campos que los otros no tienen
+```
+
+### Ejemplo de combinación de datos
+
+Para un NIT `900123456-1`:
+- **Verifik** devuelve: razón social, representantes, matrícula RUES, actividades
+- **CoreSoft** devuelve: régimen ("Común"), teléfono, dirección, responsabilidades
+- **Factus** devuelve: nombre, email registrado en DIAN
+
+El ERP combina los tres y autocompleta:
+- `company_name` ← Verifik/CoreSoft/Factus (primero que tenga)
+- `email` ← Factus (único que lo entrega para personas)
+- `phone` ← CoreSoft
+- `address` ← CoreSoft
+- `fiscal_responsibilities` ← CoreSoft (mapear texto a O-xx)
+- `metadata.rues` ← Verifik
+
+### Cumplimiento legal
+
+- Los datos provienen de la base oficial de DIAN (registrada por adquirientes 2023-2024)
+- El uso está destinado a facturación electrónica, que es el caso de uso del ERP
+- Se mantiene el checkbox de Habeas Data (Ley 1581/2012) en los formularios
+- La auditoría se registra en `dian_lookup_cache` con `provider='factus'`
+
+### Fuentes consultadas
+
+- **Endpoint adquirientes**: https://developers.factus.com.co/informacion-adquirientes/obtener-datos-adquiriente/
+- **Tablas de referencia**: https://developers.factus.com.co/tablas-de-referencia/tablas/
+- **Autenticación**: https://developers.factus.com.co/autenticacion/auth/
+- **Rate limits**: https://developers.factus.com.co/limite-de-request
+- **Guía DIAN consulta adquirientes**: https://www.dian.gov.co/impuestos/factura-electronica/Documents/Paso-a-paso-Servicio-de-consulta-para-completar-la-informacion.pdf
+- **Postman collection**: https://developers.factus.com.co/coleccion
+
+---
+
 *Documento creado: Enero 2026*
-*Versión: 1.0*
+*Actualizado: Agosto 2026 - Sección endpoint de adquirientes agregada*
+*Versión: 1.1*
 *GO Admin ERP - Integración Facturación Electrónica Colombia*

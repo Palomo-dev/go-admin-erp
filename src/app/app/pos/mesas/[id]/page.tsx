@@ -107,14 +107,14 @@ export default function MesaDetallePage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'kitchen_ticket_items', filter: `organization_id=eq.${session.organization_id}` },
         () => {
-          cargarDatos();
+          cargarDatos(true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'kitchen_tickets', filter: `table_session_id=eq.${session.id}` },
         () => {
-          cargarDatos();
+          cargarDatos(true);
         }
       )
       .subscribe();
@@ -173,8 +173,10 @@ export default function MesaDetallePage() {
     }
   };
 
-  const cargarDatos = async () => {
-    setIsLoading(true);
+  // Carga los datos de la mesa. Si `silencioso` es true, no muestra el
+  // skeleton de carga (usado tras mutaciones para que la UX sea fluida).
+  const cargarDatos = async (silencioso = false) => {
+    if (!silencioso) setIsLoading(true);
     try {
       const detalles = await PedidosService.obtenerDetalleMesa(tableId);
       
@@ -272,7 +274,7 @@ export default function MesaDetallePage() {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      if (!silencioso) setIsLoading(false);
     }
   };
 
@@ -379,7 +381,7 @@ export default function MesaDetallePage() {
         console.log('Items sincronizados con folio exitosamente');
       }
       
-      await cargarDatos();
+      await cargarDatos(true);
       toast({
         title: 'Productos agregados',
         description: selectedRoom?.folio_id 
@@ -402,7 +404,7 @@ export default function MesaDetallePage() {
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
     try {
       await PedidosService.actualizarCantidadItem(itemId, newQuantity);
-      await cargarDatos();
+      await cargarDatos(true);
       
       // 🔗 INTEGRACIÓN POS → PMS: Sincronizar folio después de actualizar cantidad
       if (selectedRoom?.folio_id && session) {
@@ -433,7 +435,7 @@ export default function MesaDetallePage() {
         await syncSaleItemsToFolio();
       }
       
-      await cargarDatos();
+      await cargarDatos(true);
       toast({
         title: 'Item eliminado',
         description: 'El item se ha eliminado del pedido',
@@ -612,7 +614,7 @@ export default function MesaDetallePage() {
     try {
       // Actualizar estado a bill_requested
       await PedidosService.solicitarCuenta(session.id);
-      await cargarDatos();
+      await cargarDatos(true);
       
       // Mostrar diálogo de división si hay más de 1 comensal
       if (session.customers > 1) {
@@ -727,7 +729,7 @@ export default function MesaDetallePage() {
   ) => {
     try {
       await PedidosService.transferirItem(itemId, toTableId, quantity);
-      await cargarDatos();
+      await cargarDatos(true);
       toast({
         title: 'Item transferido',
         description: 'El item se ha transferido exitosamente',
@@ -774,7 +776,7 @@ export default function MesaDetallePage() {
         router.push(`/app/pos/mesas/${mesaPrincipalId}`);
       } else {
         // Si esta es la mesa principal, recargar datos
-        await cargarDatos();
+        await cargarDatos(true);
       }
       
       setShowCombinar(false);
@@ -858,7 +860,7 @@ export default function MesaDetallePage() {
 
     try {
       await PedidosService.actualizarComensales(session.id, comensalesInput);
-      await cargarDatos();
+      await cargarDatos(true);
       toast({
         title: 'Comensales actualizados',
         description: `Ahora hay ${comensalesInput} comensales en la mesa`,
@@ -1257,7 +1259,7 @@ export default function MesaDetallePage() {
         setShowCheckout(false);
         
         // Recargar datos de la mesa para reflejar items pagados
-        await cargarDatos();
+        await cargarDatos(true);
 
         // Verificar si todos están pagados
         if (newPaidIds.length === billSplits.length) {
@@ -1379,7 +1381,7 @@ export default function MesaDetallePage() {
         }
         
         // Recargar datos para reflejar los cambios
-        await cargarDatos();
+        await cargarDatos(true);
       }
 
       toast({

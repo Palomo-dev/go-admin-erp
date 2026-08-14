@@ -357,16 +357,17 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
 
                 <Separator className="dark:bg-gray-600 bg-gray-300" />
                 
-                <div className="flex justify-between items-center">
-                  <span className="font-medium dark:text-gray-200 text-gray-800">
-                    Monto esperado:
-                  </span>
-                  <span className="text-lg font-bold text-blue-600">
-                    {summary ? formatCurrency(summary.expected_amount) : '-'}
-                  </span>
-                </div>
-                {!showExpectedBlind && (
-                  <div className="mt-2 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
+                {showExpectedBlind ? (
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium dark:text-gray-200 text-gray-800">
+                      Monto esperado:
+                    </span>
+                    <span className="text-lg font-bold text-blue-600">
+                      {summary ? formatCurrency(summary.expected_amount) : '-'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
                     <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
                     <p className="text-xs text-purple-700 dark:text-purple-400">
                       Cierre ciego activo. No puedes ver los montos esperados ni las diferencias.

@@ -25,6 +25,7 @@
 13. [Onboarding y requisitos comerciales](#13-onboarding-y-requisitos-comerciales)
 14. [Variables de entorno](#14-variables-de-entorno)
 15. [Referencias oficiales](#15-referencias-oficiales)
+16. [Apéndice D — Mono.la como BaaS completo](#apéndice-d--monola-como-baas-completo-banking-as-a-service)
 
 ---
 
@@ -957,6 +958,205 @@ Mono es infraestructura bancaria para Latinoamérica. Conecta empresas a la red 
 - **Modelo agregador** — Se transfiere dinero a una cuenta de Mono y desde ahí se opera.
 - **Modelo directo** — Se opera directamente con la cuenta del comercio.
 
+#### Guía detallada de integración Mono (Fase 3)
+
+##### Beneficios de Mono para el ERP
+
+**1. Pago inmediato interbancario (Bre-B)**
+- El cliente paga desde cualquier banco colombiano (Bancolombia, Davivienda, BBVA, Nequi, Scotiabank, etc.)
+- El dinero llega en segundos, no en horas como ACH tradicional
+- Límite por transacción: COP $12.110.000 (1.000 UVT 2026)
+- Disponible 24/7/365 (incluyendo fines de semana y festivos)
+
+**2. QR dinámico dentro del ERP**
+- El QR se renderiza dentro del `QrPaymentDialog` (no redirige al usuario fuera del ERP)
+- Control total de la experiencia visual: colores, branding, cuenta regresiva
+- Referencia única por transacción para trazabilidad
+- Expiración configurable (default: 15 minutos = 900 segundos)
+
+**3. Webhooks firmados (HMAC-SHA256)**
+- 9 tipos de eventos para collections (ver lista completa abajo)
+- Firma HMAC-SHA256 en header `X-Signature` (mismo patrón que Wompi)
+- El ERP ya tiene `confirmQrPayment()` idempotente en `paymentConfirmation.ts`
+- Validación de firma en el webhook handler antes de procesar
+
+**4. Idempotencia nativa**
+- Cada collection tiene un ID único generado por Mono
+- Webhooks duplicados no causan doble actualización en el ERP
+- El campo `metadata` del ERP viaja en la collection para matching bidireccional
+
+**5. Sandbox completo con simulación**
+- Credenciales sandbox inmediatas desde `mi.cuentamono.com`
+- Endpoint `simulate-payment` para pruebas end-to-end sin dinero real
+- Simulación de errores: `tx_unknown`, `tx_provider_unavailable`, `tx_breb_timeout`, `tx_risk_control`
+- Simulación de timeouts y fallos de resolución
+
+**6. Trazabilidad completa ERP → Mono → Banco**
+- Cada pago genera la cadena: `payment_qr_sessions` → `payments` → `bank_transactions` → `integration_events`
+- Metadata del ERP en la collection: `payment_id`, `sale_id`, `organization_id`, `branch_id`, `source` (pos/pms/mesas/parking/transporte/finanzas)
+- Conciliación automática con `paymentConfirmation.ts` (inserta en `bank_transactions` con `import_source='breb'`)
+
+**7. Dispersiones batch (payouts)**
+- Hasta 1.000 transferencias en un solo batch
+- Útil para pagar proveedores, nómina o reembolsos masivos desde Finanzas
+- Resolución automática de destinatario antes de enviar
+
+**8. Multi-banco sin integración individual**
+- Una sola conexión con Mono da acceso a todos los bancos de la red Bre-B
+- No requiere integrar Bancolombia, Davivienda, BBVA por separado
+- El pagador usa su propia app bancaria para escanear el QR
+
+##### Onboarding paso a paso (paralelo a Fase 2)
+
+> **Recomendación:** iniciar el onboarding de Mono en paralelo con la Fase 2 (Redeban) para que las credenciales sandbox estén listas cuando comience la Fase 3.
+
+**Paso 1: Registro (día 1)**
+1. Ir a https://breb.app/ o https://mi.cuentamono.com
+2. Crear cuenta con email corporativo
+3. Verificar email y teléfono
+
+**Paso 2: KYC empresarial (días 2-7)**
+1. Completar formulario de empresa:
+   - Razón social
+   - NIT
+   - Cámara de comercio
+   - RUT
+   - Certificado de existencia y representación legal
+2. Verificación de representantes legales
+3. Vincular cuenta bancaria del comercio (donde llegarán los fondos)
+
+**Paso 3: Credenciales sandbox (día 1-2, inmediato)**
+1. En `mi.cuentamono.com` → API Keys → Crear API key de sandbox
+2. Obtener `client_id` y `client_secret`
+3. Guardar en el ERP: `/app/integraciones/conexiones/nueva` → seleccionar "Bre-B" → ambiente "sandbox" → ingresar credenciales
+
+**Paso 4: Configurar webhook (día 3)**
+1. En el ERP: la URL del webhook se auto-genera al crear la conexión
+2. En `mi.cuentamono.com` → Webhooks → registrar la URL del ERP
+3. Obtener el secreto de firma (HMAC-SHA256)
+4. Guardar el secreto en el ERP (en la página de webhooks de la conexión)
+
+**Paso 5: Pruebas sandbox (días 3-5)**
+1. Crear collection desde el ERP (checkout POS → "Bre-B QR")
+2. Simular pago: `POST /api/v1/sandbox/collections/simulate-payment`
+3. Verificar que el webhook llega al ERP
+4. Verificar que `payment_qr_sessions` se actualiza a `paid`
+5. Verificar que `payments` se actualiza a `completed`
+6. Verificar que `bank_transactions` se inserta con `import_source='breb'`
+
+**Paso 6: Producción (semanas 2-4)**
+1. Completar KYC comercial con Mono
+2. Firmar contrato de servicios
+3. Obtener credenciales de producción (`client_id` + `client_secret` productivos)
+4. En el ERP: editar la conexión → cambiar ambiente a "production" → actualizar credenciales
+5. Pruebas con montos reales pequeños
+6. Go-live
+
+##### Flujo técnico de un pago Bre-B vía Mono
+
+```
+1. CAJERO selecciona "Bre-B QR" en checkout
+   ↓
+2. ERP busca la conexión activa de Mono para la organización/sucursal
+   ↓
+3. ERP llama POST /api/v1/collections con:
+   {
+     "amount": 50000,
+     "currency": "COP",
+     "key_type": "ALPHA",
+     "key_value": "@miempresa",
+     "description": "POS-12345 Sucursal Centro",
+     "expires_in": 900,
+     "metadata": {
+       "payment_id": "uuid-del-payment",
+       "sale_id": "12345",
+       "organization_id": 1,
+       "branch_id": 2,
+       "source": "pos"
+     }
+   }
+   ↓
+4. Mono retorna:
+   {
+     "id": "col_abc123",
+     "status": "ready",
+     "qr": "data:image/png;base64,...",
+     "expires_at": "2026-08-14T20:15:00Z"
+   }
+   ↓
+5. ERP guarda en payment_qr_sessions:
+   - reference = "POS-12345-SUC-2-1692023"
+   - external_qr_id = "col_abc123"
+   - qr_image_url = "data:image/png;base64,..."
+   - status = "pending"
+   - expires_at = "2026-08-14T20:15:00Z"
+   ↓
+6. ERP muestra QrPaymentDialog con el QR + cuenta regresiva 15:00
+   ↓
+7. CLIENTE escanea el QR desde su app bancaria (Bancolombia, Davivienda, etc.)
+   ↓
+8. Mono procesa el pago Bre-B (segundos)
+   ↓
+9. Mono envía webhook al ERP:
+   POST /api/integrations/breb/webhook
+   Headers: X-Signature: HMAC-SHA256(...)
+   Body: {
+     "event": "collection.paid",
+     "data": {
+       "id": "col_abc123",
+       "amount": { "amount": 50000, "currency": "COP" },
+       "status": "paid",
+       "metadata": { "payment_id": "uuid-del-payment", ... }
+     }
+   }
+   ↓
+10. ERP verifica firma HMAC-SHA256
+    ↓
+11. ERP llama confirmQrPayment():
+    - payment_qr_sessions.status = "paid"
+    - payments.status = "completed"
+    - bank_transactions INSERT (import_source='breb', import_id='col_abc123')
+    ↓
+12. QrPoller detecta status="paid" → QrPaymentDialog muestra "Pago confirmado"
+    ↓
+13. Dialog se cierra automáticamente tras 3 segundos
+    ↓
+14. Venta/factura/reserva actualizada en el módulo origen
+```
+
+##### Estructura de archivos a crear (Fase 3)
+
+```
+src/lib/services/integrations/breb/
+  ├── monoConfig.ts          — URLs base (sandbox/producción), env vars
+  ├── monoTypes.ts           — interfaces (MonoCollection, MonoWebhookPayload, etc.)
+  └── monoService.ts         — lógica de API (getAccessToken, createCollection, simulatePayment, verifyWebhookSignature)
+
+src/app/api/integrations/breb/
+  ├── create-qr/route.ts     — POST: crea collection, guarda en payment_qr_sessions, retorna QR
+  ├── webhook/route.ts       — POST: recibe webhook de Mono, verifica firma, llama confirmQrPayment
+  ├── status/route.ts        — GET: consulta estado de payment_qr_sessions por referencia
+  └── health-check/route.ts  — POST: valida credenciales con Mono (getAccessToken)
+```
+
+##### Comparación: Mono vs Wompi para QR
+
+| Criterio | Mono (Bre-B) | Wompi (Bancolombia QR) |
+|----------|--------------|------------------------|
+| **Bancos del pagador** | Todos los bancos colombianos | Solo Bancolombia/Nequi |
+| **Velocidad** | Inmediato (segundos) | Inmediato |
+| **Límite por transacción** | COP $12.110.000 | Sin límite específico |
+| **Horario** | 24/7/365 | 24/7/365 |
+| **Comisión** | Negociada con Mono | Fee Wompi (% + IVA) |
+| **Onboarding** | KYC con Mono (días) | Ya hecho en el ERP |
+| **Webhook** | HMAC-SHA256 (X-Signature) | HMAC-SHA256 (events_secret) |
+| **QR** | Dentro del ERP (QrPaymentDialog) | Dentro del ERP (Wompi flow) |
+| **Sandbox** | simulate-payment endpoint | sandbox_status: "APPROVED" |
+| **Idempotencia** | Nativa (collection ID) | Nativa (transaction ID) |
+| **Dispersiones** | Batch hasta 1.000 | No aplica |
+
+> **Conclusión:** Mono complementa a Wompi. Wompi cubre QR Bancolombia (sin onboarding adicional). Mono cubre Bre-B (todos los bancos). El ERP puede tener ambas conexiones activas y el cajero elige cuál usar en el checkout.
+
 **Crear Collection con QR (recaudo):**
 ```
 POST /api/v1/collections
@@ -1751,56 +1951,156 @@ La tabla no existía. Se creó con la siguiente estructura:
 **Tabla creada en Supabase (1):**
 - `payment_qr_sessions` (con RLS, constraints e índices)
 
-### Fase 2 — Redeban (acceso más rápido) (5-7 días)
+### Fase 2 — Redeban + Onboarding paralelo de Mono (5-7 días) ✅ COMPLETADO
 
 **Por qué primero:** Redeban expone API REST pública con Auth-Token, sin onboarding comercial complejo.
 
-- [ ] `src/lib/services/integrations/redeban/redebanConfig.ts` — URLs base, credenciales desde env.
-- [ ] `src/lib/services/integrations/redeban/redebanTypes.ts` — interfaces (`RedebanQrRequest`, `RedebanQrResponse`, `RedebanWebhookPayload`).
-- [ ] `src/lib/services/integrations/redeban/redebanService.ts`:
-  - `generateAuthToken()` — Base64(APP_CODE;TIMESTAMP;SHA256(APP_KEY+TIMESTAMP)).
-  - `createQr(params)` — POST `/v2/qr/generate/`.
-  - `getTransactionStatus(id)` — GET `/order/{id}` (noccapi).
-  - `verifyWebhookSignature(payload, headers)` — validación.
-- [ ] API routes:
-  - `src/app/api/integrations/redeban/create-qr/route.ts`
-  - `src/app/api/integrations/redeban/webhook/route.ts`
-  - `src/app/api/integrations/redeban/status/route.ts`
-  - `src/app/api/integrations/redeban/health-check/route.ts`
+**Estado:** completado el 2026-08-14.
+
+#### Onboarding paralelo de Mono (iniciar AHORA) ⏳
+
+> **Importante:** el onboarding de Mono toma días/semanas. Iniciarlo en paralelo con la Fase 2 para que las credenciales sandbox estén listas cuando comience la Fase 3.
+
+**Checklist de onboarding Mono (responsabilidad del cliente/admin):**
+
+- [ ] **Día 1:** Ir a https://breb.app/ o https://mi.cuentamono.com
+- [ ] **Día 1:** Crear cuenta con email corporativo
+- [ ] **Día 1:** Verificar email y teléfono
+- [ ] **Día 1-2:** En `mi.cuentamono.com` → API Keys → Crear API key de sandbox
+- [ ] **Día 1-2:** Obtener `client_id` y `client_secret` de sandbox
+- [ ] **Día 2-7:** Completar KYC empresarial:
+  - [ ] Razón social
+  - [ ] NIT
+  - [ ] Cámara de comercio (certificado)
+  - [ ] RUT
+  - [ ] Certificado de existencia y representación legal
+  - [ ] Verificación de representantes legales
+  - [ ] Vincular cuenta bancaria del comercio (donde llegarán los fondos)
+- [ ] **Día 3:** En `mi.cuentamono.com` → Webhooks → registrar URL del ERP (se obtiene al crear la conexión en el ERP)
+- [ ] **Día 3:** Guardar secreto de firma HMAC-SHA256 en el ERP
+- [ ] **Día 3-5:** Pruebas sandbox (después de Fase 3):
+  - [ ] Crear collection desde el ERP
+  - [ ] Simular pago con `simulate-payment`
+  - [ ] Verificar webhook llega al ERP
+  - [ ] Verificar `payment_qr_sessions` se actualiza
+  - [ ] Verificar `payments` se actualiza
+  - [ ] Verificar `bank_transactions` se inserta
+- [ ] **Semanas 2-4:** Producción:
+  - [ ] Completar KYC comercial con Mono
+  - [ ] Firmar contrato de servicios
+  - [ ] Obtener credenciales productivas
+  - [ ] En ERP: editar conexión → ambiente "production" → actualizar credenciales
+  - [ ] Pruebas con montos reales pequeños
+  - [ ] Go-live
+
+**URLs de referencia:**
+- Landing Bre-B: https://breb.app/
+- Dashboard: https://mi.cuentamono.com
+- Docs: https://docs.mono.la/docs/guides/breb-participant
+- API Reference: https://docs.mono.la/docs/api-reference/breb-participant
+- Autenticación: https://docs.mono.la/docs/guides/breb-participant/authentication
+- Sandbox API: https://sandbox.api.cuentamono.com
+- Producción API: https://api.cuentamono.com
+
+#### Implementación Redeban ✅
+
+- [x] **`src/lib/services/integrations/redeban/redebanConfig.ts`** (27 líneas) — URLs base (sandbox: `noccapi-stg.redeban.com`, producción: `noccapi.redeban.com`), `getRedebanBaseUrl()`, constantes `REDEBAN_PROVIDER_CODE` y `REDEBAN_QR_CONNECTOR_CODE`.
+- [x] **`src/lib/services/integrations/redeban/redebanTypes.ts`** (75 líneas) — interfaces: `RedebanCredentials`, `RedebanQrRequest`, `RedebanQrResponse`, `RedebanTransactionStatus`, `RedebanTransactionResponse`, `RedebanWebhookPayload`, `RedebanHealthCheckResult`.
+- [x] **`src/lib/services/integrations/redeban/redebanService.ts`** (396 líneas) — clase `RedebanService` con 7 métodos:
+  - `generateAuthToken(serverAppCode, serverAppKey)` — Base64(APP_CODE;TIMESTAMP;SHA256(APP_KEY+TIMESTAMP)) con `crypto` de Node
+  - `getCredentials(connectionId)` — lee `integration_credentials` desde Supabase
+  - `healthCheck(connectionId)` — GET a `/v2/qr/status/` con Auth-Token
+  - `createQr(connectionId, params)` — POST a `/v2/qr/generate/`
+  - `getTransactionStatus(connectionId, transactionId)` — GET a `/order/{transactionId}`
+  - `verifyWebhookSignature(payload, signature, serverAppKey)` — HMAC-SHA256
+  - `processWebhook(connectionId, payload)` — busca `payment_qr_sessions`, llama `confirmQrPayment` si es approved
+  - Exporta singleton `redebanService`
+- [x] **`src/lib/services/integrations/redeban/index.ts`** (3 líneas) — re-exports del servicio, config y types.
+- [x] **`src/app/api/integrations/redeban/health-check/route.ts`** — POST con auth, verifica credenciales.
+- [x] **`src/app/api/integrations/redeban/create-qr/route.ts`** — POST con auth, genera QR + crea `payment_qr_sessions`.
+- [x] **`src/app/api/integrations/redeban/webhook/route.ts`** — POST sin auth (callback del proveedor), responde 200 siempre, llama `processWebhook`.
+- [x] **`src/app/api/integrations/redeban/status/route.ts`** — GET con auth, consulta estado de `payment_qr_sessions` por referencia.
+
+**Pendiente (Fase 6 — UI):**
 - [ ] Integrar en `CheckoutDialog` del POS y PMS: al seleccionar `redeban_qr`, llamar a `/api/integrations/redeban/create-qr`, mostrar `QrPaymentDialog`, hacer polling a `/status`.
 - [ ] Integrar en Parking y Transporte (mismo flujo).
 
-### Fase 3 — Bre-B vía Mono (5-7 días)
+#### Verificación ✅
 
-- [ ] `src/lib/services/integrations/breb/monoConfig.ts`
-- [ ] `src/lib/services/integrations/breb/monoTypes.ts`
-- [ ] `src/lib/services/integrations/breb/monoService.ts`:
-  - `getAccessToken()` — OAuth 2.0 Client Credentials.
-  - `createCollection(params)` — POST `/api/v1/collections`.
-  - `simulatePayment(collectionId, amount)` — sandbox `/api/v1/sandbox/collections/simulate-payment`.
-  - `verifyWebhookSignature(payload, signature)` — HMAC-SHA256.
-- [ ] API routes:
-  - `src/app/api/integrations/breb/create-qr/route.ts`
-  - `src/app/api/integrations/breb/webhook/route.ts`
-  - `src/app/api/integrations/breb/status/route.ts`
-  - `src/app/api/integrations/breb/health-check/route.ts`
-- [ ] Integrar en los mismos puntos del checkout (POS, PMS, Parking, Transporte).
+- **ESLint:** 0 errores en los 8 archivos de Redeban.
+- **TypeScript:** 0 errores en los archivos de Redeban (verificado con `tsc --noEmit | Select-String "redeban"` → Count: 0).
+
+**Archivos creados (8):**
+- `src/lib/services/integrations/redeban/redebanConfig.ts`
+- `src/lib/services/integrations/redeban/redebanTypes.ts`
+- `src/lib/services/integrations/redeban/redebanService.ts`
+- `src/lib/services/integrations/redeban/index.ts`
+- `src/app/api/integrations/redeban/health-check/route.ts`
+- `src/app/api/integrations/redeban/create-qr/route.ts`
+- `src/app/api/integrations/redeban/webhook/route.ts`
+- `src/app/api/integrations/redeban/status/route.ts`
+
+### Fase 3 — Bre-B vía Mono (5-7 días) ✅ COMPLETADO
+
+**Estado:** completado el 2026-08-14.
+
+#### Implementación Mono ✅
+
+- [x] **`src/lib/services/integrations/breb/monoConfig.ts`** (36 líneas) — URLs base (sandbox: `sandbox.api.cuentamono.com`, producción: `api.cuentamono.com`), `getMonoBaseUrl()`, constantes `MONO_PROVIDER_CODE='breb'`, `MONO_CONNECTOR_CODE='breb_mono'`, `MONO_COLLECTION_EVENTS` (7 eventos).
+- [x] **`src/lib/services/integrations/breb/monoTypes.ts`** (83 líneas) — interfaces: `MonoCredentials`, `MonoTokenResponse`, `MonoCollectionRequest` (con `key_type` union: PHONE/EMAIL/ID/ALPHA/BCODE), `MonoCollectionResponse`, `MonoSimulatePaymentRequest`, `MonoWebhookPayload`, `MonoHealthCheckResult`.
+- [x] **`src/lib/services/integrations/breb/monoService.ts`** (430 líneas) — clase `MonoService` con 7 métodos:
+  - `getAccessToken(clientId, clientSecret, environment)` — POST `/oauth/token` con `grant_type=client_credentials`, token fresco cada vez
+  - `getCredentials(connectionId)` — lee `integration_credentials` desde Supabase
+  - `healthCheck(connectionId)` — intenta `getAccessToken`, retorna `{ valid, message }`
+  - `createCollection(connectionId, params)` — POST `/api/v1/collections` con Bearer token
+  - `simulatePayment(connectionId, params)` — POST `/api/v1/sandbox/collections/simulate-payment` (solo sandbox)
+  - `verifyWebhookSignature(payload, signature, webhookSecret)` — HMAC-SHA256 con `crypto` de Node
+  - `processWebhook(connectionId, payload)` — extrae reference de `metadata.reference`, busca `payment_qr_session`, llama `confirmQrPayment` para `collection.paid`/`collection.minimum_paid`, marca `expired`/`cancelled` según evento
+  - Exporta singleton `monoService`
+- [x] **`src/lib/services/integrations/breb/index.ts`** (3 líneas) — re-exports del servicio, config y types.
+- [x] **`src/app/api/integrations/breb/health-check/route.ts`** (41 líneas) — POST con auth, verifica credenciales de Mono.
+- [x] **`src/app/api/integrations/breb/create-qr/route.ts`** (121 líneas) — POST con auth, crea collection + `payment_qr_sessions`, retorna QR.
+- [x] **`src/app/api/integrations/breb/webhook/route.ts`** (50 líneas) — POST sin auth (callback de Mono), lee `X-Signature`, responde 200 siempre, llama `processWebhook`.
+- [x] **`src/app/api/integrations/breb/status/route.ts`** (66 líneas) — GET con auth, consulta estado de `payment_qr_sessions` por referencia.
+
+**Pendiente (Fase 6 — UI):**
+- [ ] Integrar en `CheckoutDialog` del POS y PMS: al seleccionar `breb_qr`, llamar a `/api/integrations/breb/create-qr`, mostrar `QrPaymentDialog`, hacer polling a `/status`.
+- [ ] Integrar en Parking y Transporte (mismo flujo).
 - [ ] Pruebas en sandbox Mono con `simulate-payment`.
 
-### Fase 4 — Bancolombia (ambas rutas: Wompi + API directa) (5-7 días)
+#### Verificación ✅
+
+- **ESLint:** 0 errores en los 8 archivos de Mono.
+- **TypeScript:** 0 errores en los archivos de Mono (verificado con `tsc --noEmit | Select-String "breb|mono"` → Count: 0).
+
+**Archivos creados (8):**
+- `src/lib/services/integrations/breb/monoConfig.ts`
+- `src/lib/services/integrations/breb/monoTypes.ts`
+- `src/lib/services/integrations/breb/monoService.ts`
+- `src/lib/services/integrations/breb/index.ts`
+- `src/app/api/integrations/breb/health-check/route.ts`
+- `src/app/api/integrations/breb/create-qr/route.ts`
+- `src/app/api/integrations/breb/webhook/route.ts`
+- `src/app/api/integrations/breb/status/route.ts`
+
+### Fase 4 — Bancolombia (ambas rutas: Wompi + API directa) (5-7 días) ✅ COMPLETADO
 
 Se implementan **ambas rutas** en paralelo. El admin elige cuál usar al configurar la conexión.
 
-#### Ruta A: Wompi BANCOLOMBIA_QR (rápida — 1-2 días)
+**Estado:** completado el 2026-08-14.
+
+#### Ruta A: Wompi BANCOLOMBIA_QR ✅ COMPLETADO
 
 Wompi ya soporta `BANCOLOMBIA_QR`. Solo falta exponerlo en el checkout.
 
-- [ ] Verificar que `wompiService.createTransaction` con `payment_method.type: 'BANCOLOMBIA_QR'` funcione end-to-end.
-- [ ] Agregar opción `bancolombia_qr_wompi` en `CheckoutDialog` que use el flujo Wompi existente.
-- [ ] Asegurar que el webhook de Wompi (`/api/integrations/wompi/webhook`) actualice `payment_qr_sessions` además de `payments`.
-- [ ] No requiere: nuevo provider, nuevo conector, nuevas credenciales, ni onboarding con Bancolombia.
+- [x] Verificado que `wompiService.createTransaction` con `payment_method.type: 'BANCOLOMBIA_QR'` funciona (líneas 201-239 de `wompiService.ts`).
+- [x] Agregado tipo `WompiBancolombiaQrPaymentMethod` en `wompiTypes.ts` (líneas 124-128) con `type: 'BANCOLOMBIA_QR'`, `payment_description`, `sandbox_status?`.
+- [x] Agregado al union type `WompiPaymentMethod` (línea 130).
+- [x] Creada API route `src/app/api/integrations/bancolombia/wompi/create-qr/route.ts` (151 líneas) — crea transacción BANCOLOMBIA_QR en Wompi, extrae `qr_image` y `qr_id` de `payment_method.extra`, crea `payment_qr_sessions` con `providerCode: 'wompi'`, `connectorCode: 'bancolombia_qr_wompi'`.
+- [x] Actualizado webhook de Wompi (`src/app/api/integrations/wompi/webhook/route.ts`) para que actualice `payment_qr_sessions` cuando el pago sea `APPROVED` y `payment_method_type === 'BANCOLOMBIA_QR'` (líneas 199-213).
+- [x] No requiere: nuevo provider, nuevo conector, nuevas credenciales, ni onboarding con Bancolombia.
 
-#### Ruta B: API directa Bancolombia (avanzada — 4-5 días)
+#### Ruta B: API directa Bancolombia ✅ COMPLETADO
 
 El portal público `https://developer-portal-public-sbx.apps.ambientesbc.com` expone la documentación técnica completa de los productos:
 - **Payments Button v4.0.1** — Botón Bancolombia (transferencias web)
@@ -1811,19 +2111,25 @@ El portal público `https://developer-portal-public-sbx.apps.ambientesbc.com` ex
 - **BancolombiaPay Wallet Payments v1.0.2** — Billetera digital con QR Transaction
 - **Transactional Information v1.0.1** — Conciliación transaccional
 
-- [ ] `src/lib/services/integrations/bancolombia/bancolombiaConfig.ts` — URLs base, credenciales desde env.
-- [ ] `src/lib/services/integrations/bancolombia/bancolombiaTypes.ts` — interfaces (`BancolombiaTransferRegistryRequest`, `BancolombiaTransferRegistryResponse`, `BancolombiaTransferValidateResponse`, `BancolombiaRefundRequest`, `BancolombiaRefundResponse`).
-- [ ] `src/lib/services/integrations/bancolombia/bancolombiaService.ts`:
-  - `getAccessToken()` — OAuth 2.0 (token 20 min).
-  - `registerTransferIntention(params)` — POST `/transfer/action/registry`.
-  - `validateTransfer(transferCode)` — GET `/transfer/{transferCode}/action/validate`.
-  - `refundTransfer(params)` — POST refund con scope `Refund:write:app`.
-  - `verifyJwtNotification(token, cert)` — validación JWT de callbacks.
-- [ ] API routes:
-  - `src/app/api/integrations/bancolombia/create-qr/route.ts` (o `register-transfer/route.ts`)
-  - `src/app/api/integrations/bancolombia/webhook/route.ts` (valida JWT, responde en < 3 s)
-  - `src/app/api/integrations/bancolombia/status/route.ts`
-  - `src/app/api/integrations/bancolombia/health-check/route.ts`
+- [x] **`src/lib/services/integrations/bancolombia/bancolombiaConfig.ts`** (28 líneas) — URLs base (sandbox: `gw-sandbox-qa.apps.ambientesbc.com`, producción: `gw.apps.ambientesbc.com`), `getBancolombiaBaseUrl()`, constantes `BANCOLOMBIA_PROVIDER_CODE`, `BANCOLOMBIA_QR_CONNECTOR_CODE`, `BANCOLOMBIA_SCOPES`, `BANCOLOMBIA_TRANSFER_STATUSES`.
+- [x] **`src/lib/services/integrations/bancolombia/bancolombiaTypes.ts`** (83 líneas) — interfaces: `BancolombiaCredentials`, `BancolombiaTokenResponse`, `BancolombiaTransferRegistryRequest`, `BancolombiaTransferRegistryResponse`, `BancolombiaTransferValidateResponse`, `BancolombiaRefundRequest`, `BancolombiaRefundResponse`, `BancolombiaWebhookPayload`, `BancolombiaHealthCheckResult`.
+- [x] **`src/lib/services/integrations/bancolombia/bancolombiaService.ts`** (483 líneas) — clase `BancolombiaService` con 8 métodos:
+  - `getAccessToken(clientId, clientSecret, environment)` — OAuth 2.0 Client Credentials via form-urlencoded, token fresco cada vez
+  - `getCredentials(connectionId)` — lee `integration_credentials` desde Supabase
+  - `healthCheck(connectionId)` — intenta `getAccessToken`, retorna `{ valid, message }`
+  - `registerTransferIntention(connectionId, params)` — POST `/transfer/action/registry` con Bearer token
+  - `validateTransfer(connectionId, transferCode)` — GET `/transfer/{transferCode}/action/validate`
+  - `refundTransfer(connectionId, params)` — POST `/refund` con Bearer token
+  - `verifyJwtNotification(token, clientSecret)` — verifica firma JWT (HS256 sandbox con `crypto.createHmac` + `timingSafeEqual`)
+  - `processWebhook(connectionId, payload)` — busca `payment_qr_sessions` por `transferReference`, llama `confirmQrPayment` si `approved`, marca `rejected` si corresponde
+  - Exporta singleton `bancolombiaService`
+- [x] **`src/lib/services/integrations/bancolombia/index.ts`** (3 líneas) — re-exports.
+- [x] **`src/app/api/integrations/bancolombia/health-check/route.ts`** (41 líneas) — POST con auth, verifica credenciales.
+- [x] **`src/app/api/integrations/bancolombia/create-qr/route.ts`** (128 líneas) — POST con auth, registra transfer intention + crea `payment_qr_sessions`, retorna QR.
+- [x] **`src/app/api/integrations/bancolombia/webhook/route.ts`** (67 líneas) — POST sin auth (callback), detecta JWT o JSON, verifica firma, responde 200 siempre.
+- [x] **`src/app/api/integrations/bancolombia/status/route.ts`** (94 líneas) — GET con auth, consulta estado de `payment_qr_sessions` + `validateTransfer` si está pending.
+
+**Pendiente (onboarding comercial):**
 - [ ] Onboarding sandbox: solicitar acceso en `https://developer-portal-public-sbx.apps.ambientesbc.com` → "Solicitar Ingreso".
 - [ ] Descargar colecciones Postman y escenarios de prueba desde el portal.
 
@@ -1833,6 +2139,26 @@ El `CheckoutDialog` mostrará las opciones disponibles según las conexiones act
 - Si solo hay conexión Wompi → muestra "Bancolombia QR (vía Wompi)"
 - Si solo hay conexión Bancolombia directa → muestra "Bancolombia QR"
 - Si hay ambas → muestra "Bancolombia QR (Wompi)" y "Bancolombia QR (Directo)" — el admin/canjero elige
+
+#### Verificación ✅
+
+- **ESLint:** 0 errores en los 9 archivos de Bancolombia (4 servicio + 4 API routes directas + 1 API route Wompi) + cambios en `wompiTypes.ts` y `wompi/webhook/route.ts`.
+- **TypeScript:** 0 errores en los archivos de Bancolombia (verificado con `tsc --noEmit | Select-String "bancolombia"` → Count: 0).
+
+**Archivos creados (9):**
+- `src/lib/services/integrations/bancolombia/bancolombiaConfig.ts`
+- `src/lib/services/integrations/bancolombia/bancolombiaTypes.ts`
+- `src/lib/services/integrations/bancolombia/bancolombiaService.ts`
+- `src/lib/services/integrations/bancolombia/index.ts`
+- `src/app/api/integrations/bancolombia/health-check/route.ts`
+- `src/app/api/integrations/bancolombia/create-qr/route.ts`
+- `src/app/api/integrations/bancolombia/webhook/route.ts`
+- `src/app/api/integrations/bancolombia/status/route.ts`
+- `src/app/api/integrations/bancolombia/wompi/create-qr/route.ts`
+
+**Archivos modificados (2):**
+- `src/lib/services/integrations/wompi/wompiTypes.ts` — agregado `WompiBancolombiaQrPaymentMethod` + union type
+- `src/app/api/integrations/wompi/webhook/route.ts` — actualiza `payment_qr_sessions` cuando BANCOLOMBIA_QR APPROVED
 
 ### Fase 5 — Conciliación bancaria automática (3-5 días)
 
@@ -2539,6 +2865,267 @@ El payload viene cifrado en un JWT en el header `json-web-token`. Tras verificar
 | 7 | `npm run build` exitoso |
 | 7 | `npm test` pasa |
 | 8 | Webhook en producción responde 200 en < 3 s |
+
+---
+
+## Apéndice D — Mono.la como BaaS completo (Banking-as-a-Service)
+
+> **Fecha de análisis:** 2026-08-14
+> **Fuente:** https://docs.mono.la/docs/guides
+> **Estado:** Análisis técnico y planificación. Mono ya se menciona en este documento como proveedor BaaS para Bre-B (sección 2, línea 90). Este apéndice extiende el análisis a **toda la plataforma Mono**, no solo Bre-B.
+
+### D.1 Qué es Mono.la
+
+**Mono** es una fintech colombiana (Bogotá) que ofrece **Banking-as-a-Service (BaaS)**: infraestructura bancaria programable vía API REST para Colombia. Está respaldada por Y Combinator, Visa y Tiger Global, y opera bajo alianza con la Superintendencia Financiera de Colombia (SFC).
+
+> ⚠️ **Importante:** NO confundir con `mono.co` (Mono Africa, otra empresa distinta que hace open banking en Nigeria/Ghana/Kenia/Sudáfrica). La que aplica al ERP es `mono.la`, enfocada 100% en Colombia.
+
+- **Documentación:** https://docs.mono.la/docs/guides
+- **API Reference:** https://docs.mono.la/docs/api-reference
+- **Sitio web:** https://www.mono.la/
+- **Dashboard:** https://mi.cuentamono.com
+- **Soporte técnico:** tech-support@mono.la
+
+### D.2 Productos y servicios de Mono
+
+| Producto | Qué hace | Rieles / métodos |
+|----------|----------|------------------|
+| **Banking – Pay-ins** | Recaudar dinero desde cualquier cuenta bancaria CO | PSE (Pagos Seguros en Línea) |
+| **Banking – Payouts** | Enviar dinero a cuentas bancarias CO | ACH, Transfiya, **Mono Turbo** (instantáneo) |
+| **Banking – Collection links** | Enlaces de pago PSE reutilizables | PSE |
+| **Banking – Cards** | Tarjetas Visa virtuales/físicas programables | Visa |
+| **Core – Ledger** | Libro mayor de doble entrada auditable | Interno |
+| **Core – Spending Controls** | Reglas y límites de gasto por tarjeta | Interno |
+| **Bre-B Participant** | Enviar/recibir pagos instantáneos interbancarios | **Bre-B** (QR + transferencias) |
+
+### D.3 Guías principales de la documentación
+
+#### Guías generales (API Standards)
+- **Who We Are** — Información sobre la empresa y su misión
+- **Why Use Mono** — Casos de uso, criterios de ajuste y beneficios concretos
+- **Technical Support** — Canales de soporte, tiempos de respuesta y escalación
+- **API Standards** — Convenciones cross-product:
+  - Authentication, Idempotency Keys, Errors and Retries, Data Formats, Pagination and Sorting, Webhooks
+
+#### Servicio: Banking
+- Concepts (cuentas, transferencias, collection links, tarjetas)
+- API, Webhooks, Sandbox, Production, Dashboard
+- Flows: PSE collection, Sending transfers
+- Architecture: Bank transfer states
+- Best Practices
+
+#### Servicio: Core
+- Concepts (ledger, tarjetas, controles de gastos, payouts)
+- Flows: Integration example, Ledger accounting, Issuing cards, Payout disbursement
+- Best Practices: Patrones de conciliación
+
+#### Servicio: Bre-B Participant
+- Overview, Authentication (OAuth2), Concepts (payment keys, targets, tenant accounts, collections)
+- Flows: QR collection, Outgoing transfer
+- Integration Example, Sandbox, State Machine, Rejection Reasons
+- Webhooks (verificación HMAC-SHA256), Production Recommendations, Definitions
+
+### D.4 Beneficios concretos para go-admin-erp
+
+El ERP ya tiene un módulo finanzas completo (bancos, conciliación, transferencias, cuentas por pagar/cobrar, contabilidad) y varias pasarelas (Wompi, MercadoPago, PayU, Stripe, PayPal). Mono **no reemplaza** eso, lo **complementa** con capacidades que hoy no existen:
+
+#### D.4.1 Payouts reales (desembolsos a cuentas bancarias)
+Hoy `transferenciasService.ts` y la tabla `bank_transfers` manejan **transferencias entre cuentas propias** registradas manualmente. Con Mono:
+- Pagar proveedores (`cuentas-por-pagar`) directamente a su banco desde la app.
+- Pagar nómina (`hrm`) por lote vía ACH/Transfiya/Mono Turbo.
+- Desembolsar préstamos o anticipos a empleados.
+- **Beneficio:** dejar de registrar "transferencias" como asiento manual y pasar a ejecutarlas de verdad, con webhook de confirmación.
+
+#### D.4.2 Bre-B nativo (pagos instantáneos QR)
+Este documento ya identifica a Mono como proveedor BaaS recomendado para Bre-B (sección 2). Con Mono Participant API:
+- Recaudo por **QR Bre-B** (EMVCo) sin depender de Redeban/Bancolombia directo.
+- Transferencias salientes instantáneas 24/7.
+- Verificación HMAC-SHA256 de webhooks.
+- **Beneficio:** un único proveedor para QR Bre-B en lugar de integrar Bancolombia + Redeban por separado.
+
+#### D.4.3 Conciliación bancaria automática real
+Hoy `ConciliacionService.ts` hace match **manual** entre `bank_transactions` y `payments`. Con Mono:
+- Los webhooks `bank_transfer_approved`, `account_credited`, `collection_intent_credited` alimentan `bank_transactions` automáticamente.
+- El `matched_payment_id` se puede resolver automáticamente porque Mono devuelve `idempotency_key` y `reference` que el ERP genera.
+- **Beneficio:** conciliación automática en vez de match manual.
+
+#### D.4.4 Ledger de doble entrada (opcional, contabilidad avanzada)
+Mono Core expone un ledger con `LedgerAccount`, `LedgerTransaction` (par débito-crédito balanceado) y `Balance`. Permite:
+- Sincronizar saldos de clientes/proveedores con el ledger de Mono.
+- Tener auditoría inmutable de movimientos.
+- **Beneficio:** fuente de verdad financiera externa auditable, útil para reportes regulatorios.
+
+#### D.4.5 Tarjetas Visa programables (caso de uso futuro)
+Para gestión de gastos corporativos: emitir tarjetas por empleado con `SpendingControls` (límites por categoría, MCC, monto). Encaja con los módulos `comisiones` y `centro-costos`. Es **opcional** y más avanzado.
+
+#### D.4.6 Unificación de rieles
+Hoy el ERP tiene Wompi (Bancolombia QR), PayU (PSE, Nequi), MercadoPago. Mono unifica **PSE + ACH + Transfiya + Bre-B + tarjetas** bajo una sola API y un solo dashboard. Menos conectores que mantener.
+
+### D.5 Autenticación
+
+| Servicio | Método | Notas |
+|----------|--------|-------|
+| Banking | API Key Bearer | `Authorization: Bearer <key>`, rotar cada 90 días |
+| Core | API Key Bearer | Igual que Banking |
+| Bre-B Participant | OAuth2 Client Credentials | `/api/v1/oauth/token`, scopes `tenant_accounts`, `outgoing_transfers`, `collections`, etc. |
+| Webhooks | HMAC-SHA256 | Verificar firma antes de procesar |
+
+#### Scopes OAuth2 (Bre-B Participant)
+- `tenant_accounts` / `tenant_accounts:readonly`
+- `outgoing_transfers` / `outgoing_transfers:readonly`
+- `target_resolutions` / `target_resolutions:readonly`
+- `collections` / `collections:readonly`
+
+Dos esquemas de seguridad: `oauth` (acceso completo) y `oauth_readonly` (solo lectura).
+
+### D.6 Endpoints y entidades clave
+
+#### Banking API
+**Endpoints:** cuentas bancarias, transferencias (`POST /transfers`), collection links, collection intents, tarjetas.
+
+**Entidades:** `BankAccount`, `BankTransfer`, `CollectionLink`, `CollectionIntent`, `BankingCard`.
+
+**Webhooks Banking:**
+- `bank_transfer_approved`, `bank_transfer_rejected`, `bank_transfer_fallback_routing`
+- `account_credited`
+- `batch_authorization_requested`, `batch_sent`, `batch_duplicated`
+- `collection_intent_credited`, `collection_intent_confirmed`
+
+#### Core API
+**Endpoints Ledger:**
+- `GET /v1/ledger/accounts` — Listar cuentas
+- `POST /v1/ledger/accounts` — Crear cuenta
+- `GET /v1/ledger/accounts/{account_id}/balances` — Saldos
+- `POST /v1/ledger/accounts/{account_id}/balance` — Actualizar saldo
+- `GET /v1/ledger/accounts/{account_id}/transactions` — Transacciones
+- `POST /v1/ledger/transfers` — Transferencia entre cuentas ledger
+
+**Entidades:** `AccountHolder`, `LedgerAccount`, `LedgerTransaction`, `Balance`, `Card`, `SpendingControl`, `Payout`.
+
+#### Bre-B Participant API
+**Endpoints:** `/api/v1/oauth/token`, outgoing transfers, target resolution, collections.
+
+**Entidades:** `PaymentKey`, `Target`, `TenantAccount`, `Collection`, `OutgoingTransfer`, `OutgoingTransferBatch`.
+
+### D.7 Casos de uso típicos documentados por Mono
+
+| Caso de uso | Qué se construye | Productos Mono |
+|-------------|------------------|----------------|
+| Billetera de consumo | Cuenta, recargas, gastos con tarjeta, P2P | Banking (Tarjetas + PSE) + Core (Ledger) |
+| Pagos a vendedores de marketplace | Saldos por vendedor, pagos programados | Banking (Transferencias) + Core (Ledger) |
+| Checkout de e-commerce | Recaudo PSE, conciliación de settlement | Banking (Collection links) |
+| Tarjetas corporativas / gestión de gastos | Tarjetas por empleado con reglas | Banking (Tarjetas) + Core (Spending Controls + Ledger) |
+| Bre-B para banco o EDE | On-ramp programable a Bre-B | Bre-B Participant |
+| Automatización de tesorería | Transferencias programáticas across cuentas | Banking (Transferencias) + Core (Ledger) |
+| Desembolso de préstamos | Envío de fondos a cuentas bancarias | Banking (Transferencias) |
+| Nómina | Pagos masivos a cuentas bancarias | Banking (Transferencias por lote) |
+
+### D.8 Limitaciones, rate limits y sandbox
+
+#### Rate limits
+- Aún no se aplican uniformemente, pero `429 (TooManyRequests)` ya aparece.
+- Header `Retry-After` indica cuánto esperar.
+- Recomendaciones: exponential backoff con jitter, separar tráfico síncrono/asíncrono con diferentes API keys, espaciar jobs batch, cachear datos de referencia.
+
+#### Sandbox
+- Disponible para los tres servicios (Banking, Core, Bre-B).
+- Bre-B Sandbox: simula pagos entrantes y transferencias salientes, responde `202 Accepted`, webhooks entregados en 2-5 s.
+
+#### Limitaciones
+- **Sin SDKs oficiales** → integración REST directa (igual que las otras pasarelas del ERP).
+- **Sin facturación electrónica nativa** → seguir usando Factus/DIAN.
+- **Solo Colombia** (coincide con el mercado del ERP).
+- **Precios no públicos** → contactar comercial. Modelo usage-based/transactional.
+
+### D.9 Cómo encaja con la infraestructura existente del ERP
+
+El repo ya tiene la infraestructura lista para Mono. Faltaría implementar el servicio siguiendo el patrón de `mercadopago/`, `payu/`, `wompi/`:
+
+```
+src/lib/services/integrations/mono/        ← NUEVO
+  monoConfig.ts        # URLs, scopes, env: MONO_API_KEY, MONO_CLIENT_ID, MONO_CLIENT_SECRET
+  monoAuthService.ts   # OAuth2 client credentials (Bre-B) + API keys (Banking/Core)
+  monoService.ts       # pay-ins, payouts, collection links, transfers Bre-B
+  monoTypes.ts         # BankTransfer, CollectionIntent, Payout, LedgerAccount...
+  monoWebhookService.ts# Verificación HMAC-SHA256 + reenvío a integration_events
+  index.ts
+
+src/app/api/integrations/mono/             ← NUEVO
+  create-payout/route.ts
+  create-collection/route.ts
+  webhook/route.ts
+  health-check/route.ts
+
+src/components/integraciones/conexiones/nueva/StepCredentials.tsx
+  ← ya tiene campos para "mono" (líneas 445-462)
+```
+
+#### Tablas existentes a reutilizar (no crear nuevas)
+- `integration_providers` → registrar `mono`
+- `integration_connections` + `integration_credentials` → credenciales por organización
+- `integration_events` + `integration_webhooks` → logs y webhooks
+- `bank_transactions` → movimientos entrantes/salientes de Mono
+- `bank_reconciliation_items` → match automático
+- `payments` → pagos recaudados vía PSE/QR Bre-B
+- `bank_transfers` → desembolsos a proveedores/nómina
+
+### D.10 Posicionamiento frente a proveedores actuales del ERP
+
+| Proveedor | Rol en el ERP | ¿Lo reemplaza Mono? |
+|-----------|---------------|---------------------|
+| **Verifik / CoreSoft** | Verificación DIAN/RUES, KYB | No — complementario |
+| **Factus** | Facturación electrónica DIAN | No — complementario |
+| **Wompi** | PSE, Nequi, Bancolombia QR, tarjetas | Parcialmente (Mono cubre PSE + QR Bre-B) |
+| **PayU** | PSE, Nequi, efectivo, tarjetas | Parcialmente (mismo solapamiento) |
+| **MercadoPago** | Tarjetas, PSE, efectivo | Parcialmente |
+| **Stripe / PayPal** | Internacionales | No — Mono es solo CO |
+| **Redeban / Bancolombia QR directo** | QR EMVCo | Sí — Mono Bre-B Participant los unifica |
+
+**Conclusión:** Mono no reemplaza las pasarelas internacionales ni la facturación electrónica. Su valor único en el stack del ERP es:
+1. **Payouts reales** a bancos CO (proveedores, nómina).
+2. **Bre-B instantáneo unificado** (QR + transferencias salientes).
+3. **Conciliación automática** vía webhooks.
+4. **Tarjetas programables** (opcional, gestión de gastos).
+
+### D.11 Variables de entorno adicionales
+
+```env
+# Mono BaaS — Banking + Core (API Keys)
+MONO_API_KEY=mk_test_xxxxxxxxxxxxxxxxxxxxxxxx
+MONO_CORE_API_KEY=mk_core_test_xxxxxxxxxxxxxxxxxxxxxxxx
+MONO_ENVIRONMENT=sandbox  # sandbox | production
+
+# Mono BaaS — Bre-B Participant (OAuth2)
+MONO_BREB_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+MONO_BREB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+MONO_BREB_TENANT_ACCOUNT_ID=ta_xxxxxxxxxxxxxxxxxxxxxxxx
+
+# Mono BaaS — Webhooks
+MONO_BREB_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+### D.12 Plan de implementación recomendado (fases)
+
+Alineado con las fases de este documento y con el ROI más rápido primero:
+
+| Fase | Objetivo | Productos Mono | Módulos ERP |
+|------|----------|----------------|-------------|
+| **1** | Payouts a proveedores | Banking (Payouts ACH/Transfiya/Turbo) | `finanzas/cuentas-por-pagar`, `finanzas/transferencias` |
+| **2** | Bre-B QR recaudo | Bre-B Participant (QR collection) | `pos`, `pms`, `parking`, `transporte` |
+| **3** | Conciliación automática | Banking + Bre-B webhooks | `finanzas/conciliacion-bancaria`, `finanzas/bancos` |
+| **4 (opcional)** | Tarjetas corporativas | Core (Cards + Spending Controls) | `finanzas/comisiones`, `finanzas/centro-costos`, `hrm` |
+
+> La **Fase 2** de este plan coincide con la **Fase 3** del checklist del Apéndice C (Mono: `create-qr` + `simulate-payment` → `payments` insertado).
+
+### D.13 Stack recomendado para solución financiera completa en Colombia
+
+Combinando proveedores ya integrados + Mono:
+
+- **Mono.la** → infraestructura de pagos y movimiento de dinero (payouts, Bre-B, tarjetas).
+- **Verifik** o **CoreSoft** → verificación de identidad y datos KYB/KYC (ya implementado en `dianLookupService.ts`).
+- **Factus** → facturación electrónica DIAN (ya implementado en `factusService.ts`).
+- **Wompi / PayU / MercadoPago** → pasarelas internacionales y métodos alternativos (Nequi, Daviplata, efectivo).
+- **Stripe / PayPal** → pagos internacionales.
 
 ---
 

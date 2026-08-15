@@ -360,10 +360,14 @@ async function printViaRawSpooler(printer: PrinterRow, jobType: PrintJobRow['job
       `driver="${info.driverName}", port="${info.portName}", processor="${info.printProcessor}"`
     );
     if (info.printProcessor && !/raw/i.test(info.printProcessor)) {
-      console.warn(
-        `[printer] printViaRawSpooler: ADVERTENCIA - PrintProcessor="${info.printProcessor}" no es RAW. ` +
-        `Esto puede causar que los bytes ESC/POS no lleguen a la impresora. ` +
-        `Cambia el PrintProcessor a "RAW" en Propiedades de impresora > Avanzado.`
+      // PrintProcessor != RAW hace que Windows interprete los bytes ESC/POS como
+      // texto GDI en vez de pasarlos crudos a la impresora térmica. El spooler
+      // acepta el trabajo (marca 'printed') pero la impresora no recibe ESC/POS
+      // válido y no imprime nada. Es la causa #1 de "marca impreso pero no imprime".
+      throw new Error(
+        `PrintProcessor="${info.printProcessor}" no es RAW en "${printerName}". ` +
+        `Los bytes ESC/POS no llegarán correctamente a la impresora. ` +
+        `Cambia el PrintProcessor a "RAW" en: Propiedades de impresora > Avanzado > Procesador de impresión.`
       );
     }
   } else {

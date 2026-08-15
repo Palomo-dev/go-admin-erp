@@ -228,12 +228,32 @@ export function PrinterFormDialog({ open, onOpenChange, printer, branches, onSav
   }, [open, printer]);
 
   const toggleStation = (station: PrinterStation) => {
-    setForm((prev) => ({
-      ...prev,
-      stations: prev.stations.includes(station)
+    setForm((prev) => {
+      // "all" actúa como select-all/deselect-all inmediato: al marcarlo se
+      // marcan todas las estaciones individuales; al desmarcarlo se desmarcan
+      // todas. Esto evita tener que clickear cada estación una por una.
+      if (station === 'all') {
+        const allStations: PrinterStation[] = ['hot_kitchen', 'cold_kitchen', 'bar', 'cashier', 'all'];
+        const isAllSelected = prev.stations.includes('all');
+        return {
+          ...prev,
+          stations: isAllSelected ? [] : allStations,
+        };
+      }
+      // Estación individual: toggle normal. Si al marcar/desmarcar quedan todas
+      // las individuales seleccionadas, se marca 'all' automáticamente; si no,
+      // se desmarca 'all' para mantener consistencia.
+      const hasStation = prev.stations.includes(station);
+      const individualStations: PrinterStation[] = ['hot_kitchen', 'cold_kitchen', 'bar', 'cashier'];
+      const nextIndividuals: PrinterStation[] = hasStation
         ? prev.stations.filter((s) => s !== station)
-        : [...prev.stations, station],
-    }));
+        : [...prev.stations.filter((s) => s !== 'all'), station];
+      const allIndividualsSelected = individualStations.every((s) => nextIndividuals.includes(s));
+      const stations: PrinterStation[] = allIndividualsSelected
+        ? [...nextIndividuals.filter((s) => s !== 'all'), 'all']
+        : nextIndividuals.filter((s) => s !== 'all');
+      return { ...prev, stations };
+    });
   };
 
   /**

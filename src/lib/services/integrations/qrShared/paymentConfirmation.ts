@@ -5,6 +5,7 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { autoMatchFromWebhook } from './autoReconciliation';
 
 /** Datos de entrada para confirmar un pago QR. */
 export interface PaymentConfirmationInput {
@@ -192,6 +193,16 @@ export async function confirmQrPayment(
         );
       } else {
         bankTransactionId = newTx.id as number;
+
+        // 5b. Auto-conciliar: match bank_transaction con payment
+        try {
+          if (paymentId && bankTransactionId) {
+            await autoMatchFromWebhook(paymentId, bankTransactionId, input.organizationId);
+          }
+        } catch (matchErr) {
+          // No fallar toda la operacion si el auto-match falla
+          console.error('[paymentConfirmation] Error en auto-match:', matchErr);
+        }
       }
     }
 

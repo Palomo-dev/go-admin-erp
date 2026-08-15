@@ -191,4 +191,28 @@ export class ConciliacionService {
       throw error;
     }
   }
+
+  /**
+   * Auto-concilia un pago con una transaccion bancaria despues de un webhook.
+   * Version client-side que delega al endpoint del servidor.
+   */
+  static async autoMatchFromWebhook(
+    paymentId: string,
+    bankTransactionId: number
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch('/api/integrations/qr/auto-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId, bankTransactionId }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error en autoMatchFromWebhook:', error);
+      return { success: false, message: 'Error al auto-conciliar' };
+    }
+  }
 }

@@ -38,6 +38,27 @@ const processedIds = new Set<string>();
 const timers: NodeJS.Timeout[] = [];
 let reconnectTimer: NodeJS.Timeout | null = null;
 let reconnectAttempts = 0;
+
+/**
+ * Reintentos para errores transitorios de impresión (red o impresora USB
+ * offline/sin conexión). Los errores de configuración no son retryable.
+ */
+const MAX_PRINT_RETRIES = 5;
+const NETWORK_ERROR_CODES = ['ETIMEDOUT', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'ECONNRESET'];
+const RETRYABLE_USB_PATTERNS = [
+  /usar sin conexión/i,
+  /workoffline/i,
+  /estado ["']?offline["']?/i,
+  /estado ["']?error["']?/i,
+  /estado ["']?notavailable["']?/i,
+  /openprinter failed/i,
+  /trabajo en spooler quedó en estado/i,
+];
+
+function isRetryablePrintError(message: string): boolean {
+  if (NETWORK_ERROR_CODES.some((c) => message.includes(c))) return true;
+  return RETRYABLE_USB_PATTERNS.some((re) => re.test(message));
+}
 let powerSaveBlockerId: number | null = null;
 let consecutivePollFailures = 0;
 let agentConfig: { refreshToken: string; organizationId: number; organizationName: string; branchIds: number[]; branchNames: string[] } | null = null;
@@ -119,8 +140,8 @@ export async function startAgent(
   }
   saveRefreshToken(data.session.refresh_token);
 
-  const { startDiscoveryServer } = await import('../agent/discoveryServer');
-  const { printToDevice } = await import('../agent/printerDrivers');
+  const { startDiscoveryServer } = await import('../agent/discoveryServer.js');
+  const { printToDevice } = await import('../agent/printerDrivers.js');
 
   const cfg = loadConfig();
   const agentName = cfg.agentName || `Desktop - ${os.hostname()}`;
@@ -174,10 +195,25 @@ export async function startAgent(
         .eq('id', job.id);
     } catch (err: any) {
       jobsFailed++;
-      showNotification('Error de impresión', `${String(err.message || err).slice(0, 100)}`);
+      const message = String(err.message || err);
+      showNotification('Error de impresión', `${message.slice(0, 100)}`);
+
+      const retryCount = (job.retry_count || 0) + 1;
+      if (isRetryablePrintError(message) && retryCount <= MAX_PRINT_RETRIES) {
+        // Error transitorio (impresora offline, sin conexión, red): liberar el
+        // job para que se reintente automáticamente (este u otro agente).
+        console.log(`[print_jobs] job ${job.id} liberado para reintento (${retryCount}/${MAX_PRINT_RETRIES}) — ${message.slice(0, 80)}`);
+        await client
+          .from('print_jobs')
+          .update({ status: 'pending', retry_count: retryCount, error_message: message })
+          .eq('id', job.id);
+        processedIds.delete(job.id);
+        return;
+      }
+
       await client
         .from('print_jobs')
-        .update({ status: 'error', error_message: String(err.message || err) })
+        .update({ status: 'error', error_message: message, retry_count: retryCount })
         .eq('id', job.id);
     }
   };

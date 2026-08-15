@@ -18,6 +18,34 @@ import * as os from 'os';
 import * as child_process from 'child_process';
 
 /**
+ * Ejecuta un script de PowerShell y retorna su stdout (o null si falla).
+ * Helper interno para no repetir el boilerplate de exec/tmpFile.
+ */
+function runPowerShell(script: string, timeoutMs = 10000): Promise<string | null> {
+  return new Promise((resolve) => {
+    const tmpFile = path.join(os.tmpdir(), `go-admin-ps-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.ps1`);
+    try {
+      fs.writeFileSync(tmpFile, script, 'utf8');
+    } catch {
+      resolve(null);
+      return;
+    }
+    child_process.exec(
+      `powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`,
+      { timeout: timeoutMs, windowsHide: true, maxBuffer: 256 * 1024 },
+      (err, stdout) => {
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+        if (err || !stdout || !stdout.trim()) {
+          resolve(null);
+          return;
+        }
+        resolve(stdout.trim());
+      }
+    );
+  });
+}
+
+/**
  * Consulta información de la impresora en Windows: driver, puerto y si soporta RAW.
  * Retorna null si no se puede consultar (no Windows o impresora no encontrada).
  */
@@ -31,37 +59,91 @@ Get-CimInstance Win32_Printer |
   ConvertTo-Json -Compress
 `.trim();
 
-  return new Promise((resolve) => {
-    const tmpFile = path.join(os.tmpdir(), `go-admin-ps-info-${Date.now()}.ps1`);
-    try {
-      fs.writeFileSync(tmpFile, script, 'utf8');
-    } catch {
-      resolve(null);
-      return;
-    }
+  const out = await runPowerShell(script, 10000);
+  if (!out) return null;
+  try {
+    const info = JSON.parse(out);
+    return {
+      driverName: info?.DriverName || 'desconocido',
+      portName: info?.PortName || 'desconocido',
+      printProcessor: info?.PrintProcessor || 'desconocido',
+    };
+  } catch {
+    return null;
+  }
+}
 
-    child_process.exec(
-      `powershell -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`,
-      { timeout: 10000, windowsHide: true, maxBuffer: 256 * 1024 },
-      (err, stdout) => {
-        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
-        if (err || !stdout || !stdout.trim()) {
-          resolve(null);
-          return;
-        }
-        try {
-          const info = JSON.parse(stdout.trim());
-          resolve({
-            driverName: info?.DriverName || 'desconocido',
-            portName: info?.PortName || 'desconocido',
-            printProcessor: info?.PrintProcessor || 'desconocido',
-          });
-        } catch {
-          resolve(null);
-        }
+/**
+ * Consulta el estado operativo de la impresora en Windows.
+ * Usa Get-Printer (cmdlet disponible en Windows 8+) que expone:
+ *   - PrinterStatus: 'Normal' | 'Idle' | 'Printing' | 'Offline' | 'Error' | ...
+ *   - WorkOffline:   boolean — true si el usuario marcó "Usar sin conexión"
+ *
+ * Retorna null si no se puede consultar (no Windows o cmdlet no disponible).
+ */
+export async function getPrinterStatus(printerName: string): Promise<{ printerStatus: string; workOffline: boolean } | null> {
+  if (process.platform !== 'win32') return null;
+
+  const script = `
+$ErrorActionPreference = 'SilentlyContinue'
+$p = Get-Printer -Name '${printerName.replace(/'/g, "''")}'
+if ($p) {
+  @{ PrinterStatus = [string]$p.PrinterStatus; WorkOffline = [bool]$p.WorkOffline } | ConvertTo-Json -Compress
+}
+`.trim();
+
+  const out = await runPowerShell(script, 8000);
+  if (!out) return null;
+  try {
+    const info = JSON.parse(out);
+    return {
+      printerStatus: String(info?.PrinterStatus || 'Unknown'),
+      workOffline: Boolean(info?.WorkOffline),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verifica que el trabajo más reciente de ESC/POS no haya quedado en estado de
+ * error en el spooler de Windows. Después de enviar los bytes, el spooler puede
+ * aceptarlos aunque la impresora esté apagada/sin papel; este chequeo consulta
+ * la cola poco después para detectar trabajos en error.
+ *
+ * Retorna un mensaje de error si detecta un trabajo en error, o null si OK.
+ */
+async function checkSpoolerForErrors(printerName: string, sinceMs: number): Promise<string | null> {
+  if (process.platform !== 'win32') return null;
+
+  const script = `
+$ErrorActionPreference = 'SilentlyContinue'
+$jobs = Get-PrintJob -PrinterName '${printerName.replace(/'/g, "''")}'
+if ($jobs) {
+  $cutoff = (Get-Date).AddMilliseconds(-${sinceMs})
+  $recent = $jobs | Where-Object { $_.SubmittedTime -ge $cutoff }
+  if ($recent) {
+    $recent | Select-Object Id, JobStatus, DocumentName | ConvertTo-Json -Compress
+  }
+}
+`.trim();
+
+  const out = await runPowerShell(script, 8000);
+  if (!out) return null;
+  try {
+    const parsed = JSON.parse(out);
+    const arr = Array.isArray(parsed) ? parsed : [parsed];
+    for (const job of arr) {
+      const status = String(job?.JobStatus || '').toLowerCase();
+      const doc = String(job?.DocumentName || '');
+      if (doc.includes('GO Admin') && (status.includes('error') || status.includes('cancelled') || status.includes('deleted'))) {
+        return `Trabajo en spooler quedó en estado "${job.JobStatus}" para "${printerName}"`;
       }
-    );
-  });
+    }
+  } catch {
+    /* JSON inválido = sin trabajos, OK */
+  }
+  return null;
 }
 
 const CSHARP_SOURCE = `
@@ -138,11 +220,38 @@ $bytes = [System.IO.File]::ReadAllBytes('${tempFile.replace(/'/g, "''")}')
 /**
  * Envía un buffer ESC/POS a una impresora de Windows usando el spooler en modo RAW.
  *
+ * Antes de enviar verifica que la impresora no esté offline (WorkOffline) ni en
+ * estado de error (PrinterStatus). Después de enviar espera brevemente y consulta
+ * la cola del spooler para detectar trabajos que hayan quedado en error (impresora
+ * apagada, sin papel, etc.) — el spooler acepta los bytes aunque la impresora no
+ * responda, por lo que sin esta verificación el job se marcaría como 'printed'
+ * sin haberse imprimido realmente.
+ *
  * @param printerName Nombre exacto de la impresora en Windows (ej. "POS-80C")
  * @param buffer       Bytes ESC/POS a enviar
  */
-export function sendRawToPrinter(printerName: string, buffer: Buffer): Promise<void> {
-  return new Promise((resolve, reject) => {
+export async function sendRawToPrinter(printerName: string, buffer: Buffer): Promise<void> {
+  // 1) Verificar estado de la impresora antes de enviar.
+  const status = await getPrinterStatus(printerName);
+  if (status) {
+    const st = status.printerStatus.toLowerCase();
+    if (status.workOffline) {
+      throw new Error(
+        `La impresora "${printerName}" está en modo "Usar sin conexión" (WorkOffline). ` +
+        `Conéctala y desactiva "Usar sin conexión" en Dispositivos e impresoras de Windows.`
+      );
+    }
+    if (st === 'offline' || st === 'error' || st === 'notavailable') {
+      throw new Error(
+        `La impresora "${printerName}" reporta estado "${status.printerStatus}". ` +
+        `Verifica que esté encendida, conectada por USB y con papel.`
+      );
+    }
+    console.log(`[rawSpooler] Estado de "${printerName}": ${status.printerStatus} (WorkOffline=${status.workOffline})`);
+  }
+
+  // 2) Enviar los bytes al spooler.
+  await new Promise<void>((resolve, reject) => {
     const tmpDir = path.join(os.tmpdir(), 'go-admin-raw');
     try { fs.mkdirSync(tmpDir, { recursive: true }); } catch { /* ignore */ }
 
@@ -186,4 +295,16 @@ export function sendRawToPrinter(printerName: string, buffer: Buffer): Promise<v
       }
     );
   });
+
+  // 3) Verificación post-envío: el spooler de Windows es asíncrono y acepta los
+  //    bytes aunque la impresora esté apagada/sin papel. Esperamos brevemente y
+  //    consultamos la cola para detectar trabajos en error. Sin esto el job se
+  //    marcaría como 'printed' sin haberse imprimido realmente.
+  const VERIFY_DELAY_MS = 1500;
+  const VERIFY_WINDOW_MS = VERIFY_DELAY_MS + 2000;
+  await new Promise((r) => setTimeout(r, VERIFY_DELAY_MS));
+  const spoolerError = await checkSpoolerForErrors(printerName, VERIFY_WINDOW_MS);
+  if (spoolerError) {
+    throw new Error(spoolerError);
+  }
 }

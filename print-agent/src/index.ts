@@ -20,6 +20,26 @@ function isNetworkUnreachableError(message: string): boolean {
   return NETWORK_ERROR_CODES.some((code) => message.includes(code));
 }
 
+/**
+ * Errores transitorios de impresora USB / spooler de Windows que ameritan
+ * reintento: la impresora puede estar apagada, sin conexión o sin papel, pero
+ * el usuario puede resolverlo y el job debería poder imprimirse al reintentar.
+ * Los errores de configuración (PrintProcessor no-RAW) NO son retryable.
+ */
+const RETRYABLE_USB_PATTERNS = [
+  /usar sin conexión/i,
+  /workoffline/i,
+  /estado ["']?offline["']?/i,
+  /estado ["']?error["']?/i,
+  /estado ["']?notavailable["']?/i,
+  /openprinter failed/i,
+  /trabajo en spooler quedó en estado/i,
+];
+
+function isRetryableUsbError(message: string): boolean {
+  return RETRYABLE_USB_PATTERNS.some((re) => re.test(message));
+}
+
 async function heartbeat(): Promise<void> {
   if (!runtimeConfig) return;
   for (const branchId of runtimeConfig.branchIds) {
@@ -109,11 +129,14 @@ async function processJob(job: PrintJobRow): Promise<void> {
     console.error(`[print_jobs] error imprimiendo job ${job.id}:`, message);
 
     const retryCount = (job.retry_count || 0) + 1;
-    if (isNetworkUnreachableError(message) && retryCount <= MAX_PRINT_RETRIES) {
+    const isRetryable = isNetworkUnreachableError(message) || isRetryableUsbError(message);
+    if (isRetryable && retryCount <= MAX_PRINT_RETRIES) {
       // No fue un error de impresión en sí, sino de conectividad de red de
-      // ESTE equipo hacia la impresora. Se libera el job para que otro
-      // Print Agent (con acceso a esa red) pueda reclamarlo y reintentar.
-      console.log(`[print_jobs] job ${job.id} liberado para reintento (${retryCount}/${MAX_PRINT_RETRIES}) — posible problema de red local`);
+      // ESTE equipo hacia la impresora, o la impresora USB está offline/sin
+      // conexión. Se libera el job para que otro Print Agent (con acceso a
+      // esa red/impresora) pueda reclamarlo y reintentar, o este mismo agente
+      // lo reintente más adelante si el usuario resuelve el problema.
+      console.log(`[print_jobs] job ${job.id} liberado para reintento (${retryCount}/${MAX_PRINT_RETRIES}) — error transitorio: ${message.slice(0, 80)}`);
       await supabase
         .from('print_jobs')
         .update({ status: 'pending', retry_count: retryCount, error_message: message })

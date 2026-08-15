@@ -2160,17 +2160,68 @@ El `CheckoutDialog` mostrará las opciones disponibles según las conexiones act
 - `src/lib/services/integrations/wompi/wompiTypes.ts` — agregado `WompiBancolombiaQrPaymentMethod` + union type
 - `src/app/api/integrations/wompi/webhook/route.ts` — actualiza `payment_qr_sessions` cuando BANCOLOMBIA_QR APPROVED
 
-### Fase 5 — Conciliación bancaria automática (3-5 días)
+### Fase 5 — Conciliación bancaria automática (3-5 días) ✅ COMPLETADO
 
-- [ ] Al confirmar un pago vía webhook, insertar automáticamente en `bank_transactions`:
-  ```sql
-  INSERT INTO bank_transactions (organization_id, bank_account_id, trans_date, description, amount, reference, transaction_type, status, import_source, import_id)
-  VALUES (:org_id, :bank_account_id, now(), :description, :amount, :reference, 'credit', 'unmatched', :provider, :external_id);
-  ```
-- [ ] El `import_source` será `'bancolombia'`, `'breb'`, o `'redeban'`.
-- [ ] Auto-match: si `bank_transactions.reference` coincide con `payments.reference`, crear `bank_reconciliation_items` con `is_matched=true` automáticamente.
-- [ ] Extender `ConciliacionService` con `autoMatchFromWebhook(paymentId, bankTransactionId)`.
-- [ ] Job programado (Supabase Edge Function o cron) que marque `payment_qr_sessions` expirados (status `expired` cuando `expires_at < now()`).
+**Estado:** completado el 2026-08-14.
+
+#### Implementación ✅
+
+- [x] **`src/lib/services/integrations/qrShared/autoReconciliation.ts`** (nuevo, 297 líneas) — servicio server-side de auto-conciliación:
+  - `autoMatchFromWebhook(paymentId, bankTransactionId, organizationId)` — busca `bank_transactions` (unmatched) + `payments` (completed), verifica misma reference y organization_id, busca o crea `bank_reconciliations` abierta, inserta `bank_reconciliation_items` con `is_matched=true`, actualiza `bank_transactions.status='matched'`. Idempotente: si ya está matched, retorna success.
+  - `autoMatchByReference(reference, organizationId)` — busca automáticamente ambos registros por reference y delega a `autoMatchFromWebhook`.
+  - Interfaces tipadas: `BankTransactionRow`, `PaymentRow`, `ReconciliationRow`.
+- [x] **`src/lib/services/integrations/qrShared/paymentConfirmation.ts`** (modificado) — después de insertar `bank_transactions` exitosamente, llama `autoMatchFromWebhook` via import dinámico (líneas 198-207). No falla la operación si el auto-match falla.
+- [x] **`src/app/api/integrations/qr/auto-match/route.ts`** (nuevo, 45 líneas) — POST con auth, endpoint client-side que delega a `autoMatchFromWebhook` del servidor.
+- [x] **`src/app/api/integrations/qr/expire-sessions/route.ts`** (nuevo, 61 líneas) — POST para job de expiración. Verifica `x-cron-secret` contra `CRON_SECRET` (opcional). Marca `payment_qr_sessions` con `status='expired'` cuando `expires_at < now()`. Retorna `{ expiredCount }`.
+- [x] **`src/components/finanzas/conciliacion-bancaria/ConciliacionService.ts`** (modificado) — agregado método `autoMatchFromWebhook(paymentId, bankTransactionId)` (líneas 195-219) que llama al endpoint `/api/integrations/qr/auto-match` via fetch.
+
+#### Flujo de auto-conciliación
+
+```
+1. Webhook del proveedor (Redeban/Mono/Bancolombia) confirma pago
+   ↓
+2. processWebhook() llama confirmQrPayment()
+   ↓
+3. confirmQrPayment():
+   a. Actualiza payment_qr_sessions.status = 'paid'
+   b. Inserta/actualiza payments.status = 'completed'
+   c. Inserta bank_transactions (status='unmatched', import_source=provider)
+   ↓
+4. confirmQrPayment() llama autoMatchFromWebhook() (import dinámico)
+   ↓
+5. autoMatchFromWebhook():
+   a. Busca bank_transaction (unmatched) y payment (completed)
+   b. Verifica misma reference + organization_id
+   c. Busca bank_reconciliations abierta (draft/in_progress)
+   d. Si no existe, crea nueva (period_start=fecha tx, period_end=+30 días)
+   e. Inserta bank_reconciliation_items (is_matched=true, match_type='payment')
+   f. Actualiza bank_transactions.status = 'matched'
+   ↓
+6. Conciliación disponible en /app/finanzas/conciliacion-bancaria
+```
+
+#### Job de expiración
+
+Endpoint: `POST /api/integrations/qr/expire-sessions`
+
+- Marca sesiones QR expiradas: `UPDATE payment_qr_sessions SET status='expired' WHERE status='pending' AND expires_at < now()`
+- Protegido por `x-cron-secret` header (si `CRON_SECRET` está configurado)
+- Puede ser llamado por: Supabase Edge Function, Vercel Cron, o manualmente
+- Recomendación: ejecutar cada 5 minutos
+
+#### Verificación ✅
+
+- **ESLint:** 0 errores en archivos nuevos. 1 error preexistente en `ConciliacionService.ts:71` (`any` en `obtenerPagosCandidatos` — no modificado).
+- **TypeScript:** 0 errores en los archivos de la Fase 5.
+
+**Archivos creados (3):**
+- `src/lib/services/integrations/qrShared/autoReconciliation.ts`
+- `src/app/api/integrations/qr/auto-match/route.ts`
+- `src/app/api/integrations/qr/expire-sessions/route.ts`
+
+**Archivos modificados (2):**
+- `src/lib/services/integrations/qrShared/paymentConfirmation.ts` — llama auto-match después de insertar bank_transaction
+- `src/components/finanzas/conciliacion-bancaria/ConciliacionService.ts` — agregado `autoMatchFromWebhook` client-side
 
 ### Fase 6 — Notificaciones y UI (2-3 días)
 

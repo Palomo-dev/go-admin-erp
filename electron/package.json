@@ -1,6 +1,6 @@
 {
   "name": "go-admin-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Go Admin Desktop — Aplicación de escritorio (Electron) para GO Admin ERP. Wrapper de la web + agente de impresión embebido.",
   "main": "dist/main/index.js",

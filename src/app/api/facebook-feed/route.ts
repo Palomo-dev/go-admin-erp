@@ -47,14 +47,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Retornar CSV con headers apropiados
-    return new NextResponse('\uFEFF' + csv, {
+    // Retornar CSV con headers compatibles con Facebook Commerce Manager
+    // Facebook requiere: Content-Type text/csv, Content-Disposition inline (no attachment)
+    // Sin BOM (\uFEFF) porque Facebook puede no reconocer el formato
+    return new NextResponse(csv, {
       status: 200,
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="facebook_catalog_${organizationId}.csv"`,
+        'Content-Disposition': 'inline',
         'Cache-Control': 'public, max-age=3600',
         'X-Product-Count': String(count),
+        'Access-Control-Allow-Origin': '*',
       },
     });
   } catch (error: any) {

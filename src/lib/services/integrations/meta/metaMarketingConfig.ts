@@ -18,15 +18,24 @@ export const META_CREDENTIAL_PURPOSES = {
   ACCESS_TOKEN: 'access_token',
   APP_SECRET: 'app_secret',
   BUSINESS_ID: 'business_id',
+  AD_ACCOUNT_ID: 'ad_account_id',
   PIXEL_ID: 'pixel_id',
   CATALOG_ID: 'catalog_id',
+  PRODUCT_SET_ID: 'product_set_id',
 } as const;
 
-/** Permisos requeridos del token */
+/**
+ * Permisos requeridos del token.
+ * - catalog_management: CRUD catálogos de productos
+ * - business_management: acceso a Business Manager
+ * - ads_management: crear/gestionar pixels (requiere ad account)
+ * - ads_read: listar pixels y ad accounts existentes
+ */
 export const META_REQUIRED_SCOPES = [
   'catalog_management',
   'business_management',
   'ads_management',
+  'ads_read',
 ] as const;
 
 /** URL de Facebook OAuth Dialog */

@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
       oauthResult.accessToken,
       appSecret,
       oauthResult.businessId,
+      oauthResult.adAccountId,
       state.organization_id,
       orgData?.name || 'Mi Negocio',
       domain,
@@ -128,6 +129,7 @@ export async function GET(request: NextRequest) {
       `Meta conectado exitosamente. ` +
       `Catálogo: ${setupResult.catalogName}, ` +
       `Pixel: ${setupResult.pixelName}, ` +
+      `Ad Account: ${oauthResult.adAccountName || oauthResult.adAccountId}, ` +
       `Productos sincronizados: ${setupResult.productsSynced}`
     );
 

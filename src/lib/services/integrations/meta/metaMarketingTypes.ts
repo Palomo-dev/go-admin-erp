@@ -9,8 +9,10 @@ export interface MetaMarketingCredentials {
   accessToken: string;
   appSecret: string;
   businessId: string;
+  adAccountId: string;
   pixelId: string;
   catalogId: string;
+  productSetId?: string;
 }
 
 // --- Setup automático (creación de catálogo y pixel) ---
@@ -20,7 +22,11 @@ export interface MetaSetupResult {
   catalogName: string;
   pixelId: string;
   pixelName: string;
+  adAccountId: string;
+  adAccountName: string;
   productsSynced: number;
+  productSetId?: string;
+  productSetName?: string;
 }
 
 export interface MetaCreateCatalogResult {
@@ -31,6 +37,12 @@ export interface MetaCreateCatalogResult {
 export interface MetaCreatePixelResult {
   id: string;
   name: string;
+}
+
+export interface MetaProductSetResult {
+  id: string;
+  name: string;
+  filter?: Record<string, unknown>;
 }
 
 // --- Token Debug ---

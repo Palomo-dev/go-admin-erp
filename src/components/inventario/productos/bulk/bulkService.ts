@@ -121,7 +121,12 @@ export async function bulkUpdatePrices(
 }
 
 /**
- * Actualización masiva de stock en una sucursal
+ * Actualización masiva de stock en una sucursal.
+ * Expande automáticamente los IDs seleccionados para incluir:
+ * - Hijos (variantes) de productos padre seleccionados
+ * - Padre de productos hijo seleccionados (si el padre trackea stock)
+ * Deduplica para evitar actualizar el mismo producto dos veces.
+ * Respeta track_stock: solo actualiza productos que rastrean inventario.
  */
 export async function bulkUpdateStock(
   productIds: number[],
@@ -131,7 +136,78 @@ export async function bulkUpdateStock(
 ): Promise<ResultadoMasivo> {
   const resultado: ResultadoMasivo = { exitosos: 0, fallidos: 0, errores: [] };
 
-  for (const productId of productIds) {
+  // 1. Consultar info de los productos seleccionados (is_parent, parent_product_id, track_stock)
+  const { data: selectedProducts } = await supabase
+    .from('products')
+    .select('id, is_parent, parent_product_id, track_stock')
+    .in('id', productIds);
+
+  if (!selectedProducts || selectedProducts.length === 0) {
+    resultado.fallidos = productIds.length;
+    resultado.errores.push('No se encontraron los productos seleccionados');
+    return resultado;
+  }
+
+  // 2. Construir conjunto expandido de IDs a actualizar
+  const expandedIds = new Set<number>();
+  const parentIdsToExpand: number[] = [];
+
+  for (const p of selectedProducts) {
+    // Si el producto rastrea stock, incluirlo
+    if (p.track_stock !== false) {
+      expandedIds.add(p.id);
+    }
+    // Si es producto padre, marcar para buscar hijos
+    if (p.is_parent) {
+      parentIdsToExpand.push(p.id);
+    }
+    // Si es producto hijo y el padre no estaba en la selección, incluir el padre
+    // (solo si el padre trackea stock — se verificará al consultar)
+    if (p.parent_product_id && !productIds.includes(p.parent_product_id)) {
+      // El padre se agregará si trackea stock al consultar sus datos
+      parentIdsToExpand.push(p.parent_product_id);
+    }
+  }
+
+  // 3. Consultar hijos de los padres identificados
+  if (parentIdsToExpand.length > 0) {
+    const { data: children } = await supabase
+      .from('products')
+      .select('id, track_stock')
+      .in('parent_product_id', parentIdsToExpand)
+      .neq('status', 'deleted');
+
+    if (children) {
+      for (const child of children) {
+        if (child.track_stock !== false) {
+          expandedIds.add(child.id);
+        }
+      }
+    }
+
+    // También consultar los padres que no estaban en la selección original
+    const newParentIds = parentIdsToExpand.filter(
+      (pid) => !productIds.includes(pid)
+    );
+    if (newParentIds.length > 0) {
+      const { data: parents } = await supabase
+        .from('products')
+        .select('id, track_stock')
+        .in('id', newParentIds)
+        .neq('status', 'deleted');
+
+      if (parents) {
+        for (const parent of parents) {
+          if (parent.track_stock !== false) {
+            expandedIds.add(parent.id);
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Actualizar stock para cada producto del conjunto expandido
+  for (const productId of expandedIds) {
     try {
       const { data: existente } = await supabase
         .from('stock_levels')

@@ -19,6 +19,14 @@ import FiltrosProductosComponent from './FiltrosProductos';
 import ProductosTable from './ProductosTable';
 import AccionesMasivas from './bulk/AccionesMasivas';
 import ScrapingProductos from './scraping/ScrapingProductos';
+import { FacebookFeedDialog } from './FacebookFeedDialog';
+import {
+  exportToFacebookCatalog,
+  downloadCSV,
+  getOrganizationDomain,
+  getOrganizationCurrency,
+  fetchAllProductsForFacebook,
+} from './facebookCatalogExport';
 
 import {
   Dialog,
@@ -47,6 +55,7 @@ const CatalogoProductos: React.FC = () => {
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [filters, setFilters] = useState<FiltrosProductos>({
     busqueda: '',
     categoria: null,
@@ -59,6 +68,7 @@ const CatalogoProductos: React.FC = () => {
   const [stockPorSucursal, setStockPorSucursal] = useState<StockSucursal[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isScrapingOpen, setIsScrapingOpen] = useState<boolean>(false);
+  const [isFacebookFeedOpen, setIsFacebookFeedOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const lastFetchKey = useRef<string>('');
 
@@ -285,7 +295,7 @@ const CatalogoProductos: React.FC = () => {
                   return sum + (sl.qty_on_hand || 0) - (sl.qty_reserved || 0);
                 }, 0);
                 
-                if (branchId) {
+                if (branchId && stockBranch !== undefined) {
                   const childBranchStock = child.stock_levels.find((sl: any) => sl.branch_id === branchId);
                   if (childBranchStock) {
                     stockBranch += (childBranchStock.qty_on_hand || 0) - (childBranchStock.qty_reserved || 0);
@@ -575,7 +585,7 @@ const CatalogoProductos: React.FC = () => {
     if (!productoToDelete) return;
 
     try {
-      setLoading(true);
+      setActionLoading(true);
 
       if (!productoToDelete) {
         throw new Error('No se seleccionó ningún producto para eliminar');
@@ -620,7 +630,7 @@ const CatalogoProductos: React.FC = () => {
     } finally {
       setIsDeleteDialogOpen(false);
       setProductoToDelete(null);
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -795,6 +805,61 @@ const CatalogoProductos: React.FC = () => {
     toast({ title: 'Exportación exitosa', description: `Se exportaron ${productos.length} productos.` });
   };
 
+  const handleExportarFacebook = async () => {
+    if (!organization?.id) {
+      toast({ title: 'Error', description: 'No hay organización seleccionada.' });
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+
+      const [currency, webDomain] = await Promise.all([
+        getOrganizationCurrency(organization.id),
+        getOrganizationDomain(organization.id),
+      ]);
+
+      // Consultar TODOS los productos de la BD (no depende de la UI)
+      const allProducts = await fetchAllProductsForFacebook(organization.id);
+
+      if (allProducts.length === 0) {
+        toast({ title: 'Sin productos', description: 'No hay productos activos para exportar.' });
+        setActionLoading(false);
+        return;
+      }
+
+      const { csv, count } = await exportToFacebookCatalog({
+        organizationId: organization.id,
+        products: allProducts,
+        currency,
+        webDomain: webDomain || undefined,
+        organizationName: organization.name,
+      });
+
+      if (count === 0) {
+        toast({ title: 'Sin productos válidos', description: 'No hay productos activos para exportar a Facebook.' });
+        setActionLoading(false);
+        return;
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      downloadCSV(csv, `facebook_catalog_${dateStr}.csv`);
+
+      toast({
+        title: 'Exportación a Facebook exitosa',
+        description: `Se exportaron ${count} productos al formato de catálogo de Facebook.`,
+      });
+    } catch (error: any) {
+      console.error('Error exportando a Facebook:', error);
+      toast({
+        title: 'Error de exportación',
+        description: error?.message || 'Ocurrió un error al exportar a Facebook.',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5">
       {/* Header con título y botón de nuevo */}
@@ -802,12 +867,14 @@ const CatalogoProductos: React.FC = () => {
         onCrearClick={handleCrear} 
         onImportarClick={handleImportar}
         onExportarClick={handleExportar}
+        onExportarFacebookClick={handleExportarFacebook}
+        onFacebookFeedClick={() => setIsFacebookFeedOpen(true)}
         onScrapingClick={() => setIsScrapingOpen(true)}
         onRefreshClick={() => {
           setLoading(true);
           setRefreshKey(k => k + 1);
         }}
-        isRefreshing={loading}
+        isRefreshing={loading || actionLoading}
         totalProducts={productos.length}
       />
       
@@ -872,6 +939,13 @@ const CatalogoProductos: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de URL Feed para Facebook */}
+      <FacebookFeedDialog
+        open={isFacebookFeedOpen}
+        onOpenChange={setIsFacebookFeedOpen}
+        organizationId={organization?.id}
+      />
     </div>
   );
 };

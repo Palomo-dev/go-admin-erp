@@ -84,6 +84,7 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/super-admin-access', // <-- Excluir canje de token de super admin (autenticación propia via token BD)
     '/api/super-admin-cleanup', // <-- Excluir cleanup de super admin (autenticación propia via body)
     '/api/factus/', // <-- Excluir APIs de Factus (usan credenciales de entorno, no requieren sesión)
+    '/api/facebook-feed', // <-- Excluir feed de Facebook (autenticación propia via token en query param)
     '/auth/v1/',
     '/auth/callback', // <-- Excluir callback de OAuth para no interferir con PKCE
     '/.well-known/',
@@ -758,6 +759,6 @@ export const config = {
      * - api/stripe (Stripe API endpoints - handle their own auth)
      * - api/sessions (Session API endpoints - handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio|api/super-admin-access|api/super-admin-cleanup|api/factus).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed).*)',
   ],
 };

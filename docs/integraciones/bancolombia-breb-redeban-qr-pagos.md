@@ -51,7 +51,200 @@ Conectar los métodos de pago y los bancos del ERP con **Bancolombia**, **Bre-B*
 | Notificaciones internas al usuario | Reembolsos automáticos vía API |
 | Multi-banco y multi-conexión por sucursal | FX / moneda distinta a COP |
 
-### 1.3 Módulos del ERP impactados
+### 1.3 Modelos de operación: quién procesa los pagos
+
+El ERP soporta **dos modelos de operación** para procesar pagos QR. La elección del modelo define **quién pone las credenciales**, **a dónde llega el dinero** y **qué responsabilidad legal asume el ERP admin**.
+
+---
+
+#### 1.3.1 Modelo A — Cada organización pone sus credenciales (RECOMENDADO)
+
+```
+Organización 1 (Restaurante El Polo)
+  → Se registra en Mono / Wompi / Redeban / Bancolombia
+  → Ingresa SUS credenciales en el ERP
+  → Los pagos llegan a SU cuenta bancaria
+
+Organización 2 (Hotel Costa)
+  → Se registra en Mono / Wompi / Redeban / Bancolombia
+  → Ingresa SUS credenciales en el ERP
+  → Los pagos llegan a SU cuenta bancaria
+
+ERP admin (tú)
+  → No tocas el dinero
+  → Solo cobras la suscripción del software (SaaS)
+```
+
+**Flujo del dinero (Modelo A):**
+
+```
+Cliente escanea QR y paga desde su app bancaria
+        ↓
+PROVEEDOR (Wompi / Mono / Redeban / Bancolombia)
+  - Procesa el pago
+  - Cobra su comisión (% + IVA)
+  - Transfiere el dinero al comercio
+        ↓
+CUENTA BANCARIA DEL COMERCIO (organización)
+  - La cuenta que la organización vinculó al registrarse con el proveedor
+  - El ERP nunca toca el dinero
+```
+
+**Ventajas:**
+
+- Cada organización es responsable de su propio onboarding con el proveedor.
+- El dinero va directo a la cuenta del comercio, sin intermediarios.
+- No necesitas licencia de procesador de pagos (no eres PayFac).
+- Menos riesgo legal y financiero para ti.
+- La arquitectura actual del ERP ya soporta esto (`integration_connections` tiene `organization_id`).
+
+**Desventajas:**
+
+- Cada organización debe hacer su propio onboarding (KYC, contratos con el proveedor).
+- Más fricción para organizaciones pequeñas.
+
+**Estado de implementación:** ✅ COMPLETADO (Fases 0-6). El ERP ya soporta este modelo. Cada organización gestiona sus credenciales en `/app/integraciones/conexiones/nueva`.
+
+**Qué banco usa cada organización (Modelo A):**
+
+| Si la organización tiene cuenta en... | Proveedor recomendado | Por qué |
+|---------------------------------------|----------------------|---------|
+| Bancolombia | Wompi o Bancolombia directa | Integración nativa |
+| Cualquier banco | Bre-B vía Mono | Acepta todos los bancos |
+| Redeban (acuerdo comercial) | Redeban | Interoperabilidad QR |
+
+El cliente que paga puede tener cuenta en cualquier banco. El proveedor se encarga de la transferencia interbancaria. La organización solo necesita una cuenta bancaria para recibir los fondos.
+
+**Tu rol como ERP admin (Modelo A):**
+
+| Provees | No provees |
+|---------|-----------|
+| El software (ERP) | Procesamiento de pagos |
+| La integración técnica (webhooks, QR) | Manejo del dinero |
+| Soporte técnico | Conciliación bancaria de cada organización |
+| Actualizaciones | Licencia financiera |
+
+Cobras: suscripción mensual del software (SaaS) + opcional comisión de implementación.
+
+---
+
+#### 1.3.2 Modelo B — ERP admin es procesador (PayFac / Agregador)
+
+```
+ERP admin (tú)
+  → Tienes UNA cuenta maestra en Mono / Wompi / Redeban / Bancolombia
+  → Todas las organizaciones usan TUS credenciales
+  → Todos los pagos llegan a TU cuenta bancaria
+  → Tú dispersas el dinero a cada organización (menos tu comisión)
+
+Organización 1 → paga → tu cuenta → tú transfieres a org 1
+Organización 2 → paga → tu cuenta → tú transfieres a org 2
+```
+
+**Flujo del dinero (Modelo B):**
+
+```
+Cliente escanea QR y paga desde su app bancaria
+        ↓
+PROVEEDOR (Wompi / Mono / Redeban / Bancolombia)
+  - Procesa el pago
+  - Cobra su comisión (% + IVA)
+  - Transfiere el dinero a la CUENTA MAESTRA del ERP admin
+        ↓
+CUENTA MAESTRA DEL ERP ADMIN (tú)
+  - Recibes todos los pagos de todas las organizaciones
+  - Calculas tu comisión por organización
+  - Generas payout (dispersión) a cada organización
+        ↓
+CUENTA BANCARIA DE CADA ORGANIZACIÓN
+  - Recibe el neto (gross - comisión ERP - comisión proveedor)
+  - Vía Bre-B / ACH / transferencia manual
+```
+
+**Ventajas:**
+
+- Onboarding más rápido para organizaciones pequeñas (no necesitan registrarse con el proveedor).
+- Puedes cobrar comisión por transacción además de la suscripción.
+- Control centralizado de credenciales.
+
+**Desventajas:**
+
+- Requieres licencia de Pagaduría / PayFac ante la Superfinanciera.
+- El dinero pasa por tu cuenta = riesgo legal, financiero, lavado de activos.
+- Necesitas contratos de dispersión con cada organización.
+- Debes manejar conciliación de dispersión (no solo de recepción).
+- Responsabilidad tributaria compleja (¿quién emite el comprobante?).
+- Mucho más riesgo y complejidad legal.
+
+**Consideraciones legales (Modelo B):**
+
+| Aspecto | Detalle |
+|---------|---------|
+| Licencia | Superintendencia Financiera de Colombia — Sociedad Servidor de Pago (PayFac) |
+| SARLAFT | Debes implementar Sistema de Administración del Riesgo de Lavado de Activos |
+| Reporting | Reportes a la UIF (Unidad de Información y Análisis Financiero) |
+| Capital mínimo | Definido por la Circular Básica Jurídica de la SFC |
+| Contratos | Contrato de dispersión con cada organización |
+| Tributación | El ERP admin recibe el ingreso bruto y dispersa; cada organización factura su porción |
+| IVA | Comisiones del ERP admin están sujetas a IVA |
+
+> **Advertencia:** El Modelo B requiere asesoría legal especializada antes de operar. Esta documentación es técnica y no constituye asesoría legal.
+
+**Estado de implementación:** ✅ Implementado como infraestructura opcional (ver sección 14). El ERP admin puede activar el Modelo B por organización cuando tenga la licencia correspondiente.
+
+---
+
+#### 1.3.3 Comparación de modelos
+
+| Criterio | Modelo A (Recomendado) | Modelo B (PayFac) |
+|----------|----------------------|-------------------|
+| Quién pone credenciales | Cada organización | ERP admin (maestras) |
+| A dónde llega el dinero | Cuenta del comercio | Cuenta maestra del ERP admin |
+| Dispersión (payout) | No necesaria | Sí, el ERP dispersa a cada org |
+| Comisión del ERP | Solo suscripción SaaS | Suscripción + comisión por transacción |
+| Licencia financiera | No | Sí (Superfinanciera) |
+| Riesgo legal | Bajo | Alto |
+| Onboarding de organización | Cada una hace el suyo | Rápido (usa credenciales maestras) |
+| Conciliación | Cada organización la suya | ERP admin concilia dispersión + recepción |
+| Tablas adicionales | Ninguna (ya existen) | 4 tablas nuevas |
+| Estado en el ERP | ✅ Completado | ✅ Infraestructura creada |
+
+---
+
+#### 1.3.4 Proveedores y bancos vinculados
+
+Hay **4 rutas de pago QR**, cada una con sus propias credenciales:
+
+| Proveedor | Bancos del pagador | Tipo de pago | Credenciales |
+|-----------|-------------------|--------------|--------------|
+| **Wompi** | Bancolombia, Nequi | QR Bancolombia | public_key, private_key, events_secret, integrity_secret |
+| **Bancolombia directa** | Bancolombia | Transferencia web (Botón) | client_id, client_secret, commerce_transfer_button_id |
+| **Bre-B vía Mono** | **TODOS los bancos colombianos** | Pago inmediato Bre-B (segundos) | client_id, client_secret |
+| **Redeban** | Bancos interoperables en Redeban | QR interoperable | server_app_code, server_app_key |
+
+El ERP permite tener las 4 conexiones activas simultáneamente. El cajero elige cuál usar en el checkout según el método seleccionado.
+
+**Límites y horarios (Bre-B vía Mono):**
+
+| Aspecto | Valor |
+|---------|-------|
+| Límite por transacción | COP $12.110.000 (1.000 UVT 2026) |
+| Horario | 24/7/365 |
+| Tiempo de confirmación | Segundos |
+| Disponibilidad | Todos los bancos colombianos |
+
+---
+
+#### 1.3.5 Decisión de implementación
+
+El ERP implementa **ambos modelos**:
+
+- **Modelo A:** es el modelo por defecto. Cada organización gestiona sus credenciales en `/app/integraciones/conexiones/nueva`. Las fases 0-6 de este documento cubren este modelo.
+- **Modelo B:** es infraestructura opcional para cuando el ERP admin tenga licencia PayFac. Se documenta en la sección 14 de este documento. El ERP admin puede activar el Modelo B por organización cuando tenga la licencia correspondiente.
+
+El ERP determina qué modelo usar por organización consultando si existen variables de entorno maestras configuradas para el proveedor (ej: `BREB_MONO_CLIENT_ID`, `BREB_MONO_CLIENT_SECRET`). Si existen, usa el Modelo B; si no, usa el Modelo A con las credenciales propias de la organización.
+
+### 1.4 Módulos del ERP impactados
 
 Según las reglas del proyecto (`code-style-guide.md`), los módulos base son:
 
@@ -2223,15 +2416,70 @@ Endpoint: `POST /api/integrations/qr/expire-sessions`
 - `src/lib/services/integrations/qrShared/paymentConfirmation.ts` — llama auto-match después de insertar bank_transaction
 - `src/components/finanzas/conciliacion-bancaria/ConciliacionService.ts` — agregado `autoMatchFromWebhook` client-side
 
-### Fase 6 — Notificaciones y UI (2-3 días)
+### Fase 6 — Notificaciones y UI (2-3 días) ✅ COMPLETADO
 
-- [ ] Al confirmar pago, crear registro en `notifications`:
-  - `type: 'payment_received'`
-  - `title: 'Pago recibido via QR'`
-  - `body: 'Pago de ${amount} ${currency} confirmado por ${provider}'`
-  - `link: /app/finanzas/conciliacion-bancaria`
-- [ ] Toast en el checkout cuando el webhook confirme (vía Realtime subscription de Supabase en `payment_qr_sessions`).
-- [ ] Vista de historial de QR en `/app/finanzas/metodos-pago/qr-sessions` (lista de sesiones con estado, monto, pagador).
+**Estado:** completado el 2026-08-14.
+
+#### Implementación ✅
+
+- [x] **`src/lib/services/integrations/qrShared/qrNotificationService.ts`** (nuevo, ~120 líneas) — servicio server-side de notificaciones:
+  - `createPaymentReceivedNotification({ organizationId, amount, currency, providerCode, reference, paymentId? })` — crea notificación tipo `payment_received` con título "Pago recibido via QR", body con monto formateado y etiqueta del proveedor, link a `/app/finanzas/conciliacion-bancaria`.
+  - `createQrExpiredNotification({ organizationId, reference, amount, currency })` — crea notificación tipo `payment_expired` con título "Pago QR expirado".
+  - Mapeo de `providerCode` a etiquetas legibles: wompi → "Wompi (Bancolombia QR)", bancolombia → "Bancolombia", breb → "Bre-B (Mono)", redeban → "Redeban".
+  - Formateo de monto con `Intl.NumberFormat('es-CO', { style: 'currency', currency })`.
+- [x] **`src/components/pos/CheckoutDialog.tsx`** (modificado) — integración de QrPaymentDialog:
+  - Import de `QrPaymentDialog` y `QrCode` de lucide-react.
+  - 6 estados nuevos: `showQrDialog`, `qrData`, `qrImageUrl`, `qrReference`, `qrProviderLabel`, `qrExpiresAt`.
+  - Función `handleQrPayment(methodCode)` — determina endpoint según método (`redeban_qr`, `breb_qr`, `bancolombia_qr_wompi`, `bancolombia_qr`), hace POST al API route, setea estados del QR y abre el dialog.
+  - Botón "Generar QR de pago" que aparece condicionalmente cuando el método seleccionado es un código QR.
+  - Componente `QrPaymentDialog` renderizado con callback `onPaid` que cierra el dialog, muestra toast y registra el pago.
+- [x] **`src/app/app/finanzas/metodos-pago/qr-sessions/page.tsx`** (nuevo, ~300 líneas) — vista de historial de sesiones QR:
+  - Tabla con columnas: Referencia, Proveedor, Monto, Estado, Origen, Creado, Pagado.
+  - Badge de estado con colores: pending (amarillo), paid (verde), expired (gris), rejected (rojo), cancelled (gris).
+  - Filtros por estado (Todos, Pendientes, Pagados, Expirados, Rechazados, Cancelados).
+  - Búsqueda por referencia en tiempo real.
+  - Botón refrescar con spinner.
+  - Loading state y empty state.
+  - Fechas formateadas con `toLocaleDateString('es-CO')`.
+  - Soporte dark mode con Tailwind CSS.
+
+#### Flujo de notificación
+
+```
+1. Webhook del proveedor confirma pago
+   ↓
+2. processWebhook() llama confirmQrPayment()
+   ↓
+3. confirmQrPayment() actualiza payment_qr_sessions + payments + bank_transactions
+   ↓
+4. (Pendiente: integrar createPaymentReceivedNotification en confirmQrPayment)
+   ↓
+5. Notificación aparece en /app/notificaciones
+   ↓
+6. QrPoller detecta status='paid' → QrPaymentDialog muestra "Pago confirmado"
+   ↓
+7. Toast de éxito en el checkout
+```
+
+#### Selector de ruta en el checkout
+
+El `CheckoutDialog` del POS ahora muestra el botón "Generar QR de pago" cuando el método seleccionado es:
+- `redeban_qr` → Redeban QR
+- `breb_qr` → Bre-B (Mono)
+- `bancolombia_qr_wompi` → Bancolombia QR (Wompi)
+- `bancolombia_qr` → Bancolombia QR (Directo)
+
+#### Verificación ✅
+
+- **ESLint:** 0 errores en archivos nuevos. Errores preexistentes en `CheckoutDialog.tsx` (unused vars, `any`) no introducidos por estos cambios.
+- **TypeScript:** 0 errores en los archivos de la Fase 6.
+
+**Archivos creados (2):**
+- `src/lib/services/integrations/qrShared/qrNotificationService.ts`
+- `src/app/app/finanzas/metodos-pago/qr-sessions/page.tsx`
+
+**Archivos modificados (1):**
+- `src/components/pos/CheckoutDialog.tsx` — integración de QrPaymentDialog + botón "Generar QR"
 
 ### Fase 7 — Testing, lint, build (2-3 días)
 
@@ -2631,7 +2879,274 @@ Wompi ya está integrado. Solo se requiere:
 
 ---
 
-## 14. Variables de entorno
+## 14. Modelo B (PayFac/Agregador) — Infraestructura completa
+
+> **Ver sección 1.3.2** para la explicación conceptual del Modelo B.
+> Esta sección documenta la implementación técnica completa.
+
+### 14.1 Arquitectura del Modelo B
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ERP ADMIN (PayFac)                                          │
+│                                                              │
+│  ┌─────────────────────┐   ┌──────────────────────┐         │
+│  │ master_integration_ │   │ organization_commissi│         │
+│  │ credentials         │   │ on_rates             │         │
+│  │ (1 por proveedor)   │   │ (1 por org+proveedor)│         │
+│  └──────────┬──────────┘   └──────────┬───────────┘         │
+│             │                          │                     │
+│             ▼                          ▼                     │
+│  ┌──────────────────────────────────────────────────┐       │
+│  │ Pago QR → webhook → confirmQrPayment             │       │
+│  │   → payment_qr_sessions.status = 'paid'          │       │
+│  │   → payments.status = 'completed'                │       │
+│  │   → bank_transactions INSERT (cuenta maestra)    │       │
+│  └──────────────────────┬───────────────────────────┘       │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌──────────────────────────────────────────────────┐       │
+│  │ payoutService.createPayout()                     │       │
+│  │   → Busca payments completados sin payout_items  │       │
+│  │   → Calcula comisión por cada payment            │       │
+│  │   → Inserta organization_payouts (status=pending)│       │
+│  │   → Inserta payout_items (gross, commission, net)│       │
+│  └──────────────────────┬───────────────────────────┘       │
+│                         │                                    │
+│                         ▼                                    │
+│  ┌──────────────────────────────────────────────────┐       │
+│  │ payoutService.processPayout()                    │       │
+│  │   → manual: marca completed                      │       │
+│  │   → breb/mono_turbo: simula dispersión via Mono  │       │
+│  │   → ach: marca processing (pendiente)            │       │
+│  └──────────────────────┬───────────────────────────┘       │
+│                         │                                    │
+│                         ▼                                    │
+│  CUENTA BANCARIA DE LA ORGANIZACIÓN                          │
+│  (organization_payout_accounts)                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 14.2 Credenciales maestras (env vars, no tabla)
+
+Las credenciales maestras del ERP admin se gestionan vía **variables de entorno** (`.env.local` en desarrollo, Vercel env vars en producción), no vía una tabla en Supabase. Esto es más seguro porque:
+
+- Son credenciales del ERP admin, no de las organizaciones.
+- No cambian frecuentemente.
+- Vercel gestiona env vars de forma segura (encriptadas, no expuestas al cliente).
+- No necesita UI para gestionarlas.
+
+**Variables de entorno por proveedor (Modelo B):**
+
+```bash
+# === Wompi (Bancolombia QR) — Modelo B ===
+WOMPI_PUBLIC_KEY=...
+WOMPI_PRIVATE_KEY=...
+WOMPI_EVENTS_SECRET=...
+WOMPI_INTEGRITY_SECRET=...
+
+# === Bancolombia directa — Modelo B ===
+BANCOLOMBIA_CLIENT_ID=...
+BANCOLOMBIA_CLIENT_SECRET=...
+BANCOLOMBIA_COMMERCE_TRANSFER_BUTTON_ID=...
+
+# === Bre-B vía Mono — Modelo B ===
+BREB_MONO_CLIENT_ID=...
+BREB_MONO_CLIENT_SECRET=...
+
+# === Redeban — Modelo B ===
+REDEBAN_SERVER_APP_CODE=...
+REDEBAN_SERVER_APP_KEY=...
+```
+
+> **Detección automática:** el servicio `masterCredentialsService.getActiveProviderForOrganization()` verifica si las env vars del proveedor están configuradas. Si lo están, usa el Modelo B (credenciales maestras). Si no, usa el Modelo A (credenciales de la organización).
+
+### 14.3 Tablas creadas en Supabase
+
+| Tabla | Propósito | Columnas clave |
+|-------|-----------|----------------|
+| `organization_commission_rates` | Comisiones por organización + proveedor | organization_id, provider_code, commission_type, commission_value, min_commission_amount, effective_from, effective_to |
+| `organization_payouts` | Dispersiones del ERP admin a organizaciones | organization_id, payout_reference, total_amount, commission_amount, net_amount, status, payout_method, period_start, period_end |
+| `payout_items` | Items individuales de cada payout | payout_id, payment_id, gross_amount, commission_amount, net_amount, reference |
+| `organization_payout_accounts` | Cuentas bancarias de organizaciones | organization_id, bank_name, account_type, account_number, account_holder_name, breb_key_value, is_verified |
+
+**RLS habilitada en todas las tablas.** Políticas:
+- SELECT: cualquier usuario autenticado puede leer sus propios datos.
+- INSERT/UPDATE/DELETE: solo admin de plataforma (`platform_admins` con role super_admin o admin).
+
+### 14.4 Servicios creados
+
+| Archivo | Líneas | Métodos |
+|---------|--------|---------|
+| `src/lib/services/integrations/payfac/masterCredentialsService.ts` | ~250 | `getMasterCredentials()` (lee env vars), `getActiveProviderForOrganization()` (detecta Modelo A/B), `listMasterCredentials()` (metadata sin secretos) |
+| `src/lib/services/integrations/payfac/commissionService.ts` | ~350 | `getCommissionRate()`, `calculateCommission()`, `setCommissionRate()`, `listCommissionRates()`, `listOrganizationsWithCommissions()`, `list()`, `upsert()`, `getSummary()` |
+| `src/lib/services/integrations/payfac/payoutService.ts` | ~740 | `createPayout()`, `processPayout()`, `getPayout()`, `listPayouts()`, `getPendingPayouts()`, `getPayoutItems()`, `cancelPayout()`, `getOrganizationSummary()`, `listAccounts()`, `createAccount()`, `deactivateAccount()`, `list()`, `create()`, `getById()`, `process()`, `listPending()`, `getSummary()` |
+| `src/lib/services/integrations/payfac/index.ts` | 6 | Barrel exports |
+
+> **Nota:** `masterCredentialsService` lee desde `process.env`, no desde Supabase. Los métodos `save()` y `deactivate()` retornan error indicando que las credenciales se gestionan via env vars.
+
+### 14.5 API routes creadas
+
+| Route | Método | Propósito | Auth |
+|-------|--------|-----------|------|
+| `/api/integrations/payfac/commission` | GET | Lista comisiones | Admin |
+| `/api/integrations/payfac/commission` | POST | Crea/actualiza comisión | Admin |
+| `/api/integrations/payfac/commission/summary` | GET | Resumen de comisiones | Admin |
+| `/api/integrations/payfac/payouts` | GET | Lista payouts | Admin/Org |
+| `/api/integrations/payfac/payouts` | POST | Crea payout | Admin |
+| `/api/integrations/payfac/payouts/[id]` | GET | Detalle de payout | Admin/Org |
+| `/api/integrations/payfac/payouts/[id]` | POST | Procesa/cancela payout | Admin |
+| `/api/integrations/payfac/payouts/pending` | GET | Payouts pendientes | Admin/Org |
+| `/api/integrations/payfac/payouts/summary` | GET | Resumen de organización | Admin/Org |
+| `/api/integrations/payfac/payout-accounts` | GET | Lista cuentas de dispersión | Org |
+| `/api/integrations/payfac/payout-accounts` | POST | Crea cuenta de dispersión | Org |
+| `/api/integrations/payfac/payout-accounts/[id]` | DELETE | Desactiva cuenta | Org |
+
+### 14.5 UI creada
+
+#### Admin (ERP admin)
+
+| Página | Ruta | Función |
+|--------|------|---------|
+| Comisiones | `/app/integraciones/payfac/comisiones` | Configurar comisiones por organización |
+| Dispersiones | `/app/integraciones/payfac/dispersiones` | Gestionar payouts a organizaciones |
+
+> **Nota:** Las credenciales maestras no tienen UI — se configuran via variables de entorno en Vercel.
+
+#### Organización
+
+| Página | Ruta | Función |
+|--------|------|---------|
+| Mis dispersiones | `/app/finanzas/payfac/dispersiones` | Ver payouts recibidos + resumen |
+| Cuentas de dispersión | `/app/finanzas/payfac/cuentas` | Gestionar cuentas bancarias para recibir dispersiones |
+
+### 14.6 Flujo completo del Modelo B
+
+```
+FASE 1: CONFIGURACIÓN (ERP admin, una sola vez)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. ERP admin configura variables de entorno en Vercel (o .env.local en dev):
+   - BREB_MONO_CLIENT_ID=xxx
+   - BREB_MONO_CLIENT_SECRET=xxx
+   - (una por cada proveedor que quiera operar como PayFac)
+2. ERP admin va a /app/integraciones/payfac/comisiones
+3. Configura comisión por organización:
+   - Organización 1: 2% por transacción Bre-B
+   - Organización 2: $500 COP fijo por transacción
+4. ERP guarda en organization_commission_rates
+
+FASE 2: CONFIGURACIÓN (organización, una sola vez)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Organización va a /app/finanzas/payfac/cuentas
+2. Registra su cuenta bancaria:
+   - Banco: Bancolombia
+   - Tipo: Ahorros
+   - Número: 123-456-789
+   - Titular: Restaurante El Polo S.A.S.
+   - NIT: 900.123.456-7
+   - Bre-B key: @restauranteelpolo (opcional, para dispersión automática)
+3. ERP guarda en organization_payout_accounts
+
+FASE 3: PAGO (cada venta)
+━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Cajero selecciona método QR en el checkout
+2. ERP busca credenciales maestras (getActiveProviderForOrganization)
+3. Si useMaster=true, usa credenciales maestras (Modelo B)
+4. Si useMaster=false, usa credenciales de la organización (Modelo A)
+5. Genera QR con credenciales maestras
+6. Cliente paga
+7. Webhook confirma pago
+8. payment_qr_sessions.status = 'paid'
+9. payments.status = 'completed'
+10. bank_transactions INSERT (cuenta maestra del ERP admin)
+
+FASE 4: DISPERSIÓN (periódico, ej: diario o semanal)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. ERP admin va a /app/integraciones/payfac/dispersiones
+2. Crea payout para Organización 1:
+   - Período: 2026-08-01 a 2026-08-14
+   - Método: breb (dispersión automática)
+3. payoutService.createPayout():
+   - Busca payments completados en el período sin payout_items
+   - Calcula comisión por cada payment (2%)
+   - Suma: total_amount, commission_amount, net_amount
+   - Inserta organization_payouts (status=pending)
+   - Inserta payout_items (uno por payment)
+4. ERP admin hace clic en "Procesar"
+5. payoutService.processPayout():
+   - Si método=manual: marca completed, registra processed_at
+   - Si método=breb/mono_turbo: simula dispersión via Mono
+     (futuro: llama a API de Mono para transferir)
+   - Si método=ach: marca processing (pendiente de implementar)
+6. Organización ve el payout en /app/finanzas/payfac/dispersiones
+7. Organización ve el neto en su cuenta bancaria
+
+FASE 5: CONCILIACIÓN
+━━━━━━━━━━━━━━━━━━━
+1. ERP admin concilia:
+   - Bank transactions en cuenta maestra (recepción de pagos)
+   - Payouts procesados (dispersión a organizaciones)
+2. Cada organización concilia:
+   - Payouts recibidos vs extracto bancario de su cuenta
+```
+
+### 14.7 Cálculo de comisiones
+
+```typescript
+// Ejemplo: organización con 2% de comisión Bre-B
+const gross = 100000; // COP
+const rate = { commission_type: 'percentage', commission_value: 2, min_commission_amount: 500 };
+const { commissionAmount, netAmount } = commissionService.calculateCommission(gross, rate);
+// commissionAmount = 2000 (2% de 100000)
+// netAmount = 98000 (100000 - 2000)
+
+// Ejemplo: organización con $500 fijo
+const gross2 = 100000;
+const rate2 = { commission_type: 'fixed_amount', commission_value: 500, min_commission_amount: 0 };
+const { commissionAmount: c2, netAmount: n2 } = commissionService.calculateCommission(gross2, rate2);
+// c2 = 500
+// n2 = 99500
+
+// Ejemplo: comisión mínima
+const gross3 = 10000;
+const rate3 = { commission_type: 'percentage', commission_value: 1, min_commission_amount: 500 };
+const { commissionAmount: c3 } = commissionService.calculateCommission(gross3, rate3);
+// c3 = 500 (1% de 10000 = 100, pero min es 500)
+```
+
+### 14.8 Consideraciones legales y de cumplimiento
+
+| Aspecto | Detalle | Estado |
+|---------|---------|--------|
+| Licencia PayFac | Superintendencia Financiera de Colombia | ⚠️ Requerida antes de operar |
+| SARLAFT | Sistema de Administración del Riesgo de Lavado de Activos | ⚠️ Requerido |
+| Reporting UIF | Reportes a Unidad de Información y Análisis Financiero | ⚠️ Requerido |
+| Contratos de dispersión | Contrato con cada organización | ⚠️ Requerido |
+| Tributación | ERP admin recibe ingreso bruto, dispersa, cada org factura su porción | ⚠️ Requiere asesoría contable |
+| IVA | Comisiones del ERP admin sujetas a IVA | ⚠️ Requiere asesoría contable |
+
+> **Advertencia:** Esta documentación es técnica y no constituye asesoría legal. El Modelo B requiere asesoría legal especializada antes de operar.
+
+### 14.9 Estado de implementación
+
+| Componente | Estado |
+|------------|--------|
+| Credenciales maestras (env vars) | ✅ Implementado |
+| Tablas Supabase (4) | ✅ Creadas |
+| Servicios (3 + index) | ✅ Creados |
+| API routes (8) | ✅ Creadas |
+| UI admin (2 páginas) | ✅ Creadas |
+| UI organización (2 páginas) | ✅ Creadas |
+| Dispersión automática via Mono | ⏳ Pendiente (simulada) |
+| Dispersión via ACH | ⏳ Pendiente |
+| Verificación de cuentas Bre-B | ⏳ Pendiente |
+| Conciliación de dispersión | ⏳ Pendiente |
+| Reportes UIF/SARLAFT | ⏳ Pendiente |
+| Contratos de dispersión | ⏳ Pendiente (legal) |
+
+---
+
+## 15. Variables de entorno
 
 Agregar al `.env.local` (y al gestor de secretos de producción):
 
@@ -2681,7 +3196,437 @@ APP_BASE_URL=https://erp.dominio.co  # para URLs de webhook
 
 ---
 
-## 15. Referencias oficiales
+## 16. Open Finance Colombia — Integración fase a fase
+
+### 16.1 Qué es Open Finance
+
+Open Finance es el framework regulado que permite a los usuarios **compartir sus datos financieros** con terceros autorizados, de forma estandarizada y segura. En Colombia está regulado por:
+
+| Norma | Año | Impacto |
+|-------|-----|---------|
+| Decreto 1297 | 2022 | Marco voluntario inicial |
+| Circular Externa 004 | 2024 | Estándares técnicos (JSON, REST), plazo julio 2025 |
+| Decreto 0368 | 2026 | **OBLIGATORIO** para entidades vigiladas por la SFC, plazo 12 meses |
+
+**Diferencia con Open Banking:** Open Finance cubre todo el ecosistema financiero (bancos, seguros, inversiones, pensiones, créditos), no solo cuentas bancarias.
+
+### 16.2 Qué permite Open Finance en el ERP
+
+| Capacidad | Aplicación en el ERP | Beneficio |
+|-----------|---------------------|-----------|
+| Consulta de saldos | Validar saldo real de cuentas bancarias | Conciliación sin error humano |
+| Consulta de movimientos | Importar transacciones automáticamente | Eliminar import manual de extractos |
+| Iniciación de pagos | Pagar a proveedores automáticamente | Pagos B2B sin intervención manual |
+| Validación de cuentas | Verificar cuentas de proveedores antes de pagar | Reducir pagos a cuentas erróneas |
+| Datos fiscales (DIAN) | Consultar RUT, facturas, declaraciones | Análisis de riesgo crediticio |
+| Consentimiento del cliente | El usuario autoriza explícitamente | Cumplimiento legal |
+
+### 16.3 Proveedores evaluados
+
+| Proveedor | Documentación | Sandbox | Widget UX | Transferencias | Datos DIAN | Recomendado para |
+|-----------|--------------|---------|-----------|---------------|------------|------------------|
+| **Belvo** | developers.belvo.com | Gratis | Connect Widget | No (solo Brasil Pix) | Sí | Consulta de datos + enriquecimiento |
+| **Prometeo** | docs.prometeoapi.com | Gratis | No | Sí | Sí | Pagos + datos bancarios |
+| **Yoint** | yoint.co | Contactar | No | Sí | Sí | Solución integral colombiana |
+| **Fiskil** | fiskil.com | Contactar | No | No | No | Gestión de consentimiento |
+| ~~Brinks~~ | — | — | — | — | — | No es proveedor Open Finance |
+
+**Decisión:** implementar **Prometeo** como proveedor principal porque:
+- Tiene transferencias (pagos a proveedores)
+- Tiene validación de cuentas
+- Cubre 6 bancos principales + Nequi + Bre-B
+- Sandbox gratis y self-service
+- Webhooks disponibles
+
+**Belvo** como alternativa para consulta de datos con mejor UX (Connect Widget).
+
+### 16.4 Bancos colombianos soportados
+
+| Banco | Prometeo (provider code) | Belvo |
+|-------|--------------------------|-------|
+| Bancolombia Empresas | `bancolombia_corp_co` | Sí |
+| Bancolombia Personal | `bancolombia_pers_co` | Sí |
+| BBVA Empresas | `bbva_corp_co` | Sí |
+| BBVA Personal | `bbva_pers_co` | Sí |
+| Davivienda Personal | `davivienda_pers_co` | Sí |
+| Davivienda Empresas | `davivienda_smes_co` | Sí |
+| Banco de Bogotá | — | Sí |
+| Banco Falabella | — | Sí |
+| Nequi | Sí (NEQUI_WALLET) | Sí |
+| Daviplata | — | Sí |
+
+### 16.5 Arquitectura de la integración
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        ERP                                  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Módulo Finanzas                                      │  │
+│  │  - Conciliación bancaria (automática)                 │  │
+│  │  - Saldos en tiempo real                              │  │
+│  │  - Transferencias a proveedores                       │  │
+│  └────────────────────┬─────────────────────────────────┘  │
+│                       │                                      │
+│  ┌────────────────────▼─────────────────────────────────┐  │
+│  │  Capa Open Finance                                   │  │
+│  │  src/lib/services/integrations/openFinance/          │  │
+│  │  - openFinanceConfig.ts (Prometeo/Belvo)             │  │
+│  │  - openFinanceService.ts (auth, instituciones)       │  │
+│  │  - transactionSyncService.ts (sincronización)         │  │
+│  │  - balanceService.ts (saldos en tiempo real)          │  │
+│  │  - paymentInitiationService.ts (transferencias)       │  │
+│  │  - accountValidationService.ts (validación cuentas)   │  │
+│  │  - consentService.ts (gestión consentimiento)         │  │
+│  └────────────────────┬─────────────────────────────────┘  │
+└───────────────────────┼─────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Proveedor Open Finance (Prometeo)               │
+│  - POST /login/ (sesión bancaria)                           │
+│  - GET /account/ (cuentas)                                  │
+│  - GET /movement/ (movimientos)                             │
+│  - GET /balance/ (saldos)                                   │
+│  - POST /payout/ (transferencias)                           │
+│  - POST /validate_account/ (validación)                     │
+│  - Webhooks (payin.settled, payout.cancelled, payout.failed)│
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 16.6 Fases de implementación
+
+#### Fase 0 — Preparación (1-2 días) ✅ COMPLETADO
+
+- [x] Investigación de proveedores (Belvo, Prometeo, Yoint, Fiskil)
+- [x] Análisis de regulación (Decreto 0368 de 2026, Circular Externa 004)
+- [x] Exploración del módulo de finanzas (tablas, servicios, componentes)
+- [x] Exploración del módulo de inventarios (proveedores, cuentas por pagar)
+- [x] Documentación fase a fase en este .md
+- [x] Selección de proveedor: Prometeo (principal) + Belvo (alternativa)
+
+#### Fase 1 — Infraestructura base (3-4 días)
+
+- [ ] Crear tablas en Supabase:
+  - `open_finance_links` — conexiones de organizaciones a bancos (consentimiento)
+  - `open_finance_accounts` — cuentas bancarias descubiertas via Open Finance
+  - `open_finance_transactions` — transacciones sincronizadas
+  - `open_finance_consents` — registro de consentimientos del cliente
+- [ ] Crear `src/lib/services/integrations/openFinance/openFinanceConfig.ts`:
+  - Configuración de Prometeo (base URL sandbox/producción)
+  - Configuración de Belvo (alternativa)
+  - Variables de entorno requeridas
+- [ ] Crear `src/lib/services/integrations/openFinance/openFinanceTypes.ts`:
+  - Tipos para instituciones, cuentas, movimientos, saldos, transferencias
+- [ ] Crear `src/lib/services/integrations/openFinance/openFinanceService.ts`:
+  - `authenticate()` — login con Prometeo (API key)
+  - `getInstitutions()` — lista de bancos disponibles
+  - `createLink()` — crear conexión a banco (consentimiento)
+  - `getAccounts()` — obtener cuentas de un link
+  - `getBalances()` — obtener saldos
+  - `getMovements()` — obtener movimientos
+  - `validateAccount()` — validar cuenta bancaria
+  - `initiateTransfer()` — iniciar transferencia (pago a proveedor)
+  - `getTransferStatus()` — estado de transferencia
+- [ ] Crear `src/lib/services/integrations/openFinance/index.ts`
+- [ ] Crear API routes:
+  - `/api/integrations/open-finance/institutions` — GET lista de bancos
+  - `/api/integrations/open-finance/links` — GET/POST conexiones
+  - `/api/integrations/open-finance/accounts` — GET cuentas
+  - `/api/integrations/open-finance/balances` — GET saldos
+  - `/api/integrations/open-finance/movements` — GET movimientos
+  - `/api/integrations/open-finance/validate-account` — POST validar cuenta
+  - `/api/integrations/open-finance/transfer` — POST iniciar transferencia
+  - `/api/integrations/open-finance/webhook` — POST webhook de Prometeo
+
+#### Fase 2 — Sincronización de transacciones (3-4 días)
+
+- [ ] Crear `transactionSyncService.ts`:
+  - `syncTransactions(linkId, accountId, dateFrom, dateTo)` — sincroniza movimientos
+  - `importToBankTransactions()` — inserta en `bank_transactions` con `import_source='open_finance'`
+  - `detectDuplicates()` — evita duplicados por `import_id`
+- [ ] Cron job: sincronización diaria automática
+- [ ] UI: botón "Sincronizar" en detalle de cuenta bancaria
+- [ ] UI: indicador de última sincronización
+- [ ] Mapeo de campos: movimiento Prometeo → `bank_transactions`
+
+#### Fase 3 — Conciliación automática mejorada (3-4 días)
+
+- [ ] Crear `aiMatchingService.ts`:
+  - `suggestMatches(reconciliationId)` — sugiere matches por monto, fecha, referencia
+  - `autoMatchHighConfidence()` — auto-aprobar matches con score > 90%
+  - `calculateMatchScore()` — algoritmo de scoring
+- [ ] Modificar `ConciliacionService.ts`:
+  - Integrar sugerencias de Open Finance
+  - Panel de sugerencias en `ConciliacionDetailPage.tsx`
+- [ ] UI: panel de sugerencias con score de confianza
+- [ ] UI: botón "Auto-conciliar" con preview
+
+#### Fase 4 — Saldos en tiempo real (2-3 días)
+
+- [ ] Crear `balanceService.ts`:
+  - `getRealTimeBalance(accountId)` — consulta saldo real del banco
+  - `validateBalance(reconciliationId)` — valida saldo vs extracto
+- [ ] UI: widget de saldo real en dashboard de bancos
+- [ ] UI: alerta de discrepancia en conciliación
+- [ ] Cron job: validación de saldos cada hora
+
+#### Fase 5 — Pagos a proveedores (4-5 días)
+
+- [ ] Crear `paymentInitiationService.ts`:
+  - `paySupplier(accountPayableId, bankAccountId)` — paga cuenta por pagar
+  - `validateSupplierAccount()` — valida cuenta del proveedor antes de pagar
+  - `schedulePayment()` — programa pago para fecha futura
+- [ ] Modificar `supplierService.ts`:
+  - Agregar botón "Pagar con Open Finance" en detalle de proveedor
+  - Integrar con `accounts_payable`
+- [ ] UI: botón "Pagar con Open Finance" en cuentas por pagar
+- [ ] UI: dialog de confirmación con validación de cuenta
+- [ ] Webhook: confirmar pago exitoso → marcar CxP como pagada
+- [ ] Conciliación: auto-match del pago con la transacción
+
+#### Fase 6 — Gestión de consentimiento (2-3 días)
+
+- [ ] Crear `consentService.ts`:
+  - `createConsent()` — registrar consentimiento del cliente
+  - `revokeConsent()` — revocar acceso
+  - `listConsents()` — listar consentimientos activos
+  - `verifyConsent()` — verificar validez antes de consultar datos
+- [ ] UI: página de consentimientos en `/app/finanzas/open-finance/consents`
+- [ ] UI: banner de autorización antes de conectar banco
+- [ ] Cumplimiento: doble capa de consentimiento (Decreto 0368 de 2026)
+
+#### Fase 7 — Tesorería consolidada (3-4 días)
+
+- [ ] Crear `treasuryService.ts`:
+  - `getConsolidatedPosition()` — posición de tesorería multi-banco
+  - `getCashFlowProjection()` — proyección de flujo de caja
+  - `detectInterAccountTransfers()` — detectar transferencias entre cuentas
+- [ ] UI: dashboard de tesorería en `/app/finanzas/bancos/tesoreria`
+- [ ] UI: proyección de pagos a 30/60/90 días
+- [ ] Reporte: concentración de pagos por proveedor
+
+#### Fase 8 — Detección de anomalías (2-3 días)
+
+- [ ] Crear `anomalyDetectionService.ts`:
+  - `detectDuplicates()` — transacciones duplicadas
+  - `detectUnusualAmounts()` — montos inusuales
+  - `detectSuspiciousPatterns()` — patrones sospechosos
+- [ ] UI: panel de alertas en dashboard de finanzas
+- [ ] Notificaciones: alertar al admin de anomalías
+
+#### Fase 9 — Testing y producción (3-4 días)
+
+- [ ] Tests unitarios de cada servicio
+- [ ] Tests de integración con sandbox de Prometeo
+- [ ] Tests de webhooks
+- [ ] Certificación con Prometeo
+- [ ] Despliegue a producción
+- [ ] Monitoreo y alertas
+
+### 16.7 Variables de entorno (Open Finance)
+
+```bash
+# === Prometeo (Open Finance principal) ===
+PROMETEO_API_KEY=xxx
+PROMETEO_SANDBOX_URL=https://banking.sandbox.prometeoapi.com
+PROMETEO_PRODUCTION_URL=https://banking.prometeoapi.net
+PROMETEO_WEBHOOK_VERIFY_TOKEN=xxx
+
+# === Belvo (Open Finance alternativo) ===
+BELVO_SECRET_ID=xxx
+BELVO_SECRET_PASSWORD=xxx
+BELVO_SANDBOX_URL=https://sandbox.belvo.com
+BELVO_PRODUCTION_URL=https://api.belvo.com
+BELVO_WEBHOOK_SECRET=xxx
+```
+
+### 16.8 Tablas a crear (Fase 1)
+
+#### `open_finance_links`
+Conexiones de organizaciones a bancos via Open Finance.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | uuid PK | Identificador |
+| organization_id | bigint | Organización |
+| provider | text | Prometeo o Belvo |
+| institution_code | text | Código del banco (ej: bancolombia_pers_co) |
+| institution_name | text | Nombre del banco |
+| session_key | text | Sesión de Prometeo (5 min) |
+| status | text | active, expired, revoked |
+| consent_id | uuid | Referencia a open_finance_consents |
+| last_sync_at | timestamptz | Última sincronización |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+#### `open_finance_accounts`
+Cuentas bancarias descubiertas via Open Finance.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | uuid PK | |
+| link_id | uuid FK | Referencia a open_finance_links |
+| organization_id | bigint | |
+| bank_account_id | integer FK | Referencia a bank_accounts (vinculación contable) |
+| external_account_id | text | ID de cuenta en Prometeo/Belvo |
+| account_number | text | Número de cuenta |
+| account_type | text | savings, checking, credit |
+| currency | text | COP, USD |
+| holder_name | text | Titular |
+| is_active | boolean | |
+
+#### `open_finance_transactions`
+Transacciones sincronizadas via Open Finance.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | uuid PK | |
+| link_id | uuid FK | |
+| account_id | uuid FK | Referencia a open_finance_accounts |
+| organization_id | bigint | |
+| bank_transaction_id | integer FK | Referencia a bank_transactions (después de importar) |
+| external_transaction_id | text | ID en Prometeo/Belvo |
+| transaction_date | timestamptz | Fecha de la transacción |
+| description | text | Descripción del banco |
+| amount | numeric | Monto |
+| currency | text | |
+| category | text | Categorización automática |
+| counterparty | text | Contraparte |
+| reference | text | Referencia bancaria |
+| is_imported | boolean | Si ya se importó a bank_transactions |
+| created_at | timestamptz | |
+
+#### `open_finance_consents`
+Registro de consentimientos del cliente (cumplimiento legal).
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | uuid PK | |
+| organization_id | bigint | |
+| link_id | uuid FK | |
+| consent_type | text | data_access, payment_initiation |
+| purpose | text | Propósito del procesamiento |
+| granted_at | timestamptz | Fecha de autorización |
+| expires_at | timestamptz | Fecha de expiración |
+| revoked_at | timestamptz | Fecha de revocación |
+| ip_address | text | IP del usuario que autorizó |
+| user_agent | text | User agent |
+| status | text | active, expired, revoked |
+
+### 16.9 Flujo completo de Open Finance
+
+```
+FASE 1: CONEXIÓN (una sola vez por banco)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Admin va a /app/finanzas/open-finance/conectar
+2. Selecciona banco (ej: Bancolombia Personal)
+3. ERP muestra banner de consentimiento:
+   "Autorizas a [ERP] a acceder a tus datos de Bancolombia
+    durante 90 días para conciliación bancaria"
+4. Admin acepta → se registra en open_finance_consents
+5. Admin ingresa credenciales bancarias (vía Prometeo)
+6. Prometeo crea sesión → ERP guarda en open_finance_links
+7. ERP descubre cuentas → guarda en open_finance_accounts
+8. ERP vincula cuentas con bank_accounts existentes
+
+FASE 2: SINCRONIZACIÓN DIARIA (automática)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Cron job ejecuta a las 6am
+2. Por cada link activo:
+   a. Renueva sesión con Prometeo
+   b. Obtiene movimientos del día anterior
+   c. Inserta en open_finance_transactions
+   d. Importa a bank_transactions (import_source='open_finance')
+   e. Ejecuta auto-match con payments pendientes
+   f. Actualiza last_sync_at
+
+FASE 3: CONCILIACIÓN AUTOMÁTICA (continua)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Transacción importada → bank_transactions
+2. aiMatchingService sugiere matches:
+   - Por monto (tolerancia ±$100)
+   - Por fecha (±3 días)
+   - Por referencia (exacta o parcial)
+   - Score de confianza calculado
+3. Si score > 90% → auto-match
+4. Si score 60-90% → sugerencia para revisión
+5. Si score < 60% → queda pendiente
+
+FASE 4: PAGO A PROVEEDOR (bajo demanda)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Admin ve cuenta por pagar en /app/finanzas/cuentas-por-pagar
+2. Click "Pagar con Open Finance"
+3. ERP valida cuenta del proveedor (validateAccount)
+4. ERP valida saldo en cuenta bancaria (getBalance)
+5. Admin confirma pago
+6. ERP inicia transferencia (initiateTransfer)
+7. Prometeo ejecuta transferencia
+8. Webhook confirma pago → CxP marcada como pagada
+9. Transacción importada en próxima sincronización
+10. Auto-conciliación del pago
+```
+
+### 16.10 Beneficios por módulo
+
+#### Módulo Finanzas
+
+| Beneficio | Sin Open Finance | Con Open Finance |
+|-----------|------------------|------------------|
+| Importar extractos | Manual (.csv) | Automático (API) |
+| Conciliación | Manual por referencia | Automática con IA |
+| Saldos | Import manual | Tiempo real |
+| Detección de errores | Manual | Automática |
+| Tesorería | Por cuenta | Consolidada multi-banco |
+
+#### Módulo Inventarios
+
+| Beneficio | Sin Open Finance | Con Open Finance |
+|-----------|------------------|------------------|
+| Pago a proveedores | Manual (transferencia bancaria externa) | Automático desde el ERP |
+| Validación de cuentas | No | Sí (antes de pagar) |
+| Conciliación de compras | No | Sí (auto-match factura-pago) |
+| Programación de pagos | Manual | Automática por vencimiento |
+| Alertas de vencimiento | No | Sí |
+
+#### Módulo POS / PMS / Mesas
+
+| Beneficio | Sin Open Finance | Con Open Finance |
+|-----------|------------------|------------------|
+| Confirmación de pago | Webhook QR | Webhook QR + confirmación bancaria |
+| Conciliación de ventas | Manual | Automática |
+| Detección de fraude | No | Sí (anomalías) |
+
+### 16.11 Consideraciones legales
+
+| Aspecto | Detalle |
+|---------|---------|
+| Consentimiento | Doble capa (Decreto 0368 de 2026) |
+| Protección de datos | Ley 1581 de 2012 (Habeas Data) |
+| Revocación | El usuario puede revocar en cualquier momento |
+| Transparencia | El usuario sabe qué datos se comparten, con quién, para qué |
+| Auditoría | Registro de consentimientos en `open_finance_consents` |
+| Seguridad | Credenciales bancarias NUNCA se almacenan (Prometeo las gestiona) |
+
+> **Importante:** Las credenciales bancarias del usuario NUNCA se guardan en el ERP. Prometeo/Belvo las gestionan de forma segura y devuelven un `session_key` temporal (5 minutos). El ERP solo guarda el `link` (conexión) y los datos financieros (saldos, movimientos).
+
+### 16.12 Estado de implementación
+
+| Fase | Estado | Descripción |
+|------|--------|-------------|
+| Fase 0 | ✅ Completado | Investigación + documentación |
+| Fase 1 | ⏳ Pendiente | Infraestructura base (tablas + servicios + API) |
+| Fase 2 | ⏳ Pendiente | Sincronización de transacciones |
+| Fase 3 | ⏳ Pendiente | Conciliación automática con IA |
+| Fase 4 | ⏳ Pendiente | Saldos en tiempo real |
+| Fase 5 | ⏳ Pendiente | Pagos a proveedores |
+| Fase 6 | ⏳ Pendiente | Gestión de consentimiento |
+| Fase 7 | ⏳ Pendiente | Tesorería consolidada |
+| Fase 8 | ⏳ Pendiente | Detección de anomalías |
+| Fase 9 | ⏳ Pendiente | Testing y producción |
+
+---
+
+## 17. Referencias oficiales
 
 ### 15.1 Bancolombia
 

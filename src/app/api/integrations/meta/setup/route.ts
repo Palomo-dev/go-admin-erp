@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       access_token,
       app_secret,
       business_id,
+      ad_account_id,
       organization_id,
       organization_name,
       domain,
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
       access_token: string;
       app_secret: string;
       business_id: string;
+      ad_account_id?: string;
       organization_id: number;
       organization_name: string;
       domain: string;
@@ -56,12 +58,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Ejecutar setup completo (crear catálogo + pixel + sync productos)
+    // 2. Obtener Ad Account del business si no se proveyó
+    let adAccountId = ad_account_id || '';
+    if (!adAccountId) {
+      const adAccounts = await metaMarketingService.getAdAccounts(access_token, business_id);
+      if (adAccounts.length === 0) {
+        return NextResponse.json(
+          { error: 'No se encontraron cuentas publicitarias (Ad Accounts) en el Business Manager. Se requiere al menos una Ad Account activa para crear el Pixel.' },
+          { status: 400 }
+        );
+      }
+      adAccountId = (adAccounts.find((a) => a.account_status === 1) || adAccounts[0]).id;
+    }
+
+    // 3. Ejecutar setup completo (crear catálogo + pixel + sync productos)
     const result = await metaMarketingService.fullSetup(
       connection_id,
       access_token,
       app_secret || '',
       business_id,
+      adAccountId,
       organization_id,
       organization_name || 'Mi Negocio',
       domain,

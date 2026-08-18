@@ -8,7 +8,9 @@ import {
   FileSpreadsheet,
   Download,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Globe,
+  Link2,
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +23,10 @@ import {
 
 interface ProductosPageHeaderProps {
   onCrearClick: () => void;
-  onImportarClick?: () => void; 
+  onImportarClick?: () => void;
   onExportarClick?: () => void;
+  onExportarFacebookClick?: () => void;
+  onFacebookFeedClick?: () => void;
   onRefreshClick?: () => void;
   onScrapingClick?: () => void;
   isRefreshing?: boolean;
@@ -36,6 +40,8 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
   onCrearClick,
   onImportarClick = () => {},
   onExportarClick = () => {},
+  onExportarFacebookClick = () => {},
+  onFacebookFeedClick = () => {},
   onRefreshClick,
   onScrapingClick,
   isRefreshing = false,
@@ -133,6 +139,20 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
             >
               <Download className="mr-2 h-4 w-4" />
               <span>Exportar a CSV</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={onExportarFacebookClick}
+              className="cursor-pointer"
+            >
+              <Globe className="mr-2 h-4 w-4 text-blue-600" />
+              <span>Exportar a Facebook (CSV)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={onFacebookFeedClick}
+              className="cursor-pointer"
+            >
+              <Link2 className="mr-2 h-4 w-4 text-blue-600" />
+              <span>URL Feed para Facebook</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

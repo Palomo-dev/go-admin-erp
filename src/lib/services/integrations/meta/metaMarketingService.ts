@@ -19,6 +19,7 @@ import type {
   MetaSetupResult,
   MetaCreateCatalogResult,
   MetaCreatePixelResult,
+  MetaProductSetResult,
   FacebookProductData,
   CatalogBatchRequest,
   CatalogSyncResult,
@@ -45,8 +46,10 @@ class MetaMarketingService {
       accessToken: '',
       appSecret: '',
       businessId: '',
+      adAccountId: '',
       pixelId: '',
       catalogId: '',
+      productSetId: '',
     };
 
     for (const row of data) {
@@ -60,11 +63,17 @@ class MetaMarketingService {
         case META_CREDENTIAL_PURPOSES.BUSINESS_ID:
           creds.businessId = row.secret_ref || '';
           break;
+        case META_CREDENTIAL_PURPOSES.AD_ACCOUNT_ID:
+          creds.adAccountId = row.secret_ref || '';
+          break;
         case META_CREDENTIAL_PURPOSES.PIXEL_ID:
           creds.pixelId = row.secret_ref || '';
           break;
         case META_CREDENTIAL_PURPOSES.CATALOG_ID:
           creds.catalogId = row.secret_ref || '';
+          break;
+        case META_CREDENTIAL_PURPOSES.PRODUCT_SET_ID:
+          creds.productSetId = row.secret_ref || '';
           break;
       }
     }
@@ -82,8 +91,10 @@ class MetaMarketingService {
       { purpose: META_CREDENTIAL_PURPOSES.ACCESS_TOKEN, value: credentials.accessToken },
       { purpose: META_CREDENTIAL_PURPOSES.APP_SECRET, value: credentials.appSecret },
       { purpose: META_CREDENTIAL_PURPOSES.BUSINESS_ID, value: credentials.businessId },
+      { purpose: META_CREDENTIAL_PURPOSES.AD_ACCOUNT_ID, value: credentials.adAccountId },
       { purpose: META_CREDENTIAL_PURPOSES.PIXEL_ID, value: credentials.pixelId },
       { purpose: META_CREDENTIAL_PURPOSES.CATALOG_ID, value: credentials.catalogId },
+      { purpose: META_CREDENTIAL_PURPOSES.PRODUCT_SET_ID, value: credentials.productSetId || '' },
     ];
 
     for (const entry of entries) {
@@ -194,13 +205,42 @@ class MetaMarketingService {
   }
 
   /**
-   * Flujo OAuth completo: intercambiar code → long-lived token → obtener business.
+   * Obtener las Ad Accounts (cuentas publicitarias) propias de un Business Manager.
+   * Los pixels se crean a nivel de Ad Account, no de Business Manager.
+   * Endpoint: GET /{business_id}/owned_ad_accounts
+   */
+  async getAdAccounts(
+    accessToken: string,
+    businessId: string
+  ): Promise<Array<{ id: string; name: string; account_id: string; currency: string; account_status: number }>> {
+    const apiUrl = getMetaApiUrl();
+    const response = await fetch(
+      `${apiUrl}/${businessId}/owned_ad_accounts` +
+      `?fields=id,name,account_id,currency,account_status` +
+      `&access_token=${encodeURIComponent(accessToken)}`
+    );
+
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.data || []).map((a: Record<string, unknown>) => ({
+      id: String(a.id),
+      name: String(a.name || ''),
+      account_id: String(a.account_id || ''),
+      currency: String(a.currency || 'COP'),
+      account_status: Number(a.account_status ?? 1),
+    }));
+  }
+
+  /**
+   * Flujo OAuth completo: intercambiar code → long-lived token → obtener business + ad account.
    * Retorna las credenciales listas para fullSetup.
    */
   async completeOAuthFlow(code: string): Promise<{
     accessToken: string;
     businessId: string;
     businessName: string;
+    adAccountId: string;
+    adAccountName: string;
     expiresIn: number;
   }> {
     // 1. Code → short-lived token
@@ -218,10 +258,24 @@ class MetaMarketingService {
     // Usar el primer Business Manager (el más común para un solo negocio)
     const business = businesses[0];
 
+    // 4. Obtener Ad Accounts del Business Manager (necesario para crear pixel)
+    const adAccounts = await this.getAdAccounts(longLived.accessToken, business.id);
+    if (adAccounts.length === 0) {
+      throw new Error(
+        'No se encontraron cuentas publicitarias (Ad Accounts) en el Business Manager. ' +
+        'El usuario debe tener al menos una Ad Account activa para crear el Pixel.'
+      );
+    }
+
+    // Usar la primera Ad Account activa (account_status === 1 = ACTIVE)
+    const activeAdAccount = adAccounts.find((a) => a.account_status === 1) || adAccounts[0];
+
     return {
       accessToken: longLived.accessToken,
       businessId: business.id,
       businessName: business.name,
+      adAccountId: activeAdAccount.id,
+      adAccountName: activeAdAccount.name,
       expiresIn: longLived.expiresIn,
     };
   }
@@ -314,25 +368,90 @@ class MetaMarketingService {
     return { id: data.id, name: catalogName };
   }
 
-  /** Listar pixels existentes del Business Manager */
-  async listPixels(accessToken: string, businessId: string): Promise<MetaCreatePixelResult[]> {
+  /** Listar conjuntos de productos (product sets) existentes en un catálogo */
+  async listProductSets(
+    accessToken: string,
+    catalogId: string
+  ): Promise<MetaProductSetResult[]> {
     const apiUrl = getMetaApiUrl();
     const response = await fetch(
-      `${apiUrl}/${businessId}/adspixels?fields=id,name&access_token=${encodeURIComponent(accessToken)}`
+      `${apiUrl}/${catalogId}/product_sets?fields=id,name,filter&access_token=${encodeURIComponent(accessToken)}`
+    );
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.data || []).map((s: Record<string, unknown>) => ({
+      id: String(s.id),
+      name: String(s.name || ''),
+      filter: s.filter as Record<string, unknown> | undefined,
+    }));
+  }
+
+  /**
+   * Crear un conjunto de productos (product set) dentro de un catálogo.
+   * Los product sets agrupan productos y son necesarios para asociarlos
+   * a campañas de dynamic ads.
+   * Endpoint: POST /{catalog_id}/product_sets
+   */
+  async createProductSet(
+    accessToken: string,
+    catalogId: string,
+    name: string,
+    filter?: Record<string, unknown>
+  ): Promise<MetaProductSetResult> {
+    const apiUrl = getMetaApiUrl();
+    const body: Record<string, unknown> = { name };
+    if (filter) {
+      body.filter = filter;
+    } else {
+      // Sin filtro = incluye todos los productos del catálogo
+      body.filter = { all_products: true };
+    }
+
+    const response = await fetch(`${apiUrl}/${catalogId}/product_sets`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Error creando conjunto de productos: ${errorData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { id: data.id, name, filter: body.filter as Record<string, unknown> };
+  }
+
+  /**
+   * Listar pixels existentes de una Ad Account.
+   * Los pixels pertenecen a la Ad Account, no al Business Manager.
+   * Endpoint: GET /act_{ad_account_id}/adspixels
+   */
+  async listPixels(accessToken: string, adAccountId: string): Promise<MetaCreatePixelResult[]> {
+    const apiUrl = getMetaApiUrl();
+    const response = await fetch(
+      `${apiUrl}/${adAccountId}/adspixels?fields=id,name&access_token=${encodeURIComponent(accessToken)}`
     );
     if (!response.ok) return [];
     const data = await response.json();
     return (data.data || []).map((p: Record<string, string>) => ({ id: p.id, name: p.name }));
   }
 
-  /** Crear pixel en el Business Manager */
+  /**
+   * Crear pixel en la Ad Account.
+   * Los pixels se crean a nivel de Ad Account (act_{id}), no de Business Manager.
+   * Endpoint: POST /act_{ad_account_id}/adspixels
+   */
   async createPixel(
     accessToken: string,
-    businessId: string,
+    adAccountId: string,
     pixelName: string
   ): Promise<MetaCreatePixelResult> {
     const apiUrl = getMetaApiUrl();
-    const response = await fetch(`${apiUrl}/${businessId}/adspixels`, {
+    const response = await fetch(`${apiUrl}/${adAccountId}/adspixels`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -353,19 +472,24 @@ class MetaMarketingService {
   /**
    * Setup completo: crear catálogo y pixel (o reusar existentes),
    * guardar IDs en credenciales, y sincronizar productos.
+   *
+   * El catálogo se crea a nivel de Business Manager, pero el pixel
+   * se crea a nivel de Ad Account (act_{id}), por lo que se requiere
+   * adAccountId además de businessId.
    */
   async fullSetup(
     connectionId: string,
     accessToken: string,
     appSecret: string,
     businessId: string,
+    adAccountId: string,
     organizationId: number,
     organizationName: string,
     domain: string,
     currency: string = 'COP',
     db: SupabaseClient = supabase
   ): Promise<MetaSetupResult> {
-    // 1. Buscar o crear catálogo
+    // 1. Buscar o crear catálogo (a nivel de Business Manager)
     const existingCatalogs = await this.listCatalogs(accessToken, businessId);
     const goAdminCatalog = existingCatalogs.find((c) =>
       c.name.includes('GO Admin') || c.name.includes(organizationName)
@@ -382,8 +506,8 @@ class MetaMarketingService {
       );
     }
 
-    // 2. Buscar o crear pixel
-    const existingPixels = await this.listPixels(accessToken, businessId);
+    // 2. Buscar o crear pixel (a nivel de Ad Account)
+    const existingPixels = await this.listPixels(accessToken, adAccountId);
     const goAdminPixel = existingPixels.find((p) =>
       p.name.includes('GO Admin') || p.name.includes(organizationName)
     );
@@ -394,7 +518,7 @@ class MetaMarketingService {
     } else {
       pixel = await this.createPixel(
         accessToken,
-        businessId,
+        adAccountId,
         `${organizationName} - GO Admin Pixel`
       );
     }
@@ -404,6 +528,7 @@ class MetaMarketingService {
       accessToken,
       appSecret,
       businessId,
+      adAccountId,
       pixelId: pixel.id,
       catalogId: catalog.id,
     }, db);
@@ -416,12 +541,48 @@ class MetaMarketingService {
       productsSynced = syncResult.created;
     }
 
+    // 5. Buscar o crear conjunto de productos (product set) en el catálogo
+    let productSet: MetaProductSetResult | null = null;
+    try {
+      const existingSets = await this.listProductSets(accessToken, catalog.id);
+      const goAdminSet = existingSets.find((s) =>
+        s.name.includes('GO Admin') || s.name.includes(organizationName) || s.name.includes('Todos')
+      );
+
+      if (goAdminSet) {
+        productSet = goAdminSet;
+      } else {
+        productSet = await this.createProductSet(
+          accessToken,
+          catalog.id,
+          `${organizationName} - Todos los productos`
+        );
+      }
+
+      // Guardar product_set_id en credenciales
+      await this.saveCredentials(connectionId, {
+        accessToken,
+        appSecret,
+        businessId,
+        adAccountId,
+        pixelId: pixel.id,
+        catalogId: catalog.id,
+        productSetId: productSet.id,
+      }, db);
+    } catch (err) {
+      console.error('Error creando product set (no crítico):', err);
+    }
+
     return {
       catalogId: catalog.id,
       catalogName: catalog.name,
       pixelId: pixel.id,
       pixelName: pixel.name,
+      adAccountId,
+      adAccountName: '',
       productsSynced,
+      productSetId: productSet?.id,
+      productSetName: productSet?.name,
     };
   }
 

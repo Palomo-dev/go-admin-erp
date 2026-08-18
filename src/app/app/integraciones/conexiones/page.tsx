@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ import {
 
 export default function ConexionesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { toast } = useToast();
@@ -101,6 +102,32 @@ export default function ConexionesPage() {
   useEffect(() => {
     loadConnections();
   }, [loadConnections]);
+
+  // Mostrar toasts de resultado del flujo OAuth de Meta (callback redirect)
+  useEffect(() => {
+    const metaError = searchParams.get('meta_error');
+    const metaSuccess = searchParams.get('meta_success');
+
+    if (metaError) {
+      toast({
+        title: 'Error al conectar con Meta',
+        description: metaError,
+        variant: 'destructive',
+      });
+    } else if (metaSuccess) {
+      toast({
+        title: 'Meta conectado',
+        description: metaSuccess,
+      });
+      loadConnections();
+    }
+
+    // Limpiar los parámetros de la URL sin recargar
+    if (metaError || metaSuccess) {
+      router.replace('/app/integraciones/conexiones');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Refrescar datos
   const handleRefresh = async () => {

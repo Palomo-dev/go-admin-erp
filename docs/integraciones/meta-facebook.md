@@ -93,9 +93,21 @@ Meta Business Suite
 4. Click **Generate Token** → seleccionar la app
 5. Permisos requeridos:
    - `catalog_management` — Gestionar catálogo
-   - `ads_management` — Gestionar anuncios
+   - `ads_management` — Gestionar anuncios y **crear Pixel** (requiere Ad Account)
+   - `ads_read` — Listar pixels y ad accounts existentes
    - `pages_read_engagement` — Leer datos de página
    - `business_management` — Gestionar Business Manager
+
+> ⚠️ **Importante sobre App Review:** Los permisos `ads_management`, `business_management` y
+> `catalog_management` tienen dos niveles de acceso:
+> - **Standard/Limited Access:** automático, pero solo funciona para usuarios con rol en la app
+>   (Admin/Developer/Tester) y assets propios del negocio de la app.
+> - **Advanced/Full Access:** requiere **App Review + Business Verification** para gestionar
+>   negocios de terceros (clientes de GO Admin). Sin esto, Facebook retorna el error
+>   `Application does not have permission for this action` (código 10).
+>
+> Para conectar clientes externos, solicitar Advanced Access en
+> App Dashboard → App Review → Permissions and Features.
 6. Copiar el **Access Token**
 
 > ⚠️ El token de System User dura ~60 días. Se debe renovar periódicamente o usar tokens de larga duración.
@@ -749,10 +761,17 @@ Crear en `src/lib/services/integrations/meta/`:
 | Permiso                    | Uso                                               |
 |---------------------------|---------------------------------------------------|
 | `catalog_management`      | CRUD productos en catálogo                        |
-| `ads_management`          | Gestionar campañas (opcional)                     |
+| `ads_management`          | Gestionar campañas y **crear Pixel** (Ad Account) |
+| `ads_read`                | Listar pixels y ad accounts existentes            |
 | `pages_read_engagement`   | Leer métricas de página                           |
 | `business_management`     | Acceso a Business Manager y activos               |
 | `pages_manage_metadata`   | Gestionar metadata de página                      |
+
+> **Nota sobre creación de Pixel:** Los pixels se crean a nivel de **Ad Account**
+> (`POST /act_{ad_account_id}/adspixels`), no a nivel de Business Manager.
+> El flujo OAuth obtiene automáticamente la primera Ad Account activa del Business
+> Manager del usuario. Si el usuario no tiene Ad Accounts, el setup fallará con un
+> mensaje indicando que debe crear una Ad Account en Meta Business Settings.
 
 ---
 

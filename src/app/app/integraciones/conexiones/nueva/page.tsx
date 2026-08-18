@@ -805,6 +805,7 @@ export default function NuevaConexionPage() {
             accessToken: parsedCreds.access_token || '',
             appSecret: parsedCreds.app_secret || '',
             businessId: parsedCreds.business_id || '',
+            adAccountId: parsedCreds.ad_account_id || '',
             pixelId: '',
             catalogId: '',
           });
@@ -839,6 +840,7 @@ export default function NuevaConexionPage() {
                 access_token: parsedCreds.access_token,
                 app_secret: parsedCreds.app_secret || '',
                 business_id: parsedCreds.business_id,
+                ad_account_id: parsedCreds.ad_account_id || '',
                 organization_id: orgData?.id,
                 organization_name: orgData?.name || 'Mi Negocio',
                 domain,

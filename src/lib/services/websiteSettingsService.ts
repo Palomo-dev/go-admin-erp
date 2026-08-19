@@ -101,6 +101,7 @@ export interface WebsiteSettings {
   topbar_show_email: boolean;
   topbar_show_phone: boolean;
   topbar_announcement: string | null;
+  topbar_contact_position: string;
 }
 
 export interface GalleryImage {
@@ -358,6 +359,7 @@ class WebsiteSettingsService {
           topbar_show_email: true,
           topbar_show_phone: true,
           topbar_announcement: null,
+          topbar_contact_position: 'left',
         })
         .select()
         .single();
@@ -658,6 +660,7 @@ class WebsiteSettingsService {
       topbar_show_email?: boolean;
       topbar_show_phone?: boolean;
       topbar_announcement?: string | null;
+      topbar_contact_position?: string;
     }
   ): Promise<WebsiteSettings> {
     try {

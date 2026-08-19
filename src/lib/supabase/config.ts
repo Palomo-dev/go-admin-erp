@@ -116,11 +116,21 @@ export const createSupabaseClient = () => {
             
             // Intentar leer de cookies (cookie simple)
             const cookies = document.cookie.split(';');
-            for (let cookie of cookies) {
-              const [name, value] = cookie.trim().split('=');
-              if (name === key && value) {
+            for (const cookie of cookies) {
+              // Usar indexOf en vez de split('=') para no truncar el valor
+              // si el JSON del token contiene caracteres '=' (base64, etc.)
+              const eqIndex = cookie.indexOf('=');
+              if (eqIndex === -1) continue;
+              const name = cookie.substring(0, eqIndex).trim();
+              const rawValue = cookie.substring(eqIndex + 1);
+              if (name === key && rawValue) {
                 console.log('🍪 [STORAGE] Leído de cookie:', key);
-                return decodeURIComponent(value);
+                try {
+                  return decodeURIComponent(rawValue);
+                } catch {
+                  // Si decodeURIComponent falla (malformed %), devolver raw
+                  return rawValue;
+                }
               }
             }
             
@@ -131,7 +141,7 @@ export const createSupabaseClient = () => {
             // Se deben concatenar los chunks raw y decodificar el resultado completo.
             const chunkPrefix = `${key}.`;
             const chunks: { index: number; value: string }[] = [];
-            for (let cookie of cookies) {
+            for (const cookie of cookies) {
               const [name, value] = cookie.trim().split('=');
               if (name && name.startsWith(chunkPrefix) && value) {
                 const idx = parseInt(name.substring(chunkPrefix.length), 10);

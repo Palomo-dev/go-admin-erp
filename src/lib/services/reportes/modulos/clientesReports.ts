@@ -5,6 +5,8 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { getBranchFilter } from '@/lib/hooks/useOrganization';
+import { getDateRange } from '@/lib/utils/timezone';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -25,6 +27,8 @@ export const clientesReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const branchFilter = getBranchFilter();
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
 
       // Conteo total exacto (sin límite de 1000)
       const baseEq: Record<string, unknown> = { organization_id: orgId };
@@ -34,19 +38,19 @@ export const clientesReports: ReportDefinition[] = [
         .from('customers')
         .select('*', { count: 'exact', head: true })
         .match(baseEq)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .lte('created_at', end);
 
       // Nuevos en el período seleccionado
       const { count: nuevosEnPeriodo } = await supabase
         .from('customers')
         .select('*', { count: 'exact', head: true })
         .match(baseEq)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       // Desglose mensual: últimos 12 meses hasta la fecha fin del período
       // Usar count queries por mes en lugar de paginar todos los registros
-      const fechaFin = new Date(`${periodo.fechaFin}T23:59:59Z`);
+      const fechaFin = new Date(end);
       const fechaInicio12m = new Date(fechaFin);
       fechaInicio12m.setMonth(fechaInicio12m.getMonth() - 11);
       fechaInicio12m.setDate(1);
@@ -65,19 +69,21 @@ export const clientesReports: ReportDefinition[] = [
       }
 
       // Un count query por mes (12 queries máximo, mucho más rápido que paginar 18K registros)
+      // Rangos ajustados a la zona horaria de la organizacion para evitar desplazamiento de dia
       const countPromises = mesesKeys.map((mesKey) => {
-        const mesStart = new Date(`${mesKey}T00:00:00Z`);
-        const mesEnd = new Date(mesStart);
-        mesEnd.setMonth(mesEnd.getMonth() + 1);
-        mesEnd.setDate(0);
-        mesEnd.setHours(23, 59, 59, 999);
+        // mesKey = YYYY-MM-01; calcular último día del mes
+        const [y, m] = mesKey.split('-').map(Number);
+        const ultimoDia = new Date(Date.UTC(y, m, 0)).getUTCDate();
+        const mesInicioStr = `${mesKey.slice(0, 8)}01`;
+        const mesFinStr = `${mesKey.slice(0, 8)}${String(ultimoDia).padStart(2, '0')}`;
+        const { start: mesStart, end: mesEnd } = getDateRange(mesInicioStr, mesFinStr, tz);
 
         return supabase
           .from('customers')
           .select('*', { count: 'exact', head: true })
           .match(baseEq)
-          .gte('created_at', mesStart.toISOString())
-          .lte('created_at', mesEnd.toISOString())
+          .gte('created_at', mesStart)
+          .lte('created_at', mesEnd)
           .then(({ count }) => ({ mesKey, count: count ?? 0 }));
       });
 
@@ -192,12 +198,14 @@ export const clientesReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase
         .from('sales')
         .select('customer_id, total, customers!inner(first_name, last_name, customer_type, company_name)')
         .eq('organization_id', orgId)
-        .gte('sale_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('sale_date', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('sale_date', start)
+        .lte('sale_date', end)
         .not('status', 'in', '("cancelled","void")')
         .not('customer_id', 'is', null);
 

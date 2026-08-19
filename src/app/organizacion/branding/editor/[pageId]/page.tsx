@@ -333,7 +333,9 @@ export default function PageEditorPage() {
           'show_header_cart', 'show_header_auth', 'show_topbar', 'menu_position', 'search_style',
           'show_categories_in_header', 'categories_menu_style', 'mega_menu_columns',
           'mobile_menu_style', 'mobile_search_style', 'mobile_show_topbar', 'mobile_sticky_header',
-          'mobile_breakpoint',
+          'mobile_breakpoint', 'header_opacity',
+          'header_bg_color', 'topbar_bg_color', 'nav_bg_color', 'accent_color',
+          'topbar_show_email', 'topbar_show_phone', 'topbar_announcement', 'topbar_contact_position',
         ];
         const themeUpdates: Record<string, any> = {};
         const headerUpdates: Record<string, any> = {};
@@ -535,6 +537,15 @@ export default function PageEditorPage() {
                     show_header_cart: settings.show_header_cart ?? false,
                     show_header_auth: settings.show_header_auth ?? false,
                     show_topbar: settings.show_topbar ?? false,
+                    header_opacity: settings.header_opacity ?? 95,
+                    header_bg_color: settings.header_bg_color ?? null,
+                    topbar_bg_color: settings.topbar_bg_color ?? null,
+                    nav_bg_color: settings.nav_bg_color ?? null,
+                    accent_color: settings.accent_color ?? null,
+                    topbar_show_email: settings.topbar_show_email ?? true,
+                    topbar_show_phone: settings.topbar_show_phone ?? true,
+                    topbar_announcement: settings.topbar_announcement ?? null,
+                    topbar_contact_position: settings.topbar_contact_position ?? 'left',
                   }}
                   onUpdate={handleUpdateGlobalSettings}
                 />

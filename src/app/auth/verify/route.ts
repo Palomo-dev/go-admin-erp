@@ -31,11 +31,17 @@ export async function GET(request: NextRequest) {
             return cookieStore.get(key)?.value ?? null;
           },
           setItem: (key: string, value: string) => {
-            cookieStore.set(key, value, {
+            // URL-encodear el valor para que sea consistente con el client-side
+            // (config.ts storage setItem usa encodeURIComponent). Sin esto, el
+            // cliente no puede parsear cookies seteadas por el servidor porque
+            // split('=') rompe si el JSON contiene '=' y decodeURIComponent
+            // corrompe '%' literales del JSON raw.
+            cookieStore.set(key, encodeURIComponent(value), {
               httpOnly: false,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
-              path: '/'
+              path: '/',
+              maxAge: 604800
             });
           },
           removeItem: (key: string) => {

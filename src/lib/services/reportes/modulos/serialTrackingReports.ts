@@ -4,6 +4,8 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import { getDateRange } from '@/lib/utils/timezone';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -59,6 +61,8 @@ export const serialTrackingReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase
         .from('serial_numbers')
         .select(`
@@ -70,8 +74,8 @@ export const serialTrackingReports: ReportDefinition[] = [
           current_branch:branches!serial_numbers_current_branch_id_fkey ( name )
         `)
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('created_at', start)
+        .lte('created_at', end)
         .order('created_at', { ascending: false })
         .limit(500);
 
@@ -133,6 +137,8 @@ export const serialTrackingReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase
         .from('serial_numbers')
         .select(`
@@ -143,8 +149,8 @@ export const serialTrackingReports: ReportDefinition[] = [
         `)
         .eq('organization_id', orgId)
         .eq('status', 'sold')
-        .gte('sale_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('sale_date', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('sale_date', start)
+        .lte('sale_date', end)
         .order('sale_date', { ascending: false })
         .limit(500);
 
@@ -208,6 +214,8 @@ export const serialTrackingReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase
         .from('warranty_claims')
         .select(`
@@ -220,8 +228,8 @@ export const serialTrackingReports: ReportDefinition[] = [
           customers ( full_name )
         `)
         .eq('organization_id', orgId)
-        .gte('claim_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('claim_date', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('claim_date', start)
+        .lte('claim_date', end)
         .order('claim_date', { ascending: false })
         .limit(500);
 
@@ -297,6 +305,8 @@ export const serialTrackingReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase
         .from('serial_numbers')
         .select(`
@@ -305,8 +315,8 @@ export const serialTrackingReports: ReportDefinition[] = [
         `)
         .eq('organization_id', orgId)
         .not('supplier_id', 'is', null)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('created_at', start)
+        .lte('created_at', end)
         .limit(1000);
 
       if (error) throw error;

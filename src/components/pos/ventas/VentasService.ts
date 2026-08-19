@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId, getBranchFilter } from '@/lib/hooks/useOrganization';
+import { getDateRange, getToday } from '@/lib/utils/timezone';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { SaleWithDetails, SalesFilter, DailySummary, CashSession, CashCount } from './types';
 
 export class VentasService {
@@ -12,6 +14,16 @@ export class VentasService {
     const organizationId = getOrganizationId();
     const branchId = getBranchFilter();
     const sourceType = filter.source_type || 'all';
+
+    // Resolver rango de fechas con timezone de la organizacion para
+    // evitar que ventas de la tarde/noche se desplacen al dia siguiente.
+    let dateRange: { start: string; end: string } | null = null;
+    if (filter.date_from || filter.date_to) {
+      const tz = await getOrganizationTimezone(organizationId);
+      const inicio = filter.date_from || filter.date_to!;
+      const fin = filter.date_to || filter.date_from!;
+      dateRange = getDateRange(inicio, fin, tz);
+    }
 
     try {
       let posSales: any[] = [];
@@ -30,8 +42,10 @@ export class VentasService {
         if (branchId) query = query.eq('branch_id', branchId);
         if (filter.status && filter.status !== 'all') query = query.eq('status', filter.status);
         if (filter.payment_status && filter.payment_status !== 'all') query = query.eq('payment_status', filter.payment_status);
-        if (filter.date_from) query = query.gte('sale_date', filter.date_from);
-        if (filter.date_to) query = query.lte('sale_date', filter.date_to);
+        if (dateRange) {
+          query = query.gte('sale_date', dateRange.start);
+          query = query.lte('sale_date', dateRange.end);
+        }
         if (filter.customer_id) query = query.eq('customer_id', filter.customer_id);
         if (filter.search) query = query.or(`notes.ilike.%${filter.search}%`);
 
@@ -55,8 +69,10 @@ export class VentasService {
           wQuery = wQuery.eq('status', statusMap[filter.status] || filter.status);
         }
         if (filter.payment_status && filter.payment_status !== 'all') wQuery = wQuery.eq('payment_status', filter.payment_status);
-        if (filter.date_from) wQuery = wQuery.gte('created_at', `${filter.date_from}T00:00:00`);
-        if (filter.date_to) wQuery = wQuery.lte('created_at', `${filter.date_to}T23:59:59`);
+        if (dateRange) {
+          wQuery = wQuery.gte('created_at', dateRange.start);
+          wQuery = wQuery.lte('created_at', dateRange.end);
+        }
         if (filter.customer_id) wQuery = wQuery.eq('customer_id', filter.customer_id);
         if (filter.search) wQuery = wQuery.or(`order_number.ilike.%${filter.search}%,customer_name.ilike.%${filter.search}%,customer_notes.ilike.%${filter.search}%`);
 
@@ -410,10 +426,10 @@ export class VentasService {
   static async getDailySummary(date?: string): Promise<DailySummary> {
     const organizationId = getOrganizationId();
     const branchId = getBranchFilter();
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const tz = await getOrganizationTimezone(organizationId);
+    const targetDate = date || getToday(tz);
 
-    const startOfDay = `${targetDate}T00:00:00`;
-    const endOfDay = `${targetDate}T23:59:59`;
+    const { start: startOfDay, end: endOfDay } = getDateRange(targetDate, targetDate, tz);
 
     let query = supabase
       .from('sales')

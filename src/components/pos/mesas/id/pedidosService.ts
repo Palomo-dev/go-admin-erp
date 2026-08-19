@@ -265,6 +265,7 @@ export class PedidosService {
             organization_id: organizationId,
             branch_id: branchId,
             user_id: session.server_id,
+            sale_date: new Date().toISOString(),
             status: 'pending',
             payment_status: 'pending',
             total: 0,

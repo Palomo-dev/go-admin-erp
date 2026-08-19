@@ -5,6 +5,8 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { getBranchFilter } from '@/lib/hooks/useOrganization';
+import { getDateRange } from '@/lib/utils/timezone';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -212,10 +214,12 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_movimientos_inventario', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -303,10 +307,12 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_rotacion_inventario', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -336,12 +342,14 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data: ventas, error: errVentas } = await supabase
         .from('sales')
         .select('id')
         .eq('organization_id', orgId)
-        .gte('sale_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('sale_date', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('sale_date', start)
+        .lte('sale_date', end)
         .not('status', 'in', '("cancelled","void")');
 
       if (errVentas) throw errVentas;

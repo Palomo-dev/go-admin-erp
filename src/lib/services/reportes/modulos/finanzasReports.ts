@@ -4,6 +4,8 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import { getDateRange } from '@/lib/utils/timezone';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -151,7 +153,7 @@ export const finanzasReports: ReportDefinition[] = [
         '+90': '+90 días',
       };
 
-      const bucketsTraducidos = buckets.map((b) => ({
+      const bucketsTraducidos: Record<string, unknown>[] = buckets.map((b) => ({
         ...b,
         rango: bucketLabel[String(b.bucket ?? '')] ?? String(b.bucket ?? '—'),
       }));
@@ -261,7 +263,7 @@ export const finanzasReports: ReportDefinition[] = [
         '+90': '+90 días',
       };
 
-      const bucketsTraducidos = buckets.map((b) => ({
+      const bucketsTraducidos: Record<string, unknown>[] = buckets.map((b) => ({
         ...b,
         rango: bucketLabel[String(b.bucket ?? '')] ?? String(b.bucket ?? '—'),
       }));
@@ -377,10 +379,12 @@ export const finanzasReports: ReportDefinition[] = [
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_flujo_efectivo', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -415,10 +419,12 @@ export const finanzasReports: ReportDefinition[] = [
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_impuestos', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -492,12 +498,14 @@ export const finanzasReports: ReportDefinition[] = [
     categoria: 'financiero',
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase
         .from('journal_lines')
         .select('account_code, debit_base, credit_base, description, journal_entries!inner(entry_date, branch_id)')
         .eq('organization_id', orgId)
-        .gte('journal_entries.entry_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('journal_entries.entry_date', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('journal_entries.entry_date', start)
+        .lte('journal_entries.entry_date', end);
 
       if (error) throw error;
 
@@ -536,12 +544,14 @@ export const finanzasReports: ReportDefinition[] = [
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase
         .from('invoice_sales')
         .select('id, subtotal, tax_total, total, balance, status, document_type, issue_date')
         .eq('organization_id', orgId)
-        .gte('issue_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('issue_date', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('issue_date', start)
+        .lte('issue_date', end)
         .order('issue_date', { ascending: false });
 
       if (error) throw error;
@@ -676,10 +686,12 @@ export const finanzasReports: ReportDefinition[] = [
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_rotacion_inventario', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -710,10 +722,12 @@ export const finanzasReports: ReportDefinition[] = [
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 

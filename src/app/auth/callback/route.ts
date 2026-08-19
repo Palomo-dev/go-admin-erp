@@ -47,7 +47,12 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(new URL(url, request.url));
     pendingCookies.forEach((value, name) => {
       if (value !== null) {
-        response.cookies.set(name, value, {
+        // URL-encodear el valor para que sea consistente con el client-side
+        // (config.ts storage setItem usa encodeURIComponent). Sin esto, el
+        // cliente no puede parsear cookies seteadas por el servidor porque
+        // split('=') rompe si el JSON contiene '=' y decodeURIComponent
+        // corrompe '%' literales del JSON raw.
+        response.cookies.set(name, encodeURIComponent(value), {
           httpOnly: false,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',

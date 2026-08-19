@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 
 export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected';
 export type DeliveryType = 'pickup' | 'delivery_own' | 'delivery_third_party';
@@ -328,7 +329,7 @@ class WebOrdersService {
           this.organizationId,
           input.branch_id,
           order.id,
-          itemsWithTotals.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price }))
+          itemsWithTotals.map(item => ({ product_id: item.product_id ?? null, quantity: item.quantity, unit_price: item.unit_price }))
         );
         if (stockResult.errors.length > 0) {
           console.warn('⚠️ Algunos items no reservaron stock:', stockResult.errors);
@@ -553,6 +554,7 @@ class WebOrdersService {
           branch_id: order.branch_id,
           customer_id: order.customer_id,
           user_id: order.confirmed_by,
+          sale_date: new Date().toISOString(),
           total: order.total,
           subtotal: order.subtotal,
           tax_total: order.tax_total,

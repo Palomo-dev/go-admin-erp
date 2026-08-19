@@ -4,6 +4,8 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import { getDateRange } from '@/lib/utils/timezone';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -38,10 +40,12 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['diario'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_cierre_caja', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -159,10 +163,12 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -264,10 +270,12 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_ventas_por_hora', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -322,10 +330,12 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -403,8 +413,8 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const from = `${periodo.fechaInicio}T00:00:00Z`;
-      const to = `${periodo.fechaFin}T23:59:59Z`;
+      const tz = await getOrganizationTimezone(orgId);
+      const { start: from, end: to } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
 
       const [
         { data: devolucionesData, error: errDev },
@@ -524,12 +534,14 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+      const tz = await getOrganizationTimezone(orgId);
+      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
       const { data, error } = await supabase
         .from('web_orders')
         .select('id, order_number, status, source, total, subtotal, delivery_fee, tip_amount, discount_total, delivery_type, payment_method, payment_status, customer_name, customer_email, created_at, confirmed_at, delivered_at, cancelled_at, cancellation_reason')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('created_at', start)
+        .lte('created_at', end)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Plus, X, GripVertical } from 'lucide-react';
 
 interface HeaderOptionsPanelProps {
   settings: {
@@ -35,6 +36,7 @@ interface HeaderOptionsPanelProps {
     topbar_show_email?: boolean;
     topbar_show_phone?: boolean;
     topbar_announcement?: string | null;
+    topbar_contact_position?: string;
   };
   onUpdate: (updates: Record<string, string | number | boolean | null>) => void;
 }
@@ -241,28 +243,78 @@ export default function HeaderOptionsPanel({
             />
           </div>
 
-          {/* Mensaje promocional (marquee) */}
+          {/* Posición del contacto (email/teléfono) */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
-              Mensaje promocional (se mueve)
+              Posición del correo/teléfono
             </Label>
-            <Input
-              className="h-8 text-xs"
-              placeholder="Ej: 🚚 Envíos gratis sobre $50 — 🔥 Ofertas del día"
-              value={settings.topbar_announcement ?? ''}
-              onChange={(e) => onUpdate({ topbar_announcement: e.target.value || null })}
-            />
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Texto que se desplaza horizontalmente. Separar mensajes con — o |
-            </p>
-            {settings.topbar_announcement && (
+            <Select
+              value={settings.topbar_contact_position ?? 'left'}
+              onValueChange={(v) => onUpdate({ topbar_contact_position: v })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="left">Izquierda</SelectItem>
+                <SelectItem value="right">Derecha</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Mensajes promocionales (marquee) — lista editable */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium dark:text-gray-200">
+                Mensajes promocionales ({parseAnnouncements(settings.topbar_announcement).length})
+              </Label>
               <button
-                onClick={() => onUpdate({ topbar_announcement: null })}
-                className="text-xs text-gray-500 hover:text-red-500"
+                onClick={() => {
+                  const list = parseAnnouncements(settings.topbar_announcement);
+                  list.push('Nuevo mensaje');
+                  onUpdate({ topbar_announcement: serializeAnnouncements(list) });
+                }}
+                className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
               >
-                ✕ Quitar mensaje
+                <Plus className="h-3 w-3" />
+                Agregar
               </button>
-            )}
+            </div>
+
+            <div className="space-y-1.5">
+              {parseAnnouncements(settings.topbar_announcement).map((msg, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 px-1.5 py-1"
+                >
+                  <GripVertical className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0" />
+                  <Input
+                    className="h-7 text-xs flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent"
+                    placeholder={`Mensaje ${i + 1}`}
+                    value={msg}
+                    onChange={(e) => {
+                      const list = parseAnnouncements(settings.topbar_announcement);
+                      list[i] = e.target.value;
+                      onUpdate({ topbar_announcement: serializeAnnouncements(list) });
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      const list = parseAnnouncements(settings.topbar_announcement);
+                      list.splice(i, 1);
+                      onUpdate({ topbar_announcement: list.length > 0 ? serializeAnnouncements(list) : null });
+                    }}
+                    className="p-0.5 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Los mensajes rotan automáticamente cada 6 segundos con flechas de navegación.
+            </p>
           </div>
         </div>
       )}
@@ -294,7 +346,7 @@ export default function HeaderOptionsPanel({
             <Input
               type="text"
               className="h-8 text-xs flex-1"
-              placeholder="#ffffff o vacío para auto"
+              placeholder="Vacío = blanco con opacidad (auto)"
               value={settings.header_bg_color ?? ''}
               onChange={(e) => onUpdate({ header_bg_color: e.target.value || null })}
             />
@@ -318,14 +370,14 @@ export default function HeaderOptionsPanel({
           <div className="flex items-center gap-2">
             <input
               type="color"
-              value={settings.topbar_bg_color ?? '#ffffff'}
+              value={settings.topbar_bg_color ?? '#111827'}
               onChange={(e) => onUpdate({ topbar_bg_color: e.target.value })}
               className="h-8 w-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer bg-transparent"
             />
             <Input
               type="text"
               className="h-8 text-xs flex-1"
-              placeholder="Vacío = hereda del header"
+              placeholder="Vacío = oscuro por defecto (hereda header si hay)"
               value={settings.topbar_bg_color ?? ''}
               onChange={(e) => onUpdate({ topbar_bg_color: e.target.value || null })}
             />
@@ -349,7 +401,7 @@ export default function HeaderOptionsPanel({
           <div className="flex items-center gap-2">
             <input
               type="color"
-              value={settings.nav_bg_color ?? '#ffffff'}
+              value={settings.nav_bg_color ?? (settings.header_bg_color ?? '#ffffff')}
               onChange={(e) => onUpdate({ nav_bg_color: e.target.value })}
               className="h-8 w-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer bg-transparent"
             />
@@ -405,4 +457,28 @@ export default function HeaderOptionsPanel({
       </div>
     </div>
   );
+}
+
+// ============================================================
+// HELPERS: serialización de mensajes promocionales
+// Almacena como JSON array en topbar_announcement (TEXT)
+// Ej: '["🚚 Envíos gratis","🔥 Ofertas del día"]'
+// ============================================================
+
+function parseAnnouncements(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')) {
+      return parsed;
+    }
+  } catch {
+    // Si no es JSON válido, tratar como string único (compatibilidad retroactiva)
+    return [raw];
+  }
+  return [];
+}
+
+function serializeAnnouncements(list: string[]): string {
+  return JSON.stringify(list.filter((s) => s.trim() !== ''));
 }

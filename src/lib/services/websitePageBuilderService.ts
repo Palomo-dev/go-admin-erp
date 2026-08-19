@@ -23,6 +23,17 @@ export interface WebsitePage {
   og_image_url: string | null;
   created_at: string;
   updated_at: string;
+  // Jerarquía y mega-menú (Fase 0 - migración header_configurable_mega_menu)
+  parent_page_id: string | null;
+  linked_category_id: number | null;
+  menu_icon: string | null;
+  menu_badge: string | null;
+}
+
+/** Página con hijos anidados (árbol de menú) */
+export interface WebsitePageWithChildren extends WebsitePage {
+  children: WebsitePageWithChildren[];
+  level: number;
 }
 
 export interface WebsitePageSection {
@@ -527,6 +538,10 @@ class WebsitePageBuilderService {
     show_in_footer?: boolean;
     header_order?: number;
     footer_order?: number;
+    parent_page_id?: string | null;
+    linked_category_id?: number | null;
+    menu_icon?: string | null;
+    menu_badge?: string | null;
   }): Promise<WebsitePage> {
     const { data, error } = await supabase
       .from('website_pages')
@@ -544,7 +559,7 @@ class WebsitePageBuilderService {
 
   async updatePage(
     pageId: string,
-    updates: Partial<Pick<WebsitePage, 'title' | 'slug' | 'show_in_header' | 'show_in_footer' | 'header_order' | 'footer_order' | 'is_published' | 'meta_title' | 'meta_description' | 'og_image_url'>>
+    updates: Partial<Pick<WebsitePage, 'title' | 'slug' | 'show_in_header' | 'show_in_footer' | 'header_order' | 'footer_order' | 'is_published' | 'meta_title' | 'meta_description' | 'og_image_url' | 'parent_page_id' | 'linked_category_id' | 'menu_icon' | 'menu_badge'>>
   ): Promise<WebsitePage> {
     const { data, error } = await supabase
       .from('website_pages')
@@ -655,6 +670,126 @@ class WebsitePageBuilderService {
       .eq('id', sectionId);
 
     if (error) throw error;
+  }
+
+  // ---- MENU TREE (jerarquía header/footer) ----
+
+  /**
+   * Obtiene el árbol jerárquico de páginas para el menú del header.
+   * Anida por parent_page_id, ordena por header_order.
+   */
+  async getMenuTree(organizationId: number): Promise<WebsitePageWithChildren[]> {
+    const { data, error } = await supabase
+      .from('website_pages')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('show_in_header', true)
+      .order('header_order', { ascending: true });
+
+    if (error) throw error;
+    return this.buildMenuTree((data || []) as WebsitePage[]);
+  }
+
+  /**
+   * Obtiene el árbol jerárquico de páginas para el menú del footer.
+   */
+  async getFooterMenuTree(organizationId: number): Promise<WebsitePageWithChildren[]> {
+    const { data, error } = await supabase
+      .from('website_pages')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('show_in_footer', true)
+      .order('footer_order', { ascending: true });
+
+    if (error) throw error;
+    return this.buildMenuTree((data || []) as WebsitePage[]);
+  }
+
+  /**
+   * Construye un árbol jerárquico desde una lista plana de páginas.
+   */
+  private buildMenuTree(flat: WebsitePage[]): WebsitePageWithChildren[] {
+    const map = new Map<string, WebsitePageWithChildren>();
+    const roots: WebsitePageWithChildren[] = [];
+
+    flat.forEach(page => {
+      map.set(page.id, { ...page, children: [], level: 0 });
+    });
+
+    flat.forEach(page => {
+      const node = map.get(page.id)!;
+      if (page.parent_page_id === null) {
+        roots.push(node);
+      } else {
+        const parent = map.get(page.parent_page_id);
+        if (parent) {
+          parent.children.push(node);
+          node.level = parent.level + 1;
+        } else {
+          roots.push(node);
+        }
+      }
+    });
+
+    const sortChildren = (pages: WebsitePageWithChildren[]): WebsitePageWithChildren[] => {
+      return pages
+        .sort((a, b) => a.header_order - b.header_order)
+        .map(p => ({ ...p, children: sortChildren(p.children) }));
+    };
+
+    return sortChildren(roots);
+  }
+
+  /**
+   * Actualiza los campos de menú de una página (jerarquía, categoría vinculada, icono, badge, orden).
+   */
+  async updatePageMenu(
+    pageId: string,
+    menu: {
+      parent_page_id?: string | null;
+      linked_category_id?: number | null;
+      menu_icon?: string | null;
+      menu_badge?: string | null;
+      header_order?: number;
+      footer_order?: number;
+      show_in_header?: boolean;
+      show_in_footer?: boolean;
+    }
+  ): Promise<WebsitePage> {
+    const { data, error } = await supabase
+      .from('website_pages')
+      .update({ ...menu, updated_at: new Date().toISOString() })
+      .eq('id', pageId)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.error('Supabase updatePageMenu error:', error.message, error.code);
+      throw new Error(error.message || 'No se pudo actualizar el menú de la página.');
+    }
+    if (!data) {
+      throw new Error('No se pudo actualizar el menú. Verifica permisos (rol owner o admin).');
+    }
+    return data as WebsitePage;
+  }
+
+  /**
+   * Reordena los items del menú del header en lote.
+   */
+  async reorderMenuItems(items: { id: string; header_order: number }[]): Promise<void> {
+    if (!items.length) return;
+    const timestamp = new Date().toISOString();
+    const promises = items.map(item =>
+      supabase
+        .from('website_pages')
+        .update({ header_order: item.header_order, updated_at: timestamp })
+        .eq('id', item.id)
+    );
+    const results = await Promise.all(promises);
+    const firstError = results.find(r => r.error);
+    if (firstError?.error) {
+      throw new Error(firstError.error.message || 'No se pudo reordenar el menú.');
+    }
   }
 
   // ---- SEED DEFAULT PAGES ----

@@ -22,6 +22,11 @@ import {
   AddSectionDialog,
   GlobalSettingsPanel,
   PageSEOPanel,
+  HeaderLayoutSelector,
+  HeaderOptionsPanel,
+  MobileHeaderPanel,
+  MenuTreeEditor,
+  HeaderPreviewMockup,
   type DevicePreview,
 } from '@/components/organization/branding/editor';
 
@@ -46,6 +51,7 @@ export default function PageEditorPage() {
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [showGlobalSettings, setShowGlobalSettings] = useState(false);
   const [showPageSEO, setShowPageSEO] = useState(false);
+  const [showMenuConfig, setShowMenuConfig] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
@@ -54,6 +60,8 @@ export default function PageEditorPage() {
   const pendingSectionUpdates = useRef<Map<string, Partial<WebsitePageSection>>>(new Map());
   const pendingSettingsUpdates = useRef<Partial<WebsiteSettings>>({});
   const pendingPageUpdates = useRef<Record<string, string>>({});
+  // Cambios pendientes del MenuTreeEditor (header_order, menu_icon, etc.)
+  const pendingMenuUpdates = useRef<Map<string, Record<string, unknown>>>(new Map());
 
   // ---- LOAD DATA ----
   const loadData = useCallback(async () => {
@@ -319,11 +327,38 @@ export default function PageEditorPage() {
 
       // 4. Save global settings
       if (Object.keys(pendingSettingsUpdates.current).length > 0) {
-        const updatedSettings = await websiteSettingsService.updateTheme(
-          organizationId,
-          pendingSettingsUpdates.current as any
-        );
-        setSettings(updatedSettings);
+        // Separar campos de tema (colores, fuentes, etc.) de campos del header
+        const headerConfigKeys = [
+          'header_style', 'footer_style', 'logo_position', 'header_cta_text', 'header_cta_url',
+          'show_header_cart', 'show_header_auth', 'show_topbar', 'menu_position', 'search_style',
+          'show_categories_in_header', 'categories_menu_style', 'mega_menu_columns',
+          'mobile_menu_style', 'mobile_search_style', 'mobile_show_topbar', 'mobile_sticky_header',
+          'mobile_breakpoint',
+        ];
+        const themeUpdates: Record<string, any> = {};
+        const headerUpdates: Record<string, any> = {};
+        for (const [key, value] of Object.entries(pendingSettingsUpdates.current)) {
+          if (headerConfigKeys.includes(key)) {
+            headerUpdates[key] = value;
+          } else {
+            themeUpdates[key] = value;
+          }
+        }
+
+        let updatedSettings: WebsiteSettings | null = null;
+        if (Object.keys(themeUpdates).length > 0) {
+          updatedSettings = await websiteSettingsService.updateTheme(
+            organizationId,
+            themeUpdates as any
+          );
+        }
+        if (Object.keys(headerUpdates).length > 0) {
+          updatedSettings = await websiteSettingsService.updateHeaderConfig(
+            organizationId,
+            headerUpdates as any
+          );
+        }
+        if (updatedSettings) setSettings(updatedSettings);
       }
 
       // 5. Sync gallery/testimonials/FAQ items to website_settings
@@ -347,10 +382,22 @@ export default function PageEditorPage() {
         setSettings(synced);
       }
 
+      // 6. Save menu tree updates (header_order, menu_icon, menu_badge, etc.)
+      if (pendingMenuUpdates.current.size > 0) {
+        const menuPromises: Promise<unknown>[] = [];
+        pendingMenuUpdates.current.forEach((updates, pageId) => {
+          menuPromises.push(
+            websitePageBuilderService.updatePageMenu(pageId, updates as any)
+          );
+        });
+        await Promise.all(menuPromises);
+      }
+
       // Reset pending
       pendingSectionUpdates.current.clear();
       pendingSettingsUpdates.current = {};
       pendingPageUpdates.current = {};
+      pendingMenuUpdates.current.clear();
       setHasChanges(false);
       setPreviewRefreshKey((k) => k + 1);
 
@@ -451,6 +498,67 @@ export default function PageEditorPage() {
               ogImageUrl={currentPage.og_image_url || ''}
               onUpdate={handleUpdatePageSEO}
             />
+          }
+          showMenuConfig={showMenuConfig}
+          onToggleMenuConfig={() => setShowMenuConfig(!showMenuConfig)}
+          menuConfigContent={
+            settings ? (
+              <div className="space-y-4">
+                <HeaderLayoutSelector
+                  currentLayout={settings.header_style || 'default'}
+                  onSelect={(layout) => handleUpdateGlobalSettings({ header_style: layout })}
+                />
+                <HeaderPreviewMockup
+                  layout={settings.header_style || 'default'}
+                  logoPosition={settings.logo_position || 'left'}
+                  menuPosition={settings.menu_position || 'inline'}
+                  searchStyle={settings.search_style || 'icon'}
+                  showTopbar={settings.show_topbar ?? false}
+                  showCart={settings.show_header_cart ?? false}
+                  showAuth={settings.show_header_auth ?? false}
+                  ctaText={settings.header_cta_text || null}
+                  isMobile={devicePreview === 'mobile'}
+                  mobileMenuStyle={settings.mobile_menu_style || 'drawer'}
+                  headerOpacity={settings.header_opacity ?? 95}
+                />
+                <HeaderOptionsPanel
+                  settings={{
+                    header_style: settings.header_style || 'default',
+                    logo_position: settings.logo_position || 'left',
+                    menu_position: settings.menu_position || 'inline',
+                    search_style: settings.search_style || 'icon',
+                    show_categories_in_header: settings.show_categories_in_header ?? false,
+                    categories_menu_style: settings.categories_menu_style || 'dropdown',
+                    mega_menu_columns: settings.mega_menu_columns ?? 4,
+                    header_cta_text: settings.header_cta_text,
+                    header_cta_url: settings.header_cta_url,
+                    show_header_cart: settings.show_header_cart ?? false,
+                    show_header_auth: settings.show_header_auth ?? false,
+                    show_topbar: settings.show_topbar ?? false,
+                  }}
+                  onUpdate={handleUpdateGlobalSettings}
+                />
+                <MobileHeaderPanel
+                  settings={{
+                    mobile_menu_style: settings.mobile_menu_style || 'drawer',
+                    mobile_search_style: settings.mobile_search_style || 'icon',
+                    mobile_show_topbar: settings.mobile_show_topbar ?? false,
+                    mobile_sticky_header: settings.mobile_sticky_header ?? true,
+                    mobile_breakpoint: settings.mobile_breakpoint ?? 768,
+                  }}
+                  onUpdate={handleUpdateGlobalSettings}
+                />
+                {organizationId && (
+                  <MenuTreeEditor
+                    organizationId={organizationId}
+                    pendingUpdatesRef={pendingMenuUpdates}
+                    onPendingChanges={(hasPending) => {
+                      if (hasPending) setHasChanges(true);
+                    }}
+                  />
+                )}
+              </div>
+            ) : null
           }
           organizationId={organizationId}
         />

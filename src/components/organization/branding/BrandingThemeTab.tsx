@@ -78,6 +78,8 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
     font_heading: settings.font_heading || 'Inter',
     font_body: settings.font_body || 'Inter',
     logo_height: settings.logo_height || 48,
+    header_style: settings.header_style || 'default',
+    footer_style: settings.footer_style || 'three_columns',
   });
 
   const handleSave = async () => {
@@ -211,6 +213,8 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                       theme_mode: preset.theme_mode,
                       font_heading: preset.fonts.heading,
                       font_body: preset.fonts.body,
+                      header_style: preset.header_style,
+                      footer_style: preset.footer_style,
                     });
                   }}
                   className={cn(

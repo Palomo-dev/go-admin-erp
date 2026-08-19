@@ -71,6 +71,36 @@ export interface WebsiteSettings {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  // Header configurable (Fase 0 - migración header_configurable_mega_menu)
+  header_style: string;
+  footer_style: string;
+  logo_position: 'left' | 'center' | 'right';
+  header_cta_text: string | null;
+  header_cta_url: string | null;
+  show_header_cart: boolean;
+  show_header_auth: boolean;
+  show_topbar: boolean;
+  menu_position: 'inline' | 'below';
+  search_style: 'icon' | 'bar' | 'hidden';
+  show_categories_in_header: boolean;
+  categories_menu_style: 'dropdown' | 'mega';
+  mega_menu_columns: number;
+  // Header responsive / móvil
+  mobile_menu_style: 'drawer' | 'bottom_sheet' | 'fullscreen' | 'tabs';
+  mobile_search_style: 'icon' | 'bar' | 'hidden';
+  mobile_show_topbar: boolean;
+  mobile_sticky_header: boolean;
+  mobile_breakpoint: number;
+  // Opacidad del header (50-100, 100 = sólido)
+  header_opacity: number;
+  // Colores personalizables del header (Fase 11)
+  header_bg_color: string | null;
+  topbar_bg_color: string | null;
+  nav_bg_color: string | null;
+  // Contenido del topbar (Fase 11.1)
+  topbar_show_email: boolean;
+  topbar_show_phone: boolean;
+  topbar_announcement: string | null;
 }
 
 export interface GalleryImage {
@@ -302,6 +332,32 @@ class WebsiteSettingsService {
           faq_items: [],
           footer_links: [],
           is_published: false,
+          // Header configurable defaults
+          header_style: 'default',
+          footer_style: 'three_columns',
+          logo_position: 'left',
+          header_cta_text: null,
+          header_cta_url: null,
+          show_header_cart: false,
+          show_header_auth: false,
+          show_topbar: false,
+          menu_position: 'inline',
+          search_style: 'icon',
+          show_categories_in_header: false,
+          categories_menu_style: 'dropdown',
+          mega_menu_columns: 3,
+          mobile_menu_style: 'drawer',
+          mobile_search_style: 'icon',
+          mobile_show_topbar: false,
+          mobile_sticky_header: false,
+          mobile_breakpoint: 768,
+          header_opacity: 95,
+          header_bg_color: null,
+          topbar_bg_color: null,
+          nav_bg_color: null,
+          topbar_show_email: true,
+          topbar_show_phone: true,
+          topbar_announcement: null,
         })
         .select()
         .single();
@@ -312,6 +368,37 @@ class WebsiteSettingsService {
       console.error('Error creating website settings:', error);
       throw error;
     }
+  }
+
+  /**
+   * Aplica un preset completo a una organización, incluyendo header config.
+   * Busca el preset en TEMPLATE_PRESETS y aplica todos los campos.
+   */
+  async applyPreset(organizationId: number, presetId: string): Promise<{ success: boolean; error?: string }> {
+    const preset = TEMPLATE_PRESETS.find(p => p.id === presetId);
+    if (!preset) {
+      return { success: false, error: `Preset no encontrado: ${presetId}` };
+    }
+
+    const { error } = await supabase
+      .from('website_settings')
+      .update({
+        template_id: presetId,
+        primary_color: preset.colors.primary,
+        secondary_color: preset.colors.secondary,
+        theme_mode: preset.theme_mode,
+        font_heading: preset.fonts.heading,
+        font_body: preset.fonts.body,
+        header_style: preset.header_style,
+        footer_style: preset.footer_style,
+      })
+      .eq('organization_id', organizationId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
   }
 
   // Actualizar sección de tema
@@ -538,6 +625,59 @@ class WebsiteSettingsService {
       return data as WebsiteSettings;
     } catch (error) {
       console.error('Error toggling publish:', error);
+      throw error;
+    }
+  }
+
+  // Actualizar configuración del header (layout, buscador, mega-menú, responsive)
+  async updateHeaderConfig(
+    organizationId: number,
+    config: {
+      header_style?: string;
+      footer_style?: string;
+      logo_position?: 'left' | 'center' | 'right';
+      header_cta_text?: string | null;
+      header_cta_url?: string | null;
+      show_header_cart?: boolean;
+      show_header_auth?: boolean;
+      show_topbar?: boolean;
+      menu_position?: 'inline' | 'below';
+      search_style?: 'icon' | 'bar' | 'hidden';
+      show_categories_in_header?: boolean;
+      categories_menu_style?: 'dropdown' | 'mega';
+      mega_menu_columns?: number;
+      mobile_menu_style?: 'drawer' | 'bottom_sheet' | 'fullscreen' | 'tabs';
+      mobile_search_style?: 'icon' | 'bar' | 'hidden';
+      mobile_show_topbar?: boolean;
+      mobile_sticky_header?: boolean;
+      mobile_breakpoint?: number;
+      header_opacity?: number;
+      header_bg_color?: string | null;
+      topbar_bg_color?: string | null;
+      nav_bg_color?: string | null;
+      topbar_show_email?: boolean;
+      topbar_show_phone?: boolean;
+      topbar_announcement?: string | null;
+    }
+  ): Promise<WebsiteSettings> {
+    try {
+      const { data, error } = await supabase
+        .from('website_settings')
+        .update({ ...config, updated_at: new Date().toISOString() })
+        .eq('organization_id', organizationId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Supabase updateHeaderConfig error:', error.message, error.code);
+        throw new Error(error.message || 'No se pudo actualizar la configuración del header.');
+      }
+      if (!data) {
+        throw new Error('No se pudo actualizar la configuración del header. Verifica permisos (rol owner o admin).');
+      }
+      return data as WebsiteSettings;
+    } catch (error) {
+      console.error('Error updating header config:', error);
       throw error;
     }
   }

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Sun, Moon, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { useTranslations } from 'next-intl';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 import { FONTS } from '@/lib/services/websiteSettingsService';
@@ -173,43 +174,29 @@ export default function GlobalSettingsPanel({
         </div>
       </div>
 
-      {/* Header Style */}
-      <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('headerStyle')}</Label>
-        <Select
-          value={(settings as any).header_style || 'default'}
-          onValueChange={(val) => onUpdate({ ...settings, header_style: val } as any)}
-        >
-          <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="default">{t('headerStyleDefault')}</SelectItem>
-            <SelectItem value="transparent">{t('headerStyleTransparent')}</SelectItem>
-            <SelectItem value="minimal">{t('headerStyleMinimal')}</SelectItem>
-            <SelectItem value="centered">{t('headerStyleCentered')}</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Opacidad del header */}
+      <div className="space-y-2">
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">
+          Opacidad del header
+        </Label>
+        <Slider
+          min={50}
+          max={100}
+          step={5}
+          value={[settings.header_opacity ?? 95]}
+          onValueChange={(v) => onUpdate({ header_opacity: v[0] })}
+        />
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {settings.header_opacity ?? 95}%
+        </span>
+        <p className="text-[9px] text-gray-400 dark:text-gray-500">
+          Controla qué tan transparente es el header (100 = sólido, 50 = semi-transparente)
+        </p>
       </div>
 
-      {/* Header CTA */}
-      <div>
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">{t('headerButton')}</Label>
-        <div className="space-y-2">
-          <Input
-            value={settings.hero_cta_text || ''}
-            onChange={(e) => onUpdate({ hero_cta_text: e.target.value })}
-            placeholder={t('buttonText')}
-            className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-          />
-          <Input
-            value={settings.hero_cta_url || ''}
-            onChange={(e) => onUpdate({ hero_cta_url: e.target.value })}
-            placeholder={t('buttonUrl')}
-            className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-          />
-        </div>
-      </div>
+      {/* Nota: Header Style y Header CTA ahora se configuran en el panel
+          "Configuración del Menú" del EditorSidebar (Fase 3).
+          Ver HeaderLayoutSelector.tsx y HeaderOptionsPanel.tsx */}
 
       {/* Botón Comprar Ahora */}
       <div>

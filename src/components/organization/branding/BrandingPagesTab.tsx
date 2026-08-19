@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Loader2,
   FileEdit,
@@ -46,6 +47,7 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newPageTitle, setNewPageTitle] = useState('');
   const [newPageSlug, setNewPageSlug] = useState('');
+  const [newPageLocation, setNewPageLocation] = useState<'header' | 'footer' | 'both' | 'none'>('header');
   const [isCreating, setIsCreating] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
 
@@ -82,16 +84,23 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
 
     setIsCreating(true);
     try {
+      const showInHeader = newPageLocation === 'header' || newPageLocation === 'both';
+      const showInFooter = newPageLocation === 'footer' || newPageLocation === 'both';
+      const footerCount = pages.filter(p => p.show_in_footer).length;
+
       await websitePageBuilderService.createPage({
         organization_id: organizationId,
         title: newPageTitle,
         slug: newPageSlug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        show_in_header: true,
-        header_order: pages.length,
+        show_in_header: showInHeader,
+        show_in_footer: showInFooter,
+        header_order: showInHeader ? pages.filter(p => p.show_in_header).length : 0,
+        footer_order: showInFooter ? footerCount : 0,
       });
       setShowCreateDialog(false);
       setNewPageTitle('');
       setNewPageSlug('');
+      setNewPageLocation('header');
       await loadPages();
     } catch (error) {
       console.error('Error creating page:', error);
@@ -223,6 +232,11 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
                               {t('header')}
                             </Badge>
                           )}
+                          {page.show_in_footer && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 dark:border-gray-600">
+                              {t('footer')}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -310,6 +324,31 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
                   className="min-w-0"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('locationLabel')}</Label>
+              <RadioGroup
+                value={newPageLocation}
+                onValueChange={(value) => setNewPageLocation(value as 'header' | 'footer' | 'both' | 'none')}
+                className="grid grid-cols-2 gap-2"
+              >
+                <label htmlFor="loc-header" className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <RadioGroupItem id="loc-header" value="header" />
+                  <span className="text-sm dark:text-gray-200">{t('locationHeader')}</span>
+                </label>
+                <label htmlFor="loc-footer" className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <RadioGroupItem id="loc-footer" value="footer" />
+                  <span className="text-sm dark:text-gray-200">{t('locationFooter')}</span>
+                </label>
+                <label htmlFor="loc-both" className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <RadioGroupItem id="loc-both" value="both" />
+                  <span className="text-sm dark:text-gray-200">{t('locationBoth')}</span>
+                </label>
+                <label htmlFor="loc-none" className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <RadioGroupItem id="loc-none" value="none" />
+                  <span className="text-sm dark:text-gray-200">{t('locationNone')}</span>
+                </label>
+              </RadioGroup>
             </div>
           </div>
           <DialogFooter>

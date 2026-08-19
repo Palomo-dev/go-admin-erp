@@ -677,6 +677,7 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
         pathname !== '/auth/logout' &&
         pathname !== '/auth/session-expired' &&
         !pathname.startsWith('/auth/invite') &&
+        !pathname.startsWith('/auth/verify') &&
         !pathname.startsWith('/auth/select-organization') &&
         !pathname.startsWith('/auth/signup') &&
         !pathname.startsWith('/auth/reset-password') &&

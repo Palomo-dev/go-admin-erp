@@ -1014,10 +1014,10 @@ export default function NuevaConexionPage() {
         }
       }
 
-      // Auto-link: Si es un proveedor de pagos, vincular con métodos de pago
+      // Auto-link: Si es un proveedor de pagos, vincular y/o crear métodos de pago
       if (wizardData.provider?.category === 'payments' && organizationId) {
         const PROVIDER_PAYMENT_METHODS: Record<string, string[]> = {
-          wompi: ['wompi', 'nequi', 'daviplata', 'pse', 'card'],
+          wompi: ['wompi'],
           payu: ['payu'],
           mercadopago: ['mp'],
           stripe: ['card'],
@@ -1029,23 +1029,50 @@ export default function NuevaConexionPage() {
 
         const methodCodes = PROVIDER_PAYMENT_METHODS[wizardData.provider.code] || [];
         if (methodCodes.length > 0) {
+          const ahoraIso = new Date().toISOString();
+
+          // 1. Obtener métodos de pago existentes de la organización
           const { data: orgMethods } = await supabase
             .from('organization_payment_methods')
             .select('id, payment_method_code, integration_connection_id')
             .eq('organization_id', organizationId)
             .in('payment_method_code', methodCodes);
 
+          const existingCodes = new Set((orgMethods || []).map((m) => m.payment_method_code));
+
+          // 2. Vincular los que ya existen (si no tienen otra conexión)
           for (const method of (orgMethods || [])) {
-            // Solo vincular si no tiene ya otra conexión activa
             if (!method.integration_connection_id) {
               await supabase
                 .from('organization_payment_methods')
                 .update({
                   integration_connection_id: connectionId,
                   settings: { gateway: wizardData.provider.name },
-                  updated_at: new Date().toISOString(),
+                  updated_at: ahoraIso,
                 })
                 .eq('id', method.id);
+            }
+          }
+
+          // 3. Crear los métodos faltantes y vincularlos
+          const missingCodes = methodCodes.filter((code) => !existingCodes.has(code));
+          if (missingCodes.length > 0) {
+            const toInsert = missingCodes.map((code) => ({
+              organization_id: organizationId,
+              payment_method_code: code,
+              integration_connection_id: connectionId,
+              is_active: true,
+              settings: { gateway: wizardData.provider?.name },
+              created_at: ahoraIso,
+              updated_at: ahoraIso,
+            }));
+
+            const { error: insertErr } = await supabase
+              .from('organization_payment_methods')
+              .insert(toInsert);
+
+            if (insertErr) {
+              console.warn('No se pudieron crear algunos métodos de pago:', insertErr);
             }
           }
         }

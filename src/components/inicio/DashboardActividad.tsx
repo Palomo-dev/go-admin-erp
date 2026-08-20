@@ -9,6 +9,8 @@ import {
   BedDouble,
   ArrowLeftRight,
   Clock,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
@@ -44,6 +46,8 @@ const ICONO_POR_TIPO: Record<
   producto: { Icon: Package, bg: 'bg-orange-50 dark:bg-orange-900/20', color: 'text-orange-600 dark:text-orange-400' },
 };
 
+const ITEMS_PER_PAGE = 8;
+
 function formatRelativeTime(dateStr: string, t: ReturnType<typeof useTranslations>): string {
   const date = new Date(dateStr);
   const now = new Date();
@@ -60,11 +64,25 @@ function formatRelativeTime(dateStr: string, t: ReturnType<typeof useTranslation
 export function DashboardActividad({ data, isLoading }: DashboardActividadProps) {
   const t = useTranslations('home.activity');
   const [filtro, setFiltro] = useState<FiltroModulo>('todos');
+  const [currentPage, setCurrentPage] = useState(0);
 
   const dataFiltrada = useMemo(() => {
     if (filtro === 'todos') return data;
     return data.filter((item) => item.modulo === filtro);
   }, [data, filtro]);
+
+  // Reset page cuando cambia el filtro
+  const totalPages = Math.ceil(dataFiltrada.length / ITEMS_PER_PAGE);
+  const safePage = Math.min(currentPage, Math.max(0, totalPages - 1));
+  const paginatedData = dataFiltrada.slice(
+    safePage * ITEMS_PER_PAGE,
+    (safePage + 1) * ITEMS_PER_PAGE
+  );
+
+  const handleFiltroChange = (value: FiltroModulo) => {
+    setFiltro(value);
+    setCurrentPage(0);
+  };
 
   if (isLoading) {
     return (
@@ -98,7 +116,7 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
             <button
               key={f.value}
               type="button"
-              onClick={() => setFiltro(f.value)}
+              onClick={() => handleFiltroChange(f.value)}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
                 isActive
@@ -127,37 +145,69 @@ export function DashboardActividad({ data, isLoading }: DashboardActividadProps)
           {t('noActivity')}
         </p>
       ) : (
-        <div className="space-y-2">
-          {dataFiltrada.map((item) => {
-            const config = ICONO_POR_TIPO[item.tipo] || ICONO_POR_TIPO.venta;
-            const Icon = config.Icon;
-            return (
-              <div
-                key={item.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn('p-1.5 rounded-lg flex-shrink-0', config.bg)}>
-                    <Icon className={cn('h-3.5 w-3.5', config.color)} />
+        <>
+          <div className="space-y-2">
+            {paginatedData.map((item) => {
+              const config = ICONO_POR_TIPO[item.tipo] || ICONO_POR_TIPO.venta;
+              const Icon = config.Icon;
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn('p-1.5 rounded-lg flex-shrink-0', config.bg)}>
+                      <Icon className={cn('h-3.5 w-3.5', config.color)} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {item.descripcion}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatRelativeTime(item.fecha, t)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {item.descripcion}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatRelativeTime(item.fecha, t)}
-                    </p>
-                  </div>
+                  {item.monto !== undefined && (
+                    <span className="text-sm font-semibold text-green-600 dark:text-green-400 shrink-0 ml-3">
+                      {formatCurrency(item.monto)}
+                    </span>
+                  )}
                 </div>
-                {item.monto !== undefined && (
-                  <span className="text-sm font-semibold text-green-600 dark:text-green-400 shrink-0 ml-3">
-                    {formatCurrency(item.monto)}
-                  </span>
-                )}
+              );
+            })}
+          </div>
+
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {safePage * ITEMS_PER_PAGE + 1}–{Math.min((safePage + 1) * ITEMS_PER_PAGE, dataFiltrada.length)} de {dataFiltrada.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(Math.max(0, safePage - 1))}
+                  disabled={safePage === 0}
+                  className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-xs text-gray-600 dark:text-gray-300 px-2">
+                  {safePage + 1} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages - 1, safePage + 1))}
+                  disabled={safePage >= totalPages - 1}
+                  className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Página siguiente"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

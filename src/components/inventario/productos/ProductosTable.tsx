@@ -62,10 +62,8 @@ interface ProductosTableProps {
   onSelectionChange?: (ids: number[]) => void;
 }
 
-// Interfaz para las imágenes de productos
+// Interfaz para las imágenes de productos (usada en extracción desde datos ya cargados)
 interface ProductImage {
-  id: number;
-  product_id: number;
   storage_path: string;
   is_primary: boolean;
 }
@@ -123,8 +121,6 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       ? <ArrowUp className="inline ml-1 h-3 w-3 text-blue-600 cursor-pointer" />
       : <ArrowDown className="inline ml-1 h-3 w-3 text-blue-600 cursor-pointer" />;
   };
-
-  // Aplicar filtros y ordenamiento a los productos
   const processedProductos = React.useMemo(() => {
     let result = [...productos];
 
@@ -234,65 +230,32 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     }
   };
   
-  // Cargar las imágenes principales de los productos cuando cambia la lista
+  // Extraer imágenes principales de los datos ya cargados (sin query adicional)
   useEffect(() => {
-    // Si no hay productos, no hacemos nada
-    if (!productos?.length) return;
-    
-    const fetchProductImages = async () => {
-      console.log('Fetching product images for', productos.length, 'products');
-      
-      // Extraer IDs de productos
-      const productIds = productos.map(p => p.id);
-      
-      // Consultar en lotes: evita URLs demasiado largas con .in() y el límite de 1000 filas de PostgREST
-      const CHUNK_SIZE = 300;
-      const data: ProductImage[] = [];
-      for (let i = 0; i < productIds.length; i += CHUNK_SIZE) {
-        const chunk = productIds.slice(i, i + CHUNK_SIZE);
-        const { data: chunkData, error } = await supabase
-          .from('product_images')
-          .select('id, product_id, storage_path, is_primary')
-          .in('product_id', chunk)
-          .eq('is_primary', true);
+    if (!productos?.length) {
+      setProductImages({});
+      return;
+    }
 
-        if (error) {
-          console.error('Error al cargar imágenes de productos:', error);
-          continue;
-        }
-        if (chunkData) data.push(...(chunkData as ProductImage[]));
+    const imageMap: Record<string | number, string> = {};
+    for (const p of productos) {
+      const images = (p as any).product_images;
+      if (!images || !Array.isArray(images) || images.length === 0) continue;
+
+      const primary = images.find((img: any) => img.is_primary) || images[0];
+      if (!primary?.storage_path) continue;
+
+      if (primary.storage_path.startsWith('http://') || primary.storage_path.startsWith('https://')) {
+        imageMap[p.id] = primary.storage_path;
+      } else {
+        const bucket = (primary.storage_path.startsWith('products/') || primary.storage_path.startsWith('productos/'))
+          ? 'product-images'
+          : 'organization_images';
+        const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(primary.storage_path);
+        if (urlData?.publicUrl) imageMap[p.id] = urlData.publicUrl;
       }
-      
-      console.log('Received product images data:', data);
-      
-      // Crear un mapa de productId -> URL pública
-      const imageMap: Record<string | number, string> = {};
-      if (data && data.length > 0) {
-        data.forEach((img: ProductImage) => {
-          if (!img.storage_path) return;
-          
-          // Si es una URL externa, usarla directamente sin getPublicUrl
-          if (img.storage_path.startsWith('http://') || img.storage_path.startsWith('https://')) {
-            imageMap[img.product_id] = img.storage_path;
-            return;
-          }
-          
-          // Generar URL pública usando supabase.storage (detectar bucket correcto)
-          const bucket = (img.storage_path.startsWith('products/') || img.storage_path.startsWith('productos/')) ? 'product-images' : 'organization_images';
-          const { data: urlData } = supabase.storage
-            .from(bucket)
-            .getPublicUrl(img.storage_path);
-          
-          if (urlData?.publicUrl) {
-            imageMap[img.product_id] = urlData.publicUrl;
-          }
-        });
-      }
-      
-      setProductImages(imageMap);
-    };
-    
-    fetchProductImages();
+    }
+    setProductImages(imageMap);
   }, [productos]);
   
   // Función para renderizar estado del producto
@@ -358,6 +321,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
             <Skeleton className="h-4 w-24 hidden lg:block" />
             <Skeleton className="h-4 w-16 ml-auto" />
             <Skeleton className="h-4 w-16 hidden xl:block" />
+            <Skeleton className="h-4 w-16 hidden xl:block" />
             <Skeleton className="h-4 w-16" />
             <Skeleton className="h-4 w-20 hidden sm:block" />
             <Skeleton className="h-4 w-16" />
@@ -373,6 +337,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
               <Skeleton className="h-4 w-40 sm:w-48" />
               <Skeleton className="h-4 w-24 hidden lg:block" />
               <Skeleton className="h-4 w-16 ml-auto" />
+              <Skeleton className="h-4 w-16 hidden xl:block" />
               <Skeleton className="h-4 w-16 hidden xl:block" />
               <Skeleton className="h-6 w-16 rounded-full" />
               <Skeleton className="h-4 w-20 hidden sm:block" />
@@ -540,6 +505,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
               >
                 Precio<SortIcon field="price" />
               </TableHead>
+              <TableHead className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">Margen</TableHead>
               <TableHead className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">Costo</TableHead>
               <TableHead
                 className="text-center text-xs sm:text-sm dark:text-gray-300 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-700/50"
@@ -643,7 +609,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">{producto.category?.name || '-'}</TableCell>
                 <TableCell className="text-right text-xs sm:text-sm dark:text-gray-300">
-                  {typeof producto.price === 'number' ? (
+                  {typeof producto.price === 'number' && producto.price > 0 ? (
                     <div>
                       <span className="font-semibold">{formatPrecioTabla(producto.price)}</span>
                       {typeof producto.compare_price === 'number' && producto.compare_price > producto.price && (
@@ -653,6 +619,15 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                         </>
                       )}
                     </div>
+                  ) : '-'}
+                </TableCell>
+                <TableCell className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">
+                  {typeof producto.price === 'number' && typeof producto.cost === 'number' && producto.price > 0 ? (
+                    (() => {
+                      const margen = ((producto.price - producto.cost) / producto.price) * 100;
+                      const color = margen >= 30 ? 'text-green-600 dark:text-green-400' : margen >= 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
+                      return <span className={`font-medium ${color}`}>{margen.toFixed(0)}%</span>;
+                    })()
                   ) : '-'}
                 </TableCell>
                 <TableCell className="hidden xl:table-cell text-right text-xs sm:text-sm dark:text-gray-300">{typeof producto.cost === 'number' ? formatPrecioTabla(producto.cost) : '-'}</TableCell>

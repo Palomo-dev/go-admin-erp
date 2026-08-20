@@ -261,14 +261,19 @@ export function DeviceSessions() {
   // Función para determinar el icono del dispositivo
   const getDeviceIcon = (deviceType: string) => {
     switch(deviceType?.toLowerCase()) {
+      case 'smartphone':
+      case 'mobile':
       case 'android':
       case 'ios':
+      case 'iphone':
       case 'windows phone':
         return <Smartphone className="h-5 w-5" />
       case 'tablet':
+      case 'ipad':
         return <Tablet className="h-5 w-5" />
       case 'windows':
       case 'mac':
+      case 'macos':
       case 'linux':
         return <Laptop className="h-5 w-5" />
       case 'desktop':

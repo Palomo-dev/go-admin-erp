@@ -291,6 +291,7 @@
     "attentionRequired": "Requires attention today",
     "noAlerts": "No critical alerts. Everything is in order.",
     "vsPreviousPeriod": "vs previous period",
+    "noComparison": "no comparison",
     "compactMode": "Compact",
     "expandedMode": "Expanded",
     "errors": {

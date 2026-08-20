@@ -3,9 +3,18 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/utils/Utils';
 import { formatCurrency } from '@/utils/Utils';
 import type { VentasComprasData } from './FinanzasDashboardService';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from 'recharts';
 
 interface VentasComprasChartProps {
   data: VentasComprasData[];
@@ -46,12 +55,42 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
     );
   }
 
-  const maxValue = Math.max(
-    ...data.map(d => Math.max(d.ventas, d.compras))
-  );
-
   const totalVentas = data.reduce((sum, d) => sum + d.ventas, 0);
   const totalCompras = data.reduce((sum, d) => sum + d.compras, 0);
+
+  // Formatear fecha YYYY-MM a texto legible
+  const fmtMes = (fecha: string) => {
+    const [y, m] = fecha.split('-');
+    const d = new Date(Number(y), Number(m) - 1, 1);
+    return d.toLocaleDateString('es', { month: 'short', year: '2-digit' });
+  };
+
+  const chartData = data.map((d) => ({
+    ...d,
+    mesLabel: fmtMes(d.fecha),
+  }));
+
+  // Tooltip personalizado
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null;
+    return (
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-3 py-2 text-xs space-y-1">
+        <p className="text-gray-500 dark:text-gray-400 font-medium mb-1">{label}</p>
+        {payload.map((entry: any) => (
+          <p key={entry.dataKey} className="flex items-center gap-2">
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className="text-gray-600 dark:text-gray-400 capitalize">{entry.dataKey}:</span>
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {formatCurrency(entry.value, currencyCode)}
+            </span>
+          </p>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Card className="dark:bg-gray-800/50">
@@ -73,49 +112,57 @@ export function VentasComprasChart({ data, isLoading, currencyCode = 'COP' }: Ve
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {/* Gráfico de barras */}
-          <div className="h-48 flex items-end gap-2">
-            {data.map((item, index) => {
-              const ventasHeight = maxValue > 0 ? (item.ventas / maxValue) * 100 : 0;
-              const comprasHeight = maxValue > 0 ? (item.compras / maxValue) * 100 : 0;
-              
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full flex gap-1 items-end h-40">
-                    <div 
-                      className="flex-1 bg-blue-500 dark:bg-blue-600 rounded-t transition-all hover:bg-blue-600 dark:hover:bg-blue-500"
-                      style={{ height: `${ventasHeight}%`, minHeight: item.ventas > 0 ? '4px' : '0' }}
-                      title={`Ventas: ${formatCurrency(item.ventas, currencyCode)}`}
-                    />
-                    <div 
-                      className="flex-1 bg-red-500 dark:bg-red-600 rounded-t transition-all hover:bg-red-600 dark:hover:bg-red-500"
-                      style={{ height: `${comprasHeight}%`, minHeight: item.compras > 0 ? '4px' : '0' }}
-                      title={`Compras: ${formatCurrency(item.compras, currencyCode)}`}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 break-words whitespace-normal w-full text-center min-w-0">
-                    {item.fecha}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.5} vertical={false} />
+            <XAxis
+              dataKey="mesLabel"
+              tick={{ fontSize: 11, fill: '#9ca3af' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: '#9ca3af' }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => formatCurrency(v, currencyCode).replace(/\.\d+$/, '').replace(/\s/g, '')}
+              width={70}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Line
+              type="monotone"
+              dataKey="ventas"
+              stroke="#3b82f6"
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: '#3b82f6' }}
+              activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+              name="Ventas"
+            />
+            <Line
+              type="monotone"
+              dataKey="compras"
+              stroke="#ef4444"
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: '#ef4444' }}
+              activeDot={{ r: 6, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }}
+              name="Compras"
+            />
+          </LineChart>
+        </ResponsiveContainer>
 
-          {/* Resumen */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="text-center">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Ventas</p>
-              <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(totalVentas, currencyCode)}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Compras</p>
-              <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                {formatCurrency(totalCompras, currencyCode)}
-              </p>
-            </div>
+        {/* Resumen */}
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total Ventas</p>
+            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+              {formatCurrency(totalVentas, currencyCode)}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total Compras</p>
+            <p className="text-lg font-bold text-red-600 dark:text-red-400">
+              {formatCurrency(totalCompras, currencyCode)}
+            </p>
           </div>
         </div>
       </CardContent>

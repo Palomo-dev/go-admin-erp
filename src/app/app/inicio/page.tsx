@@ -205,7 +205,7 @@ function InicioContent() {
       <DashboardAtajos activeModuleCodes={activeModuleCodes} />
 
       {/* KPIs */}
-      <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} />
+      <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} periodo={periodo} />
 
       {/* Alertas consolidadas de módulos */}
       <DashboardAlertas

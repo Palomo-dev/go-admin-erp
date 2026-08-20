@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Producto, FiltrosProductos, StockSucursal } from './types';
@@ -74,24 +74,19 @@ const CatalogoProductos: React.FC = () => {
 
 
   // Cargar productos desde Supabase con una sola consulta eficiente
-  useEffect(() => {
-    // Evitar doble ejecución en React Strict Mode (desarrollo)
-    const fetchKey = JSON.stringify([organization?.id, branch_id, filters, refreshKey]);
-    if (lastFetchKey.current === fetchKey) return;
-    lastFetchKey.current = fetchKey;
+  // silent=true: no muestra skeleton (usado después de acciones masivas)
+  const fetchProductos = useCallback(async (silent: boolean = false) => {
+    if (!organization?.id) {
+      console.log('Esperando organization_id...');
+      setLoading(false);
+      return;
+    }
 
-    const fetchProductos = async () => {
-      if (!organization?.id) {
-        console.log('Esperando organization_id...');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
+    try {
+      if (!silent) setLoading(true);
         
-        const organizationId = organization.id;
-        const branchId = branch_id;
+      const organizationId = organization.id;
+      const branchId = branch_id;
 
         // Consulta 1: Productos principales con solo categories (ligero)
         let mainProductsQuery = supabase
@@ -362,11 +357,17 @@ const CatalogoProductos: React.FC = () => {
           description: "No se pudieron cargar los productos. Intente de nuevo más tarde."
         });
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
-    };
+    }, [organization?.id, branch_id, filters]);
 
-    fetchProductos();
+  // Cargar al montar y cuando cambian filtros/organización
+  useEffect(() => {
+    // Evitar doble ejecución en React Strict Mode (desarrollo)
+    const fetchKey = JSON.stringify([organization?.id, branch_id, filters, refreshKey]);
+    if (lastFetchKey.current === fetchKey) return;
+    lastFetchKey.current = fetchKey;
+    fetchProductos(false);
   }, [organization?.id, branch_id, filters, refreshKey]);
 
   // Función para obtener información de stock por sucursal para un producto específico
@@ -888,7 +889,7 @@ const CatalogoProductos: React.FC = () => {
       <AccionesMasivas
         selectedIds={selectedIds}
         onClearSelection={() => setSelectedIds([])}
-        onActionComplete={() => setRefreshKey(k => k + 1)}
+        onActionComplete={() => fetchProductos(true)}
       />
       
       {/* Tabla de productos */}

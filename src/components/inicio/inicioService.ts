@@ -133,7 +133,7 @@ export const inicioService = {
   ): Promise<DashboardData> {
     const today = startOfToday();
     const last30Days = daysAgo(30);
-    const { inicioAnterior, finAnterior } = rangoPeriodo(periodo);
+    const { inicio: inicioPeriodo, inicioAnterior, finAnterior } = rangoPeriodo(periodo);
 
     // Ejecutar queries en paralelo para mayor velocidad
     const [
@@ -161,12 +161,12 @@ export const inicioService = {
       webOrdersAnteriorRes,
       facturasAnteriorRes,
     ] = await Promise.all([
-      // Ventas POS hoy
+      // Ventas POS del período seleccionado
       supabase
         .from('sales')
         .select('total')
         .eq('organization_id', organizationId)
-        .gte('sale_date', today)
+        .gte('sale_date', inicioPeriodo)
         .in('status', ['paid', 'completed']),
       // Ventas POS últimos 30 días
       supabase
@@ -174,12 +174,12 @@ export const inicioService = {
         .select('total')
         .eq('organization_id', organizationId)
         .gte('sale_date', last30Days),
-      // Pedidos web hoy (pagados o entregados)
+      // Pedidos web del período seleccionado (pagados o entregados)
       supabase
         .from('web_orders')
         .select('total')
         .eq('organization_id', organizationId)
-        .gte('created_at', today)
+        .gte('created_at', inicioPeriodo)
         .or('payment_status.eq.paid,status.eq.delivered')
         .not('status', 'in', '("cancelled","rejected")'),
       // Pedidos web últimos 30 días (pagados o entregados)
@@ -201,12 +201,12 @@ export const inicioService = {
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId)
         .eq('status', 'active'),
-      // Facturas hoy
+      // Facturas del período seleccionado
       supabase
         .from('invoice_sales')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId)
-        .gte('issue_date', today),
+        .gte('issue_date', inicioPeriodo),
       // Miembros activos de la organización
       supabase
         .from('organization_members')

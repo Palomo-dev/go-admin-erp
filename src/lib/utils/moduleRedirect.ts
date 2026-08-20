@@ -26,8 +26,9 @@ const EXCLUDED_REDIRECT_HREFS = new Set<string>([
   '/app/transporte',
   '/app/notificaciones',
   '/app/chat',
-  // POS, Integraciones, Calendario y Timeline son páginas funcionales
-  // (no dashboards) y NO deben redirigir a /app/inicio
+  '/app/integraciones',
+  // POS, Calendario y Timeline son páginas funcionales (no dashboards)
+  // y NO deben redirigir a /app/inicio
 ]);
 
 /**

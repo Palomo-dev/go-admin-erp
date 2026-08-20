@@ -113,6 +113,10 @@ interface EditorSidebarProps {
   showMenuConfig: boolean;
   onToggleMenuConfig: () => void;
   menuConfigContent?: React.ReactNode;
+  // Footer configuration
+  showFooterConfig: boolean;
+  onToggleFooterConfig: () => void;
+  footerConfigContent?: React.ReactNode;
   organizationId?: number;
 }
 
@@ -135,6 +139,9 @@ export default function EditorSidebar({
   showMenuConfig,
   onToggleMenuConfig,
   menuConfigContent,
+  showFooterConfig,
+  onToggleFooterConfig,
+  footerConfigContent,
   organizationId,
 }: EditorSidebarProps) {
   const t = useTranslations('branding.editor.sidebar');
@@ -235,6 +242,30 @@ export default function EditorSidebar({
           {showMenuConfig && (
             <div className="px-3 pb-3 space-y-3">
               {menuConfigContent}
+            </div>
+          )}
+        </div>
+
+        {/* Configuración del Footer */}
+        <div className="border-b border-gray-200 dark:border-gray-700/50">
+          <button
+            onClick={onToggleFooterConfig}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-3 text-sm hover:bg-gray-100 dark:hover:bg-white/5 transition-colors',
+              showFooterConfig && 'bg-gray-100 dark:bg-white/5'
+            )}
+          >
+            <LayoutPanelLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">Footer</span>
+            {showFooterConfig ? (
+              <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+            )}
+          </button>
+          {showFooterConfig && (
+            <div className="px-3 pb-3 space-y-3">
+              {footerConfigContent}
             </div>
           )}
         </div>

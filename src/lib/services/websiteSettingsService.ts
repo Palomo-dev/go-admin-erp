@@ -102,6 +102,24 @@ export interface WebsiteSettings {
   topbar_show_phone: boolean;
   topbar_announcement: string | null;
   topbar_contact_position: string;
+  // Header: selección de menús nombrados (Fase 0 - plan footer_configurable)
+  header_menu_id: string | null;
+  header_mega_menu_id: string | null;
+  // Footer: configuración avanzada (Fase 0 - plan footer_configurable)
+  mobile_footer_style: 'accordion' | 'stacked' | 'tabs' | 'hidden';
+  mobile_footer_show_social: boolean;
+  mobile_footer_show_hours: boolean;
+  footer_show_categories: boolean;
+  footer_columns: number;
+  footer_background: 'dark' | 'light' | 'primary' | 'custom';
+  footer_custom_bg_color: string | null;
+  footer_show_contact: boolean;
+  footer_show_hours: boolean;
+  footer_show_social: boolean;
+  footer_show_newsletter: boolean;
+  footer_newsletter_title: string | null;
+  footer_newsletter_placeholder: string | null;
+  footer_newsletter_button_text: string | null;
 }
 
 export interface GalleryImage {
@@ -681,6 +699,54 @@ class WebsiteSettingsService {
       return data as WebsiteSettings;
     } catch (error) {
       console.error('Error updating header config:', error);
+      throw error;
+    }
+  }
+
+  // Actualizar configuración del footer (layout, columnas, secciones, responsive)
+  async updateFooterConfig(
+    organizationId: number,
+    config: {
+      footer_style?: string;
+      mobile_footer_style?: 'accordion' | 'stacked' | 'tabs' | 'hidden';
+      mobile_footer_show_social?: boolean;
+      mobile_footer_show_hours?: boolean;
+      footer_show_categories?: boolean;
+      footer_columns?: number;
+      footer_background?: 'dark' | 'light' | 'primary' | 'custom';
+      footer_custom_bg_color?: string | null;
+      footer_show_contact?: boolean;
+      footer_show_hours?: boolean;
+      footer_show_social?: boolean;
+      footer_show_newsletter?: boolean;
+      footer_newsletter_title?: string | null;
+      footer_newsletter_placeholder?: string | null;
+      footer_newsletter_button_text?: string | null;
+      footer_text?: string | null;
+      footer_links?: FooterLink[];
+      show_powered_by?: boolean;
+      header_menu_id?: string | null;
+      header_mega_menu_id?: string | null;
+    }
+  ): Promise<WebsiteSettings> {
+    try {
+      const { data, error } = await supabase
+        .from('website_settings')
+        .update({ ...config, updated_at: new Date().toISOString() })
+        .eq('organization_id', organizationId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Supabase updateFooterConfig error:', error.message, error.code);
+        throw new Error(error.message || 'No se pudo actualizar la configuración del footer.');
+      }
+      if (!data) {
+        throw new Error('No se pudo actualizar la configuración del footer. Verifica permisos (rol owner o admin).');
+      }
+      return data as WebsiteSettings;
+    } catch (error) {
+      console.error('Error updating footer config:', error);
       throw error;
     }
   }

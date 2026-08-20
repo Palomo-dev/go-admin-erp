@@ -26,6 +26,10 @@ import {
   LayoutGrid,
   GripVertical,
   ShoppingBag,
+  Menu,
+  Pencil,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -33,6 +37,11 @@ import {
   websitePageBuilderService,
   type WebsitePage,
 } from '@/lib/services/websitePageBuilderService';
+import {
+  websiteMenuGroupService,
+  type MenuGroup,
+} from '@/lib/services/websiteMenuGroupService';
+import { MenuGroupManager } from './editor';
 
 interface BrandingPagesTabProps {
   organizationId: number;
@@ -42,6 +51,7 @@ interface BrandingPagesTabProps {
 export default function BrandingPagesTab({ organizationId, typeId }: BrandingPagesTabProps) {
   const router = useRouter();
   const t = useTranslations('branding.pages');
+  const tm = useTranslations('branding.menus');
   const [pages, setPages] = useState<WebsitePage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -50,9 +60,14 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
   const [newPageLocation, setNewPageLocation] = useState<'header' | 'footer' | 'both' | 'none'>('header');
   const [isCreating, setIsCreating] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [menus, setMenus] = useState<MenuGroup[]>([]);
+  const [isLoadingMenus, setIsLoadingMenus] = useState(true);
+  const [showMenuManager, setShowMenuManager] = useState(false);
+  const [expandedMenuId, setExpandedMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     loadPages();
+    loadMenus();
   }, [organizationId]);
 
   const loadPages = async () => {
@@ -132,6 +147,54 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
     }
   };
 
+  const loadMenus = async () => {
+    try {
+      setIsLoadingMenus(true);
+      const data = await websiteMenuGroupService.getMenus(organizationId);
+      setMenus(data);
+    } catch (error) {
+      console.error('Error loading menus:', error);
+    } finally {
+      setIsLoadingMenus(false);
+    }
+  };
+
+  const handleDeleteMenu = async (menuId: string) => {
+    const confirm = window.confirm(tm('deleteConfirm'));
+    if (!confirm) return;
+    try {
+      await websiteMenuGroupService.deleteMenu(menuId);
+      await loadMenus();
+    } catch (error) {
+      console.error('Error deleting menu:', error);
+    }
+  };
+
+  const handleRenameMenu = async (menuId: string, currentName: string) => {
+    const newName = window.prompt(tm('renamePrompt'), currentName);
+    if (!newName?.trim() || newName === currentName) return;
+    try {
+      await websiteMenuGroupService.updateMenu(menuId, { name: newName });
+      await loadMenus();
+    } catch (error) {
+      console.error('Error renaming menu:', error);
+    }
+  };
+
+  const locationLabels: Record<string, string> = {
+    header: tm('locationHeader'),
+    footer: tm('locationFooter'),
+    both: tm('locationBoth'),
+    none: tm('locationNone'),
+  };
+
+  const locationColors: Record<string, string> = {
+    header: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    footer: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+    both: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+    none: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  };
+
   const openEditor = (pageId: string) => {
     router.push(`/organizacion/branding/editor/${pageId}`);
   };
@@ -161,6 +224,112 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Menús Nombrados */}
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="flex items-center gap-2 dark:text-white">
+                <Menu className="h-5 w-5 shrink-0" />
+                {tm('title')}
+              </CardTitle>
+              <CardDescription className="dark:text-gray-400">
+                {tm('description')}
+              </CardDescription>
+            </div>
+            <Button
+              onClick={() => setShowMenuManager(true)}
+              size="sm"
+              variant="outline"
+              className="border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20 w-full sm:w-auto shrink-0"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {tm('createMenu')}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingMenus ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            </div>
+          ) : menus.length === 0 ? (
+            <div className="text-center py-6">
+              <Menu className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                {tm('noMenus')}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                {tm('noMenusHint')}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {menus.map((menu) => (
+                <div
+                  key={menu.id}
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors group"
+                >
+                  <div className="flex items-center gap-3 w-full min-w-0">
+                    <button
+                      onClick={() => setExpandedMenuId(expandedMenuId === menu.id ? null : menu.id)}
+                      className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    >
+                      {expandedMenuId === menu.id ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-sm dark:text-white min-w-0 break-words">
+                          {menu.name}
+                        </p>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] px-1.5 py-0 shrink-0 ${locationColors[menu.location] || locationColors.none}`}
+                        >
+                          {locationLabels[menu.location] || menu.location}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        /{menu.slug}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 w-full sm:w-auto shrink-0">
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRenameMenu(menu.id, menu.name)}
+                        className="h-8 w-8 p-0"
+                        title={tm('rename')}
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteMenu(menu.id)}
+                        className="h-8 w-8 p-0"
+                        title={tm('delete')}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+            {tm('assignHint')}
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
@@ -362,6 +531,35 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
             >
               {isCreating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {t('create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Menu Manager Dialog */}
+      <Dialog open={showMenuManager} onOpenChange={setShowMenuManager}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{tm('managerTitle')}</DialogTitle>
+            <DialogDescription>
+              {tm('managerDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <MenuGroupManager
+              organizationId={organizationId}
+              onSelectMenu={() => {}}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowMenuManager(false);
+                loadMenus();
+              }}
+            >
+              {t('cancel')}
             </Button>
           </DialogFooter>
         </DialogContent>

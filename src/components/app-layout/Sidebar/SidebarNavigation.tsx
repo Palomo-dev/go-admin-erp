@@ -32,7 +32,6 @@ import {
   Clock,
   Globe,
   FileBarChart,
-  Home,
   Inbox,
   Target,
   TrendingUp,
@@ -433,7 +432,6 @@ const SidebarNavigationComponent = ({
           icon: <Link2 size={18} />,
           moduleCode: 'integrations',
           submenu: [
-            { name: "Dashboard", href: "/app/integraciones", icon: <Home size={16} /> },
             { name: "Conexiones", href: "/app/integraciones/conexiones", icon: <Link2 size={16} /> },
             { name: "Eventos", href: "/app/integraciones/eventos", icon: <Activity size={16} /> },
             { name: "Jobs", href: "/app/integraciones/jobs", icon: <Briefcase size={16} /> },

@@ -207,7 +207,6 @@ export const MODULE_PAGES: Record<string, ModulePage[]> = {
     { name: 'Logs de Envío', href: '/app/notificaciones/logs' },
   ],
   integrations: [
-    { name: 'Dashboard', href: '/app/integraciones' },
     { name: 'Conexiones', href: '/app/integraciones/conexiones' },
     { name: 'Eventos', href: '/app/integraciones/eventos' },
     { name: 'Jobs', href: '/app/integraciones/jobs' },

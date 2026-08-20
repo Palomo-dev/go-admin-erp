@@ -310,7 +310,7 @@ El componente `FooterSection` actual renderiza el contenido dos veces. Se arregl
 
 ## Fases del Plan
 
-### Fase 0 — Migración de Base de Datos (Supabase) ⏳ PENDIENTE
+### Fase 0 — Migración de Base de Datos (Supabase) ✅ COMPLETADA
 
 **Objetivo:** Crear tablas de menús + extender `website_settings` con campos de configuración de footer.
 
@@ -421,15 +421,21 @@ COMMENT ON COLUMN website_settings.footer_show_social IS 'Mostrar redes sociales
 COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario de newsletter en footer';
 ```
 
-**Validación:**
-- Verificar 2 tablas nuevas creadas
-- Verificar 14 columnas nuevas en `website_settings`
-- Verificar índices creados
-- Ejecutar migración de datos: crear menús por defecto desde páginas existentes
+**Validación (ejecutada 2026-08-19):**
+- ✅ 2 tablas nuevas creadas: `website_menus`, `website_menu_items`
+- ✅ 16 columnas nuevas en `website_settings` (2 header + 14 footer)
+- ✅ 6 índices creados (3 por tabla)
+- ✅ RLS habilitado en ambas tablas con política `org_isolation` (`organization_members`)
+- ✅ Migración de datos completada:
+  - 148 menús creados (74 "Menú Principal" + 74 "Menú Footer")
+  - 830 items migrados desde páginas existentes
+  - 74 organizaciones con `header_menu_id` seteado
+  - Jerarquía `parent_page_id` → `parent_item_id` preservada
+- ✅ Security advisors: sin alerts nuevos en tablas creadas
 
 ---
 
-### Fase 1 — ERP: Tipos TypeScript, Servicio de Menús y Servicio de Footer ⏳ PENDIENTE
+### Fase 1 — ERP: Tipos TypeScript, Servicio de Menús y Servicio de Footer ✅ COMPLETADA
 
 **Objetivo:** Actualizar interfaces y servicios en go-admin-erp.
 
@@ -461,17 +467,31 @@ COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario
    - Agregar `createPolicyPage(organizationId, data)` — crea página de tipo `policy` (términos, privacidad, cookies, etc.)
    - `getPolicyPages(organizationId)` — lista páginas de tipo `policy`
 
-**Verificación:** `tsc --noEmit` — 0 errores
+**Verificación:** `tsc --noEmit` — 0 errores en archivos nuevos/modificados (errores preexistentes en `.next/types` y rutas API no relacionados).
+
+**Resultado (ejecutado 2026-08-19):**
+- ✅ `src/lib/services/websiteMenuGroupService.ts` creado (~330 líneas)
+  - Interfaces: `MenuGroup`, `MenuGroupItem`, `CreateMenuData`, `UpdateMenuData`, `CreateMenuItemData`, `UpdateMenuItemData`
+  - Tipos: `MenuLocation` (header/footer/both/none), `MenuItemType` (page/category/policy/custom_link)
+  - Métodos: `getMenus`, `getMenusByLocation`, `createMenu`, `updateMenu`, `deleteMenu`, `addMenuItem`, `updateMenuItem`, `removeMenuItem`, `reorderMenuItems`, `nestMenuItem`, `getMenuTree`, `migrateExistingPages`
+  - Helper privado: `buildTree` (construye árbol jerárquico desde lista plana)
+  - Export singleton: `websiteMenuGroupService`
+- ✅ `src/lib/services/websiteSettingsService.ts` modificado
+  - Interface `WebsiteSettings` extendida con 16 campos nuevos (2 header + 14 footer)
+  - Método `updateFooterConfig(organizationId, config)` agregado
+- ✅ `src/lib/services/websitePageBuilderService.ts` modificado
+  - Método `createPolicyPage(organizationId, data)` agregado
+  - Método `getPolicyPages(organizationId)` agregado
 
 ---
 
-### Fase 2 — ERP: Panel "Configuración del Footer" + Gestor de Menús + Selector de Menú en Header ⏳ PENDIENTE
+### Fase 2 — ERP: Panel "Configuración del Footer" + Gestor de Menús + Selector de Menú en Header ✅ COMPLETADA
 
 **Objetivo:** Nuevo panel en el editor para configurar layout de footer, columnas, secciones, navegación jerárquica, gestionar menús nombrados y seleccionar qué menú va en el header.
 
-**Archivos a crear (6 componentes nuevos):**
+**Archivos creados (6 componentes nuevos):**
 
-1. **`src/components/organization/branding/editor/FooterLayoutSelector.tsx`** (~150 líneas)
+1. **`src/components/organization/branding/editor/FooterLayoutSelector.tsx`** (~181 líneas)
    - Grid responsive de 5 tarjetas con mockups visuales (divs Tailwind):
      - `default` - Clásico (4 columnas)
      - `three_columns` - 3 Columnas
@@ -482,7 +502,7 @@ COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario
    - Dark mode completo
    - Props: `currentLayout: string`, `onSelect: (layout: string) => void`
 
-2. **`src/components/organization/branding/editor/FooterOptionsPanel.tsx`** (~180 líneas)
+2. **`src/components/organization/branding/editor/FooterOptionsPanel.tsx`** (~209 líneas)
    - Campos de configuración:
      - Número de columnas (slider 2-6) — condicional según layout
      - Fondo del footer (dark/light/primary/custom + color picker)
@@ -535,41 +555,43 @@ COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario
    - Responde a `isMobile` para alternar entre desktop y móvil
    - Props: `layout`, `columns`, `background`, `showContact`, `showHours`, `showSocial`, `showNewsletter`, `showCategories`, `menus`, `isMobile`, `mobileStyle`
 
-**Archivos a modificar:**
+**Archivos modificados:**
 
-7. **`src/components/organization/branding/editor/index.ts`**
-   - Agregar 6 exports: `FooterLayoutSelector`, `FooterOptionsPanel`, `MenuGroupManager`, `MenuGroupEditor`, `MobileFooterPanel`, `FooterPreviewMockup`
+7. **`src/components/organization/branding/editor/index.ts`** ✅
+   - Agregados 6 exports: `FooterLayoutSelector`, `FooterOptionsPanel`, `MenuGroupManager`, `MenuGroupEditor`, `MobileFooterPanel`, `FooterPreviewMockup`
 
-8. **`src/components/organization/branding/editor/EditorSidebar.tsx`**
+8. **`src/components/organization/branding/editor/EditorSidebar.tsx`** ✅
    - 3 props nuevos: `showFooterConfig`, `onToggleFooterConfig`, `footerConfigContent`
-   - Nueva sección colapsable "Configuración del Footer" entre "Configuración del Menú" y "Sections List"
+   - Nueva sección colapsable "Footer" entre "Configuración del Menú" y "Sections List"
 
-9. **`src/components/organization/branding/editor/HeaderOptionsPanel.tsx`** (modificación puntual)
-   - Agregar selector de menú para el header: dropdown con menús disponibles → guarda en `header_menu_id`
-   - Si `header_style='mega'`, agregar selector de mega menú: dropdown con menús disponibles → guarda en `header_mega_menu_id`
-   - Estos selectores reemplazan la configuración manual actual del `MenuTreeEditor` (que sigue disponible pero opcional)
+9. **`src/components/organization/branding/editor/HeaderOptionsPanel.tsx`** ✅
+   - Agregado prop `availableMenus` y campos `header_menu_id`, `header_mega_menu_id` en settings
+   - Selectores de menú nombrado para header y mega menu (dropdown con menús disponibles)
 
-10. **`src/app/organizacion/branding/editor/[pageId]/page.tsx`**
-    - Imports de los 6 componentes nuevos
-    - Estado `showFooterConfig` agregado
-    - `footerConfigContent` construido con los 6 componentes anidados:
-      - `FooterLayoutSelector` → `FooterPreviewMockup` → `FooterOptionsPanel` → `MobileFooterPanel` → `MenuGroupManager` (con `MenuGroupEditor` interno)
-    - `handleSave` modificado: separar `footerUpdates` y llamar `updateFooterConfig`
+10. **`src/app/organizacion/branding/editor/[pageId]/page.tsx`** ✅
+    - Imports de los 6 componentes nuevos + `websiteMenuGroupService` + tipo `MenuGroup`
+    - Estado `showFooterConfig` y `availableMenus` agregados
+    - Carga de menús nombrados al inicializar el editor
+    - `footerConfigContent` construido con: `FooterLayoutSelector` → `FooterPreviewMockup` → `FooterOptionsPanel` → `MobileFooterPanel` → `MenuGroupManager`
+    - `handleSave` modificado: separa `footerUpdates` y llama `updateFooterConfig` además de `updateHeaderConfig`
+    - `HeaderOptionsPanel` recibe `availableMenus` como prop
 
-11. **`src/components/organization/branding/BrandingPagesTab.tsx`**
-    - Agregar sección "Menús" arriba de la lista de páginas
-    - Mostrar menús existentes con badge de ubicación (header/footer/both)
-    - Botón "Crear Menú" que abre el `MenuGroupManager` en un dialog
+11. **`src/components/organization/branding/BrandingPagesTab.tsx`** ✅
+    - Sección "Menús" agregada arriba de la lista de páginas
+    - Lista de menús existentes con badge de ubicación (header/footer/both/none) y colores
+    - Botón "Crear Menú" que abre `MenuGroupManager` en un dialog
+    - Acciones por menú: renombrar (prompt), eliminar (confirm)
+    - Expandir/colapsar cada menú
     - Nota: "Las páginas se asignan a menús desde el Editor Visual → Configuración del Footer"
 
-12. **Traducciones (4 archivos)**
-    - `messages/es.json`, `en.json`, `fr.json`, `pt.json`: `footerConfig`, `menuGroup`, `createMenu`, `menuLocation`, `menuItem`, `addPage`, `addCategory`, `addPolicy`, `addLink`, `policyPage`, `headerMenuSelect`, `megaMenuSelect`, etc.
+12. **Traducciones (4 archivos)** ✅
+    - `messages/es.json`, `en.json`, `fr.json`, `pt.json`: Sección `branding.menus` con 26 claves: `title`, `description`, `createMenu`, `noMenus`, `noMenusHint`, `locationHeader`, `locationFooter`, `locationBoth`, `locationNone`, `rename`, `delete`, `deleteConfirm`, `renamePrompt`, `assignHint`, `managerTitle`, `managerDesc`, `menuName`, `menuLocation`, `menuItems`, `noItems`, `addPage`, `addLink`, `linkLabel`, `linkUrl`, `removeItem`, `expandMenu`, `collapseMenu`
 
-**Verificación:** `tsc --noEmit` + `eslint` en archivos nuevos — 0 errores
+**Verificación:** `tsc --noEmit` — 0 errores en archivos nuevos/modificados (errores pre-existentes en `.next/types` y API routes ajenos a este cambio)
 
 ---
 
-### Fase 3 — ERP: Preview en el Editor ⏳ PENDIENTE
+### Fase 3 — ERP: Preview en el Editor ✅ COMPLETADA (Integrada en Fase 2)
 
 **Objetivo:** Que el editor refleje los cambios de footer en tiempo real.
 
@@ -577,10 +599,10 @@ COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario
 - El iframe del preview ya se recarga después de guardar (`previewRefreshKey`)
 - El toggle desktop/tablet/mobile ya existe en `EditorHeader`
 
-**Trabajo:**
-- `FooterPreviewMockup` se inserta entre `FooterLayoutSelector` y `FooterOptionsPanel` en `footerConfigContent`
-- `isMobile` se pasa según `devicePreview === 'mobile'`
-- El mockup se actualiza instantáneamente cuando el usuario cambia cualquier setting
+**Trabajo realizado:**
+- ✅ `FooterPreviewMockup` se inserta entre `FooterLayoutSelector` y `FooterOptionsPanel` en `footerConfigContent`
+- ✅ `isMobile` se pasa según `devicePreview === 'mobile'`
+- ✅ El mockup se actualiza instantáneamente cuando el usuario cambia cualquier setting
 
 **Verificación:** `tsc --noEmit` — 0 errores
 

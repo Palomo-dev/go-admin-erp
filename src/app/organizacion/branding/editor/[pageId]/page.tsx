@@ -27,8 +27,14 @@ import {
   MobileHeaderPanel,
   MenuTreeEditor,
   HeaderPreviewMockup,
+  FooterLayoutSelector,
+  FooterOptionsPanel,
+  MobileFooterPanel,
+  FooterPreviewMockup,
+  MenuGroupManager,
   type DevicePreview,
 } from '@/components/organization/branding/editor';
+import { websiteMenuGroupService, type MenuGroup } from '@/lib/services/websiteMenuGroupService';
 
 export default function PageEditorPage() {
   const params = useParams();
@@ -52,7 +58,9 @@ export default function PageEditorPage() {
   const [showGlobalSettings, setShowGlobalSettings] = useState(false);
   const [showPageSEO, setShowPageSEO] = useState(false);
   const [showMenuConfig, setShowMenuConfig] = useState(false);
+  const [showFooterConfig, setShowFooterConfig] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [availableMenus, setAvailableMenus] = useState<MenuGroup[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
 
@@ -81,6 +89,16 @@ export default function PageEditorPage() {
       setCurrentPage(pageData);
       setSettings(settingsData);
       setPreviewUrl(preview);
+
+      // Cargar menús nombrados para selectores
+      if (organizationId) {
+        try {
+          const menus = await websiteMenuGroupService.getMenus(organizationId);
+          setAvailableMenus(menus);
+        } catch {
+          // Los menús pueden no existir aún, es seguro ignorar
+        }
+      }
     } catch (error) {
       console.error('Error loading editor data:', error);
       toast({
@@ -336,6 +354,13 @@ export default function PageEditorPage() {
           'mobile_breakpoint', 'header_opacity',
           'header_bg_color', 'topbar_bg_color', 'nav_bg_color', 'accent_color',
           'topbar_show_email', 'topbar_show_phone', 'topbar_announcement', 'topbar_contact_position',
+          // Footer config (Fase 2)
+          'footer_style', 'footer_columns', 'footer_background', 'footer_custom_bg_color',
+          'footer_show_contact', 'footer_show_hours', 'footer_show_social', 'footer_show_categories',
+          'footer_show_newsletter', 'footer_newsletter_title', 'footer_newsletter_placeholder',
+          'footer_newsletter_button_text', 'footer_text', 'show_powered_by',
+          'mobile_footer_style', 'mobile_footer_show_social', 'mobile_footer_show_hours',
+          'header_menu_id', 'header_mega_menu_id',
         ];
         const themeUpdates: Record<string, any> = {};
         const headerUpdates: Record<string, any> = {};
@@ -355,10 +380,37 @@ export default function PageEditorPage() {
           );
         }
         if (Object.keys(headerUpdates).length > 0) {
-          updatedSettings = await websiteSettingsService.updateHeaderConfig(
-            organizationId,
-            headerUpdates as any
-          );
+          // Separar campos de footer para usar updateFooterConfig
+          const footerKeys = [
+            'footer_style', 'footer_columns', 'footer_background', 'footer_custom_bg_color',
+            'footer_show_contact', 'footer_show_hours', 'footer_show_social', 'footer_show_categories',
+            'footer_show_newsletter', 'footer_newsletter_title', 'footer_newsletter_placeholder',
+            'footer_newsletter_button_text', 'footer_text', 'show_powered_by',
+            'mobile_footer_style', 'mobile_footer_show_social', 'mobile_footer_show_hours',
+            'header_menu_id', 'header_mega_menu_id',
+          ];
+          const footerUpdates: Record<string, any> = {};
+          const pureHeaderUpdates: Record<string, any> = {};
+          for (const [key, value] of Object.entries(headerUpdates)) {
+            if (footerKeys.includes(key)) {
+              footerUpdates[key] = value;
+            } else {
+              pureHeaderUpdates[key] = value;
+            }
+          }
+
+          if (Object.keys(pureHeaderUpdates).length > 0) {
+            updatedSettings = await websiteSettingsService.updateHeaderConfig(
+              organizationId,
+              pureHeaderUpdates as any
+            );
+          }
+          if (Object.keys(footerUpdates).length > 0) {
+            updatedSettings = await websiteSettingsService.updateFooterConfig(
+              organizationId,
+              footerUpdates as any
+            );
+          }
         }
         if (updatedSettings) setSettings(updatedSettings);
       }
@@ -546,8 +598,11 @@ export default function PageEditorPage() {
                     topbar_show_phone: settings.topbar_show_phone ?? true,
                     topbar_announcement: settings.topbar_announcement ?? null,
                     topbar_contact_position: settings.topbar_contact_position ?? 'left',
+                    header_menu_id: settings.header_menu_id ?? null,
+                    header_mega_menu_id: settings.header_mega_menu_id ?? null,
                   }}
                   onUpdate={handleUpdateGlobalSettings}
+                  availableMenus={availableMenus.map(m => ({ id: m.id, name: m.name }))}
                 />
                 <MobileHeaderPanel
                   settings={{
@@ -567,6 +622,68 @@ export default function PageEditorPage() {
                       if (hasPending) setHasChanges(true);
                     }}
                   />
+                )}
+              </div>
+            ) : null
+          }
+          showFooterConfig={showFooterConfig}
+          onToggleFooterConfig={() => setShowFooterConfig(!showFooterConfig)}
+          footerConfigContent={
+            settings ? (
+              <div className="space-y-4">
+                <FooterLayoutSelector
+                  currentLayout={settings.footer_style || 'default'}
+                  onSelect={(layout) => handleUpdateGlobalSettings({ footer_style: layout })}
+                />
+                <FooterPreviewMockup
+                  layout={settings.footer_style || 'default'}
+                  columns={settings.footer_columns ?? 4}
+                  background={settings.footer_background ?? 'dark'}
+                  customBgColor={settings.footer_custom_bg_color ?? null}
+                  showContact={settings.footer_show_contact ?? true}
+                  showHours={settings.footer_show_hours ?? false}
+                  showSocial={settings.footer_show_social ?? true}
+                  showNewsletter={settings.footer_show_newsletter ?? false}
+                  showCategories={settings.footer_show_categories ?? false}
+                  showPoweredBy={settings.show_powered_by ?? true}
+                  footerText={settings.footer_text ?? null}
+                  newsletterTitle={settings.footer_newsletter_title ?? null}
+                  newsletterPlaceholder={settings.footer_newsletter_placeholder ?? null}
+                  newsletterButtonText={settings.footer_newsletter_button_text ?? null}
+                  isMobile={devicePreview === 'mobile'}
+                  mobileStyle={settings.mobile_footer_style ?? 'accordion'}
+                  mobileShowSocial={settings.mobile_footer_show_social ?? true}
+                  mobileShowHours={settings.mobile_footer_show_hours ?? false}
+                />
+                <FooterOptionsPanel
+                  settings={{
+                    footer_style: settings.footer_style || 'default',
+                    footer_columns: settings.footer_columns ?? 4,
+                    footer_background: settings.footer_background ?? 'dark',
+                    footer_custom_bg_color: settings.footer_custom_bg_color ?? null,
+                    footer_show_contact: settings.footer_show_contact ?? true,
+                    footer_show_hours: settings.footer_show_hours ?? false,
+                    footer_show_social: settings.footer_show_social ?? true,
+                    footer_show_categories: settings.footer_show_categories ?? false,
+                    footer_show_newsletter: settings.footer_show_newsletter ?? false,
+                    footer_newsletter_title: settings.footer_newsletter_title ?? null,
+                    footer_newsletter_placeholder: settings.footer_newsletter_placeholder ?? null,
+                    footer_newsletter_button_text: settings.footer_newsletter_button_text ?? null,
+                    footer_text: settings.footer_text ?? null,
+                    show_powered_by: settings.show_powered_by ?? true,
+                  }}
+                  onUpdate={handleUpdateGlobalSettings}
+                />
+                <MobileFooterPanel
+                  settings={{
+                    mobile_footer_style: settings.mobile_footer_style ?? 'accordion',
+                    mobile_footer_show_social: settings.mobile_footer_show_social ?? true,
+                    mobile_footer_show_hours: settings.mobile_footer_show_hours ?? false,
+                  }}
+                  onUpdate={handleUpdateGlobalSettings}
+                />
+                {organizationId && (
+                  <MenuGroupManager organizationId={organizationId} />
                 )}
               </div>
             ) : null

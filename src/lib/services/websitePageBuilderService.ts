@@ -991,6 +991,58 @@ class WebsitePageBuilderService {
     return pageSets[typeId] || pageSets[3]; // Fallback a retail
   }
 
+  // ---- POLICY PAGES ----
+
+  /**
+   * Crea una página de tipo "policy" (términos, privacidad, cookies, envíos, devoluciones).
+   * Las páginas de política son páginas normales con page_type='policy' y show_in_footer=true.
+   */
+  async createPolicyPage(organizationId: number, data: {
+    slug: string;
+    title: string;
+    description?: string | null;
+    meta_title?: string | null;
+    meta_description?: string | null;
+    footer_order?: number;
+  }): Promise<WebsitePage> {
+    const { data: page, error } = await supabase
+      .from('website_pages')
+      .insert({
+        organization_id: organizationId,
+        slug: data.slug,
+        title: data.title,
+        description: data.description ?? null,
+        page_type: 'policy',
+        show_in_header: false,
+        show_in_footer: true,
+        header_order: 0,
+        footer_order: data.footer_order ?? 0,
+        is_published: true,
+        meta_title: data.meta_title ?? null,
+        meta_description: data.meta_description ?? null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return page as WebsitePage;
+  }
+
+  /**
+   * Obtiene todas las páginas de tipo "policy" de una organización.
+   */
+  async getPolicyPages(organizationId: number): Promise<WebsitePage[]> {
+    const { data, error } = await supabase
+      .from('website_pages')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('page_type', 'policy')
+      .order('footer_order', { ascending: true });
+
+    if (error) throw error;
+    return (data || []) as WebsitePage[];
+  }
+
   // ---- PREVIEW URL ----
 
   async getPreviewUrl(organizationId: number, slug?: string): Promise<string | null> {

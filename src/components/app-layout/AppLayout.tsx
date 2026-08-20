@@ -12,7 +12,6 @@ import {
   MessageCircle, 
   Settings,
   PanelLeft,
-  Home,
   Inbox,
   Target,
   TrendingUp,
@@ -392,7 +391,6 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
     href: "/app/integraciones", 
     icon: <Link2 size={18} />,
     submenu: [
-      { name: "Dashboard", href: "/app/integraciones", icon: <Home size={16} /> },
       { name: "Conexiones", href: "/app/integraciones/conexiones", icon: <Link2 size={16} /> },
       { name: "Eventos", href: "/app/integraciones/eventos", icon: <Activity size={16} /> },
       { name: "Jobs", href: "/app/integraciones/jobs", icon: <Briefcase size={16} /> },

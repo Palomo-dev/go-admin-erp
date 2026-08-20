@@ -37,13 +37,18 @@ interface HeaderOptionsPanelProps {
     topbar_show_phone?: boolean;
     topbar_announcement?: string | null;
     topbar_contact_position?: string;
+    // Menús nombrados (Fase 2 footer/header)
+    header_menu_id?: string | null;
+    header_mega_menu_id?: string | null;
   };
   onUpdate: (updates: Record<string, string | number | boolean | null>) => void;
+  availableMenus?: { id: string; name: string }[];
 }
 
 export default function HeaderOptionsPanel({
   settings,
   onUpdate,
+  availableMenus = [],
 }: HeaderOptionsPanelProps) {
   return (
     <div className="space-y-3">
@@ -315,6 +320,59 @@ export default function HeaderOptionsPanel({
             <p className="text-[11px] text-gray-500 dark:text-gray-400">
               Los mensajes rotan automáticamente cada 6 segundos con flechas de navegación.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          SELECTORES DE MENÚ NOMBRADO (Fase 2)
+          ============================================================ */}
+      {availableMenus.length > 0 && (
+        <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
+          <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+            Menús Nombrados
+          </h4>
+
+          {/* Menú del header */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Menú del Header
+            </Label>
+            <Select
+              value={settings.header_menu_id ?? '__none'}
+              onValueChange={(v) => onUpdate({ header_menu_id: v === '__none' ? null : v })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Seleccionar menú..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— Sin menú nombrado —</SelectItem>
+                {availableMenus.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Menú del mega menu */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Menú del Mega Menu
+            </Label>
+            <Select
+              value={settings.header_mega_menu_id ?? '__none'}
+              onValueChange={(v) => onUpdate({ header_mega_menu_id: v === '__none' ? null : v })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Seleccionar menú..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— Sin mega menú —</SelectItem>
+                {availableMenus.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}

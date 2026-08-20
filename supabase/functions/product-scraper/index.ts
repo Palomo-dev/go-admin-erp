@@ -1625,22 +1625,135 @@ async function findOrCreateVariantValue(variantTypeId: number, value: string): P
   return created?.id || null;
 }
 
-async function findOrCreateCategory(name: string, organizationId: number): Promise<number | null> {
-  if (!name) return null;
-  const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const { data: existing } = await supabase
-    .from("categories")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .ilike("name", name)
-    .maybeSingle();
-  if (existing) return existing.id;
-  const { data: created } = await supabase
-    .from("categories")
-    .insert({ organization_id: organizationId, name, slug: `${slug}-${Date.now() % 10000}`, rank: 0 })
-    .select("id")
-    .single();
-  return created?.id || null;
+// Normaliza un nombre para comparación tolerante (igual que page.tsx de importación CSV):
+// lowercase, trim, colapsa espacios, elimina acentos/diacríticos y caracteres no alfanuméricos.
+function normalizeName(name?: string | null): string {
+  if (!name) return "";
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quita diacríticos
+    .replace(/[^a-z0-9\s]/g, " ")   // no alfanuméricos → espacio
+    .replace(/\s+/g, " ")           // colapsa espacios
+    .trim();
+}
+
+// Genera un slug limpio (sin sufijo aleatorio) a partir de un nombre.
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .trim();
+}
+
+// Cache de categorías por organización.
+// Pre-carga todas las categorías existentes indexadas por nombre normalizado y slug normalizado,
+// y deduplica creaciones concurrentes para la misma categoría (race condition entre lotes paralelos).
+// Reemplaza al findOrCreateCategory original que generaba slugs aleatorios y duplicados.
+class CategoryCache {
+  private byName = new Map<string, number>();
+  private bySlug = new Map<string, number>();
+  private inflight = new Map<string, Promise<number | null>>();
+
+  constructor(private organizationId: number) {}
+
+  // Pre-carga todas las categorías de la organización en los mapas.
+  async preload(): Promise<void> {
+    const { data } = await supabase
+      .from("categories")
+      .select("id, name, slug")
+      .eq("organization_id", this.organizationId);
+    for (const c of data || []) {
+      const nKey = normalizeName(c.name);
+      if (nKey && !this.byName.has(nKey)) this.byName.set(nKey, c.id);
+      const sKey = normalizeName(c.slug);
+      if (sKey && !this.bySlug.has(sKey)) this.bySlug.set(sKey, c.id);
+    }
+  }
+
+  // Busca por nombre normalizado en el cache; si no existe, la crea en BD con slug limpio
+  // y la agrega al cache. Deduplica creaciones concurrentes para el mismo nombre.
+  async findOrCreate(name: string): Promise<number | null> {
+    if (!name) return null;
+    const key = normalizeName(name);
+    if (!key) return null;
+
+    // 1) Hit en cache → devolver inmediatamente
+    const cached = this.byName.get(key);
+    if (cached) return cached;
+
+    // 2) ¿Ya hay una creación en vuelo para esta key? → esperarla (evita duplicados por concurrencia)
+    const pending = this.inflight.get(key);
+    if (pending) return pending;
+
+    // 3) Lanzar la creación y registrar la promise para deduplicar llamadas concurrentes
+    const task = this.doCreate(name, key).finally(() => this.inflight.delete(key));
+    this.inflight.set(key, task);
+    return task;
+  }
+
+  private async doCreate(name: string, key: string): Promise<number | null> {
+    // Doble-check: otra creación podría haberla agregado al cache mientras esperábamos
+    const cached = this.byName.get(key);
+    if (cached) return cached;
+
+    const cleanName = name.trim();
+    const slug = slugify(cleanName);
+
+    // Intentar insert con slug limpio (sin sufijo aleatorio)
+    const { data: created, error } = await supabase
+      .from("categories")
+      .insert({ organization_id: this.organizationId, name: cleanName, slug, rank: 0 })
+      .select("id")
+      .single();
+
+    if (!error && created) {
+      this.byName.set(key, created.id);
+      const sKey = normalizeName(slug);
+      if (sKey && !this.bySlug.has(sKey)) this.bySlug.set(sKey, created.id);
+      return created.id;
+    }
+
+    // Si falló (p. ej. unique constraint de slug por carrera), recuperar la existente por slug
+    const sKey = normalizeName(slug);
+    if (sKey) {
+      const slugCached = this.bySlug.get(sKey);
+      if (slugCached) {
+        this.byName.set(key, slugCached);
+        return slugCached;
+      }
+      const { data: bySlug } = await supabase
+        .from("categories")
+        .select("id, name, slug")
+        .eq("organization_id", this.organizationId)
+        .ilike("slug", slug)
+        .maybeSingle();
+      if (bySlug) {
+        this.byName.set(key, bySlug.id);
+        if (!this.bySlug.has(sKey)) this.bySlug.set(sKey, bySlug.id);
+        return bySlug.id;
+      }
+    }
+
+    // Último recurso: buscar por nombre exacto (ilike) por si llegó por otra vía
+    const { data: byName } = await supabase
+      .from("categories")
+      .select("id, name, slug")
+      .eq("organization_id", this.organizationId)
+      .ilike("name", cleanName)
+      .maybeSingle();
+    if (byName) {
+      this.byName.set(key, byName.id);
+      const nsKey = normalizeName(byName.slug);
+      if (nsKey && !this.bySlug.has(nsKey)) this.bySlug.set(nsKey, byName.id);
+      return byName.id;
+    }
+
+    return null;
+  }
 }
 
 async function findOrCreateSupplier(brand: string, organizationId: number, sourceUrl: string): Promise<number | null> {
@@ -1696,6 +1809,7 @@ async function findOrCreateTag(name: string, organizationId: number): Promise<nu
 }
 
 async function findExistingProduct(p: ScrapedProduct, organizationId: number): Promise<{ id: number; sku: string } | null> {
+  // 1) Buscar por SKU exacto (identificador único confiable)
   if (p.sku) {
     const { data } = await supabase
       .from("products")
@@ -1706,15 +1820,22 @@ async function findExistingProduct(p: ScrapedProduct, organizationId: number): P
       .maybeSingle();
     if (data) return data;
   }
-  const { data: byName } = await supabase
-    .from("products")
-    .select("id, sku")
-    .eq("organization_id", organizationId)
-    .ilike("name", p.name)
-    .neq("status", "deleted")
-    .is("parent_product_id", null)
-    .limit(1);
-  return byName?.[0] || null;
+  // 2) Fallback por nombre SOLO si el producto no tiene variantes.
+  //    Si tiene variantes, productos con el mismo nombre son variantes diferentes
+  //    (tallas/colores) que el scraper lista por separado, no duplicados reales.
+  const hasVariants = p.variants && p.variants.length > 0;
+  if (!hasVariants) {
+    const { data: byName } = await supabase
+      .from("products")
+      .select("id, sku")
+      .eq("organization_id", organizationId)
+      .ilike("name", p.name)
+      .neq("status", "deleted")
+      .is("parent_product_id", null)
+      .limit(1);
+    return byName?.[0] || null;
+  }
+  return null;
 }
 
 async function updateExistingProduct(
@@ -1723,9 +1844,10 @@ async function updateExistingProduct(
   p: ScrapedProduct,
   organizationId: number,
   branchId: number | null,
-  sourceUrl: string
+  sourceUrl: string,
+  categoryCache: CategoryCache
 ): Promise<void> {
-  const categoryId = await findOrCreateCategory(p.category || "", organizationId);
+  const categoryId = await categoryCache.findOrCreate(p.category || "");
   const supplierId = await findOrCreateSupplier(p.brand || "", organizationId, sourceUrl);
   const ahora = new Date().toISOString();
 
@@ -1814,7 +1936,8 @@ async function importProduct(
   organizationId: number,
   branchId: number | null,
   sourceUrl: string,
-  duplicateMode: DuplicateMode
+  duplicateMode: DuplicateMode,
+  categoryCache: CategoryCache
 ): Promise<{ ok: boolean; name: string; action?: string; error?: string }> {
   try {
     const existing = await findExistingProduct(p, organizationId);
@@ -1824,13 +1947,13 @@ async function importProduct(
         return { ok: false, name: p.name, error: "Ya existe (omitido)" };
       }
       if (duplicateMode === "update") {
-        await updateExistingProduct(existing.id, existing.sku, p, organizationId, branchId, sourceUrl);
+        await updateExistingProduct(existing.id, existing.sku, p, organizationId, branchId, sourceUrl, categoryCache);
         return { ok: true, name: p.name, action: "actualizado" };
       }
       p = { ...p, sku: undefined };
     }
 
-    const categoryId = await findOrCreateCategory(p.category || "", organizationId);
+    const categoryId = await categoryCache.findOrCreate(p.category || "");
     const supplierId = await findOrCreateSupplier(p.brand || "", organizationId, sourceUrl);
     const tagId = p.tags && p.tags.length > 0 ? await findOrCreateTag(p.tags[0], organizationId) : null;
 
@@ -1973,9 +2096,12 @@ Deno.serve(async (req: Request) => {
         });
       }
       const mode: DuplicateMode = ["skip", "update", "create"].includes(duplicate_mode) ? duplicate_mode : "skip";
+      // Pre-cargar cache de categorías para reutilizar existentes y evitar duplicados por slug.
+      const categoryCache = new CategoryCache(organization_id);
+      await categoryCache.preload();
       const results = [];
       for (const p of products.slice(0, 5000)) {
-        results.push(await importProduct(p, organization_id, branch_id || null, source_url || "", mode));
+        results.push(await importProduct(p, organization_id, branch_id || null, source_url || "", mode, categoryCache));
       }
       const exitosos = results.filter((r) => r.ok).length;
       const fallidos = results.filter((r) => !r.ok);

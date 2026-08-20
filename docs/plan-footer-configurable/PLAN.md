@@ -608,85 +608,100 @@ COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario
 
 ---
 
-### Fase 4 — Sitio Público: Tipos, Queries de Menús, Header y Footer ⏳ PENDIENTE
+### Fase 4 — Sitio Público: Tipos, Queries de Menús, Header y Footer ✅ COMPLETADO
 
 **Objetivo:** Actualizar goadmin-websites para leer las nuevas tablas de menús y campos de header/footer.
 
-**Archivos a modificar:**
+**Archivos modificados:**
 
 1. **`types/database.ts`**
-   - Extender `WebsiteSettings` con 16 campos nuevos (2 de header + 14 de footer)
-   - Agregar interfaces `WebsiteMenu` y `WebsiteMenuItem`
+   - Extendido `WebsiteSettings` con 16 campos nuevos (2 de header + 14 de footer)
+   - Agregadas interfaces `WebsiteMenu`, `WebsiteMenuItem` en el interface `Database`
+   - Agregados tipos export: `WebsiteMenu`, `WebsiteMenuItem`
+   - Agregados tipos jerárquicos: `WebsiteMenuItemWithChildren`, `WebsiteMenuWithItems`
 
 2. **`lib/supabase/queries.ts`**
-   - `getWebsiteMenus(organizationId)` — lista menús con items jerárquicos
-   - `getWebsiteMenusByLocation(organizationId, location)` — menús filtrados por header/footer
-   - `getMenuById(menuId)` — carga un menú específico con sus items
-   - Mantener `getWebsiteHeaderNav()`, `getWebsiteHeaderNavTree()`, `getWebsiteFooterNav()`, `getWebsiteFooterNavTree()`, `getMenuCategories()` para backward compat
+   - `getWebsiteMenus(organizationId)` — lista menús con items jerárquicos (incluye páginas y categorías relacionadas vía join)
+   - `getWebsiteMenusByLocation(organizationId, location)` — menús filtrados por header/footer (incluye `both`)
+   - `getMenuById(menuId)` — carga un menú específico con sus items en árbol
+   - Helper `buildMenuItemTree()` — construye árbol jerárquico desde lista plana con `parent_item_id`
+   - Mantenidos `getWebsiteHeaderNav()`, `getWebsiteHeaderNavTree()`, `getWebsiteFooterNav()`, `getWebsiteFooterNavTree()`, `getMenuCategories()` para backward compat
 
 3. **`lib/get-org-context.ts`** (modificaciones puntuales, sin reescribir)
-   - Si `settings.header_menu_id` existe, cargar ese menú y pasarlo como `headerNavTree` (convertido al formato `WebsitePageWithChildren[]` o directamente como `NavItem[]`)
-   - Si `settings.header_mega_menu_id` existe, cargar ese menú y pasarlo como `megaMenuItems` (nuevo prop)
+   - Si `settings.header_menu_id` existe, carga ese menú y lo pasa como `headerNavTree` (convertido a `WebsitePageWithChildren[]` vía `menuItemToPageWithChildren`)
+   - Si `settings.header_mega_menu_id` existe, carga ese menú y lo pasa como `megaMenuItems` (tipo `MegaMenuItem[]`)
    - Si no existen, fallback a `headerNavTree` y `menuCategories` (backward compat)
-   - Cargar `websiteMenus` para el footer además de `footerNav`/`footerNavTree`
+   - Carga `websiteMenus` para el footer vía `getWebsiteMenusByLocation(organizationId, 'footer')`
+   - Exportado tipo `MegaMenuItem` (compatible con `NavItem` de `HeaderShared`)
+   - Helpers: `menuItemToNavItem()`, `menuItemToPageWithChildren()`
 
-4. **`components/site/SiteHeader.tsx`** (modificaciones puntuales, sin reescribir)
-   - Agregar prop opcional `megaMenuItems?: NavItem[]` — items del mega menú nombrado
-   - Si `megaMenuItems` viene, pasarlo a `HeaderMega` como `megaMenuItems` en vez de `menuCategories`
-   - Si no viene, seguir pasando `menuCategories` (backward compat)
-   - **No se modifican las 5 variantes desktop ni las 4 móviles** — solo cambia la fuente de datos
+4. **`components/site/header/HeaderShared.tsx`**
+   - Agregado `megaMenuItems?: NavItem[]` a `HeaderVariantProps`
 
-5. **`components/site/header/HeaderMega.tsx`** (modificación puntual, sin reescribir)
-   - Agregar prop opcional `megaMenuItems?: NavItem[]`
-   - Si `megaMenuItems` viene, renderizarlo en el `MegaMenuDropdown` en vez de `menuCategories`
-   - Si no viene, seguir usando `menuCategories` (backward compat)
-   - El `MegaMenuDropdown` recibe items en formato `NavItem[]` (con `children`) en vez de `MenuCategory[]`
+5. **`components/site/SiteHeader.tsx`** (modificaciones puntuales, sin reescribir)
+   - Agregado prop opcional `megaMenuItems?: NavItem[]`
+   - Pasado `megaMenuItems` en `variantProps` para que llegue a todas las variantes (incluido `HeaderMega`)
+   - No se modificaron las 5 variantes desktop ni las 4 móviles — solo cambia la fuente de datos
 
-6. **`components/site/header/MegaMenuDropdown.tsx`** (modificación puntual, sin reescribir)
-   - Agregar prop opcional `items?: NavItem[]` — items de menú nombrado
-   - Si `items` viene, renderizarlo en el grid multi-columna (mismo layout que categorías pero con items genéricos)
-   - Si no viene, seguir usando `categories` (backward compat)
-   - Cada item tiene `name`, `href`, `icon`, `badge`, `children` — mismo formato que `MenuCategory` pero genérico
+6. **`components/site/header/HeaderMega.tsx`** (modificación puntual, sin reescribir)
+   - Agregado prop opcional `megaMenuItems?: NavItem[]` (via `HeaderVariantProps`)
+   - `showCategories` ahora también evalúa `megaMenuItems`
+   - `MegaMenuDropdown` recibe `items={megaMenuItems}` además de `categories={menuCategories}`
 
-**Verificación:** `tsc --noEmit` — 0 errores
-**Regla:** No se reescribe `SiteHeader.tsx`, `HeaderMega.tsx` ni `MegaMenuDropdown.tsx`. Se agregan props opcionales y condicionales, respetando el backward compat.
+7. **`components/site/header/MegaMenuDropdown.tsx`** (modificación puntual, sin reescribir)
+   - Agregado prop opcional `items?: NavItem[]`
+   - Si `items` viene, renderiza grid multi-columna con items genéricos (mismo layout que categorías)
+   - Si no viene, sigue usando `categories` (backward compat)
+   - `categories` cambió a opcional en la interface
+
+8. **`components/site/OrganizationLayout.tsx`**
+   - Agregado `megaMenuItems?: NavItem[]` a `OrganizationLayoutProps`
+   - Pasado `megaMenuItems` al `SiteHeader`
+
+9. **`app/[[...slug]]/page.tsx`** (página catch-all)
+   - Carga menús nombrados (`header_menu_id`, `header_mega_menu_id`) con fallback al sistema de páginas
+   - Pasa `effectiveHeaderNavTree` y `megaMenuItems` al `OrganizationLayout`
+   - `renderSlugFallback` actualizado para recibir y pasar `megaMenuItems`
+
+**Verificación:** `tsc --noEmit` — 0 errores ✅
+**Regla:** No se reescribió `SiteHeader.tsx`, `HeaderMega.tsx` ni `MegaMenuDropdown.tsx`. Se agregaron props opcionales y condicionales, respetando el backward compat.
 
 ---
 
-### Fase 5 — Sitio Público: SiteFooter (modificaciones puntuales sobre el existente) ⏳ PENDIENTE
+### Fase 5 — Sitio Público: SiteFooter (modificaciones puntuales sobre el existente) ✅ COMPLETADO
 
 **Objetivo:** Arreglar el accordion roto, agregar el layout `split`, soportar la nueva configuración y renderizar menús nombrados — **trabajando sobre el `SiteFooter.tsx` existente, sin reescribirlo**.
 
-**Principio:** No se reescribe el componente. Se hacen modificaciones puntuales:
-- Arreglar `FooterSection` (líneas 65-88) para que no duplique el contenido.
-- Agregar un nuevo bloque `if (footerStyle === 'split')` siguiendo el mismo patrón de los 4 layouts existentes.
-- Agregar condicionales (`footer_show_contact`, `footer_show_hours`, `footer_show_social`, `footer_show_newsletter`, `footer_show_categories`) en los lugares donde ya se renderizan esas secciones.
-- Agregar soporte para `footer_columns` en el layout `default` (cambiar el grid fijo `lg:grid-cols-4` por un grid dinámico).
-- Agregar soporte para `footer_background` cambiando las clases `bg-gray-900` hardcodeadas por un switch.
-- Agregar soporte para `mobile_footer_style` en `FooterSection` (accordion/stacked/tabs/hidden).
-- Agregar bloque de newsletter si `footer_show_newsletter = true`.
-- Agregar bloque de categorías si `footer_show_categories = true`.
-- **Renderizar menús nombrados** en las columnas del footer según `footer_column` de cada menú. Si no hay menús, fallback a `footerNavTree` (backward compat).
+**Archivos modificados:**
 
-**Archivos a modificar:**
+1. **`types/database.ts`**
+   - Agregado `'split'` al tipo `footer_style` en Row, Insert y Update de `website_settings`
 
-1. **`components/site/SiteFooter.tsx`** (modificaciones puntuales, NO reescritura)
-   - Arreglar `FooterSection`: render único de contenido, accordion solo en móvil
-   - Agregar bloque `if (footerStyle === 'split')` (~60 líneas, mismo patrón que los otros 4)
-   - Agregar condicionales de visibilidad en secciones existentes (contacto, horarios, redes)
-   - Agregar bloque de newsletter (~30 líneas)
-   - Agregar bloque de categorías (~20 líneas, reutilizando `buildCategoryItems` que ya existe)
-   - Cambiar `bg-gray-900` hardcodeado por switch según `footer_background`
-   - Cambiar `grid-cols-4` fijo por grid dinámico según `footer_columns`
-   - Soportar `mobile_footer_style` en `FooterSection`
-   - Agregar prop `menus?: WebsiteMenu[]` — si viene, renderiza menús en columnas; si no, sigue usando `footerNavTree`
-   - Agregar función `buildMenuGroupItems(menu)` — convierte items de un menú a `FooterNavItem[]`
+2. **`components/site/SiteFooter.tsx`** (modificaciones puntuales, NO reescritura)
+   - **FooterSection arreglada**: render único de contenido (antes duplicaba). Soporta 3 modos móviles: `accordion` (default, `<details>` colapsable), `stacked` (siempre visible), `hidden` (solo desktop)
+   - **Layout `split` agregado**: 2 columnas (branding | enlaces), con sub-grid en columna derecha para enlaces + horarios + newsletter
+   - **Layouts existentes actualizados** (minimal, centered, three_columns, default):
+     - `bg-gray-900` hardcodeado reemplazado por `getFooterBgClass()` según `footer_background` (dark/light/primary/custom)
+     - `grid-cols-4` fijo reemplazado por `getFooterGridClass()` según `footer_columns` (2/3/4/5)
+     - Condicionales de visibilidad: `footerShowContact`, `footerShowHours`, `footerShowSocial`, `footerShowNewsletter`, `footerShowCategories`
+     - `mobileFooterStyle` pasado a todas las `FooterSection`
+     - `showSocialInMobile` y `showHoursInMobile` consideran `mobile_footer_show_social` y `mobile_footer_show_hours`
+   - **Bloque de newsletter** agregado en layouts `split` y `default` (form con input + botón, estilos según `primaryColor`)
+   - **Soporte menús nombrados**: prop `menus?: WebsiteMenuWithItems[]`, helper `buildMenuGroupItems()` convierte items a `FooterNavItem[]`, agrupados por `footer_column`
+   - **Helpers nuevos**: `buildMenuGroupItems()`, `getFooterBgClass()`, `getFooterGridClass()`
+   - Imports actualizados: `WebsiteMenuWithItems`, `WebsiteMenuItemWithChildren`
 
-2. **`components/site/OrganizationLayout.tsx`**
-   - Pasar nuevos props a `SiteFooter` desde `settings` y `websiteMenus`: `footerColumns`, `footerBackground`, `footerShowContact`, `footerShowHours`, `footerShowSocial`, `footerShowNewsletter`, `footerShowCategories`, `mobileFooterStyle`, `mobileFooterShowSocial`, `mobileFooterShowHours`, `footerNewsletterTitle`, `footerNewsletterPlaceholder`, `footerNewsletterButtonText`, `menus`
+3. **`components/site/OrganizationLayout.tsx`**
+   - Agregado `menus?: WebsiteMenuWithItems[]` a `OrganizationLayoutProps`
+   - Pasado `menus` al `SiteFooter`
 
-**Verificación:** `tsc --noEmit` — 0 errores
-**Regla:** No se reescribe `SiteFooter.tsx`. Se modifican puntualmente las secciones existentes y se agregan bloques nuevos siguiendo el mismo patrón.
+4. **`app/[[...slug]]/page.tsx`**
+   - Carga `footerMenus` vía `getWebsiteMenusByLocation(organization.id, 'footer')`
+   - Pasa `menus={footerMenus}` al `OrganizationLayout` (en las 3 llamadas: page builder, fallback, 404)
+   - `renderSlugFallback` actualizado para recibir y pasar `footerMenus`
+
+**Verificación:** `tsc --noEmit` — 0 errores ✅
+**Regla:** No se reescribió `SiteFooter.tsx`. Se modificaron puntualmente las secciones existentes y se agregaron bloques nuevos siguiendo el mismo patrón. Backward compatible: todos los props son opcionales con fallback al sistema existente.
 
 ---
 
@@ -751,8 +766,8 @@ COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario
 2. **Fase 1** — Tipos y servicios ERP
 3. **Fase 2** — Panel "Configuración del Footer" en EditorSidebar
 4. **Fase 3** — Preview en el editor
-5. **Fase 4** — Tipos y queries sitio público
-6. **Fase 5** — SiteFooter mejorado
+5. **Fase 4** — Tipos y queries sitio público ✅ COMPLETADO
+6. **Fase 5** — SiteFooter mejorado ✅ COMPLETADO
 7. **Fase 6** — Migración de BrandingContentTab
 
 ---

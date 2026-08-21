@@ -64,6 +64,33 @@ interface BranchRef {
   name?: string | null;
 }
 
+interface ProductCostRef {
+  cost?: string | number | null;
+  effective_from?: string | null;
+  effective_to?: string | null;
+}
+
+/**
+ * Devuelve el costo unitario efectivo de un producto.
+ * Prioriza stock_levels.avg_cost; si es 0/NULL, usa el costo vigente
+ * de product_costs (effective_to IS NULL, más reciente por effective_from).
+ */
+function getEffectiveCost(
+  avgCost: number,
+  productCosts?: ProductCostRef[] | ProductCostRef | null,
+): number {
+  if (avgCost > 0) return avgCost;
+  if (!productCosts) return 0;
+  const costs = Array.isArray(productCosts) ? productCosts : [productCosts];
+  if (costs.length === 0) return 0;
+  // Costos vigentes (effective_to IS NULL), ordenados por effective_from desc
+  const vigentes = costs
+    .filter((c) => c.effective_to === null || c.effective_to === undefined)
+    .sort((a, b) => (String(b.effective_from ?? '').localeCompare(String(a.effective_from ?? ''))));
+  const costo = vigentes[0]?.cost;
+  return Number(costo) || 0;
+}
+
 export interface DashboardData {
   kpis: InventoryKPIs;
   alerts: StockAlert[];
@@ -101,7 +128,8 @@ class InventoryDashboardService {
           qty_on_hand,
           min_level,
           avg_cost,
-          products!inner(organization_id, status, is_parent)
+          products!inner(organization_id, status, is_parent),
+          product_costs(cost, effective_from, effective_to)
         `)
         .eq('products.organization_id', organizationId)
         .eq('products.status', 'active');
@@ -131,6 +159,7 @@ class InventoryDashboardService {
           const qty = Number(item.qty_on_hand) || 0;
           const minLevel = Number(item.min_level) || 0;
           const avgCost = Number(item.avg_cost) || 0;
+          const effectiveCost = getEffectiveCost(avgCost, item.product_costs as ProductCostRef[] | null);
 
           if (qty <= 0) {
             outOfStockProducts++;
@@ -138,7 +167,7 @@ class InventoryDashboardService {
             lowStockProducts++;
           }
 
-          totalInventoryValue += qty * avgCost;
+          totalInventoryValue += qty * effectiveCost;
         });
       }
 
@@ -453,7 +482,8 @@ class InventoryDashboardService {
             qty_on_hand,
             min_level,
             avg_cost,
-            products!inner(organization_id, status, is_parent)
+            products!inner(organization_id, status, is_parent),
+            product_costs(cost, effective_from, effective_to)
           `)
           .eq('branch_id', branch.id)
           .eq('products.organization_id', organizationId)
@@ -478,9 +508,10 @@ class InventoryDashboardService {
             const qty = Number(item.qty_on_hand) || 0;
             const minLevel = Number(item.min_level) || 0;
             const avgCost = Number(item.avg_cost) || 0;
+            const effectiveCost = getEffectiveCost(avgCost, item.product_costs as ProductCostRef[] | null);
 
             totalStock += qty;
-            inventoryValue += qty * avgCost;
+            inventoryValue += qty * effectiveCost;
 
             if (qty <= 0) {
               outOfStockCount++;

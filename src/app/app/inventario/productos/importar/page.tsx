@@ -841,10 +841,11 @@ export default function ImportarProductosPage() {
               }
               await supabase.from('product_prices').insert(priceData);
             } else if (existingPrice.price !== row.price) {
-              // Precio diferente → cerrar el anterior y crear uno nuevo
+              // Precio diferente → cerrar TODOS los vigentes y crear uno nuevo
               await supabase.from('product_prices')
                 .update({ effective_to: new Date().toISOString() })
-                .eq('id', existingPrice.id);
+                .eq('product_id', productId)
+                .is('effective_to', null);
               const priceData: any = {
                 product_id: productId,
                 price: row.price,
@@ -888,9 +889,11 @@ export default function ImportarProductosPage() {
                 effective_from: new Date().toISOString(),
               });
             } else if (existingCost.cost !== finalCost) {
+              // Cerrar TODOS los costos vigentes (no solo uno)
               await supabase.from('product_costs')
                 .update({ effective_to: new Date().toISOString() })
-                .eq('id', existingCost.id);
+                .eq('product_id', productId)
+                .is('effective_to', null);
               await supabase.from('product_costs').insert({
                 product_id: productId,
                 cost: finalCost,

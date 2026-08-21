@@ -491,7 +491,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       // 1b. Actualizar precio en product_prices si cambió
       if (data.price !== undefined && data.price >= 0) {
         const now = new Date().toISOString();
-        // Cerrar precio vigente actual
+        // Consultar precio vigente actual (el más reciente)
         const { data: currentPrice } = await supabase
           .from('product_prices')
           .select('id, price, compare_price')
@@ -506,12 +506,14 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           (currentPrice.compare_price || 0) !== (data.compare_price || 0);
 
         if (priceChanged) {
-          if (currentPrice) {
-            await supabase
-              .from('product_prices')
-              .update({ effective_to: now })
-              .eq('id', currentPrice.id);
-          }
+          // Cerrar TODOS los precios vigentes del producto (no solo uno).
+          // Si solo se cierra uno, los duplicados existentes quedan vigentes
+          // y se acumulan con cada edición, desincronizando ERP y web.
+          await supabase
+            .from('product_prices')
+            .update({ effective_to: now })
+            .eq('product_id', productoId)
+            .is('effective_to', null);
           const newPriceData: Record<string, any> = {
             product_id: productoId,
             price: data.price,
@@ -543,12 +545,12 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         const costChanged = !currentCost || currentCost.cost !== data.cost;
 
         if (costChanged) {
-          if (currentCost) {
-            await supabase
-              .from('product_costs')
-              .update({ effective_to: now })
-              .eq('id', currentCost.id);
-          }
+          // Cerrar TODOS los costos vigentes del producto (no solo uno)
+          await supabase
+            .from('product_costs')
+            .update({ effective_to: now })
+            .eq('product_id', productoId)
+            .is('effective_to', null);
           const { error: costError } = await supabase
             .from('product_costs')
             .insert({
@@ -726,12 +728,12 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
               .maybeSingle();
 
             if (!currentPrice || Number(currentPrice.price) !== Number(variant.price)) {
-              if (currentPrice) {
-                await supabase
-                  .from('product_prices')
-                  .update({ effective_to: now })
-                  .eq('id', currentPrice.id);
-              }
+              // Cerrar TODOS los precios vigentes de la variante (no solo uno)
+              await supabase
+                .from('product_prices')
+                .update({ effective_to: now })
+                .eq('product_id', variant.id)
+                .is('effective_to', null);
               if (variant.price > 0) {
                 await supabase.from('product_prices').insert({
                   product_id: variant.id,
@@ -752,12 +754,12 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
               .maybeSingle();
 
             if (!currentCost || Number(currentCost.cost) !== Number(variant.cost)) {
-              if (currentCost) {
-                await supabase
-                  .from('product_costs')
-                  .update({ effective_to: now })
-                  .eq('id', currentCost.id);
-              }
+              // Cerrar TODOS los costos vigentes de la variante (no solo uno)
+              await supabase
+                .from('product_costs')
+                .update({ effective_to: now })
+                .eq('product_id', variant.id)
+                .is('effective_to', null);
               if (variant.cost > 0) {
                 await supabase.from('product_costs').insert({
                   product_id: variant.id,

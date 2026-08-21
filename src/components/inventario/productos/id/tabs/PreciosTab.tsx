@@ -58,23 +58,27 @@ interface CartesianGridProps {
   stroke?: string;
   vertical?: boolean;
   horizontal?: boolean;
+  className?: string;
 }
 
 interface XAxisProps {
   dataKey: string;
   stroke?: string;
   tickFormatter?: (value: any) => string;
+  className?: string;
 }
 
 interface YAxisProps {
   stroke?: string;
   tickFormatter?: (value: any) => string;
+  className?: string;
 }
 
 interface TooltipProps {
   formatter?: (value: number, name: string) => [string, string];
   labelFormatter?: (label: string) => string;
   contentStyle?: React.CSSProperties;
+  wrapperClassName?: string;
 }
 
 interface ResponsiveContainerProps {
@@ -228,23 +232,16 @@ const PreciosTab: React.FC<PreciosTabProps> = ({ producto }) => {
       const priceValue = parseFloat(newPrice);
       const now = new Date().toISOString();
       
-      // 1. Cerrar el precio vigente actual estableciendo su effective_to
-      const { data: currentPriceData } = await supabase
+      // 1. Cerrar TODOS los precios vigentes del producto (effective_to IS NULL).
+      //    Si solo se cierra uno, los duplicados existentes quedan vigentes
+      //    y se acumulan con cada edición, desincronizando ERP y web.
+      const { error: closeError } = await supabase
         .from('product_prices')
-        .select('id')
+        .update({ effective_to: now })
         .eq('product_id', producto.id)
-        .is('effective_to', null)
-        .order('effective_from', { ascending: false })
-        .limit(1);
-        
-      if (currentPriceData && currentPriceData.length > 0) {
-        const { error: closeError } = await supabase
-          .from('product_prices')
-          .update({ effective_to: now })
-          .eq('id', currentPriceData[0].id);
-          
-        if (closeError) throw closeError;
-      }
+        .is('effective_to', null);
+
+      if (closeError) throw closeError;
       
       // 2. Insertar nuevo precio efectivo desde ahora
       const newPriceData: any = {

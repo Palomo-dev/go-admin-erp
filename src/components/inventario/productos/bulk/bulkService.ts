@@ -193,6 +193,29 @@ export async function bulkUpdatePrices(
               resultado.exitosos += chunk.length;
             }
           }
+
+          // Sincronizar stock_levels.avg_cost con el nuevo costo vigente.
+          // Sin este paso, el dashboard/reportes seguirían mostrando valor $0
+          // porque leen de stock_levels.avg_cost y no de product_costs.
+          // Agrupar por costo para hacer updates en lote con .in('product_id', ids)
+          const idsPorCosto = new Map<number, number[]>();
+          for (const nc of nuevosCostos) {
+            const arr = idsPorCosto.get(nc.cost) || [];
+            arr.push(nc.product_id);
+            idsPorCosto.set(nc.cost, arr);
+          }
+          for (const [costo, ids] of idsPorCosto) {
+            for (let j = 0; j < ids.length; j += INSERT_CHUNK) {
+              const chunkIds = ids.slice(j, j + INSERT_CHUNK);
+              const { error: syncErr } = await supabase
+                .from('stock_levels')
+                .update({ avg_cost: costo, updated_at: ahora })
+                .in('product_id', chunkIds);
+              if (syncErr) {
+                console.error(`[bulkUpdatePrices] Error sincronizando avg_cost (lote):`, syncErr);
+              }
+            }
+          }
         }
       } else {
         // ── PRECIOS (venta o comparación) ──

@@ -120,6 +120,8 @@ class InventoryDashboardService {
         .or('is_parent.is.null,is_parent.eq.false');
 
       // Consulta de stock levels con filtro opcional por sucursal
+      // Nota: product_costs NO tiene FK directa con stock_levels, por lo que
+      // PostgREST no puede hacer el JOIN anidado. Se consulta por separado.
       let stockQuery = supabase
         .from('stock_levels')
         .select(`
@@ -128,8 +130,7 @@ class InventoryDashboardService {
           qty_on_hand,
           min_level,
           avg_cost,
-          products!inner(organization_id, status, is_parent),
-          product_costs(cost, effective_from, effective_to)
+          products!inner(organization_id, status, is_parent)
         `)
         .eq('products.organization_id', organizationId)
         .eq('products.status', 'active');
@@ -142,6 +143,30 @@ class InventoryDashboardService {
 
       if (stockError) {
         console.error('Error consultando stock_levels:', stockError);
+      }
+
+      // Consultar costos vigentes por separado para los productos del stock
+      const productIds = (stockData || []).map((s) => s.product_id).filter(Boolean);
+      const costsMap = new Map<number, ProductCostRef[]>();
+      if (productIds.length > 0) {
+        const CHUNK = 200;
+        for (let i = 0; i < productIds.length; i += CHUNK) {
+          const chunk = productIds.slice(i, i + CHUNK);
+          const { data: costsData } = await supabase
+            .from('product_costs')
+            .select('product_id, cost, effective_from, effective_to')
+            .in('product_id', chunk)
+            .is('effective_to', null)
+            .order('effective_from', { ascending: false });
+          if (costsData) {
+            for (const c of costsData) {
+              const pid = c.product_id as number;
+              const arr = costsMap.get(pid) || [];
+              arr.push(c);
+              costsMap.set(pid, arr);
+            }
+          }
+        }
       }
 
       // Calcular productos bajo mínimo y sin stock
@@ -159,7 +184,7 @@ class InventoryDashboardService {
           const qty = Number(item.qty_on_hand) || 0;
           const minLevel = Number(item.min_level) || 0;
           const avgCost = Number(item.avg_cost) || 0;
-          const effectiveCost = getEffectiveCost(avgCost, item.product_costs as ProductCostRef[] | null);
+          const effectiveCost = getEffectiveCost(avgCost, costsMap.get(item.product_id) || null);
 
           if (qty <= 0) {
             outOfStockProducts++;
@@ -482,8 +507,8 @@ class InventoryDashboardService {
             qty_on_hand,
             min_level,
             avg_cost,
-            products!inner(organization_id, status, is_parent),
-            product_costs(cost, effective_from, effective_to)
+            product_id,
+            products!inner(organization_id, status, is_parent)
           `)
           .eq('branch_id', branch.id)
           .eq('products.organization_id', organizationId)
@@ -491,6 +516,30 @@ class InventoryDashboardService {
 
         if (stockError) {
           console.error(`Error consultando stock para branch ${branch.id}:`, stockError);
+        }
+
+        // Consultar costos vigentes por separado (no hay FK stock_levels → product_costs)
+        const branchProductIds = (stockData || []).map((s) => s.product_id).filter(Boolean);
+        const branchCostsMap = new Map<number, ProductCostRef[]>();
+        if (branchProductIds.length > 0) {
+          const CHUNK = 200;
+          for (let i = 0; i < branchProductIds.length; i += CHUNK) {
+            const chunk = branchProductIds.slice(i, i + CHUNK);
+            const { data: costsData } = await supabase
+              .from('product_costs')
+              .select('product_id, cost, effective_from, effective_to')
+              .in('product_id', chunk)
+              .is('effective_to', null)
+              .order('effective_from', { ascending: false });
+            if (costsData) {
+              for (const c of costsData) {
+                const pid = c.product_id as number;
+                const arr = branchCostsMap.get(pid) || [];
+                arr.push(c);
+                branchCostsMap.set(pid, arr);
+              }
+            }
+          }
         }
 
         let totalStock = 0;
@@ -508,7 +557,7 @@ class InventoryDashboardService {
             const qty = Number(item.qty_on_hand) || 0;
             const minLevel = Number(item.min_level) || 0;
             const avgCost = Number(item.avg_cost) || 0;
-            const effectiveCost = getEffectiveCost(avgCost, item.product_costs as ProductCostRef[] | null);
+            const effectiveCost = getEffectiveCost(avgCost, branchCostsMap.get(item.product_id) || null);
 
             totalStock += qty;
             inventoryValue += qty * effectiveCost;

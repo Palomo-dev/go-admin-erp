@@ -337,11 +337,12 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
     }
   };
 
-  // Tamaño de lote reducido para evitar 504 Gateway Timeout de la Edge Function.
-  // Cada producto requiere descarga+upload de imágenes + múltiples queries a BD.
-  // 20 productos por lote = ~15-30s por request, dentro del timeout de 150s.
-  const BATCH_SIZE = 20;
-  // Procesamiento secuencial para no sobrecargar la Edge Function ni la BD
+  // Tamaño de lote para importación. Cada producto descarga hasta 10 imágenes
+  // (timeout 8s, 1 reintento, 2 en paralelo, streaming a storage sin cargar en RAM).
+  // 10 productos por lote, 3 en paralelo = ~30-40s, seguro dentro del timeout de 150s.
+  // Los caches (categorías, proveedores, productos) evitan ~4200 queries individuales.
+  const BATCH_SIZE = 10;
+  // 1 lote a la vez para no saturar la edge function
   const PARALLEL_LOTS = 1;
 
   const handleImportar = async () => {

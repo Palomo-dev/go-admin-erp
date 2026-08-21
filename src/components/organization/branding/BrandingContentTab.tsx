@@ -186,6 +186,14 @@ export default function BrandingContentTab({ settings, onSave, isSaving }: Brand
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
+              {/* Nota: configuración completa en el Editor Visual */}
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50">
+                <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  La configuración completa del footer (layout, columnas, secciones, navegación) se gestiona desde el Editor Visual &rarr; Configuración del Footer.
+                </p>
+              </div>
+
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="dark:text-gray-300">Mostrar "Powered by GO Admin"</Label>

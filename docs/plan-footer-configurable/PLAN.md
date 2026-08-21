@@ -705,21 +705,23 @@ COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario
 
 ---
 
-### Fase 6 — Migración de BrandingContentTab ⏳ PENDIENTE
+### Fase 6 — Migración de BrandingContentTab ✅ COMPLETADO
 
 **Objetivo:** Migrar la configuración de footer de `BrandingContentTab` al nuevo panel del editor.
 
-**Archivos a modificar:**
+**Archivos modificados:**
 
 1. **`src/components/organization/branding/BrandingContentTab.tsx`**
-   - Mantener pestañas "Redes Sociales" y "Horarios"
+   - Pestañas "Redes Sociales" y "Horarios" se mantienen intactas
    - Pestaña "Footer" simplificada: solo texto del footer + enlaces manuales + powered by
-   - Agregar nota: "La configuración completa del footer (layout, columnas, secciones, navegación) se gestiona desde el Editor Visual → Configuración del Footer"
+   - Agregada nota informativa (amber) en la pestaña Footer: "La configuración completa del footer (layout, columnas, secciones, navegación) se gestiona desde el Editor Visual → Configuración del Footer"
 
 2. **`src/components/organization/branding/BrandingThemeTab.tsx`**
-   - Remover `footer_style` del estado del tema (migró al editor)
+   - Removido `footer_style` del estado `formData` (línea 82 original)
+   - Removido `footer_style` del `onClick` de preset (línea 218 original)
+   - El `footer_style` ahora se gestiona exclusivamente desde el Editor Visual → Configuración del Footer
 
-**Verificación:** `tsc --noEmit` — 0 errores
+**Verificación:** `tsc --noEmit` — 0 errores relacionados con los cambios (errores preexistentes en `.next/types/validator.ts` son de rutas no relacionadas)
 
 ---
 
@@ -768,7 +770,7 @@ COMMENT ON COLUMN website_settings.footer_show_newsletter IS 'Mostrar formulario
 4. **Fase 3** — Preview en el editor
 5. **Fase 4** — Tipos y queries sitio público ✅ COMPLETADO
 6. **Fase 5** — SiteFooter mejorado ✅ COMPLETADO
-7. **Fase 6** — Migración de BrandingContentTab
+7. **Fase 6** — Migración de BrandingContentTab ✅ COMPLETADO
 
 ---
 

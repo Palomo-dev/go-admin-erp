@@ -607,6 +607,51 @@ function SectionListItem({
             />
           )}
 
+          {/* Categories Grid Options: search + pagination */}
+          {section.section_type === 'categories_grid' && (
+            <div className="space-y-3 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-medium">Buscador de categorías</Label>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Muestra una barra de búsqueda para filtrar categorías</p>
+                </div>
+                <Switch
+                  checked={section.content?.enable_search === true}
+                  onCheckedChange={(checked) =>
+                    onUpdateContent({ ...section.content, enable_search: checked })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-medium">Paginación</Label>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Pagina las categorías en lugar de mostrar todas</p>
+                </div>
+                <Switch
+                  checked={section.content?.enable_pagination === true}
+                  onCheckedChange={(checked) =>
+                    onUpdateContent({ ...section.content, enable_pagination: checked })
+                  }
+                />
+              </div>
+              {section.content?.enable_pagination === true && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Categorías por página</Label>
+                  <Input
+                    type="number"
+                    min={6}
+                    max={48}
+                    value={(section.content?.page_size as number) || 24}
+                    onChange={(e) =>
+                      onUpdateContent({ ...section.content, page_size: parseInt(e.target.value, 10) || 24 })
+                    }
+                    className="h-8 text-xs dark:bg-gray-700 dark:border-gray-600"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Brands Items Editor */}
           {section.section_type === 'brands' && (
             <BrandsItemsEditor

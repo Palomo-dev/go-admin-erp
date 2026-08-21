@@ -13,7 +13,7 @@ const openaiKey = Deno.env.get("OPENAI_API_KEY")!;
 const supabase = createClient(supabaseUrl, serviceKey);
 
 const DEFAULT_UNIT_CODE = "UN";
-const MAX_IMAGES_PER_PRODUCT = 12;
+const MAX_IMAGES_PER_PRODUCT = 10;
 const MAX_VARIANT_CHILDREN = 50;
 // Mínimo de imágenes para considerar un producto "completo" y no enriquecerlo
 const MIN_IMAGES_FOR_COMPLETE = 3;
@@ -1395,8 +1395,8 @@ function regexPriceFromText(text: string): number | null {
 }
 
 async function uploadImage(imageUrl: string, productId: number, index: number): Promise<string | null> {
-  const MAX_RETRIES = 2;
-  const TIMEOUT_MS = 15000;
+  const MAX_RETRIES = 1;
+  const TIMEOUT_MS = 8000; // reducido de 15s a 8s para evitar 504 en lotes grandes
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -1415,16 +1415,23 @@ async function uploadImage(imageUrl: string, productId: number, index: number): 
         console.log(`[uploadImage] Content-type no es imagen (${contentType}) para producto ${productId}: ${imageUrl.substring(0, 100)}`);
         return null;
       }
-      const buffer = await res.arrayBuffer();
-      if (buffer.byteLength > 5 * 1024 * 1024) {
-        console.log(`[uploadImage] Imagen demasiado grande (${buffer.byteLength} bytes) para producto ${productId}`);
+      // Verificar tamaño por Content-Length antes de descargar (evita cargar imágenes enormes en memoria)
+      const contentLength = parseInt(res.headers.get("content-length") || "0", 10);
+      if (contentLength > 2 * 1024 * 1024) {
+        console.log(`[uploadImage] Imagen demasiado grande (${contentLength} bytes) para producto ${productId}`);
         return null;
       }
       const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
       const path = `products/${productId}/scraped_${Date.now()}_${index}.${ext}`;
+      // Streaming: pipear el body directamente a storage sin cargarlo en memoria.
+      // Esto evita el error 546 (OOM) que causaba res.arrayBuffer() al acumular buffers.
+      if (!res.body) {
+        console.log(`[uploadImage] Response sin body para producto ${productId}: ${imageUrl.substring(0, 100)}`);
+        return null;
+      }
       const { error } = await supabase.storage
         .from("product-images")
-        .upload(path, buffer, { contentType, upsert: false });
+        .upload(path, res.body, { contentType, upsert: false });
       if (error) {
         console.log(`[uploadImage] Error subiendo a storage para producto ${productId}: ${error.message}`);
         return null;
@@ -1472,38 +1479,37 @@ function dedupeImages(urls: string[]): string[] {
   return result;
 }
 
-async function uploadProductImages(productId: number, imageUrls: string[], altText: string): Promise<void> {
+async function uploadProductImages(productId: number, imageUrls: string[], altText: string): Promise<{ path: string; display_order: number; is_primary: boolean }[]> {
   // Descarta logos/íconos/placeholders aunque la IA los haya seleccionado
   const filtered = (imageUrls || []).filter(isProductImage);
   const urls = dedupeImages(filtered).slice(0, MAX_IMAGES_PER_PRODUCT);
-  const uploads = await Promise.all(urls.map((u, i) => uploadImage(u, productId, i)));
+  // Descargar imágenes en lotes de 2 para equilibrar memoria y velocidad.
+  // 2 ArrayBuffers simultáneos × 2MB máximo = 4MB pico, seguro para la edge function.
+  const uploads: (string | null)[] = [];
+  for (let i = 0; i < urls.length; i += 2) {
+    const batch = urls.slice(i, i + 2);
+    const results = await Promise.all(batch.map((u, j) => uploadImage(u, productId, i + j)));
+    uploads.push(...results);
+  }
+  const savedImages: { path: string; display_order: number; is_primary: boolean }[] = [];
   let isPrimary = true;
   for (let i = 0; i < uploads.length; i++) {
     const path = uploads[i];
-    if (path) {
+    const storagePath = path || urls[i];
+    if (storagePath) {
       const { error: insErr } = await supabase.from("product_images").insert({
         product_id: productId,
-        storage_path: path,
+        storage_path: storagePath,
         display_order: i,
         is_primary: isPrimary,
         alt_text: altText.substring(0, 100),
       });
-      if (insErr) console.log(`[uploadProductImages] error insertando (storage) producto ${productId}: ${insErr.message}`);
-      isPrimary = false;
-    } else if (urls[i]) {
-      // Fallback: si la descarga falló, guardar la URL externa directamente
-      // El frontend detecta URLs http/https y las usa directamente sin getPublicUrl
-      const { error: insErr } = await supabase.from("product_images").insert({
-        product_id: productId,
-        storage_path: urls[i],
-        display_order: i,
-        is_primary: isPrimary,
-        alt_text: altText.substring(0, 100),
-      });
-      if (insErr) console.log(`[uploadProductImages] error insertando (externa) producto ${productId}: ${insErr.message}`);
-      isPrimary = false;
+      if (insErr) console.log(`[uploadProductImages] error insertando producto ${productId}: ${insErr.message}`);
+      else savedImages.push({ path: storagePath, display_order: i, is_primary: isPrimary });
     }
+    isPrimary = false;
   }
+  return savedImages;
 }
 
 // Genera el producto cartesiano de todos los tipos de variante (Color × Talla × ...)
@@ -1531,64 +1537,96 @@ async function createVariantChildren(
   parentId: number,
   parentSku: string,
   p: ScrapedProduct,
-  organizationId: number
+  organizationId: number,
+  parentImages: { path: string; display_order: number; is_primary: boolean }[]
 ): Promise<number> {
   if (!p.variants || p.variants.length === 0) return 0;
   const combos = cartesianVariants(p.variants).slice(0, MAX_VARIANT_CHILDREN);
-  let creados = 0;
   const ahora = new Date().toISOString();
 
-  for (let i = 0; i < combos.length; i++) {
-    const combo = combos[i];
-    const etiqueta = Object.values(combo).join(" / ");
-    const childSku = `${parentSku}-V${i + 1}`;
-    const { data: child, error } = await supabase
-      .from("products")
-      .insert({
-        organization_id: organizationId,
-        sku: childSku,
-        name: `${p.name} - ${etiqueta}`.substring(0, 200),
-        parent_product_id: parentId,
-        is_parent: false,
-        category_id: null,
-        barcode: null,
-        status: "active",
-        unit_code: DEFAULT_UNIT_CODE,
-        variant_data: combo,
-      })
-      .select("id")
-      .single();
-    if (error || !child) continue;
+  // Insertar todas las variantes hijas en un solo batch INSERT (1 query en vez de 50)
+  const childRows = combos.map((combo, i) => ({
+    organization_id: organizationId,
+    sku: `${parentSku}-V${i + 1}`,
+    name: `${p.name} - ${Object.values(combo).join(" / ")}`.substring(0, 200),
+    parent_product_id: parentId,
+    is_parent: false,
+    category_id: null,
+    barcode: null,
+    status: "active",
+    unit_code: DEFAULT_UNIT_CODE,
+    variant_data: combo,
+  }));
 
-    // Registrar relaciones tipo/valor para cada atributo de la combinación
+  const { data: children, error } = await supabase
+    .from("products")
+    .insert(childRows)
+    .select("id, sku, variant_data");
+
+  if (error || !children) return 0;
+
+  // Pre-crear variant types y values para evitar queries repetidas
+  const typeCache = new Map<string, number>();
+  const valueCache = new Map<string, number>();
+
+  // Batch insert: relaciones + precios
+  const relationRows: { product_id: number; variant_type_id: number; variant_value_id: number }[] = [];
+  const priceRows: { product_id: number; price: number; effective_from: string }[] = [];
+
+  for (const child of children) {
+    const combo = child.variant_data as Record<string, string>;
     for (const [tipoName, valor] of Object.entries(combo)) {
-      const variantTypeId = await findOrCreateVariantType(tipoName, organizationId);
+      let variantTypeId = typeCache.get(tipoName);
+      if (!variantTypeId) {
+        variantTypeId = await findOrCreateVariantType(tipoName, organizationId) || undefined;
+        if (variantTypeId) typeCache.set(tipoName, variantTypeId);
+      }
       if (!variantTypeId) continue;
-      const variantValueId = await findOrCreateVariantValue(variantTypeId, valor);
+
+      const valueKey = `${variantTypeId}:${valor}`;
+      let variantValueId = valueCache.get(valueKey);
+      if (!variantValueId) {
+        variantValueId = await findOrCreateVariantValue(variantTypeId, valor) || undefined;
+        if (variantValueId) valueCache.set(valueKey, variantValueId);
+      }
       if (!variantValueId) continue;
-      await supabase.from("product_variant_relations").insert({
-        product_id: child.id,
-        variant_type_id: variantTypeId,
-        variant_value_id: variantValueId,
-      });
+
+      relationRows.push({ product_id: child.id, variant_type_id: variantTypeId, variant_value_id: variantValueId });
     }
 
     if (p.price && p.price > 0) {
-      await supabase.from("product_prices").insert({
-        product_id: child.id,
-        price: p.price,
-        effective_from: ahora,
-      });
+      priceRows.push({ product_id: child.id, price: p.price, effective_from: ahora });
     }
-
-    // Copiar imágenes del padre al hijo (las variantes comparten galería del producto)
-    if (p.images && p.images.length > 0) {
-      await uploadProductImages(child.id, p.images, p.name);
-    }
-
-    creados++;
   }
-  return creados;
+
+  // Insert batch: todas las relaciones y precios de una vez
+  if (relationRows.length > 0) {
+    await supabase.from("product_variant_relations").insert(relationRows);
+  }
+  if (priceRows.length > 0) {
+    await supabase.from("product_prices").insert(priceRows);
+  }
+
+  // Copiar referencias de imágenes del padre a los hijos (batch insert, sin descargar nada).
+  // Las filas apuntan al mismo storage_path del padre → sin duplicar archivos en storage.
+  // Así todas las interfaces muestran imágenes en las variantes sin cambios.
+  if (parentImages.length > 0) {
+    const imageRows: { product_id: number; storage_path: string; display_order: number; is_primary: boolean; alt_text: string }[] = [];
+    for (const child of children) {
+      for (const img of parentImages) {
+        imageRows.push({
+          product_id: child.id,
+          storage_path: img.path,
+          display_order: img.display_order,
+          is_primary: img.is_primary,
+          alt_text: p.name.substring(0, 100),
+        });
+      }
+    }
+    await supabase.from("product_images").insert(imageRows);
+  }
+
+  return children.length;
 }
 
 async function findOrCreateVariantType(name: string, organizationId: number): Promise<number | null> {
@@ -1756,21 +1794,70 @@ class CategoryCache {
   }
 }
 
-async function findOrCreateSupplier(brand: string, organizationId: number, sourceUrl: string): Promise<number | null> {
-  if (!brand) return null;
-  const { data: existing } = await supabase
-    .from("suppliers")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .ilike("name", brand)
-    .maybeSingle();
-  if (existing) return existing.id;
-  const { data: created } = await supabase
-    .from("suppliers")
-    .insert({ organization_id: organizationId, name: brand, notes: `Creado por scraping desde ${sourceUrl}`, is_active: true })
-    .select("id")
-    .single();
-  return created?.id || null;
+// Cache de proveedores por organización (mismo patrón que CategoryCache).
+// Evita ~1400 queries individuales a BD durante la importación.
+class SupplierCache {
+  private byName = new Map<string, number>();
+  private inflight = new Map<string, Promise<number | null>>();
+
+  constructor(private organizationId: number, private sourceUrl: string) {}
+
+  async preload(): Promise<void> {
+    const { data } = await supabase
+      .from("suppliers")
+      .select("id, name")
+      .eq("organization_id", this.organizationId);
+    for (const s of data || []) {
+      const key = normalizeName(s.name);
+      if (key && !this.byName.has(key)) this.byName.set(key, s.id);
+    }
+  }
+
+  async findOrCreate(brand: string): Promise<number | null> {
+    if (!brand) return null;
+    const key = normalizeName(brand);
+    if (!key) return null;
+
+    const cached = this.byName.get(key);
+    if (cached) return cached;
+
+    const pending = this.inflight.get(key);
+    if (pending) return pending;
+
+    const task = this.doCreate(brand, key).finally(() => this.inflight.delete(key));
+    this.inflight.set(key, task);
+    return task;
+  }
+
+  private async doCreate(brand: string, key: string): Promise<number | null> {
+    const cached = this.byName.get(key);
+    if (cached) return cached;
+
+    const cleanName = brand.trim();
+    const { data: created, error } = await supabase
+      .from("suppliers")
+      .insert({ organization_id: this.organizationId, name: cleanName, notes: `Creado por scraping desde ${this.sourceUrl}`, is_active: true })
+      .select("id")
+      .single();
+
+    if (!error && created) {
+      this.byName.set(key, created.id);
+      return created.id;
+    }
+
+    // Si falló (race condition), buscar existente
+    const { data: existing } = await supabase
+      .from("suppliers")
+      .select("id, name")
+      .eq("organization_id", this.organizationId)
+      .ilike("name", cleanName)
+      .maybeSingle();
+    if (existing) {
+      this.byName.set(key, existing.id);
+      return existing.id;
+    }
+    return null;
+  }
 }
 
 async function linkSupplier(productId: number, supplierId: number, cost: number, sku?: string): Promise<void> {
@@ -1808,8 +1895,65 @@ async function findOrCreateTag(name: string, organizationId: number): Promise<nu
   return created?.id || null;
 }
 
-async function findExistingProduct(p: ScrapedProduct, organizationId: number): Promise<{ id: number; sku: string } | null> {
-  // 1) Buscar por SKU exacto (identificador único confiable)
+// Cache de productos existentes por organización.
+// Pre-carga todos los SKUs y nombres de productos para evitar ~1400 queries individuales.
+class ExistingProductCache {
+  private bySku = new Map<string, { id: number; sku: string }>();
+  private byName = new Map<string, { id: number; sku: string }>();
+
+  constructor(private organizationId: number) {}
+
+  async preload(): Promise<void> {
+    const { data } = await supabase
+      .from("products")
+      .select("id, sku, name")
+      .eq("organization_id", this.organizationId)
+      .neq("status", "deleted");
+    for (const p of data || []) {
+      if (p.sku) this.bySku.set(p.sku, { id: p.id, sku: p.sku });
+      const nKey = normalizeName(p.name);
+      if (nKey && !this.byName.has(nKey)) this.byName.set(nKey, { id: p.id, sku: p.sku });
+    }
+  }
+
+  // Busca en cache primero; si no está, hace query individual (producto creado durante esta importación)
+  find(p: ScrapedProduct): { id: number; sku: string } | null {
+    // 1) Por SKU exacto
+    if (p.sku) {
+      const cached = this.bySku.get(p.sku);
+      if (cached) return cached;
+    }
+    // 2) Por nombre SOLO si el producto no tiene variantes
+    //    Si tiene variantes, productos con el mismo nombre son variantes diferentes
+    //    (tallas/colores) que el scraper lista por separado, no duplicados reales.
+    const hasVariants = p.variants && p.variants.length > 0;
+    if (!hasVariants) {
+      const nKey = normalizeName(p.name);
+      if (nKey) {
+        const cached = this.byName.get(nKey);
+        if (cached) return cached;
+      }
+    }
+    return null;
+  }
+
+  // Registra un producto recién creado para que los siguientes lotes lo detecten
+  add(id: number, sku: string, name: string, hasVariants: boolean): void {
+    if (sku) this.bySku.set(sku, { id, sku });
+    if (!hasVariants) {
+      const nKey = normalizeName(name);
+      if (nKey && !this.byName.has(nKey)) this.byName.set(nKey, { id, sku });
+    }
+  }
+}
+
+async function findExistingProduct(p: ScrapedProduct, organizationId: number, cache?: ExistingProductCache): Promise<{ id: number; sku: string } | null> {
+  // 1) Buscar en cache primero (evita query a BD)
+  if (cache) {
+    const cached = cache.find(p);
+    if (cached) return cached;
+  }
+  // 2) Buscar por SKU exacto en BD (por si se creó en otro lote paralelo)
   if (p.sku) {
     const { data } = await supabase
       .from("products")
@@ -1818,9 +1962,12 @@ async function findExistingProduct(p: ScrapedProduct, organizationId: number): P
       .eq("sku", p.sku)
       .neq("status", "deleted")
       .maybeSingle();
-    if (data) return data;
+    if (data) {
+      if (cache) cache.add(data.id, data.sku, p.name, !!(p.variants && p.variants.length > 0));
+      return data;
+    }
   }
-  // 2) Fallback por nombre SOLO si el producto no tiene variantes.
+  // 3) Fallback por nombre SOLO si el producto no tiene variantes.
   //    Si tiene variantes, productos con el mismo nombre son variantes diferentes
   //    (tallas/colores) que el scraper lista por separado, no duplicados reales.
   const hasVariants = p.variants && p.variants.length > 0;
@@ -1833,6 +1980,7 @@ async function findExistingProduct(p: ScrapedProduct, organizationId: number): P
       .neq("status", "deleted")
       .is("parent_product_id", null)
       .limit(1);
+    if (byName?.[0] && cache) cache.add(byName[0].id, byName[0].sku, p.name, false);
     return byName?.[0] || null;
   }
   return null;
@@ -1845,10 +1993,11 @@ async function updateExistingProduct(
   organizationId: number,
   branchId: number | null,
   sourceUrl: string,
-  categoryCache: CategoryCache
+  categoryCache: CategoryCache,
+  supplierCache: SupplierCache
 ): Promise<void> {
   const categoryId = await categoryCache.findOrCreate(p.category || "");
-  const supplierId = await findOrCreateSupplier(p.brand || "", organizationId, sourceUrl);
+  const supplierId = await supplierCache.findOrCreate(p.brand || "");
   const ahora = new Date().toISOString();
 
   const updateData: Record<string, unknown> = { updated_at: ahora };
@@ -1912,12 +2061,13 @@ async function updateExistingProduct(
   }
 
   // Imágenes: agregar las que falten si tiene menos del máximo configurado
+  let savedImages: { path: string; display_order: number; is_primary: boolean }[] = [];
   const { data: existingImgs } = await supabase
     .from("product_images")
     .select("id")
     .eq("product_id", existingId);
   if (!existingImgs || existingImgs.length < MAX_IMAGES_PER_PRODUCT) {
-    await uploadProductImages(existingId, p.images || [], p.name);
+    savedImages = await uploadProductImages(existingId, p.images || [], p.name);
   }
 
   // Variantes: crear hijos si no existen
@@ -1927,7 +2077,7 @@ async function updateExistingProduct(
     .eq("parent_product_id", existingId)
     .limit(1);
   if ((!existingChildren || existingChildren.length === 0) && p.variants && p.variants.length > 0) {
-    await createVariantChildren(existingId, existingSku, p, organizationId);
+    await createVariantChildren(existingId, existingSku, p, organizationId, savedImages);
   }
 }
 
@@ -1937,24 +2087,26 @@ async function importProduct(
   branchId: number | null,
   sourceUrl: string,
   duplicateMode: DuplicateMode,
-  categoryCache: CategoryCache
+  categoryCache: CategoryCache,
+  supplierCache: SupplierCache,
+  productCache: ExistingProductCache
 ): Promise<{ ok: boolean; name: string; action?: string; error?: string }> {
   try {
-    const existing = await findExistingProduct(p, organizationId);
+    const existing = await findExistingProduct(p, organizationId, productCache);
 
     if (existing) {
       if (duplicateMode === "skip") {
         return { ok: false, name: p.name, error: "Ya existe (omitido)" };
       }
       if (duplicateMode === "update") {
-        await updateExistingProduct(existing.id, existing.sku, p, organizationId, branchId, sourceUrl, categoryCache);
+        await updateExistingProduct(existing.id, existing.sku, p, organizationId, branchId, sourceUrl, categoryCache, supplierCache);
         return { ok: true, name: p.name, action: "actualizado" };
       }
       p = { ...p, sku: undefined };
     }
 
     const categoryId = await categoryCache.findOrCreate(p.category || "");
-    const supplierId = await findOrCreateSupplier(p.brand || "", organizationId, sourceUrl);
+    const supplierId = await supplierCache.findOrCreate(p.brand || "");
     const tagId = p.tags && p.tags.length > 0 ? await findOrCreateTag(p.tags[0], organizationId) : null;
 
     let sku = p.sku || `SCR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -2028,17 +2180,65 @@ async function importProduct(
       });
     }
 
-    await uploadProductImages(productId, p.images || [], p.name);
+    const savedImages = await uploadProductImages(productId, p.images || [], p.name);
 
     // Crear variantes como productos hijos
     if (hasVariants) {
-      await createVariantChildren(productId, sku, p, organizationId);
+      await createVariantChildren(productId, sku, p, organizationId, savedImages);
     }
+
+    // Registrar producto en cache para que los siguientes productos del mismo lote lo detecten
+    productCache.add(productId, sku, p.name, hasVariants || false);
 
     return { ok: true, name: p.name, action: existing ? "creado (duplicado)" : "creado" };
   } catch (e) {
     return { ok: false, name: p.name, error: (e as Error).message };
   }
+}
+
+// Fusiona productos con el mismo nombre combinando variantes e imágenes.
+// closetienda.com lista cada talla como producto separado → sin fusión se pierden variantes.
+function fuseProductsByName(products: ScrapedProduct[]): ScrapedProduct[] {
+  const byName = new Map<string, ScrapedProduct>();
+  for (const p of products) {
+    // Fusionar por nombre + marca: evita fusionar productos de marcas diferentes
+    // que casualmente tienen el mismo nombre (ej: "Camiseta" de Hugo vs de Boss)
+    const key = normalizeName(p.name) + "|" + normalizeName(p.brand || "");
+    if (!key || key === "|") continue;
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, { ...p });
+    } else {
+      // Fusionar variantes: combinar valores de cada tipo
+      if (p.variants) {
+        if (!existing.variants) existing.variants = [];
+        for (const v of p.variants) {
+          const existingV = existing.variants.find((ev) => normalizeName(ev.name) === normalizeName(v.name));
+          if (existingV) {
+            existingV.values = [...new Set([...existingV.values, ...v.values])];
+          } else {
+            existing.variants.push({ ...v });
+          }
+        }
+      }
+      // Fusionar imágenes: agregar las que no estén
+      if (p.images) {
+        if (!existing.images) existing.images = [];
+        const existingKeys = new Set(existing.images.map((img) => normalizeImageKey(img)));
+        for (const img of p.images) {
+          if (!existingKeys.has(normalizeImageKey(img))) {
+            existing.images.push(img);
+            existingKeys.add(normalizeImageKey(img));
+          }
+        }
+      }
+      // Usar el precio más alto (el original antes del descuento)
+      if (p.compare_price && (!existing.compare_price || p.compare_price > existing.compare_price)) {
+        existing.compare_price = p.compare_price;
+      }
+    }
+  }
+  return Array.from(byName.values());
 }
 
 Deno.serve(async (req: Request) => {
@@ -2096,12 +2296,54 @@ Deno.serve(async (req: Request) => {
         });
       }
       const mode: DuplicateMode = ["skip", "update", "create"].includes(duplicate_mode) ? duplicate_mode : "skip";
-      // Pre-cargar cache de categorías para reutilizar existentes y evitar duplicados por slug.
+      // Pre-cargar caches para evitar ~4200 queries individuales (categorías + proveedores + productos)
       const categoryCache = new CategoryCache(organization_id);
       await categoryCache.preload();
-      const results = [];
+      const supplierCache = new SupplierCache(organization_id, source_url || "");
+      await supplierCache.preload();
+      const productCache = new ExistingProductCache(organization_id);
+      await productCache.preload();
+      // Deduplicar por SKU: el scraper trae el mismo SKU múltiples veces con diferentes
+      // variantes. Sin dedup, dos productos con el mismo SKU se procesan en paralelo y
+      // causan "duplicate key value violates unique constraint".
+      const bySku = new Map<string, ScrapedProduct>();
+      const noSku: ScrapedProduct[] = [];
       for (const p of products.slice(0, 5000)) {
-        results.push(await importProduct(p, organization_id, branch_id || null, source_url || "", mode, categoryCache));
+        if (p.sku) {
+          const existing = bySku.get(p.sku);
+          if (existing) {
+            // Mismo SKU: combinar variantes e imágenes
+            if (p.variants) {
+              if (!existing.variants) existing.variants = [];
+              for (const v of p.variants) {
+                const ev = existing.variants.find((x) => normalizeName(x.name) === normalizeName(v.name));
+                if (ev) ev.values = [...new Set([...ev.values, ...v.values])];
+                else existing.variants.push({ ...v });
+              }
+            }
+            if (p.images) {
+              if (!existing.images) existing.images = [];
+              for (const img of p.images) {
+                if (!existing.images.includes(img)) existing.images.push(img);
+              }
+            }
+          } else {
+            bySku.set(p.sku, { ...p });
+          }
+        } else {
+          noSku.push(p);
+        }
+      }
+      const toProcess = [...Array.from(bySku.values()), ...noSku];
+      console.log(`[import] ${products.length} productos → ${toProcess.length} tras dedup por SKU`);
+      const IMPORT_CONCURRENCY = 3;
+      const results: { ok: boolean; name: string; action?: string; error?: string }[] = [];
+      for (let i = 0; i < toProcess.length; i += IMPORT_CONCURRENCY) {
+        const batch = toProcess.slice(i, i + IMPORT_CONCURRENCY);
+        const batchResults = await Promise.all(
+          batch.map((p) => importProduct(p, organization_id, branch_id || null, source_url || "", mode, categoryCache, supplierCache, productCache))
+        );
+        results.push(...batchResults);
       }
       const exitosos = results.filter((r) => r.ok).length;
       const fallidos = results.filter((r) => !r.ok);

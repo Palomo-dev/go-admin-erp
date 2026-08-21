@@ -14,6 +14,7 @@ import {
   TrendingDown,
   Copy,
   Hash,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -393,6 +394,16 @@ const AccionesMasivas: React.FC<AccionesMasivasProps> = ({
                 className="dark:bg-gray-900 dark:border-gray-600"
               />
             </div>
+            {tipoPrecio === 'compra' && modoAjuste === 'porcentaje' && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Los productos <strong>sin costo previo</strong> no serán afectados
+                  (0 × % = 0). Use modo <strong>&quot;Establecer valor fijo&quot;</strong> para
+                  asignar un costo a productos que no tienen uno.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setActiveDialog(null)} disabled={processing}>

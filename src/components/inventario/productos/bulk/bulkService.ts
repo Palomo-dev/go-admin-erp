@@ -152,11 +152,20 @@ export async function bulkUpdatePrices(
 
         const idsACerrar: number[] = [];
         const nuevosCostos: Array<{ product_id: number; cost: number; supplier_id: string | null; effective_from: string }> = [];
+        let sinCostoPrevio = 0;
 
         for (const productId of batchIds) {
           const costo = costoPorProducto.get(productId);
           const costoActual = costo?.cost || 0;
           const nuevoCosto = calcularNuevoValor(costoActual, modo, cantidad);
+
+          // Si el costo previo era 0 y el modo es porcentaje, el resultado es 0
+          // (0 * (1 + x/100) = 0). No tiene sentido crear un registro en $0.
+          // Saltar el producto y notificar al usuario.
+          if (costoActual === 0 && modo === 'porcentaje' && nuevoCosto === 0) {
+            sinCostoPrevio++;
+            continue;
+          }
 
           if (costo?.id) idsACerrar.push(costo.id);
 
@@ -166,6 +175,11 @@ export async function bulkUpdatePrices(
             supplier_id: costo?.supplier_id || null,
             effective_from: ahora,
           });
+        }
+
+        if (sinCostoPrevio > 0) {
+          resultado.fallidos += sinCostoPrevio;
+          resultado.errores.push(`${sinCostoPrevio} productos sin costo previo (use modo "fijo" para asignar costo)`);
         }
 
         if (idsACerrar.length > 0) {

@@ -943,6 +943,119 @@ async function fetchNativeCatalog(url: string): Promise<ScrapedProduct[] | null>
   return null;
 }
 
+// Extrae enlaces a subcategorías de una landing page.
+// Detecta patrones comunes: /tecnologia/celulares, /category/subcategory, /collection/name
+function extractSubcategoryUrls(html: string, baseUrl: string): string[] {
+  const urls = new Set<string>();
+  let origin = "";
+  let path = "";
+  try {
+    const u = new URL(baseUrl);
+    origin = u.origin;
+    path = u.pathname.replace(/\/$/, "");
+  } catch (_) { return []; }
+
+  // Patrones de enlaces que parecen subcategorías de producto:
+  // /tecnologia/celulares, /falabella-co/collection/name, /category/name
+  const linkRegex = /href=["']([^"']+)["']/gi;
+  let m;
+  while ((m = linkRegex.exec(html)) !== null) {
+    let href = m[1];
+    // Limpiar query params innecesarios (orderFormId, itm_source, etc.)
+    try {
+      if (href.startsWith("/")) href = origin + href;
+      else if (!href.startsWith("http")) continue;
+      const linkUrl = new URL(href);
+      // Solo del mismo dominio
+      if (linkUrl.origin !== origin) continue;
+      const linkPath = linkUrl.pathname.replace(/\/$/, "");
+      // Debe ser subpath de la categoría actual (más profundo)
+      if (path && linkPath.startsWith(path + "/") && linkPath !== path) {
+        // Excluir páginas no-producto
+        if (/\/(page|myaccount|cart|checkout|login|register|help|centro|venta|politica|termino|legal|sitemap|collection|coleccion|ofertas|promociones|combos|marketplace|vendedores|almacenes|contacto|habeas|actualiza|referidos|garantia|compra|sitemap)/i.test(linkPath)) continue;
+        // Usar la URL sin query params (más limpia)
+        urls.add(`${linkUrl.origin}${linkPath}`);
+      }
+    } catch (_) { /* ignore */ }
+  }
+  return Array.from(urls).slice(0, 10); // máximo 10 subcategorías
+}
+
+// Scrapea una landing page detectando automáticamente sus subcategorías.
+// Si la URL no tiene productos directamente, busca enlaces a subcategorías y las scrapea.
+// Mínimo uso de memoria: 1 HTML, 1 subcategoría con Jina, 1 llamada OpenAI.
+async function fetchWithSubcategories(url: string): Promise<ScrapedProduct[] | null> {
+  // 1) Intentar catálogo nativo de la URL original (Shopify/Woo/VTEX - solo APIs ligeras)
+  //    Skip Algolia porque descarga HTML completo (180KB) y causa 546 en sitios pesados.
+  const shopify = await fetchShopifyCatalog(url);
+  if (shopify && shopify.length) return shopify;
+  const woo = await fetchWooCommerceCatalog(url);
+  if (woo && woo.length) return woo;
+  const vtex = await fetchVtexCatalog(url);
+  if (vtex && vtex.length) return vtex;
+
+  // 2) Fetch HTML una sola vez (ligero, para extraer subcategorías)
+  let html = "";
+  try {
+    const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(12000) });
+    if (res.ok) html = await res.text();
+  } catch (_) { /* ignore */ }
+
+  if (!html) {
+    // Sin HTML, intentar Algolia como último recurso
+    const algolia = await fetchAlgoliaCatalog(url);
+    return algolia;
+  }
+
+  const subUrls = extractSubcategoryUrls(html, url);
+  // Liberar HTML inmediatamente
+  const htmlRef = html;
+  html = "";
+
+  if (subUrls.length === 0) {
+    // Sin subcategorías, intentar Algolia con el HTML que ya tenemos
+    const cfg = extractAlgoliaConfig(htmlRef);
+    if (cfg) {
+      const categoryName = extractCategoryName(htmlRef);
+      if (categoryName) {
+        const algolia = await fetchAlgoliaCatalog(url);
+        if (algolia && algolia.length) return algolia;
+      }
+    }
+    return null;
+  }
+
+  console.log(`[fetchWithSubcategories] ${subUrls.length} subcategorías detectadas`);
+
+  // 3) Usar Jina+IA en UNA sola subcategoría (la primera) para minimizar memoria
+  //    Si el usuario quiere más, puede scrapear cada subcategoría individualmente.
+  const subUrl = subUrls[0];
+  console.log(`[fetchWithSubcategories] Scrapeando: ${new URL(subUrl).pathname}`);
+
+  try {
+    const jinaContent = await jinaRequest(subUrl, true);
+    if (!jinaContent || jinaContent.length < 500) return null;
+    const aiProducts = await extractProductsLight(jinaContent, subUrl);
+    console.log(`[fetchWithSubcategories] ${aiProducts.length} productos extraídos`);
+    return aiProducts;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Extracción ligera: procesa el contenido en un solo chunk (sin paralelismo)
+// para minimizar memoria. Ideal para subcategorías donde hay ~20-50 productos.
+async function extractProductsLight(content: string, url: string): Promise<ScrapedProduct[]> {
+  const images = extractImages(content, url);
+  const imgList = images.slice(0, 40).join("\n");
+  const text = getCleanedText(content, true, url);
+  // Un solo chunk de máximo 40K caracteres para minimizar memoria
+  const truncated = text.length > 40000 ? text.substring(0, 40000) : text;
+  const context = `CONTENIDO (markdown) de categoría:\n${truncated}`;
+  const products = await extractChunk(context, url, imgList);
+  return products;
+}
+
 async function callOpenAI(prompt: string): Promise<any> {
   const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -2258,8 +2371,8 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // 1) Intentar API nativa de la plataforma (Shopify/VTEX): catálogo COMPLETO y exacto, sin IA
-      const native = await fetchNativeCatalog(url);
+      // 1) Intentar catálogo nativo + auto-detección de subcategorías
+      const native = await fetchWithSubcategories(url);
       if (native && native.length) {
         return new Response(JSON.stringify({ products: native }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

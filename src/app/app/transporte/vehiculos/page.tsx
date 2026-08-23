@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -27,10 +27,12 @@ import {
 
 export default function VehiculosPage() {
   const { toast } = useToast();
-  const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
   
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstLoadRef = useRef(true);
   const [isSaving, setIsSaving] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [carriers, setCarriers] = useState<TransportCarrier[]>([]);
@@ -61,7 +63,10 @@ export default function VehiculosPage() {
   const loadData = useCallback(async () => {
     if (!organization?.id) return;
     
-    setIsLoading(true);
+    if (isFirstLoadRef.current) {
+      setIsLoading(true);
+    }
+    setIsRefreshing(true);
     try {
       const [vehiclesData, carriersData, branchesData, driversData] = await Promise.all([
         transportService.getVehicles(organization.id, branchFilter),
@@ -81,13 +86,17 @@ export default function VehiculosPage() {
         variant: 'destructive',
       });
     } finally {
+      isFirstLoadRef.current = false;
+      setIsRefreshing(false);
       setIsLoading(false);
     }
   }, [organization?.id, branchFilter, toast]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (organization?.id && !orgLoading && !branchLoading) {
+      loadData();
+    }
+  }, [organization?.id, orgLoading, branchLoading, loadData]);
 
   const filteredVehicles = vehicles.filter((v) => {
     const term = searchTerm.toLowerCase();
@@ -297,12 +306,12 @@ export default function VehiculosPage() {
         onNew={handleNew}
         onImport={() => setShowImportDialog(true)}
         onRefresh={loadData}
-        isLoading={isLoading}
+        isLoading={isRefreshing}
       />
 
       <VehiclesList
         vehicles={filteredVehicles}
-        isLoading={isLoading}
+        isLoading={isLoading && vehicles.length === 0}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onDuplicate={handleDuplicate}

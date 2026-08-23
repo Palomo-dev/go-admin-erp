@@ -552,7 +552,7 @@ async function fetchShopifyCatalog(url: string): Promise<ScrapedProduct[] | null
   const base = colMatch ? `${origin}${colMatch[0]}/products.json` : `${origin}/products.json`;
 
   const MAX_PAGES = 30;
-  const PARALLEL_BATCH = 5;
+  const PARALLEL_BATCH = 2;
   const out: ScrapedProduct[] = [];
   let reachedEnd = false;
 
@@ -564,7 +564,7 @@ async function fetchShopifyCatalog(url: string): Promise<ScrapedProduct[] | null
     const batchResults = await Promise.all(
       pagesToFetch.map(async (page): Promise<ScrapedProduct[]> => {
         try {
-          const res = await fetch(`${base}?limit=250&page=${page}`, { headers: BROWSER_HEADERS });
+          const res = await fetch(`${base}?limit=250&page=${page}`, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(5000) });
           if (!res.ok) return [];
           const ct = res.headers.get("content-type") || "";
           if (!ct.includes("json")) return [];
@@ -607,7 +607,7 @@ async function fetchWooCommerceCatalog(url: string): Promise<ScrapedProduct[] | 
   let totalPages = 1;
   let firstBatch: any[] = [];
   try {
-    const res = await fetch(`${base}?per_page=100&page=1`, { headers });
+    const res = await fetch(`${base}?per_page=100&page=1`, { headers, signal: AbortSignal.timeout(5000) });
     if (!res.ok) return null;
     const ct = res.headers.get("content-type") || "";
     if (!ct.includes("json")) return null;
@@ -632,7 +632,7 @@ async function fetchWooCommerceCatalog(url: string): Promise<ScrapedProduct[] | 
     const batchResults = await Promise.all(
       pagesToFetch.map(async (page): Promise<ScrapedProduct[]> => {
         try {
-          const res = await fetch(`${base}?per_page=100&page=${page}`, { headers });
+          const res = await fetch(`${base}?per_page=100&page=${page}`, { headers, signal: AbortSignal.timeout(5000) });
           if (!res.ok) return [];
           const ct = res.headers.get("content-type") || "";
           if (!ct.includes("json")) return [];
@@ -668,7 +668,7 @@ async function fetchVtexCatalog(url: string): Promise<ScrapedProduct[] | null> {
     const endpoint = `${origin}/api/catalog_system/pub/products/search/${path}?_from=${from}&_to=${to}`;
     let arr: any[];
     try {
-      const res = await fetch(endpoint, { headers: { ...BROWSER_HEADERS, "Accept": "application/json" } });
+      const res = await fetch(endpoint, { headers: { ...BROWSER_HEADERS, "Accept": "application/json" }, signal: AbortSignal.timeout(5000) });
       // VTEX devuelve 200 o 206 (rango parcial); cualquier otra cosa = no es VTEX o fin
       if (res.status !== 200 && res.status !== 206) break;
       const ct = res.headers.get("content-type") || "";
@@ -982,65 +982,27 @@ function extractSubcategoryUrls(html: string, baseUrl: string): string[] {
 }
 
 // Scrapea una landing page detectando automáticamente sus subcategorías.
-// Si la URL no tiene productos directamente, busca enlaces a subcategorías y las scrapea.
-// Mínimo uso de memoria: 1 HTML, 1 subcategoría con Jina, 1 llamada OpenAI.
+// Mínimo uso de memoria: solo APIs ligeras (JSON), con timeout agresivo.
 async function fetchWithSubcategories(url: string): Promise<ScrapedProduct[] | null> {
-  // 1) Intentar catálogo nativo de la URL original (Shopify/Woo/VTEX - solo APIs ligeras)
-  //    Skip Algolia porque descarga HTML completo (180KB) y causa 546 en sitios pesados.
-  const shopify = await fetchShopifyCatalog(url);
-  if (shopify && shopify.length) return shopify;
-  const woo = await fetchWooCommerceCatalog(url);
-  if (woo && woo.length) return woo;
-  const vtex = await fetchVtexCatalog(url);
-  if (vtex && vtex.length) return vtex;
-
-  // 2) Fetch HTML una sola vez (ligero, para extraer subcategorías)
-  let html = "";
+  // 1) Intentar APIs nativas con timeout de 8 segundos total.
+  //    Si no responden rápido, saltar a Jina+IA (evita 546 por memoria).
   try {
-    const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(12000) });
-    if (res.ok) html = await res.text();
+    const nativePromise = (async () => {
+      const shopify = await fetchShopifyCatalog(url);
+      if (shopify && shopify.length) return shopify;
+      const woo = await fetchWooCommerceCatalog(url);
+      if (woo && woo.length) return woo;
+      const vtex = await fetchVtexCatalog(url);
+      if (vtex && vtex.length) return vtex;
+      return null;
+    })();
+    const timeoutPromise = new Promise<ScrapedProduct[] | null>((resolve) =>
+      setTimeout(() => resolve(null), 8000)
+    );
+    const native = await Promise.race([nativePromise, timeoutPromise]);
+    if (native && native.length) return native;
   } catch (_) { /* ignore */ }
-
-  if (!html) {
-    // Sin HTML, intentar Algolia como último recurso
-    const algolia = await fetchAlgoliaCatalog(url);
-    return algolia;
-  }
-
-  const subUrls = extractSubcategoryUrls(html, url);
-  // Liberar HTML inmediatamente
-  const htmlRef = html;
-  html = "";
-
-  if (subUrls.length === 0) {
-    // Sin subcategorías, intentar Algolia con el HTML que ya tenemos
-    const cfg = extractAlgoliaConfig(htmlRef);
-    if (cfg) {
-      const categoryName = extractCategoryName(htmlRef);
-      if (categoryName) {
-        const algolia = await fetchAlgoliaCatalog(url);
-        if (algolia && algolia.length) return algolia;
-      }
-    }
-    return null;
-  }
-
-  console.log(`[fetchWithSubcategories] ${subUrls.length} subcategorías detectadas`);
-
-  // 3) Usar Jina+IA en UNA sola subcategoría (la primera) para minimizar memoria
-  //    Si el usuario quiere más, puede scrapear cada subcategoría individualmente.
-  const subUrl = subUrls[0];
-  console.log(`[fetchWithSubcategories] Scrapeando: ${new URL(subUrl).pathname}`);
-
-  try {
-    const jinaContent = await jinaRequest(subUrl, true);
-    if (!jinaContent || jinaContent.length < 500) return null;
-    const aiProducts = await extractProductsLight(jinaContent, subUrl);
-    console.log(`[fetchWithSubcategories] ${aiProducts.length} productos extraídos`);
-    return aiProducts;
-  } catch (_) {
-    return null;
-  }
+  return null;
 }
 
 // Extracción ligera: procesa el contenido en un solo chunk (sin paralelismo)
@@ -2371,14 +2333,25 @@ Deno.serve(async (req: Request) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // 1) Intentar catálogo nativo + auto-detección de subcategorías
+      // 1) Intentar catálogo nativo (Shopify/Woo/VTEX - APIs ligeras JSON, sin HTML)
       const native = await fetchWithSubcategories(url);
       if (native && native.length) {
         return new Response(JSON.stringify({ products: native }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // 2) Fallback: scraping del HTML/markdown con IA
+      // 2) Fallback: Jina con motor de navegador + IA (1 sola llamada, mínimo uso de memoria)
+      //    Usar solo Jina (no fetch directo) para minimizar memoria en sitios pesados como Éxito
+      const jinaContent = await jinaRequest(url, true);
+      if (jinaContent && jinaContent.length > 500) {
+        const products = await extractProductsLight(jinaContent, url);
+        if (products.length > 0) {
+          return new Response(JSON.stringify({ products }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      // 3) Último recurso: fetch directo + Jina rápido + IA completa
       const { direct, jina } = await fetchSources(url);
       const products = await extractWithAI(direct, jina, url);
       return new Response(JSON.stringify({ products }), {

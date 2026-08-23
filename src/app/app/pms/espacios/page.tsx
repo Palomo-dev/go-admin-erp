@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Dialog,
@@ -43,13 +43,15 @@ import spaceServicesService, { type OrgServiceView, type SpaceServiceView } from
 export default function EspaciosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const { branchFilter, selectedBranchId } = useBranch();
+  const { branchFilter, selectedBranchId, isLoading: branchLoading } = useBranch();
 
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [spaceTypes, setSpaceTypes] = useState<SpaceType[]>([]);
   const [spaceCategories, setSpaceCategories] = useState<SpaceCategory[]>([]);
   const [floorZones, setFloorZones] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstLoadRef = useRef(true);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   
   // Filtros
@@ -85,17 +87,20 @@ export default function EspaciosPage() {
 
   // Cargar datos iniciales
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && !branchLoading) {
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organization?.id, branchFilter]);
+  }, [organization?.id, branchFilter, branchLoading]);
 
   const loadData = async () => {
     if (!organization?.id) return;
 
     try {
-      setIsLoading(true);
+      if (isFirstLoadRef.current) {
+        setIsLoading(true);
+      }
+      setIsRefreshing(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setCurrentUserId(user.id);
       const [spacesData, typesData, categoriesData, zonesData, orgSvcs] = await Promise.all([
@@ -127,6 +132,8 @@ export default function EspaciosPage() {
         variant: 'destructive',
       });
     } finally {
+      isFirstLoadRef.current = false;
+      setIsRefreshing(false);
       setIsLoading(false);
     }
   };
@@ -411,7 +418,7 @@ export default function EspaciosPage() {
           setEditingSpace(null);
           setShowDialog(true);
         }}
-        isLoading={isLoading}
+        isLoading={isRefreshing}
         canExport={filteredSpaces.length > 0}
       />
 
@@ -447,8 +454,8 @@ export default function EspaciosPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {isLoading ? (
+      <div className={`flex-1 overflow-y-auto p-6 ${isRefreshing ? 'opacity-60 pointer-events-none' : ''}`}>
+        {isLoading && filteredSpaces.length === 0 ? (
           <EspaciosLoadingState />
         ) : filteredSpaces.length === 0 ? (
           <EspaciosEmptyState

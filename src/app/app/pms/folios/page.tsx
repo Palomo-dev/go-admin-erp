@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { FoliosHeader, FoliosList, FolioDetailDialog } from '@/components/pms/folios';
 import FoliosService, { type Folio } from '@/lib/services/foliosService';
@@ -21,12 +21,14 @@ export default function FoliosPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
 
   // Estado de datos
   const [folios, setFolios] = useState<Folio[]>([]);
   const [filteredFolios, setFilteredFolios] = useState<Folio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstLoadRef = useRef(true);
 
   // Estado de filtros
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
@@ -38,13 +40,18 @@ export default function FoliosPage() {
 
   // Cargar datos iniciales
   useEffect(() => {
-    loadData();
-  }, [organization?.id, branchFilter]);
+    if (organization?.id && !branchLoading) {
+      loadData();
+    }
+  }, [organization?.id, branchFilter, branchLoading]);
 
   const loadData = async () => {
     if (!organization?.id) return;
     try {
-      setIsLoading(true);
+      if (isFirstLoadRef.current) {
+        setIsLoading(true);
+      }
+      setIsRefreshing(true);
 
       const foliosData = await FoliosService.getFolios({
         organizationId: organization.id,
@@ -60,6 +67,8 @@ export default function FoliosPage() {
         variant: 'destructive',
       });
     } finally {
+      isFirstLoadRef.current = false;
+      setIsRefreshing(false);
       setIsLoading(false);
     }
   };
@@ -96,7 +105,7 @@ export default function FoliosPage() {
     loadData(); // Recargar la lista después de actualizar
   };
 
-  if (isLoading) {
+  if (isLoading && folios.length === 0) {
     return (
       <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -108,7 +117,7 @@ export default function FoliosPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className={`h-screen flex flex-col bg-gray-50 dark:bg-gray-900 ${isRefreshing ? 'opacity-60 pointer-events-none' : ''}`}>
       {/* Header */}
       <FoliosHeader />
 

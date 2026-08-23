@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -47,13 +47,15 @@ interface Branch {
 
 export default function ViajesPage() {
   const { toast } = useToast();
-  const { organization } = useOrganization();
-  const { branchFilter: globalBranchFilter } = useBranch();
+  const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter: globalBranchFilter, isLoading: branchLoading } = useBranch();
   const organizationId = organization?.id;
 
   // Estados principales
   const [trips, setTrips] = useState<TripWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstLoadRef = useRef(true);
   const [stats, setStats] = useState({
     total: 0,
     scheduled: 0,
@@ -89,7 +91,10 @@ export default function ViajesPage() {
   const loadData = useCallback(async () => {
     if (!organizationId) return;
 
-    setIsLoading(true);
+    if (isFirstLoadRef.current) {
+      setIsLoading(true);
+    }
+    setIsRefreshing(true);
     try {
       const dateStr = dateFilter ? dateFilter.toISOString().split('T')[0] : undefined;
       
@@ -123,6 +128,8 @@ export default function ViajesPage() {
         variant: 'destructive',
       });
     } finally {
+      isFirstLoadRef.current = false;
+      setIsRefreshing(false);
       setIsLoading(false);
     }
   }, [organizationId, dateFilter, statusFilter, routeFilter, vehicleFilter, driverFilter, branchFilter, toast]);
@@ -133,8 +140,10 @@ export default function ViajesPage() {
   }, [globalBranchFilter]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (organizationId && !orgLoading && !branchLoading) {
+      loadData();
+    }
+  }, [organizationId, orgLoading, branchLoading, loadData]);
 
   // Filtrar por búsqueda
   const filteredTrips = trips.filter((trip) => {
@@ -287,7 +296,7 @@ export default function ViajesPage() {
       <TripsHeader
         onNew={handleNew}
         onRefresh={loadData}
-        isLoading={isLoading}
+        isLoading={isRefreshing}
       />
 
       <TripsStats stats={stats} />
@@ -317,7 +326,7 @@ export default function ViajesPage() {
 
       <TripsList
         trips={filteredTrips}
-        isLoading={isLoading}
+        isLoading={isLoading && trips.length === 0}
         onEdit={handleEdit}
         onDuplicate={handleDuplicate}
         onDelete={handleDelete}

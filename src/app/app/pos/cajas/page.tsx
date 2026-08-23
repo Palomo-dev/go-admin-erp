@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Wallet, Clock, AlertCircle, RefreshCw, History, Eye, UserCircle, Store, Users, Globe, Lock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,11 +32,13 @@ import { supabase } from '@/lib/supabase/config';
 export default function CajasPage() {
   const { showExpected } = useBlindCloseMode();
   const { organization, isLoading: orgLoading } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
   const [activeSessions, setActiveSessions] = useState<CashSession[]>([]);
   const [openSessionsCount, setOpenSessionsCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstLoadRef = useRef(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -85,16 +87,19 @@ export default function CajasPage() {
 
   // Cargar sesión activa, sesiones activas e historial al inicio y al cambiar de sucursal
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && !branchLoading) {
       loadActiveSession();
       loadActiveSessions();
       loadOpenSessionsCount();
       loadHistory();
     }
-  }, [organization, branchFilter]);
+  }, [organization, branchFilter, branchLoading]);
 
   const loadActiveSession = async () => {
-    setIsLoading(true);
+    if (isFirstLoadRef.current) {
+      setIsLoading(true);
+    }
+    setIsRefreshing(true);
     setError(null);
     try {
       const session = await CajasService.getActiveSession();
@@ -104,7 +109,9 @@ export default function CajasPage() {
       console.error('Error loading active session:', error);
       setError(error.message);
     } finally {
+      isFirstLoadRef.current = false;
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -193,7 +200,7 @@ export default function CajasPage() {
 
   const historyTotalPages = Math.ceil(historyTotal / historyPageSize);
 
-  if (orgLoading || isLoading) {
+  if (orgLoading || branchLoading || (isLoading && !activeSession && activeSessions.length === 0)) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <PageHeaderSkeleton />
@@ -204,7 +211,7 @@ export default function CajasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 space-y-4">
+    <div className={cn("min-h-screen bg-gray-50 dark:bg-gray-900 p-4 space-y-4", isRefreshing && "opacity-60 pointer-events-none")}>
       {/* Header compacto */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-3">
@@ -247,8 +254,8 @@ export default function CajasPage() {
             </div>
           </div>
 
-          <Button onClick={handleRefresh} size="sm" variant="outline">
-            <RefreshCw className="h-4 w-4" />
+          <Button onClick={handleRefresh} size="sm" variant="outline" disabled={isRefreshing}>
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
           </Button>
         </div>
       </div>

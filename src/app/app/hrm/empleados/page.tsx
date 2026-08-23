@@ -1,7 +1,7 @@
 'use client';
 
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -72,7 +72,7 @@ interface PositionOption {
 export default function EmpleadosPage() {
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
   const { toast } = useToast();
 
   // Estados principales
@@ -81,6 +81,9 @@ export default function EmpleadosPage() {
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [positions, setPositions] = useState<PositionOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Distingue la primera carga (skeleton completo) de refrescos posteriores
+  const isFirstLoadRef = useRef(true);
   const [filters, setFilters] = useState<EmployeeFilters>({
     search: '',
     status: 'all',
@@ -116,7 +119,11 @@ export default function EmpleadosPage() {
     const service = getService();
     if (!service) return;
 
-    setIsLoading(true);
+    // Skeleton completo solo en la primera carga; refrescos usan isRefreshing
+    if (isFirstLoadRef.current) {
+      setIsLoading(true);
+    }
+    setIsRefreshing(true);
     try {
       const [empData, branchData, deptData, posData] = await Promise.all([
         service.getAll({
@@ -146,7 +153,9 @@ export default function EmpleadosPage() {
         variant: 'destructive',
       });
     } finally {
+      isFirstLoadRef.current = false;
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [getService, filters, toast]);
 
@@ -158,10 +167,12 @@ export default function EmpleadosPage() {
   }, [branchFilter]);
 
   useEffect(() => {
-    if (organization?.id && !orgLoading) {
+    // Esperar a que BranchContext defina la sede antes de cargar,
+    // evitando una petición prematura sin filtro de sucursal
+    if (organization?.id && !orgLoading && !branchLoading) {
       loadData();
     }
-  }, [organization?.id, orgLoading, loadData]);
+  }, [organization?.id, orgLoading, branchLoading, loadData]);
 
   // Handlers
   const handleView = (id: string) => {
@@ -256,7 +267,7 @@ export default function EmpleadosPage() {
     terminated: employees.filter((e) => e.status === 'terminated').length,
   };
 
-  if (orgLoading) {
+  if (orgLoading || branchLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <PageHeaderSkeleton />
@@ -280,8 +291,8 @@ export default function EmpleadosPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="sm" onClick={loadData} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
           <Link href="/app/hrm/empleados/importar">
@@ -398,18 +409,20 @@ export default function EmpleadosPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
-          {isLoading ? (
+          {isLoading && employees.length === 0 ? (
             <div className="flex items-center justify-center py-8 sm:py-12">
               <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 dark:border-blue-400" />
             </div>
           ) : (
-            <EmployeeTable
-              employees={employees}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDuplicate={handleDuplicate}
-              onChangeStatus={handleChangeStatus}
-            />
+            <div className={isRefreshing ? 'opacity-60 pointer-events-none' : ''}>
+              <EmployeeTable
+                employees={employees}
+                onView={handleView}
+                onEdit={handleEdit}
+                onDuplicate={handleDuplicate}
+                onChangeStatus={handleChangeStatus}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

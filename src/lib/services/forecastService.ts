@@ -27,7 +27,7 @@ export interface ForecastOpportunity {
   expected_close_date: string | null;
   stage_id: string;
   stage_name?: string;
-  probability: number; // valor decimal (0-1)
+  probability: number; // valor porcentual (0-100)
   weightedAmount: number; // monto ponderado por probabilidad
   customer_name?: string;
   status: string;
@@ -155,7 +155,7 @@ const processOpportunitiesByMonth = async (
   // Procesar cada oportunidad de forma asíncrona
   const opportunityObjects: ForecastOpportunity[] = [];
   const processPromises = data.map(async (opp) => {
-    const probability = opp.stages ? Number(opp.stages.probability) / 100 : 0;
+    const probability = opp.stages ? Number(opp.stages.probability) : 0;
     const currency = opp.currency || baseCurrency;
     const amount = Number(opp.amount) || 0;
     
@@ -163,7 +163,7 @@ const processOpportunitiesByMonth = async (
     const convertedAmount = await currencyService.convertAmount(amount, currency, baseCurrency, organizationId);
     
     // Calcular monto ponderado usando la probabilidad
-    const weightedAmountForOpp = convertedAmount * probability;
+    const weightedAmountForOpp = convertedAmount * probability / 100;
 
     // Actualizar distribución por moneda
     currencyDistribution[currency] = (currencyDistribution[currency] || 0) + amount;
@@ -361,7 +361,7 @@ export const getForecastByStage = async (
     // Procesar oportunidades de forma asíncrona
     const processPromises = data.map(async (opp: any) => {
       const amount = Number(opp.amount) || 0;
-      const probability = opp.stages ? Number(opp.stages.probability) / 100 : 0;
+      const probability = opp.stages ? Number(opp.stages.probability) : 0;
       const currency = opp.currency || baseCurrency;
       
       // Convertir usando el servicio de moneda
@@ -369,7 +369,7 @@ export const getForecastByStage = async (
       
       return {
         totalAmount: convertedAmount,
-        weightedAmount: convertedAmount * probability
+        weightedAmount: convertedAmount * probability / 100
       };
     });
     
@@ -447,7 +447,7 @@ export const calculateStageForecasts = async (
     // Procesar oportunidades de forma asíncrona
     const processPromises = data.map(async (opp: any) => {
       const amount = Number(opp.amount) || 0;
-      const probability = opp.stages ? Number(opp.stages.probability) / 100 : 0;
+      const probability = opp.stages ? Number(opp.stages.probability) : 0;
       const currency = opp.currency || baseCurrency;
       
       // Convertir usando el servicio de moneda
@@ -455,7 +455,7 @@ export const calculateStageForecasts = async (
       
       return {
         totalAmount: convertedAmount,
-        weightedAmount: convertedAmount * probability
+        weightedAmount: convertedAmount * probability / 100
       };
     });
     
@@ -530,7 +530,7 @@ export const getStageForecasts = async (
     // Procesar oportunidades de forma asíncrona
     const processPromises = data.map(async (opp: any) => {
       const amount = Number(opp.amount) || 0;
-      const probability = opp.stages ? Number(opp.stages.probability) / 100 : 0;
+      const probability = opp.stages ? Number(opp.stages.probability) : 0;
       const currency = opp.currency || baseCurrency;
       
       // Convertir usando el servicio de moneda
@@ -543,7 +543,7 @@ export const getStageForecasts = async (
       
       return {
         totalAmount: convertedAmount,
-        weightedAmount: convertedAmount * probability
+        weightedAmount: convertedAmount * probability / 100
       };
     });
     

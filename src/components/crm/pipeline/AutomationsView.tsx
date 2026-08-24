@@ -23,6 +23,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { TableSkeleton } from "@/components/common/PageSkeletons";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface AutomationsViewProps {
   pipelineId: string;
@@ -53,43 +54,13 @@ const AutomationsView: React.FC<AutomationsViewProps> = ({ pipelineId }) => {
     reminders: false
   });
 
-  // Obtener el ID de la organización de localStorage o sessionStorage
+  // Obtener el ID de la organización usando la función canónica de useOrganization
   useEffect(() => {
-    // Lista de posibles claves donde podría estar almacenado el ID de la organización
-    const possibleKeys = [
-      "currentOrganizationId",
-      "organizationId", 
-      "selectedOrganizationId",
-      "orgId",
-      "organization_id"
-    ];
-    
-    // Buscar en localStorage
-    for (const key of possibleKeys) {
-      const orgId = localStorage.getItem(key);
-      if (orgId) {
-        console.log(`Organización encontrada en localStorage con clave: ${key}`, orgId);
-        setOrganizationId(Number(orgId));
-        return;
-      }
-    }
-    
-    // Si no está en localStorage, buscar en sessionStorage
-    for (const key of possibleKeys) {
-      const orgId = sessionStorage.getItem(key);
-      if (orgId) {
-        console.log(`Organización encontrada en sessionStorage con clave: ${key}`, orgId);
-        setOrganizationId(Number(orgId));
-        return;
-      }
-    }
-    
-    // Si no se encuentra, usar un valor predeterminado para desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Usando ID de organización predeterminado para desarrollo: 2');
-      setOrganizationId(2); // Valor predeterminado para desarrollo
-    } else {
-      console.error('No se pudo encontrar el ID de organización en el almacenamiento local');
+    const orgId = getOrganizationIdFromContext();
+    if (orgId) {
+      setOrganizationId(orgId);
+    } else if (process.env.NODE_ENV !== 'production') {
+      console.warn('No se pudo obtener el ID de organización desde el contexto');
     }
   }, []);
   

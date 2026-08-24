@@ -17,6 +17,7 @@ import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 import { OpportunityDrawer } from "./OpportunityDrawer";
 import CreateOpportunityDialog from "./modals/CreateOpportunityDialog";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface Stage {
   id: string;
@@ -114,70 +115,16 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     el.scrollLeft = scrollLeftStart.current - walk;
   };
 
-  // Obtener ID de la organización y el usuario
+  // Obtener ID de la organización usando la función canónica de useOrganization
   useEffect(() => {
-    // Obtener ID de la organización desde localStorage
-    const storedOrg = localStorage.getItem('selectedOrganization');
-    if (storedOrg) {
-      try {
-        const orgData = JSON.parse(storedOrg);
-        // Asegurar que el ID de organización se maneje como string
-        const orgId = String(orgData.id);
-        setOrganizationId(orgId);
-        console.log(`Organización guardada correctamente: ${orgId}`);
-      } catch (error) {
-        console.error('Error al parsear la organización:', error);
-        // Si hay error, buscar en otras claves
-        findOrganizationId();
-      }
+    const orgId = getOrganizationIdFromContext();
+    if (orgId) {
+      setOrganizationId(String(orgId));
     } else {
-      // Si no está en selectedOrganization, buscar en otras claves
-      findOrganizationId();
-    }
-  }, []);
-
-  // Función para buscar el ID de la organización en otras claves
-  const findOrganizationId = () => {
-    let foundOrgId = false;
-    
-    // Posibles claves donde podría estar guardado el organizationId
-    const possibleKeys = [
-      'currentOrganizationId',
-      'organizationId',
-      'organization_id',
-      'orgId',
-    ];
-    
-    // Buscar en localStorage
-    for (const key of possibleKeys) {
-      const orgId = localStorage.getItem(key);
-      if (orgId) {
-        try {
-          // Intentar convertir a string si es un JSON o asegurar que sea string
-          let orgIdValue = orgId;
-          // Si parece ser JSON, intentar parsearlo
-          if (orgId.startsWith('{') || orgId.startsWith('[')) {
-            const parsed = JSON.parse(orgId);
-            orgIdValue = parsed.id ? String(parsed.id) : String(parsed);
-          }
-          
-          console.log(`Organización encontrada en localStorage con clave: ${key}`);
-          setOrganizationId(String(orgIdValue));
-          console.log(`Organización guardada correctamente: ${orgIdValue}`);
-          foundOrgId = true;
-          break;
-        } catch (error) {
-          console.error('Error al procesar el ID de organización:', error);
-        }
-      }
-    }
-    
-    // Si no se encuentra en ninguna clave, usar null (la app manejará este caso)
-    if (!foundOrgId) {
-      console.log('No se encontró ID de organización en localStorage');
+      console.log('No se encontró ID de organización');
       setOrganizationId(null);
     }
-  }
+  }, []);
 
   // Obtener ID del usuario autenticado
   useEffect(() => {
@@ -367,7 +314,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   // Función para abrir el diálogo de edición de etapa
   const handleOpenEditStage = (stageToEdit: Stage) => {
     const probabilityPercent = stageToEdit.probability != null
-      ? Math.round(stageToEdit.probability * 100)
+      ? Math.round(stageToEdit.probability)
       : null;
     setStageDialogMode("edit");
     setStageDialogInitial({
@@ -410,7 +357,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     if (!editingStageId) return;
 
     try {
-      const probabilityValue = values.probability !== null ? values.probability / 100 : null;
+      const probabilityValue = values.probability !== null ? values.probability : null;
 
       const { data, error } = await supabase
         .rpc('update_stage_without_triggers', {
@@ -471,8 +418,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
       const newPosition = maxPosition + 1;
       const probability = values.probability !== null
-        ? values.probability / 100
-        : Math.min(0.1 + ((newPosition - 1) / Math.max(stages.length, 1)) * 0.8, 0.9);
+        ? values.probability
+        : Math.min(10 + ((newPosition - 1) / Math.max(stages.length, 1)) * 80, 90);
 
       const { data, error } = await supabase
         .from('stages')
@@ -565,7 +512,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       // - Resto: probabilidad progresiva basada en posición
       const stageLower = stage.name.toLowerCase();
       if (stageLower.includes('ganado') || stageLower.includes('ganada') || stageLower === 'won') {
-        probability = 1.0;
+        probability = 100;
       } else if (stageLower.includes('perdido') || stageLower.includes('perdida') || stageLower === 'lost') {
         probability = 0;
       } else {
@@ -578,9 +525,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         });
         const posInNormal = normalStages.findIndex(s => s.id === stage.id);
         if (posInNormal >= 0 && normalStages.length > 1) {
-          probability = 0.1 + (posInNormal / (normalStages.length - 1)) * 0.8;
+          probability = 10 + (posInNormal / (normalStages.length - 1)) * 80;
         } else {
-          probability = 0.5; // Por defecto 50% si es la única etapa normal
+          probability = 50; // Por defecto 50% si es la única etapa normal
         }
       }
 
@@ -785,10 +732,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
     // Intentar ejecutar automatizaciones (tareas, notificaciones, etc.)
     try {
-      // Obtener organizationId y userId del localStorage si no están disponibles
-      const orgId = organizationId || (localStorage.getItem('selectedOrganization') ? 
-        JSON.parse(localStorage.getItem('selectedOrganization') || '{}').id : 
-        null);
+      // Obtener organizationId y userId si no están disponibles
+      const orgId = organizationId || String(getOrganizationIdFromContext() || '');
         
       const usrId = userId || (await supabase.auth.getUser()).data.user?.id || null;
       

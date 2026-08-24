@@ -45,6 +45,7 @@ export interface Opportunity {
   expected_close_date: string | null;
   status: 'open' | 'won' | 'lost';
   loss_reason?: string;
+  metadata?: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -56,6 +57,17 @@ export interface Opportunity {
   stage?: Stage;
   pipeline?: Pipeline;
   products?: OpportunityProduct[];
+}
+
+// Datos estructurados para registrar una oportunidad como perdida
+export interface LossReasonData {
+  lossReasonId: string;      // ID del catálogo (cuando exista)
+  lossReasonLabel: string;   // etiqueta visible (fallback)
+  competitor?: string;
+  competitorPrice?: number;
+  missingFeatures?: string[];
+  recontactDate?: string;
+  notes?: string;
 }
 
 export interface OpportunityProduct {
@@ -248,6 +260,7 @@ export interface UpdateOpportunityInput {
   expected_close_date?: string;
   status?: 'open' | 'won' | 'lost';
   loss_reason?: string;
+  metadata?: Record<string, unknown> | null;
   salesperson_id?: string | null;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';

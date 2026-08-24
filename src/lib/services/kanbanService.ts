@@ -7,32 +7,16 @@
 import { supabase } from "@/lib/supabase/config";
 import { Customer, Opportunity, Stage, Pipeline } from "@/types/crm";
 import { currencyService } from "./currencyService";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 /**
  * Obtiene el ID de la organización actualmente seleccionada
+ * Delega en la función canónica de useOrganization para evitar lectura directa de localStorage
  * @returns ID de la organización o null si no se encuentra
  */
 export const getOrganizationId = (): number | null => {
-  if (typeof window === "undefined") return null;
-  
-  // Intentar obtener primero de currentOrganizationId
-  const orgId = localStorage.getItem("currentOrganizationId");
-  if (orgId) {
-    return Number(orgId);
-  }
-  
-  // Si no existe, intentar el formato alternativo
-  const orgData = localStorage.getItem("organizacionActiva");
-  if (orgData) {
-    try {
-      const parsed = JSON.parse(orgData);
-      return parsed?.id || null;
-    } catch (err) {
-      console.error("Error al analizar datos de organización del localStorage", err);
-      return null;
-    }
-  }
-  return null;
+  const orgId = getOrganizationIdFromContext();
+  return orgId || null;
 };
 
 /**

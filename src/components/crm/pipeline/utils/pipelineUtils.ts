@@ -1,47 +1,17 @@
 import { supabase } from "@/lib/supabase/config";
 import type { Customer, Opportunity, CustomerInteraction } from "../types";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 /**
  * Funciones utilitarias para el módulo de pipeline y clientes
  */
 
 /**
- * Obtiene el ID de organización desde localStorage o sessionStorage
- * con fallback para desarrollo
- * @returns {string} ID de la organización
+ * Obtiene el ID de organización delegando en la función canónica de useOrganization
+ * @returns {string} ID de la organización como string
  */
 export const getOrganizationId = (): string => {
-  if (typeof window === 'undefined') return "0";
-
-  try {
-    // 1. currentOrganizationId (raw ID string)
-    const rawId = localStorage.getItem("currentOrganizationId");
-    if (rawId) return rawId;
-
-    // 2. organizacionActiva (JSON object: { id, name, ... })
-    const orgActiva = localStorage.getItem("organizacionActiva");
-    if (orgActiva) {
-      const parsed = JSON.parse(orgActiva);
-      if (parsed?.id) return String(parsed.id);
-    }
-
-    // 3. selectedOrganization (JSON object: { id, name, ... })
-    const selectedOrg = localStorage.getItem("selectedOrganization");
-    if (selectedOrg) {
-      const parsed = JSON.parse(selectedOrg);
-      if (parsed?.id) return String(parsed.id);
-    }
-
-    // 4. sessionStorage fallback
-    const sessionOrgId = sessionStorage.getItem("organizationId");
-    if (sessionOrgId) return sessionOrgId;
-
-    console.warn('No se encontró organization_id en localStorage/sessionStorage');
-    return "0";
-  } catch (error) {
-    console.error('Error al obtener el ID de organización:', error);
-    return "0";
-  }
+  return String(getOrganizationIdFromContext());
 };
 
 /**

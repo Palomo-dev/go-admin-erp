@@ -16,6 +16,7 @@ import ForecastSidebar from "./ForecastSidebar";
 import WeightedFunnelChart from "./WeightedFunnelChart";
 import { TableSkeleton } from "@/components/common/PageSkeletons";
 import { forecastRealTimeService } from "@/lib/services/forecastRealTimeService";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface ForecastMonth {
   month: string; // formato: YYYY-MM
@@ -35,7 +36,7 @@ interface Opportunity {
   expected_close_date: string;
   stage_id: string;
   stage_name?: string;
-  probability: number; // Valor decimal (0-1)
+  probability: number; // Valor porcentual (0-100)
   probabilityPercent: number; // Valor porcentual (0-100)
   customer_name?: string;
   status: string;
@@ -58,9 +59,8 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
 
   // Obtener el ID de la organización y la moneda base
   useEffect(() => {
-    const orgId = localStorage.getItem("currentOrganizationId");
-    if (orgId) {
-      const orgIdNum = Number(orgId);
+    const orgIdNum = getOrganizationIdFromContext();
+    if (orgIdNum) {
       setOrganizationId(orgIdNum);
       
       // Cargar la moneda base de la organización
@@ -187,7 +187,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
     // Procesar cada oportunidad con conversión de moneda
     for (const opp of data) {
       // Calcular monto ponderado usando la probabilidad de la etapa
-      const probability = opp.stages ? Number(opp.stages.probability) / 100 : 0;
+      const probability = opp.stages ? Number(opp.stages.probability) : 0;
       
       // Extraer moneda y monto
       const originalAmount = Number(opp.amount) || 0;
@@ -209,7 +209,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
       }
       
       // Usar el monto convertido para cálculos
-      const weightedAmountForOpp = convertedAmount * probability;
+      const weightedAmountForOpp = convertedAmount * probability / 100;
 
       totalAmount += convertedAmount;
       weightedAmount += weightedAmountForOpp;
@@ -217,7 +217,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
 
       // Extraer información de etapa y cliente
       const stageName = opp.stages?.name || "Sin etapa";
-      const probabilityPercent = probability * 100; // Convertir a porcentaje para mostrar
+      const probabilityPercent = probability; // Ya está en escala 0-100
       const customerName = opp.customers?.full_name || "Sin cliente";
       const opportunity: Opportunity = {
         id: opp.id,

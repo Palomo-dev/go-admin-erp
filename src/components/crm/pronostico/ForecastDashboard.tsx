@@ -83,7 +83,7 @@ export function ForecastDashboard() {
         .filter((o) => o.status === 'open')
         .reduce((sum, o) => {
           const stage = stagesData.find((s) => s.id === o.stage_id);
-          return sum + (o.amount || 0) * (stage?.probability || 0);
+          return sum + (o.amount || 0) * (stage?.probability || 0) / 100;
         }, 0);
 
       setWonAmount(won);

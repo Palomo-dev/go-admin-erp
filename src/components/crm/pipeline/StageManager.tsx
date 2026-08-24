@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/utils/Utils";
 import { Stage, Pipeline } from "@/types/crm";
 import { toast } from "@/components/ui/use-toast";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface StageFormData {
   id: string;
@@ -51,19 +52,7 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
   }, [pipeline]);
 
   const getOrganizationId = () => {
-    if (typeof window !== "undefined") {
-      const orgData = localStorage.getItem("organizacionActiva");
-      if (orgData) {
-        try {
-          const parsed = JSON.parse(orgData);
-          return parsed?.id || null;
-        } catch (err) {
-          console.error("Error parsing organization data from localStorage", err);
-          return null;
-        }
-      }
-    }
-    return null;
+    return getOrganizationIdFromContext() || null;
   };
 
   // Crear una nueva etapa

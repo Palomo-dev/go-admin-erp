@@ -54,7 +54,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatCurrency } from '@/utils/Utils';
 import { opportunitiesService } from './opportunitiesService';
-import { Opportunity, OpportunityProduct, OpportunitySpace, OpportunityCustomLine, Activity, Stage, OpportunityTask, OpportunityNote, CustomerDetails } from './types';
+import { Opportunity, OpportunityProduct, OpportunitySpace, OpportunityCustomLine, Activity, Stage, OpportunityTask, OpportunityNote, CustomerDetails, LossReasonData } from './types';
 import { LossReasonDialog } from './LossReasonDialog';
 
 interface OpportunityDetailProps {
@@ -179,11 +179,11 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
     }
   };
 
-  const handleMarkLost = async (reason: string) => {
+  const handleMarkLost = async (data: LossReasonData) => {
     if (!opportunity) return;
     setIsUpdating(true);
     try {
-      await opportunitiesService.markAsLost(opportunity.id, reason);
+      await opportunitiesService.markAsLost(opportunity.id, data);
       setShowLossDialog(false);
       await loadData();
       toast({
@@ -577,7 +577,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                       {stage.name}
                       {stage.probability && (
                         <span className={`text-[10px] ${stage.id === opportunity.stage_id ? 'text-blue-200' : 'text-gray-400'}`}>
-                          {(stage.probability * 100).toFixed(0)}%
+                          {(stage.probability).toFixed(0)}%
                         </span>
                       )}
                     </button>
@@ -1121,7 +1121,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                     });
                     const taskCompletionRate = tasks.length > 0 ? Math.round((tasksDone / tasks.length) * 100) : 0;
                     const daysOpen = opportunity ? Math.ceil((Date.now() - new Date(opportunity.created_at).getTime()) / 86400000) : 0;
-                    const stageProbability = opportunity?.stage?.probability ? opportunity.stage.probability * 100 : 0;
+                    const stageProbability = opportunity?.stage?.probability || 0;
 
                     return (
                       <>
@@ -1198,7 +1198,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                             <div className="flex justify-between">
                               <span className="text-gray-500 dark:text-gray-400">Valor ponderado</span>
                               <span className="font-medium text-blue-600 dark:text-blue-400">
-                                {formatCurrency(displayAmount * (opportunity?.stage?.probability || 0))}
+                                {formatCurrency(displayAmount * (opportunity?.stage?.probability || 0) / 100)}
                               </span>
                             </div>
                             {opportunity?.expected_close_date && (
@@ -1269,7 +1269,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                 </div>
                 <span className="font-bold text-sm text-gray-900 dark:text-white">
                   {opportunity.stage?.probability
-                    ? `${(opportunity.stage.probability * 100).toFixed(0)}%`
+                    ? `${(opportunity.stage.probability).toFixed(0)}%`
                     : '-'}
                 </span>
               </div>

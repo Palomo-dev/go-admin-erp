@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 
 // Interfaces
 interface ForecastChartProps {
@@ -27,11 +28,11 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [selectedView, setSelectedView] = useState<'monthly' | 'quarterly'>(period);
 
-  // Obtener el ID de organización del almacenamiento local
+  // Obtener el ID de organización usando la función canónica
   useEffect(() => {
-    const orgId = localStorage.getItem('currentOrganizationId');
+    const orgId = getOrganizationIdFromContext();
     if (orgId) {
-      setOrganizationId(Number(orgId));
+      setOrganizationId(orgId);
     }
   }, []);
 
@@ -75,8 +76,8 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
           status: opp.status,
           stage_id: opp.stage_id,
           stage_name: opp.stages?.name || '',
-          stage_probability: opp.stages?.probability || 1,
-          weighted_amount: (opp.amount || 0) * (opp.stages?.probability || 1)
+          stage_probability: opp.stages?.probability || 100,
+          weighted_amount: (opp.amount || 0) * (opp.stages?.probability || 100) / 100
         }));
         
 

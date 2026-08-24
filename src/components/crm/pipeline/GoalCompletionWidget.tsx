@@ -7,6 +7,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { Target, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from "@/components/ui/use-toast";
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 
 interface GoalCompletionWidgetProps {
   pipelineId: string;
@@ -26,11 +27,11 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
   const [goalData, setGoalData] = useState<GoalData | null>(null);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
 
-  // Obtener el ID de organización del almacenamiento local
+  // Obtener el ID de organización usando la función canónica
   useEffect(() => {
-    const orgId = localStorage.getItem('currentOrganizationId');
+    const orgId = getOrganizationIdFromContext();
     if (orgId) {
-      setOrganizationId(Number(orgId));
+      setOrganizationId(orgId);
     }
   }, []);
 
@@ -85,7 +86,7 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
         // Calcular montos ponderados basados en la probabilidad de cada etapa
         const forecastData = opportunitiesData?.map(opp => ({
           amount: opp.amount || 0,
-          forecast_amount: (opp.amount || 0) * (opp.stages?.probability || 1)
+          forecast_amount: (opp.amount || 0) * (opp.stages?.probability || 100) / 100
         }));
 
         // 3. Calcular totales

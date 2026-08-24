@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 
 interface Customer {
   id: string;
@@ -41,21 +42,9 @@ export function CustomersList() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Obtener el ID de la organización activa desde localStorage
+  // Obtener el ID de la organización activa usando la función canónica
   const getOrganizationId = () => {
-    if (typeof window !== 'undefined') {
-      const orgData = localStorage.getItem('organizacionActiva');
-      if (orgData) {
-        try {
-          const parsed = JSON.parse(orgData);
-          return parsed?.id || null;
-        } catch (err) {
-          console.error('Error al parsear la organización:', err);
-          return null;
-        }
-      }
-    }
-    return null;
+    return getOrganizationIdFromContext() || null;
   };
 
   // Cargar los clientes al montar el componente

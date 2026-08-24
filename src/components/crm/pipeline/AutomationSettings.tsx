@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { Loader2, Mail, Check, Plus, Trash } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface AutomationSettingsProps {
   pipelineId: string;
@@ -53,21 +54,9 @@ export function AutomationSettings({ pipelineId }: AutomationSettingsProps) {
   const [saving, setSaving] = useState<boolean>(false);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
 
-  // Obtener el ID de la organización activa del almacenamiento local
+  // Obtener el ID de la organización activa usando la función canónica
   const getOrganizationId = () => {
-    if (typeof window !== "undefined") {
-      const orgData = localStorage.getItem("organizacionActiva");
-      if (orgData) {
-        try {
-          const parsed = JSON.parse(orgData);
-          return parsed?.id || null;
-        } catch (err) {
-          console.error("Error al analizar los datos de la organización", err);
-          return null;
-        }
-      }
-    }
-    return null;
+    return getOrganizationIdFromContext() || null;
   };
 
   // Cargar etapas y automatizaciones existentes

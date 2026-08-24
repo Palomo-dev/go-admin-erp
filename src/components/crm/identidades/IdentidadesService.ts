@@ -264,11 +264,12 @@ class IdentidadesService {
           .update({ customer_id: primaryCustomerId })
           .eq('customer_id', secondaryId);
 
-        // Actualizar activities
+        // Actualizar activities (la tabla NO tiene customer_id; usa related_type + related_id)
         await supabase
           .from('activities')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId)
+          .update({ related_id: primaryCustomerId })
+          .eq('related_type', 'customer')
+          .eq('related_id', secondaryId)
           .eq('organization_id', this.organizationId);
 
         // Actualizar identidades

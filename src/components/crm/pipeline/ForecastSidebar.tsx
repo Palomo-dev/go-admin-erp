@@ -16,6 +16,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { ArrowUpRight, ArrowDownRight, LineChart, TrendingUp, ChevronRight, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 // No se necesita importar realtime por separado
 
 interface ForecastSidebarProps {
@@ -62,11 +63,11 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
-  // Obtener el ID de organización del almacenamiento local
+  // Obtener el ID de organización usando la función canónica
   useEffect(() => {
-    const orgId = localStorage.getItem('currentOrganizationId');
+    const orgId = getOrganizationIdFromContext();
     if (orgId) {
-      setOrganizationId(Number(orgId));
+      setOrganizationId(orgId);
     }
   }, []);
 
@@ -128,8 +129,8 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
         opportunities?.forEach(opp => {
           const amount = Number(opp.amount) || 0;
           // Manejar correctamente el acceso a la propiedad probability
-          const probability = opp.stages && typeof opp.stages === 'object' ? (Number(opp.stages.probability) / 100) : 0;
-          const weightedAmountForOpp = amount * probability;
+          const probability = opp.stages && typeof opp.stages === 'object' ? Number(opp.stages.probability) : 0;
+          const weightedAmountForOpp = amount * probability / 100;
           
           // Fecha esperada de cierre
           const closeDate = opp.expected_close_date ? new Date(opp.expected_close_date) : null;

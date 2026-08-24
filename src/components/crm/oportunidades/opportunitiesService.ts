@@ -16,6 +16,7 @@ import {
   OpportunityTask,
   OpportunityNote,
   CustomerDetails,
+  LossReasonData,
 } from './types';
 
 class OpportunitiesService {
@@ -275,6 +276,7 @@ class OpportunitiesService {
     if (input.expected_close_date !== undefined) updateData.expected_close_date = input.expected_close_date;
     if (input.status !== undefined) updateData.status = input.status;
     if (input.loss_reason !== undefined) updateData.loss_reason = input.loss_reason;
+    if (input.metadata !== undefined) updateData.metadata = input.metadata;
     if (input.salesperson_id !== undefined) updateData.salesperson_id = input.salesperson_id;
     if (input.commission_rate !== undefined) updateData.commission_rate = input.commission_rate;
     if (input.commission_type !== undefined) updateData.commission_type = input.commission_type;
@@ -375,8 +377,49 @@ class OpportunitiesService {
     return this.updateOpportunity(id, { status: 'won' });
   }
 
-  async markAsLost(id: string, lossReason: string): Promise<Opportunity> {
-    return this.updateOpportunity(id, { status: 'lost', loss_reason: lossReason });
+  async markAsLost(id: string, data: LossReasonData): Promise<Opportunity> {
+    // Guardar etiqueta visible en loss_reason (string, mientras no haya tabla)
+    // y datos estructurados en metadata (JSONB)
+    // Nota: la columna metadata debe crearse en FASE 1; si no existe,
+    // la actualización de loss_reason se completa primero como fallback.
+    const lossReasonLabel = data.lossReasonLabel || data.lossReasonId;
+
+    // Primero guardar loss_reason (columna existente)
+    const { data: updated, error } = await supabase
+      .from('opportunities')
+      .update({
+        status: 'lost',
+        loss_reason: lossReasonLabel,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Intentar guardar metadata estructurado (best-effort: la columna puede no existir aún)
+    try {
+      await supabase
+        .from('opportunities')
+        .update({
+          metadata: {
+            lossReasonId: data.lossReasonId,
+            lossReasonLabel: data.lossReasonLabel,
+            competitor: data.competitor || null,
+            competitorPrice: data.competitorPrice || null,
+            missingFeatures: data.missingFeatures || null,
+            recontactDate: data.recontactDate || null,
+            notes: data.notes || null,
+          },
+        })
+        .eq('id', id);
+    } catch (err) {
+      // La columna metadata no existe aún (FASE 1); ignorar error
+      console.warn('No se pudo guardar metadata de pérdida (columna metadata pendiente FASE 1):', err);
+    }
+
+    return updated;
   }
 
   async moveToStage(id: string, stageId: string): Promise<Opportunity> {
@@ -392,7 +435,7 @@ class OpportunitiesService {
     const lost = opportunities.filter((o) => o.status === 'lost').length;
     const totalAmount = opportunities.reduce((sum, o) => sum + (o.amount || 0), 0);
     const weightedAmount = opportunities.reduce((sum, o) => {
-      const probability = o.stage?.probability || 0;
+      const probability = (o.stage?.probability || 0) / 100;
       return sum + (o.amount || 0) * probability;
     }, 0);
     const avgDealSize = total > 0 ? totalAmount / total : 0;
@@ -449,7 +492,7 @@ class OpportunitiesService {
         };
       }
 
-      const probability = opp.stage?.probability || 0;
+      const probability = (opp.stage?.probability || 0) / 100;
       const amount = opp.amount || 0;
 
       if (opp.status === 'open') {

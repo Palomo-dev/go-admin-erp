@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface CustomerStats {
   total: number;
@@ -28,22 +29,7 @@ export function CustomerSummary() {
   const [isLoading, setIsLoading] = useState(true);
 
   const getOrganizationId = () => {
-    if (typeof window !== "undefined") {
-      const orgData = localStorage.getItem("organizacionActiva");
-      if (orgData) {
-        try {
-          const parsed = JSON.parse(orgData);
-          return parsed?.id || null;
-        } catch (err) {
-          console.error(
-            "Error parsing organization data from localStorage",
-            err
-          );
-          return null;
-        }
-      }
-    }
-    return null;
+    return getOrganizationIdFromContext() || null;
   };
 
   const fetchStats = async () => {

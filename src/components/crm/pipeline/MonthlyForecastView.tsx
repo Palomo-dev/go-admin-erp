@@ -27,6 +27,7 @@ import { formatCurrency } from "@/utils/Utils";
 import { currencyService } from "@/lib/services/currencyService";
 import { MonthlyForecast, ForecastOpportunity, getMonthlyForecast } from "@/lib/services/forecastService";
 import { TableSkeleton } from "@/components/common/PageSkeletons";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface MonthlyForecastViewProps {
   pipelineId: string;
@@ -47,9 +48,8 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
 
   // Obtener el ID de la organización y cargar la moneda base
   useEffect(() => {
-    const orgId = localStorage.getItem("currentOrganizationId");
-    if (orgId) {
-      const orgIdNum = Number(orgId);
+    const orgIdNum = getOrganizationIdFromContext();
+    if (orgIdNum) {
       setOrganizationId(orgIdNum);
       
       // Cargar la moneda base de la organización
@@ -281,7 +281,7 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
                             </>
                           }
                         </TableCell>
-                        <TableCell>{Math.round(opp.probability * 100)}%</TableCell>
+                        <TableCell>{Math.round(opp.probability)}%</TableCell>
                         <TableCell>{formatCurrency(opp.weightedAmount, baseCurrency)}</TableCell>
                       </TableRow>
                     ))}

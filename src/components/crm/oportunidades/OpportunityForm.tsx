@@ -36,6 +36,7 @@ interface OpportunityFormProps {
   opportunity?: Opportunity;
   initialPipelineId?: string;
   initialStageId?: string;
+  initialCustomerId?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
   hideHeader?: boolean;
@@ -65,7 +66,7 @@ interface CustomLine {
   unit_price: number;
 }
 
-export function OpportunityForm({ opportunity, initialPipelineId, initialStageId, onSuccess, onCancel, hideHeader }: OpportunityFormProps) {
+export function OpportunityForm({ opportunity, initialPipelineId, initialStageId, initialCustomerId, onSuccess, onCancel, hideHeader }: OpportunityFormProps) {
   const router = useRouter();
   const isEditing = !!opportunity;
 
@@ -82,7 +83,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   // Form state - usar initialPipelineId si se proporciona
   const [pipelineId, setPipelineId] = useState(opportunity?.pipeline_id || initialPipelineId || '');
   const [stageId, setStageId] = useState(opportunity?.stage_id || initialStageId || '');
-  const [customerId, setCustomerId] = useState(opportunity?.customer_id || '');
+  const [customerId, setCustomerId] = useState(opportunity?.customer_id || initialCustomerId || '');
   const [name, setName] = useState(opportunity?.name || '');
   const [amount, setAmount] = useState(opportunity?.amount?.toString() || '');
   const [currency, setCurrency] = useState(opportunity?.currency || 'COP');
@@ -529,7 +530,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                             className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: stage.color }}
                           />
-                          {stage.name} ({(stage.probability * 100).toFixed(0)}%)
+                          {stage.name} ({(stage.probability).toFixed(0)}%)
                         </div>
                       </SelectItem>
                     ))}

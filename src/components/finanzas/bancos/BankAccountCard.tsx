@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatCurrency } from '@/utils/Utils';
 import { BankAccount } from './BancosService';
+import { RealTimeBalanceWidget } from './RealTimeBalanceWidget';
 
 interface BankAccountCardProps {
   account: BankAccount;
@@ -32,6 +33,28 @@ interface BankAccountCardProps {
 
 export function BankAccountCard({ account, onToggleActive }: BankAccountCardProps) {
   const router = useRouter();
+  const [hasOpenFinanceLink, setHasOpenFinanceLink] = useState(false);
+
+  // Verifica al cargar si la cuenta tiene vinculacion Open Finance
+  useEffect(() => {
+    let cancelled = false;
+    async function checkLinkage() {
+      try {
+        const response = await fetch(
+          `/api/integrations/open-finance/real-balance?bankAccountId=${account.id}`,
+        );
+        if (!response.ok) return;
+        const body = await response.json() as { data?: { isLinked?: boolean } | null };
+        if (!cancelled && body.data?.isLinked) {
+          setHasOpenFinanceLink(true);
+        }
+      } catch {
+        // Si falla la verificacion, no se muestra el widget
+      }
+    }
+    checkLinkage();
+    return () => { cancelled = true; };
+  }, [account.id]);
 
   const handleViewDetails = () => {
     router.push(`/app/finanzas/bancos/cuentas/${account.id}`);
@@ -145,6 +168,15 @@ export function BankAccountCard({ account, onToggleActive }: BankAccountCardProp
               {formatCurrency(account.balance, account.currency || 'COP')}
             </p>
           </div>
+
+          {/* Widget de saldo en tiempo real (solo si hay vinculacion Open Finance) */}
+          {hasOpenFinanceLink && (
+            <RealTimeBalanceWidget
+              bankAccountId={account.id}
+              accountName={account.name}
+              localBalance={account.balance}
+            />
+          )}
 
           {/* Acciones rápidas */}
           <div className="flex gap-2 pt-2">

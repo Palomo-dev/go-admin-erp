@@ -13,7 +13,7 @@ export type OpenFinanceLinkStatus = 'active' | 'revoked' | 'expired' | 'error';
 export type OpenFinanceConsentStatus = 'active' | 'revoked' | 'expired';
 
 /** Tipos de consentimiento */
-export type OpenFinanceConsentType = 'data_access' | 'payment_initiation';
+export type OpenFinanceConsentType = 'data_access' | 'payment_initiation' | 'account_validation';
 
 /** Tipos de cuenta bancaria */
 export type OpenFinanceAccountType = 'checking' | 'savings' | 'credit_card' | 'loan';

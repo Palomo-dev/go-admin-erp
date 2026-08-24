@@ -30,6 +30,7 @@ import { RegistrarPagoModal } from './RegistrarPagoModal';
 import { ProgramarPagoModal } from './ProgramarPagoModal';
 import { AprobacionPagosModal } from './AprobacionPagosModal';
 import { ExportarBancaModal } from './ExportarBancaModal';
+import { PayWithOpenFinanceDialog } from './PayWithOpenFinanceDialog';
 import { 
   AccountPayable, 
   FiltrosCuentasPorPagar, 
@@ -70,6 +71,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
   const [mostrarModalRegistrar, setMostrarModalRegistrar] = useState(false);
   const [mostrarModalAprobacion, setMostrarModalAprobacion] = useState(false);
   const [mostrarModalExportar, setMostrarModalExportar] = useState(false);
+  const [mostrarModalOpenFinance, setMostrarModalOpenFinance] = useState(false);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState<AccountPayable | null>(null);
   const [cuentasSeleccionadas, setCuentasSeleccionadas] = useState<string[]>([]);
 
@@ -230,6 +232,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
     setMostrarModalRegistrar(false);
     setMostrarModalAprobacion(false);
     setMostrarModalExportar(false);
+    setMostrarModalOpenFinance(false);
     setCuentaSeleccionada(null);
   };
 
@@ -349,6 +352,10 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
               setCuentaSeleccionada(cuenta);
               setMostrarModalRegistrar(true);
             }}
+            onPagarOpenFinance={(cuenta: AccountPayable) => {
+              setCuentaSeleccionada(cuenta);
+              setMostrarModalOpenFinance(true);
+            }}
             onSeleccionarCuentas={handleSeleccionarCuentas}
             cuentasSeleccionadas={cuentasSeleccionadas}
           />
@@ -371,6 +378,10 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
             onRegistrarPago={(cuenta: AccountPayable) => {
               setCuentaSeleccionada(cuenta);
               setMostrarModalRegistrar(true);
+            }}
+            onPagarOpenFinance={(cuenta: AccountPayable) => {
+              setCuentaSeleccionada(cuenta);
+              setMostrarModalOpenFinance(true);
             }}
             onSeleccionarCuentas={handleSeleccionarCuentas}
             cuentasSeleccionadas={cuentasSeleccionadas}
@@ -402,6 +413,10 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
               setCuentaSeleccionada(cuenta);
               setMostrarModalRegistrar(true);
             }}
+            onPagarOpenFinance={(cuenta: AccountPayable) => {
+              setCuentaSeleccionada(cuenta);
+              setMostrarModalOpenFinance(true);
+            }}
             onSeleccionarCuentas={handleSeleccionarCuentas}
             cuentasSeleccionadas={cuentasSeleccionadas}
           />
@@ -424,6 +439,10 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
             onRegistrarPago={(cuenta: AccountPayable) => {
               setCuentaSeleccionada(cuenta);
               setMostrarModalRegistrar(true);
+            }}
+            onPagarOpenFinance={(cuenta: AccountPayable) => {
+              setCuentaSeleccionada(cuenta);
+              setMostrarModalOpenFinance(true);
             }}
             onSeleccionarCuentas={handleSeleccionarCuentas}
             cuentasSeleccionadas={cuentasSeleccionadas}
@@ -483,6 +502,26 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           setCuentasSeleccionadas([]);
         }}
       />
+
+      {/* Dialog de pago con Open Finance */}
+      {cuentaSeleccionada && (
+        <PayWithOpenFinanceDialog
+          open={mostrarModalOpenFinance}
+          onOpenChange={(open) => {
+            setMostrarModalOpenFinance(open);
+            if (!open) setCuentaSeleccionada(null);
+          }}
+          accountPayableId={Number(cuentaSeleccionada.id)}
+          supplierName={cuentaSeleccionada.supplier?.name || 'Sin nombre'}
+          amount={cuentaSeleccionada.balance}
+          dueDate={cuentaSeleccionada.due_date}
+          supplierId={cuentaSeleccionada.supplier?.id}
+          onPaymentComplete={() => {
+            cargarDatos();
+            cargarResumen();
+          }}
+        />
+      )}
       </div>
     </div>
   );

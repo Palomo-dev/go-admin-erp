@@ -8,6 +8,26 @@
     {
       "path": "/api/cron/update-exchange-rates",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/daily-sync",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/hourly-balance",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/scheduled-payments",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/anomaly-detection",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/consent-expiry",
+      "schedule": "0 7 * * *"
     }
   ],
   "headers": [

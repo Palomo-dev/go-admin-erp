@@ -13,7 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ConciliacionService } from './ConciliacionService';
+import { AIMatchingPanel } from './AIMatchingPanel';
 import { BankReconciliation, BankReconciliationItem, BankTransaction } from '../bancos/BancosService';
 import { formatCurrency } from '@/utils/Utils';
 
@@ -267,7 +269,14 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
         </Card>
       </div>
 
-      {/* Main Content - Two Panels */}
+      {/* Main Content - Tabs: Conciliacion manual / Sugerencias IA */}
+      <Tabs defaultValue="manual" className="w-full">
+        <TabsList>
+          <TabsTrigger value="manual">Conciliacion manual</TabsTrigger>
+          <TabsTrigger value="ai">Sugerencias IA</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="manual">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Panel A: Transacciones Pendientes */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -387,6 +396,16 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+
+        {/* Tab: Sugerencias IA */}
+        <TabsContent value="ai">
+          <AIMatchingPanel
+            reconciliationId={reconciliationId}
+            onMatchComplete={loadData}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Close Dialog */}
       <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>

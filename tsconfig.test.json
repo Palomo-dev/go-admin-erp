@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/lib/supabase/admin": ["./test/mocks/supabaseAdminMock.ts"],
+      "@/lib/supabase/config": ["./test/mocks/supabaseConfigMock.ts"],
+      "@test/*": ["./test/*"],
+      "@/*": ["./src/*"],
+      "@printing": ["./print-agent/src/printing/index.ts"],
+      "@printing/*": ["./print-agent/src/printing/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", "print-agent", "mobile", "supabase/functions"]
+}

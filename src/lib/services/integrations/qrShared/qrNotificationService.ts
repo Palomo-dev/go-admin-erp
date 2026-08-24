@@ -87,7 +87,7 @@ export async function createPaymentReceivedNotification(
         type: 'payment_received',
         title: 'Pago recibido via QR',
         body: `Pago de ${formattedAmount} confirmado por ${providerLabel}. Referencia: ${params.reference}`,
-        link: '/app/finanzas/conciliacion-bancaria',
+        link: '/app/finanzas/metodos-pago/qr-sessions',
         is_read: false,
       })
       .select('id')
@@ -128,7 +128,7 @@ export async function createQrExpiredNotification(
       type: 'payment_expired',
       title: 'Pago QR expirado',
       body: `QR por ${formattedAmount} expirado sin pago. Referencia: ${params.reference}`,
-      link: '/app/finanzas/conciliacion-bancaria',
+      link: '/app/finanzas/metodos-pago/qr-sessions',
       is_read: false,
     });
 

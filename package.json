@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "tsx --tsconfig tsconfig.test.json --test \"src/lib/services/integrations/**/__tests__/*.test.ts\"",
+    "test:qr": "tsx --tsconfig tsconfig.test.json --test \"src/lib/services/integrations/{qrShared,redeban,breb,wompi,bancolombia}/__tests__/*.test.ts\"",
     "ws:dev": "npx tsx ws-server.ts",
     "ws:test": "npx tsx scripts/test-conversation-relay.ts",
     "mobile:sync": "cd mobile && npx cap sync",

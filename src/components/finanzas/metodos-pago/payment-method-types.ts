@@ -19,7 +19,7 @@ export interface GatewayConfig {
   access_token?: string;
   public_key?: string;
   additional_json?: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface OrganizationPaymentMethod {

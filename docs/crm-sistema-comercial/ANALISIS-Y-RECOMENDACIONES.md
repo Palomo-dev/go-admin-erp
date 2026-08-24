@@ -791,4 +791,99 @@ Con eso, en una semana tienes: proceso real configurado, datos reales fluyendo, 
 
 ---
 
-*Documento unificado tras análisis exhaustivo del CRM (go-admin-erp), super admin (go-admin-super), esquema BD (Supabase jgmgphmzusbluqhuqihj), verificación de bugs contra código real, y fusión con PLAN-V2-IMPLEMENTACION-COMERCIAL.md.*
+## 11. Estado de implementación (FASE 0–5 completadas)
+
+> Sección añadida tras implementar todas las fases con subagentes en paralelo.
+
+### Commits de implementación
+
+| Commit | Fase | Descripción |
+|--------|------|-------------|
+| `9fe2ae4d` | FASE 0 | Higiene B1–B8 (probability 0-100, pipeline Ventas B2B, form único, markAsLost estructurado, merge clientes, localStorage→hook, código muerto) |
+| `c1905759` | FASE 1 | Esqueleto comercial (7 tablas + MV + trigger + 6 servicios + 5 componentes + 5 cards config) |
+| `62b38942` | FASE 1 QA + FASE 2 | QA fixes + flujo vivo (leadCapture, followup, Hoy, scoring GOC, funnel, integraciones) |
+| `aaf87037` | FASE 3 | Cierre dinero (propuestas, WonCloseModal, posCrmLink, pmsCrmLink, inventoryCrmLink, selectores finanzas) |
+| `ae58b870` | FASE 4 + 5 | Post-venta + escala (onboarding, health score, renovaciones, expansión, métricas, IA, i18n) |
+
+### Objetos BD creados (via Supabase MCP)
+
+**7 tablas nuevas:** verticals, loss_reasons, scoring_configs, opportunity_stage_history, vendor_commission_rates, health_score_snapshots, health_score_configs
+
+**1 materialized view:** mv_customer_health (con RPC refresh_mv_customer_health)
+
+**1 trigger:** trg_opp_stage_history (log cambios de etapa)
+
+**Columnas nuevas en tablas existentes:**
+- opportunities: metadata, source, vertical_id, next_contact_at, billing_cycle_months, parent_opportunity_id, score_total, score_data, temperature
+- stages: sla_days, exit_criteria, is_won, is_lost, display_order
+- pipelines: pipeline_type
+- quotations: opportunity_id, sections_json
+- invoice_sales: opportunity_id
+- sales: opportunity_id
+- reservations: opportunity_id
+- templates: kind
+- customers: health_score, health_score_updated_at
+
+**RLS activa** en las 7 tablas nuevas.
+
+### Servicios CRM (src/lib/services/crm/)
+
+| Servicio | Funciones clave |
+|----------|----------------|
+| verticalsService | CRUD verticales por organización |
+| lossReasonsService | Catálogo global + por org |
+| scoringService | Cálculo GOC + temperature |
+| stageGateService | Evalúa exit_criteria (soft-gate) |
+| commissionService | Cadena resolución + devengo ledger |
+| pipelineSeedService | Semilla idempotente "Ventas B2B" |
+| leadCaptureService | ensureLeadOpportunity (dedupe) |
+| followupService | Vencidos, estancadas, sin contacto |
+| crmIntegrations | POS→actividad, calendario, timeline, notificaciones |
+| proposalService | Genera cotización narrada desde oportunidad |
+| posCrmLink | linkSaleToOpportunity, createPosSaleFromOpportunity |
+| pmsCrmLink | linkReservationToOpportunity, createReservationFromOpportunity |
+| inventoryCrmLink | reserveStockForOpportunity, releaseStockForOpportunity |
+| onboardingService | Pipeline onboarding + templates + checklist |
+| healthScoreService | Score 0-100 + snapshots + red alerts + refresh |
+| renewalService | syncRenewals + hitos 120/90/60/30/15/7 días |
+| expansionService | Señales automáticas + pipeline expansión |
+| followupEngineService | Motor secuencias con automations |
+| referralsService | Programa referidos via organization_preferences |
+| commercialMetricsService | Win rate, cycle length, ARPA, coverage |
+
+### Componentes CRM nuevos
+
+**Operativos:** StructuredLossDialog, GateWarningDialog, ScoreBadge, TemperatureDot, ImportLeadsCsv, ScoringSection, ProposalBuilderDialog, WonCloseModal, OnboardingChecklist, ClientHealthCard, SaludView, FunnelView, MetricasView, HoyView
+
+**Configuración:** VerticalsManager, LossReasonsManager, ScoringConfigurator, ExitGatesEditor, CommissionsPanel, ReferralsProgramCard
+
+### Páginas nuevas
+
+- `/app/crm/hoy` — Lista accionable del día
+- `/app/crm/salud` — Panel de health score de clientes
+- `/app/crm/metricas` — Dashboard de métricas comerciales
+
+### Rutas API nuevas
+
+- `/api/crm/renewals/sync` — Cron renovaciones
+- `/api/crm/health/recalculate` — Cron health score
+- `/api/crm/followup/run` — Cron secuencias
+- `/api/crm/ia/next-action` — Recomendador IA
+- `/api/crm/ia/discovery-summary` — Resumen IA
+
+### i18n
+
+Namespace `crm` agregado en `messages/es.json` y `messages/en.json` con 83 keys (metricas, referrals, followup, ia).
+
+### Notas de implementación
+
+- `opportunities` no tiene `updated_by`: el trigger inserta `null` en `changed_by`
+- `opportunities` no tiene `won_date`: se usa `updated_at` como proxy
+- RLS sin policies en tablas nuevas: se definirán cuando se abra a producción
+- Los servicios aceptan `organizationId` opcional para funcionar server-side en rutas cron
+- `mv_customer_health` se refresca via RPC `refresh_mv_customer_health()` (concurrent refresh)
+- Config default de health score sembrada para org 1 (4 indicadores: recency/frecuencia/ltv/avg_ticket)
+
+---
+
+*Documento unificado tras análisis exhaustivo del CRM (go-admin-erp), super admin (go-admin-super), esquema BD (Supabase jgmgphmzusbluqhuqihj), verificación de bugs contra código real, fusión con PLAN-V2-IMPLEMENTACION-COMERCIAL.md, e implementación completa de FASE 0–5.*

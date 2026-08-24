@@ -65,15 +65,27 @@ function SelectOrganizationContent() {
       if (oauthCookie) {
         try {
           const eqIndex = oauthCookie.indexOf('=');
-          const value = decodeURIComponent(oauthCookie.substring(eqIndex + 1));
-          const { access_token, refresh_token } = JSON.parse(value);
+          let value = oauthCookie.substring(eqIndex + 1);
+          // Decodificar URL-encoding si existe (puede estar doble-encoded)
+          try {
+            if (value.startsWith('%7B') || value.startsWith('%5B')) {
+              value = decodeURIComponent(value);
+            }
+          } catch {
+            // Si decodeURIComponent falla, intentar con el valor crudo
+          }
+          const parsed = JSON.parse(value);
+          const { access_token, refresh_token } = parsed;
           if (access_token && refresh_token) {
             const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-            document.cookie = 'go-admin-oauth-session=; path=/; max-age=0';
             if (!error && data.session) return data.session;
           }
         } catch (e) {
           console.error('Error hydrating OAuth session from cookie:', e);
+        } finally {
+          // SIEMPRE borrar la cookie OAuth, exito o error.
+          // Si no se borra, causa HTTP 431 (headers too large) en todas las paginas siguientes.
+          document.cookie = 'go-admin-oauth-session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         }
       }
     }

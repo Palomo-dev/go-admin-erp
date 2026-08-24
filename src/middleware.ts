@@ -116,6 +116,17 @@ export async function middleware(request: NextRequest) {
   if (shouldSkipRoute(pathname)) {
     return NextResponse.next();
   }
+
+  // Limpiar cookie OAuth stale en rutas que no son select-organization.
+  // Esta cookie contiene tokens completos y si no se borra causa HTTP 431.
+  if (pathname !== '/auth/select-organization') {
+    const oauthCookie = request.cookies.get('go-admin-oauth-session');
+    if (oauthCookie) {
+      const response = NextResponse.next();
+      response.cookies.delete('go-admin-oauth-session');
+      return response;
+    }
+  }
   
   // Para el middleware en el servidor, necesitamos crear un cliente temporal
   // que pueda leer las cookies del request

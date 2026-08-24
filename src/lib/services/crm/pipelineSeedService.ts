@@ -22,18 +22,6 @@ interface PipelineRow {
   name: string;
 }
 
-interface StageRow {
-  id: string;
-  pipeline_id: string;
-  name: string;
-  position: number;
-}
-
-interface LossReasonRow {
-  id: string;
-  code: string;
-}
-
 interface ScoringConfigRow {
   id: string;
   organization_id: number;

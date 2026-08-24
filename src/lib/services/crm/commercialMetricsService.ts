@@ -399,7 +399,7 @@ class CommercialMetricsService {
   private async calculateCycleLength(
     orgId: number,
     from: string,
-    to: string
+    _to: string
   ): Promise<number> {
     try {
       // Obtener oportunidades cerradas en el periodo
@@ -463,7 +463,7 @@ class CommercialMetricsService {
   private async calculateVendorBreakdownManual(
     orgId: number,
     from: string,
-    to: string
+    _to: string
   ): Promise<VendorBreakdown[]> {
     try {
       const { data: opps } = await supabase

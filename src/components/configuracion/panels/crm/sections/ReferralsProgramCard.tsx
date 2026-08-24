@@ -115,7 +115,7 @@ export function ReferralsProgramCard() {
         toast({ title: 'Estado actualizado', description: `Referido marcado como: ${STATUS_LABELS[status]}` });
         loadData();
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'No se pudo actualizar el estado', variant: 'destructive' });
     }
   };

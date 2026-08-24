@@ -8,6 +8,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
+import { toast } from "@/components/ui/use-toast";
 
 // Interfaces
 interface ForecastChartProps {
@@ -75,9 +76,9 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
           expected_close_date: opp.expected_close_date,
           status: opp.status,
           stage_id: opp.stage_id,
-          stage_name: opp.stages?.name || '',
-          stage_probability: opp.stages?.probability || 100,
-          weighted_amount: (opp.amount || 0) * (opp.stages?.probability || 100) / 100
+          stage_name: opp.stages?.[0]?.name || '',
+          stage_probability: opp.stages?.[0]?.probability || 100,
+          weighted_amount: (opp.amount || 0) * (opp.stages?.[0]?.probability || 100) / 100
         }));
         
 

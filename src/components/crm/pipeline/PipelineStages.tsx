@@ -26,6 +26,7 @@ interface Stage {
   description?: string;
   position: number;
   pipeline_id: string;
+  probability?: number;
 }
 
 interface Customer {
@@ -377,7 +378,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             ? {
                 ...s,
                 name: values.name,
-                probability: probabilityValue,
+                probability: probabilityValue ?? undefined,
                 color: values.color,
                 description: values.description || undefined
               }

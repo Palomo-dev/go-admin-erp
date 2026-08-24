@@ -63,7 +63,7 @@ async function reserveStockForOpportunity(
   const { data: oppProducts, error: productsError } = await supabase
     .from('opportunity_products')
     .select('id, opportunity_id, product_id, quantity, unit_price, total_price')
-    .eq('opportunity_id', opportunityId) as { data: OpportunityProductRow[] | null; error: any };
+    .eq('opportunity_id', opportunityId) as { data: OpportunityProductRow[] | null; error: unknown };
 
   if (productsError) throw productsError;
   if (!oppProducts || oppProducts.length === 0) {
@@ -121,7 +121,7 @@ async function releaseStockForOpportunity(
   const { data: oppProducts, error: productsError } = await supabase
     .from('opportunity_products')
     .select('id, opportunity_id, product_id, quantity, unit_price, total_price')
-    .eq('opportunity_id', opportunityId) as { data: OpportunityProductRow[] | null; error: any };
+    .eq('opportunity_id', opportunityId) as { data: OpportunityProductRow[] | null; error: unknown };
 
   if (productsError) throw productsError;
   if (!oppProducts || oppProducts.length === 0) {

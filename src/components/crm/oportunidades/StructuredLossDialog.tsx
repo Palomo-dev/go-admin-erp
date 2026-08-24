@@ -95,8 +95,8 @@ export function StructuredLossDialog({
     setIsLoadingReasons(true);
     try {
       // Import dinamico para evitar romper el build si el servicio aun no existe
-      const module = await import('@/lib/services/crm/lossReasonsService');
-      const service = module.lossReasonsService || module.default;
+      const moduleNS = await import('@/lib/services/crm/lossReasonsService');
+      const service = moduleNS.lossReasonsService || moduleNS.default;
       if (service && typeof service.list === 'function') {
         const reasons = await service.list();
         if (Array.isArray(reasons) && reasons.length > 0) {

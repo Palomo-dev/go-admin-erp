@@ -386,7 +386,7 @@ class OnboardingService {
         )
       );
 
-      let usersMap = new Map<string, string>();
+      const usersMap = new Map<string, string>();
       if (assignedIds.length > 0) {
         const { data: users } = await supabase
           .from('user_profiles')

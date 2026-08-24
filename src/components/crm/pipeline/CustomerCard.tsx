@@ -45,7 +45,7 @@ export function CustomerCard({ customer }: CustomerCardProps) {
             <UserCircle className="h-6 w-6" />
           </div>
           <div>
-            <h4 className="font-medium">{customer.name}</h4>
+            <h4 className="font-medium">{customer.full_name}</h4>
             <div className="flex flex-wrap gap-3 mt-2 text-sm text-muted-foreground">
               {customer.email && (
                 <div className="flex items-center gap-1">

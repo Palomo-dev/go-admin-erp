@@ -56,11 +56,14 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
   const [salespeople, setSalespeople] = useState<{ id: string; name: string }[]>([]);
   const [salespersonSearch, setSalespersonSearch] = useState('');
   const [branchId, setBranchId] = useState<number | undefined>(undefined);
+  const [opportunities, setOpportunities] = useState<{ id: string; name: string; customer_id?: string | null }[]>([]);
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>('none');
 
   useEffect(() => {
     if (organizationId) {
       loadSalespeople();
       loadBranchId();
+      loadOpportunities();
     }
   }, [organizationId]);
 
@@ -110,6 +113,68 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
       if (data && data.length > 0) setBranchId(data[0].id);
     } catch (e) {
       console.error('Error loading branch:', e);
+    }
+  };
+
+  const loadOpportunities = async () => {
+    if (!organizationId) return;
+    try {
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('id, name, customer_id')
+        .eq('organization_id', organizationId)
+        .eq('status', 'open')
+        .order('name');
+      if (error) return;
+      if (data) setOpportunities(data);
+    } catch (e) {
+      console.error('Error loading opportunities:', e);
+    }
+  };
+
+  const handleOpportunityChange = async (opportunityId: string) => {
+    setSelectedOpportunityId(opportunityId);
+    if (opportunityId === 'none') return;
+
+    try {
+      // Cargar productos de la oportunidad
+      const { data: oppProducts, error: oppError } = await supabase
+        .from('opportunity_products')
+        .select('product_id, quantity, unit_price, total_price')
+        .eq('opportunity_id', opportunityId);
+
+      if (oppError || !oppProducts || oppProducts.length === 0) return;
+
+      // Obtener nombres de productos
+      const productIds = oppProducts.map((op: any) => op.product_id);
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name')
+        .in('id', productIds);
+
+      const productMap = new Map((products || []).map((p: any) => [p.id, p.name] as [number, string]));
+
+      const newItems: InvoiceItem[] = oppProducts.map((op: any) => ({
+        invoice_type: 'sale' as const,
+        product_id: op.product_id,
+        description: productMap.get(op.product_id) || '',
+        qty: Number(op.quantity) || 0,
+        unit_price: Number(op.unit_price) || 0,
+        tax_code: null,
+        tax_rate: 0,
+        tax_included: taxIncluded,
+        total_line: Number(op.total_price) || (Number(op.quantity) || 0) * (Number(op.unit_price) || 0),
+        discount_amount: 0,
+      }));
+      setItems(newItems);
+
+      // Prefill del cliente si la oportunidad tiene customer_id
+      const opp = opportunities.find((o) => o.id === opportunityId);
+      if (opp?.customer_id) {
+        setCustomerId(opp.customer_id);
+      }
+    } catch (e) {
+      console.error('Error loading opportunity products:', e);
     }
   };
 
@@ -219,6 +284,7 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
         notes: notes || null,
         terms_conditions: termsConditions || null,
         salesperson_id: salespersonId !== 'none' ? salespersonId : null,
+        opportunity_id: selectedOpportunityId !== 'none' ? selectedOpportunityId : null,
         created_by: userData.user?.id || null,
       };
 
@@ -346,6 +412,29 @@ export function NuevaCotizacionForm({ cotizacionId, mode = 'create' }: NuevaCoti
               />
             </div>
           </div>
+          {opportunities.length > 0 && (
+            <div className="grid grid-cols-1 mt-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Oportunidad (opcional)</Label>
+                <Select value={selectedOpportunityId} onValueChange={handleOpportunityChange}>
+                  <SelectTrigger className="bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600">
+                    <SelectValue placeholder="Sin oportunidad asociada" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-800">
+                    <SelectItem value="none">Sin oportunidad asociada</SelectItem>
+                    {opportunities.map((opp) => (
+                      <SelectItem key={opp.id} value={opp.id}>{opp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedOpportunityId !== 'none' && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Al seleccionar una oportunidad, se cargan sus productos y se asocia la cotización a ella.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Items */}

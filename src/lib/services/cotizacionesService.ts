@@ -36,6 +36,7 @@ export interface Quotation {
   terms_conditions?: string | null;
   salesperson_id?: string | null;
   converted_invoice_id?: string | null;
+  opportunity_id?: string | null;
   created_by?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -95,7 +96,7 @@ export class CotizacionesService {
       let query = supabase
         .from('quotations')
         .select(
-          `id, number, customer_id, issue_date, valid_until, currency, subtotal, tax_total, discount_total, total, status, payment_terms, payment_method, salesperson_id, converted_invoice_id, created_at, updated_at, customers (id, full_name, email, phone)`
+          `id, number, customer_id, issue_date, valid_until, currency, subtotal, tax_total, discount_total, total, status, payment_terms, payment_method, salesperson_id, converted_invoice_id, opportunity_id, created_at, updated_at, customers (id, full_name, email, phone)`
         )
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
@@ -265,6 +266,7 @@ export class CotizacionesService {
           notes: original.notes,
           terms_conditions: original.terms_conditions,
           salesperson_id: original.salesperson_id,
+          opportunity_id: original.opportunity_id || null,
         })
         .select()
         .single();
@@ -300,7 +302,8 @@ export class CotizacionesService {
   static async convertToInvoice(
     quotationId: string,
     organizationId: number,
-    branchId: number
+    branchId: number,
+    opportunityId?: string | null
   ): Promise<string> {
     try {
       const quotation = await this.getQuotationById(quotationId);
@@ -346,6 +349,7 @@ export class CotizacionesService {
           notes: quotation.notes,
           tax_included: quotation.quotation_items?.[0]?.tax_included || false,
           salesperson_id: quotation.salesperson_id,
+          opportunity_id: opportunityId || quotation.opportunity_id || null,
         })
         .select()
         .single();

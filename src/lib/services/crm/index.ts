@@ -59,3 +59,31 @@ export type {
   ActivityCalendarInput,
   CrmNotificationType,
 } from './crmIntegrations';
+
+// FASE 3 - Cierre conectado al dinero
+export { proposalService, default as proposalServiceDefault } from './proposalService';
+export type {
+  ProposalSections,
+  Proposal,
+  GenerateProposalResult,
+} from './proposalService';
+
+// FASE 3 Parte B - Cierre conectado al dinero
+export { posCrmLink, default as posCrmLinkDefault } from './posCrmLink';
+export type {
+  OpportunityProductRow as PosOpportunityProductRow,
+  OpportunityRow as PosOpportunityRow,
+  CreatePosSaleFromOpportunityResult,
+} from './posCrmLink';
+
+export { pmsCrmLink, default as pmsCrmLinkDefault } from './pmsCrmLink';
+export type {
+  OpportunitySpaceRow,
+  OpportunityRow as PmsOpportunityRow,
+  CreateReservationFromOpportunityResult,
+} from './pmsCrmLink';
+
+export { inventoryCrmLink, default as inventoryCrmLinkDefault } from './inventoryCrmLink';
+export type {
+  ReserveStockResult,
+} from './inventoryCrmLink';

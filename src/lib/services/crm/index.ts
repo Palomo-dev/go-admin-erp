@@ -87,3 +87,63 @@ export { inventoryCrmLink, default as inventoryCrmLinkDefault } from './inventor
 export type {
   ReserveStockResult,
 } from './inventoryCrmLink';
+
+// FASE 4 - Post-venta del CRM
+export { onboardingService, default as onboardingServiceDefault } from './onboardingService';
+export type {
+  OnboardingStep,
+  OnboardingTemplate,
+  OnboardingTask,
+} from './onboardingService';
+
+export { healthScoreService, default as healthScoreServiceDefault } from './healthScoreService';
+export type {
+  HealthBand,
+  HealthThreshold,
+  HealthIndicator,
+  HealthBands,
+  HealthScoreConfig,
+  CustomerHealth,
+  HealthScoreResult,
+  HealthSnapshot,
+} from './healthScoreService';
+
+export { renewalService, default as renewalServiceDefault } from './renewalService';
+export type {
+  UpcomingRenewal,
+} from './renewalService';
+
+export { expansionService, default as expansionServiceDefault } from './expansionService';
+export type {
+  ExpansionType,
+  ExpansionSignal,
+} from './expansionService';
+
+// FASE 5 - Escala del CRM
+export { followupEngineService, default as followupEngineServiceDefault } from './followupEngineService';
+export type {
+  AutomationTrigger,
+  AutomationAction,
+  AutomationActions,
+  Automation,
+  TriggerContext,
+  ExecutionResult,
+  RunResult,
+} from './followupEngineService';
+
+export { referralsService, default as referralsServiceDefault } from './referralsService';
+export type {
+  ReferralProgramConfig,
+  Referral,
+  Partner,
+  CreateReferralInput,
+} from './referralsService';
+
+export { commercialMetricsService, default as commercialMetricsServiceDefault } from './commercialMetricsService';
+export type {
+  Period,
+  CommercialMetrics,
+  VendorBreakdown,
+  FunnelStageMetric,
+  FunnelMetrics,
+} from './commercialMetricsService';

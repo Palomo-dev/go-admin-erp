@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { MessageSquare, Tags, Key, Globe, Layers, AlertCircle, Gauge, ListChecks, DollarSign } from 'lucide-react';
+import { MessageSquare, Tags, Key, Globe, Layers, AlertCircle, Gauge, ListChecks, DollarSign, Users } from 'lucide-react';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import { LossReasonsManager } from './sections/LossReasonsManager';
 import { ScoringConfigurator } from './sections/ScoringConfigurator';
 import { ExitGatesEditor } from './sections/ExitGatesEditor';
 import { CommissionsPanel } from './sections/CommissionsPanel';
+import { ReferralsProgramCard } from './sections/ReferralsProgramCard';
 import ChatChannelsService, {
   ChatChannel,
   ChannelStats,
@@ -89,6 +90,7 @@ export function CRMConfigPanel() {
   const [scoringModalOpen, setScoringModalOpen] = useState(false);
   const [exitGatesModalOpen, setExitGatesModalOpen] = useState(false);
   const [commissionsModalOpen, setCommissionsModalOpen] = useState(false);
+  const [referralsModalOpen, setReferralsModalOpen] = useState(false);
 
   // === Load Canales ===
   const loadChannels = useCallback(async () => {
@@ -600,6 +602,24 @@ export function CRMConfigPanel() {
               Configurar →
             </button>
           </div>
+
+          {/* Card: Programa de referidos */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-cyan-500" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Programa de Referidos</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Configura incentivos, elegibilidad y recompensas para referidos y partners
+            </p>
+            <button
+              type="button"
+              onClick={() => setReferralsModalOpen(true)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configurar →
+            </button>
+          </div>
         </div>
       </div>
 
@@ -661,6 +681,18 @@ export function CRMConfigPanel() {
             </DialogDescription>
           </DialogHeader>
           <CommissionsPanel />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={referralsModalOpen} onOpenChange={setReferralsModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Programa de Referidos</DialogTitle>
+            <DialogDescription>
+              Configura incentivos, elegibilidad y recompensas para el canal indirecto
+            </DialogDescription>
+          </DialogHeader>
+          <ReferralsProgramCard />
         </DialogContent>
       </Dialog>
 

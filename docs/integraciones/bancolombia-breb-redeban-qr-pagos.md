@@ -2638,33 +2638,93 @@ reales con Supabase o servicios externos.
 
 **Archivos:** `src/components/pos/CheckoutDialog.tsx`, `src/app/app/pos/mesas/[id]/page.tsx`, `src/lib/services/posService.ts`
 
+**Flujo completo implementado y corregido:**
+
 ```
 1. Cajero/mesero abre CheckoutDialog con total a pagar.
-2. Selecciona método "Bancolombia QR" / "Bre-B QR" / "Redeban QR".
-3. Frontend POST /api/integrations/{provider}/create-qr
-   Body: { source: 'sale', source_id: null, amount, currency: 'COP', reference: 'POS-{saleId}-{timestamp}' }
-4. Backend:
-   a. Resuelve integration_connection activa para la sucursal.
-   b. Obtiene credenciales desde integration_credentials (vía secret_ref).
-   c. Llama al servicio del proveedor (createQr / createCollection).
-   d. INSERT en payment_qr_sessions (status='pending', expires_at=now()+5min).
-   e. Retorna { qr_string, qr_image_url, qr_session_id, expires_at }.
-5. Frontend muestra QrPaymentDialog con la imagen y cuenta regresiva.
-6. Cliente escanea QR desde su app bancaria y paga.
-7. Proveedor envía webhook a /api/integrations/{provider}/webhook.
-8. Backend webhook:
-   a. Verifica firma (HMAC-SHA256 / JWT / checksum).
-   b. INSERT en integration_events (direction='inbound').
-   c. Llama paymentConfirmation.confirm({ qr_session_id, external_id, payer_info }).
-   d. paymentConfirmation:
-      - UPDATE payment_qr_sessions SET status='paid', paid_at=now().
-      - INSERT en payments (source='sale', source_id=saleId, method='bancolombia_qr', status='completed', processor_response=payload).
-      - INSERT en bank_transactions (transaction_type='credit', import_source=provider).
-      - INSERT en integration_object_mappings.
-      - INSERT en notifications.
-      - (Realtime) el frontend recibe el update y cierra el dialog automáticamente.
-9. POS continúa con generación de factura (flujo existente en posService).
+2. Selecciona metodo "Bancolombia QR" / "Bre-B QR" / "Redeban QR" / "Wompi" en el dropdown.
+3. Aparece boton "Generar QR de pago".
+4. Al hacer clic, se ejecuta handleQrPayment(methodCode):
+   a. Guarda el metodo QR en estado qrPaymentMethod (para usarlo al confirmar).
+   b. Determina el endpoint segun el metodo:
+      - redeban_qr -> /api/integrations/redeban/create-qr
+      - breb_qr -> /api/integrations/breb/create-qr
+      - bancolombia_qr_wompi -> /api/integrations/bancolombia/wompi/create-qr
+      - bancolombia_qr -> /api/integrations/bancolombia/create-qr
+   c. POST al endpoint con body:
+      { connectionId, amount, currency, reference, description, source: 'pos',
+        sourceId: cart.id, branchId, organizationId, ...extraBody }
+5. Backend (create-qr route):
+   a. Verifica sesion del usuario (createRouteHandlerClient).
+   b. Valida campos requeridos (amount, currency, reference, organizationId).
+   c. Calcula expiracion (default 900s = 15 min).
+   d. Llama al servicio del proveedor (createQr / createCollection / createTransaction).
+   e. INSERT en payment_qr_sessions (status='pending', expires_at=now()+15min).
+   f. Retorna { qr_string, qr_image_url, qr_session_id, expires_at, reference }.
+6. Frontend recibe la respuesta y abre QrPaymentDialog con:
+   - qrData (string EMVCo o URL)
+   - qrImageUrl (imagen base64 o URL)
+   - reference (para polling)
+   - organizationId
+   - amount (remaining o cartTotal)
+   - expiresAt (para cuenta regresiva)
+   - providerLabel (nombre del proveedor)
+7. QrPaymentDialog inicia QrPoller al abrir:
+   - Polling a /api/integrations/qr/status?reference=xxx&organizationId=xxx
+   - Intervalo inicial: 3000ms
+   - Backoff exponencial despues de 5 intentos (max 15s)
+   - Maximo 100 intentos
+8. Cliente escanea QR desde su app bancaria y paga.
+9. Proveedor envia webhook a /api/integrations/{provider}/webhook:
+   a. Redeban: parsea JSON, extrae connectionId, llama processWebhook.
+   b. Bre-B: verifica firma HMAC-SHA256 con webhook_secret, llama processWebhook.
+   c. Wompi: verifica checksum SHA256, llama processTransactionUpdate.
+   d. Bancolombia: verifica JWT (HS256 con client_secret), llama processWebhook.
+10. processWebhook del servicio:
+    a. Busca sesion QR por reference.
+    b. Si status='approved'/'paid': llama confirmQrPayment().
+    c. Si status='rejected'/'expired': actualiza sesion y notifica.
+11. confirmQrPayment (paymentConfirmation.ts):
+    a. Busca sesion QR por qrSessionId.
+    b. Idempotencia: si ya esta 'paid', retorna success.
+    c. UPDATE payment_qr_sessions SET status='paid', paid_at=now().
+    d. INSERT/UPDATE payments (method=provider_code, status='completed').
+    e. INSERT bank_transactions (transaction_type='credit', import_source=provider).
+    f. INSERT integration_object_mappings (payment <-> bank_transaction).
+    g. INSERT notifications (createPaymentReceivedNotification).
+    h. Si status='rejected': createQrExpiredNotification.
+12. QrPoller detecta status='paid' en siguiente consulta (max 3s de latencia):
+    a. Llama onPaid() del QrPaymentDialog.
+    b. Llama onStatusChange('paid').
+    c. Detiene el polling.
+13. QrPaymentDialog ejecuta onPaid():
+    a. setStatus('paid') - muestra icono de check verde.
+    b. Ejecuta callback onPaid del padre (POS CheckoutDialog).
+    c. Cierra automaticamente tras 3 segundos.
+14. POS CheckoutDialog onPaid (CORREGIDO):
+    a. setShowQrDialog(false) - cierra el dialog QR.
+    b. toast.success('Pago QR confirmado').
+    c. Crea PaymentEntry con:
+       - id: crypto.randomUUID()
+       - method: qrPaymentMethod (redeban_qr, breb_qr, etc.)
+       - amount: remaining > 0 ? remaining : cartTotal
+    d. setPayments(prev => [...prev, newPayment]) - agrega al array.
+15. Al agregar el payment:
+    a. totalPaid se recalcula sumando los amounts de payments.
+    b. Si totalPaid >= cartTotal, canComplete = true.
+    c. El boton "Completar venta" se habilita.
+16. Cajero hace clic en "Completar venta" -> handleCheckout():
+    a. Genera la venta en posService.
+    b. Crea factura.
+    c. Marca venta como pagada.
+    d. Muestra recibo.
 ```
+
+**Expiracion automatica:**
+- Cron job: POST /api/integrations/qr/expire-sessions cada 5 minutos (vercel.json).
+- Busca sesiones con status='pending' y expires_at < now().
+- Las marca como status='expired'.
+- Doble verificacion: .eq('status', 'pending') al actualizar.
 
 **Para mesas (`/app/pos/mesas/[id]`):** mismo flujo, el `source_id` es el `table_session_id` o el `sale_id` asociado a la mesa.
 
@@ -2672,22 +2732,39 @@ reales con Supabase o servicios externos.
 
 **Archivos:** `src/components/pms/checkout/CheckoutDialog.tsx`, `src/lib/services/checkoutService.ts`
 
+**Flujo completo implementado:**
+
 ```
-1. Recepción abre CheckoutDialog con folio de la reserva.
-2. Selecciona método QR.
-3. POST /api/integrations/{provider}/create-qr
-   Body: { source: 'folio', source_id: folioId, amount: balance, currency, reference: 'PMS-{reservationCode}-{timestamp}' }
-4. Se genera QR, se muestra al huésped.
-5. Huésped paga escaneando.
-6. Webhook confirma → paymentConfirmation:
-   - INSERT payments (source='folio', source_id=folioId).
-   - UPDATE folios balance.
-7. checkoutService.processCheckout continúa:
-   - Crea sale desde items del folio.
-   - Registra pago en payments (source='sale').
-   - Genera factura.
-   - Crea tareas de housekeeping.
-   - Actualiza reserva a 'checked_out'.
+1. Recepcion abre CheckoutDialog con folio de la reserva.
+2. Selecciona metodo QR en el dropdown de metodos de pago.
+3. Aparece boton "Generar QR de pago".
+4. Al hacer clic, se ejecuta handleQrPayment(methodCode):
+   a. Guarda el metodo QR en estado qrPaymentMethod.
+   b. Determina el endpoint (mismos endpoints que POS).
+   c. POST al endpoint con body:
+      { connectionId, amount, currency, reference, description: 'PMS - Folio {folioId}',
+        source: 'folio', sourceId: folioId, branchId, organizationId, ...extraBody }
+5. Backend genera QR y crea sesion (mismo flujo que POS).
+6. Frontend abre QrPaymentDialog con los datos del QR.
+7. QrPoller hace polling cada 3s.
+8. Huesped escanea QR y paga.
+9. Proveedor envia webhook -> confirmQrPayment():
+   - INSERT payments (source='folio', source_id=folioId, method=provider_code).
+   - INSERT bank_transactions.
+   - INSERT integration_object_mappings.
+   - INSERT notifications.
+10. QrPoller detecta 'paid' -> onPaid().
+11. PMS CheckoutDialog onPaid:
+    a. setShowQrDialog(false).
+    b. toast.success('Pago QR confirmado').
+    c. Agrega PaymentEntry con metodo QR correcto al array payments.
+12. Al cubrirse el total, el boton de completar checkout se habilita.
+13. Recepcion completa el checkout:
+    - Crea sale desde items del folio.
+    - Registra pago en payments (source='sale').
+    - Genera factura.
+    - Crea tareas de housekeeping.
+    - Actualiza reserva a 'checked_out'.
 ```
 
 ### 9.3 Parking

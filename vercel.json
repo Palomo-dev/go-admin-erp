@@ -28,6 +28,10 @@
     {
       "path": "/api/integrations/open-finance/cron/consent-expiry",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/integrations/qr/expire-sessions",
+      "schedule": "*/5 * * * *"
     }
   ],
   "headers": [

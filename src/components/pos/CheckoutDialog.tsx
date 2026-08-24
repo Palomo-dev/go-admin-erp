@@ -145,6 +145,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [qrReference, setQrReference] = useState<string>('');
   const [qrProviderLabel, setQrProviderLabel] = useState<string>('');
   const [qrExpiresAt, setQrExpiresAt] = useState<string | undefined>();
+  // Guarda el metodo QR usado para registrar el pago correcto al confirmar
+  const [qrPaymentMethod, setQrPaymentMethod] = useState<string>('');
 
   // Estados para búsqueda de direcciones de clientes
   const [addressSearch, setAddressSearch] = useState<string>('');
@@ -498,6 +500,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     try {
       const reference = `POS-${Date.now()}-${cart.organization_id}`;
       const amount = remaining > 0 ? remaining : cartTotal;
+
+      // Guardar el metodo QR para registrar el pago correcto al confirmar
+      setQrPaymentMethod(methodCode);
 
       // Determinar endpoint según el método
       let endpoint = '';
@@ -2144,8 +2149,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         onPaid={() => {
           setShowQrDialog(false);
           toast.success('Pago QR confirmado');
-          // Trigger checkout completion
-          addPayment();
+          // Agregar el pago QR con el metodo correcto (redeban_qr, breb_qr, etc)
+          const qrPaymentAmount = remaining > 0 ? remaining : cartTotal;
+          const newPayment: PaymentEntry = {
+            id: crypto.randomUUID(),
+            method: qrPaymentMethod || 'redeban_qr',
+            amount: qrPaymentAmount,
+          };
+          setPayments(prev => [...prev, newPayment]);
         }}
       />
       {hasSerialItems && (

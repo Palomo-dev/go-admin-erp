@@ -34,7 +34,10 @@ import {
   Trash2,
   ArrowLeft,
   AlertCircle,
+  QrCode,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import QrPaymentDialog from '@/components/shared/QrPaymentDialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import {
@@ -122,6 +125,15 @@ export function CheckoutDialog({
   const [cashSessionOpen, setCashSessionOpen] = useState<boolean | null>(null);
   const [pendingItems, setPendingItems] = useState<FolioItem[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Estados para pago QR
+  const [showQrDialog, setShowQrDialog] = useState(false);
+  const [qrData, setQrData] = useState<string | undefined>();
+  const [qrImageUrl, setQrImageUrl] = useState<string | undefined>();
+  const [qrReference, setQrReference] = useState<string>('');
+  const [qrProviderLabel, setQrProviderLabel] = useState<string>('');
+  const [qrExpiresAt, setQrExpiresAt] = useState<string | undefined>();
+  const [qrPaymentMethod, setQrPaymentMethod] = useState<string>('');
 
   // Construir un Cart sintético desde la reserva para usar con TaxSummary
   const syntheticCart: Cart | null = React.useMemo(() => {
@@ -539,6 +551,79 @@ export function CheckoutDialog({
   const removePayment = (id: string) => {
     if (payments.length > 1) {
       setPayments(payments.filter(p => p.id !== id));
+    }
+  };
+
+  // Generar QR de pago según el método seleccionado (adaptado de POS para PMS)
+  const handleQrPayment = async (methodCode: string) => {
+    if (!reservation) return;
+    try {
+      const org = obtenerOrganizacionActiva();
+      const branchId = getCurrentBranchId() || 0;
+      const folioId = reservation.folio?.id || reservation.id;
+      const reference = `PMS-${Date.now()}-${org.id}`;
+      const amount = remaining > 0 ? remaining : paymentTotal;
+
+      // Determinar endpoint según el método
+      let endpoint = '';
+      let providerLabel = '';
+      let extraBody: Record<string, unknown> = {};
+
+      if (methodCode === 'redeban_qr') {
+        endpoint = '/api/integrations/redeban/create-qr';
+        providerLabel = 'Redeban QR';
+      } else if (methodCode === 'breb_qr') {
+        endpoint = '/api/integrations/breb/create-qr';
+        providerLabel = 'Bre-B (Mono)';
+        extraBody = { keyValue: `@org${org.id}` };
+      } else if (methodCode === 'bancolombia_qr_wompi') {
+        endpoint = '/api/integrations/bancolombia/wompi/create-qr';
+        providerLabel = 'Bancolombia QR (Wompi)';
+      } else if (methodCode === 'bancolombia_qr') {
+        endpoint = '/api/integrations/bancolombia/create-qr';
+        providerLabel = 'Bancolombia QR';
+      } else {
+        toast.error('Metodo QR no soportado');
+        return;
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connectionId: '', // Se resuelve en el backend por organization
+          amount,
+          currency: 'COP',
+          reference,
+          description: `PMS - Folio ${folioId}`,
+          source: 'folio',
+          sourceId: folioId.toString(),
+          branchId,
+          organizationId: org.id,
+          ...extraBody,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        toast.error('Error al generar QR', { description: errData.error || 'Error desconocido' });
+        return;
+      }
+
+      const data = await response.json();
+      const session = data.qrSession;
+      const qr = data.qr;
+
+      setQrReference(reference);
+      setQrProviderLabel(providerLabel);
+      setQrPaymentMethod(methodCode);
+      setQrData(qr.qr_image || qr.qr_string || qr.redirectURL || undefined);
+      setQrImageUrl(qr.qr_image || undefined);
+      setQrExpiresAt(session?.expires_at || undefined);
+      setShowQrDialog(true);
+    } catch (err) {
+      console.error('Error en handleQrPayment:', err);
+      toast.error('Error al generar QR de pago');
     }
   };
 
@@ -1257,6 +1342,26 @@ export function CheckoutDialog({
                       ))}
                     </div>
                   )}
+
+                  {/* Boton para pago QR si el metodo seleccionado es QR */}
+                  {(() => {
+                    const currentMethod = paymentMethods.find(m => m.code === payment.method);
+                    const qrCodes = ['redeban_qr', 'breb_qr', 'bancolombia_qr_wompi', 'bancolombia_qr'];
+                    if (currentMethod && qrCodes.includes(currentMethod.code)) {
+                      return (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full mt-2"
+                          onClick={() => handleQrPayment(currentMethod.code)}
+                        >
+                          <QrCode className="h-4 w-4 mr-2" />
+                          Generar QR de pago
+                        </Button>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               ))}
             </div>
@@ -1362,6 +1467,29 @@ export function CheckoutDialog({
         )}
       </DialogContent>
     </Dialog>
+    <QrPaymentDialog
+      open={showQrDialog}
+      onClose={() => setShowQrDialog(false)}
+      qrData={qrData}
+      qrImageUrl={qrImageUrl}
+      reference={qrReference}
+      organizationId={getOrganizationId()}
+      amount={remaining > 0 ? remaining : paymentTotal}
+      currency="COP"
+      providerLabel={qrProviderLabel}
+      expiresAt={qrExpiresAt}
+      onPaid={() => {
+        setShowQrDialog(false);
+        toast.success('Pago QR confirmado');
+        // Agregar pago QR con el metodo correcto
+        const qrAmount = remaining > 0 ? remaining : paymentTotal;
+        setPayments(prev => [...prev, {
+          id: crypto.randomUUID(),
+          method: qrPaymentMethod,
+          amount: qrAmount,
+        }]);
+      }}
+    />
     </>
   );
 }

@@ -1,61 +1,72 @@
 // ============================================================
 // POST /api/integrations/qr/expire-sessions
-// Job programado (cron) para marcar sesiones QR expiradas.
-// Puede invocarse manualmente o desde un cron job externo.
+// Cron job: marca sesiones QR expiradas como 'expired'.
+// Protegido por OPEN_FINANCE_CRON_SECRET o CRON_SECRET (Bearer).
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getExpiredQrSessions } from '@/lib/services/integrations/qrShared/qrSessionService';
+
+/** Verifica el secret de autorizacion del cron job (Bearer token). */
+function verifyCronSecret(request: NextRequest): boolean {
+  const expectedSecret = process.env.OPEN_FINANCE_CRON_SECRET || process.env.CRON_SECRET;
+  if (!expectedSecret) return false;
+  const authHeader = request.headers.get('authorization');
+  return authHeader === `Bearer ${expectedSecret}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar secreto de cron si CRON_SECRET esta configurado
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret) {
-      const providedSecret = request.headers.get('x-cron-secret');
-
-      if (providedSecret !== cronSecret) {
-        return NextResponse.json(
-          { error: 'No autorizado: secreto de cron invalido' },
-          { status: 401 },
-        );
-      }
+    if (!verifyCronSecret(request)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // Si CRON_SECRET no esta configurado, se permite sin auth (desarrollo)
+    // Obtener sesiones expiradas usando el servicio compartido
+    const expiredSessions = await getExpiredQrSessions();
 
+    if (expiredSessions.length === 0) {
+      return NextResponse.json({
+        success: true,
+        expiredCount: 0,
+        message: 'No hay sesiones expiradas',
+      });
+    }
+
+    const now = new Date().toISOString();
+    const expiredIds = expiredSessions.map((s) => s.id);
+
+    // Marcar como expired con doble verificacion de estado
     const supabase = getSupabaseAdmin();
-
-    // Marcar como expiradas las sesiones pending cuya fecha ya paso
-    const { data, error } = await supabase
+    const { error: updateError } = await supabase
       .from('payment_qr_sessions')
-      .update({ status: 'expired', updated_at: new Date().toISOString() })
-      .eq('status', 'pending')
-      .lt('expires_at', new Date().toISOString())
-      .select('id');
+      .update({ status: 'expired', updated_at: now })
+      .in('id', expiredIds)
+      .eq('status', 'pending');
 
-    if (error) {
-      console.error('[expire-sessions] Error al expirar sesiones QR:', error);
-      return NextResponse.json(
-        { success: false, error: `Error al expirar sesiones: ${error.message}` },
-        { status: 500 },
+    if (updateError) {
+      console.error('[Cron QR Expire] Error marcando sesiones como expiradas:', updateError);
+      return NextResponse.json({ error: 'Error actualizando sesiones' }, { status: 500 });
+    }
+
+    // Log de sesiones expiradas
+    for (const session of expiredSessions) {
+      console.log(
+        `[Cron QR Expire] Sesion ${session.reference} (${session.provider_code}) expirada - monto: ${session.amount}`,
       );
     }
 
-    const expiredCount = data?.length ?? 0;
-
     return NextResponse.json({
       success: true,
-      expiredCount,
-      message: `${expiredCount} sesiones expiradas`,
+      expiredCount: expiredSessions.length,
+      sessions: expiredSessions.map((s) => ({
+        id: s.id,
+        reference: s.reference,
+        provider: s.provider_code,
+      })),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('[expire-sessions] Excepcion:', err);
-    return NextResponse.json(
-      { success: false, error: `Error interno: ${message}` },
-      { status: 500 },
-    );
+    console.error('[Cron QR Expire] Error:', err);
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }

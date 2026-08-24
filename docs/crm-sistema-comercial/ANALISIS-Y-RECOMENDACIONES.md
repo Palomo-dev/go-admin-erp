@@ -285,9 +285,9 @@ Regla: ninguna conexión se considera "lista" hasta que sus capas BD + backend/U
 | `commissions` | Comisiones de partners y vendedores (ledger) | `payee_type='partner'`, `commission_type='partner'` para partners. `source_type='opportunity'`, `commission_type='salesperson'` para vendedores. Hoy lo alimentan POS, facturas venta y compras; CRM añade la fuente oportunidad |
 | `subscriptions` | **NO USAR desde CRM** — tabla de plataforma | Las renovaciones del CRM usan `billing_cycle_months` en deals ganados, no leen `subscriptions` |
 | `stages` | Exit gates | `exit_criteria` JSONB: `{required_fields[], required_activities[], require_discovery, min_score}` |
-| `organization_preferences` | Configuración simple (scoring thresholds, health config, renewal timeline, referral/partner program) | `settings` JSONB con keys anidadas |
+| `organization_preferences` | Configuración simple (renewal timeline, referral program) | `settings` JSONB con keys anidadas. Health score config va en tabla propia `health_score_configs` |
 
-### 6.3 Tablas NUEVAS (solo 6, las imprescindibles)
+### 6.3 Objetos NUEVOS (8: 6 tablas + 1 tabla config + 1 materialized view)
 
 ```sql
 -- ============ EXTENSIONES A EXISTENTES ============
@@ -443,6 +443,30 @@ create table if not exists health_score_snapshots (
 );
 create index if not exists idx_hss_customer on health_score_snapshots (organization_id, customer_id, created_at desc);
 
+-- 7. Config de health score por organización (tabla separada — tiene estructura, queries por org, lógica de cálculo)
+create table if not exists health_score_configs (
+  organization_id integer primary key references organizations(id),
+  config jsonb not null,        -- {indicators: [{key,label,type,weight,source,threshold}], bands: {green: 70, yellow: 40, red: 0}}
+  refresh_interval_hours integer default 24,
+  is_active boolean default true,
+  updated_at timestamptz default now()
+);
+
+-- 8. Materialized view de health de clientes (lee sales, invoice_sales, accounts_receivable, campaign_contacts)
+create materialized view if not exists mv_customer_health as
+select c.organization_id, c.id customer_id,
+       count(s.id) filter (where s.created_at > now() - interval '90 days') purchases_90d,
+       extract(day from now() - max(s.created_at)) recency_days,
+       coalesce(sum(s.total), 0) ltv_total,
+       avg(s.total) avg_ticket,
+       (select count(*) from accounts_receivable ar
+         where ar.customer_id = c.id and ar.status <> 'paid') outstanding_count
+from customers c left join sales s on s.customer_id = c.id
+group by c.organization_id, c.id;
+-- refinar joins a sales/invoice_sales según esquema real
+-- refresh horario vía pg_cron o ruta cron /api/crm/health/recalculate
+create unique index if not exists idx_mvh_customer on mv_customer_health (organization_id, customer_id);
+
 -- ============ TRIGGERS ============
 create or replace function fn_log_stage_change() returns trigger as $$
 begin
@@ -528,7 +552,7 @@ El validador (`stageGateService`) devuelve `{ ok, missing[] }`. En el Kanban: si
 
 > Objetivo: que el embudo exista como DATOS: origen, contacto, calificación mínima, pérdida estructurada, criterios de etapa, histórico para medir ciclos, comisiones configurables.
 
-**Migración SQL:** ver sección 6.3 (extensiones + 6 tablas nuevas + triggers + índices + RLS).
+**Migración SQL:** ver sección 6.3 (extensiones + 6 tablas + 1 config + 1 MV + triggers + índices + RLS).
 
 **Plantilla semilla del pipeline SaaS B2B (datos, no código):**
 
@@ -665,9 +689,9 @@ Al marcar ganada (o arrastrar a etapa is_won), modal con acciones encadenadas:
 - Handoff won→onboarding = crear oportunidad hija (ya en FASE 3 modal de cierre).
 
 **Health score de clientes (CRM):**
-- Materialized view `mv_customer_health` leyendo `sales`, `invoice_sales`, `accounts_receivable`, `campaign_contacts` (que YA existen). Refresh horario vía pg_cron o ruta cron.
-- `organization_preferences.settings.crm.health_score` (jsonb por org: indicadores activos + pesos + umbrales 🟢🟡🔴). Default razonable semillado; el restaurante pesa recencia, el mayorista peso de saldo, etc.
-- `health_score_snapshots` (tabla nueva): histórico de scores por cliente para ver tendencias.
+- Materialized view `mv_customer_health` leyendo `sales`, `invoice_sales`, `accounts_receivable`, `campaign_contacts` (que YA existen). Refresh horario vía pg_cron o ruta cron `/api/crm/health/recalculate`.
+- `health_score_configs` (tabla nueva): config por organización con indicadores activos + pesos + umbrales 🟢🟡🔴. Default razonable semillado; el restaurante pesa recencia, el mayorista peso de saldo, etc.
+- `health_score_snapshots` (tabla nueva): histórico de scores por cliente para ver tendencias (sparkline en ficha + alerta "rojo N ciclos seguidos").
 - `customers.health_score` (cache int 0-100) + `customers.health_score_updated_at`.
 - **Posicionamiento:** este health es GENÉRICO — cualquier organización ve la salud de SUS clientes. La salud de las organizaciones como clientes de GoAdmin vive SOLO en go-admin-super. Son productos distintos.
 - UI: gauge por cliente en ficha 360° + panel de alertas (rojos) accesible desde dashboard CRM. Configuración en tab CRM central ("Post-venta").
@@ -756,7 +780,7 @@ RPC `fn_comercial_metrics` (win rate, cycle length, ARPA, pipeline coverage, pro
 ## 10. Orden de ejecución sugerido (esta semana)
 
 1. Migración FASE 0 (normalización probability) + fixes B2–B6 en código
-2. Migración FASE 1 (extensiones + 6 tablas + triggers + índices + RLS) vía Supabase MCP
+2. Migración FASE 1 (extensiones + 6 tablas + health_score_configs + mv_customer_health + triggers + índices + RLS) vía Supabase MCP
 3. Seed: pipeline "Ventas B2B" 10 etapas + razones de pérdida globales + scoring config default
 4. `StructuredLossDialog` + campos nuevos en formulario único + `GateWarningDialog`
 5. Import CSV de prospectos reales → Kanban vivo

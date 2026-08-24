@@ -93,6 +93,15 @@ const PROVIDER_CONFIGS: Record<string, Omit<ProviderConfig, 'code' | 'name'>> = 
     borderColor: 'border-[#34C759]/30',
     category: 'payments'
   },
+  bold: {
+    // Pasarela de pagos Bold - Links de pago, datáfono y QR
+    description: 'Pasarela de pagos Bold - Links de pago, datáfono y QR',
+    icon: <CreditCard className="h-6 w-6" />,
+    color: 'text-pink-600',
+    bgColor: 'bg-pink-50',
+    borderColor: 'border-pink-200',
+    category: 'payments'
+  },
   rappi: {
     description: 'Delivery y pedidos online',
     icon: <ShoppingBag className="h-6 w-6" />,

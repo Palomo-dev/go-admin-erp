@@ -4504,6 +4504,328 @@ Combinando proveedores ya integrados + Mono:
 
 ---
 
+---
+
+## 11. Integración Bold — Pasarela de Pagos Colombia
+
+> **Documentación oficial:** https://developers.bold.co
+> **URL base API Link:** `https://integrations.api.bold.co`
+> **URL base consulta transacciones:** `https://payments.api.bold.co`
+> **Panel de comercio:** https://bold.co (sección Integraciones)
+> **Soporte:** soporte.online@bold.co
+
+### 11.1 Resumen de Bold
+
+Bold es una pasarela de pagos colombiana que ofrece tres productos integrables:
+
+1. **Botón de pagos / API Link de pagos:** genera links de pago para venta online.
+   Soporta tarjeta crédito/débito, PSE, Botón Bancolombia y Nequi.
+2. **API Integrations (datáfono):** conecta tu sistema con datáfonos Bold Smart Pro
+   para cobros presenciales con tarjeta, Nequi, Daviplata, QR Bold y Pay by Link.
+3. **Webhook:** notificación automática de eventos de pago (venta aprobada/rechazada,
+   anulación aprobada/rechazada).
+
+### 11.2 Llaves de integración
+
+Bold maneja dos tipos de llaves por ambiente (pruebas y producción):
+
+- **Llave de identidad (API key):** pública, identifica el comercio.
+  Se envía en header `Authorization: x-api-key <llave_de_identidad>`.
+- **Llave secreta:** privada, se usa para verificar la firma HMAC-SHA256 del webhook.
+
+**Dos conjuntos de llaves independientes:**
+- **Botón de pagos / API Link:** para pagos en línea.
+- **API Datáfono:** para API Integrations (datáfonos).
+
+Ambos conjuntos se obtienen en https://bold.co → Integraciones → Llaves de integración.
+
+### 11.3 Métodos de pago soportados
+
+**API Link de pagos (online):**
+
+| Método | Código Bold | Min COP | Max COP |
+|--------|-------------|---------|---------|
+| Tarjeta crédito/débito | `CREDIT_CARD` | 1.000 | 5.000.000 |
+| PSE | `PSE` | 1.000 | 5.000.000 |
+| Botón Bancolombia | `BOTON_BANCOLOMBIA` | 1.000 | 10.000.000 |
+| Nequi | `NEQUI` | 1.000 | 10.000.000 |
+
+**API Integrations (datáfono):**
+
+| Método | Código Bold | Descripción |
+|--------|-------------|-------------|
+| Tarjeta (POS) | `POS` | Pago con tarjeta en datáfono |
+| Nequi | `NEQUI` | Pago por Nequi Push/QR |
+| Daviplata | `DAVIPLATA` | Pago por Daviplata |
+| Pay by Link | `PAY_BY_LINK` | Link de pago web |
+| QR Bold | `PAY_BY_QR_BOLD` | QR dinámico de Bold |
+
+### 11.4 Endpoints de la API
+
+#### API Link de pagos (base: `https://integrations.api.bold.co`)
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/online/link/v1/payment_methods` | GET | Consultar métodos de pago y límites |
+| `/online/link/v1` | POST | Crear link de pago |
+| `/online/link/v1/{id}` | GET | Consultar estado del link de pago |
+
+#### API Integrations (base: `https://integrations.api.bold.co`)
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/payments/payment-methods` | GET | Consultar métodos de pago disponibles |
+| `/payments/binded-terminals` | GET | Consultar terminales (datáfonos) |
+| `/payments/app-checkout` | POST | Crear pago en datáfono |
+
+#### Consulta de transacciones (base: `https://payments.api.bold.co`)
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/v2/payment-voucher/{id}` | GET | Consultar estado de transacción |
+
+### 11.5 Webhook
+
+**Eventos:**
+- `SALE_APPROVED` — Venta aprobada
+- `SALE_REJECTED` — Venta rechazada
+- `VOID_APPROVED` — Anulación aprobada
+- `VOID_REJECTED` — Anulación rechazada
+
+**Verificación de firma:**
+1. Convertir el body recibido a Base64.
+2. Cifrar con HMAC-SHA256 usando la **llave secreta**.
+3. Comparar con el header `x-bold-signature` (hex string).
+
+**Estructura del evento (CloudEvents 1.0):**
+
+```json
+{
+  "id": "uuid-notificacion",
+  "type": "SALE_APPROVED",
+  "subject": "ID_TRANSACCION_BOLD",
+  "source": "/payments",
+  "spec_version": "1.0",
+  "time": 1761060600000000000,
+  "data": {
+    "payment_id": "F8A5D6B7G2H1",
+    "merchant_id": "PQR6Y4T8Z3",
+    "created_at": "2025-10-21T11:30:15-05:00",
+    "amount": {
+      "currency": "COP",
+      "total": 1000,
+      "taxes": [{ "base": 810, "type": "VAT", "value": 190 }],
+      "tip": 0
+    },
+    "metadata": { "reference": "ORD-20251021-00145" },
+    "bold_code": "B000",
+    "payer_email": "cliente@email.com",
+    "payment_method": "CARD",
+    "integration": "POS"
+  },
+  "datacontenttype": "application/json"
+}
+```
+
+**Campos clave:**
+- `data.metadata.reference` — referencia enviada al crear el pago.
+- `data.payment_id` — ID de transacción en Bold.
+- `data.amount.total` — monto total en COP.
+- `data.payment_method` — `CARD`, `CARD_WEB`, `NEQUI`, `BOTON_BANCOLOMBIA`, `PSE`, `QR`.
+- `data.integration` — `POS`, `LINK`, `BUTTON`, `API_INTEGRATIONS`.
+
+**Política de reintentos:**
+- El webhook responde 200 inmediatamente (máx 2s).
+- Si no responde 200, Bold reintenta con backoff.
+- Se pueden recibir notificaciones duplicadas (usar `id` para idempotencia).
+
+### 11.6 Estados de transacción
+
+| Estado | Descripción | ¿Terminal? |
+|--------|-------------|------------|
+| `PROCESSING` | En proceso | No |
+| `PENDING` | Pendiente (solo PSE) | No |
+| `APPROVED` | Aprobada | Sí |
+| `REJECTED` | Rechazada | Sí |
+| `FAILED` | Fallida | Sí |
+| `VOIDED` | Anulada | Sí |
+| `NO_TRANSACTION_FOUND` | No encontrada | Sí |
+
+### 11.7 Plan de implementación fase a fase
+
+#### Fase B0 — Preparación y base de datos
+
+- [ ] Insertar `integration_providers` → `bold` (category: payments).
+- [ ] Insertar `integration_connectors` → `bold_link` (API Link) y `bold_pos` (API Integrations).
+- [ ] Insertar `payment_methods` → `bold_link` (link de pago), `bold_qr` (QR Bold), `bold_card` (tarjeta datáfono).
+- [ ] Insertar `country_payment_methods` → CO para cada método.
+
+**Credenciales necesarias (integration_credentials):**
+
+| Propósito | Tipo | Descripción |
+|-----------|------|-------------|
+| `identity_key` | api_key | Llave de identidad (API key) |
+| `secret_key` | secret | Llave secreta (para verificar webhook) |
+
+Dos conjuntos por conexión:
+- Botón de pagos / API Link (online).
+- API Datáfono (Integrations).
+
+#### Fase B1 — Servicio Bold
+
+- [ ] `src/lib/services/integrations/bold/boldConfig.ts`
+  - URL base: `https://integrations.api.bold.co` (ambos productos).
+  - URL consulta: `https://payments.api.bold.co`.
+  - Constantes: `BOLD_PROVIDER_CODE = 'bold'`, `BOLD_CONNECTOR_LINK = 'bold_link'`, `BOLD_CONNECTOR_POS = 'bold_pos'`.
+  - Mapeo de credenciales: `identity_key`, `secret_key`.
+
+- [ ] `src/lib/services/integrations/bold/boldTypes.ts`
+  - `BoldCredentials` — { identityKey, secretKey, environment }.
+  - `BoldPaymentMethod` — 'CREDIT_CARD' | 'PSE' | 'BOTON_BANCOLOMBIA' | 'NEQUI' | 'POS' | 'PAY_BY_LINK' | 'PAY_BY_QR_BOLD' | 'DAVIPLATA'.
+  - `BoldTransactionStatus` — 'PROCESSING' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'FAILED' | 'VOIDED'.
+  - `BoldCreateLinkRequest` — amount, currency, reference, description, expiration_date, payment_methods, callback_url, payer_email.
+  - `BoldCreateLinkResponse` — id (LNK_*), status, payment_url.
+  - `BoldCreatePosPaymentRequest` — amount, payment_method, terminal_model, terminal_serial, reference, user_email.
+  - `BoldCreatePosPaymentResponse` — integration_id, status.
+  - `BoldWebhookEvent` — id, type, subject, source, spec_version, time, data, datacontenttype.
+  - `BoldTransactionResponse` — payment_id, payment_status, amount, reference_id.
+
+- [ ] `src/lib/services/integrations/bold/boldService.ts`
+  - `getCredentials(connectionId)` — lee de integration_credentials.
+  - `getPaymentMethods(connectionId)` — GET `/online/link/v1/payment_methods`.
+  - `createPaymentLink(connectionId, request)` — POST `/online/link/v1`.
+  - `getPaymentLinkStatus(connectionId, linkId)` — GET `/online/link/v1/{id}`.
+  - `getPosPaymentMethods(connectionId)` — GET `/payments/payment-methods`.
+  - `getTerminals(connectionId)` — GET `/payments/binded-terminals`.
+  - `createPosPayment(connectionId, request)` — POST `/payments/app-checkout`.
+  - `getTransactionStatus(connectionId, transactionId)` — GET `https://payments.api.bold.co/v2/payment-voucher/{id}`.
+  - `verifyWebhookSignature(rawBody, signature, secretKey)` — HMAC-SHA256 base64.
+  - `processWebhook(event)` — mapea `SALE_APPROVED` → confirmQrPayment, `SALE_REJECTED` → marcar rechazado.
+  - `healthCheck(connectionId)` — valida credenciales consultando payment_methods.
+
+- [ ] `src/lib/services/integrations/bold/index.ts` — exportaciones.
+
+#### Fase B2 — API Routes
+
+- [ ] `src/app/api/integrations/bold/health-check/route.ts` (POST)
+  - Verifica credenciales con Bold.
+  - Retorna { valid, message, payment_methods? }.
+
+- [ ] `src/app/api/integrations/bold/create-link/route.ts` (POST)
+  - Crea link de pago via API Link.
+  - Body: { connectionId, amount, currency, reference, description, payment_methods?, callback_url?, payer_email?, expiresInSeconds? }.
+  - Crea sesión en `payment_qr_sessions` (source: 'link', provider_code: 'bold_link').
+  - Retorna { payment_url, link_id, qr_session_id, expires_at }.
+
+- [ ] `src/app/api/integrations/bold/create-pos-payment/route.ts` (POST)
+  - Crea pago en datáfono via API Integrations.
+  - Body: { connectionId, amount, currency, reference, payment_method, terminal_model, terminal_serial, user_email, description? }.
+  - Crea sesión en `payment_qr_sessions` (source: 'pos', provider_code: 'bold_pos').
+  - Retorna { integration_id, qr_session_id }.
+
+- [ ] `src/app/api/integrations/bold/status/route.ts` (GET)
+  - Consulta estado de transacción.
+  - Query params: reference, organizationId.
+  - Si la sesión local sigue pending, consulta API de Bold.
+
+- [ ] `src/app/api/integrations/bold/webhook/route.ts` (POST)
+  - **Público** (sin auth de usuario).
+  - Usa `getSupabaseAdmin()`.
+  - Verifica firma HMAC-SHA256 con `x-bold-signature` y `secret_key`.
+  - Registra evento en `integration_events`.
+  - Llama `boldService.processWebhook(event)`.
+  - Responde 200 inmediatamente.
+
+#### Fase B3 — UI: Conexiones y métodos de pago
+
+- [ ] `src/components/integraciones/conexiones/AvailableProviders.tsx`
+  - Agregar `bold` a `PROVIDER_CONFIGS` con icono, color de marca (#FF0066 de Bold), categoría payments.
+
+- [ ] `src/app/app/integraciones/conexiones/nueva/page.tsx`
+  - Agregar `bold` a `multiKeyProviders`.
+  - Campos: identity_key, secret_key.
+
+- [ ] `src/components/finanzas/metodos-pago/payment-method-types.ts`
+  - Agregar `BOLD: 'bold'` a `PAYMENT_GATEWAYS`.
+  - Agregar `{ label: 'Bold', value: 'bold' }` a `PAYMENT_GATEWAY_OPTIONS`.
+
+- [ ] `src/components/pos/cajas/paymentMethodLabels.ts`
+  - Agregar `bold_link: 'Bold (Link)'`, `bold_qr: 'Bold QR'`, `bold_card: 'Bold (Datáfono)'`.
+
+- [ ] `src/components/finanzas/metodos-pago/PaymentMethodForm.tsx`
+  - Agregar `{ code: 'bold_link', name: 'Bold (Link de pago)' }` y `{ code: 'bold_qr', name: 'Bold QR' }` a `PAYMENT_INTEGRATIONS`.
+
+#### Fase B4 — Integración en CheckoutDialog (POS y PMS)
+
+- [ ] `src/components/pos/CheckoutDialog.tsx`
+  - Agregar `bold_link` y `bold_qr` a los métodos QR soportados en `handleQrPayment`.
+  - Endpoint: `/api/integrations/bold/create-link` para link de pago.
+  - Para `bold_qr` (QR Bold via API Integrations): `/api/integrations/bold/create-pos-payment` con `payment_method: 'PAY_BY_QR_BOLD'`.
+  - El flujo de polling y `onPaid` es el mismo que los otros QR.
+
+- [ ] `src/components/pms/checkout/CheckoutDialog.tsx`
+  - Misma integración que POS, adaptada para folios.
+
+#### Fase B5 — Onboarding y producción
+
+- [ ] Registrar comercio en https://bold.co.
+- [ ] Activar llaves de integración (Botón de pagos + API Datáfono).
+- [ ] Habilitar datáfonos para API Integrations (si se usa POS).
+- [ ] Configurar URL de webhook: `https://erp.dominio.co/api/integrations/bold/webhook`.
+- [ ] Probar en ambiente de pruebas (sandbox).
+- [ ] Migrar a producción con llaves de producción.
+
+### 11.8 Flujo completo de pago con Bold
+
+#### Flujo API Link de pagos (online)
+
+```
+1. Usuario selecciona "Bold (Link)" en checkout.
+2. Frontend POST /api/integrations/bold/create-link
+   Body: { amount, currency, reference, description, payment_methods, callback_url }
+3. Backend:
+   a. Obtiene credenciales de integration_credentials.
+   b. POST https://integrations.api.bold.co/online/link/v1
+   c. Crea sesión en payment_qr_sessions (status='pending').
+   d. Retorna { payment_url, link_id, qr_session_id }.
+4. Frontend abre payment_url (redirect o iframe).
+5. Cliente paga con tarjeta/PSE/Nequi/Botón Bancolombia.
+6. Bold envía webhook SALE_APPROVED a /api/integrations/bold/webhook.
+7. Backend:
+   a. Verifica firma HMAC-SHA256.
+   b. Registra en integration_events.
+   c. Llama confirmQrPayment (actualiza sesión, payments, bank_transactions, notifications).
+8. Frontend detecta 'paid' via polling y completa la venta.
+```
+
+#### Flujo API Integrations (datáfono)
+
+```
+1. Usuario selecciona "Bold (Datáfono)" o "Bold QR" en checkout.
+2. Frontend POST /api/integrations/bold/create-pos-payment
+   Body: { amount, currency, reference, payment_method, terminal_model, terminal_serial, user_email }
+3. Backend:
+   a. Obtiene credenciales de integration_credentials.
+   b. POST https://integrations.api.bold.co/payments/app-checkout
+   c. Crea sesión en payment_qr_sessions (status='pending').
+   d. Retorna { integration_id, qr_session_id }.
+4. Datáfono Bold recibe la instrucción y inicia el cobro.
+5. Cliente paga (tarjeta/Nequi/Daviplata/QR).
+6. Bold envía webhook SALE_APPROVED.
+7. Backend confirma pago (mismo flujo que link).
+8. Frontend detecta 'paid' via polling y completa la venta.
+```
+
+### 11.9 Seguridad
+
+- **Webhook público:** sin auth de usuario, usa `getSupabaseAdmin()`.
+- **Verificación de firma:** HMAC-SHA256 con llave secreta, comparación timing-safe.
+- **Idempotencia:** usar `event.id` (UUID único por notificación) para evitar duplicados.
+- **Credenciales:** nunca exponer `secret_key` al frontend.
+- **Rotación:** si se sospecha compromiso, regenerar llaves en panel de Bold y actualizar `integration_credentials`.
+
+---
+
 **Fin del documento.**
 
 > Este documento es de planificación. Antes de aplicar el DDL de `payment_qr_sessions` o migrar datos existentes de `payment_methods`, confirmar con el equipo. La implementación se hace fase a fase, respetando las reglas de scope del proyecto (`code-style-guide.md`).

@@ -582,6 +582,22 @@ export function CheckoutDialog({
       } else if (methodCode === 'bancolombia_qr') {
         endpoint = '/api/integrations/bancolombia/create-qr';
         providerLabel = 'Bancolombia QR';
+      } else if (methodCode === 'bold_link') {
+        // Bold Link de pago (API Link, online)
+        endpoint = '/api/integrations/bold/create-link';
+        providerLabel = 'Bold Link de Pago';
+        extraBody = {
+          payment_methods: ['CREDIT_CARD', 'PSE', 'BOTON_BANCOLOMBIA', 'NEQUI'],
+          callback_url: typeof window !== 'undefined' ? window.location.origin : '',
+        };
+      } else if (methodCode === 'bold_qr') {
+        // Bold QR (API Integrations, datáfono)
+        endpoint = '/api/integrations/bold/create-pos-payment';
+        providerLabel = 'Bold QR';
+        extraBody = {
+          payment_method: 'PAY_BY_QR_BOLD',
+          // terminal_model y terminal_serial se resuelven en el backend
+        };
       } else {
         toast.error('Metodo QR no soportado');
         return;
@@ -611,6 +627,17 @@ export function CheckoutDialog({
       }
 
       const data = await response.json();
+
+      // Bold Link de pago: la respuesta incluye payment_url en lugar de qr_data
+      // Si solo hay payment_url (sin qr_data ni qr_image_url), abrir en nueva ventana
+      if (data.payment_url && !data.qr_data && !data.qr_image_url) {
+        window.open(data.payment_url, '_blank');
+        toast.success('Link de pago abierto', {
+          description: 'Se abrio el link de pago de Bold en una nueva ventana.',
+        });
+        return;
+      }
+
       const session = data.qrSession;
       const qr = data.qr;
 

@@ -32,6 +32,7 @@ import { CajasService } from '@/components/pos/cajas/CajasService';
 import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import { QrPaymentDialog } from '@/components/shared/QrPaymentDialog';
+import { useMobileNative } from '@/hooks/useMobileNative';
 
 interface CheckoutDialogProps {
   cart: Cart;
@@ -86,6 +87,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     validationDate?: string;
   } | null>(null);
   const { alwaysEnabled: eInvoiceAlwaysEnabled } = useElectronicInvoicePreference();
+  const { hapticNotification, hapticImpact } = useMobileNative();
 
   // Si la preferencia global está activa, forzar sendToFactus = true
   useEffect(() => {
@@ -523,6 +525,22 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       } else if (methodCode === 'bancolombia_qr') {
         endpoint = '/api/integrations/bancolombia/create-qr';
         providerLabel = 'Bancolombia QR';
+      } else if (methodCode === 'bold_link') {
+        // Bold Link de pago (API Link, online)
+        endpoint = '/api/integrations/bold/create-link';
+        providerLabel = 'Bold Link de Pago';
+        extraBody = {
+          payment_methods: ['CREDIT_CARD', 'PSE', 'BOTON_BANCOLOMBIA', 'NEQUI'],
+          callback_url: typeof window !== 'undefined' ? window.location.origin : '',
+        };
+      } else if (methodCode === 'bold_qr') {
+        // Bold QR (API Integrations, datáfono)
+        endpoint = '/api/integrations/bold/create-pos-payment';
+        providerLabel = 'Bold QR';
+        extraBody = {
+          payment_method: 'PAY_BY_QR_BOLD',
+          // terminal_model y terminal_serial se resuelven en el backend
+        };
       } else {
         toast.error('Metodo QR no soportado');
         return;
@@ -552,6 +570,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
 
       const data = await response.json();
+
+      // Bold Link de pago: la respuesta incluye payment_url en lugar de qr_data
+      // Si solo hay payment_url (sin qr_data ni qr_image_url), abrir en nueva ventana
+      if (data.payment_url && !data.qr_data && !data.qr_image_url) {
+        window.open(data.payment_url, '_blank');
+        toast.success('Link de pago abierto', {
+          description: 'Se abrio el link de pago de Bold en una nueva ventana.',
+        });
+        return;
+      }
+
       const session = data.qrSession;
       const qr = data.qr;
 
@@ -825,6 +854,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         : await POSService.checkout(checkoutData);
       setCompletedSale(sale);
       setShowReceipt(true);
+
+      // Haptic feedback de venta exitosa (no-op en web)
+      hapticNotification('success');
+      hapticImpact('medium');
 
       // Impresión física automática del ticket de venta (best-effort):
       // sale por la(s) impresora(s) con estación 'Caja'. Si no hay impresora
@@ -1103,6 +1136,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       
     } catch (error: any) {
       console.error('Error during checkout:', error);
+      // Haptic feedback de error (no-op en web)
+      hapticNotification('error');
+      hapticImpact('heavy');
       const errorMsg = error?.message || error?.details || (typeof error === 'string' ? error : 'Error desconocido');
       alert('Error al procesar el pago: ' + errorMsg);
     } finally {

@@ -23,6 +23,9 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   bancolombia_qr: 'Bancolombia QR',
   breb_qr: 'Bre-B (Pago Inmediato)',
   redeban_qr: 'Redeban QR',
+  bold_link: 'Bold (Link)',
+  bold_qr: 'Bold QR',
+  bold_card: 'Bold (Datáfono)',
   mixed: 'Mixto',
   other: 'Otros',
 };

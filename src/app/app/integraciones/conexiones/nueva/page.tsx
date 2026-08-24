@@ -206,7 +206,7 @@ export default function NuevaConexionPage() {
           const existingCreds = await integrationsService.getCredentials(connection.id);
           if (existingCreds.length > 0) {
             // Proveedores con múltiples credenciales separadas (purpose como clave)
-            const multiKeyProviders = ['wompi', 'mercadopago', 'payu', 'stripe', 'paypal', 'sendgrid', 'whatsapp', 'booking', 'expedia', 'bancolombia', 'breb', 'redeban'];
+            const multiKeyProviders = ['wompi', 'mercadopago', 'payu', 'stripe', 'paypal', 'sendgrid', 'whatsapp', 'booking', 'expedia', 'bancolombia', 'breb', 'redeban', 'bold'];
             const providerCode = provider?.code || '';
 
             if (multiKeyProviders.includes(providerCode)) {

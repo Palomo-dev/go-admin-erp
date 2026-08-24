@@ -66,13 +66,18 @@ function SelectOrganizationContent() {
         try {
           const eqIndex = oauthCookie.indexOf('=');
           let value = oauthCookie.substring(eqIndex + 1);
-          // Decodificar URL-encoding si existe (puede estar doble-encoded)
-          try {
-            if (value.startsWith('%7B') || value.startsWith('%5B')) {
-              value = decodeURIComponent(value);
+          // Decodificar URL-encoding repetidamente hasta que no quede.
+          // La cookie puede estar doble o triple encoded (%257B%2522 = %7B%22 = {").
+          for (let i = 0; i < 3; i++) {
+            if (value.startsWith('%25') || value.startsWith('%7B') || value.startsWith('%5B')) {
+              try {
+                value = decodeURIComponent(value);
+              } catch {
+                break;
+              }
+            } else {
+              break;
             }
-          } catch {
-            // Si decodeURIComponent falla, intentar con el valor crudo
           }
           const parsed = JSON.parse(value);
           const { access_token, refresh_token } = parsed;

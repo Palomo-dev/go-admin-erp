@@ -15,7 +15,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Save, RefreshCw, DollarSign, Calculator, User } from 'lucide-react';
+import { Save, RefreshCw, DollarSign, Calculator, User, Trash2 } from 'lucide-react';
 import { commissionService, type VendorCommissionRate } from '@/lib/services/crm/commissionService';
 
 export function CommissionsPanel() {
@@ -99,6 +99,21 @@ export function CommissionsPanel() {
       rate: override.rate,
     });
     setOverrideDialogOpen(true);
+  };
+
+  const handleDeleteOverride = async (override: VendorCommissionRate) => {
+    if (!confirm('¿Estás seguro de eliminar este override de comisión?')) return;
+    try {
+      await commissionService.deleteOverride(override.id);
+      toast({
+        title: 'Override eliminado',
+        description: 'La comisión del vendedor se eliminó correctamente',
+      });
+      loadData();
+    } catch (error) {
+      console.error('Error eliminando override:', error);
+      toast({ title: 'Error', description: 'No se pudo eliminar el override', variant: 'destructive' });
+    }
   };
 
   const handleSaveOverride = async () => {
@@ -235,6 +250,9 @@ export function CommissionsPanel() {
                     <div className="flex items-center gap-1 ml-2">
                       <Button variant="ghost" size="icon" onClick={() => handleEditOverride(override)}>
                         <DollarSign className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteOverride(override)}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
                   </div>

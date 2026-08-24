@@ -31,6 +31,7 @@ import { PipelineSearchSelect } from './PipelineSearchSelect';
 import { SpaceSearchSelect } from './SpaceSearchSelect';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { verticalsService } from '@/lib/services/crm/verticalsService';
 
 interface OpportunityFormProps {
   opportunity?: Opportunity;
@@ -118,13 +119,9 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   useEffect(() => {
     const loadVerticals = async () => {
       try {
-        const module = await import('@/lib/services/crm/verticalsService');
-        const service = module.verticalsService || module.default;
-        if (service && typeof service.list === 'function') {
-          const data = await service.list();
-          if (Array.isArray(data)) {
-            setVerticals(data);
-          }
+        const data = await verticalsService.list();
+        if (Array.isArray(data)) {
+          setVerticals(data);
         }
       } catch {
         // El servicio no esta disponible aun: dejar verticales vacio

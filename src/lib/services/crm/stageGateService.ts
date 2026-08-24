@@ -35,7 +35,7 @@ export interface StageGateResult {
 }
 
 /**
- * Tipo para UI (ExitGatesEditor): etapa con criterios de salida como array de strings.
+ * Tipo para UI (ExitGatesEditor): etapa con criterios de salida estructurados.
  */
 export interface StageWithCriteria {
   id: string;
@@ -43,7 +43,7 @@ export interface StageWithCriteria {
   color: string | null;
   probability: number | null;
   position: number;
-  exit_criteria: string[] | null;
+  exit_criteria: ExitCriteria | null;
 }
 
 interface OpportunityRow {
@@ -88,7 +88,8 @@ class StageGateService {
 
   /**
    * Obtiene todas las etapas con sus exit_criteria de la organización.
-   * Los exit_criteria se devuelven como array de strings para compatibilidad con UI.
+   * Los exit_criteria se devuelven en formato estructurado { requirements: [...] }
+   * para compatibilidad con la UI (ExitGatesEditor).
    */
   async getStagesWithExitCriteria(): Promise<StageWithCriteria[]> {
     try {
@@ -123,7 +124,7 @@ class StageGateService {
         color: (stage as { color?: string | null }).color || null,
         probability: (stage as { probability?: number | null }).probability ?? null,
         position: (stage as { position?: number }).position ?? 0,
-        exit_criteria: this.parseExitCriteriaAsStrings(stage.exit_criteria),
+        exit_criteria: this.parseStructuredCriteria(stage.exit_criteria),
       }));
     } catch (err) {
       console.error('Error en stageGateService.getStagesWithExitCriteria:', err);
@@ -132,14 +133,14 @@ class StageGateService {
   }
 
   /**
-   * Actualiza los exit_criteria de una etapa (formato array de strings).
+   * Actualiza los exit_criteria de una etapa (formato estructurado ExitCriteria).
    */
-  async updateExitCriteria(stageId: string, criteria: string[]): Promise<void> {
+  async updateExitCriteria(stageId: string, criteria: ExitCriteria): Promise<void> {
     try {
       const { error } = await supabase
         .from('stages')
         .update({
-          exit_criteria: criteria,
+          exit_criteria: criteria as unknown as Record<string, unknown>,
           updated_at: new Date().toISOString(),
         })
         .eq('id', stageId);

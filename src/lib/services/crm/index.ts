@@ -40,3 +40,22 @@ export type {
 } from './commissionService';
 
 export { pipelineSeedService, default as pipelineSeedServiceDefault } from './pipelineSeedService';
+
+// FASE 2 - Flujo vivo del CRM
+export { leadCaptureService, default as leadCaptureServiceDefault } from './leadCaptureService';
+export type { EnsureLeadInput, EnsureLeadResult } from './leadCaptureService';
+
+export { followupService, default as followupServiceDefault } from './followupService';
+export type {
+  OverdueFollowup,
+  StaleOpportunity,
+  LeadWithoutContact,
+  ScheduleNextContactInput,
+} from './followupService';
+
+export { crmIntegrations, default as crmIntegrationsDefault } from './crmIntegrations';
+export type {
+  PosSaleIntegrationInput,
+  ActivityCalendarInput,
+  CrmNotificationType,
+} from './crmIntegrations';

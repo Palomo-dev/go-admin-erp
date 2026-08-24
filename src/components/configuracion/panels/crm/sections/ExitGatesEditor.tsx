@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,21 +16,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Plus, Trash2, RefreshCw, CheckSquare, ListChecks, ExternalLink } from 'lucide-react';
-import { type StageRequirement, type ExitCriteria } from '@/lib/services/crm/stageGateService';
-import { getDefaultPipeline } from '@/lib/services/kanbanService';
-
-interface StageWithCriteria {
-  id: string;
-  name: string;
-  position: number;
-  probability: number | null;
-  color: string | null;
-  exit_criteria: ExitCriteria | null;
-}
+import { stageGateService, type StageWithCriteria, type StageRequirement, type ExitCriteria } from '@/lib/services/crm/stageGateService';
 
 export function ExitGatesEditor() {
   const { toast } = useToast();
-  const orgId = getOrganizationId();
 
   const [stages, setStages] = useState<StageWithCriteria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,42 +28,18 @@ export function ExitGatesEditor() {
   const [editingStage, setEditingStage] = useState<StageWithCriteria | null>(null);
 
   const loadStages = useCallback(async () => {
-    if (!orgId) return;
     setLoading(true);
     try {
-      // Obtener el pipeline por defecto de la organizacion
-      const pipeline = await getDefaultPipeline(orgId);
-      if (!pipeline) {
-        setStages([]);
-        setLoading(false);
-        return;
-      }
-
-      // Obtener las etapas del pipeline con exit_criteria
-      const { data, error } = await supabase
-        .from('stages')
-        .select('id, name, position, probability, color, exit_criteria')
-        .eq('pipeline_id', pipeline.id)
-        .order('position');
-
-      if (error) throw error;
-
-      const stageData: StageWithCriteria[] = (data || []).map((s) => ({
-        id: s.id,
-        name: s.name,
-        position: s.position,
-        probability: s.probability,
-        color: s.color,
-        exit_criteria: (s as { exit_criteria?: ExitCriteria }).exit_criteria || null,
-      }));
-      setStages(stageData);
+      // Obtener las etapas con exit_criteria via stageGateService
+      const data = await stageGateService.getStagesWithExitCriteria();
+      setStages(data);
     } catch (error) {
       console.error('Error cargando etapas con criterios:', error);
       toast({ title: 'Error', description: 'No se pudieron cargar las etapas', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [orgId, toast]);
+  }, [toast]);
 
   useEffect(() => {
     loadStages();
@@ -138,15 +101,7 @@ export function ExitGatesEditor() {
     if (!editingStage?.exit_criteria) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('stages')
-        .update({
-          exit_criteria: editingStage.exit_criteria as unknown as Record<string, unknown>,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', editingStage.id);
-
-      if (error) throw error;
+      await stageGateService.updateExitCriteria(editingStage.id, editingStage.exit_criteria);
 
       toast({ title: 'Criterios guardados', description: `Criterios de salida para "${editingStage.name}" actualizados` });
       setDialogOpen(false);

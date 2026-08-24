@@ -55,7 +55,7 @@ import { es } from 'date-fns/locale';
 import { formatCurrency } from '@/utils/Utils';
 import { opportunitiesService } from './opportunitiesService';
 import { Opportunity, OpportunityProduct, OpportunitySpace, OpportunityCustomLine, Activity, Stage, OpportunityTask, OpportunityNote, CustomerDetails, LossReasonData } from './types';
-import { LossReasonDialog } from './LossReasonDialog';
+import { StructuredLossDialog } from './StructuredLossDialog';
 
 interface OpportunityDetailProps {
   opportunityId: string;
@@ -1437,7 +1437,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
       </div>
 
       {/* Loss Reason Dialog */}
-      <LossReasonDialog
+      <StructuredLossDialog
         open={showLossDialog}
         onOpenChange={setShowLossDialog}
         onConfirm={handleMarkLost}

@@ -8,11 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Save, RefreshCw, Gauge, TrendingUp } from 'lucide-react';
-import ScoringService, {
-  type ScoringConfig,
-  type ScoringIndicator,
-  type ScoringBands,
-} from '@/lib/services/crm/scoringService';
+import { scoringService, type ScoringConfig, type ScoringIndicator, type ScoringBands } from '@/lib/services/crm/scoringService';
 
 const DEFAULT_INDICATORS: ScoringIndicator[] = [
   {
@@ -65,8 +61,7 @@ export function ScoringConfigurator() {
   const loadConfig = useCallback(async () => {
     setLoading(true);
     try {
-      const service = new ScoringService();
-      const data = await service.getConfig();
+      const data = await scoringService.getConfig();
       if (data) {
         setConfig(data);
         setIndicators(data.indicators?.length ? data.indicators : DEFAULT_INDICATORS);
@@ -97,8 +92,7 @@ export function ScoringConfigurator() {
     }
     setSaving(true);
     try {
-      const service = new ScoringService();
-      const saved = await service.saveConfig({
+      const saved = await scoringService.saveConfig({
         id: config?.id,
         organization_id: config?.organization_id,
         indicators,

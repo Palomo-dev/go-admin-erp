@@ -19,6 +19,7 @@ import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { HtmlContentRenderer } from "@/components/shared/HtmlContentRenderer";
 import { toast } from "@/components/ui/use-toast";
 import { opportunitiesService } from "@/components/crm/oportunidades/opportunitiesService";
+import { ScoringSection } from "@/components/crm/oportunidades/ScoringSection";
 import type { Activity } from "@/components/crm/oportunidades/types";
 import { formatCurrency } from "@/utils/Utils";
 import { translateOpportunityStatus } from "@/utils/crmTranslations";
@@ -482,6 +483,11 @@ export function OpportunityDrawer({
                       </div>
                     </Card>
                   </section>
+
+                  <Separator />
+
+                  {/* Calificación GOC */}
+                  <ScoringSection opportunityId={opportunity.id} />
 
                   <Separator />
 

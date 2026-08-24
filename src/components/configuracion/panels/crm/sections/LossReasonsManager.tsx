@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, RefreshCw, AlertCircle, Globe, Building2 } from 'lucide-react';
-import LossReasonsService, { type LossReason } from '@/lib/services/crm/lossReasonsService';
+import { lossReasonsService, type LossReason } from '@/lib/services/crm/lossReasonsService';
 
 export function LossReasonsManager() {
   const { toast } = useToast();
@@ -43,8 +43,7 @@ export function LossReasonsManager() {
   const loadReasons = useCallback(async () => {
     setLoading(true);
     try {
-      const service = new LossReasonsService();
-      const data = await service.getLossReasons(true);
+      const data = await lossReasonsService.getLossReasons(true);
       setReasons(data);
     } catch (error) {
       console.error('Error cargando razones de perdida:', error);
@@ -86,12 +85,11 @@ export function LossReasonsManager() {
     }
     setSaving(true);
     try {
-      const service = new LossReasonsService();
       if (editingReason) {
-        await service.updateLossReason(editingReason.id, { reason: formData.reason.trim() });
+        await lossReasonsService.updateLossReason(editingReason.id, { reason: formData.reason.trim() });
         toast({ title: 'Razon actualizada', description: 'Los cambios se guardaron correctamente' });
       } else {
-        await service.createLossReason({ reason: formData.reason.trim() });
+        await lossReasonsService.createLossReason({ reason: formData.reason.trim() });
         toast({ title: 'Razon creada', description: 'La razon de perdida se creo correctamente' });
       }
       setDialogOpen(false);
@@ -113,8 +111,7 @@ export function LossReasonsManager() {
       return;
     }
     try {
-      const service = new LossReasonsService();
-      await service.deleteLossReason(reasonToDelete.id);
+      await lossReasonsService.deleteLossReason(reasonToDelete.id);
       toast({ title: 'Razon eliminada', description: 'La razon de perdida se desactivo correctamente' });
       loadReasons();
     } catch (error) {

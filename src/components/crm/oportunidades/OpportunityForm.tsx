@@ -100,8 +100,37 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>(opportunity?.commission_type || 'salesperson');
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
 
+  // Campos nuevos: source, vertical, proximo contacto
+  const [source, setSource] = useState<string>(opportunity?.source || '');
+  const [verticalId, setVerticalId] = useState<string>(opportunity?.vertical_id || '');
+  const [nextContactAt, setNextContactAt] = useState<string>(
+    opportunity?.next_contact_at
+      ? new Date(opportunity.next_contact_at).toISOString().split('T')[0]
+      : ''
+  );
+  const [verticals, setVerticals] = useState<{ id: string; name: string }[]>([]);
+
   useEffect(() => {
     loadInitialData();
+  }, []);
+
+  // Cargar verticales desde verticalsService (con fallback silencioso)
+  useEffect(() => {
+    const loadVerticals = async () => {
+      try {
+        const module = await import('@/lib/services/crm/verticalsService');
+        const service = module.verticalsService || module.default;
+        if (service && typeof service.list === 'function') {
+          const data = await service.list();
+          if (Array.isArray(data)) {
+            setVerticals(data);
+          }
+        }
+      } catch {
+        // El servicio no esta disponible aun: dejar verticales vacio
+      }
+    };
+    loadVerticals();
   }, []);
 
   // Cargar miembros de la organización para selector de comisionista
@@ -350,6 +379,9 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : null,
           commission_rate: commissionRate || 0,
           commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
+          source: source || undefined,
+          vertical_id: verticalId || undefined,
+          next_contact_at: nextContactAt || undefined,
           products: productLines
             .filter((p) => p.product_id > 0)
             .map((p) => ({
@@ -390,6 +422,9 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           salesperson_id: salespersonId && salespersonId !== '__none__' ? salespersonId : undefined,
           commission_rate: commissionRate || 0,
           commission_type: salespersonId && salespersonId !== '__none__' && commissionRate > 0 ? commissionType : 'none',
+          source: source || undefined,
+          vertical_id: verticalId || undefined,
+          next_contact_at: nextContactAt || undefined,
           products: productLines
             .filter((p) => p.product_id > 0)
             .map((p) => ({
@@ -546,6 +581,61 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                   onSelect={setCustomerId}
                   label="Cliente"
                   placeholder="Buscar cliente..."
+                />
+              </div>
+
+              {/* Origen (source) */}
+              <div>
+                <Label htmlFor="source" className="text-gray-700 dark:text-gray-300">
+                  Origen
+                </Label>
+                <Select value={source || 'none'} onValueChange={(v) => setSource(v === 'none' ? '' : v)}>
+                  <SelectTrigger className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
+                    <SelectValue placeholder="Seleccionar origen" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <SelectItem value="none">Sin especificar</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="phone">Teléfono</SelectItem>
+                    <SelectItem value="web">Web</SelectItem>
+                    <SelectItem value="referral">Referido</SelectItem>
+                    <SelectItem value="other">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Vertical */}
+              <div>
+                <Label htmlFor="vertical" className="text-gray-700 dark:text-gray-300">
+                  Vertical
+                </Label>
+                <Select value={verticalId || 'none'} onValueChange={(v) => setVerticalId(v === 'none' ? '' : v)}>
+                  <SelectTrigger className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700">
+                    <SelectValue placeholder="Seleccionar vertical" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <SelectItem value="none">Sin vertical</SelectItem>
+                    {verticals.map((vertical) => (
+                      <SelectItem key={vertical.id} value={vertical.id}>
+                        {vertical.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Próximo contacto */}
+              <div>
+                <Label htmlFor="nextContactAt" className="text-gray-700 dark:text-gray-300">
+                  Próximo contacto
+                </Label>
+                <Input
+                  id="nextContactAt"
+                  type="date"
+                  value={nextContactAt}
+                  onChange={(e) => setNextContactAt(e.target.value)}
+                  className="bg-white dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                 />
               </div>
 

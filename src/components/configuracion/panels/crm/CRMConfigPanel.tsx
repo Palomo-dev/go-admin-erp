@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { MessageSquare, Tags, Key, Globe } from 'lucide-react';
+import { MessageSquare, Tags, Key, Globe, Layers, AlertCircle, Gauge, ListChecks, DollarSign } from 'lucide-react';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
@@ -16,6 +16,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { VerticalsManager } from './sections/VerticalsManager';
+import { LossReasonsManager } from './sections/LossReasonsManager';
+import { ScoringConfigurator } from './sections/ScoringConfigurator';
+import { ExitGatesEditor } from './sections/ExitGatesEditor';
+import { CommissionsPanel } from './sections/CommissionsPanel';
 import ChatChannelsService, {
   ChatChannel,
   ChannelStats,
@@ -70,6 +82,13 @@ export function CRMConfigPanel() {
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [rotateDialogOpen, setRotateDialogOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<ChannelApiKey | null>(null);
+
+  // === CRM Config Cards state ===
+  const [verticalsModalOpen, setVerticalsModalOpen] = useState(false);
+  const [lossReasonsModalOpen, setLossReasonsModalOpen] = useState(false);
+  const [scoringModalOpen, setScoringModalOpen] = useState(false);
+  const [exitGatesModalOpen, setExitGatesModalOpen] = useState(false);
+  const [commissionsModalOpen, setCommissionsModalOpen] = useState(false);
 
   // === Load Canales ===
   const loadChannels = useCallback(async () => {
@@ -485,6 +504,165 @@ export function CRMConfigPanel() {
           </div>
         </div>
       </div>
+
+      {/* === CRM Config Cards === */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Configuracion CRM</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Card: Verticales */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-indigo-500" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Verticales</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Clasifica oportunidades por linea de negocio (hotelero, retail, construccion, etc.)
+            </p>
+            <button
+              type="button"
+              onClick={() => setVerticalsModalOpen(true)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configurar →
+            </button>
+          </div>
+
+          {/* Card: Razones de perdida */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Razones de Perdida</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Define motivos globales y por organizacion para registrar oportunidades perdidas
+            </p>
+            <button
+              type="button"
+              onClick={() => setLossReasonsModalOpen(true)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configurar →
+            </button>
+          </div>
+
+          {/* Card: Scoring GOC */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-2">
+              <Gauge className="h-5 w-5 text-purple-500" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Scoring (GOC)</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Configura indicadores, pesos y umbrales Cold / Warm / Hot para scoring de oportunidades
+            </p>
+            <button
+              type="button"
+              onClick={() => setScoringModalOpen(true)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configurar →
+            </button>
+          </div>
+
+          {/* Card: Etapas y criterios */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-2">
+              <ListChecks className="h-5 w-5 text-teal-500" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Etapas y Criterios</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Define criterios de salida (exit gates) por etapa para avanzar oportunidades en el pipeline
+            </p>
+            <button
+              type="button"
+              onClick={() => setExitGatesModalOpen(true)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configurar →
+            </button>
+          </div>
+
+          {/* Card: Vendedores y comisiones */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-500" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Vendedores y Comisiones</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Configura tasa general de comision, overrides por vendedor con vigencias y simulador
+            </p>
+            <button
+              type="button"
+              onClick={() => setCommissionsModalOpen(true)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configurar →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* === CRM Config Modals === */}
+      <Dialog open={verticalsModalOpen} onOpenChange={setVerticalsModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Verticales</DialogTitle>
+            <DialogDescription>
+              Gestiona las verticales de negocio para clasificar oportunidades
+            </DialogDescription>
+          </DialogHeader>
+          <VerticalsManager />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={lossReasonsModalOpen} onOpenChange={setLossReasonsModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Razones de Perdida</DialogTitle>
+            <DialogDescription>
+              Gestiona los motivos por los que se pierden oportunidades
+            </DialogDescription>
+          </DialogHeader>
+          <LossReasonsManager />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={scoringModalOpen} onOpenChange={setScoringModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Scoring (GOC)</DialogTitle>
+            <DialogDescription>
+              Configura indicadores, pesos y umbrales de scoring
+            </DialogDescription>
+          </DialogHeader>
+          <ScoringConfigurator />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={exitGatesModalOpen} onOpenChange={setExitGatesModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Etapas y Criterios de Salida</DialogTitle>
+            <DialogDescription>
+              Define los criterios que deben cumplirse para avanzar oportunidades entre etapas
+            </DialogDescription>
+          </DialogHeader>
+          <ExitGatesEditor />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={commissionsModalOpen} onOpenChange={setCommissionsModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Vendedores y Comisiones</DialogTitle>
+            <DialogDescription>
+              Configura comisiones generales y especificas por vendedor
+            </DialogDescription>
+          </DialogHeader>
+          <CommissionsPanel />
+        </DialogContent>
+      </Dialog>
 
       {/* === Dialogs === */}
       <CreateChannelDialog

@@ -52,6 +52,10 @@ export interface Opportunity {
   salesperson_id?: string | null;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  // Campos operativos nuevos
+  source?: string;
+  vertical_id?: string;
+  next_contact_at?: string;
   // Relaciones
   customer?: Customer;
   stage?: Stage;
@@ -234,6 +238,9 @@ export interface CreateOpportunityInput {
   salesperson_id?: string;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  source?: string;
+  vertical_id?: string;
+  next_contact_at?: string;
   products?: {
     product_id: number;
     quantity: number;
@@ -264,6 +271,9 @@ export interface UpdateOpportunityInput {
   salesperson_id?: string | null;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  source?: string;
+  vertical_id?: string;
+  next_contact_at?: string;
   products?: {
     product_id: number;
     quantity: number;

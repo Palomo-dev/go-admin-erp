@@ -215,6 +215,9 @@ class OpportunitiesService {
         salesperson_id: input.salesperson_id || null,
         commission_rate: input.commission_rate || 0,
         commission_type: input.salesperson_id && input.commission_rate && input.commission_rate > 0 ? input.commission_type : 'none',
+        source: input.source || null,
+        vertical_id: input.vertical_id || null,
+        next_contact_at: input.next_contact_at || null,
       })
       .select()
       .single();
@@ -280,6 +283,9 @@ class OpportunitiesService {
     if (input.salesperson_id !== undefined) updateData.salesperson_id = input.salesperson_id;
     if (input.commission_rate !== undefined) updateData.commission_rate = input.commission_rate;
     if (input.commission_type !== undefined) updateData.commission_type = input.commission_type;
+    if (input.source !== undefined) updateData.source = input.source;
+    if (input.vertical_id !== undefined) updateData.vertical_id = input.vertical_id;
+    if (input.next_contact_at !== undefined) updateData.next_contact_at = input.next_contact_at;
 
     const { data, error } = await supabase
       .from('opportunities')

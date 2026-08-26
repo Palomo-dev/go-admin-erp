@@ -17,6 +17,14 @@ type Theme = 'light' | 'dark' | 'system';
 let themeCache: Theme | null | undefined = undefined;
 
 /**
+ * Bandera que indica si el usuario cambió el tema manualmente.
+ *
+ * Se usa para evitar que una syncTheme pendiente (que leyó el valor remoto
+ * antiguo de Supabase) sobrescriba la elección del usuario al terminar.
+ */
+let userOverride = false;
+
+/**
  * Servicio de tema con persistencia híbrida:
  * - localStorage / @capacitor/preferences para respuesta inmediata (cache en memoria)
  * - profiles.metadata.theme_preference para persistencia entre dispositivos
@@ -30,6 +38,22 @@ export const themeService = {
     if (themeCache !== undefined) return; // ya inicializado
     const saved = await getMobileStorage(STORAGE_KEY);
     themeCache = saved as Theme | null;
+  },
+
+  /**
+   * Marca que el usuario cambió el tema manualmente.
+   * Hace que una syncTheme pendiente no sobrescriba la elección del usuario.
+   */
+  markUserOverride(): void {
+    userOverride = true;
+  },
+
+  /**
+   * Resetea la bandera de override manual.
+   * Debe llamarse al iniciar una nueva sincronización (ej. al montar el layout).
+   */
+  resetUserOverride(): void {
+    userOverride = false;
   },
 
   /**
@@ -121,14 +145,21 @@ export const themeService = {
 
   /**
    * Sincroniza el tema: lee de Supabase y actualiza el almacenamiento local si hay diferencia.
-   * Retorna el tema que debería aplicar.
+   * Retorna el tema que debería aplicar, o null si el usuario cambió el tema manualmente
+   * mientras esta sincronización estaba en curso (para no sobrescribir su elección).
    */
-  async syncTheme(): Promise<Theme> {
+  async syncTheme(): Promise<Theme | null> {
     // Asegurar que el cache en memoria esté cargado
     await this.initThemeCache();
 
     const localTheme = this.getLocalTheme();
     const remoteTheme = await this.getRemoteTheme();
+
+    // Si el usuario cambió el tema manualmente mientras sincronizábamos,
+    // no sobrescribir su elección (race condition con toggleTheme).
+    if (userOverride) {
+      return null;
+    }
 
     // Si hay tema remoto y difiere del local, usar el remoto (preferencia entre dispositivos)
     if (remoteTheme && remoteTheme !== localTheme) {

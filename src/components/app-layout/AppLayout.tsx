@@ -1099,8 +1099,14 @@ export const AppLayout = ({
     if (typeof window === 'undefined') return;
 
     // Sincronizar tema desde Supabase en background
+    // Resetear bandera de override manual antes de iniciar la sync
+    themeService.resetUserOverride();
     themeService.syncTheme().then((syncedTheme) => {
-      setNextTheme(syncedTheme);
+      // syncTheme retorna null si el usuario cambió el tema manualmente
+      // mientras la sincronización estaba en curso; en ese caso no sobrescribir.
+      if (syncedTheme) {
+        setNextTheme(syncedTheme);
+      }
     });
 
     // Obtener nombre de organización
@@ -1184,6 +1190,10 @@ export const AppLayout = ({
   const toggleTheme = useCallback(() => {
     const currentResolved = nextTheme === 'dark' ? 'dark' : 'light';
     const newTheme = currentResolved === 'light' ? 'dark' : 'light';
+    // Actualizar cache local inmediatamente y marcar override manual
+    // para que una syncTheme pendiente no revierta la elección del usuario.
+    themeService.setLocalTheme(newTheme);
+    themeService.markUserOverride();
     setNextTheme(newTheme);
     // Guardar en Supabase (persistencia entre dispositivos) - fire and forget
     themeService.setRemoteTheme(newTheme);

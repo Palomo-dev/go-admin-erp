@@ -240,7 +240,19 @@ export default function PedidosOnlinePage() {
   }, [autoRefresh, loadOrders]);
 
   // Suscripción a cambios en tiempo real
+  // Se usa un debounce (800ms) para agrupar ráfagas de cambios (ej. cuando se
+  // actualizan varios campos de un pedido a la vez) y evitar múltiples
+  // recargas seguidas que dispararían 3 consultas paralelas cada una.
   useEffect(() => {
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => {
+        reloadTimer = null;
+        loadOrders();
+      }, 800);
+    };
+
     const subscription = webOrdersService.subscribeToOrders((payload) => {
       if (payload.eventType === 'INSERT' && payload.new.status === 'pending') {
         // Nuevo pedido - reproducir sonido
@@ -252,11 +264,12 @@ export default function PedidosOnlinePage() {
           description: `Pedido ${payload.new.order_number} recibido`,
         });
       }
-      // Recargar pedidos
-      loadOrders();
+      // Recargar pedidos (con debounce para agrupar cambios)
+      scheduleReload();
     });
 
     return () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
       webOrdersService.unsubscribeFromOrders();
     };
   }, [soundEnabled, loadOrders, toast]);

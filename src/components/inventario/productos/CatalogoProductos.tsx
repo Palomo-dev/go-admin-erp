@@ -370,6 +370,56 @@ const CatalogoProductos: React.FC = () => {
     fetchProductos(false);
   }, [organization?.id, branch_id, filters, refreshKey]);
 
+  // Suscripción en tiempo real a cambios en products, stock_levels, product_prices
+  // y product_costs para que la lista se actualice sin recargar manualmente.
+  // Se usa un debounce suave (1.5s) para agrupar ráfagas de cambios y evitar
+  // recargas múltiples cuando se editan varios campos a la vez.
+  useEffect(() => {
+    if (!organization?.id) return;
+    const orgId = organization.id;
+
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => {
+        reloadTimer = null;
+        // silent=true para no mostrar skeleton y mantener la UI estable
+        fetchProductos(true);
+      }, 1500);
+    };
+
+    const channel = supabase
+      .channel('productos_catalogo_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products', filter: `organization_id=eq.${orgId}` },
+        scheduleReload
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'stock_levels' },
+        scheduleReload
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'product_prices' },
+        scheduleReload
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'product_costs' },
+        scheduleReload
+      )
+      .subscribe();
+
+    return () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      supabase.removeChannel(channel);
+    };
+    // fetchProductos es estable por useCallback; organization.id cambia el canal
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id]);
+
   // Función para obtener información de stock por sucursal para un producto específico
   const fetchStockPorSucursal = async (productId: number) => {
     try {

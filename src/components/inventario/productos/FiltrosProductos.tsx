@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 import { Search } from 'lucide-react';
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ import {
 import { FiltrosProductos as FiltrosProductosType, Categoria } from './types';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { debounce } from '@/utils/Utils';
 
 interface FiltrosProductosProps {
   filters: FiltrosProductosType;
@@ -31,7 +30,13 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
   const { organization } = useOrganization();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [busquedaLocal, setBusquedaLocal] = useState<string>(filters.busqueda);
-  
+
+  // Refs para mantener valores estables dentro del debounce y evitar recrearlo
+  const filtersRef = useRef(filters);
+  const onFiltersChangeRef = useRef(onFiltersChange);
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  useEffect(() => { onFiltersChangeRef.current = onFiltersChange; }, [onFiltersChange]);
+
   // Cargar categorías desde Supabase
   useEffect(() => {
     const fetchCategorias = async () => {
@@ -46,9 +51,9 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
           .select('*')
           .eq('organization_id', organization.id)
           .order('name');
-          
+
         if (error) throw error;
-        
+
         setCategorias(data || []);
       } catch (error) {
         console.error('Error al cargar categorías:', error);
@@ -58,15 +63,31 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
     fetchCategorias();
   }, [organization?.id]);
 
-  // Función debounce para la búsqueda
-  const debouncedSearch = React.useCallback(
-    debounce((value: string) => {
-      onFiltersChange({ ...filters, busqueda: value });
-    }, 500),
-    [filters, onFiltersChange]
-  );
+  // Debounce estable: no se recrea en cada render gracias a los refs.
+  // Antes dependía de [filters, onFiltersChange] y se recreaba por cada tecla,
+  // perdiendo el timer y disparando una consulta completa por cada caracter.
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedSearch = useCallback((value: string) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      onFiltersChangeRef.current({ ...filtersRef.current, busqueda: value });
+    }, 400);
+  }, []);
+
+  // Limpiar timer al desmontar
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
 
   // Manejadores de cambios en filtros
+  // Sincronizar busquedaLocal cuando filters.busqueda cambia externamente
+  // (ej. botón "Limpiar filtros" resetea busqueda a '')
+  useEffect(() => {
+    setBusquedaLocal(filters.busqueda);
+  }, [filters.busqueda]);
+
   const handleBusquedaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setBusquedaLocal(value);

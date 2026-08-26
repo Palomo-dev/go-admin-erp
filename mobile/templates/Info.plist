@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Info.plist — Template para GoAdmin ERP (Capacitor / iOS)
+  ============================================================
+  Este archivo se copia a: mobile/ios/App/App/Info.plist
+  DESPUÉS de ejecutar `npx cap add ios`.
+
+  IMPORTANTE: Debes hacer un MERGE con el Info.plist generado
+  por Capacitor. Conserva las claves existentes (CFBundleIdentifier,
+  CFBundleShortVersionString, etc.) y añade las claves de permisos
+  y configuraciones de este template.
+
+  Pasos:
+  1. Ejecutar `npx cap add ios` (requiere macOS + Xcode 16+)
+  2. Abrir mobile/ios/App/App/Info.plist (generado)
+  3. Añadir las claves NS*UsageDescription (permisos)
+  4. Añadir UIBackgroundModes con remote-notification
+  5. Añadir CFBundleURLTypes con scheme goadmin
+  6. Colocar GoogleService-Info.plist en App/ y añadir al target en Xcode
+
+  Requisitos:
+  - macOS con Xcode 16+
+  - Cuenta Apple Developer Program ($99 USD/año)
+  - GoogleService-Info.plist (descargado de Firebase Console)
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- ========================================================
+         PERMISOS DE PRIVACIDAD (NS*UsageDescription)
+         iOS requiere una descripción para cada permiso.
+         Sin estas claves, la app CRASHEA al solicitar el permiso.
+         ======================================================== -->
+
+    <!-- Cámara: escaneo QR de productos y pagos -->
+    <key>NSCameraUsageDescription</key>
+    <string>GoAdmin usa la cámara para escanear códigos QR de productos y pagos.</string>
+
+    <!-- Galería: adjuntar imágenes a productos y perfiles -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>GoAdmin accede a la galería para adjuntar imágenes a productos y perfiles.</string>
+
+    <!-- Face ID: login biométrico sin contraseña -->
+    <key>NSFaceIDUsageDescription</key>
+    <string>GoAdmin usa Face ID para iniciar sesión de forma segura sin contraseña.</string>
+
+    <!-- Ubicación en uso: marcación de asistencia y transporte -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>GoAdmin usa tu ubicación para marcación de asistencia y transporte.</string>
+
+    <!-- Bluetooth siempre: impresión de tickets térmicos -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>GoAdmin usa Bluetooth para imprimir tickets de venta en impresoras térmicas.</string>
+
+    <!-- Bluetooth peripheral (legacy, iOS 12 y menor) -->
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>GoAdmin usa Bluetooth para imprimir tickets de venta.</string>
+
+    <!-- NFC: check-in de gimnasio y marcación de asistencia -->
+    <key>NFCReaderUsageDescription</key>
+    <string>GoAdmin usa NFC para check-in de gimnasio y marcación de asistencia.</string>
+
+    <!-- ========================================================
+         BACKGROUND MODES — Push notifications
+         remote-notification permite recibir push en background
+         y procesar silent pushes vía FCM/APNs.
+         ======================================================== -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
+
+    <!-- ========================================================
+         DEEP LINK — esquema goadmin://
+         Permite abrir la app desde URLs como:
+         goadmin://productos/123
+         goadmin://pos/venta/456
+         ======================================================== -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>goadmin</string>
+            </array>
+        </dict>
+    </array>
+
+</dict>
+</plist>

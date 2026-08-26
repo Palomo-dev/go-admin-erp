@@ -32,6 +32,7 @@ import {
   Building2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useMobileNative } from '@/hooks/useMobileNative';
 
 interface BranchOption {
   id: number;
@@ -47,6 +48,8 @@ interface EmployeeOption {
 export default function MarcacionPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  const { isMobileApp, isAndroidApp, startNfcScan, stopNfcScan } = useMobileNative();
+  const [nfcScanning, setNfcScanning] = useState(false);
 
   // Estados
   const [events, setEvents] = useState<AttendanceEventListItem[]>([]);
@@ -159,6 +162,35 @@ export default function MarcacionPage() {
     await loadData();
   };
 
+  // NFC scan (solo Android nativo — no-op en web)
+  const handleNfcScan = async () => {
+    if (!isAndroidApp) return;
+    setNfcScanning(true);
+    try {
+      const result = await startNfcScan();
+      if (result.success && result.data) {
+        const tagId = result.data.id;
+        // Mostrar tag escaneado — la búsqueda de empleado por tag
+        // requiere tabla employee_nfc_tags (migración futura)
+        toast({
+          title: 'NFC escaneado',
+          description: `Tag ID: ${tagId}`,
+        });
+      } else if (result.error && result.error !== 'timeout') {
+        toast({
+          title: 'Error NFC',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      console.error('[hrmMarcacion] NFC scan error:', err);
+    } finally {
+      setNfcScanning(false);
+      await stopNfcScan();
+    }
+  };
+
   // Auto-refresh cada 30 segundos
   useEffect(() => {
     const interval = setInterval(() => {
@@ -212,6 +244,11 @@ export default function MarcacionPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
+          {isAndroidApp && (
+            <Button variant="outline" size="sm" onClick={handleNfcScan} disabled={nfcScanning}>
+              {nfcScanning ? 'Escaneando...' : '📱 NFC'}
+            </Button>
+          )}
           <Button size="sm" onClick={() => setManualFormOpen(true)}>
             <Hand className="h-4 w-4 mr-2" />
             Entrada Manual

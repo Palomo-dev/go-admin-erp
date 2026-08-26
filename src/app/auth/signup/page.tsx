@@ -161,6 +161,7 @@ function SignupContent() {
 
   // Leer código de vendedor de la URL (?ref=VEND-001)
   useEffect(() => {
+    if (!searchParams) return;
     const refCode = searchParams.get('ref');
     if (refCode) {
       console.log('🔍 Código de vendedor detectado:', refCode);
@@ -170,6 +171,7 @@ function SignupContent() {
 
   // Verificar si viene de Google OAuth
   useEffect(() => {
+    if (!searchParams) return;
     const checkGoogleUser = async () => {
       const isFromGoogle = searchParams.get('google') === 'true';
       const stepParam = searchParams.get('step');
@@ -393,7 +395,19 @@ function SignupContent() {
         
         // Guardar organización activa en localStorage para que AppLayout la encuentre
         guardarOrganizacionActiva({ id: orgId, name: signupData.organizationName });
-        
+
+        // Guardar también las claves legacy que AppLayout lee para el estado inicial
+        // de orgId/orgName (ver selectOrganizationFromPopup en organizationAuth.ts).
+        // Sin esto, AppLayout arranca con orgId=null hasta que loadUserProfileOptimized
+        // termine, dejando al usuario sin organización visible hasta recargar.
+        try {
+          localStorage.setItem('currentOrganizationId', orgId.toString());
+          localStorage.setItem('currentOrganizationName', signupData.organizationName);
+          sessionStorage.setItem('currentOrganizationId', orgId.toString());
+        } catch (e) {
+          console.warn('No se pudieron guardar las claves legacy de organización:', e);
+        }
+
         // Actualizar last_org_id en el perfil para que el fallback del AppLayout funcione
         await supabase
           .from('profiles')
@@ -637,7 +651,11 @@ function SignupContent() {
         // Usuario de Google ya autenticado, crear datos con el flujo completo
         console.log('Usuario de Google completando signup:', googleUserData.id);
         await createSignupData(googleUserData.id, googleUserData.email);
-        router.push('/app/inicio');
+        // Usar window.location.replace (full reload) en lugar de router.push para
+        // sincronizar las cookies de sesión de Supabase antes de montar AppLayout,
+        // igual que el flujo de login. Con router.push (client-side) AppLayout puede
+        // montarse antes de que la sesión esté hidratada y no detectar la organización.
+        window.location.replace('/app/inicio');
         return;
       }
 
@@ -748,8 +766,10 @@ function SignupContent() {
             console.warn('No se pudo enviar el correo de confirmación (no bloqueante):', resendError);
           }
           
-          // Redirigir al dashboard directamente (la sesión ya está activa)
-          router.push('/app/inicio?welcome=true');
+          // Redirigir al dashboard directamente (la sesión ya está activa).
+          // Usar window.location.replace (full reload) para sincronizar cookies de
+          // sesión antes de montar AppLayout, igual que el flujo de login.
+          window.location.replace('/app/inicio?welcome=true');
           return;
         } catch (createError: any) {
           console.error('Error creando datos de registro:', createError);

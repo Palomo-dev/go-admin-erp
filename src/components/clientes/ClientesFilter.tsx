@@ -136,6 +136,7 @@ const ClientesFilter: React.FC<ClientesFilterProps> = ({
         <Input
           type="search"
           placeholder="Buscar clientes..."
+          aria-label="Buscar clientes por nombre, documento o email"
           className="pl-9 sm:pl-10 h-11 sm:h-12 text-sm sm:text-base bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}

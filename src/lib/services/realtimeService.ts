@@ -24,6 +24,10 @@ export class RealtimeSubscription {
   private tableName: string;
   private organizationId: number | null;
   private filters: Record<string, any> = {};
+  private retryCount: number = 0;
+  private maxRetries: number = 5;
+  private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private currentHandlers: RealtimeChangeHandler<Record<string, any>> | null = null;
 
   /**
    * Constructor
@@ -47,7 +51,10 @@ export class RealtimeSubscription {
       return;
     }
 
-    // Cancelar suscripción previa si existe
+    // Guardar handlers para reutilizarlos en reconexiones automáticas
+    this.currentHandlers = handlers as RealtimeChangeHandler<Record<string, any>>;
+
+    // Cancelar suscripción previa y timer de reconexión si existen
     this.unsubscribe();
 
     // Crear un nuevo canal de suscripción
@@ -79,9 +86,99 @@ export class RealtimeSubscription {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
+          // Reconexión exitosa: resetear contador de reintentos
+          this.retryCount = 0;
           console.log(`Suscripción activa a ${this.tableName}`);
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error(`Error en la suscripción a ${this.tableName}`);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.error(`Estado de suscripción ${status} en ${this.tableName}`);
+          this.attemptReconnect();
+        }
+      });
+  }
+
+  /**
+   * Intenta reconectar con backoff exponencial.
+   * El delay entre reintentos es 2^retryCount * 1000 ms (1s, 2s, 4s, 8s, 16s).
+   * No excede maxRetries intentos.
+   */
+  private attemptReconnect(): void {
+    // Limpiar timer previo si existe
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
+
+    if (this.retryCount >= this.maxRetries) {
+      console.error(
+        `[RealtimeSubscription] Máximo de reintentos (${this.maxRetries}) alcanzado para ${this.tableName}. ` +
+        `No se reintentará automáticamente.`
+      );
+      return;
+    }
+
+    // Backoff exponencial: 2^retryCount segundos (mínimo 1s)
+    const delayMs = Math.pow(2, this.retryCount) * 1000;
+    this.retryCount++;
+
+    console.warn(
+      `[RealtimeSubscription] Reintentando suscripción a ${this.tableName} ` +
+      `en ${delayMs}ms (intento ${this.retryCount}/${this.maxRetries})`
+    );
+
+    this.reconnectTimeoutId = setTimeout(() => {
+      this.reconnectTimeoutId = null;
+      if (this.currentHandlers) {
+        // Re-suscribir usando los handlers guardados (sin incrementar retryCount de nuevo)
+        this.resubscribe();
+      }
+    }, delayMs);
+  }
+
+  /**
+   * Re-suscribe usando los handlers guardados sin resetear el contador de reintentos.
+   * El callback de subscribe se encarga de resetear retryCount en SUBSCRIBED
+   * o volver a llamar attemptReconnect en error.
+   */
+  private resubscribe(): void {
+    if (!this.organizationId || !this.currentHandlers) return;
+
+    // Remover canal anterior si aún existe
+    if (this.channel) {
+      supabase.removeChannel(this.channel);
+      this.channel = null;
+    }
+
+    const handlers = this.currentHandlers as RealtimeChangeHandler<Record<string, any>>;
+
+    this.channel = supabase
+      .channel(`${this.tableName}_changes`)
+      .on<Record<string, any>>(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: this.tableName,
+          filter: `organization_id=eq.${this.organizationId}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT' && handlers.onInsert) {
+            handlers.onInsert(payload.new as Record<string, any>);
+          } 
+          else if (payload.eventType === 'UPDATE' && handlers.onUpdate) {
+            handlers.onUpdate(payload.new as Record<string, any>);
+          } 
+          else if (payload.eventType === 'DELETE' && handlers.onDelete) {
+            handlers.onDelete(payload.old as Record<string, any>);
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          this.retryCount = 0;
+          console.log(`Suscripción reactiva a ${this.tableName}`);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.error(`Estado de suscripción ${status} en ${this.tableName} (reconexión)`);
+          this.attemptReconnect();
         }
       });
   }
@@ -90,6 +187,12 @@ export class RealtimeSubscription {
    * Cancelar la suscripción
    */
   unsubscribe(): void {
+    // Limpiar timer de reconexión pendiente
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
+
     if (this.channel) {
       supabase.removeChannel(this.channel);
       this.channel = null;

@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GoAdmin ERP</string>
+    <string name="title_activity_main">GoAdmin ERP</string>
+    <string name="package_name">io.goadmin.app</string>
+    <string name="custom_url_scheme">io.goadmin.app</string>
+
+    <!-- ID del canal de notificaciones por defecto (Android 8+).
+         Debe coincidir con el channelId enviado en la payload de FCM. -->
+    <string name="default_notification_channel_id">goadmin_default</string>
+</resources>

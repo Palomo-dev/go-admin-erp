@@ -276,6 +276,8 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
         onClick={() => setNotificationsOpen(!notificationsOpen)}
         className="p-2.5 rounded-md text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 dark:active:bg-gray-600 focus:outline-none relative transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         aria-label="Ver notificaciones"
+        aria-expanded={notificationsOpen}
+        aria-haspopup="menu"
       >
         <Bell className="h-5 w-5" />
         {(myUnreadCount > 0 || (isPmActive && taskReminders.length > 0)) && (

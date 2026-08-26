@@ -19,6 +19,14 @@ import { type GeolocationPreference, shouldShowGeolocationModal, saveGeolocation
 import { useTranslations, useLocale } from 'next-intl';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
 import { useMobileAuth } from '@/hooks/useMobileAuth';
+import { useMobileNative } from '@/hooks/useMobileNative';
+import {
+  isBiometricAvailable,
+  canUseBiometricLogin,
+  getBiometricEmail,
+  getBiometricPassword,
+} from '@/lib/services/biometricService';
+import { supabase } from '@/lib/supabase/config';
 import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
 function LoginContent() {
@@ -28,6 +36,10 @@ function LoginContent() {
   const locale = useLocale();
   const router = useRouter();
   const { isMobileApp, authResult, oauthError: mobileOAuthError } = useMobileAuth();
+  const { checkBiometricAvailable, authenticateBiometric } = useMobileNative();
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string | null>(null);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -44,6 +56,7 @@ function LoginContent() {
   
  
   useEffect(() => {
+    if (!searchParams) return;
     // Check for error in URL
     const errorParam = searchParams.get('error');
     if (errorParam) {
@@ -128,6 +141,67 @@ function LoginContent() {
       setLoading(false);
     }
   }, [isMobileApp, mobileOAuthError]);
+
+  // Verificar disponibilidad de biometría en móvil
+  useEffect(() => {
+    if (!isMobileApp) return;
+    let cancelled = false;
+    (async () => {
+      const availability = await isBiometricAvailable();
+      if (cancelled) return;
+      setBiometricAvailable(availability.available);
+      setBiometricType(availability.biometryType || null);
+      if (availability.available) {
+        const canLogin = await canUseBiometricLogin();
+        if (!cancelled) setBiometricEnabled(canLogin);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isMobileApp]);
+
+  // Login biométrico: verifica huella/Face ID y restaura sesión con credenciales guardadas
+  const onBiometricLogin = async () => {
+    if (!isMobileApp || !biometricAvailable) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // authenticateBiometric espera objeto { reason?: string }
+      const result = await authenticateBiometric({ reason: 'Inicia sesión para continuar' });
+      if (!result?.verified) {
+        setError(result?.reason || 'Autenticación biométrica fallida');
+        setLoading(false);
+        return;
+      }
+
+      // Recuperar credenciales guardadas via biometricService (mismo formato que rememberMe)
+      const email = getBiometricEmail();
+      const password = getBiometricPassword();
+      if (!email || !password) {
+        setError('No hay credenciales guardadas. Inicia sesión con contraseña primero y activa "Recordarme".');
+        setLoading(false);
+        return;
+      }
+
+      // Login con Supabase usando credenciales guardadas
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError || !data.session) {
+        setError(signInError?.message || 'No se pudo restaurar la sesión');
+        setLoading(false);
+        return;
+      }
+
+      // Proceder con el flujo normal de post-login
+      proceedWithLogin(true, email);
+    } catch (err) {
+      console.error('[biometricLogin] Error:', err);
+      setError('Error en autenticación biométrica');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [oauthProvider, setOauthProvider] = useState<string | null>(null);
 
@@ -238,7 +312,7 @@ function LoginContent() {
   // Load remembered email on component mount
   useEffect(() => {
     // No intentar recuperar el email guardado si venimos de una sesión expirada
-    const fromExpired = searchParams.get('fromExpired') === 'true';
+    const fromExpired = searchParams?.get('fromExpired') === 'true';
     if (fromExpired) {
       return;
     }
@@ -639,6 +713,21 @@ function LoginContent() {
               </svg>
               Microsoft
             </button>
+
+            {/* Login biométrico (solo móvil con hardware disponible y credenciales guardadas) */}
+            {isMobileApp && biometricAvailable && biometricEnabled && (
+              <button
+                type="button"
+                onClick={onBiometricLogin}
+                disabled={loading}
+                className="w-full flex items-center justify-center py-2 sm:py-2.5 px-3 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="mr-2 text-base">
+                  {biometricType === 'faceId' ? '👤' : '👆'}
+                </span>
+                Entrar con {biometricType === 'faceId' ? 'Face ID' : 'Huella'}
+              </button>
+            )}
           </div>
         </div>
       </div>

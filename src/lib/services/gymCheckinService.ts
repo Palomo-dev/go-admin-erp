@@ -379,7 +379,7 @@ export class GymCheckinService {
 
   async registerCheckin(
     membershipId: number,
-    method: 'manual' | 'qr' | 'card' | 'biometric' = 'manual'
+    method: 'manual' | 'qr' | 'card' | 'biometric' | 'nfc' = 'manual'
   ): Promise<MemberCheckin> {
     const { data: membership } = await supabase
       .from('memberships')

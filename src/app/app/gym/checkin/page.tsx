@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { useMobileNative } from '@/hooks/useMobileNative';
 
 import { 
   CheckinSearch, 
@@ -42,7 +43,11 @@ export default function GymCheckinPage() {
   const { toast } = useToast();
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter: globalBranchFilter, isLoading: branchLoading } = useBranch();
-  
+
+  // Hook nativo móvil (NFC, biometría) — no-ops en web
+  const { isMobileApp, isAndroidApp, startNfcScan, stopNfcScan, authenticateBiometric } = useMobileNative();
+  const [nfcScanning, setNfcScanning] = useState(false);
+
   // Estados de búsqueda y validación
   const [isSearching, setIsSearching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -291,6 +296,36 @@ export default function GymCheckinPage() {
     setSearchResults([]);
   };
 
+  // Handler NFC — solo activo en Android nativo. En web es no-op.
+  const handleNfcScan = async () => {
+    if (!isAndroidApp) return;
+    setNfcScanning(true);
+    try {
+      const result = await startNfcScan();
+      if (result.success && result.data) {
+        // Buscar miembro por ID del tag NFC
+        const tagId = result.data.id;
+        // Por ahora, mostrar el tag escaneado — la búsqueda de miembro por tag
+        // requiere una tabla de asociación que se creará en migración futura
+        toast({
+          title: 'NFC escaneado',
+          description: `Tag ID: ${tagId}`,
+        });
+      } else if (result.error && result.error !== 'timeout') {
+        toast({
+          title: 'Error NFC',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      console.error('[gymCheckin] NFC scan error:', err);
+    } finally {
+      setNfcScanning(false);
+      await stopNfcScan();
+    }
+  };
+
   const isToday = datePreset === 'today';
 
   if (orgLoading || branchLoading) {
@@ -329,6 +364,11 @@ export default function GymCheckinPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
+          {isAndroidApp && (
+            <Button variant="outline" size="sm" onClick={handleNfcScan} disabled={nfcScanning}>
+              {nfcScanning ? 'Escaneando...' : '📱 NFC'}
+            </Button>
+          )}
           <Link href="/app/gym/dispositivos">
             <Button variant="outline" size="sm">
               <QrCode className="h-4 w-4 mr-2" />

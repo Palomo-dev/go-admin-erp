@@ -13,6 +13,7 @@ import AutomationsView from "./AutomationsView";
 import { Plus, FolderPlus } from "lucide-react";
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from "@/components/common/PageSkeletons";
 import { useOrganization } from "@/lib/hooks/useOrganization";
+import { pipelineSeedService } from "@/lib/services/crm/pipelineSeedService";
 
 export default function PipelineView() {
   const [currentPipelineId, setCurrentPipelineId] = useState<string>("");
@@ -48,6 +49,12 @@ export default function PipelineView() {
 
       // Si encontramos un pipeline predeterminado, lo usamos
       if (defaultPipeline) {
+        // Sembrar etapas semilla si el pipeline no tiene etapas (idempotente)
+        try {
+          await pipelineSeedService.seedDefaultStagesForPipeline(defaultPipeline.id);
+        } catch (err) {
+          console.warn("No se pudieron sembrar etapas por defecto:", err);
+        }
         setCurrentPipelineId(defaultPipeline.id);
         setLoading(false);
         return;
@@ -65,6 +72,12 @@ export default function PipelineView() {
       if (firstError && firstError.code !== "PGRST116") {
         console.error("Error al cargar el primer pipeline:", firstError);
       } else if (firstPipeline) {
+        // Sembrar etapas semilla si el pipeline no tiene etapas (idempotente)
+        try {
+          await pipelineSeedService.seedDefaultStagesForPipeline(firstPipeline.id);
+        } catch (err) {
+          console.warn("No se pudieron sembrar etapas por defecto:", err);
+        }
         setCurrentPipelineId(firstPipeline.id);
       }
 

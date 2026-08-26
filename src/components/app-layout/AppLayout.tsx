@@ -657,7 +657,7 @@ export const AppLayout = ({
     let cancelled = false;
 
     const registerPush = async () => {
-      const { isMobile } = await import('@/lib/utils/platform');
+      const { isMobile } = await import('@/lib/utils/mobile');
       if (!isMobile() || cancelled) return;
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -711,7 +711,7 @@ export const AppLayout = ({
 
     const checkSubscriptionStatus = async () => {
       const allowedPaths = ['/app/organizacion/plan', '/app/plan', '/app/organizacion'];
-      const isAllowed = allowedPaths.some(p => pathname.startsWith(p));
+      const isAllowed = allowedPaths.some(p => pathname?.startsWith(p) ?? false);
       if (isAllowed) return;
 
       const { data } = await supabase

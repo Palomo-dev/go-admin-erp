@@ -173,7 +173,7 @@ export interface MemberCheckin {
   branch_id: number;
   membership_id?: number;
   checkin_at: string;
-  method?: 'manual' | 'qr' | 'card' | 'biometric';
+  method?: 'manual' | 'qr' | 'card' | 'biometric' | 'nfc';
   denied_reason?: string;
   staff_id?: string;
   class_reservation_id?: number;
@@ -692,7 +692,7 @@ export async function validateCheckin(
 
 export async function registerCheckin(
   membershipId: number,
-  method: 'manual' | 'qr' | 'card' | 'biometric' = 'manual',
+  method: 'manual' | 'qr' | 'card' | 'biometric' | 'nfc' = 'manual',
   branchId?: number
 ): Promise<MemberCheckin> {
   const orgId = getOrganizationId();

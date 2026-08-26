@@ -81,6 +81,8 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/stripe/',  // <-- Excluir APIs de Stripe
     '/api/sessions/', // <-- Excluir APIs de sesiones
     '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
+    '/api/integrations/whatsapp/webhook', // <-- Excluir webhook de WhatsApp Cloud API (verificación Meta)
+    '/api/integrations/whatsapp/qr/inbound', // <-- Excluir callback del microservicio Baileys (autenticación propia via shared secret)
     '/api/super-admin-access', // <-- Excluir canje de token de super admin (autenticación propia via token BD)
     '/api/super-admin-cleanup', // <-- Excluir cleanup de super admin (autenticación propia via body)
     '/api/factus/', // <-- Excluir APIs de Factus (usan credenciales de entorno, no requieren sesión)

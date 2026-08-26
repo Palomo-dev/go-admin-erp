@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -13,7 +13,7 @@ import WhatsAppChannelService, {
 } from '@/lib/services/whatsappChannelService';
 import {
   WhatsAppSettingsHeader,
-  WhatsAppCredentialsCard,
+  WhatsAppConnectionTabs,
   WhatsAppStatsCard,
   WhatsAppEventsCard,
   WhatsAppWebhookCard
@@ -22,7 +22,8 @@ import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function WhatsAppChannelPage() {
   const params = useParams();
-  const channelId = params.id as string;
+  const router = useRouter();
+  const channelId = params?.id as string;
   const { organization } = useOrganization();
   const { toast } = useToast();
 
@@ -37,27 +38,36 @@ export default function WhatsAppChannelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!organization?.id) return;
 
     setIsLoading(true);
+    setLoadError(null);
     try {
       const service = new WhatsAppChannelService(organization.id);
-      
-      const [channelData, eventsData, statsData] = await Promise.all([
-        service.getChannel(channelId),
+
+      const channelData = await service.getChannel(channelId);
+
+      if (!channelData) {
+        setChannel(null);
+        setLoadError('no_access');
+        return;
+      }
+
+      setChannel(channelData);
+
+      const [eventsData, statsData] = await Promise.all([
         service.getRecentEvents(channelId),
         service.getStats(channelId)
       ]);
 
-      if (channelData) {
-        setChannel(channelData);
-      }
       setEvents(eventsData);
       setStats(statsData);
     } catch (error) {
       console.error('Error cargando datos:', error);
+      setLoadError('error');
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los datos del canal',
@@ -168,8 +178,44 @@ export default function WhatsAppChannelPage() {
 
   if (!channel) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-gray-500 dark:text-gray-400">
-        <p className="text-lg">Canal no encontrado</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-gray-500 dark:text-gray-400 space-y-4 px-4">
+        {loadError === 'no_access' ? (
+          <>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">
+                Canal no disponible
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+                Este canal de WhatsApp no pertenece a tu organización actual
+                ({organization?.name || 'N/A'}), no existe, o ha sido eliminado.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/app/chat/canales')}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Ver mis canales
+              </button>
+              <button
+                onClick={() => loadData()}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Reintentar
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-lg">Canal no encontrado</p>
+            <button
+              onClick={() => loadData()}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Reintentar
+            </button>
+          </>
+        )}
       </div>
     );
   }
@@ -186,7 +232,7 @@ export default function WhatsAppChannelPage() {
       <WhatsAppStatsCard stats={stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WhatsAppCredentialsCard
+        <WhatsAppConnectionTabs
           credentials={channel.credentials || null}
           onSave={handleSaveCredentials}
           onValidate={handleValidateWebhook}

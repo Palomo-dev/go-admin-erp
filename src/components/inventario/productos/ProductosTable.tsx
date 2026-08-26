@@ -437,12 +437,15 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                       onChange={toggleSelectAll}
                       className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       title="Seleccionar todos en esta página"
+                      aria-label="Seleccionar todos los productos en esta página"
                     />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
                           className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
                           title="Opciones de selección"
+                          aria-label="Opciones de selección de productos"
+                          aria-haspopup="menu"
                         >
                           <ChevronDown className="h-3 w-3 text-gray-500 dark:text-gray-400" />
                         </button>
@@ -536,6 +539,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                       checked={selectedIds.includes(typeof producto.id === 'number' ? producto.id : parseInt(String(producto.id), 10))}
                       onChange={() => toggleSelect(producto.id)}
                       className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      aria-label={`Seleccionar producto ${producto.name}`}
                     />
                   </TableCell>
                 )}
@@ -645,9 +649,10 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        aria-label={`Acciones para producto ${producto.name}`}
                       >
                         <span className="sr-only">Abrir menú</span>
                         <MoreHorizontal className="h-4 w-4 dark:text-gray-300" />

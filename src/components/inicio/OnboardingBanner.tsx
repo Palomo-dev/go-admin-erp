@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import type { OnboardingStep } from './inicioService';
 import { useTranslations } from 'next-intl';
+import { getMobileStorage, setMobileStorage } from '@/lib/utils/mobileStorage';
 
 interface OnboardingBannerProps {
   steps: OnboardingStep[];
@@ -43,32 +44,37 @@ export function OnboardingBanner({ steps, organizacionCreatedAt }: OnboardingBan
   const t = useTranslations('home.onboarding');
 
   useEffect(() => {
-    // Verificar si fue descartado manualmente
-    const dismissedAt = localStorage.getItem(DISMISS_KEY);
-    if (dismissedAt) {
-      setDismissed(true);
-      return;
-    }
-
-    // Verificar si la organización tiene más de 3 días
-    if (organizacionCreatedAt) {
-      const createdAt = new Date(organizacionCreatedAt);
-      const now = new Date();
-      const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-      if (diffDays > 3) {
+    let cancelled = false;
+    (async () => {
+      // Verificar si fue descartado manualmente
+      const dismissedAt = await getMobileStorage(DISMISS_KEY);
+      if (cancelled) return;
+      if (dismissedAt) {
         setDismissed(true);
         return;
       }
-    }
 
-    // Verificar si todos los pasos están completados
-    const allCompleted = steps.every((s) => s.completado);
-    if (allCompleted) {
-      setDismissed(true);
-      return;
-    }
+      // Verificar si la organización tiene más de 3 días
+      if (organizacionCreatedAt) {
+        const createdAt = new Date(organizacionCreatedAt);
+        const now = new Date();
+        const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays > 3) {
+          setDismissed(true);
+          return;
+        }
+      }
 
-    setDismissed(false);
+      // Verificar si todos los pasos están completados
+      const allCompleted = steps.every((s) => s.completado);
+      if (allCompleted) {
+        setDismissed(true);
+        return;
+      }
+
+      setDismissed(false);
+    })();
+    return () => { cancelled = true; };
   }, [steps, organizacionCreatedAt]);
 
   if (dismissed) return null;
@@ -78,7 +84,7 @@ export function OnboardingBanner({ steps, organizacionCreatedAt }: OnboardingBan
   const siguientePaso = steps.find((s) => !s.completado);
 
   const handleDismiss = () => {
-    localStorage.setItem(DISMISS_KEY, new Date().toISOString());
+    void setMobileStorage(DISMISS_KEY, new Date().toISOString());
     setDismissed(true);
   };
 

@@ -1,0 +1,56 @@
+# ============================================================
+# Evolution API – Gateway WhatsApp self-hosted
+# Ref: docs/integraciones/whatsapp-qr-evolution.md
+# ============================================================
+# Evolution API mantiene conexiones WebSocket persistentes con WhatsApp,
+# maneja LID correctamente, y expone una API REST estable.
+# Documentación: https://doc.evolution-api.com
+# ============================================================
+
+services:
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.0
+    container_name: evolution-api
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_started
+
+  evolution-postgres:
+    image: postgres:16-alpine
+    container_name: evolution-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: evolution_pass
+      POSTGRES_DB: evolution_db
+    volumes:
+      - evolution_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution -d evolution_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  evolution-redis:
+    image: redis:7-alpine
+    container_name: evolution-redis
+    restart: always
+    volumes:
+      - evolution_redis:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  evolution_instances:
+  evolution_store:
+  evolution_pg:
+  evolution_redis:

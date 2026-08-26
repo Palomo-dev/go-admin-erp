@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MOBILE_DEEP_LINK_SCHEME } from '@/lib/constants/auth';
 
 /**
  * Bridge API route para OAuth redirects en app móvil (Capacitor).
@@ -17,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * - Additional Redirect URLs: https://app.goadmin.io/api/auth/native-callback
  */
 
-const DEEP_LINK_SCHEME = 'goadmin://auth-callback';
+// MOBILE_DEEP_LINK_SCHEME se importa de @/lib/constants/auth para evitar duplicación
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   if (code) {
     const next = searchParams.get('next') || '/app/inicio';
-    const redirectUrl = `${DEEP_LINK_SCHEME}?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`;
+    const redirectUrl = `${MOBILE_DEEP_LINK_SCHEME}?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`;
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
   const accessToken = searchParams.get('access_token');
   const refreshToken = searchParams.get('refresh_token');
   if (accessToken && refreshToken) {
-    const redirectUrl = `${DEEP_LINK_SCHEME}?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}`;
+    const redirectUrl = `${MOBILE_DEEP_LINK_SCHEME}?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}`;
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
   if (error) {
-    const redirectUrl = `${DEEP_LINK_SCHEME}?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`;
+    const redirectUrl = `${MOBILE_DEEP_LINK_SCHEME}?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(errorDescription || '')}`;
     return NextResponse.redirect(redirectUrl);
   }
 

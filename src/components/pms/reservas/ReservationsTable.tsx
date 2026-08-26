@@ -245,8 +245,9 @@ export function ReservationsTable({
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" aria-label={`Acciones para reserva ${reservation.code}`}>
                         <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Abrir menú de acciones</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-full sm:w-48">

@@ -98,6 +98,7 @@ const FiltrosProductos: React.FC<FiltrosProductosProps> = ({ filters, onFiltersC
             value={busquedaLocal}
             onChange={handleBusquedaChange}
             placeholder="Buscar productos..."
+            aria-label="Buscar productos por nombre o código"
             className="pl-8 sm:pl-10 text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
           />
         </div>

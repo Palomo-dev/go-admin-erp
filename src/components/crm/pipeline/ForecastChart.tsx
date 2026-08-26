@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +23,22 @@ interface ChartData {
   goal?: number; // objetivo (si existe)
 }
 
+interface ForecastItem {
+  id: string;
+  amount: number;
+  expected_close_date: string | null;
+  status: string;
+  stage_id: string;
+  stage_name: string;
+  stage_probability: number;
+  weighted_amount: number;
+}
+
+interface PipelineGoalData {
+  goal_amount: number | string | null;
+  goal_period: string | null;
+}
+
 const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'monthly' }) => {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartData[]>([]);
@@ -37,76 +53,10 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
     }
   }, []);
 
-  // Cargar datos de pronóstico
-  useEffect(() => {
-    const fetchForecastData = async () => {
-      if (!organizationId || !pipelineId) return;
-
-      setLoading(true);
-      try {
-        // Consulta directamente a la tabla de oportunidades en lugar de la vista materializada
-        const { data: opportunitiesData, error: opportunitiesError } = await supabase
-          .from('opportunities')
-          .select(`
-            id, 
-            name, 
-            amount, 
-            expected_close_date,
-            status,
-            stage_id, 
-            stages:stage_id (name, probability)
-          `)
-          .eq('pipeline_id', pipelineId)
-          .in('status', ['open', 'won']);
-
-        if (opportunitiesError) {
-          toast({
-            title: "Error",
-            description: "Error al cargar datos de pronóstico",
-            variant: "destructive"
-          });
-          setLoading(false);
-          return;
-        }
-        
-        // Adaptar los datos para que coincidan con el formato esperado
-        const forecastData = opportunitiesData?.map(opp => ({
-          id: opp.id,
-          amount: opp.amount || 0,
-          expected_close_date: opp.expected_close_date,
-          status: opp.status,
-          stage_id: opp.stage_id,
-          stage_name: opp.stages?.[0]?.name || '',
-          stage_probability: opp.stages?.[0]?.probability || 100,
-          weighted_amount: (opp.amount || 0) * (opp.stages?.[0]?.probability || 100) / 100
-        }));
-        
-
-        // Obtener los objetivos del pipeline
-        const { data: pipelineData, error: pipelineError } = await supabase
-          .from('pipelines')
-          .select('goal_amount, goal_period')
-          .eq('id', pipelineId)
-          .single();
-
-        if (pipelineError && pipelineError.code !== 'PGRST116') {
-          console.error('Error al cargar información del pipeline:', pipelineError);
-        }
-
-        // Procesar datos según el período seleccionado
-        processChartData(forecastData || [], pipelineData);
-      } catch (error) {
-        console.error('Error al procesar datos del gráfico:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchForecastData();
-  }, [pipelineId, organizationId, selectedView]);
-
   // Procesar datos para el gráfico según período (mensual o trimestral)
-  const processChartData = (forecastData: any[], pipelineData: any) => {
+  // Se define antes del useEffect que lo consume para evitar el uso de la
+  // variable antes de su declaración (TDZ) al incluirla en el array de deps.
+  const processChartData = useCallback((forecastData: ForecastItem[], pipelineData: PipelineGoalData | null) => {
     if (!forecastData.length) {
       setChartData([]);
       return;
@@ -117,7 +67,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
     const groupedData = new Map<string, ChartData>();
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const quarterNames = ['Q1', 'Q2', 'Q3', 'Q4'];
-    
+
     // Agregar un periodo para oportunidades sin fecha
     const noDateKey = 'no-date';
     groupedData.set(noDateKey, {
@@ -127,19 +77,20 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
     });
 
     forecastData.forEach(item => {
-      let key;
-      let displayName;
+      let key: string;
+      let displayName: string;
 
-      if (!item.expected_year || !item.expected_month) {
+      const closeDate = item.expected_close_date ? new Date(item.expected_close_date) : null;
+      if (!closeDate || isNaN(closeDate.getTime())) {
         // Si no tiene fecha, agregarlo al grupo "sin fecha"
         key = noDateKey;
         displayName = 'Sin fecha';
       } else {
         // Si tiene fecha, usar el formato adecuado según la vista
-        const year = item.expected_year;
-        const month = item.expected_month - 1; // 0-indexed para arrays
+        const year = closeDate.getFullYear();
+        const month = closeDate.getMonth(); // 0-indexed para arrays
         const quarter = Math.floor(month / 3);
-        
+
         if (isMonthly) {
           key = `${year}-${String(month + 1).padStart(2, '0')}`;
           displayName = `${monthNames[month]} ${year}`;
@@ -158,15 +109,15 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
       }
 
       const entry = groupedData.get(key)!;
-      entry.totalAmount += parseFloat(item.amount) || 0;
-      entry.forecastAmount += parseFloat(item.forecast_amount) || 0;
+      entry.totalAmount += Number(item.amount) || 0;
+      entry.forecastAmount += Number(item.weighted_amount) || 0;
     });
 
     // Agregar objetivos si existen
-    if (pipelineData && pipelineData.goal_amount > 0) {
+    if (pipelineData && Number(pipelineData.goal_amount) > 0) {
       // Ajustar el objetivo según el período de visualización y del pipeline
       const goalPeriod = pipelineData.goal_period || 'monthly';
-      const goalAmount = parseFloat(pipelineData.goal_amount) || 0;
+      const goalAmount = Number(pipelineData.goal_amount) || 0;
 
       groupedData.forEach((data) => {
         // Solo agregamos objetivo a periodos con fechas (no al "sin fecha")
@@ -200,7 +151,7 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
         // Ordenar el resto cronológicamente
         return keyA.localeCompare(keyB);
       })
-      .map(([_, value]) => value);
+      .map(([, value]) => value);
 
     // Si el grupo "Sin fecha" está vacío, eliminarlo
     if (sortedData.length > 0 && 
@@ -210,7 +161,74 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
     }
     
     setChartData(sortedData);
-  };
+  }, [selectedView]);
+
+  // Cargar datos de pronóstico
+  useEffect(() => {
+    const fetchForecastData = async () => {
+      if (!organizationId || !pipelineId) return;
+
+      setLoading(true);
+      try {
+        // Consulta directamente a la tabla de oportunidades en lugar de la vista materializada
+        const { data: opportunitiesData, error: opportunitiesError } = await supabase
+          .from('opportunities')
+          .select(`
+            id,
+            name,
+            amount,
+            expected_close_date,
+            status,
+            stage_id,
+            stages:stage_id (name, probability)
+          `)
+          .eq('pipeline_id', pipelineId)
+          .in('status', ['open', 'won']);
+
+        if (opportunitiesError) {
+          toast({
+            title: "Error",
+            description: "Error al cargar datos de pronóstico",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Adaptar los datos para que coincidan con el formato esperado
+        const forecastData: ForecastItem[] = (opportunitiesData ?? []).map(opp => ({
+          id: opp.id,
+          amount: opp.amount || 0,
+          expected_close_date: opp.expected_close_date,
+          status: opp.status,
+          stage_id: opp.stage_id,
+          stage_name: opp.stages?.[0]?.name || '',
+          stage_probability: opp.stages?.[0]?.probability || 100,
+          weighted_amount: (opp.amount || 0) * (opp.stages?.[0]?.probability || 100) / 100
+        }));
+
+        // Obtener los objetivos del pipeline
+        const { data: pipelineData, error: pipelineError } = await supabase
+          .from('pipelines')
+          .select('goal_amount, goal_period')
+          .eq('id', pipelineId)
+          .single();
+
+        if (pipelineError && pipelineError.code !== 'PGRST116') {
+          console.error('Error al cargar información del pipeline:', pipelineError);
+        }
+
+        // Procesar datos según el período seleccionado
+        processChartData(forecastData, pipelineData as PipelineGoalData | null);
+      } catch (error) {
+        console.error('Error al procesar datos del gráfico:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchForecastData();
+  }, [pipelineId, organizationId, selectedView, processChartData]);
 
   // Color según tema
   const barColors = {
@@ -314,13 +332,9 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
               tickFormatter={(value) => formatCurrency(value, 'COP')}
               className="text-xs text-gray-600 dark:text-gray-300"
             />
-            <Tooltip 
-              formatter={(value: number) => [formatCurrency(value), '']}
-              contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                borderColor: '#e2e8f0',
-                borderRadius: 4,
-              }}
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
             />
             <Legend />
             <Bar 

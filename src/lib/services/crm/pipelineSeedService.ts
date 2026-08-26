@@ -28,17 +28,18 @@ interface ScoringConfigRow {
 }
 
 // Las 10 etapas del pipeline B2B por defecto
+// probability en escala 0-1 (constraint de BD: stages_probability_check)
 const DEFAULT_STAGES: SeedStage[] = [
-  { name: 'Lead nuevo', position: 1, probability: 5, is_won: false, is_lost: false, sla_days: 3, color: '#94a3b8' },
-  { name: 'Contactado', position: 2, probability: 10, is_won: false, is_lost: false, sla_days: 5, color: '#3b82f6' },
-  { name: 'Calificado', position: 3, probability: 20, is_won: false, is_lost: false, sla_days: 7, color: '#6366f1' },
-  { name: 'Discovery', position: 4, probability: 30, is_won: false, is_lost: false, sla_days: 10, color: '#8b5cf6' },
-  { name: 'Demo', position: 5, probability: 45, is_won: false, is_lost: false, sla_days: 14, color: '#a855f7' },
-  { name: 'Propuesta', position: 6, probability: 60, is_won: false, is_lost: false, sla_days: 21, color: '#d946ef' },
-  { name: 'Negociacion', position: 7, probability: 75, is_won: false, is_lost: false, sla_days: 30, color: '#ec4899' },
-  { name: 'Contrato/pago', position: 8, probability: 90, is_won: false, is_lost: false, sla_days: 45, color: '#f43f5e' },
-  { name: 'Ganado', position: 9, probability: 100, is_won: true, is_lost: false, sla_days: null, color: '#22c55e' },
-  { name: 'Perdido', position: 10, probability: 0, is_won: false, is_lost: true, sla_days: null, color: '#ef4444' },
+  { name: 'Lead nuevo', position: 1, probability: 0.05, is_won: false, is_lost: false, sla_days: 3, color: '#94a3b8' },
+  { name: 'Contactado', position: 2, probability: 0.10, is_won: false, is_lost: false, sla_days: 5, color: '#3b82f6' },
+  { name: 'Calificado', position: 3, probability: 0.20, is_won: false, is_lost: false, sla_days: 7, color: '#6366f1' },
+  { name: 'Discovery', position: 4, probability: 0.30, is_won: false, is_lost: false, sla_days: 10, color: '#8b5cf6' },
+  { name: 'Demo', position: 5, probability: 0.45, is_won: false, is_lost: false, sla_days: 14, color: '#a855f7' },
+  { name: 'Propuesta', position: 6, probability: 0.60, is_won: false, is_lost: false, sla_days: 21, color: '#d946ef' },
+  { name: 'Negociacion', position: 7, probability: 0.75, is_won: false, is_lost: false, sla_days: 30, color: '#ec4899' },
+  { name: 'Contrato/pago', position: 8, probability: 0.90, is_won: false, is_lost: false, sla_days: 45, color: '#f43f5e' },
+  { name: 'Ganado', position: 9, probability: 1.00, is_won: true, is_lost: false, sla_days: null, color: '#22c55e' },
+  { name: 'Perdido', position: 10, probability: 0.00, is_won: false, is_lost: true, sla_days: null, color: '#ef4444' },
 ];
 
 // Razones de pérdida globales por defecto
@@ -163,6 +164,57 @@ class PipelineSeedService {
       return pipelineId;
     } catch (err) {
       console.error('Error en pipelineSeedService.seedDefaultPipeline:', err);
+      throw err;
+    }
+  }
+
+  /**
+   * Inserta las etapas semilla (DEFAULT_STAGES) en un pipeline existente
+   * si y solo si el pipeline no tiene etapas. Idempotente.
+   *
+   * @param pipelineId - ID del pipeline al que sembrar etapas
+   * @returns true si se crearon etapas, false si ya existían
+   */
+  async seedDefaultStagesForPipeline(pipelineId: string): Promise<boolean> {
+    try {
+      // 1. Verificar si el pipeline ya tiene etapas
+      const { data: existingStages, error: checkError } = await supabase
+        .from('stages')
+        .select('id')
+        .eq('pipeline_id', pipelineId)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      // Si ya tiene etapas, no hacer nada
+      if (existingStages && existingStages.length > 0) {
+        return false;
+      }
+
+      // 2. Insertar las etapas semilla
+      const stagesToInsert = DEFAULT_STAGES.map((stage) => ({
+        pipeline_id: pipelineId,
+        name: stage.name,
+        position: stage.position,
+        probability: stage.probability,
+        is_won: stage.is_won,
+        is_lost: stage.is_lost,
+        sla_days: stage.sla_days,
+        color: stage.color,
+      }));
+
+      const { error: stagesError } = await supabase
+        .from('stages')
+        .insert(stagesToInsert);
+
+      if (stagesError) {
+        console.warn('Advertencia creando etapas semilla para pipeline', pipelineId, ':', stagesError.message);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error en pipelineSeedService.seedDefaultStagesForPipeline:', err);
       throw err;
     }
   }

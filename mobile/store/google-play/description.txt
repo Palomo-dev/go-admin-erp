@@ -1,0 +1,49 @@
+GoAdmin ERP — La plataforma todo-en-uno para gestionar tu negocio.
+
+GoAdmin ERP es un sistema de gestión empresarial (ERP/CRM) diseñado para pymes, gimnasios, restaurantes, parqueaderos, transporte y más. Gestiona ventas, inventario, clientes, proveedores, finanzas, recursos humanos y reportes desde una sola aplicación.
+
+PRINCIPALES FUNCIONES NATIVAS MÓVILES:
+
+• Login con Face ID / Huella — Acceso rápido y seguro sin escribir contraseña.
+• Escaneo de códigos de barras y QR — Usa la cámara para escanear productos, socios y códigos de marcación.
+• Impresión de tickets vía Bluetooth — Conecta impresoras térmicas 58mm/80mm inalámbricas para imprimir facturas y tickets POS.
+• Notificaciones push en tiempo real — Recibe alertas de ventas, reservas, mensajes y eventos importantes.
+• Geolocalización — Registra asistencia con GPS, seguimiento de transporte y fotos de entrega con ubicación.
+• NFC para check-in — Lee tags NFC para check-in de gimnasio y marcación de asistencia (Android).
+• Exportar reportes — Guarda PDFs y CSVs directamente en tu dispositivo y compártelos por WhatsApp, email, etc.
+• Feedback háptico — Vibración táctil en acciones de POS para confirmar cobros y alertas.
+
+MÓDULOS INCLUIDOS:
+
+• POS / Punto de Venta — Cobro rápido, impresión de tickets, cajón de dinero, descuentos, devoluciones.
+• Inventario — Gestión de productos, stock, categorías, alertas de stock mínimo, escaneo de códigos.
+• Clientes (CRM) — Base de datos de clientes, historial de compras, autocompletado DIAN/RUES.
+• Proveedores — Gestión de proveedores, órdenes de compra, autocompletado DIAN/RUES.
+• Finanzas — Facturación, cuentas por cobrar/pagar, conciliación bancaria, reportes financieros.
+• Recursos Humanos (HRM) — Marcación de asistencia, nómina, gestión de empleados, NFC.
+• Gimnasio — Check-in de socios, membresías, control de acceso, NFC, biometría.
+• PMS / Reservas — Gestión de habitaciones, reservas, check-in/check-out.
+• Parqueadero — Gestión de plazas, tarifas, cámaras de matrículas.
+• Transporte — Gestión de vehículos, conductores, rutas, GPS, fotos de entrega.
+• Calendario — Agenda compartida, eventos, recordatorios.
+• Notificaciones — Centro de notificaciones en tiempo real.
+• Reportes — Reportes de ventas, inventario, finanzas, exportables a PDF/CSV.
+• Integraciones de pagos — Bancolombia, BreB, Redeban, Wompi (QR, transferencias, tarjetas).
+
+SEGURIDAD:
+
+• Autenticación con Supabase (OAuth Google/Microsoft, email/password, biometría).
+• Row Level Security (RLS) — Cada organización solo accede a sus datos.
+• Cifrado en tránsito (TLS) y en reposo.
+• Datos biométricos NUNCA salen del dispositivo.
+
+GoAdmin ERP es ideal para:
+• Gimnasios y centros deportivos
+• Restaurantes y cafeterías
+• Tiendas y comercios
+• Parqueaderos
+• Hoteles y hostales
+• Empresas de transporte
+• Pequeñas y medianas empresas (pymes)
+
+Para más información visita: https://app.goadmin.io

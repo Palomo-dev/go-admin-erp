@@ -399,16 +399,17 @@ class CommercialMetricsService {
   private async calculateCycleLength(
     orgId: number,
     from: string,
-    _to: string
+    to: string
   ): Promise<number> {
     try {
-      // Obtener oportunidades cerradas en el periodo
+      // Obtener oportunidades cerradas en el periodo [from, to]
       const { data: closedOpps } = await supabase
         .from('opportunities')
         .select('id, created_at, closed_at, status')
         .eq('organization_id', orgId)
         .in('status', ['won', 'lost'])
-        .gte('closed_at', from);
+        .gte('closed_at', from)
+        .lte('closed_at', to);
 
       if (!closedOpps || closedOpps.length === 0) return 0;
 
@@ -463,14 +464,15 @@ class CommercialMetricsService {
   private async calculateVendorBreakdownManual(
     orgId: number,
     from: string,
-    _to: string
+    to: string
   ): Promise<VendorBreakdown[]> {
     try {
       const { data: opps } = await supabase
         .from('opportunities')
         .select('id, status, amount, salesperson_id, created_at, closed_at')
         .eq('organization_id', orgId)
-        .or(`created_at.gte.${from},closed_at.gte.${from}`);
+        .or(`created_at.gte.${from},closed_at.gte.${from}`)
+        .lte('created_at', to);
 
       if (!opps || opps.length === 0) return [];
 

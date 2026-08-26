@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from "../supabase/config";
+import { getMobileStorage, setMobileStorage, removeMobileStorage } from '@/lib/utils/mobileStorage';
 
 // Constante para el almacenamiento local de la organización
 const STORAGE_KEY = 'organizacionActiva';
+const BRANCH_ID_KEY = 'currentBranchId';
+const BRANCH_ALL_KEY_LOCAL = 'branchFilterAll';
 
 // Interfaz para la organización almacenada localmente
 export type Organizacion = {
@@ -15,6 +18,44 @@ export type Organizacion = {
   subdomain?: string;
 };
 
+// ----------------------------------------------------------------------------
+// Caches en memoria para mantener flujo síncrono con persistencia async
+// ----------------------------------------------------------------------------
+let _orgCache: Organizacion | null | undefined = undefined;
+let _branchFilterAllCache: boolean | undefined = undefined;
+
+/**
+ * Carga las preferencias persistidas (organización, branchFilterAll) desde
+ * @capacitor/preferences (móvil) o localStorage (web) al cache en memoria.
+ * Debe llamarse al inicio de la app (en un useEffect raíz) antes de usar
+ * las funciones síncronas de este módulo en móvil.
+ */
+export async function initOrganizationCache(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  // Organización activa
+  if (_orgCache === undefined) {
+    try {
+      const data = await getMobileStorage(STORAGE_KEY);
+      if (data) {
+        _orgCache = JSON.parse(data) as Organizacion;
+      } else {
+        _orgCache = null;
+      }
+    } catch {
+      _orgCache = null;
+    }
+  }
+  // branchFilterAll
+  if (_branchFilterAllCache === undefined) {
+    try {
+      const val = await getMobileStorage(BRANCH_ALL_KEY_LOCAL);
+      _branchFilterAllCache = val === '1';
+    } catch {
+      _branchFilterAllCache = false;
+    }
+  }
+}
+
 /**
  * Guarda la organización activa en localStorage y sessionStorage como respaldo
  */
@@ -23,19 +64,25 @@ export function guardarOrganizacionActiva(organizacion: Organizacion): void {
     // Verificar si la organización ya está guardada para evitar logs innecesarios
     const existingData = localStorage.getItem(STORAGE_KEY);
     const isAlreadySaved = existingData && JSON.parse(existingData)?.id === organizacion.id;
-    
-    // Guardar en localStorage como fuente principal
+
+    // Actualizar cache en memoria (síncrono)
+    _orgCache = organizacion;
+
+    // Guardar en localStorage como fuente principal (síncrono, para middleware/SSR)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
-    
+
     // Guardar en sessionStorage como respaldo
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(organizacion));
+
+    // Persistir en almacenamiento móvil (async, fire and forget)
+    void setMobileStorage(STORAGE_KEY, JSON.stringify(organizacion));
 
     // Guardar cookie org_id para que el middleware pueda validar estado de suscripción
     document.cookie = `org_id=${organizacion.id}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax${process.env.NODE_ENV === 'production' ? '; secure' : ''}`;
     if (organizacion.subdomain) {
       document.cookie = `organization=${organizacion.subdomain}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax${process.env.NODE_ENV === 'production' ? '; secure' : ''}`;
     }
-    
+
     // Solo hacer log si es una organización nueva o diferente
     if (!isAlreadySaved) {
       console.log('Organización guardada correctamente:', organizacion.id);
@@ -60,6 +107,11 @@ export function cambiarOrganizacionActiva(
     sessionStorage.removeItem('currentBranchId');
     localStorage.removeItem('branchFilterAll');
     localStorage.removeItem('appLayout_userData_cache');
+    // Limpiar también almacenamiento móvil (async, fire and forget)
+    void removeMobileStorage('currentBranchId');
+    void removeMobileStorage('branchFilterAll');
+    // Resetear caches en memoria
+    _branchFilterAllCache = false;
     invalidateBranchIdCache();
   } catch (error) {
     console.error('Error al limpiar estado de la organización anterior:', error);
@@ -70,6 +122,9 @@ export function cambiarOrganizacionActiva(
     localStorage.setItem('currentOrganizationId', organizacion.id.toString());
     if (organizacion.name) localStorage.setItem('currentOrganizationName', organizacion.name);
     sessionStorage.setItem('currentOrganizationId', organizacion.id.toString());
+    // Persistir claves legacy en almacenamiento móvil (async)
+    void setMobileStorage('currentOrganizationId', organizacion.id.toString());
+    if (organizacion.name) void setMobileStorage('currentOrganizationName', organizacion.name);
   } catch (error) {
     console.error('Error al guardar claves legacy de organización:', error);
   }
@@ -87,13 +142,21 @@ export function obtenerOrganizacionActiva(): Organizacion {
   if (typeof window === 'undefined') {
     return { id: 0 }; // SSR — sin acceso a storage
   }
-  
+
   try {
+    // 0. Cache en memoria (respuesta inmediata, cargado por initOrganizationCache)
+    if (_orgCache && _orgCache.id) {
+      return _orgCache;
+    }
+
     // 1. Fuente principal: clave JSON
     const localData = localStorage.getItem(STORAGE_KEY);
     if (localData) {
       const parsed = JSON.parse(localData);
-      if (parsed?.id) return parsed;
+      if (parsed?.id) {
+        _orgCache = parsed;
+        return parsed;
+      }
     }
     
     // 2. Respaldo: sessionStorage
@@ -396,9 +459,6 @@ export function invalidateBranchIdCache(): void {
   console.log('🏦 Caché de branch_id invalidado');
 }
 
-// Clave de almacenamiento para el modo "Todas las sucursales"
-const BRANCH_ALL_KEY = 'branchFilterAll';
-
 // Nombre del evento global emitido al cambiar de sucursal o de modo
 export const BRANCH_CHANGED_EVENT = 'branch-changed';
 
@@ -409,7 +469,12 @@ export const BRANCH_CHANGED_EVENT = 'branch-changed';
 export function getBranchFilterAll(): boolean {
   try {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem(BRANCH_ALL_KEY) === '1';
+    // Cache en memoria (cargado por initOrganizationCache)
+    if (_branchFilterAllCache !== undefined) return _branchFilterAllCache;
+    // Fallback síncrono: localStorage
+    const val = localStorage.getItem(BRANCH_ALL_KEY_LOCAL) === '1';
+    _branchFilterAllCache = val;
+    return val;
   } catch {
     return false;
   }
@@ -649,5 +714,6 @@ export default {
   invalidateBranchIdCache,
   getCurrentBranchIdWithFallback,
   getBranchFilter,
-  getBranchFilterAll
+  getBranchFilterAll,
+  initOrganizationCache
 };

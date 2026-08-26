@@ -1,0 +1,38 @@
+GoAdmin ERP — La plataforma todo-en-uno para gestionar tu negocio.
+
+GoAdmin ERP es un sistema de gestión empresarial (ERP/CRM) diseñado para pymes, gimnasios, restaurantes, parqueaderos, transporte y más. Gestiona ventas, inventario, clientes, proveedores, finanzas, recursos humanos y reportes desde una sola aplicación.
+
+FUNCIONES NATIVAS MÓVILES:
+
+• Login con Face ID / Touch ID — Acceso rápido y seguro sin escribir contraseña.
+• Escaneo de códigos de barras y QR — Usa la cámara para escanear productos, socios y códigos de marcación.
+• Impresión de tickets vía Bluetooth — Conecta impresoras térmicas inalámbricas para imprimir facturas y tickets POS.
+• Notificaciones push en tiempo real — Recibe alertas de ventas, reservas, mensajes y eventos.
+• Geolocalización — Registra asistencia con GPS, seguimiento de transporte y fotos de entrega con ubicación.
+• NFC para check-in — Lee tags NFC para check-in de gimnasio y marcación de asistencia.
+• Exportar reportes — Guarda PDFs y CSVs en tu dispositivo y compártelos.
+
+MÓDULOS:
+
+• POS / Punto de Venta
+• Inventario
+• Clientes (CRM)
+• Proveedores
+• Finanzas
+• Recursos Humanos (HRM)
+• Gimnasio
+• PMS / Reservas
+• Parqueadero
+• Transporte
+• Calendario
+• Notificaciones
+• Reportes
+• Integraciones de pagos (Bancolombia, BreB, Redeban, Wompi)
+
+SEGURIDAD:
+• Autenticación con Supabase (OAuth, biometría)
+• Row Level Security (RLS)
+• Cifrado en tránsito y reposo
+• Datos biométricos nunca salen del dispositivo
+
+Para más información: https://app.goadmin.io

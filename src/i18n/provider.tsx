@@ -3,6 +3,7 @@
 import { NextIntlClientProvider } from 'next-intl';
 import { useEffect, useState, useCallback } from 'react';
 import { defaultLocale, Locale, isValidLocale, detectBrowserLocale } from './config';
+import { getMobileStorage, setMobileStorage } from '@/lib/utils/mobileStorage';
 
 interface I18nProviderProps {
   children: React.ReactNode;
@@ -26,12 +27,14 @@ export function I18nProvider({ children }: I18nProviderProps) {
   }, []);
 
   useEffect(() => {
-    // 1. Leer de localStorage (cache rápido para evitar flash)
+    // 1. Leer de almacenamiento persistente (móvil/web)
     // 2. Si no hay cache, detectar idioma del navegador (mejora UX en primera visita / páginas de auth)
-    const cached = localStorage.getItem('preferredLanguage');
-    const initialLocale = cached && isValidLocale(cached) ? cached : detectBrowserLocale();
-    setLocale(initialLocale);
-    loadMessages(initialLocale).then(() => setLoading(false));
+    (async () => {
+      const cached = await getMobileStorage('preferredLanguage');
+      const initialLocale = cached && isValidLocale(cached) ? cached : detectBrowserLocale();
+      setLocale(initialLocale);
+      loadMessages(initialLocale).then(() => setLoading(false));
+    })();
   }, [loadMessages]);
 
   // Escuchar cambios de idioma desde otros componentes
@@ -40,7 +43,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
       const newLocale = event.detail.locale;
       if (isValidLocale(newLocale) && newLocale !== locale) {
         setLocale(newLocale);
-        localStorage.setItem('preferredLanguage', newLocale);
+        void setMobileStorage('preferredLanguage', newLocale);
         loadMessages(newLocale);
       }
     };
@@ -69,7 +72,7 @@ export function I18nProvider({ children }: I18nProviderProps) {
  *   changeLanguage('en');
  */
 export function changeLanguage(locale: Locale) {
-  localStorage.setItem('preferredLanguage', locale);
+  void setMobileStorage('preferredLanguage', locale);
   window.dispatchEvent(
     new CustomEvent('languageChange', { detail: { locale } })
   );

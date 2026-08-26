@@ -73,6 +73,7 @@ export interface MobileNetworkStatus {
 export interface MobileBiometricResult {
   verified: boolean;
   reason?: string;
+  biometryType?: 'touchId' | 'faceId' | 'biometrics';
 }
 
 /** Dispositivo Bluetooth LE descubierto. */
@@ -115,9 +116,13 @@ export interface MobileLocalNotificationsPlugin {
   cancel(options: { notifications: Array<{ id: number }> }): Promise<void>;
 }
 
+export interface MobilePluginListenerHandle {
+  remove(): Promise<void>;
+}
+
 export interface MobileNetworkPlugin {
   getStatus(): Promise<MobileNetworkStatus>;
-  addListener(event: string, callback: (status: MobileNetworkStatus) => void): Promise<void>;
+  addListener(event: string, callback: (status: MobileNetworkStatus) => void): Promise<MobilePluginListenerHandle>;
 }
 
 export interface MobilePreferencesPlugin {
@@ -134,7 +139,7 @@ export interface MobileHapticsPlugin {
 }
 
 export interface MobileBiometricPlugin {
-  isBiometricAvailable(): Promise<{ available: boolean }>;
+  isBiometricAvailable(): Promise<{ available: boolean; biometryType?: string }>;
   authenticate(options?: { reason?: string }): Promise<MobileBiometricResult>;
 }
 
@@ -149,13 +154,13 @@ export interface MobileBluetoothLePlugin {
 export interface MobileNfcPlugin {
   startScan(): Promise<void>;
   stopScan(): Promise<void>;
-  addListener(event: string, callback: (payload: unknown) => void): Promise<void>;
+  addListener(event: string, callback: (payload: unknown) => void): Promise<MobilePluginListenerHandle>;
 }
 
 export interface MobileAppPlugin {
   getState(): Promise<{ isActive: boolean }>;
-  addListener(event: string, callback: (payload: unknown) => void): Promise<void>;
-  exitApp(): void;
+  addListener(event: string, callback: (state: { isActive: boolean }) => void): Promise<MobilePluginListenerHandle>;
+  exitApp(): Promise<void>;
 }
 
 export interface MobileBrowserPlugin {
@@ -170,6 +175,13 @@ export interface MobileFilesystemPlugin {
 
 export interface MobileSharePlugin {
   share(options: { title?: string; text?: string; url?: string; files?: string[] }): Promise<void>;
+}
+
+export interface MobileKeyboardPlugin {
+  show(): Promise<void>;
+  hide(): Promise<void>;
+  setResizeMode(options: { mode: 'native' | 'ionic' | 'body' }): Promise<void>;
+  addListener(event: string, callback: (info: { keyboardHeight: number }) => void): Promise<MobilePluginListenerHandle>;
 }
 
 // ============================================================================
@@ -196,6 +208,7 @@ export interface MobileCapacitorBridge {
     Browser?: MobileBrowserPlugin;
     Filesystem?: MobileFilesystemPlugin;
     Share?: MobileSharePlugin;
+    Keyboard?: MobileKeyboardPlugin;
   };
 }
 
@@ -279,4 +292,34 @@ export function mobilePluginAvailable<K extends keyof MobileCapacitorBridge['Plu
 ): boolean {
   const bridge = getMobileBridge();
   return !!bridge?.Plugins?.[name];
+}
+
+// ============================================================================
+// Helpers para compatibilidad web/nativo
+// ============================================================================
+
+/**
+ * Wrapper seguro para addListener de Capacitor.
+ *
+ * En web, addListener retorna una Promise<PluginListenerHandle>.
+ * En nativo (Capacitor 8), addListener retorna PluginListenerHandle directamente (síncrono).
+ *
+ * Este helper normaliza ambos casos y siempre retorna una Promise<PluginListenerHandle>.
+ */
+export async function safeAddListener(
+  plugin: { addListener: (event: string, cb: (payload: unknown) => void) => unknown },
+  event: string,
+  callback: (payload: unknown) => void,
+): Promise<MobilePluginListenerHandle | null> {
+  try {
+    const result = plugin.addListener(event, callback) as unknown;
+    // Si es una Promise (web), esperamos el handle
+    if (result && typeof (result as Promise<MobilePluginListenerHandle>).then === 'function') {
+      return await result as MobilePluginListenerHandle;
+    }
+    // Si es síncrono (nativo), cast directo
+    return result as MobilePluginListenerHandle;
+  } catch {
+    return null;
+  }
 }

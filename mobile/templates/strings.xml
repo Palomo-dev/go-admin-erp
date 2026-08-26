@@ -1,0 +1,28 @@
+<!--
+  strings.xml — Template para GoAdmin ERP (Capacitor / Android)
+  ============================================================
+  Este archivo se copia a:
+  mobile/android/app/src/main/res/values/strings.xml
+
+  DESPUÉS de ejecutar `npx cap add android`.
+
+  IMPORTANTE: Capacitor genera su propio strings.xml. Debes hacer
+  un MERGE conservando las strings existentes y actualizando:
+    - app_name → "GoAdmin ERP"
+    - default_notification_channel_id → "goadmin_default"
+
+  El notification channel ID debe coincidir con el usado en la
+  Edge Function de push (supabase/functions/push/index.ts).
+-->
+<resources>
+    <!-- Nombre visible de la app en el launcher -->
+    <string name="app_name">GoAdmin ERP</string>
+
+    <!--
+      ID del canal de notificaciones por defecto (Android 8+).
+      Debe coincidir con el channelId enviado en la payload de FCM:
+        android.notification.channelId = "goadmin_default"
+      El canal se crea automáticamente al recibir la primera push.
+    -->
+    <string name="default_notification_channel_id">goadmin_default</string>
+</resources>

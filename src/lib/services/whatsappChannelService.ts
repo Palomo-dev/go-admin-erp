@@ -86,6 +86,10 @@ export default class WhatsAppChannelService {
       .single();
 
     if (error) {
+      // PGRST116: No rows found (canal no existe o sin acceso en esta org)
+      if (error.code === 'PGRST116') {
+        return null;
+      }
       console.error('Error obteniendo canal WhatsApp:', error);
       return null;
     }

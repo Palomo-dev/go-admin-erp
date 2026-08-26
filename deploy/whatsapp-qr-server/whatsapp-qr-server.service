@@ -1,0 +1,33 @@
+# ============================================================
+# Evolution API – Servicio systemd (para VPS)
+# Ref: docs/integraciones/whatsapp-qr-evolution.md
+# ============================================================
+# En producción se recomienda usar Docker (docker-compose.yml).
+# Este archivo es para despliegue directo en VPS sin Docker.
+# ============================================================
+
+[Unit]
+Description=Evolution API – WhatsApp Gateway
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=evolution
+Group=evolution
+WorkingDirectory=/opt/evolution-api
+EnvironmentFile=/opt/evolution-api/.env
+ExecStart=/usr/bin/node /opt/evolution-api/dist/main.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Seguridad
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/evolution-api/instances /opt/evolution-api/store
+
+[Install]
+WantedBy=multi-user.target

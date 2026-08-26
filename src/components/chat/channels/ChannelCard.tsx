@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Globe,
   MessageCircle,
@@ -60,6 +60,26 @@ export default function ChannelCard({
 }: ChannelCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChangingAI, setIsChangingAI] = useState(false);
+  const [qrConnected, setQrConnected] = useState(false);
+
+  // Para canales WhatsApp, verificar estado de sesión QR (Baileys)
+  useEffect(() => {
+    if (channel.type !== 'whatsapp') return;
+    let active = true;
+    const checkQrStatus = async () => {
+      try {
+        const res = await fetch(`/api/integrations/whatsapp/qr/status?channel_id=${channel.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) setQrConnected(data.status === 'connected');
+      } catch {
+        /* noop */
+      }
+    };
+    checkQrStatus();
+    const interval = setInterval(checkQrStatus, 10000);
+    return () => { active = false; clearInterval(interval); };
+  }, [channel.type, channel.id]);
 
   const getIcon = (type: ChannelType) => {
     const icons: Record<ChannelType, React.ReactNode> = {
@@ -109,6 +129,10 @@ export default function ChannelCard({
   const isConnected = (): boolean => {
     if (channel.type === 'website') {
       return !!channel.public_key;
+    }
+    // WhatsApp puede estar conectado por Cloud API (credentials) o por QR (Baileys)
+    if (channel.type === 'whatsapp') {
+      return channel.credentials?.is_valid === true || qrConnected;
     }
     return channel.credentials?.is_valid === true;
   };

@@ -3,6 +3,29 @@ import { generateInvoiceNumberWithClient } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
 
 /**
+ * Sub-métodos de Wompi (pasarela de pago del website).
+ * El campo `web_orders.payment_method` guarda el sub-método elegido por el cliente
+ * (nequi, pse, card, etc.), pero `invoice_sales.payment_method` tiene FK a
+ * `payment_methods` que solo contiene la pasarela real. Mapeamos todos los
+ * sub-métodos de Wompi a 'wompi'.
+ */
+const WOMPI_SUB_METHODS = new Set([
+  'nequi',
+  'card',
+  'pse',
+  'bancolombia_transfer',
+  'bancolombia_collect',
+  'daviplata',
+  'wompi',
+]);
+
+function mapWebPaymentMethodToInvoice(method: string | null | undefined): string {
+  if (!method) return 'wompi';
+  if (WOMPI_SUB_METHODS.has(method)) return 'wompi';
+  return method;
+}
+
+/**
  * Servicio server-side para auto-confirmar pedidos web pagados.
  *
  * A diferencia de `webOrderConfirmationService` (que usa el cliente browser con anon key),
@@ -90,13 +113,14 @@ export const webOrderServerConfirmation = {
     }
 
     // 2. Crear cliente nuevo
+    // Nota: full_name es GENERATED ALWAYS (first_name || ' ' || last_name),
+    // no se puede insertar directamente.
     const { data: newCustomer, error: createError } = await supabase
       .from('customers')
       .insert({
         organization_id: order.organization_id,
         branch_id: order.branch_id || null,
         first_name: name,
-        full_name: name,
         email,
         phone,
         is_registered: false,
@@ -158,6 +182,36 @@ export const webOrderServerConfirmation = {
   },
 
   /**
+   * Resuelve un user_id válido para registros que requieren NOT NULL (sales.user_id).
+   * Prioriza `confirmed_by` del pedido; si es null (pedido auto-confirmado por
+   * webhook del website sin sesión de usuario), usa `organizations.created_by`
+   * (el creador/owner de la organización) como fallback.
+   */
+  async resolveUserId(
+    supabase: SupabaseClient,
+    order: WebOrder & { items?: WebOrder['items'] }
+  ): Promise<string | null> {
+    if (order.confirmed_by) return order.confirmed_by;
+
+    try {
+      const { data: org, error } = await supabase
+        .from('organizations')
+        .select('created_by')
+        .eq('id', order.organization_id)
+        .maybeSingle();
+
+      if (error || !org?.created_by) {
+        console.warn('[webOrderServerConfirmation] No se pudo resolver user_id fallback (organizations.created_by):', error?.message);
+        return null;
+      }
+      return org.created_by as string;
+    } catch (err) {
+      console.warn('[webOrderServerConfirmation] Error resolviendo user_id fallback:', err);
+      return null;
+    }
+  },
+
+  /**
    * Confirma un pedido web creando toda la cadena contable + inventario.
    * Recibe el cliente Supabase ya creado (service role).
    */
@@ -185,15 +239,25 @@ export const webOrderServerConfirmation = {
       }
     }
 
-    // ── 1. Crear sale (venta POS) ──
+    // ── 0b. Resolver user_id (sales.user_id es NOT NULL) ──
+    // Para pedidos auto-confirmados por webhook sin sesión de usuario,
+    // usar organizations.created_by como fallback.
+    const userId = await this.resolveUserId(supabase, order);
+
+    // ── 1. Crear sale (venta web) ──
+    // source='web' e include_in_cash_register=false para que no aparezca en caja POS.
+    // sale_date usa la fecha original del pedido (created_at), no la fecha de
+    // reconciliación, para que las estadísticas diarias sean correctas.
+    // confirmed_at puede tener la fecha de la reconciliación, no la del pedido.
+    const saleDate = order.created_at || now;
     const { data: sale, error: saleError } = await supabase
       .from('sales')
       .insert({
         organization_id: order.organization_id,
         branch_id: order.branch_id,
         customer_id: customerId,
-        user_id: order.confirmed_by || null,
-        sale_date: now,
+        user_id: userId,
+        sale_date: saleDate,
         total: Number(order.total) || 0,
         subtotal: Number(order.subtotal) || 0,
         tax_total: Number(order.tax_total) || 0,
@@ -203,6 +267,8 @@ export const webOrderServerConfirmation = {
         balance: 0,
         status: 'paid',
         payment_status: 'paid',
+        source: 'web',
+        include_in_cash_register: false,
         notes: `Pedido web: ${order.order_number}`,
       })
       .select('id')
@@ -249,7 +315,7 @@ export const webOrderServerConfirmation = {
         p_source: 'web_sale',
         p_source_id: String(saleId),
         p_unit_cost: Number(item.unit_price) || null,
-        p_updated_by: order.confirmed_by || null,
+        p_updated_by: userId,
       });
 
       if (rpcError) {
@@ -308,9 +374,9 @@ export const webOrderServerConfirmation = {
           total: Number(order.total) || 0,
           balance: 0,
           status: 'paid',
-          payment_method: order.payment_method || 'card',
+          payment_method: mapWebPaymentMethodToInvoice(order.payment_method),
           payment_terms: 0,
-          created_by: order.confirmed_by || null,
+          created_by: userId,
           notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
         })
         .select('id, number')
@@ -382,10 +448,10 @@ export const webOrderServerConfirmation = {
               source: 'invoice_sales',
               source_id: invoiceId,
               amount: Number(order.total) || 0,
-              method: order.payment_method || 'card',
+              method: mapWebPaymentMethodToInvoice(order.payment_method),
               currency: 'COP',
               status: 'completed',
-              created_by: order.confirmed_by || null,
+              created_by: userId,
             })
             .select('id')
             .single();

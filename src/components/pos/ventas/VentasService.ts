@@ -36,12 +36,15 @@ export class VentasService {
       let webSales: any[] = [];
       let webCount = 0;
 
-      // ── Ventas POS (tabla sales) ──
+      // ── Ventas POS (tabla sales, excluyendo web) ──
+      // source='web' se excluye porque esas ventas se listan desde web_orders
+      // en la sección "Web" separada, para evitar duplicación visual.
       if (sourceType === 'all' || sourceType === 'pos') {
         let query = supabase
           .from('sales')
           .select('*', { count: 'exact' })
           .eq('organization_id', organizationId)
+          .neq('source', 'web')
           .order('created_at', { ascending: false });
 
         if (branchId) query = query.eq('branch_id', branchId);

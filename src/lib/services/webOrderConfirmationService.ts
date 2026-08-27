@@ -6,6 +6,21 @@ import { stockMovementService } from './stockMovementService';
 import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
 
+/**
+ * Sub-métodos de Wompi (pasarela de pago del website).
+ * Ver webOrderServerConfirmation.ts para detalles del mapeo.
+ */
+const WOMPI_SUB_METHODS = new Set([
+  'nequi', 'card', 'pse', 'bancolombia_transfer',
+  'bancolombia_collect', 'daviplata', 'wompi',
+]);
+
+function mapWebPaymentMethodToInvoice(method: string | null | undefined): string {
+  if (!method) return 'wompi';
+  if (WOMPI_SUB_METHODS.has(method)) return 'wompi';
+  return method;
+}
+
 export interface ConfirmOrderResult {
   saleId: string;
   kitchenTicketId: number;
@@ -168,9 +183,12 @@ class WebOrderConfirmationService {
   }
 
   /**
-   * Crear venta POS a partir de un web_order
+   * Crear venta web a partir de un web_order
+   * source='web' e include_in_cash_register=false para que no aparezca en caja POS.
+   * sale_date usa la fecha original del pedido, no la fecha de confirmación.
    */
   private async createSale(order: WebOrder, userId: string): Promise<string> {
+    const saleDate = order.created_at || new Date().toISOString();
     const { data: sale, error } = await supabase
       .from('sales')
       .insert({
@@ -178,7 +196,7 @@ class WebOrderConfirmationService {
         branch_id: order.branch_id,
         customer_id: order.customer_id || null,
         user_id: userId,
-        sale_date: new Date().toISOString(),
+        sale_date: saleDate,
         total: order.total,
         subtotal: order.subtotal,
         tax_total: order.tax_total,
@@ -188,6 +206,8 @@ class WebOrderConfirmationService {
         balance: order.payment_status === 'paid' ? 0 : order.total,
         status: order.payment_status === 'paid' ? 'paid' : 'pending',
         payment_status: order.payment_status || 'pending',
+        source: 'web',
+        include_in_cash_register: false,
         notes: `Pedido web: ${order.order_number}`,
       })
       .select('id')
@@ -415,7 +435,7 @@ class WebOrderConfirmationService {
           total,
           balance: 0, // Pedido pagado → balance 0
           status: 'paid',
-          payment_method: order.payment_method || 'card',
+          payment_method: mapWebPaymentMethodToInvoice(order.payment_method),
           payment_terms: 0,
           created_by: userId,
           notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
@@ -499,7 +519,7 @@ class WebOrderConfirmationService {
           source: 'invoice_sales',
           source_id: invoiceId,
           amount: Number(order.total) || 0,
-          method: order.payment_method || 'card',
+          method: mapWebPaymentMethodToInvoice(order.payment_method),
           currency: 'COP',
           status: 'completed',
           created_by: userId,

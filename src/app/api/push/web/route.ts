@@ -30,6 +30,18 @@ function getSupabaseAdmin() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Verificar shared secret (la Edge Function de Supabase pasa este header)
+    const internalSecret = process.env.PUSH_WEBHOOK_SECRET;
+    if (internalSecret) {
+      const provided = request.headers.get('x-internal-secret');
+      if (provided !== internalSecret) {
+        return NextResponse.json(
+          { error: 'No autorizado' },
+          { status: 401 },
+        );
+      }
+    }
+
     const { userId, title, body, url } = await request.json();
 
     if (!userId || !title || !body) {

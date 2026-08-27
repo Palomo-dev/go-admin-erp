@@ -61,26 +61,37 @@ interface CashMovementRow {
   amount: number;
 }
 
-function getTodayRange(): { start: string; end: string } {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-  };
+/**
+ * Calcula el rango UTC del día operativo actual usando timezone y horas
+ * de operación de la organización. Reemplaza el cálculo local con
+ * setHours(0,0,0,0) que no respetaba ni timezone ni operating hours.
+ */
+async function getTodayRange(organizationId: number): Promise<{ start: string; end: string }> {
+  const { start, end } = await getOrgDayRange(organizationId, getToday());
+  return { start, end };
 }
 
-function getMonthStart(): string {
+/**
+ * Calcula el inicio del mes actual en UTC usando timezone y horas de
+ * operación de la organización. El inicio corresponde al start_time del
+ * día operativo del primer día del mes.
+ */
+async function getMonthStart(organizationId: number): Promise<string> {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  // Primer día del mes en formato YYYY-MM-DD
+  const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  // Usar getOrgDateRange para obtener el inicio del día operativo del
+  // primer día del mes (respeta timezone y operating hours)
+  const { start } = await getOrgDateRange(organizationId, firstDay, firstDay);
+  return start;
 }
 
 class PosDashboardService {
   async getKPIs(organizationId: number): Promise<PosKPIs> {
-    const { start: hoyStart, end: hoyEnd } = getTodayRange();
-    const mesStart = getMonthStart();
+    const { start: hoyStart, end: hoyEnd } = await getTodayRange(organizationId);
+    const mesStart = await getMonthStart(organizationId);
 
     const [
       ventasHoyRes,
@@ -101,14 +112,15 @@ class PosDashboardService {
         .select('total')
         .eq('organization_id', organizationId)
         .gte('sale_date', mesStart),
-      // Pedidos web del mes: alineado con inicioService
+      // Pedidos web del mes: alineado con inicioService (sin sale_id para no duplicar)
       supabase
         .from('web_orders')
         .select('total')
         .eq('organization_id', organizationId)
         .gte('created_at', mesStart)
         .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")'),
+        .not('status', 'in', '("cancelled","rejected")')
+        .is('sale_id', null),
     ]);
 
     if (ventasHoyRes.error) throw ventasHoyRes.error;

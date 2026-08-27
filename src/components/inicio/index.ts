@@ -5,6 +5,7 @@ export type {
   OnboardingStep,
   DashboardData,
   PeriodoDashboard,
+  HorasDashboard,
   PuntoTendencia,
   AlertaDashboard,
 } from './inicioService';
@@ -16,6 +17,7 @@ export { DashboardTendencia } from './DashboardTendencia';
 export { DashboardAlertas } from './DashboardAlertas';
 export { LazySection } from './LazySection';
 export { PeriodoSelector } from './PeriodoSelector';
+export { HorasPresets } from './HorasPresets';
 export { OnboardingBanner } from './OnboardingBanner';
 export { default as DashboardModulos } from './DashboardModulos';
 export { ModoCompactoContext } from './DashboardModulos';

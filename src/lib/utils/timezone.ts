@@ -74,7 +74,7 @@ function getOffsetMinutesForTimezone(timezone: string, date: Date): number {
  * Convierte minutos de offset a string de offset ISO (ej: -300 -> "-05:00").
  */
 function offsetMinutesToISO(offsetMinutes: number): string {
-  const sign = offsetMinutes <= 0 ? '+' : '-';
+  const sign = offsetMinutes <= 0 ? '-' : '+';
   const abs = Math.abs(offsetMinutes);
   const hours = Math.floor(abs / 60);
   const minutes = abs % 60;
@@ -358,20 +358,28 @@ export async function getOrgDayRange(
  * @param organizationId ID de la organización
  * @param fechaInicio Fecha inicio en formato YYYY-MM-DD
  * @param fechaFin Fecha fin en formato YYYY-MM-DD
+ * @param overrideHours Horas opcionales que sobreescriben las de la organización.
+ *                      Útil para filtro manual de horas en reportes.
  * @returns Objeto con start, end, timezone y operatingHours
  */
 export async function getOrgDateRange(
   organizationId: number,
   fechaInicio: string,
   fechaFin: string,
+  overrideHours?: OperatingHoursOptions | null,
 ): Promise<{ start: string; end: string; timezone: string; operatingHours: OperatingHoursOptions | null }> {
   const { getOrganizationTimezone } = await import('@/lib/services/organizationTimezoneService');
   const { getOperatingHours } = await import('@/lib/services/organizationOperatingHoursService');
 
-  const [timezone, operatingHours] = await Promise.all([
+  const [timezone, orgHours] = await Promise.all([
     getOrganizationTimezone(organizationId),
     getOperatingHours(organizationId),
   ]);
+
+  // Si se pasan horas manuales, tienen prioridad sobre las de la organización
+  const operatingHours = overrideHours?.start_time && overrideHours?.end_time
+    ? overrideHours
+    : orgHours;
 
   const { start, end } = getDateRange(fechaInicio, fechaFin, timezone, operatingHours);
   return { start, end, timezone, operatingHours };

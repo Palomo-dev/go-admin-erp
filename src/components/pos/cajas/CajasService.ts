@@ -982,9 +982,10 @@ export class CajasService {
 
       const { data, error } = await supabase
         .from('sales')
-        .select('id, total, status, payment_status, created_at, customer_id')
+        .select('id, total, status, payment_status, created_at, customer_id, source')
         .eq('organization_id', this.organizationId)
         .eq('branch_id', session.branch_id)
+        .eq('include_in_cash_register', true)
         .neq('payment_status', 'pending')
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString())
@@ -1028,13 +1029,13 @@ export class CajasService {
 
       const [invoiceSalesRes, invoicePurchaseRes, salesRes, arRes, apRes] = await Promise.all([
         invoiceSaleIds.length
-          ? supabase.from('invoice_sales').select('id, number, customer_id').in('id', invoiceSaleIds)
+          ? supabase.from('invoice_sales').select('id, number, customer_id, sale_id').in('id', invoiceSaleIds)
           : Promise.resolve({ data: [] as any[] }),
         invoicePurchaseIds.length
           ? supabase.from('invoice_purchase').select('id, number_ext, supplier_id').in('id', invoicePurchaseIds)
           : Promise.resolve({ data: [] as any[] }),
         saleIds.length
-          ? supabase.from('sales').select('id, table_session_id, customer_id').in('id', saleIds)
+          ? supabase.from('sales').select('id, table_session_id, customer_id, include_in_cash_register').in('id', saleIds)
           : Promise.resolve({ data: [] as any[] }),
         arIds.length
           ? supabase.from('accounts_receivable').select('id, invoice_id, customer_id').in('id', arIds)
@@ -1049,6 +1050,31 @@ export class CajasService {
       const salesMap = new Map((salesRes.data || []).map((s: any) => [s.id, s]));
       const arMap = new Map((arRes.data || []).map((a: any) => [a.id, a]));
       const apMap = new Map((apRes.data || []).map((a: any) => [a.id, a]));
+
+      // Excluir payments de ventas/facturas que no entran en caja (include_in_cash_register=false).
+      // Esto incluye ventas web, reservas, CRM y facturas marcadas como "no incluir en caja".
+      const excludedSaleIds = new Set(
+        (salesRes.data || [])
+          .filter((s: any) => s.include_in_cash_register === false)
+          .map((s: any) => s.id)
+      );
+      // Para invoices de venta, verificar si su sale_id está excluido
+      const excludedInvoiceIds = new Set(
+        (invoiceSalesRes.data || [])
+          .filter((i: any) => i.sale_id && excludedSaleIds.has(i.sale_id))
+          .map((i: any) => i.id)
+      );
+      // Si una invoice no tiene sale_id pero proviene de una sale excluida,
+      // no podemos saberlo directamente. Sin embargo, las invoices creadas desde
+      // finanzas (source='invoice') con include_in_cash_register=false ya tienen
+      // su sale_id en la invoice, así que el filtro anterior las cubre.
+
+      // Filtrar payments que no deben aparecer en caja
+      const filteredPayments = payments.filter(p => {
+        if (p.source === 'sale' && excludedSaleIds.has(p.source_id)) return false;
+        if (p.source === 'invoice_sales' && excludedInvoiceIds.has(p.source_id)) return false;
+        return true;
+      });
 
       const customerIds = new Set<string>();
       (invoiceSalesRes.data || []).forEach((i: any) => i.customer_id && customerIds.add(i.customer_id));
@@ -1071,7 +1097,7 @@ export class CajasService {
       const customersMap = new Map((customersRes.data || []).map((c: any) => [c.id, c.company_name || c.full_name]));
       const suppliersMap = new Map((suppliersRes.data || []).map((s: any) => [s.id, s.name]));
 
-      const details: SessionPaymentDetail[] = payments.map(p => {
+      const details: SessionPaymentDetail[] = filteredPayments.map(p => {
         let type: SessionMovementType = 'otro';
         let direction: 'in' | 'out' = 'in';
         let label = 'Movimiento';

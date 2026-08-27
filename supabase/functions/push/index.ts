@@ -11,6 +11,11 @@ const fcmProjectId = Deno.env.get("FCM_PROJECT_ID")!;
 const fcmClientEmail = Deno.env.get("FCM_CLIENT_EMAIL")!;
 const fcmPrivateKey = Deno.env.get("FCM_PRIVATE_KEY")!.replace(/\\n/g, "\n");
 
+// ERP base URL para despachar Web Push (PWA) sin repetir lógica:
+// la Edge Function orquesta FCM/APNs + Web Push en un solo flujo.
+const erpBaseUrl = Deno.env.get("ERP_BASE_URL") || "https://app.goadmin.io";
+const pushWebhookSecret = Deno.env.get("PUSH_WEBHOOK_SECRET") || "";
+
 interface WebhookPayload {
   type: "INSERT";
   table: string;
@@ -156,53 +161,81 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  // Buscar tokens del usuario
+  const title = payload.record.payload.title || "GoAdmin ERP";
+  const body = payload.record.payload.body || "";
+  const data = payload.record.payload.data;
+  const url = data?.url || "/";
+
+  // ── Canal 1: FCM/APNs (APK nativo) ──
   const { data: tokens, error } = await supabase
     .from("device_push_tokens")
     .select("token, platform")
     .eq("user_id", userId);
 
-  if (error || !tokens || tokens.length === 0) {
-    console.warn("[push] No tokens for user:", userId);
-    return new Response(JSON.stringify({ sent: 0 }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const title = payload.record.payload.title || "GoAdmin ERP";
-  const body = payload.record.payload.body || "";
-  const data = payload.record.payload.data;
-
-  let sent = 0;
+  let fcmSent = 0;
   const expiredTokens: string[] = [];
 
-  for (const { token } of tokens) {
-    const ok = await sendPush(token, title, body, data);
-    if (ok) {
-      sent++;
-    } else {
-      // Token expirado o inválido — marcar para limpieza
-      expiredTokens.push(token);
+  if (error) {
+    console.warn("[push] Error querying device_push_tokens:", error.message);
+  } else if (tokens && tokens.length > 0) {
+    for (const { token } of tokens) {
+      const ok = await sendPush(token, title, body, data);
+      if (ok) {
+        fcmSent++;
+      } else {
+        expiredTokens.push(token);
+      }
+    }
+
+    // Limpiar tokens inválidos
+    if (expiredTokens.length > 0) {
+      await supabase
+        .from("device_push_tokens")
+        .delete()
+        .in("token", expiredTokens);
     }
   }
 
-  // Limpiar tokens inválidos
-  if (expiredTokens.length > 0) {
-    await supabase
-      .from("device_push_tokens")
-      .delete()
-      .in("token", expiredTokens);
+  // ── Canal 2: Web Push (PWA) ──
+  // Despacha al endpoint del ERP que ya tiene la lógica de web-push + VAPID.
+  // No se repite lógica: la Edge Function solo orquesta, el ERP envía.
+  let webPushSent = 0;
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (pushWebhookSecret) {
+      headers["x-internal-secret"] = pushWebhookSecret;
+    }
+
+    const wpResp = await fetch(`${erpBaseUrl}/api/push/web`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ userId, title, body, url }),
+    });
+
+    if (wpResp.ok) {
+      const wpData = await wpResp.json();
+      webPushSent = wpData.sent || 0;
+    } else {
+      console.warn("[push] Web Push endpoint responded:", wpResp.status);
+    }
+  } catch (err) {
+    console.warn("[push] Error despachando Web Push:", err);
   }
 
-  // Marcar notificación como enviada
-  await supabase
-    .from("notifications")
-    .update({ status: "sent", sent_at: new Date().toISOString() })
-    .eq("id", payload.record.id);
+  // Marcar notificación como enviada (si al menos un canal tuvo éxito)
+  if (fcmSent > 0 || webPushSent > 0) {
+    await supabase
+      .from("notifications")
+      .update({ status: "sent", sent_at: new Date().toISOString() })
+      .eq("id", payload.record.id);
+  }
 
   return new Response(
-    JSON.stringify({ sent, expired: expiredTokens.length }),
+    JSON.stringify({
+      fcm_sent: fcmSent,
+      web_push_sent: webPushSent,
+      expired: expiredTokens.length,
+    }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );
 });

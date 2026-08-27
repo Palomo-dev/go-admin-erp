@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchSelect } from '@/components/ui/search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
@@ -80,7 +81,7 @@ interface NuevaFacturaFormProps {
 
 export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }: NuevaFacturaFormProps = {}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const organizationId = getOrganizationId();
   
   // Parámetros de duplicación
@@ -112,6 +113,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [isCustomPaymentTerm, setIsCustomPaymentTerm] = useState<boolean>(false);
   const [paymentMethodCode, setPaymentMethodCode] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [includeInCashRegister, setIncludeInCashRegister] = useState<boolean>(true);
   const [sendToFactus, setSendToFactus] = useState<boolean>(false);
   const { alwaysEnabled: eInvoiceAlwaysEnabled } = useElectronicInvoicePreference();
 
@@ -645,6 +647,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setIsLoading(true);
       
       // 1. Primero crear el registro en sales
+      // source='invoice' para distinguir de ventas POS y web.
+      // include_in_cash_register se controla con un checkbox (Fase 3).
       const sale = {
         organization_id: Number(organizationId),
         branch_id: branchId,
@@ -657,6 +661,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         balance: safeTotal, // Al crear, el balance es igual al total
         status: 'pending', // Estado permitido por la restricción sales_status_check
         payment_status: 'pending', // Por defecto pendiente de pago
+        source: 'invoice',
+        include_in_cash_register: includeInCashRegister,
         notes: notes,
         discount_total: 0 // Valor por defecto
       };
@@ -1225,11 +1231,11 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             <Label htmlFor="notes" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
               Notas
             </Label>
-            <Input 
-              id="notes" 
-              value={notes} 
+            <Input
+              id="notes"
+              value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="Notas adicionales" 
+              placeholder="Notas adicionales"
               className="
                 text-sm
                 bg-white dark:bg-gray-900
@@ -1238,6 +1244,19 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 placeholder:text-gray-500 dark:placeholder:text-gray-400
               "
             />
+          </div>
+          <div className="lg:col-span-2 flex items-center gap-2">
+            <Checkbox
+              id="include_in_cash_register"
+              checked={includeInCashRegister}
+              onCheckedChange={(checked) => setIncludeInCashRegister(checked === true)}
+            />
+            <Label htmlFor="include_in_cash_register" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+              Incluir en arqueo de caja
+            </Label>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              (Marca si esta factura debe aparecer en el cuadre de caja POS)
+            </span>
           </div>
           <div className="lg:col-span-2 pt-2">
             <div className={`p-2 sm:p-3 rounded-lg flex flex-wrap items-center justify-between ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : ''}`}>

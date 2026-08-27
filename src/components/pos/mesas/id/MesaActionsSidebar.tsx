@@ -4,7 +4,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Receipt, Send, Clock, Split, DollarSign, UserCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Receipt, Send, Clock, Split, DollarSign, UserCircle, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { CustomerSelector, type OccupiedSpace } from '@/components/pos/CustomerSelector';
 import type { Customer } from '@/components/pos/types';
@@ -38,6 +38,7 @@ interface MesaActionsSidebarProps {
   onOpenSplitBill: () => void;
   onCancelSplit: () => void;
   onCheckout: () => void;
+  onLiberarMesa: () => void;
   cashSessionActive?: boolean;
 }
 
@@ -64,6 +65,7 @@ export function MesaActionsSidebar({
   onOpenSplitBill,
   onCancelSplit,
   onCheckout,
+  onLiberarMesa,
   cashSessionActive = true,
 }: MesaActionsSidebarProps) {
   const [comandaBadge, setComandaBadge] = useState<PrintBadge>(null);
@@ -306,6 +308,18 @@ export function MesaActionsSidebar({
                 Debe abrir una caja antes de procesar el pago
               </p>
             )}
+
+            <Separator />
+
+            {/* Liberar Mesa */}
+            <Button
+              variant="outline"
+              className="w-full justify-start border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+              onClick={onLiberarMesa}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Liberar Mesa
+            </Button>
           </div>
         </div>
       </Card>

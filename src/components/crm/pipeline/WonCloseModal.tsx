@@ -230,12 +230,14 @@ export function WonCloseModal({
         sale_date: new Date().toISOString(),
         opportunity_id: opp.id,
         salesperson_id: opp.salesperson_id,
+        source: 'crm',
+        include_in_cash_register: false,
       })
       .select('id')
       .single();
 
     if (error) throw error;
-    return `Venta POS creada: ${(sale as { id: string }).id.substring(0, 8)}...`;
+    return `Venta CRM creada: ${(sale as { id: string }).id.substring(0, 8)}...`;
   };
 
   const executeStock = async (opp: OpportunityData): Promise<string> => {

@@ -240,7 +240,10 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase.rpc('fn_reporte_movimientos_inventario', {
         p_organization_id: orgId,
         p_from: start,
@@ -332,7 +335,10 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase.rpc('fn_reporte_rotacion_inventario', {
         p_organization_id: orgId,
         p_from: start,
@@ -366,7 +372,10 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data: ventas, error: errVentas } = await supabase
         .from('sales')
         .select('id')

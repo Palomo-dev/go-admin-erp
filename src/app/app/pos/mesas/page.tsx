@@ -365,18 +365,24 @@ export default function MesasPage() {
   const handleAbrirSesion = async () => {
     if (!mesaParaAbrirSesion) return;
 
+    const mesaId = mesaParaAbrirSesion.id;
+    const mesaName = mesaParaAbrirSesion.name;
+
     try {
-      await MesasService.abrirSesion(mesaParaAbrirSesion.id, {
+      await MesasService.abrirSesion(mesaId, {
         customers: comensalesNuevaSesion
       });
-      await cargarDatos();
+      // Cerrar diálogo inmediatamente antes de navegar
+      setMesaParaAbrirSesion(null);
       toast({
         title: 'Sesión abierta',
-        description: `Mesa ${mesaParaAbrirSesion.name} ahora está ocupada`,
+        description: `Mesa ${mesaName} ahora está ocupada`,
       });
-      setMesaParaAbrirSesion(null);
-      // Navegar a la mesa
-      router.push(`/app/pos/mesas/${mesaParaAbrirSesion.id}`);
+      // Navegar a la mesa inmediatamente, sin esperar cargarDatos()
+      // (la página de detalle carga su propia sesión desde la BD)
+      router.push(`/app/pos/mesas/${mesaId}`);
+      // Recargar datos en background para que al volver todo esté actualizado
+      cargarDatos();
     } catch (error: any) {
       console.error('Error abriendo sesión:', error);
       toast({

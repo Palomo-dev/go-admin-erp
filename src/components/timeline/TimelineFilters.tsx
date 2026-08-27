@@ -34,6 +34,38 @@ import {
   SOURCE_TABLE_LABELS,
   ACTION_LABELS,
 } from '@/lib/services/timelineService';
+import type { OperatingHoursOptions } from '@/lib/utils/timezone';
+
+/**
+ * Aplica las horas de operación al inicio de un día.
+ * Si no hay operatingHours, usa startOfDay (00:00:00.000).
+ * Si hay start_time, ajusta la hora del Date resultante.
+ */
+function applyStartHours(date: Date, operatingHours?: OperatingHoursOptions | null): Date {
+  if (!operatingHours?.start_time) return startOfDay(date);
+  const [h, m] = operatingHours.start_time.split(':').map(Number);
+  const result = new Date(date);
+  result.setHours(h, m, 0, 0);
+  return result;
+}
+
+/**
+ * Aplica las horas de operación al fin de un día.
+ * Si no hay operatingHours, usa endOfDay (23:59:59.999).
+ * Si hay end_time, ajusta la hora. Si el día cruza medianoche
+ * (end_time <= start_time), suma 1 día al end.
+ */
+function applyEndHours(date: Date, operatingHours?: OperatingHoursOptions | null): Date {
+  if (!operatingHours?.end_time) return endOfDay(date);
+  const [h, m] = operatingHours.end_time.split(':').map(Number);
+  const result = new Date(date);
+  // Si cruza medianoche (end <= start), el fin es el día siguiente
+  if (operatingHours?.start_time && operatingHours.end_time <= operatingHours.start_time) {
+    result.setDate(result.getDate() + 1);
+  }
+  result.setHours(h, m, 59, 999);
+  return result;
+}
 
 interface TimelineFiltersProps {
   filters: ITimelineFilters;
@@ -42,6 +74,7 @@ interface TimelineFiltersProps {
   availableActions: string[];
   availableEntityTypes: string[];
   loading?: boolean;
+  operatingHours?: OperatingHoursOptions | null;
 }
 
 const DATE_PRESETS = [
@@ -58,6 +91,7 @@ export function TimelineFilters({
   availableActions,
   availableEntityTypes,
   loading,
+  operatingHours,
 }: TimelineFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchText, setSearchText] = useState(filters.searchText || '');
@@ -70,8 +104,8 @@ export function TimelineFilters({
   };
 
   const handleDatePreset = (days: number) => {
-    const end = endOfDay(new Date());
-    const start = startOfDay(days === 0 ? new Date() : subDays(new Date(), days));
+    const end = applyEndHours(new Date(), operatingHours);
+    const start = applyStartHours(days === 0 ? new Date() : subDays(new Date(), days), operatingHours);
     setStartDate(start);
     setEndDate(end);
     onFiltersChange({
@@ -86,7 +120,7 @@ export function TimelineFilters({
       setStartDate(date);
       onFiltersChange({
         ...filters,
-        startDate: startOfDay(date).toISOString(),
+        startDate: applyStartHours(date, operatingHours).toISOString(),
       });
     }
   };
@@ -96,7 +130,7 @@ export function TimelineFilters({
       setEndDate(date);
       onFiltersChange({
         ...filters,
-        endDate: endOfDay(date).toISOString(),
+        endDate: applyEndHours(date, operatingHours).toISOString(),
       });
     }
   };
@@ -109,8 +143,8 @@ export function TimelineFilters({
   };
 
   const handleReset = () => {
-    const end = endOfDay(new Date());
-    const start = startOfDay(subDays(new Date(), 7));
+    const end = applyEndHours(new Date(), operatingHours);
+    const start = applyStartHours(subDays(new Date(), 7), operatingHours);
     setStartDate(start);
     setEndDate(end);
     setSearchText('');

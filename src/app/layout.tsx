@@ -10,6 +10,7 @@ import { SentryErrorBoundary } from '@/components/SentryErrorBoundary';
 import { SentryMobileInit } from '@/components/SentryMobileInit';
 import { PWARegister } from '@/components/PWARegister';
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
+import { PushNotificationManager } from '@/components/PushNotificationManager';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -61,6 +62,7 @@ export default function RootLayout({
             <SentryMobileInit />
             <PWARegister />
             <PWAInstallPrompt />
+            <PushNotificationManager />
             <I18nProvider>
               <SessionProvider>
                 <LanguageSync />

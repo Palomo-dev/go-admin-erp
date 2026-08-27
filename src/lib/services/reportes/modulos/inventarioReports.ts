@@ -5,8 +5,7 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { getBranchFilter } from '@/lib/hooks/useOrganization';
-import { getDateRange } from '@/lib/utils/timezone';
-import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { getOrgDateRange } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -241,8 +240,7 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
       const { data, error } = await supabase.rpc('fn_reporte_movimientos_inventario', {
         p_organization_id: orgId,
         p_from: start,
@@ -334,8 +332,7 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
       const { data, error } = await supabase.rpc('fn_reporte_rotacion_inventario', {
         p_organization_id: orgId,
         p_from: start,
@@ -369,8 +366,7 @@ export const inventarioReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
       const { data: ventas, error: errVentas } = await supabase
         .from('sales')
         .select('id')

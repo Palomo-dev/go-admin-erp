@@ -15,14 +15,19 @@ export class VentasService {
     const branchId = getBranchFilter();
     const sourceType = filter.source_type || 'all';
 
-    // Resolver rango de fechas con timezone de la organizacion para
-    // evitar que ventas de la tarde/noche se desplacen al dia siguiente.
+    // Resolver rango de fechas con timezone y horas de operación de la
+    // organizacion para evitar que ventas de la tarde/noche se desplacen
+    // al dia siguiente y respetar el día operativo configurado.
     let dateRange: { start: string; end: string } | null = null;
     if (filter.date_from || filter.date_to) {
-      const tz = await getOrganizationTimezone(organizationId);
+      const { getOperatingHours } = await import('@/lib/services/organizationOperatingHoursService');
+      const [tz, operatingHours] = await Promise.all([
+        getOrganizationTimezone(organizationId),
+        getOperatingHours(organizationId),
+      ]);
       const inicio = filter.date_from || filter.date_to!;
       const fin = filter.date_to || filter.date_from!;
-      dateRange = getDateRange(inicio, fin, tz);
+      dateRange = getDateRange(inicio, fin, tz, operatingHours);
     }
 
     try {
@@ -426,10 +431,14 @@ export class VentasService {
   static async getDailySummary(date?: string): Promise<DailySummary> {
     const organizationId = getOrganizationId();
     const branchId = getBranchFilter();
-    const tz = await getOrganizationTimezone(organizationId);
+    const { getOperatingHours } = await import('@/lib/services/organizationOperatingHoursService');
+    const [tz, operatingHours] = await Promise.all([
+      getOrganizationTimezone(organizationId),
+      getOperatingHours(organizationId),
+    ]);
     const targetDate = date || getToday(tz);
 
-    const { start: startOfDay, end: endOfDay } = getDateRange(targetDate, targetDate, tz);
+    const { start: startOfDay, end: endOfDay } = getDateRange(targetDate, targetDate, tz, operatingHours);
 
     let query = supabase
       .from('sales')

@@ -175,23 +175,15 @@ export class POSService {
     try {
       const currentBranchId = await this.getBranchId();
 
+      // Query principal: SOLO products.* sin joins de categories/product_prices.
+      // Antes se usaba `.select('*, categories(...), product_prices(...)')` lo que
+      // generaba 4 LATERAL JOINs con json_agg en PostgREST, causando statement timeout
+      // (2900ms promedio, 7887ms máximo según pg_stat_statements con 17k productos).
+      // Ahora categories y product_prices se obtienen en queries separadas (Promise.all),
+      // igual que ya se hacía con product_images y stock_levels.
       let query = supabase
       .from('products')
-      .select(`
-        *,
-        categories(
-          id,
-          name,
-          slug,
-          station,
-          requires_preparation
-        ),
-        product_prices(
-          price,
-          compare_price,
-          effective_from
-        )
-      `, { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('organization_id', this.organizationId);
 
       // Filtrar variantes: mostrar solo productos principales y productos simples
@@ -223,103 +215,156 @@ export class POSService {
 
       // Obtener las imágenes de los productos
       const productIds = data?.map(p => p.id) || [];
-      let productImagesMap: Record<string | number, any[]> = {};
-      
-      if (productIds.length > 0) {
-        const { data: images, error: imagesError } = await supabase
-          .from('product_images')
-          .select('id, product_id, storage_path, is_primary, display_order')
-          .in('product_id', productIds)
-          .order('display_order');
-          
-        if (!imagesError && images) {
-          images.forEach((img: any) => {
-            if (!productImagesMap[img.product_id]) {
-              productImagesMap[img.product_id] = [];
-            }
-            productImagesMap[img.product_id].push(img);
-          });
-        }
-      }
-
-      // Para productos padre, contar sus variantes
       const parentIds = data?.filter(p => p.is_parent).map(p => p.id) || [];
+      // Category IDs únicos para obtener las categorías en una query separada
+      const categoryIds = [...new Set(data?.map(p => p.category_id).filter(Boolean))] as number[];
+
+      let productImagesMap: Record<string | number, any[]> = {};
       let variantCountMap: Record<number, number> = {};
-      
-      if (parentIds.length > 0) {
-        const { data: variantCounts, error: variantError } = await supabase
-          .from('products')
-          .select('parent_product_id')
-          .in('parent_product_id', parentIds)
-          .eq('status', 'active');
-          
-        if (!variantError && variantCounts) {
-          variantCounts.forEach((v: any) => {
-            variantCountMap[v.parent_product_id] = (variantCountMap[v.parent_product_id] || 0) + 1;
-          });
-        }
-      }
-
-      // Detectar qué productos tienen grupos de modificadores configurados (ej. salsas, extras),
-      // incluso si no tienen variantes, para poder ofrecer el selector en esos casos.
       let productsWithModifiers = new Set<number>();
-      if (productIds.length > 0) {
-        const { data: modifierGroups } = await supabase
-          .from('product_modifier_groups')
-          .select('product_id')
-          .in('product_id', productIds);
-        (modifierGroups || []).forEach((g: any) => productsWithModifiers.add(g.product_id));
-      }
-
-      // Obtener stock_levels por branch_id actual
-      // Para productos padre, el stock está en las variantes hijas, no en el padre.
       let stockMap: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
       let variantStockMap: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
-      if (productIds.length > 0 && currentBranchId) {
-        // Identificar productos padre para buscar stock de sus hijos
-        const parentIds = data?.filter((p: any) => p.is_parent).map((p: any) => p.id) || [];
-        let variantIds: number[] = [];
-        if (parentIds.length > 0) {
-          const { data: variants } = await supabase
-            .from('products')
-            .select('id, parent_product_id')
-            .in('parent_product_id', parentIds);
-          variantIds = (variants || []).map((v: any) => v.id);
-          // Mapear variant_id -> parent_product_id para acumular después
-          const variantToParent: Record<number, number> = {};
-          (variants || []).forEach((v: any) => {
-            variantToParent[v.id] = v.parent_product_id;
-          });
-          // Consultar stock de las variantes
-          if (variantIds.length > 0) {
-            const { data: variantStockData } = await supabase
+      let variantToParent: Record<number, number> = {};
+      let categoriesMap: Record<number, any> = {};
+      let pricesMap: Record<number, any[]> = {};
+
+      // === Paralelizar todas las queries secundarias para reducir latencia ===
+      // Antes se ejecutaban 5 queries secuenciales (N+1), ahora van en paralelo.
+      // categories y product_prices se agregaron aquí para evitar los LATERAL JOINs
+      // costosos que PostgREST generaba cuando estaban en el .select() principal.
+      const [
+        imagesResult,
+        variantCountsResult,
+        modifierGroupsResult,
+        variantsResult,
+        stockDataResult,
+        categoriesResult,
+        pricesResult,
+      ] = await Promise.all([
+        // 1. Imágenes de los productos de la página actual
+        productIds.length > 0
+          ? supabase
+              .from('product_images')
+              .select('id, product_id, storage_path, is_primary, display_order')
+              .in('product_id', productIds)
+              .order('display_order')
+          : Promise.resolve({ data: [] as any[], error: null as any }),
+
+        // 2. Contar variantes de los productos padre
+        parentIds.length > 0
+          ? supabase
+              .from('products')
+              .select('parent_product_id')
+              .in('parent_product_id', parentIds)
+              .eq('status', 'active')
+          : Promise.resolve({ data: [] as any[], error: null as any }),
+
+        // 3. Detectar productos con grupos de modificadores
+        productIds.length > 0
+          ? supabase
+              .from('product_modifier_groups')
+              .select('product_id')
+              .in('product_id', productIds)
+          : Promise.resolve({ data: [] as any[], error: null as any }),
+
+        // 4. Variantes hijas (para acumular stock de los padres)
+        parentIds.length > 0
+          ? supabase
+              .from('products')
+              .select('id, parent_product_id')
+              .in('parent_product_id', parentIds)
+          : Promise.resolve({ data: [] as any[], error: null as any }),
+
+        // 5. Stock de los productos de la página actual (incluye padres e hijos directos)
+        productIds.length > 0 && currentBranchId
+          ? supabase
               .from('stock_levels')
               .select('product_id, qty_on_hand, qty_reserved')
-              .in('product_id', variantIds)
+              .in('product_id', productIds)
               .eq('branch_id', currentBranchId)
-              .is('lot_id', null);
-            (variantStockData || []).forEach((s: any) => {
-              const parentId = variantToParent[s.product_id];
-              if (!variantStockMap[parentId]) {
-                variantStockMap[parentId] = { qty_on_hand: 0, qty_reserved: 0 };
-              }
-              variantStockMap[parentId].qty_on_hand += Number(s.qty_on_hand) || 0;
-              variantStockMap[parentId].qty_reserved += Number(s.qty_reserved) || 0;
-            });
+              .is('lot_id', null)
+          : Promise.resolve({ data: [] as any[], error: null as any }),
+
+        // 6. Categorías de los productos de la página actual (query separada, no LATERAL JOIN)
+        categoryIds.length > 0
+          ? supabase
+              .from('categories')
+              .select('id, name, slug, station, requires_preparation')
+              .in('id', categoryIds)
+          : Promise.resolve({ data: [] as any[], error: null as any }),
+
+        // 7. Precios de los productos de la página actual (query separada, no LATERAL JOIN)
+        productIds.length > 0
+          ? supabase
+              .from('product_prices')
+              .select('product_id, price, compare_price, effective_from')
+              .in('product_id', productIds)
+          : Promise.resolve({ data: [] as any[], error: null as any }),
+      ]);
+
+      // Procesar imágenes
+      if (!imagesResult.error && imagesResult.data) {
+        imagesResult.data.forEach((img: any) => {
+          if (!productImagesMap[img.product_id]) {
+            productImagesMap[img.product_id] = [];
           }
+          productImagesMap[img.product_id].push(img);
+        });
+      }
+
+      // Procesar conteo de variantes
+      if (!variantCountsResult.error && variantCountsResult.data) {
+        variantCountsResult.data.forEach((v: any) => {
+          variantCountMap[v.parent_product_id] = (variantCountMap[v.parent_product_id] || 0) + 1;
+        });
+      }
+
+      // Procesar modificadores
+      (modifierGroupsResult.data || []).forEach((g: any) => productsWithModifiers.add(g.product_id));
+
+      // Procesar variantes hijas: mapear variant_id -> parent_product_id
+      const variantIds = (variantsResult.data || []).map((v: any) => v.id);
+      (variantsResult.data || []).forEach((v: any) => {
+        variantToParent[v.id] = v.parent_product_id;
+      });
+
+      // Procesar stock de productos de la página actual
+      (stockDataResult.data || []).forEach((s: any) => {
+        stockMap[s.product_id] = {
+          qty_on_hand: Number(s.qty_on_hand) || 0,
+          qty_reserved: Number(s.qty_reserved) || 0,
+        };
+      });
+
+      // Procesar categorías: mapear category_id -> datos de la categoría
+      (categoriesResult.data || []).forEach((cat: any) => {
+        categoriesMap[cat.id] = cat;
+      });
+
+      // Procesar precios: agrupar por product_id
+      (pricesResult.data || []).forEach((price: any) => {
+        if (!pricesMap[price.product_id]) {
+          pricesMap[price.product_id] = [];
         }
-        // Consultar stock de los productos de la página actual (incluye padres e hijos directos)
-        const { data: stockData } = await supabase
+        pricesMap[price.product_id].push(price);
+      });
+
+      // Consultar stock de las variantes hijas (query adicional, solo si hay variantes)
+      // Se hace después de Promise.all porque depende de variantIds calculado arriba.
+      if (variantIds.length > 0 && currentBranchId) {
+        const { data: variantStockData } = await supabase
           .from('stock_levels')
           .select('product_id, qty_on_hand, qty_reserved')
-          .in('product_id', productIds)
+          .in('product_id', variantIds)
           .eq('branch_id', currentBranchId)
           .is('lot_id', null);
-        (stockData || []).forEach((s: any) => {
-          stockMap[s.product_id] = {
-            qty_on_hand: Number(s.qty_on_hand) || 0,
-            qty_reserved: Number(s.qty_reserved) || 0,
-          };
+        (variantStockData || []).forEach((s: any) => {
+          const parentId = variantToParent[s.product_id];
+          if (!variantStockMap[parentId]) {
+            variantStockMap[parentId] = { qty_on_hand: 0, qty_reserved: 0 };
+          }
+          variantStockMap[parentId].qty_on_hand += Number(s.qty_on_hand) || 0;
+          variantStockMap[parentId].qty_reserved += Number(s.qty_reserved) || 0;
         });
       }
 
@@ -332,12 +377,12 @@ export class POSService {
         const hasStockData = stock !== undefined || variantStock !== undefined;
         const isOutOfStock = product.track_stock === true && hasStockData && stockQty <= 0;
         // Ordenar precios por effective_from descendente para tomar el mas reciente
-        const sortedPrices = (product.product_prices || []).sort(
+        const sortedPrices = (pricesMap[product.id] || []).sort(
           (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
         );
         return {
           ...product,
-          category: product.categories,
+          category: categoriesMap[product.category_id] || null,
           price: sortedPrices[0]?.price || null,
           compare_price: sortedPrices[0]?.compare_price || null,
           product_images: productImagesMap[product.id] || [],

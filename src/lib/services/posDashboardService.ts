@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { getOrgDayRange, getOrgDateRange, getToday } from '@/lib/utils/timezone';
 
 export interface PosKPIs {
   totalVentasHoy: number;

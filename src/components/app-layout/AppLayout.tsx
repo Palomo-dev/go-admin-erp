@@ -1108,6 +1108,11 @@ export const AppLayout = ({
         setNextTheme(syncedTheme);
       }
     });
+    // NOTA: este efecto debe correr SOLO al montar. Si se incluye
+    // setNextTheme en las dependencias, next-themes 0.4.x cambia la
+    // identidad de setTheme en cada cambio de tema (useCallback con
+    // dep [theme]), lo que re-dispara la sync, resetea el override
+    // manual y revierte la elección del usuario (titileo doble).
 
     // Obtener nombre de organización
     const storedOrgName = localStorage.getItem('currentOrganizationName');
@@ -1133,7 +1138,8 @@ export const AppLayout = ({
     return () => {
       window.removeEventListener('organization-changed', handleOrgChange);
     };
-  }, [setNextTheme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Función para cerrar sesión (memoizada)
   const handleSignOut = useCallback(async () => {

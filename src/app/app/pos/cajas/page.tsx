@@ -95,11 +95,44 @@ export default function CajasPage() {
     }
   }, [organization, branchFilter, branchLoading]);
 
-  const loadActiveSession = async () => {
+  // Suscripción realtime a cash_sessions y cash_movements.
+  // Recarga silenciosamente (sin spinner) cuando hay cambios en otra pestaña/terminal,
+  // igual que /comandas y /pedidos-online. Debounce de 300ms para agrupar ráfagas.
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    const debounceRef = { current: null as ReturnType<typeof setTimeout> | null };
+    const triggerReload = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        // Recarga silenciosa: no mostramos el skeleton ni el overlay de refreshing
+        loadActiveSession(true);
+        loadActiveSessions();
+        loadOpenSessionsCount();
+        loadHistory();
+      }, 300);
+    };
+
+    const unsubscribe = CajasService.subscribeToCashSessions(
+      organization.id,
+      triggerReload,
+      { includeMovements: true }
+    );
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id, branchFilter]);
+
+  const loadActiveSession = async (silent: boolean = false) => {
     if (isFirstLoadRef.current) {
       setIsLoading(true);
     }
-    setIsRefreshing(true);
+    if (!silent) {
+      setIsRefreshing(true);
+    }
     setError(null);
     try {
       const session = await CajasService.getActiveSession();

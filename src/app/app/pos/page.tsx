@@ -40,6 +40,7 @@ export default function POSPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isFirstLoadRef = useRef(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [mobileView, setMobileView] = useState<'products' | 'cart'>('products');
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
@@ -87,6 +88,42 @@ export default function POSPage() {
     }
   }, [organization, branchFilter, branchLoading]);
 
+  // Reloj en tiempo real: actualiza la hora mostrada en el header cada segundo
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Suscripción realtime a cash_sessions para que el estado de caja
+  // (abierta/cerrada) se actualice de inmediato cuando otra pestaña/terminal
+  // abre o cierra la caja, igual que /comandas. Debounce de 300ms.
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    const debounceRef = { current: null as ReturnType<typeof setTimeout> | null };
+    const triggerReload = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        // Solo recargar la sesión de caja (no los carritos del POS)
+        CajasService.getActiveSession()
+          .then((session) => setCashSession(session))
+          .catch((err) => console.error('Error realtime reload cash session:', err));
+      }, 300);
+    };
+
+    const unsubscribe = CajasService.subscribeToCashSessions(
+      organization.id,
+      triggerReload,
+      { includeMovements: false }
+    );
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.id, branchFilter]);
+
   const loadDashboardData = async () => {
     try {
       const [summary, session] = await Promise.all([
@@ -109,7 +146,14 @@ export default function POSPage() {
   };
 
   const handleSessionClosed = (session: CashSession) => {
-    setCashSession(null);
+    // Recargar desde Supabase en lugar de asumir null: podría existir
+    // otra caja abierta (global o de otra sucursal) que getActiveSession encontraría.
+    CajasService.getActiveSession()
+      .then((activeSession) => setCashSession(activeSession))
+      .catch((err) => {
+        console.error('Error reloading cash session after close:', err);
+        setCashSession(null);
+      });
     loadDashboardData();
     toast.success('Caja cerrada exitosamente', {
       description: showExpected ? `Diferencia: ${formatCurrency(Math.abs(session.difference || 0))}` : 'Caja cerrada'
@@ -472,7 +516,7 @@ export default function POSPage() {
                 <div className="hidden xs:flex items-center space-x-1.5 sm:space-x-2">
                   <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 dark:text-gray-400 text-gray-500 shrink-0" />
                   <span className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 whitespace-nowrap">
-                    {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
                 

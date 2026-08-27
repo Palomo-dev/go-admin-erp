@@ -1164,4 +1164,56 @@ export class CajasService {
       throw error;
     }
   }
+
+  /**
+   * Suscripción realtime a cambios en cash_sessions y cash_movements.
+   * Sigue el mismo patrón que KitchenService.subscribeToKitchenTickets.
+   * Notifica al consumidor para que recargue con sus propios filtros/servicio.
+   * Retorna una función de cleanup que elimina el canal.
+   */
+  static subscribeToCashSessions(
+    organizationId: number,
+    onChange: () => void,
+    options?: { includeMovements?: boolean }
+  ): () => void {
+    const includeMovements = options?.includeMovements ?? true;
+    const channelName = `cash_sessions_changes_${organizationId}_${Date.now()}`;
+
+    let channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cash_sessions',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        () => onChange()
+      );
+
+    if (includeMovements) {
+      channel = channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cash_movements',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        () => onChange()
+      );
+    }
+
+    channel.subscribe();
+
+    // Retornar función de cleanup que elimina el canal
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch (err) {
+        console.warn('Error removing cash_sessions channel:', err);
+      }
+    };
+  }
 }

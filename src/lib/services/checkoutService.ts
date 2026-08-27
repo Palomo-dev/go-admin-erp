@@ -778,6 +778,7 @@ class CheckoutService {
     const remainingBalance = Math.max(0, finalTotal - totalPaid);
 
     // Crear la venta
+    // source='reservation' e include_in_cash_register=false: no entra en caja POS.
     const { data: sale, error: saleError } = await supabase
       .from('sales')
       .insert({
@@ -793,6 +794,8 @@ class CheckoutService {
         status: isPaid ? 'paid' : 'pending',
         payment_status: isPaid ? 'paid' : 'partial',
         tax_included: taxIncluded,
+        source: 'reservation',
+        include_in_cash_register: false,
         notes: `Checkout reserva ${reservationId.slice(0, 8)}`,
         sale_date: new Date().toISOString(),
       })

@@ -1,9 +1,10 @@
-import { BrowserWindow, app, globalShortcut, nativeImage, net } from 'electron';
+import { BrowserWindow, app, globalShortcut, net } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { wasOpenedHidden } from '../autostart';
 import { APP_NAME, WEB_APP_URL } from '../constants';
 import { getCachedAppShell, hasCachedAppShell, saveAppShell } from '../offlineManager';
+import { getIconImage } from '../icon';
 
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
@@ -51,7 +52,7 @@ function saveWindowState(): void {
 
 // ── Splash screen ──
 function createSplashWindow(): BrowserWindow {
-  const iconPath = path.join(__dirname, '..', '..', '..', 'build', 'icon.ico');
+  const iconImage = getIconImage();
   splashWindow = new BrowserWindow({
     width: 400,
     height: 300,
@@ -61,7 +62,7 @@ function createSplashWindow(): BrowserWindow {
     alwaysOnTop: true,
     skipTaskbar: true,
     show: true,
-    icon: iconPath,
+    ...(iconImage ? { icon: iconImage } : {}),
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   const splashHtml = `data:text/html;charset=utf-8,${encodeURIComponent(`
@@ -100,6 +101,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
   const loadUrl = getLoadUrl();
   const saved = loadWindowState();
 
+  const iconImage = getIconImage();
   mainWindow = new BrowserWindow({
     width: saved.width || 1400,
     height: saved.height || 900,
@@ -109,7 +111,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     minHeight: 700,
     show: false,
     title: APP_NAME,
-    icon: path.join(__dirname, '..', '..', '..', 'build', 'icon.ico'),
+    ...(iconImage ? { icon: iconImage } : {}),
     autoHideMenuBar: true,
     backgroundColor: '#1e3a8a',
     webPreferences: {

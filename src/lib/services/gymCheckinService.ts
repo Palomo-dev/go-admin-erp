@@ -4,6 +4,38 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { MemberCheckin, Membership, MembershipPlan } from './gymService';
 import { startOfDay, endOfDay, subDays, format } from 'date-fns';
+import type { OperatingHoursOptions } from '@/lib/utils/timezone';
+
+/**
+ * Aplica las horas de operación al inicio de un día.
+ * Si no hay operatingHours, usa startOfDay (00:00:00.000).
+ * Si hay start_time, ajusta la hora del Date resultante.
+ */
+function applyStartHours(date: Date, operatingHours?: OperatingHoursOptions | null): Date {
+  if (!operatingHours?.start_time) return startOfDay(date);
+  const [h, m] = operatingHours.start_time.split(':').map(Number);
+  const result = new Date(date);
+  result.setHours(h, m, 0, 0);
+  return result;
+}
+
+/**
+ * Aplica las horas de operación al fin de un día.
+ * Si no hay operatingHours, usa endOfDay (23:59:59.999).
+ * Si hay end_time, ajusta la hora. Si el día cruza medianoche
+ * (end_time <= start_time), suma 1 día al end.
+ */
+function applyEndHours(date: Date, operatingHours?: OperatingHoursOptions | null): Date {
+  if (!operatingHours?.end_time) return endOfDay(date);
+  const [h, m] = operatingHours.end_time.split(':').map(Number);
+  const result = new Date(date);
+  // Si cruza medianoche (end <= start), el fin es el día siguiente
+  if (operatingHours?.start_time && operatingHours.end_time <= operatingHours.start_time) {
+    result.setDate(result.getDate() + 1);
+  }
+  result.setHours(h, m, 59, 999);
+  return result;
+}
 
 // ==================== TIPOS ====================
 
@@ -48,28 +80,33 @@ export type DateRangePreset = 'today' | 'yesterday' | '7days' | '20days' | '90da
 
 // ==================== FUNCIONES DE FECHA ====================
 
-export function getDateRange(preset: DateRangePreset, customFrom?: Date, customTo?: Date): { from: Date; to: Date } {
+export function getDateRange(
+  preset: DateRangePreset,
+  customFrom?: Date,
+  customTo?: Date,
+  operatingHours?: OperatingHoursOptions | null,
+): { from: Date; to: Date } {
   const now = new Date();
-  
+
   switch (preset) {
     case 'today':
-      return { from: startOfDay(now), to: endOfDay(now) };
+      return { from: applyStartHours(now, operatingHours), to: applyEndHours(now, operatingHours) };
     case 'yesterday':
       const yesterday = subDays(now, 1);
-      return { from: startOfDay(yesterday), to: endOfDay(yesterday) };
+      return { from: applyStartHours(yesterday, operatingHours), to: applyEndHours(yesterday, operatingHours) };
     case '7days':
-      return { from: startOfDay(subDays(now, 7)), to: endOfDay(now) };
+      return { from: applyStartHours(subDays(now, 7), operatingHours), to: applyEndHours(now, operatingHours) };
     case '20days':
-      return { from: startOfDay(subDays(now, 20)), to: endOfDay(now) };
+      return { from: applyStartHours(subDays(now, 20), operatingHours), to: applyEndHours(now, operatingHours) };
     case '90days':
-      return { from: startOfDay(subDays(now, 90)), to: endOfDay(now) };
+      return { from: applyStartHours(subDays(now, 90), operatingHours), to: applyEndHours(now, operatingHours) };
     case 'custom':
       return {
-        from: customFrom ? startOfDay(customFrom) : startOfDay(now),
-        to: customTo ? endOfDay(customTo) : endOfDay(now),
+        from: customFrom ? applyStartHours(customFrom, operatingHours) : applyStartHours(now, operatingHours),
+        to: customTo ? applyEndHours(customTo, operatingHours) : applyEndHours(now, operatingHours),
       };
     default:
-      return { from: startOfDay(now), to: endOfDay(now) };
+      return { from: applyStartHours(now, operatingHours), to: applyEndHours(now, operatingHours) };
   }
 }
 

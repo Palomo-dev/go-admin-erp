@@ -1,4 +1,4 @@
-﻿# Estado del proyecto â€” PersonalizaciÃ³n Editor Web + Sitio PÃºblico
+# Estado del proyecto â€” PersonalizaciÃ³n Editor Web + Sitio PÃºblico
 
 > Fuente de verdad para el comando `/loop`.
 > Se actualiza en cada ronda, nunca se reescribe desde cero.
@@ -42,6 +42,7 @@
 | H12A â€” HeaderMinimal drawer default | `plan-header-megamenu/PLAN.md` | pendiente | 0 | - | builder |
 | H12B â€” Iconos y orden de acciones | `plan-header-megamenu/PLAN.md` | pendiente | 0 | - | builder |
 | H12C â€” PersonalizaciÃ³n del botÃ³n CTA | `plan-header-megamenu/PLAN.md` | pendiente | 0 | - | builder |
+| N1 — Auto-limpieza de notificaciones (TTL por etapas) | — | aprobado | 2 | 9.2 | builder |
 
 **Orden de arranque acordado:** F1 (hotfix) â†’ F0 â†’ F2, con F11 puntos 1â€“3 en paralelo.
 **Header Fase 12:** H12A â†’ H12B â†’ H12C (secuencial, hay dependencias de BD).
@@ -425,3 +426,32 @@ Todas las fases compilan exitosamente en ambos repositorios. Las fases F0ï¿½F
   2. [bajo] `Slider` component del ERP necesita import verificado — puede no existir en `@/components/ui/slider`.
   3. [bajo] Build verification pendiente para ambos repos.
 - Próxima acción: verificar imports (Slider, GripVertical), ejecutar build, corregir errores.
+
+### Fase: N1 - Auto-limpieza de notificaciones (TTL por etapas) - Ronda 1 - 2026-08-27
+- Calificacion QA: 7.8/10 (requiere-nueva-ronda)
+- Calificacion Tester: 8/10 (8/8 casos pasaron)
+- Que se hizo:
+  - N1.1: Migracion SQL 20260827000000_notifications_ttl_cleanup.sql - indice parcial idx_notifications_unread + funcion expire_old_notifications() (SECURITY DEFINER).
+  - N1.2: Endpoint GET /api/cron/expire-old-notifications con auth Bearer CRON_SECRET.
+  - N1.3: Vercel Cron diario   3 * * * en ercel.json.
+  - Migracion aplicada via MCP. Ejecucion de prueba: 7,624 marcadas leidas, 933 eliminadas, 79 orgs.
+- Hallazgos QA:
+  1. [critico→aclarar] Etapa 2 no filtra read_at IS NULL — correcto por diseño (limpieza total). Solo faltaba comentario.
+  2. [alto] Sin validacion TTL positivo (TTL=0 limpiaria todo).
+  3. [medio] Parsing token fragil (eplace vs startsWith).
+  4. [medio] Sin advisory_lock para concurrencia.
+- Proxima accion: ronda 2 atendiendo los 4 hallazgos.
+
+### Fase: N1 - Auto-limpieza de notificaciones - Ronda 2 - 2026-08-27
+- Calificacion QA: 9.2/10 (aprobado)
+- Calificacion Tester: 9/10 (6/6 casos pasaron)
+- Que se hizo:
+  - Fix #1: Comentario SQL explicando que delete_ttl aplica a TODAS las notificaciones (leidas y no leidas) por diseño.
+  - Fix #2: GREATEST(v_unread_ttl_days, 1) y GREATEST(v_delete_ttl_days, 1) — minimo 1 dia, previene TTL=0 o negativo.
+  - Fix #3: Parsing token robusto uthHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader.
+  - Fix #4: pg_advisory_xact_lock(hashtext('expire_old_notifications')) al inicio del BEGIN.
+  - Migracion aplicada via MCP (CREATE OR REPLACE FUNCTION).
+- Hallazgos QA R2:
+  1. [bajo] Validacion de token vacio tras parsing (edge case).
+  2. [bajo] Sin rate limiting HTTP (opcional).
+- Calificacion final N1: 9.2/10 — APROBADA

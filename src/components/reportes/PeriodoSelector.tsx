@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CalendarDays, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Check, X, Clock } from 'lucide-react';
+import { HorasPresets } from '@/components/inicio/HorasPresets';
 import type { TipoCierre, PeriodoCierre } from '@/lib/services/reportes/types';
 import { resolverPeriodo, periodoAnterior, periodoSiguiente } from '@/lib/services/reportes/periodosService';
 
@@ -33,6 +34,9 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
   const [isCustom, setIsCustom] = useState(periodo.tipo === 'personalizado');
   const [customFrom, setCustomFrom] = useState(periodo.fechaInicio);
   const [customTo, setCustomTo] = useState(periodo.fechaFin);
+  const [showHours, setShowHours] = useState(false);
+  const [horaInicio, setHoraInicio] = useState(periodo.horaInicio ?? '');
+  const [horaFin, setHoraFin] = useState(periodo.horaFin ?? '');
 
   const handleTipoChange = (tipo: string) => {
     if (tipo === 'personalizado') {
@@ -41,6 +45,11 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
     }
     setIsCustom(false);
     const nuevo = resolverPeriodo(tipo as TipoCierre);
+    // Preservar horas manuales si están definidas
+    if (horaInicio || horaFin) {
+      nuevo.horaInicio = horaInicio || null;
+      nuevo.horaFin = horaFin || null;
+    }
     onChange(nuevo);
   };
 
@@ -50,13 +59,27 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
       tipo: 'personalizado',
       fechaInicio: customFrom,
       fechaFin: customTo,
-      etiqueta: `${customFrom} → ${customTo}`,
+      etiqueta: `${customFrom} → ${customTo}${horaInicio || horaFin ? ` (${horaInicio || '00:00'}-${horaFin || '23:59'})` : ''}`,
+      horaInicio: horaInicio || null,
+      horaFin: horaFin || null,
     });
     setIsCustom(false);
   };
 
   const handleCustomCancel = () => {
     setIsCustom(false);
+  };
+
+  // Aplicar/quitar filtro de horas sin cambiar el período
+  const handleToggleHours = () => {
+    if (horaInicio || horaFin) {
+      // Quitar horas
+      setHoraInicio('');
+      setHoraFin('');
+      onChange({ ...periodo, horaInicio: null, horaFin: null });
+    } else {
+      setShowHours(true);
+    }
   };
 
   const handlePrev = () => onChange(periodoAnterior(periodo));
@@ -115,6 +138,34 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
       <Button variant="outline" size="icon" onClick={handleNext} className="h-9 w-9">
         <ChevronRight className="h-4 w-4" />
       </Button>
+
+      {/* Filtro de horas opcional */}
+      {showHours ? (
+        <HorasPresets
+          horaInicio={horaInicio}
+          horaFin={horaFin}
+          onApply={(hIni, hFin) => {
+            setHoraInicio(hIni ?? '');
+            setHoraFin(hFin ?? '');
+            onChange({ ...periodo, horaInicio: hIni, horaFin: hFin });
+            setShowHours(false);
+          }}
+          onCancel={() => setShowHours(false)}
+        />
+      ) : (
+        <Button
+          variant={horaInicio || horaFin ? 'default' : 'outline'}
+          size="sm"
+          onClick={handleToggleHours}
+          className="h-9"
+          title="Filtrar por horas del día"
+        >
+          <Clock className="h-4 w-4 mr-1" />
+          {(horaInicio || horaFin)
+            ? `${horaInicio || '00:00'}-${horaFin || '23:59'}`
+            : 'Horas'}
+        </Button>
+      )}
 
       <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline-block min-w-[120px]">
         {periodo.etiqueta}

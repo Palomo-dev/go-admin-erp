@@ -8,6 +8,38 @@ import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/utils/Utils';
+import type { OperatingHoursOptions } from '@/lib/utils/timezone';
+
+/**
+ * Aplica las horas de operación al inicio de un día.
+ * Si no hay operatingHours, usa startOfDay (00:00:00.000).
+ * Si hay start_time, ajusta la hora del Date resultante.
+ */
+function applyStartHours(date: Date, operatingHours?: OperatingHoursOptions | null): Date {
+  if (!operatingHours?.start_time) return startOfDay(date);
+  const [h, m] = operatingHours.start_time.split(':').map(Number);
+  const result = new Date(date);
+  result.setHours(h, m, 0, 0);
+  return result;
+}
+
+/**
+ * Aplica las horas de operación al fin de un día.
+ * Si no hay operatingHours, usa endOfDay (23:59:59.999).
+ * Si hay end_time, ajusta la hora. Si el día cruza medianoche
+ * (end_time <= start_time), suma 1 día al end.
+ */
+function applyEndHours(date: Date, operatingHours?: OperatingHoursOptions | null): Date {
+  if (!operatingHours?.end_time) return endOfDay(date);
+  const [h, m] = operatingHours.end_time.split(':').map(Number);
+  const result = new Date(date);
+  // Si cruza medianoche (end <= start), el fin es el día siguiente
+  if (operatingHours?.start_time && operatingHours.end_time <= operatingHours.start_time) {
+    result.setDate(result.getDate() + 1);
+  }
+  result.setHours(h, m, 59, 999);
+  return result;
+}
 
 export type DateRange = {
   from: Date;
@@ -19,6 +51,7 @@ export type DatePreset = 'today' | 'yesterday' | '7days' | '20days' | '90days' |
 interface DateFilterProps {
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange, preset: DatePreset) => void;
+  operatingHours?: OperatingHoursOptions | null;
 }
 
 const presets: { key: DatePreset; label: string }[] = [
@@ -30,27 +63,27 @@ const presets: { key: DatePreset; label: string }[] = [
   { key: 'custom', label: 'Personalizado' },
 ];
 
-export function getDateRangeFromPreset(preset: DatePreset): DateRange {
+export function getDateRangeFromPreset(preset: DatePreset, operatingHours?: OperatingHoursOptions | null): DateRange {
   const today = new Date();
-  
+
   switch (preset) {
     case 'today':
-      return { from: startOfDay(today), to: endOfDay(today) };
+      return { from: applyStartHours(today, operatingHours), to: applyEndHours(today, operatingHours) };
     case 'yesterday':
       const yesterday = subDays(today, 1);
-      return { from: startOfDay(yesterday), to: endOfDay(yesterday) };
+      return { from: applyStartHours(yesterday, operatingHours), to: applyEndHours(yesterday, operatingHours) };
     case '7days':
-      return { from: startOfDay(subDays(today, 6)), to: endOfDay(today) };
+      return { from: applyStartHours(subDays(today, 6), operatingHours), to: applyEndHours(today, operatingHours) };
     case '20days':
-      return { from: startOfDay(subDays(today, 19)), to: endOfDay(today) };
+      return { from: applyStartHours(subDays(today, 19), operatingHours), to: applyEndHours(today, operatingHours) };
     case '90days':
-      return { from: startOfDay(subDays(today, 89)), to: endOfDay(today) };
+      return { from: applyStartHours(subDays(today, 89), operatingHours), to: applyEndHours(today, operatingHours) };
     default:
-      return { from: startOfDay(today), to: endOfDay(today) };
+      return { from: applyStartHours(today, operatingHours), to: applyEndHours(today, operatingHours) };
   }
 }
 
-export function DateFilter({ dateRange, onDateRangeChange }: DateFilterProps) {
+export function DateFilter({ dateRange, onDateRangeChange, operatingHours }: DateFilterProps) {
   const [activePreset, setActivePreset] = useState<DatePreset>('today');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [tempRange, setTempRange] = useState<{ from?: Date; to?: Date }>({});
@@ -63,7 +96,7 @@ export function DateFilter({ dateRange, onDateRangeChange }: DateFilterProps) {
     }
 
     setActivePreset(preset);
-    const range = getDateRangeFromPreset(preset);
+    const range = getDateRangeFromPreset(preset, operatingHours);
     onDateRangeChange(range, preset);
   };
 
@@ -73,7 +106,7 @@ export function DateFilter({ dateRange, onDateRangeChange }: DateFilterProps) {
     
     if (range.from && range.to) {
       onDateRangeChange(
-        { from: startOfDay(range.from), to: endOfDay(range.to) },
+        { from: applyStartHours(range.from, operatingHours), to: applyEndHours(range.to, operatingHours) },
         'custom'
       );
       setIsCalendarOpen(false);

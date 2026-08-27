@@ -564,7 +564,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
             Horas de Operación
           </CardTitle>
           <CardDescription className="text-gray-500 dark:text-gray-400">
-            Define el horario del "día operativo" para reportes y dashboard. Para empresas que trabajan de noche (ej: 8pm a 3am), esto delimita correctamente el inicio y cierre del día.
+            Define el horario del &ldquo;día operativo&rdquo; para reportes y dashboard. Para empresas que trabajan de noche (ej: 8pm a 3am), esto delimita correctamente el inicio y cierre del día.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">

@@ -60,7 +60,10 @@ export const serialTrackingReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase
         .from('serial_numbers')
         .select(`
@@ -135,7 +138,10 @@ export const serialTrackingReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase
         .from('serial_numbers')
         .select(`
@@ -211,7 +217,10 @@ export const serialTrackingReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase
         .from('warranty_claims')
         .select(`
@@ -301,7 +310,10 @@ export const serialTrackingReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase
         .from('serial_numbers')
         .select(`

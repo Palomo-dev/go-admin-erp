@@ -61,6 +61,28 @@ npm run package:dir
 
 El instalador se genera en `electron/release/Go Admin Desktop-Setup-0.1.0.exe`.
 
+### Icono de ventana vs. icono del instalador
+
+El icono del instalador/ejecutable se configura en `electron-builder.yml` (`win.icon`,
+`nsis.installerIcon`, etc.) y funciona porque electron-builder lo copia fuera del
+asar. Sin embargo, el **icono de la ventana** (`BrowserWindow.icon`) y el de la
+**bandeja del sistema** (`Tray`) se cargan en runtime desde el filesystem.
+
+Windows no puede leer archivos `.ico` desde dentro de un `.asar` para usarlos como
+icono nativo de ventana/taskbar (las APIs de Win32 requieren acceso real al
+filesystem). Por eso, sin desempaquetar el icono, la ventana muestra el icono por
+defecto de Electron (una "hoja en blanco") aunque el `.exe` y el instalador
+tengan el icono correcto.
+
+**Solución aplicada:**
+
+1. `electron-builder.yml` incluye `asarUnpack: [build/icon.ico]` → el icono se
+   copia a `resources/app.asar.unpacked/build/icon.ico` (fuera del asar).
+2. `src/main/icon.ts` expone `getIconPath()` / `getIconImage()` que resuelven la
+   ruta según `app.isPackaged` (desarrollo vs. `app.asar.unpacked`).
+3. `mainWindow.ts` (ventana principal + splash) y `tray.ts` usan `getIconImage()`
+   y pasan un `NativeImage` a la opción `icon` en vez de un string de ruta.
+
 ## Relación con el repo principal
 
 - **Vercel** solo lee `package.json` del raíz — **nunca** toca `electron/`.

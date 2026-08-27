@@ -26,7 +26,10 @@ export const clientesReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const branchFilter = getBranchFilter();
-      const { start, end, timezone: tz } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end, timezone: tz } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
 
       // Conteo total exacto (sin límite de 1000)
       const baseEq: Record<string, unknown> = { organization_id: orgId };
@@ -196,7 +199,10 @@ export const clientesReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase
         .from('sales')
         .select('customer_id, total, customers!inner(first_name, last_name, customer_type, company_name)')

@@ -38,6 +38,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/reconcile-web-orders",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/expire-old-notifications",
       "schedule": "0 3 * * *"
     }

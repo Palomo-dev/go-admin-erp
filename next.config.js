@@ -30,21 +30,18 @@ const nextConfig = {
   // Ver docs/PLAN_CAPACITOR_MOVIL.md para detalles de arquitectura.
 }
 
-// Sentry webpack wrapper solo cuando hay SENTRY_AUTH_TOKEN (CI con source maps).
-// Sin el token, el SDK de Sentry funciona igual en runtime, solo sin source maps.
-// Esto evita OOM en Vercel (el plugin de webpack de Sentry consume ~1GB extra).
-const hasSentryToken = !!process.env.SENTRY_AUTH_TOKEN;
+// NOTA: withSentryConfig removido del build web para evitar OOM en Vercel.
+// El plugin de webpack de Sentry consume ~1GB extra de memoria.
+// Sentry sigue funcionando en runtime via instrumentation.ts y sentry.client.config.ts,
+// solo sin source maps en producción.
+// Para reactivar source maps: setear SENTRY_AUTH_TOKEN en Vercel y descomentar el bloque.
+//
+// const { withSentryConfig } = require('@sentry/nextjs');
+// module.exports = withSentryConfig(nextConfig, {
+//   silent: true,
+//   hideSourceMaps: true,
+//   disableLogger: true,
+//   skipAutoUpload: true,
+// });
 
-let config = nextConfig;
-
-if (hasSentryToken) {
-  const { withSentryConfig } = require('@sentry/nextjs');
-  config = withSentryConfig(nextConfig, {
-    silent: true,
-    hideSourceMaps: true,
-    disableLogger: true,
-    skipAutoUpload: !hasSentryToken,
-  });
-}
-
-module.exports = config;
+module.exports = nextConfig;

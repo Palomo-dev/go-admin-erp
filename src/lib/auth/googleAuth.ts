@@ -116,14 +116,16 @@ export const handleGoogleLogin = async ({
   
   try {
     // Flujo móvil (Capacitor): OAuth con deep link via browser externo
+    // Si el plugin Browser no está disponible, cae al flujo web normal
     if (isMobile()) {
       const url = await startMobileOAuth('google');
-      if (!url) {
-        throw new Error('No se pudo iniciar OAuth con Google en la app móvil');
+      if (url) {
+        // El resultado llega via deep link listener (useMobileAuth)
+        // No hacemos setLoading(false) aquí: el listener lo maneja
+        return;
       }
-      // El resultado llega via deep link listener (useMobileAuth)
-      // No hacemos setLoading(false) aquí: el listener lo maneja
-      return;
+      // Fallback: continuar con flujo web si el plugin Browser no está disponible
+      console.warn('[googleAuth] Plugin Browser no disponible, usando flujo web');
     }
 
     // Guardar la URL actual para redirección después del login

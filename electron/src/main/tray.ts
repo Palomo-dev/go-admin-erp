@@ -3,15 +3,12 @@ import * as path from 'path';
 import { APP_NAME } from './constants';
 import { getStatus } from './agentRunner';
 import { readLog } from './crashReporter';
+import { getIconImage } from './icon';
 
 let tray: Tray | null = null;
 
 export function createTray(mainWindow: BrowserWindow): Tray {
-  const iconPath = path.join(__dirname, '..', '..', '..', 'build', 'icon.ico');
-  let icon = nativeImage.createFromPath(iconPath);
-  if (icon.isEmpty()) {
-    icon = nativeImage.createEmpty();
-  }
+  const icon = getIconImage() ?? nativeImage.createEmpty();
 
   tray = new Tray(icon);
   tray.setToolTip(APP_NAME);

@@ -120,6 +120,24 @@ export interface WebsiteSettings {
   footer_newsletter_title: string | null;
   footer_newsletter_placeholder: string | null;
   footer_newsletter_button_text: string | null;
+  // Fase 12: Header Minimal drawer + iconos + CTA personalizable
+  minimal_menu_style: 'drawer' | 'dropdown';
+  cart_icon: string | null;
+  search_icon: string | null;
+  auth_icon: string | null;
+  currency_icon: string | null;
+  actions_order: string[] | null;
+  cta_padding_x: number;
+  cta_padding_y: number;
+  cta_border_radius: number;
+  cta_full_width: boolean;
+  cta_border_width: number;
+  cta_border_color: string | null;
+  cta_shadow: 'none' | 'sm' | 'md' | 'lg';
+  cta_bg_color: string | null;
+  cta_text_color: string | null;
+  cta_margin_top: number;
+  cta_margin_bottom: number;
 }
 
 export interface GalleryImage {

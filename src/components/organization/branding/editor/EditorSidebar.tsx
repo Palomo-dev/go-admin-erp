@@ -1,16 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import ImagePickerDialog from '@/components/common/ImagePickerDialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { supabase } from '@/lib/supabase/config';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -19,77 +11,111 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
   ChevronDown,
   ChevronRight,
-  ChevronUp,
   GripVertical,
   Eye,
   EyeOff,
   Trash2,
   Plus,
   Settings,
-  Palette,
   Type,
   Layout,
-  Image,
-  BedDouble,
-  Sparkles,
-  Images,
-  MessageSquareQuote,
-  MousePointerClick,
-  Mail,
-  MapPin,
-  BarChart3,
-  Users,
-  HelpCircle,
-  Newspaper,
-  ShoppingBag,
-  Star,
-  CalendarCheck,
-  LayoutPanelLeft,
-  UtensilsCrossed,
-  CreditCard,
+  Palette,
   Search,
-  ImagePlus,
-  X,
-  Flame,
-  Megaphone,
-  Award,
   Menu,
+  LayoutPanelLeft,
+  Database,
+  GalleryHorizontalEnd,
+  MousePointerClick,
+  Wrench,
+  Undo2,
+  Redo2,
+  Copy,
+  ClipboardPaste,
+  Layers,
+  Bookmark,
+  PaintRoller,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
 import type {
   WebsitePageSection,
   SectionTypeDefinition,
+  ContentFieldDef,
+  FieldGroup,
 } from '@/lib/services/websitePageBuilderService';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
+import { getSectionSyncStatus, type SectionManifest } from '@/lib/services/website/sectionContract';
+import FieldRenderer from './fields/FieldRenderer';
+import type { ThemePalette, Viewport } from './fields/types';
 
-// Mapa de iconos por nombre
+// Mapa de iconos por nombre (para SectionListItem)
 const ICON_MAP: Record<string, any> = {
-  Image,
-  BedDouble,
-  Sparkles,
-  Images,
-  MessageSquareQuote,
-  MousePointerClick,
-  Mail,
-  MapPin,
-  BarChart3,
+  Image: Layout,
+  BedDouble: Layout,
+  Sparkles: Layout,
+  Images: Layout,
+  MessageSquareQuote: Layout,
+  MousePointerClick: Layout,
+  Mail: Layout,
+  MapPin: Layout,
+  BarChart3: Layout,
   Type,
-  Users,
-  HelpCircle,
-  Newspaper,
-  ShoppingBag,
-  Star,
-  CalendarCheck,
+  Users: Layout,
+  HelpCircle: Layout,
+  Newspaper: Layout,
+  ShoppingBag: Layout,
+  Star: Layout,
+  CalendarCheck: Layout,
   LayoutPanelLeft,
-  UtensilsCrossed,
-  CreditCard,
-  Flame,
-  Megaphone,
-  Award,
+  UtensilsCrossed: Layout,
+  CreditCard: Layout,
+  Flame: Layout,
+  Megaphone: Layout,
+  Award: Layout,
+  FolderOpen: Layout,
+  Filter: Layout,
+  LayoutGrid: Layout,
+  FolderTree: Layout,
+  FileText: Layout,
 };
+
+// Orden y etiquetas de los grupos del editor (F0.4)
+const GROUP_ORDER: { id: FieldGroup; label: string; icon: any }[] = [
+  { id: 'content', label: 'Contenido', icon: Type },
+  { id: 'data', label: 'Datos', icon: Database },
+  { id: 'layout', label: 'Diseño', icon: Layout },
+  { id: 'style', label: 'Estilo', icon: Palette },
+  { id: 'carousel', label: 'Carrusel', icon: GalleryHorizontalEnd },
+  { id: 'behavior', label: 'Comportamiento', icon: MousePointerClick },
+  { id: 'advanced', label: 'Avanzado', icon: Wrench },
+];
+
+/**
+ * Evalúa `showIf` antes de renderizar un campo (F0.4).
+ */
+function isFieldVisible(
+  field: ContentFieldDef,
+  content: Record<string, any>,
+  variant: string,
+): boolean {
+  const c = field.showIf;
+  if (!c) return true;
+  if (c.variantIn && !c.variantIn.includes(variant)) return false;
+  if (c.field) {
+    const v = content?.[c.field];
+    if (c.equals !== undefined && v !== c.equals) return false;
+    if (c.in && !c.in.includes(v)) return false;
+  }
+  return true;
+}
 
 interface EditorSidebarProps {
   sections: WebsitePageSection[];
@@ -101,23 +127,43 @@ interface EditorSidebarProps {
   onDeleteSection: (sectionId: string) => void;
   onAddSection: () => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
-  // Global settings
   showGlobalSettings: boolean;
   onToggleGlobalSettings: () => void;
   globalSettingsContent?: React.ReactNode;
-  // Page SEO
   showPageSEO: boolean;
   onTogglePageSEO: () => void;
   pageSEOContent?: React.ReactNode;
-  // Menu configuration
   showMenuConfig: boolean;
   onToggleMenuConfig: () => void;
   menuConfigContent?: React.ReactNode;
-  // Footer configuration
   showFooterConfig: boolean;
   onToggleFooterConfig: () => void;
   footerConfigContent?: React.ReactNode;
   organizationId?: number;
+  /** Paleta del tema activo para ColorField (F0.3). */
+  themePalette?: ThemePalette;
+  /** Viewport activo del preview para ResponsiveField (F0.3). */
+  activeViewport?: Viewport;
+  /** Manifiesto del sitio para detectar secciones desincronizadas (F0.6). */
+  sectionManifest?: SectionManifest | null;
+  // F12.3 — Undo/Redo
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  // F12.4 — Acciones del editor
+  onDuplicateSection?: (sectionId: string) => void;
+  onCopyStyle?: (sectionId: string) => void;
+  onPasteStyle?: (sectionId: string) => void;
+  onApplyStyleToAll?: (sectionId: string) => void;
+  onSaveSectionAsPreset?: (sectionId: string, name: string) => void;
+  // F12.4 — Búsqueda de secciones
+  sectionSearch?: string;
+  onSectionSearchChange?: (value: string) => void;
+  // F9.3 — Panel de layout de página (page_settings)
+  showPageLayout?: boolean;
+  onTogglePageLayout?: () => void;
+  pageLayoutContent?: React.ReactNode;
 }
 
 export default function EditorSidebar({
@@ -143,14 +189,39 @@ export default function EditorSidebar({
   onToggleFooterConfig,
   footerConfigContent,
   organizationId,
+  themePalette,
+  activeViewport,
+  sectionManifest,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  onDuplicateSection,
+  onCopyStyle,
+  onPasteStyle,
+  onApplyStyleToAll,
+  onSaveSectionAsPreset,
+  sectionSearch,
+  onSectionSearchChange,
+  showPageLayout,
+  onTogglePageLayout,
+  pageLayoutContent,
 }: EditorSidebarProps) {
   const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
-  const handleDragStart = (index: number) => {
-    setDragIndex(index);
-  };
+  // F12.4 — Filtrar secciones por búsqueda
+  const filteredSections = sectionSearch
+    ? sections.filter((s) => {
+        const def = getSectionDefinition(s.section_type);
+        const label = (def?.label || s.section_type).toLowerCase();
+        const variantLabel = (def?.variants.find((v) => v.id === s.section_variant)?.label || s.section_variant).toLowerCase();
+        const q = sectionSearch.toLowerCase();
+        return label.includes(q) || variantLabel.includes(q) || s.section_type.includes(q);
+      })
+    : sections;
 
+  const handleDragStart = (index: number) => setDragIndex(index);
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (dragIndex !== null && dragIndex !== index) {
@@ -158,124 +229,132 @@ export default function EditorSidebar({
       setDragIndex(index);
     }
   };
+  const handleDragEnd = () => setDragIndex(null);
 
-  const handleDragEnd = () => {
-    setDragIndex(null);
-  };
+  const renderCollapsiblePanel = (
+    show: boolean,
+    onToggle: () => void,
+    icon: React.ReactNode,
+    label: string,
+    content?: React.ReactNode,
+  ) => (
+    <div className="border-b border-gray-200 dark:border-gray-700/50">
+      <button
+        onClick={onToggle}
+        className={cn(
+          'w-full flex items-center gap-3 px-3 py-3 text-sm hover:bg-gray-100 dark:hover:bg-white/5 transition-colors',
+          show && 'bg-gray-100 dark:bg-white/5',
+        )}
+      >
+        {icon}
+        <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">{label}</span>
+        {show ? (
+          <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+        )}
+      </button>
+      {show && <div className="px-3 pb-3 space-y-3">{content}</div>}
+    </div>
+  );
 
   return (
     <div className="flex-1 md:flex-none md:w-[320px] md:min-w-[320px] bg-white dark:bg-gray-900 text-gray-800 dark:text-white flex flex-col h-full min-h-0 overflow-hidden border-r border-gray-200 dark:border-gray-700">
-      {/* Sidebar Header */}
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700/50">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-          {t('sections')}
-        </h2>
+      <div className="p-3 border-b border-gray-200 dark:border-gray-700/50 space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            {t('sections')}
+          </h2>
+          {/* F12.3 — Undo/Redo buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onUndo?.()}
+              disabled={!canUndo}
+              aria-label="Deshacer (Ctrl+Z)"
+              title="Deshacer (Ctrl+Z)"
+              className={cn(
+                'p-1 rounded transition-colors',
+                canUndo
+                  ? 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10'
+                  : 'text-gray-300 dark:text-gray-700 cursor-not-allowed',
+              )}
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => onRedo?.()}
+              disabled={!canRedo}
+              aria-label="Rehacer (Ctrl+Shift+Z)"
+              title="Rehacer (Ctrl+Shift+Z)"
+              className={cn(
+                'p-1 rounded transition-colors',
+                canRedo
+                  ? 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10'
+                  : 'text-gray-300 dark:text-gray-700 cursor-not-allowed',
+              )}
+            >
+              <Redo2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+        {/* F12.4 — Búsqueda de secciones */}
+        {onSectionSearchChange && (
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+            <input
+              type="text"
+              value={sectionSearch || ''}
+              onChange={(e) => onSectionSearchChange(e.target.value)}
+              placeholder="Buscar sección..."
+              aria-label="Buscar sección"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
+        )}
       </div>
 
-      {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
-        {/* Configuración del Tema (Global Settings) */}
-        <div className="border-b border-gray-200 dark:border-gray-700/50">
-          <button
-            onClick={onToggleGlobalSettings}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-3 text-sm hover:bg-gray-100 dark:hover:bg-white/5 transition-colors',
-              showGlobalSettings && 'bg-gray-100 dark:bg-white/5'
-            )}
-          >
-            <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">{t('themeConfig')}</span>
-            {showGlobalSettings ? (
-              <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-            )}
-          </button>
-          {showGlobalSettings && (
-            <div className="px-3 pb-3 space-y-3">
-              {globalSettingsContent}
-            </div>
+        {renderCollapsiblePanel(
+          showGlobalSettings,
+          onToggleGlobalSettings,
+          <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" />,
+          t('themeConfig'),
+          globalSettingsContent,
+        )}
+        {renderCollapsiblePanel(
+          showPageSEO,
+          onTogglePageSEO,
+          <Search className="h-4 w-4 text-gray-500 dark:text-gray-400" />,
+          t('pageSEO'),
+          pageSEOContent,
+        )}
+        {renderCollapsiblePanel(
+          showMenuConfig,
+          onToggleMenuConfig,
+          <Menu className="h-4 w-4 text-gray-500 dark:text-gray-400" />,
+          t('menuConfig'),
+          menuConfigContent,
+        )}
+        {renderCollapsiblePanel(
+          showFooterConfig,
+          onToggleFooterConfig,
+          <LayoutPanelLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />,
+          'Footer',
+          footerConfigContent,
+        )}
+        {showPageLayout !== undefined && onTogglePageLayout &&
+          renderCollapsiblePanel(
+            showPageLayout,
+            onTogglePageLayout,
+            <Layout className="h-4 w-4 text-gray-500 dark:text-gray-400" />,
+            'Layout de página',
+            pageLayoutContent,
           )}
-        </div>
 
-        {/* SEO de la Página */}
-        <div className="border-b border-gray-200 dark:border-gray-700/50">
-          <button
-            onClick={onTogglePageSEO}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-3 text-sm hover:bg-gray-100 dark:hover:bg-white/5 transition-colors',
-              showPageSEO && 'bg-gray-100 dark:bg-white/5'
-            )}
-          >
-            <Search className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">{t('pageSEO')}</span>
-            {showPageSEO ? (
-              <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-            )}
-          </button>
-          {showPageSEO && (
-            <div className="px-3 pb-3 space-y-3">
-              {pageSEOContent}
-            </div>
-          )}
-        </div>
-
-        {/* Configuración del Menú */}
-        <div className="border-b border-gray-200 dark:border-gray-700/50">
-          <button
-            onClick={onToggleMenuConfig}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-3 text-sm hover:bg-gray-100 dark:hover:bg-white/5 transition-colors',
-              showMenuConfig && 'bg-gray-100 dark:bg-white/5'
-            )}
-          >
-            <Menu className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">{t('menuConfig')}</span>
-            {showMenuConfig ? (
-              <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-            )}
-          </button>
-          {showMenuConfig && (
-            <div className="px-3 pb-3 space-y-3">
-              {menuConfigContent}
-            </div>
-          )}
-        </div>
-
-        {/* Configuración del Footer */}
-        <div className="border-b border-gray-200 dark:border-gray-700/50">
-          <button
-            onClick={onToggleFooterConfig}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-3 text-sm hover:bg-gray-100 dark:hover:bg-white/5 transition-colors',
-              showFooterConfig && 'bg-gray-100 dark:bg-white/5'
-            )}
-          >
-            <LayoutPanelLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            <span className="flex-1 text-left font-medium text-gray-700 dark:text-gray-200">Footer</span>
-            {showFooterConfig ? (
-              <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-            )}
-          </button>
-          {showFooterConfig && (
-            <div className="px-3 pb-3 space-y-3">
-              {footerConfigContent}
-            </div>
-          )}
-        </div>
-
-        {/* Sections List */}
-        {sections.map((section, index) => {
+        {filteredSections.map((section, index) => {
           const def = getSectionDefinition(section.section_type);
           const isActive = activeSectionId === section.id;
           const IconComponent = def ? ICON_MAP[def.icon] || Layout : Layout;
-
           return (
             <SectionListItem
               key={section.id}
@@ -289,7 +368,15 @@ export default function EditorSidebar({
               onUpdateVariant={(variant) => onUpdateSectionVariant(section.id, variant)}
               onToggleVisibility={(visible) => onToggleVisibility(section.id, visible)}
               onDelete={() => onDeleteSection(section.id)}
+              onDuplicate={() => onDuplicateSection?.(section.id)}
+              onCopyStyle={() => onCopyStyle?.(section.id)}
+              onPasteStyle={() => onPasteStyle?.(section.id)}
+              onApplyStyleToAll={() => onApplyStyleToAll?.(section.id)}
+              onSaveAsPreset={(name) => onSaveSectionAsPreset?.(section.id, name)}
               organizationId={organizationId}
+              themePalette={themePalette}
+              activeViewport={activeViewport}
+              sectionManifest={sectionManifest}
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
@@ -298,7 +385,6 @@ export default function EditorSidebar({
         })}
       </div>
 
-      {/* Add Section Button */}
       <div className="p-3 border-t border-gray-200 dark:border-gray-700/50">
         <Button
           onClick={onAddSection}
@@ -315,7 +401,7 @@ export default function EditorSidebar({
 }
 
 // ============================================================
-// SECTION LIST ITEM (Collapsible)
+// SECTION LIST ITEM (Collapsible) — usa FieldRenderer + Accordion
 // ============================================================
 
 interface SectionListItemProps {
@@ -329,7 +415,15 @@ interface SectionListItemProps {
   onUpdateVariant: (variant: string) => void;
   onToggleVisibility: (visible: boolean) => void;
   onDelete: () => void;
+  onDuplicate?: () => void;
+  onCopyStyle?: () => void;
+  onPasteStyle?: () => void;
+  onApplyStyleToAll?: () => void;
+  onSaveAsPreset?: (name: string) => void;
   organizationId?: number;
+  themePalette?: ThemePalette;
+  activeViewport?: Viewport;
+  sectionManifest?: SectionManifest | null;
   onDragStart: () => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -340,13 +434,20 @@ function SectionListItem({
   definition,
   IconComponent,
   isActive,
-  index,
   onSelect,
   onUpdateContent,
   onUpdateVariant,
   onToggleVisibility,
   onDelete,
+  onDuplicate,
+  onCopyStyle,
+  onPasteStyle,
+  onApplyStyleToAll,
+  onSaveAsPreset,
   organizationId,
+  themePalette,
+  activeViewport,
+  sectionManifest,
   onDragStart,
   onDragOver,
   onDragEnd,
@@ -354,8 +455,34 @@ function SectionListItem({
   const t = useTranslations('branding.editor.sidebar');
   const label = definition?.label || section.section_type;
   const variantLabel = definition?.variants.find(
-    (v) => v.id === section.section_variant
+    (v) => v.id === section.section_variant,
   )?.label || section.section_variant;
+
+  // F0.6 — detectar desincronización con el manifiesto del sitio.
+  const syncStatus = getSectionSyncStatus(
+    section.section_type,
+    section.section_variant,
+    sectionManifest,
+  );
+
+  // Agrupar campos por `field.group` respetando el orden de GROUP_ORDER.
+  const fields = definition?.contentFields || [];
+  const grouped: Record<string, ContentFieldDef[]> = {};
+  fields.forEach((f) => {
+    const g = f.group || 'content';
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push(f);
+  });
+  const visibleGroups = GROUP_ORDER.filter((g) => grouped[g.id]?.length);
+
+  const handleFieldChange = (field: ContentFieldDef, v: unknown) => {
+    // `spacing` escribe múltiples keys: v es el content mergeado completo.
+    if (field.type === 'spacing') {
+      onUpdateContent(v as Record<string, any>);
+    } else {
+      onUpdateContent({ ...section.content, [field.key]: v });
+    }
+  };
 
   return (
     <div
@@ -365,19 +492,34 @@ function SectionListItem({
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
     >
-      {/* Section Header (clickable) */}
+      {/* Section Header */}
       <div
         onClick={onSelect}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isActive}
+        aria-label={`Sección ${label}, variante ${variantLabel}${isActive ? ', seleccionada' : ', click para editar'}`}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }}
         className={cn(
           'flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group',
           isActive && 'bg-blue-50 dark:bg-white/10',
-          !section.is_visible && 'opacity-50'
+          !section.is_visible && 'opacity-50',
         )}
       >
         <GripVertical className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         <IconComponent className="h-4 w-4 text-blue-600 dark:text-gray-400 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium min-w-0 break-words text-gray-800 dark:text-white">{label}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium min-w-0 break-words text-gray-800 dark:text-white">{label}</p>
+            {syncStatus.isOrphan && (
+              <span
+                title={syncStatus.reason || 'Sección desincronizada con el sitio'}
+                className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 text-[10px] font-bold"
+              >
+                !
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 min-w-0 break-words">{variantLabel}</p>
         </div>
         {isActive ? (
@@ -387,1284 +529,159 @@ function SectionListItem({
         )}
       </div>
 
-      {/* Section Content Editor (expanded) */}
+      {/* Section Content Editor */}
       {isActive && (
         <div className="px-3 pb-3 space-y-3 bg-gray-50 dark:bg-white/5">
           {/* Variant Selector */}
           {definition && definition.variants.length > 1 && (
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-500 dark:text-gray-400">{t('variant')}</Label>
-              <Select
-                value={section.section_variant}
-                onValueChange={onUpdateVariant}
-              >
+              <Select value={section.section_variant} onValueChange={onUpdateVariant}>
                 <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {definition.variants.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.label}
-                    </SelectItem>
+                    <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {/* Content Fields */}
-          {definition?.contentFields.map((field) => (
-            <div key={field.key} className="space-y-1.5">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">{field.label}</Label>
-              {field.type === 'text' && (
-                <Input
-                  value={(section.content?.[field.key] as string) || ''}
-                  onChange={(e) =>
-                    onUpdateContent({
-                      ...section.content,
-                      [field.key]: e.target.value,
-                    })
-                  }
-                  placeholder={field.placeholder}
-                  className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                />
-              )}
-              {field.type === 'textarea' && (
-                <Textarea
-                  value={(section.content?.[field.key] as string) || ''}
-                  onChange={(e) =>
-                    onUpdateContent({
-                      ...section.content,
-                      [field.key]: e.target.value,
-                    })
-                  }
-                  placeholder={field.placeholder}
-                  rows={2}
-                  className="text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none"
-                />
-              )}
-              {field.type === 'url' && (
-                <Input
-                  type="url"
-                  value={(section.content?.[field.key] as string) || ''}
-                  onChange={(e) =>
-                    onUpdateContent({
-                      ...section.content,
-                      [field.key]: e.target.value,
-                    })
-                  }
-                  placeholder={field.placeholder || 'https://...'}
-                  className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                />
-              )}
-              {field.type === 'image' && (
-                <ImageFieldPicker
-                  value={(section.content?.[field.key] as string) || ''}
-                  onChange={(url) =>
-                    onUpdateContent({
-                      ...section.content,
-                      [field.key]: url,
-                    })
-                  }
-                />
-              )}
-              {field.type === 'boolean' && (
-                <div className="flex items-center justify-between">
-                  <Switch
-                    checked={section.content?.[field.key] ?? field.defaultValue ?? false}
-                    onCheckedChange={(checked) =>
-                      onUpdateContent({
-                        ...section.content,
-                        [field.key]: checked,
-                      })
-                    }
-                  />
-                </div>
-              )}
-              {field.type === 'number' && (
-                <Input
-                  type="number"
-                  value={(section.content?.[field.key] as number) ?? ''}
-                  onChange={(e) =>
-                    onUpdateContent({
-                      ...section.content,
-                      [field.key]: e.target.value ? Number(e.target.value) : undefined,
-                    })
-                  }
-                  placeholder={field.placeholder}
-                  className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                />
-              )}
-              {field.type === 'select' && field.options && (
-                <Select
-                  value={(section.content?.[field.key] as string) || field.options[0]?.value || ''}
-                  onValueChange={(val) =>
-                    onUpdateContent({
-                      ...section.content,
-                      [field.key]: val,
-                    })
-                  }
-                >
-                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {field.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {field.type === 'range' && (
-                <div className="flex items-center gap-2">
-                  <Slider
-                    value={[Number(section.content?.[field.key] ?? field.defaultValue ?? 0)]}
-                    onValueChange={([val]) =>
-                      onUpdateContent({
-                        ...section.content,
-                        [field.key]: val,
-                      })
-                    }
-                    min={field.min ?? 0}
-                    max={field.max ?? 100}
-                    step={field.step ?? 1}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[40px] text-right">
-                    {Number(section.content?.[field.key] ?? field.defaultValue ?? 0)}{field.suffix || ''}
+          {/* Campos agrupados por Accordion (F0.4) */}
+          <Accordion type="multiple" defaultValue={['content']}>
+            {visibleGroups.map((g) => (
+              <AccordionItem key={g.id} value={g.id} className="border-gray-200 dark:border-gray-700/50">
+                <AccordionTrigger className="text-xs text-gray-600 dark:text-gray-300 hover:no-underline">
+                  <span className="flex items-center gap-2">
+                    <g.icon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                    {g.label}
                   </span>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Hero Booking Switch */}
-          {section.section_type === 'hero' && (
-            <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">{t('bookingWidget')}</Label>
-              <Switch
-                checked={section.content?.show_booking_widget === true}
-                onCheckedChange={(checked) =>
-                  onUpdateContent({
-                    ...section.content,
-                    show_booking_widget: checked,
-                  })
-                }
-              />
-            </div>
-          )}
-
-          {/* Gallery Items Editor */}
-          {section.section_type === 'gallery' && (
-            <GalleryItemsEditor
-              items={(section.content?.items as GalleryItem[]) || []}
-              onChange={(items) =>
-                onUpdateContent({ ...section.content, items })
-              }
-            />
-          )}
-
-          {/* Testimonials Items Editor */}
-          {section.section_type === 'testimonials' && (
-            <TestimonialItemsEditor
-              items={(section.content?.items as TestimonialItem[]) || []}
-              onChange={(items) =>
-                onUpdateContent({ ...section.content, items })
-              }
-            />
-          )}
-
-          {/* FAQ Items Editor */}
-          {section.section_type === 'faq' && (
-            <FAQItemsEditor
-              items={(section.content?.items as FAQItem[]) || []}
-              onChange={(items) =>
-                onUpdateContent({ ...section.content, items })
-              }
-            />
-          )}
-
-          {/* Hero Slides Editor (only for slider variant) */}
-          {section.section_type === 'hero' && section.section_variant === 'slider' && (
-            <HeroSlidesEditor
-              items={(section.content?.slides as HeroSlideItem[]) || []}
-              onChange={(slides) =>
-                onUpdateContent({ ...section.content, slides })
-              }
-            />
-          )}
-
-          {/* Category Selector Editor */}
-          {(section.section_type === 'categories_grid' || section.section_type === 'offers' || section.section_type === 'products_grid') && organizationId && (
-            <CategorySelectorEditor
-              organizationId={organizationId}
-              selectedIds={(section.content?.selected_category_ids as number[]) || []}
-              onChange={(ids) =>
-                onUpdateContent({ ...section.content, selected_category_ids: ids })
-              }
-            />
-          )}
-
-          {/* Categories Grid Options: search + pagination */}
-          {section.section_type === 'categories_grid' && (
-            <div className="space-y-3 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-xs font-medium">Buscador de categorías</Label>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Muestra una barra de búsqueda para filtrar categorías</p>
-                </div>
-                <Switch
-                  checked={section.content?.enable_search === true}
-                  onCheckedChange={(checked) =>
-                    onUpdateContent({ ...section.content, enable_search: checked })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-xs font-medium">Paginación</Label>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Pagina las categorías en lugar de mostrar todas</p>
-                </div>
-                <Switch
-                  checked={section.content?.enable_pagination === true}
-                  onCheckedChange={(checked) =>
-                    onUpdateContent({ ...section.content, enable_pagination: checked })
-                  }
-                />
-              </div>
-              {section.content?.enable_pagination === true && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Categorías por página</Label>
-                  <Input
-                    type="number"
-                    min={6}
-                    max={48}
-                    value={(section.content?.page_size as number) || 24}
-                    onChange={(e) =>
-                      onUpdateContent({ ...section.content, page_size: parseInt(e.target.value, 10) || 24 })
+                </AccordionTrigger>
+                <AccordionContent className="space-y-3">
+                  {grouped[g.id].map((field) => {
+                    if (!isFieldVisible(field, section.content, section.section_variant)) {
+                      return null;
                     }
-                    className="h-8 text-xs dark:bg-gray-700 dark:border-gray-600"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Brands Items Editor */}
-          {section.section_type === 'brands' && (
-            <BrandsItemsEditor
-              items={(section.content?.items as BrandItem[]) || []}
-              onChange={(items) =>
-                onUpdateContent({ ...section.content, items })
-              }
-            />
-          )}
-
-          {/* Spacing Controls (all sections) */}
-          <SectionSpacingEditor
-            paddingTop={(section.content?.padding_top as string) || 'lg'}
-            paddingBottom={(section.content?.padding_bottom as string) || 'lg'}
-            paddingX={(section.content?.padding_x as string) || 'md'}
-            marginTop={(section.content?.margin_top as string) || 'none'}
-            marginBottom={(section.content?.margin_bottom as string) || 'none'}
-            onChange={(key, value) =>
-              onUpdateContent({ ...section.content, [key]: value })
-            }
-          />
+                    // `spacing` recibe el content completo como valor.
+                    const fieldValue = field.type === 'spacing' ? section.content : section.content?.[field.key];
+                    return (
+                      <div key={field.key} className="space-y-1">
+                        {field.type !== 'boolean' && field.type !== 'spacing' && (
+                          <Label className="text-xs text-gray-500 dark:text-gray-400">
+                            {field.label}
+                          </Label>
+                        )}
+                        {field.type === 'boolean' && (
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-gray-500 dark:text-gray-400">
+                              {field.label}
+                            </Label>
+                          </div>
+                        )}
+                        <FieldRenderer
+                          field={field}
+                          value={fieldValue}
+                          onChange={(v) => handleFieldChange(field, v)}
+                          themePalette={themePalette}
+                          organizationId={organizationId}
+                          activeViewport={activeViewport}
+                        />
+                        {field.helpText && (
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                            {field.helpText}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700/50">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleVisibility(!section.is_visible); }}
+              className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
+              title={section.is_visible ? t('hideSection') : t('showSection')}
+              aria-label={section.is_visible ? 'Ocultar sección' : 'Mostrar sección'}
+            >
+              {section.is_visible ? (
+                <Eye className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+              ) : (
+                <EyeOff className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
+              )}
+            </button>
+            {onDuplicate && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+                className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
+                title="Duplicar sección (Ctrl+D)"
+                aria-label="Duplicar sección"
+              >
+                <Layers className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+              </button>
+            )}
+            {onCopyStyle && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onCopyStyle(); }}
+                className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
+                title="Copiar estilo"
+                aria-label="Copiar estilo"
+              >
+                <Copy className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+              </button>
+            )}
+            {onPasteStyle && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onPasteStyle(); }}
+                className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
+                title="Pegar estilo"
+                aria-label="Pegar estilo"
+              >
+                <ClipboardPaste className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+              </button>
+            )}
+            {onApplyStyleToAll && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleVisibility(!section.is_visible);
+                  if (window.confirm('¿Aplicar el estilo de esta sección a todas las secciones de la página?')) {
+                    onApplyStyleToAll();
+                  }
                 }}
                 className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
-                title={section.is_visible ? t('hideSection') : t('showSection')}
+                title="Aplicar estilo a todas las secciones"
+                aria-label="Aplicar estilo a todas"
               >
-                {section.is_visible ? (
-                  <Eye className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
-                ) : (
-                  <EyeOff className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
-                )}
+                <PaintRoller className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
               </button>
-            </div>
+            )}
+            {onSaveAsPreset && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const name = window.prompt('Nombre de la plantilla:');
+                  if (name) onSaveAsPreset(name);
+                }}
+                className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
+                title="Guardar como plantilla"
+                aria-label="Guardar como plantilla"
+              >
+                <Bookmark className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+              </button>
+            )}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="p-1 rounded hover:bg-red-900/30 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1 rounded hover:bg-red-900/30 transition-colors ml-auto"
               title={t('deleteSection')}
+              aria-label="Eliminar sección"
             >
               <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500" />
             </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// INTERFACES para items inline
-// ============================================================
-
-interface GalleryItem {
-  id: string;
-  url: string;
-  alt: string;
-  caption?: string;
-}
-
-interface BrandItem {
-  id: string;
-  name: string;
-  logo_url?: string;
-  url?: string;
-}
-
-interface TestimonialItem {
-  id: string;
-  name: string;
-  company?: string;
-  content: string;
-  rating?: number;
-}
-
-interface FAQItem {
-  id: string;
-  question: string;
-  answer: string;
-}
-
-interface HeroSlideItem {
-  id: string;
-  title?: string;
-  subtitle?: string;
-  image_url?: string;
-  image_url_mobile?: string;
-  cta_text?: string;
-  cta_url?: string;
-}
-
-// ============================================================
-// IMAGE FIELD PICKER (inline image selector with ImagePickerDialog)
-// ============================================================
-
-function ImageFieldPicker({ value, onChange }: { value: string; onChange: (url: string) => void }) {
-  const t = useTranslations('branding.editor.sidebar');
-  const [showPicker, setShowPicker] = useState(false);
-
-  return (
-    <>
-      {value ? (
-        <div className="relative group rounded-md overflow-hidden border border-gray-300 dark:border-gray-600">
-          <img
-            src={value}
-            alt={t('imageAlt')}
-            className="w-full h-20 object-cover cursor-pointer"
-            onClick={() => setShowPicker(true)}
-          />
-          <button
-            onClick={() => onChange('')}
-            className="absolute top-1 right-1 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setShowPicker(true)}
-          className="w-full h-16 flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-blue-400 hover:text-blue-500 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors bg-white dark:bg-white/5"
-        >
-          <ImagePlus className="h-4 w-4" />
-          <span className="text-[10px]">{t('selectImage')}</span>
-        </button>
-      )}
-      <ImagePickerDialog
-        open={showPicker}
-        onOpenChange={setShowPicker}
-        onSelect={onChange}
-      />
-    </>
-  );
-}
-
-// ============================================================
-// GALLERY ITEMS EDITOR (inline gallery manager)
-// ============================================================
-
-function GalleryItemsEditor({
-  items,
-  onChange,
-}: {
-  items: GalleryItem[];
-  onChange: (items: GalleryItem[]) => void;
-}) {
-  const t = useTranslations('branding.editor.sidebar');
-  const [showPicker, setShowPicker] = useState(false);
-
-  const handleAddImage = (url: string) => {
-    onChange([...items, { id: crypto.randomUUID(), url, alt: '', caption: '' }]);
-  };
-
-  const handleRemove = (id: string) => {
-    onChange(items.filter((i) => i.id !== id));
-  };
-
-  return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
-          {t('imagesLabel', { count: items.length })}
-        </Label>
-        <button
-          onClick={() => setShowPicker(true)}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <Plus className="h-3 w-3" /> {t('add')}
-        </button>
-      </div>
-
-      {items.length > 0 ? (
-        <div className="grid grid-cols-3 gap-1.5">
-          {items.map((img) => (
-            <div
-              key={img.id}
-              className="relative group rounded overflow-hidden border border-gray-200 dark:border-gray-700"
-            >
-              <img
-                src={img.url}
-                alt={img.alt}
-                className="w-full h-14 object-cover"
-              />
-              <button
-                onClick={() => handleRemove(img.id)}
-                className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          {t('noImages')}
-        </p>
-      )}
-
-      <ImagePickerDialog
-        open={showPicker}
-        onOpenChange={setShowPicker}
-        onSelect={handleAddImage}
-        title={t('addImageToGallery')}
-      />
-    </div>
-  );
-}
-
-// ============================================================
-// TESTIMONIAL ITEMS EDITOR (inline testimonial manager)
-// ============================================================
-
-function TestimonialItemsEditor({
-  items,
-  onChange,
-}: {
-  items: TestimonialItem[];
-  onChange: (items: TestimonialItem[]) => void;
-}) {
-  const tr = useTranslations('branding.editor.sidebar');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Asignar id a items que no lo tengan
-  useEffect(() => {
-    const hasEmpty = items.some((item) => !item.id);
-    if (hasEmpty) {
-      onChange(items.map((item) => item.id ? item : { ...item, id: crypto.randomUUID() }));
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleAdd = () => {
-    const newItem: TestimonialItem = {
-      id: crypto.randomUUID(),
-      name: '',
-      content: '',
-      rating: 5,
-    };
-    onChange([...items, newItem]);
-    setExpandedId(newItem.id);
-  };
-
-  const handleUpdate = (id: string, updates: Partial<TestimonialItem>) => {
-    onChange(items.map((t) => (t.id === id ? { ...t, ...updates } : t)));
-  };
-
-  const handleRemove = (id: string) => {
-    onChange(items.filter((t) => t.id !== id));
-    if (expandedId === id) setExpandedId(null);
-  };
-
-  return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
-          {tr('testimonialsLabel', { count: items.length })}
-        </Label>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <Plus className="h-3 w-3" /> {tr('add')}
-        </button>
-      </div>
-
-      {items.length > 0 ? (
-        <div className="space-y-1.5">
-          {items.map((t, idx) => (
-            <div
-              key={t.id || `testimonial-${idx}`}
-              className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden"
-            >
-              <div
-                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
-                onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}
-              >
-                <MessageSquareQuote className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
-                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
-                  {t.name || tr('noName')}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleRemove(t.id); }}
-                  className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                {expandedId === t.id ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                )}
-              </div>
-              {expandedId === t.id && (
-                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
-                  <Input
-                    value={t.name}
-                    onChange={(e) => handleUpdate(t.id, { name: e.target.value })}
-                    placeholder={tr('namePlaceholder')}
-                    className="h-7 text-[11px] mt-1.5 bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
-                  />
-                  <Input
-                    value={t.company || ''}
-                    onChange={(e) => handleUpdate(t.id, { company: e.target.value })}
-                    placeholder={tr('companyPlaceholder')}
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
-                  />
-                  <Textarea
-                    value={t.content}
-                    onChange={(e) => handleUpdate(t.id, { content: e.target.value })}
-                    placeholder={tr('testimonialPlaceholder')}
-                    rows={2}
-                    className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
-                  />
-                  <div className="flex items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        onClick={() => handleUpdate(t.id, { rating: star })}
-                      >
-                        <Star
-                          className={cn(
-                            'h-3.5 w-3.5',
-                            star <= (t.rating || 0)
-                              ? 'text-yellow-400 fill-yellow-400 dark:text-yellow-500 dark:fill-yellow-500'
-                              : 'text-gray-300 dark:text-gray-600'
-                          )}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          {tr('noTestimonials')}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// FAQ ITEMS EDITOR (inline FAQ manager)
-// ============================================================
-
-function FAQItemsEditor({
-  items,
-  onChange,
-}: {
-  items: FAQItem[];
-  onChange: (items: FAQItem[]) => void;
-}) {
-  const t = useTranslations('branding.editor.sidebar');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const handleAdd = () => {
-    const newItem: FAQItem = {
-      id: crypto.randomUUID(),
-      question: '',
-      answer: '',
-    };
-    onChange([...items, newItem]);
-    setExpandedId(newItem.id);
-  };
-
-  const handleUpdate = (id: string, updates: Partial<FAQItem>) => {
-    onChange(items.map((f) => (f.id === id ? { ...f, ...updates } : f)));
-  };
-
-  const handleRemove = (id: string) => {
-    onChange(items.filter((f) => f.id !== id));
-    if (expandedId === id) setExpandedId(null);
-  };
-
-  return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
-          {t('faqLabel', { count: items.length })}
-        </Label>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <Plus className="h-3 w-3" /> {t('add')}
-        </button>
-      </div>
-
-      {items.length > 0 ? (
-        <div className="space-y-1.5">
-          {items.map((f) => (
-            <div
-              key={f.id}
-              className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden"
-            >
-              <div
-                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
-                onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
-              >
-                <HelpCircle className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
-                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
-                  {f.question || t('noQuestion')}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleRemove(f.id); }}
-                  className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                {expandedId === f.id ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                )}
-              </div>
-              {expandedId === f.id && (
-                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
-                  <Input
-                    value={f.question}
-                    onChange={(e) => handleUpdate(f.id, { question: e.target.value })}
-                    placeholder={t('questionPlaceholder')}
-                    className="h-7 text-[11px] mt-1.5 bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
-                  />
-                  <Textarea
-                    value={f.answer}
-                    onChange={(e) => handleUpdate(f.id, { answer: e.target.value })}
-                    placeholder={t('answerPlaceholder')}
-                    rows={2}
-                    className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          {t('noQuestions')}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// HERO SLIDES EDITOR (inline slide manager for Hero Slider)
-// ============================================================
-
-function HeroSlidesEditor({
-  items: rawItems,
-  onChange,
-}: {
-  items: HeroSlideItem[];
-  onChange: (items: HeroSlideItem[]) => void;
-}) {
-  const didNormalize = useRef(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Normalizar una sola vez: asignar id a slides que no tengan
-  useEffect(() => {
-    if (didNormalize.current) return;
-    const needsIds = rawItems.some((s) => !s.id);
-    if (needsIds && rawItems.length > 0) {
-      didNormalize.current = true;
-      onChange(rawItems.map((s) => (s.id ? s : { ...s, id: crypto.randomUUID() })));
-    }
-  }, [rawItems, onChange]);
-
-  const items = rawItems.every((s) => s.id) ? rawItems : rawItems.map((s, i) => ({ ...s, id: s.id || `tmp-${i}` }));
-
-  const handleAdd = () => {
-    const newItem: HeroSlideItem = {
-      id: crypto.randomUUID(),
-      title: '',
-      subtitle: '',
-      image_url: '',
-      cta_text: '',
-      cta_url: '',
-    };
-    onChange([...items, newItem]);
-    setExpandedId(newItem.id);
-  };
-
-  const handleUpdate = (id: string, updates: Partial<HeroSlideItem>) => {
-    onChange(items.map((s) => (s.id === id ? { ...s, ...updates } : s)));
-  };
-
-  const handleRemove = (id: string) => {
-    onChange(items.filter((s) => s.id !== id));
-    if (expandedId === id) setExpandedId(null);
-  };
-
-  return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
-          Slides ({items.length})
-        </Label>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <Plus className="h-3 w-3" /> Agregar
-        </button>
-      </div>
-
-      {items.length > 0 ? (
-        <div className="space-y-1.5">
-          {items.map((slide, idx) => (
-            <div
-              key={slide.id}
-              className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden"
-            >
-              <div
-                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
-                onClick={() => setExpandedId(expandedId === slide.id ? null : slide.id)}
-              >
-                <Image className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
-                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
-                  {slide.title || `Slide ${idx + 1}`}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleRemove(slide.id); }}
-                  className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                {expandedId === slide.id ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                )}
-              </div>
-              {expandedId === slide.id && (
-                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
-                  <Label className="text-[10px] text-gray-400 mt-1.5 block dark:text-gray-500">Título</Label>
-                  <Input
-                    value={slide.title || ''}
-                    onChange={(e) => handleUpdate(slide.id, { title: e.target.value })}
-                    placeholder="Título del slide"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
-                  />
-                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">Subtítulo</Label>
-                  <Textarea
-                    value={slide.subtitle || ''}
-                    onChange={(e) => handleUpdate(slide.id, { subtitle: e.target.value })}
-                    placeholder="Descripción del slide"
-                    rows={2}
-                    className="text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white resize-none"
-                  />
-                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">Imagen escritorio</Label>
-                  <ImageFieldPicker
-                    value={slide.image_url || ''}
-                    onChange={(url) => handleUpdate(slide.id, { image_url: url })}
-                  />
-                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">Imagen móvil</Label>
-                  <ImageFieldPicker
-                    value={slide.image_url_mobile || ''}
-                    onChange={(url) => handleUpdate(slide.id, { image_url_mobile: url })}
-                  />
-                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">Texto del botón</Label>
-                  <Input
-                    value={slide.cta_text || ''}
-                    onChange={(e) => handleUpdate(slide.id, { cta_text: e.target.value })}
-                    placeholder="Ver más"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
-                  />
-                  <Label className="text-[10px] text-gray-400 block dark:text-gray-500">URL del botón</Label>
-                  <Input
-                    value={slide.cta_url || ''}
-                    onChange={(e) => handleUpdate(slide.id, { cta_url: e.target.value })}
-                    placeholder="/productos"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          Sin slides. Agrega al menos uno.
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// CATEGORY SELECTOR EDITOR (select + reorder categories)
-// ============================================================
-
-interface CategoryOption {
-  id: number;
-  name: string;
-  image_url?: string;
-}
-
-function CategorySelectorEditor({
-  organizationId,
-  selectedIds,
-  onChange,
-}: {
-  organizationId: number;
-  selectedIds: number[];
-  onChange: (ids: number[]) => void;
-}) {
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from('categories')
-        .select('id, name, image_url')
-        .eq('organization_id', organizationId)
-        .order('rank', { ascending: true });
-      setCategories(data || []);
-      setLoading(false);
-    };
-    load();
-  }, [organizationId]);
-
-  const handleToggle = (catId: number, checked: boolean) => {
-    if (checked) {
-      onChange([...selectedIds, catId]);
-    } else {
-      onChange(selectedIds.filter((id) => id !== catId));
-    }
-  };
-
-  const handleDragStart = (idx: number) => setDragIdx(idx);
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (dragIdx !== null && dragIdx !== idx) {
-      const reordered = [...selectedIds];
-      const [moved] = reordered.splice(dragIdx, 1);
-      reordered.splice(idx, 0, moved);
-      onChange(reordered);
-      setDragIdx(idx);
-    }
-  };
-  const handleDragEnd = () => setDragIdx(null);
-
-  const selectedCats = selectedIds
-    .map((id) => categories.find((c) => c.id === id))
-    .filter(Boolean) as CategoryOption[];
-
-  const unselectedCats = categories.filter((c) => !selectedIds.includes(c.id));
-
-  if (loading) {
-    return (
-      <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-        <Skeleton className="h-4 w-40" />
-        <div className="space-y-1">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-8 w-full rounded" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-      <Label className="text-xs text-gray-500 dark:text-gray-400">
-        Categorías seleccionadas ({selectedIds.length})
-      </Label>
-
-      {selectedCats.length > 0 && (
-        <div className="space-y-1">
-          {selectedCats.map((cat, idx) => (
-            <div
-              key={cat.id}
-              draggable
-              onDragStart={() => handleDragStart(idx)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDragEnd={handleDragEnd}
-              className={cn(
-                'flex items-center gap-2 p-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 cursor-grab',
-                dragIdx === idx && 'opacity-50'
-              )}
-            >
-              <GripVertical className="h-3 w-3 text-gray-400 shrink-0 dark:text-gray-500" />
-              {cat.image_url ? (
-                <img src={cat.image_url} alt={cat.name} className="w-6 h-6 rounded object-cover shrink-0" />
-              ) : (
-                <div className="w-6 h-6 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                  <span className="text-[10px]">🏷️</span>
-                </div>
-              )}
-              <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 min-w-0 break-words">{cat.name}</span>
-              <span className="text-[9px] text-gray-400 shrink-0 dark:text-gray-500">#{idx + 1}</span>
-              <button
-                onClick={() => handleToggle(cat.id, false)}
-                className="p-0.5 text-red-400 hover:text-red-600 shrink-0 dark:text-red-500 dark:hover:text-red-300"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {unselectedCats.length > 0 && (
-        <div className="space-y-1 mt-2">
-          <span className="text-[10px] text-gray-500 dark:text-gray-500">Disponibles</span>
-          <div className="max-h-40 overflow-y-auto space-y-1 rounded border border-gray-200 dark:border-gray-700 p-1">
-            {unselectedCats.map((cat) => (
-              <label
-                key={cat.id}
-                className="flex items-center gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer"
-              >
-                <Checkbox
-                  checked={false}
-                  onCheckedChange={(checked) => handleToggle(cat.id, !!checked)}
-                />
-                {cat.image_url ? (
-                  <img src={cat.image_url} alt={cat.name} className="w-5 h-5 rounded object-cover shrink-0" />
-                ) : (
-                  <div className="w-5 h-5 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                    <span className="text-[9px]">🏷️</span>
-                  </div>
-                )}
-                <span className="text-xs text-gray-600 dark:text-gray-400 min-w-0 break-words">{cat.name}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {categories.length === 0 && (
-        <p className="text-[10px] text-gray-400 text-center py-2 dark:text-gray-500">No hay categorías creadas</p>
-      )}
-
-      <p className="text-[9px] text-gray-400 dark:text-gray-500">
-        {selectedIds.length === 0
-          ? 'Sin selección: se muestran todas las categorías'
-          : 'Arrastra para reordenar. Solo se mostrarán las seleccionadas.'}
-      </p>
-    </div>
-  );
-}
-
-// ============================================================
-// BRANDS ITEMS EDITOR (inline brand logo manager)
-// ============================================================
-
-function BrandsItemsEditor({
-  items,
-  onChange,
-}: {
-  items: BrandItem[];
-  onChange: (items: BrandItem[]) => void;
-}) {
-  const [showPicker, setShowPicker] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-
-  // Asignar id a items que no lo tengan
-  useEffect(() => {
-    const hasEmpty = items.some((item) => !item.id);
-    if (hasEmpty) {
-      onChange(items.map((item) => item.id ? item : { ...item, id: crypto.randomUUID() }));
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleAddLogo = (url: string) => {
-    const newItem: BrandItem = {
-      id: crypto.randomUUID(),
-      name: '',
-      logo_url: url,
-    };
-    onChange([...items, newItem]);
-    setExpandedId(newItem.id);
-  };
-
-  const handleUpdate = (id: string, updates: Partial<BrandItem>) => {
-    onChange(items.map((b) => (b.id === id ? { ...b, ...updates } : b)));
-  };
-
-  const handleRemove = (id: string) => {
-    onChange(items.filter((b) => b.id !== id));
-    if (expandedId === id) setExpandedId(null);
-  };
-
-  const handleDragStart = (idx: number) => setDragIdx(idx);
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (dragIdx !== null && dragIdx !== idx) {
-      const reordered = [...items];
-      const [moved] = reordered.splice(dragIdx, 1);
-      reordered.splice(idx, 0, moved);
-      onChange(reordered);
-      setDragIdx(idx);
-    }
-  };
-  const handleDragEnd = () => setDragIdx(null);
-
-  return (
-    <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">
-          Marcas ({items.length})
-        </Label>
-        <button
-          onClick={() => setShowPicker(true)}
-          className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <Plus className="h-3 w-3" /> Agregar
-        </button>
-      </div>
-
-      {items.length > 0 ? (
-        <div className="space-y-1">
-          {items.map((brand, idx) => (
-            <div
-              key={brand.id || `brand-${idx}`}
-              draggable
-              onDragStart={() => handleDragStart(idx)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDragEnd={handleDragEnd}
-              className={cn(
-                'rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 overflow-hidden',
-                dragIdx === idx && 'opacity-50'
-              )}
-            >
-              <div
-                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
-                onClick={() => setExpandedId(expandedId === brand.id ? null : brand.id)}
-              >
-                <GripVertical className="h-3 w-3 text-gray-400 shrink-0 cursor-grab dark:text-gray-500" />
-                {brand.logo_url ? (
-                  <img src={brand.logo_url} alt={brand.name} className="h-6 w-10 object-contain shrink-0 rounded" />
-                ) : (
-                  <div className="h-6 w-10 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center shrink-0">
-                    <span className="text-[9px]">🏢</span>
-                  </div>
-                )}
-                <span className="text-[11px] flex-1 min-w-0 break-words text-gray-700 dark:text-gray-300">
-                  {brand.name || 'Sin nombre'}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleRemove(brand.id); }}
-                  className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                {expandedId === brand.id ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-                )}
-              </div>
-              {expandedId === brand.id && (
-                <div className="px-2 pb-2 space-y-1.5 border-t border-gray-100 dark:border-gray-700/50">
-                  <div className="mt-1.5">
-                    <ImageFieldPicker
-                      value={brand.logo_url || ''}
-                      onChange={(url) => handleUpdate(brand.id, { logo_url: url })}
-                    />
-                  </div>
-                  <Input
-                    value={brand.name}
-                    onChange={(e) => handleUpdate(brand.id, { name: e.target.value })}
-                    placeholder="Nombre de la marca"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
-                  />
-                  <Input
-                    value={brand.url || ''}
-                    onChange={(e) => handleUpdate(brand.id, { url: e.target.value })}
-                    placeholder="URL (opcional) ej: https://marca.com"
-                    className="h-7 text-[11px] bg-white dark:bg-white/5 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white"
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          Sin marcas. Agrega logos de tus marcas asociadas.
-        </p>
-      )}
-
-      <ImagePickerDialog
-        open={showPicker}
-        onOpenChange={setShowPicker}
-        onSelect={handleAddLogo}
-        title="Agregar logo de marca"
-      />
-    </div>
-  );
-}
-
-// ============================================================
-// SECTION SPACING EDITOR (padding & margin for all sections)
-// ============================================================
-
-const SPACING_OPTIONS = [
-  { value: 'none', label: 'Ninguno' },
-  { value: 'xs', label: 'Muy poco' },
-  { value: 'sm', label: 'Pequeño' },
-  { value: 'md', label: 'Mediano' },
-  { value: 'lg', label: 'Grande' },
-  { value: 'xl', label: 'Muy grande' },
-];
-
-function SectionSpacingEditor({
-  paddingTop,
-  paddingBottom,
-  paddingX,
-  marginTop,
-  marginBottom,
-  onChange,
-}: {
-  paddingTop: string;
-  paddingBottom: string;
-  paddingX: string;
-  marginTop: string;
-  marginBottom: string;
-  onChange: (key: string, value: string) => void;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="pt-2 border-t border-gray-200 dark:border-gray-700/50">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 w-full text-left"
-      >
-        <Layout className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex-1">Espaciado</span>
-        {isOpen ? (
-          <ChevronUp className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-        ) : (
-          <ChevronDown className="h-3 w-3 text-gray-400 dark:text-gray-500" />
-        )}
-      </button>
-
-      {isOpen && (
-        <div className="space-y-2 mt-2">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Padding arriba</label>
-              <Select value={paddingTop} onValueChange={(v) => onChange('padding_top', v)}>
-                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SPACING_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Padding abajo</label>
-              <Select value={paddingBottom} onValueChange={(v) => onChange('padding_bottom', v)}>
-                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SPACING_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Padding horizontal</label>
-            <Select value={paddingX} onValueChange={(v) => onChange('padding_x', v)}>
-              <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {SPACING_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Margen arriba</label>
-              <Select value={marginTop} onValueChange={(v) => onChange('margin_top', v)}>
-                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SPACING_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-[9px] text-gray-400 block mb-0.5 dark:text-gray-500">Margen abajo</label>
-              <Select value={marginBottom} onValueChange={(v) => onChange('margin_bottom', v)}>
-                <SelectTrigger className="h-6 text-[10px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SPACING_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value} className="text-[11px]">{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
       )}

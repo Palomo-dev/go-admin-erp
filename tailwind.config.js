@@ -35,6 +35,8 @@ module.exports = {
         'slide-up': 'slideUp 0.3s ease-out',
         'pop-in': 'scaleGlow 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)',
         'draw-check': 'drawCheck 0.5s 0.4s ease-out forwards',
+        'accordion-down': 'accordionDown 0.2s ease-out',
+        'accordion-up': 'accordionUp 0.2s ease-out',
       },
       keyframes: {
         slideInRight: {
@@ -63,6 +65,14 @@ module.exports = {
         drawCheck: {
           '0%': { strokeDashoffset: '60' },
           '100%': { strokeDashoffset: '0' },
+        },
+        accordionDown: {
+          from: { height: '0', opacity: '0' },
+          to: { height: 'var(--radix-accordion-content-height)', opacity: '1' },
+        },
+        accordionUp: {
+          from: { height: 'var(--radix-accordion-content-height)', opacity: '1' },
+          to: { height: '0', opacity: '0' },
         },
       },
     },

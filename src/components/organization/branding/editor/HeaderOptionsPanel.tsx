@@ -40,8 +40,26 @@ interface HeaderOptionsPanelProps {
     // Menús nombrados (Fase 2 footer/header)
     header_menu_id?: string | null;
     header_mega_menu_id?: string | null;
+    // Fase 12: Minimal drawer + iconos + CTA personalizable
+    minimal_menu_style?: string;
+    cart_icon?: string | null;
+    search_icon?: string | null;
+    auth_icon?: string | null;
+    currency_icon?: string | null;
+    actions_order?: string[] | null;
+    cta_padding_x?: number;
+    cta_padding_y?: number;
+    cta_border_radius?: number;
+    cta_full_width?: boolean;
+    cta_border_width?: number;
+    cta_border_color?: string | null;
+    cta_shadow?: string;
+    cta_bg_color?: string | null;
+    cta_text_color?: string | null;
+    cta_margin_top?: number;
+    cta_margin_bottom?: number;
   };
-  onUpdate: (updates: Record<string, string | number | boolean | null>) => void;
+  onUpdate: (updates: Record<string, string | number | boolean | null | string[]>) => void;
   availableMenus?: { id: string; name: string }[];
 }
 
@@ -513,6 +531,349 @@ export default function HeaderOptionsPanel({
           </div>
         </div>
       </div>
+
+      {/* ============================================================
+          FASE 12: HEADER MINIMAL DRAWER + ICONOS + CTA
+          ============================================================ */}
+      <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
+        <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+          Personalización Avanzada
+        </h4>
+
+        {/* Sub-Fase 12A: Minimal menu style */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium dark:text-gray-200">
+            Apertura del menú (Header Minimal)
+          </Label>
+          <Select
+            value={settings.minimal_menu_style ?? 'drawer'}
+            onValueChange={(v) => onUpdate({ minimal_menu_style: v })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="drawer">Drawer lateral (default)</SelectItem>
+              <SelectItem value="dropdown">Dropdown compacto</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Solo aplica cuando el estilo del header es "Minimal".
+          </p>
+        </div>
+
+        {/* Sub-Fase 12B: Iconos y orden de acciones */}
+        <div className="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+          <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+            Iconos y Orden de Acciones
+          </h5>
+
+          {/* Icono del carrito */}
+          <div className="space-y-1">
+            <Label className="text-xs font-medium dark:text-gray-200">Icono del carrito</Label>
+            <Select
+              value={settings.cart_icon ?? 'shopping-bag'}
+              onValueChange={(v) => onUpdate({ cart_icon: v })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="shopping-bag">Shopping Bag</SelectItem>
+                <SelectItem value="shopping-cart">Shopping Cart</SelectItem>
+                <SelectItem value="package">Package</SelectItem>
+                <SelectItem value="gift">Gift</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Icono del buscador */}
+          <div className="space-y-1">
+            <Label className="text-xs font-medium dark:text-gray-200">Icono del buscador</Label>
+            <Select
+              value={settings.search_icon ?? 'search'}
+              onValueChange={(v) => onUpdate({ search_icon: v })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="search">Search</SelectItem>
+                <SelectItem value="search-lg">Search Large</SelectItem>
+                <SelectItem value="scan-search">Scan Search</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Icono del avatar/auth */}
+          <div className="space-y-1">
+            <Label className="text-xs font-medium dark:text-gray-200">Icono de usuario/auth</Label>
+            <Select
+              value={settings.auth_icon ?? 'user'}
+              onValueChange={(v) => onUpdate({ auth_icon: v })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="user-circle">User Circle</SelectItem>
+                <SelectItem value="user-round">User Round</SelectItem>
+                <SelectItem value="circle-user">Circle User</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Icono de monedas */}
+          <div className="space-y-1">
+            <Label className="text-xs font-medium dark:text-gray-200">Icono de moneda</Label>
+            <Select
+              value={settings.currency_icon ?? 'globe'}
+              onValueChange={(v) => onUpdate({ currency_icon: v })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="globe">Globe</SelectItem>
+                <SelectItem value="coins">Coins</SelectItem>
+                <SelectItem value="wallet">Wallet</SelectItem>
+                <SelectItem value="banknote">Banknote</SelectItem>
+                <SelectItem value="dollar-sign">Dollar Sign</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Orden de acciones */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Orden de las acciones
+            </Label>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Arrastra para reordenar. El orden afecta todos los headers.
+            </p>
+            <ActionsOrderEditor
+              order={settings.actions_order ?? ['search', 'currency', 'cart', 'auth']}
+              onChange={(order) => onUpdate({ actions_order: order })}
+            />
+          </div>
+        </div>
+
+        {/* Sub-Fase 12C: Personalización del botón CTA */}
+        <div className="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+          <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+            Personalización del Botón CTA
+          </h5>
+
+          {/* Full width */}
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Ancho completo del header
+            </Label>
+            <Switch
+              checked={settings.cta_full_width ?? false}
+              onCheckedChange={(v) => onUpdate({ cta_full_width: v })}
+            />
+          </div>
+
+          {/* Padding X */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Padding horizontal: {settings.cta_padding_x ?? 16}px
+            </Label>
+            <Slider
+              min={0} max={48} step={1}
+              value={[settings.cta_padding_x ?? 16]}
+              onValueChange={(v) => onUpdate({ cta_padding_x: v[0] })}
+            />
+          </div>
+
+          {/* Padding Y */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Padding vertical: {settings.cta_padding_y ?? 8}px
+            </Label>
+            <Slider
+              min={0} max={32} step={1}
+              value={[settings.cta_padding_y ?? 8]}
+              onValueChange={(v) => onUpdate({ cta_padding_y: v[0] })}
+            />
+          </div>
+
+          {/* Border radius */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Radio del borde: {settings.cta_border_radius ?? 8}px
+            </Label>
+            <Slider
+              min={0} max={32} step={1}
+              value={[settings.cta_border_radius ?? 8]}
+              onValueChange={(v) => onUpdate({ cta_border_radius: v[0] })}
+            />
+          </div>
+
+          {/* Border width */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Ancho del borde: {settings.cta_border_width ?? 0}px
+            </Label>
+            <Slider
+              min={0} max={8} step={1}
+              value={[settings.cta_border_width ?? 0]}
+              onValueChange={(v) => onUpdate({ cta_border_width: v[0] })}
+            />
+          </div>
+
+          {/* Margin top */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Margen superior: {settings.cta_margin_top ?? 0}px
+            </Label>
+            <Slider
+              min={0} max={24} step={1}
+              value={[settings.cta_margin_top ?? 0]}
+              onValueChange={(v) => onUpdate({ cta_margin_top: v[0] })}
+            />
+          </div>
+
+          {/* Margin bottom */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Margen inferior: {settings.cta_margin_bottom ?? 0}px
+            </Label>
+            <Slider
+              min={0} max={24} step={1}
+              value={[settings.cta_margin_bottom ?? 0]}
+              onValueChange={(v) => onUpdate({ cta_margin_bottom: v[0] })}
+            />
+          </div>
+
+          {/* Sombra */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">Sombra</Label>
+            <Select
+              value={settings.cta_shadow ?? 'none'}
+              onValueChange={(v) => onUpdate({ cta_shadow: v })}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin sombra</SelectItem>
+                <SelectItem value="sm">Sutil</SelectItem>
+                <SelectItem value="md">Media</SelectItem>
+                <SelectItem value="lg">Fuerte</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Color de fondo del CTA */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Color de fondo (vacío = color primario)
+            </Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={settings.cta_bg_color ?? '#3b82f6'}
+                onChange={(e) => onUpdate({ cta_bg_color: e.target.value })}
+                className="h-8 w-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer bg-transparent"
+              />
+              <Input
+                type="text"
+                className="h-8 text-xs flex-1"
+                placeholder="Vacío = color primario"
+                value={settings.cta_bg_color ?? ''}
+                onChange={(e) => onUpdate({ cta_bg_color: e.target.value || null })}
+              />
+              {settings.cta_bg_color && (
+                <button
+                  onClick={() => onUpdate({ cta_bg_color: null })}
+                  className="text-xs text-gray-500 hover:text-red-500 px-2"
+                  title="Quitar color (usa primario)"
+                >✕</button>
+              )}
+            </div>
+          </div>
+
+          {/* Color de texto del CTA */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Color de texto (vacío = auto)
+            </Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={settings.cta_text_color ?? '#ffffff'}
+                onChange={(e) => onUpdate({ cta_text_color: e.target.value })}
+                className="h-8 w-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer bg-transparent"
+              />
+              <Input
+                type="text"
+                className="h-8 text-xs flex-1"
+                placeholder="Vacío = auto (blanco/negro)"
+                value={settings.cta_text_color ?? ''}
+                onChange={(e) => onUpdate({ cta_text_color: e.target.value || null })}
+              />
+              {settings.cta_text_color && (
+                <button
+                  onClick={() => onUpdate({ cta_text_color: null })}
+                  className="text-xs text-gray-500 hover:text-red-500 px-2"
+                  title="Quitar color (auto)"
+                >✕</button>
+              )}
+            </div>
+          </div>
+
+          {/* Color de borde del CTA */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Color del borde (vacío = sin color)
+            </Label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={settings.cta_border_color ?? '#cccccc'}
+                onChange={(e) => onUpdate({ cta_border_color: e.target.value })}
+                className="h-8 w-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer bg-transparent"
+              />
+              <Input
+                type="text"
+                className="h-8 text-xs flex-1"
+                placeholder="Vacío = sin color de borde"
+                value={settings.cta_border_color ?? ''}
+                onChange={(e) => onUpdate({ cta_border_color: e.target.value || null })}
+              />
+              {settings.cta_border_color && (
+                <button
+                  onClick={() => onUpdate({ cta_border_color: null })}
+                  className="text-xs text-gray-500 hover:text-red-500 px-2"
+                  title="Quitar color"
+                >✕</button>
+              )}
+            </div>
+          </div>
+
+          {/* Preview en vivo del botón CTA */}
+          {settings.header_cta_text && (
+            <div className="pt-2">
+              <Label className="text-xs font-medium dark:text-gray-200 mb-1.5 block">Preview</Label>
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-800/50">
+                <button
+                  className="font-semibold text-sm transition-opacity hover:opacity-90"
+                  style={{
+                    padding: `${settings.cta_padding_y ?? 8}px ${settings.cta_padding_x ?? 16}px`,
+                    borderRadius: `${settings.cta_border_radius ?? 8}px`,
+                    borderWidth: `${settings.cta_border_width ?? 0}px`,
+                    borderColor: settings.cta_border_color ?? 'transparent',
+                    borderStyle: 'solid',
+                    backgroundColor: settings.cta_bg_color ?? '#3b82f6',
+                    color: settings.cta_text_color ?? '#ffffff',
+                    marginTop: `${settings.cta_margin_top ?? 0}px`,
+                    marginBottom: `${settings.cta_margin_bottom ?? 0}px`,
+                    boxShadow: settings.cta_shadow === 'sm' ? '0 1px 2px rgba(0,0,0,0.1)' :
+                               settings.cta_shadow === 'md' ? '0 4px 6px rgba(0,0,0,0.15)' :
+                               settings.cta_shadow === 'lg' ? '0 10px 15px rgba(0,0,0,0.2)' : 'none',
+                    width: settings.cta_full_width ? '100%' : 'auto',
+                  }}
+                >
+                  {settings.header_cta_text}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -539,4 +900,62 @@ function parseAnnouncements(raw: string | null | undefined): string[] {
 
 function serializeAnnouncements(list: string[]): string {
   return JSON.stringify(list.filter((s) => s.trim() !== ''));
+}
+
+// ============================================================
+// ActionsOrderEditor: reordenar las acciones del header
+// ============================================================
+
+const ACTION_LABELS: Record<string, string> = {
+  search: 'Buscador',
+  currency: 'Moneda',
+  cart: 'Carrito',
+  auth: 'Usuario',
+};
+
+function ActionsOrderEditor({
+  order,
+  onChange,
+}: {
+  order: string[];
+  onChange: (order: string[]) => void;
+}) {
+  const moveUp = (index: number) => {
+    if (index === 0) return;
+    const next = [...order];
+    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+    onChange(next);
+  };
+  const moveDown = (index: number) => {
+    if (index === order.length - 1) return;
+    const next = [...order];
+    [next[index], next[index + 1]] = [next[index + 1], next[index]];
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-1">
+      {order.map((action, i) => (
+        <div
+          key={action}
+          className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 px-2 py-1.5"
+        >
+          <GripVertical className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0" />
+          <span className="text-xs flex-1 dark:text-gray-200">{ACTION_LABELS[action] ?? action}</span>
+          <button
+            onClick={() => moveUp(i)}
+            disabled={i === 0}
+            className="text-[10px] text-gray-500 hover:text-blue-600 disabled:opacity-30 px-1"
+            title="Subir"
+          >▲</button>
+          <button
+            onClick={() => moveDown(i)}
+            disabled={i === order.length - 1}
+            className="text-[10px] text-gray-500 hover:text-blue-600 disabled:opacity-30 px-1"
+            title="Bajar"
+          >▼</button>
+        </div>
+      ))}
+    </div>
+  );
 }

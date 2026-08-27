@@ -1540,3 +1540,124 @@ En cada breakpoint verificar:
 3. **Lint cleanup** (prioridad baja): Cientos de `no-explicit-any` pre-existentes en el ERP. No bloquean pero afectan calidad.
 4. **Accesibilidad** (prioridad media): Verificar WCAG 2.1 AA en todos los componentes (focus management en dropdowns, ARIA labels en accordions móviles).
 5. **Performance monitoring** (prioridad baja): Agregar Lighthouse CI al pipeline para medir First Load JS del header en cada variante.
+
+---
+
+## Fase 12 — Header Minimal Drawer + Personalización Avanzada de Acciones y CTA
+
+**Fecha:** 2026-08-27
+**Módulos implicados:** `app-organ` (branding) + repositorio `goadmin-websites`
+**Supabase project ID:** `jgmgphmzusbluqhuqihj`
+
+### Objetivo
+
+1. **HeaderMinimal**: cambiar el default de apertura de navegación a **drawer** (el mismo drawer que usa la versión móvil de Classic/otros headers), con opción de elegir **dropdown** desde el editor. Default = drawer.
+2. **Personalización de iconos**: permitir elegir icono para carrito, buscador, avatar/usuario, y monedas. También la **ubicación** (orden) de cada uno dentro del grupo de acciones.
+3. **Personalización del botón CTA**: permitir configurar padding, margin, ancho (full-width del header o auto), border, border-radius, sombra.
+
+---
+
+### Sub-Fase 12A — HeaderMinimal Drawer Default
+
+#### BD (`website_settings`)
+- Nueva columna: `minimal_menu_style` TEXT DEFAULT `'drawer'` — valores: `'drawer'` | `'dropdown'`
+  - `drawer` = abre el mismo drawer lateral que usa el móvil (componente `MobileDrawer` adaptado a desktop)
+  - `dropdown` = abre el dropdown actual (comportamiento existente)
+
+#### ERP (editor)
+- `HeaderOptionsPanel.tsx`: agregar select "Estilo de apertura del menú (Minimal)" visible solo cuando `header_style === 'minimal'`
+- Opciones: "Drawer lateral" (default) | "Dropdown compacto"
+
+#### Sitio público (`goadmin-websites`)
+- `HeaderMinimal.tsx`:
+  - Si `minimal_menu_style === 'drawer'`: renderizar un drawer lateral fijo a la derecha (igual que `MobileDrawer` pero sin `md:hidden`)
+  - Si `minimal_menu_style === 'dropdown'`: mantener el dropdown actual
+- El drawer de desktop debe ser el mismo componente `MobileDrawer` reutilizado, o un `DesktopDrawer` nuevo que reutilice `DrawerNavItem`
+
+---
+
+### Sub-Fase 12B — Personalización de Iconos y Orden de Acciones
+
+#### BD (`website_settings`)
+Nuevas columnas:
+- `cart_icon` TEXT DEFAULT `'shopping-bag'` — nombre del icono Lucide
+- `search_icon` TEXT DEFAULT `'search'` — nombre del icono Lucide
+- `auth_icon` TEXT DEFAULT `'user'` — nombre del icono Lucide
+- `currency_icon` TEXT DEFAULT `'globe'` — nombre del icono Lucide
+- `actions_order` JSONB DEFAULT `'["search","currency","cart","auth"]'` — orden de los elementos
+
+#### ERP (editor)
+- `HeaderOptionsPanel.tsx`: nueva sección "Iconos y Acciones"
+  - 4 selects de icono (carrito, buscador, avatar, monedas) con preview visual
+  - Drag-and-drop o selects de orden para reordenar los 4 elementos
+- Lista de iconos Lucide disponibles: `ShoppingBag`, `ShoppingCart`, `Search`, `User`, `UserCircle`, `Globe`, `Coins`, `Wallet`, etc.
+
+#### Sitio público (`goadmin-websites`)
+- `HeaderShared.tsx` → `HeaderActions`:
+  - Renderizar iconos dinámicamente desde settings (mapear nombre → componente Lucide)
+  - Renderizar en el orden definido por `actions_order`
+- Crear helper `getLucideIcon(name: string)` que mapee strings a componentes
+
+---
+
+### Sub-Fase 12C — Personalización del Botón CTA
+
+#### BD (`website_settings`)
+Nuevas columnas:
+- `cta_padding_x` INTEGER DEFAULT `16` — padding horizontal en px
+- `cta_padding_y` INTEGER DEFAULT `8` — padding vertical en px
+- `cta_border_radius` INTEGER DEFAULT `8` — radio del borde en px
+- `cta_full_width` BOOLEAN DEFAULT `false` — si true, ocupa todo el ancho disponible del header
+- `cta_border_width` INTEGER DEFAULT `0` — ancho del border en px
+- `cta_border_color` TEXT DEFAULT `null` — color del border (hex)
+- `cta_shadow` TEXT DEFAULT `'none'` — valores: `'none'` | `'sm'` | `'md'` | `'lg'`
+- `cta_bg_color` TEXT DEFAULT `null` — color de fondo (null = usa primary_color)
+- `cta_text_color` TEXT DEFAULT `null` — color de texto (null = blanco/auto)
+- `cta_margin_top` INTEGER DEFAULT `0` — margen superior en px
+- `cta_margin_bottom` INTEGER DEFAULT `0` — margen inferior en px
+
+#### ERP (editor)
+- `HeaderOptionsPanel.tsx`: nueva sección "Personalización del Botón CTA"
+  - Sliders para padding X/Y, border-radius, border-width, margins
+  - Color pickers para bg, text, border
+  - Select para sombra (none/sm/md/lg)
+  - Switch para full-width
+  - Preview en vivo del botón
+
+#### Sitio público (`goadmin-websites`)
+- `HeaderShared.tsx` → `HeaderCTA`:
+  - Aplicar estilos inline desde settings (padding, border-radius, border, shadow, colors, margins)
+  - Si `cta_full_width`: agregar clase `w-full` y quitar `hidden md:inline-flex`
+
+---
+
+### Migración SQL
+
+```sql
+-- Fase 12: Header Minimal drawer + personalización de iconos y CTA
+ALTER TABLE website_settings
+  ADD COLUMN IF NOT EXISTS minimal_menu_style TEXT DEFAULT 'drawer',
+  ADD COLUMN IF NOT EXISTS cart_icon TEXT DEFAULT 'shopping-bag',
+  ADD COLUMN IF NOT EXISTS search_icon TEXT DEFAULT 'search',
+  ADD COLUMN IF NOT EXISTS auth_icon TEXT DEFAULT 'user',
+  ADD COLUMN IF NOT EXISTS currency_icon TEXT DEFAULT 'globe',
+  ADD COLUMN IF NOT EXISTS actions_order JSONB DEFAULT '["search","currency","cart","auth"]',
+  ADD COLUMN IF NOT EXISTS cta_padding_x INTEGER DEFAULT 16,
+  ADD COLUMN IF NOT EXISTS cta_padding_y INTEGER DEFAULT 8,
+  ADD COLUMN IF NOT EXISTS cta_border_radius INTEGER DEFAULT 8,
+  ADD COLUMN IF NOT EXISTS cta_full_width BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS cta_border_width INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cta_border_color TEXT,
+  ADD COLUMN IF NOT EXISTS cta_shadow TEXT DEFAULT 'none',
+  ADD COLUMN IF NOT EXISTS cta_bg_color TEXT,
+  ADD COLUMN IF NOT EXISTS cta_text_color TEXT,
+  ADD COLUMN IF NOT EXISTS cta_margin_top INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cta_margin_bottom INTEGER DEFAULT 0;
+```
+
+### Backward Compatibility
+- Todos los defaults replican el comportamiento actual
+- `minimal_menu_style='drawer'` es nuevo default pero HeaderMinimal sigue funcionando con dropdown si el usuario lo selecciona
+- `actions_order` default mantiene el orden actual: search → currency → cart → auth
+- CTA defaults mantienen el look actual (padding 16/8, radius 8, sin border, sin shadow)
+- Sitios existentes sin las nuevas columnas usan los defaults de forma transparente

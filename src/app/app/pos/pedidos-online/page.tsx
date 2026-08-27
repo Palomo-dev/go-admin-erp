@@ -50,6 +50,7 @@ import {
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
 import { WebOrderFilters } from '@/components/pos/pedidos-online/WebOrderFilters';
 import { WebOrderStats } from '@/components/pos/pedidos-online/WebOrderStats';
+import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
 import { PaymentStatusBadge } from '@/components/pos/pedidos-online/PaymentStatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -662,6 +663,9 @@ export default function PedidosOnlinePage() {
 
       {/* Estadísticas */}
       <WebOrderStats stats={stats} previousStats={previousStats} isLoading={loading} datePreset={datePreset} />
+
+      {/* Observabilidad de comercio: stock reservado vs disponible + pedidos próximos a expirar */}
+      <WebCommerceObservability withinMinutes={30} />
 
       {/* Filtro de fechas */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

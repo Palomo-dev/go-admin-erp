@@ -43,6 +43,84 @@ function getServiceRoleClient(): SupabaseClient {
 
 export const webOrderServerConfirmation = {
   /**
+   * Busca o crea un cliente en `customers` a partir del email/teléfono del
+   * pedido web, para que la venta entre en cartera (accounts_receivable) y en
+   * el CRM aunque el checkout no haya traído `customer_id`.
+   *
+   * Mismo patrón que usa `/api/restaurant-reservations` (reservas de mesa).
+   * Respeta Habeas Data: el cliente web ya consintió al hacer el pedido.
+   *
+   * @returns id del customer (existente o recién creado) o null si no hay email.
+   */
+  async findOrCreateCustomerFromOrder(
+    supabase: SupabaseClient,
+    order: WebOrder & { items?: WebOrder['items'] }
+  ): Promise<string | null> {
+    // Si ya viene customer_id, no hacer nada
+    if (order.customer_id) return order.customer_id;
+
+    const email = (order.customer_email || '').trim().toLowerCase();
+    const phone = (order.customer_phone || '').trim() || null;
+    const name = (order.customer_name || '').trim() || 'Cliente web';
+
+    // Sin email no podemos vincular de forma fiable (el phone puede repetirse)
+    if (!email) return null;
+
+    // 1. Buscar cliente existente por email dentro de la organización
+    const { data: existing, error: searchError } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('organization_id', order.organization_id)
+      .ilike('email', email)
+      .limit(1)
+      .maybeSingle();
+
+    if (searchError) {
+      console.error('[webOrderServerConfirmation] Error buscando cliente por email:', searchError);
+      return null;
+    }
+
+    if (existing?.id) {
+      // Vincular el pedido al cliente encontrado
+      await supabase
+        .from('web_orders')
+        .update({ customer_id: existing.id })
+        .eq('id', order.id);
+      return existing.id;
+    }
+
+    // 2. Crear cliente nuevo
+    const { data: newCustomer, error: createError } = await supabase
+      .from('customers')
+      .insert({
+        organization_id: order.organization_id,
+        branch_id: order.branch_id || null,
+        first_name: name,
+        full_name: name,
+        email,
+        phone,
+        is_registered: false,
+        roles: ['cliente'],
+        metadata: { source: 'web_order', web_order_number: order.order_number },
+      })
+      .select('id')
+      .single();
+
+    if (createError || !newCustomer) {
+      console.error('[webOrderServerConfirmation] Error creando cliente web:', createError);
+      return null;
+    }
+
+    // Vincular el pedido al nuevo cliente
+    await supabase
+      .from('web_orders')
+      .update({ customer_id: newCustomer.id })
+      .eq('id', order.id);
+
+    return newCustomer.id;
+  },
+
+  /**
    * Auto-confirma un pedido web que ya fue pagado.
    * Idempotente: si el pedido ya tiene sale_id, no hace nada.
    *
@@ -90,13 +168,30 @@ export const webOrderServerConfirmation = {
     const now = new Date().toISOString();
     const stockErrors: string[] = [];
 
+    // ── 0. Cliente automático: buscar/crear customer por email ──
+    // Si el pedido no trae customer_id, intentamos vincularlo a un cliente
+    // existente (por email) o crear uno nuevo, para que la venta entre en
+    // cartera (accounts_receivable) y en el CRM. (F11.6)
+    let customerId = order.customer_id || null;
+    if (!customerId) {
+      try {
+        customerId = await this.findOrCreateCustomerFromOrder(supabase, order);
+        if (customerId) {
+          // Actualizar la referencia local para el resto del flujo
+          (order as { customer_id?: string | null }).customer_id = customerId;
+        }
+      } catch (custError) {
+        console.error('[webOrderServerConfirmation] Error en cliente automático:', custError);
+      }
+    }
+
     // ── 1. Crear sale (venta POS) ──
     const { data: sale, error: saleError } = await supabase
       .from('sales')
       .insert({
         organization_id: order.organization_id,
         branch_id: order.branch_id,
-        customer_id: order.customer_id || null,
+        customer_id: customerId,
         user_id: order.confirmed_by || null,
         sale_date: now,
         total: Number(order.total) || 0,
@@ -128,7 +223,7 @@ export const webOrderServerConfirmation = {
       notes: {
         product_name: item.product_name,
         from_web_order: order.order_number,
-        ...(item.modifiers?.length > 0 ? { modifiers: item.modifiers } : {}),
+        ...((item.modifiers?.length ?? 0) > 0 ? { modifiers: item.modifiers } : {}),
         ...(item.notes ? { customer_notes: item.notes } : {}),
       },
     }));
@@ -202,7 +297,7 @@ export const webOrderServerConfirmation = {
         .insert({
           organization_id: order.organization_id,
           branch_id: order.branch_id,
-          customer_id: order.customer_id || null,
+          customer_id: customerId,
           sale_id: saleId,
           number: invoiceNumber,
           issue_date: now,
@@ -309,7 +404,7 @@ export const webOrderServerConfirmation = {
     // ── 7. Crear cuenta por cobrar (si hay customer_id) ──
     let accountReceivableId: string | undefined;
 
-    if (order.customer_id && invoiceId) {
+    if (customerId && invoiceId) {
       try {
         // Verificar si ya existe
         const { data: existingAR } = await supabase
@@ -325,7 +420,7 @@ export const webOrderServerConfirmation = {
             .from('accounts_receivable')
             .insert({
               organization_id: order.organization_id,
-              customer_id: order.customer_id,
+              customer_id: customerId,
               sale_id: saleId,
               amount: Number(order.total) || 0,
               balance: 0,
@@ -374,7 +469,7 @@ export const webOrderServerConfirmation = {
               source_id: order.id,
               shipment_number: `DEL-${order.order_number}`,
               tracking_number: trackingNumber,
-              customer_id: order.customer_id || null,
+              customer_id: customerId,
               delivery_address: (addr.address || addr.street || '') as string,
               delivery_city: (addr.city || '') as string,
               delivery_department: (addr.department || addr.state || addr.neighborhood || '') as string,

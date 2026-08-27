@@ -32,6 +32,10 @@
     {
       "path": "/api/integrations/qr/expire-sessions",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/expire-pending-web-orders",
+      "schedule": "*/15 * * * *"
     }
   ],
   "headers": [

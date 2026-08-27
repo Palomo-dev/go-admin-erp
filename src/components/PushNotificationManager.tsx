@@ -13,7 +13,8 @@ import { saveWebPushSubscription, removeWebPushSubscription } from '@/lib/servic
  * - No muestra UI; es silencioso
  */
 export function PushNotificationManager() {
-  const { user } = useSession();
+  const { session } = useSession();
+  const user = session?.user;
   const { isSupported, permission, isSubscribed, subscription, requestPermission, subscribe, unsubscribe } = usePushNotifications();
   const [saved, setSaved] = useState(false);
 

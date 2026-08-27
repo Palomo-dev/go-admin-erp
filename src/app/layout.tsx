@@ -9,6 +9,7 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { SentryErrorBoundary } from '@/components/SentryErrorBoundary';
 import { SentryMobileInit } from '@/components/SentryMobileInit';
 import { PWARegister } from '@/components/PWARegister';
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -59,6 +60,7 @@ export default function RootLayout({
           <SentryErrorBoundary>
             <SentryMobileInit />
             <PWARegister />
+            <PWAInstallPrompt />
             <I18nProvider>
               <SessionProvider>
                 <LanguageSync />

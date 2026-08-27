@@ -541,11 +541,14 @@ export class CajasService {
       if (allPaymentsError) throw allPaymentsError;
 
       const EXPENSE_SOURCES = ['invoice_purchase', 'account_payable'];
+      // Sources que corresponden a ventas (POS, mesa o factura de venta)
+      const SALES_SOURCES = ['invoice_sales', 'sale'];
 
       const incomeByMethod: Record<string, number> = {};
       const expenseByMethod: Record<string, number> = {};
       const cashReceiptsByMethod: Record<string, number> = {};
       const purchasesByMethod: Record<string, number> = {};
+      const salesByMethod: Record<string, number> = {};
       (allPayments || []).forEach(p => {
         const method = p.method || 'other';
         if (EXPENSE_SOURCES.includes(p.source)) {
@@ -557,7 +560,17 @@ export class CajasService {
         if (p.source === AR_SOURCE) {
           cashReceiptsByMethod[method] = (cashReceiptsByMethod[method] || 0) + Number(p.amount);
         }
+        // Ventas (POS/mesa/factura) agrupadas por método, sin abonos ni compras
+        if (SALES_SOURCES.includes(p.source)) {
+          salesByMethod[method] = (salesByMethod[method] || 0) + Number(p.amount);
+        }
       });
+
+      // Total de ventas (todos los métodos) restando el vuelto entregado en efectivo
+      const salesTotal = Object.entries(salesByMethod).reduce(
+        (sum, [, amount]) => sum + amount,
+        0,
+      ) - changeTotal;
 
       return {
         initial_amount: Number(session.initial_amount),
@@ -577,6 +590,8 @@ export class CajasService {
         payments_by_method: incomeByMethod,
         income_by_method: incomeByMethod,
         expense_by_method: expenseByMethod,
+        sales_total: salesTotal,
+        sales_by_method: salesByMethod,
       };
     } catch (error) {
       console.error('Error calculating cash summary:', error);

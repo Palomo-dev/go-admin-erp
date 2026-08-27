@@ -104,6 +104,10 @@ export interface CashSummary {
   payments_by_method?: Record<string, number>;
   income_by_method?: Record<string, number>;
   expense_by_method?: Record<string, number>;
+  /** Total de ventas (todos los métodos de pago, sin abonos ni compras) */
+  sales_total?: number;
+  /** Ventas desglosadas por método de pago (solo ventas, sin abonos ni compras) */
+  sales_by_method?: Record<string, number>;
 }
 
 // Detalle de un movimiento pagado durante la sesion de caja

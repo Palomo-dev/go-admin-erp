@@ -155,9 +155,22 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                   <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm dark:text-gray-300 text-gray-600">Ventas</p>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">Ventas en efectivo</p>
                   <p className="font-bold text-green-600 dark:text-green-400">
                     {formatCurrency(summary.sales_cash)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Ventas totales (todos los métodos) */}
+              <div className="flex items-center space-x-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                <div className="flex-shrink-0 p-2 bg-emerald-100 dark:bg-emerald-800 rounded-full">
+                  <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-sm dark:text-gray-300 text-gray-600">Ventas totales</p>
+                  <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(summary.sales_total ?? summary.sales_cash)}
                   </p>
                 </div>
               </div>
@@ -270,6 +283,38 @@ export function CashSummaryCard({ session, refreshTrigger }: CashSummaryCardProp
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Desglose de VENTAS por método de pago (solo ventas, sin abonos ni compras) */}
+            {summary.sales_by_method && Object.keys(summary.sales_by_method).length > 0 && (
+              <>
+                <Separator className="dark:bg-gray-700 bg-gray-200" />
+                <div>
+                  <p className="text-sm font-medium dark:text-gray-200 text-gray-700 mb-2">
+                    Ventas por método:
+                  </p>
+                  <div className="space-y-1.5">
+                    {Object.entries(summary.sales_by_method).map(([method, amount]) => {
+                      return (
+                        <div key={method} className="flex justify-between items-center text-sm">
+                          <span className="dark:text-gray-400 text-gray-600">
+                            {getPaymentMethodLabel(method)}
+                          </span>
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(method === 'cash' ? amount - (summary.change_total || 0) : amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <div className="flex justify-between items-center text-sm pt-1.5 border-t dark:border-gray-700 border-gray-200">
+                      <span className="font-medium dark:text-gray-200 text-gray-700">Total ventas:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(summary.sales_total ?? 0)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </>

@@ -50,9 +50,8 @@
     "@radix-ui/react-toast": "^1.2.14",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@radix-ui/react-visually-hidden": "^1.2.4",
-    "@sentry/capacitor": "^4.3.0",
-    "@sentry/nextjs": "^10.69.0",
-    "@sentry/react": "^10.69.0",
+    "@sentry/nextjs": "10.69.0",
+    "@sentry/react": "10.69.0",
     "@shadcn/ui": "^0.0.4",
     "@stripe/react-stripe-js": "^5.2.0",
     "@stripe/stripe-js": "^8.0.0",
@@ -130,6 +129,7 @@
     "node": "^18.18.0 || ^19.8.0 || >= 20.0.0"
   },
   "optionalDependencies": {
-    "@next/swc-win32-x64-msvc": "15.5.11"
+    "@next/swc-win32-x64-msvc": "15.5.11",
+    "@sentry/capacitor": "4.3.0"
   }
 }

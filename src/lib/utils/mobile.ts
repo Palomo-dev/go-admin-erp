@@ -221,7 +221,16 @@ export interface MobileCapacitorBridge {
  * Seguro en SSR: devuelve false en el servidor.
  */
 export function isMobile(): boolean {
-  return typeof window !== 'undefined' && 'Capacitor' in window;
+  if (typeof window === 'undefined' || !('Capacitor' in window)) return false;
+  // Capacitor también se carga en web (platform='web'), pero solo es
+  // app móvil nativa cuando platform es 'ios' o 'android'.
+  try {
+    const bridge = (window as unknown as { Capacitor?: MobileCapacitorBridge }).Capacitor;
+    const platform = bridge?.getPlatform?.();
+    return platform === 'ios' || platform === 'android';
+  } catch {
+    return false;
+  }
 }
 
 /**

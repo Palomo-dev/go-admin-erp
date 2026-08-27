@@ -10,11 +10,15 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   // Limitar workers de webpack para evitar OOM en Vercel (8GB RAM).
-  // Sin esto, Next.js usa hasta 4 workers × 4GB = 16GB > 8GB disponible.
+  // cpus: 1 = solo 1 worker de webpack (en vez de 4 por defecto).
+  // workerThreads: false = usar proceso hijo en vez de thread (menos memoria).
+  // Con 1 worker × 4GB + 2GB main = 6GB, cabe en 8GB de Vercel.
   experimental: {
     workerThreads: false,
-    cpus: 2,
+    cpus: 1,
   },
+  // Desactivar source maps en build para reducir memoria
+  productionBrowserSourceMaps: false,
   // Permitir que Evolution API (en Docker) envie webhooks al ERP local
   allowedDevOrigins: ['http://host.docker.internal:61592', 'http://localhost:8080'],
   images: {

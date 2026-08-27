@@ -9,6 +9,12 @@ const nextConfig = {
     // Permite que el build en producción complete aunque haya errores de TypeScript
     ignoreBuildErrors: true,
   },
+  // Limitar workers de webpack para evitar OOM en Vercel (8GB RAM).
+  // Sin esto, Next.js usa hasta 4 workers × 4GB = 16GB > 8GB disponible.
+  experimental: {
+    workerThreads: false,
+    cpus: 2,
+  },
   // Permitir que Evolution API (en Docker) envie webhooks al ERP local
   allowedDevOrigins: ['http://host.docker.internal:61592', 'http://localhost:8080'],
   images: {
@@ -28,6 +34,8 @@ const nextConfig = {
   // La app móvil (Capacitor) usa server.url remoto (igual que Electron),
   // por lo que NO requiere static export ni cambios en next.config.js.
   // Ver docs/PLAN_CAPACITOR_MOVIL.md para detalles de arquitectura.
+  // Fix: multiple lockfiles warning (C:\Users\USUARIO\package-lock.json)
+  outputFileTracingRoot: __dirname,
 }
 
 // NOTA: withSentryConfig removido del build web para evitar OOM en Vercel.

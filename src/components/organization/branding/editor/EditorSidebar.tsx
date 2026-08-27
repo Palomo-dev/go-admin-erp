@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type {
   WebsitePageSection,
   SectionTypeDefinition,
@@ -465,6 +466,9 @@ function SectionListItem({
     sectionManifest,
   );
 
+  // Diálogo de confirmación para aplicar estilo a todas las secciones
+  const [showApplyAllConfirm, setShowApplyAllConfirm] = useState(false);
+
   // Agrupar campos por `field.group` respetando el orden de GROUP_ORDER.
   const fields = definition?.contentFields || [];
   const grouped: Record<string, ContentFieldDef[]> = {};
@@ -649,9 +653,7 @@ function SectionListItem({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm('¿Aplicar el estilo de esta sección a todas las secciones de la página?')) {
-                    onApplyStyleToAll();
-                  }
+                  setShowApplyAllConfirm(true);
                 }}
                 className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
                 title="Aplicar estilo a todas las secciones"
@@ -685,6 +687,16 @@ function SectionListItem({
           </div>
         </div>
       )}
+
+      {/* Confirmar aplicar estilo a todas las secciones */}
+      <ConfirmDialog
+        open={showApplyAllConfirm}
+        onOpenChange={setShowApplyAllConfirm}
+        title="Aplicar estilo a todas"
+        description="¿Aplicar el estilo de esta sección a todas las secciones de la página?"
+        confirmLabel="Aplicar a todas"
+        onConfirm={() => { onApplyStyleToAll?.(); }}
+      />
     </div>
   );
 }

@@ -39,6 +39,7 @@ import { useHistory } from '@/components/organization/branding/editor/useHistory
 import { extractStyle, applyStyle } from '@/components/organization/branding/editor/styleUtils';
 import { websiteMenuGroupService, type MenuGroup } from '@/lib/services/websiteMenuGroupService';
 import type { SectionManifest } from '@/lib/services/website/sectionContract';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function PageEditorPage() {
   const params = useParams();
@@ -66,6 +67,9 @@ export default function PageEditorPage() {
   const [showFooterConfig, setShowFooterConfig] = useState(false);
   const [showPageLayout, setShowPageLayout] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  // Diálogos de confirmación (reemplazan window.confirm)
+  const [pendingPageChange, setPendingPageChange] = useState<string | null>(null);
+  const [pendingDeleteSection, setPendingDeleteSection] = useState<string | null>(null);
   const [availableMenus, setAvailableMenus] = useState<MenuGroup[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
@@ -266,12 +270,13 @@ export default function PageEditorPage() {
   // ---- PAGE CHANGE ----
   const handlePageChange = async (newPageId: string) => {
     if (hasChanges) {
-      const confirm = window.confirm(
-        'Tienes cambios sin guardar. ¿Deseas descartarlos?'
-      );
-      if (!confirm) return;
+      setPendingPageChange(newPageId);
+      return;
     }
+    await doPageChange(newPageId);
+  };
 
+  const doPageChange = async (newPageId: string) => {
     // Reset pending changes
     pendingSectionUpdates.current.clear();
     pendingSettingsUpdates.current = {};
@@ -347,9 +352,12 @@ export default function PageEditorPage() {
   // ---- DELETE SECTION ----
   const handleDeleteSection = async (sectionId: string) => {
     if (!currentPage) return;
-    const confirm = window.confirm('¿Eliminar esta sección?');
-    if (!confirm) return;
+    setPendingDeleteSection(sectionId);
+  };
 
+  const doDeleteSection = async () => {
+    const sectionId = pendingDeleteSection;
+    if (!sectionId || !currentPage) return;
     try {
       await websitePageBuilderService.deleteSection(sectionId);
       const newSections = currentPage.sections.filter((s) => s.id !== sectionId);
@@ -1002,6 +1010,31 @@ export default function PageEditorPage() {
         onOpenChange={setShowAddDialog}
         onAdd={handleAddSection}
         existingSectionTypes={currentPage.sections.map((s) => s.section_type)}
+      />
+
+      {/* Confirmar descartar cambios al cambiar de página */}
+      <ConfirmDialog
+        open={pendingPageChange !== null}
+        onOpenChange={(open) => { if (!open) setPendingPageChange(null); }}
+        title="Descartar cambios"
+        description="Tienes cambios sin guardar. ¿Deseas descartarlos y cambiar de página?"
+        confirmLabel="Descartar y cambiar"
+        variant="destructive"
+        onConfirm={async () => {
+          if (pendingPageChange) await doPageChange(pendingPageChange);
+          setPendingPageChange(null);
+        }}
+      />
+
+      {/* Confirmar eliminar sección */}
+      <ConfirmDialog
+        open={pendingDeleteSection !== null}
+        onOpenChange={(open) => { if (!open) setPendingDeleteSection(null); }}
+        title="Eliminar sección"
+        description="¿Seguro que deseas eliminar esta sección? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="destructive"
+        onConfirm={async () => { await doDeleteSection(); }}
       />
     </div>
   );

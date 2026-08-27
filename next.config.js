@@ -12,13 +12,22 @@ const nextConfig = {
   // Limitar workers de webpack para evitar OOM en Vercel (8GB RAM).
   // cpus: 1 = solo 1 worker de webpack (en vez de 4 por defecto).
   // workerThreads: false = usar proceso hijo en vez de thread (menos memoria).
-  // Con 1 worker × 4GB + 2GB main = 6GB, cabe en 8GB de Vercel.
+  // Con 1 worker × 6GB + 1GB main = 7GB, cabe en 8GB de Vercel.
   experimental: {
     workerThreads: false,
     cpus: 1,
   },
   // Desactivar source maps en build para reducir memoria
   productionBrowserSourceMaps: false,
+  // Desactivar minificación SWC para reducir memoria del build
+  swcMinify: true,
+  // Desactivar cache de webpack para reducir memoria
+  webpack: (config, { dev, isServer }) => {
+    if (!dev) {
+      config.cache = false;
+    }
+    return config;
+  },
   // Permitir que Evolution API (en Docker) envie webhooks al ERP local
   allowedDevOrigins: ['http://host.docker.internal:61592', 'http://localhost:8080'],
   images: {

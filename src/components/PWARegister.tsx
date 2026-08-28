@@ -5,6 +5,9 @@ import { useEffect } from 'react';
 /**
  * Registra el service worker para habilitar PWA (instalable + offline).
  * Solo se registra en producción para no interferir con el dev server.
+ *
+ * En iOS standalone, intercepta enlaces con target="_blank" del mismo origen
+ * para que se abran dentro del PWA en vez de lanzar Safari externo.
  */
 export function PWARegister() {
   useEffect(() => {
@@ -31,6 +34,41 @@ export function PWARegister() {
       window.addEventListener('load', register);
       return () => window.removeEventListener('load', register);
     }
+  }, []);
+
+  // iOS standalone: interceptar enlaces target="_blank" del mismo origen
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // Solo aplicar si estamos en modo standalone (PWA instalada)
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      // iOS Safari no soporta display-mode, usa navigator.standalone
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    if (!isStandalone) return;
+
+    const handleClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement)?.closest('a');
+      if (!link) return;
+      if (link.target !== '_blank') return;
+
+      const href = link.href;
+      if (!href) return;
+
+      // Solo interceptar enlaces del mismo origen
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+      } catch {
+        return;
+      }
+
+      // Prevenir apertura en Safari externo, navegar dentro del PWA
+      e.preventDefault();
+      window.location.href = href;
+    };
+
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
   }, []);
 
   return null;

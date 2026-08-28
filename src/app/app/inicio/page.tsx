@@ -28,6 +28,7 @@ import type { DashboardData, PeriodoDashboard, HorasDashboard } from '@/componen
 import { useDynamicGreeting } from '@/components/inicio/useDynamicGreeting';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { supabase } from '@/lib/supabase/config';
+import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
 
 function InicioContent() {
   const searchParams = useSearchParams() ?? new URLSearchParams();
@@ -231,6 +232,14 @@ function InicioContent() {
           <DashboardTendencia organizationId={organization.id} dias={30} />
         )}
       </div>
+
+      {/* Observabilidad de comercio web: stock reservado + pedidos próximos a expirar */}
+      {organization?.id && (
+        <WebCommerceObservability
+          organizationId={organization.id}
+          withinMinutes={30}
+        />
+      )}
 
       {/* Dashboards consolidados por módulo activo */}
       <DashboardModulos

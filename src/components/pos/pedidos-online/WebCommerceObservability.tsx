@@ -108,6 +108,8 @@ export function WebCommerceObservability({
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stockPage, setStockPage] = useState(0);
+  const [ordersPage, setOrdersPage] = useState(0);
 
   const orgId = organizationId ?? getOrganizationId();
 
@@ -254,61 +256,71 @@ export function WebCommerceObservability({
                   No hay productos con stock reservado actualmente.
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-left text-muted-foreground border-b border-gray-200 dark:border-gray-700">
-                        <th className="py-1.5 pr-3">Producto</th>
-                        <th className="py-1.5 pr-3">Sucursal</th>
-                        <th className="py-1.5 pr-3 text-right">Disp.</th>
-                        <th className="py-1.5 pr-3 text-right">Reserv.</th>
-                        <th className="py-1.5 pr-3 text-right">Total</th>
-                        <th className="py-1.5">Actualizado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.reservedStock.map((item) => (
-                        <tr
-                          key={`${item.productId}-${item.branchId}`}
-                          className={`border-b border-gray-100 dark:border-gray-800 ${
-                            item.isOrphan ? 'bg-red-50 dark:bg-red-900/10' : ''
-                          }`}
-                        >
-                          <td className="py-1.5 pr-3 font-medium">
-                            {item.productName}
-                            {item.sku && (
-                              <span className="text-muted-foreground ml-1">
-                                ({item.sku})
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-1.5 pr-3">{item.branchName}</td>
-                          <td className="py-1.5 pr-3 text-right tabular-nums">
-                            {item.qtyAvailable}
-                          </td>
-                          <td className="py-1.5 pr-3 text-right tabular-nums font-semibold text-blue-600 dark:text-blue-400">
-                            {item.qtyReserved}
-                          </td>
-                          <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
-                            {item.qtyOnHand}
-                          </td>
-                          <td className="py-1.5">
-                            <span
-                              className={
-                                item.isOrphan
-                                  ? 'text-red-600 dark:text-red-400 font-medium'
-                                  : 'text-muted-foreground'
-                              }
-                            >
-                              {formatTimeAgo(item.updatedAt)}
-                              {item.isOrphan && ' ⚠'}
-                            </span>
-                          </td>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-muted-foreground border-b border-gray-200 dark:border-gray-700">
+                          <th className="py-1.5 pr-3">Producto</th>
+                          <th className="py-1.5 pr-3">Sucursal</th>
+                          <th className="py-1.5 pr-3 text-right">Disp.</th>
+                          <th className="py-1.5 pr-3 text-right">Reserv.</th>
+                          <th className="py-1.5 pr-3 text-right">Total</th>
+                          <th className="py-1.5">Actualizado</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {data.reservedStock
+                          .slice(stockPage * PAGE_SIZE, (stockPage + 1) * PAGE_SIZE)
+                          .map((item) => (
+                            <tr
+                              key={`${item.productId}-${item.branchId}`}
+                              className={`border-b border-gray-100 dark:border-gray-800 ${
+                                item.isOrphan ? 'bg-red-50 dark:bg-red-900/10' : ''
+                              }`}
+                            >
+                              <td className="py-1.5 pr-3 font-medium">
+                                {item.productName}
+                                {item.sku && (
+                                  <span className="text-muted-foreground ml-1">
+                                    ({item.sku})
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-1.5 pr-3">{item.branchName}</td>
+                              <td className="py-1.5 pr-3 text-right tabular-nums">
+                                {item.qtyAvailable}
+                              </td>
+                              <td className="py-1.5 pr-3 text-right tabular-nums font-semibold text-blue-600 dark:text-blue-400">
+                                {item.qtyReserved}
+                              </td>
+                              <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
+                                {item.qtyOnHand}
+                              </td>
+                              <td className="py-1.5">
+                                <span
+                                  className={
+                                    item.isOrphan
+                                      ? 'text-red-600 dark:text-red-400 font-medium'
+                                      : 'text-muted-foreground'
+                                  }
+                                >
+                                  {formatTimeAgo(item.updatedAt)}
+                                  {item.isOrphan && ' ⚠'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Pagination
+                    page={stockPage}
+                    totalPages={Math.ceil(data.reservedStock.length / PAGE_SIZE)}
+                    onPageChange={setStockPage}
+                    totalItems={data.reservedStock.length}
+                  />
+                </>
               )}
             </div>
 
@@ -323,42 +335,52 @@ export function WebCommerceObservability({
                   No hay pedidos próximos a expirar en los próximos {withinMinutes} minutos.
                 </p>
               ) : (
-                <div className="space-y-1.5">
-                  {data.ordersNearExpiry.map((order) => (
-                    <div
-                      key={order.id}
-                      className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{order.orderNumber}</span>
-                        {order.customerName && (
-                          <span className="text-muted-foreground">
-                            · {order.customerName}
-                          </span>
-                        )}
-                        <span className="text-muted-foreground">
-                          · {order.paymentMethod}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="tabular-nums text-muted-foreground">
-                          {formatCurrency(order.total)}
-                        </span>
-                        <Badge
-                          variant={
-                            order.minutesUntilExpiry <= 5
-                              ? 'destructive'
-                              : 'secondary'
-                          }
+                <>
+                  <div className="space-y-1.5">
+                    {data.ordersNearExpiry
+                      .slice(ordersPage * PAGE_SIZE, (ordersPage + 1) * PAGE_SIZE)
+                      .map((order) => (
+                        <div
+                          key={order.id}
+                          className="flex items-center justify-between rounded-md border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs"
                         >
-                          {order.minutesUntilExpiry < 0
-                            ? `Expirado hace ${Math.abs(order.minutesUntilExpiry)}m`
-                            : `${order.minutesUntilExpiry}m`}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{order.orderNumber}</span>
+                            {order.customerName && (
+                              <span className="text-muted-foreground">
+                                · {order.customerName}
+                              </span>
+                            )}
+                            <span className="text-muted-foreground">
+                              · {order.paymentMethod}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="tabular-nums text-muted-foreground">
+                              {formatCurrency(order.total)}
+                            </span>
+                            <Badge
+                              variant={
+                                order.minutesUntilExpiry <= 5
+                                  ? 'destructive'
+                                  : 'secondary'
+                              }
+                            >
+                              {order.minutesUntilExpiry < 0
+                                ? `Expirado hace ${Math.abs(order.minutesUntilExpiry)}m`
+                                : `${order.minutesUntilExpiry}m`}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  <Pagination
+                    page={ordersPage}
+                    totalPages={Math.ceil(data.ordersNearExpiry.length / PAGE_SIZE)}
+                    onPageChange={setOrdersPage}
+                    totalItems={data.ordersNearExpiry.length}
+                  />
+                </>
               )}
             </div>
             </div>
@@ -391,6 +413,54 @@ function SummaryTile({
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-xl font-bold tabular-nums">{value}</p>
       <p className="text-[10px] text-muted-foreground">{sub}</p>
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  onPageChange,
+  totalItems,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  totalItems: number;
+}) {
+  if (totalPages <= 1) return null;
+  const start = page * PAGE_SIZE + 1;
+  const end = Math.min((page + 1) * PAGE_SIZE, totalItems);
+  return (
+    <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+      <span>
+        {start}-{end} de {totalItems}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={page === 0}
+          onClick={() => onPageChange(page - 1)}
+          title="Página anterior"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </Button>
+        <span className="tabular-nums px-1">
+          {page + 1} / {totalPages}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={page >= totalPages - 1}
+          onClick={() => onPageChange(page + 1)}
+          title="Página siguiente"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }

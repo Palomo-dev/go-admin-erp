@@ -45,17 +45,33 @@ export interface Opportunity {
   expected_close_date: string | null;
   status: 'open' | 'won' | 'lost';
   loss_reason?: string;
+  metadata?: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   salesperson_id?: string | null;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  // Campos operativos nuevos
+  source?: string;
+  vertical_id?: string;
+  next_contact_at?: string;
   // Relaciones
   customer?: Customer;
   stage?: Stage;
   pipeline?: Pipeline;
   products?: OpportunityProduct[];
+}
+
+// Datos estructurados para registrar una oportunidad como perdida
+export interface LossReasonData {
+  lossReasonId: string;      // ID del catálogo (cuando exista)
+  lossReasonLabel: string;   // etiqueta visible (fallback)
+  competitor?: string;
+  competitorPrice?: number;
+  missingFeatures?: string[];
+  recontactDate?: string;
+  notes?: string;
 }
 
 export interface OpportunityProduct {
@@ -222,6 +238,9 @@ export interface CreateOpportunityInput {
   salesperson_id?: string;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  source?: string;
+  vertical_id?: string;
+  next_contact_at?: string;
   products?: {
     product_id: number;
     quantity: number;
@@ -248,9 +267,13 @@ export interface UpdateOpportunityInput {
   expected_close_date?: string;
   status?: 'open' | 'won' | 'lost';
   loss_reason?: string;
+  metadata?: Record<string, unknown> | null;
   salesperson_id?: string | null;
   commission_rate?: number;
   commission_type?: 'salesperson' | 'intermediation_sale' | 'none';
+  source?: string;
+  vertical_id?: string;
+  next_contact_at?: string;
   products?: {
     product_id: number;
     quantity: number;

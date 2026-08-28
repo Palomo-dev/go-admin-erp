@@ -19,7 +19,7 @@ export interface GatewayConfig {
   access_token?: string;
   public_key?: string;
   additional_json?: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface OrganizationPaymentMethod {
@@ -46,7 +46,8 @@ export const PAYMENT_GATEWAYS = {
   WOMPI: 'wompi',
   BANCOLOMBIA: 'bancolombia',
   BREB: 'breb',
-  REDEBAN: 'redeban'
+  REDEBAN: 'redeban',
+  BOLD: 'bold'
 };
 
 export const PAYMENT_GATEWAY_OPTIONS = [
@@ -57,7 +58,8 @@ export const PAYMENT_GATEWAY_OPTIONS = [
   { label: "Wompi", value: PAYMENT_GATEWAYS.WOMPI },
   { label: "Bancolombia", value: PAYMENT_GATEWAYS.BANCOLOMBIA },
   { label: "Bre-B (Mono)", value: PAYMENT_GATEWAYS.BREB },
-  { label: "Redeban", value: PAYMENT_GATEWAYS.REDEBAN }
+  { label: "Redeban", value: PAYMENT_GATEWAYS.REDEBAN },
+  { label: "Bold", value: PAYMENT_GATEWAYS.BOLD }
 ];
 
 export const ACCOUNTING_DEFAULT_MAPPINGS = [

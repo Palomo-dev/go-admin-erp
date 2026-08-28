@@ -377,7 +377,7 @@ export class MesasService {
         .select('id')
         .eq('restaurant_table_id', mesaId)
         .in('status', ['active', 'bill_requested'])
-        .single();
+        .maybeSingle();
 
       if (existingSession) {
         throw new Error('Esta mesa ya tiene una sesión activa');

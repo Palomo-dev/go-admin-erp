@@ -12,7 +12,6 @@ import { CustomerDashboard } from './CustomerDashboard';
 // Nuevos componentes modales
 import CustomerDetailsModal from './modals/CustomerDetailsModal';
 import EditCustomerModal from './modals/EditCustomerModal';
-import CreateOpportunityModal from './modals/CreateOpportunityModal';
 import CustomerHistoryModal from './modals/CustomerHistoryModal';
 
 // Nuevos componentes de tabla y estadísticas
@@ -42,7 +41,6 @@ export {
 export {
   CustomerDetailsModal,
   EditCustomerModal,
-  CreateOpportunityModal,
   CustomerHistoryModal
 };
 

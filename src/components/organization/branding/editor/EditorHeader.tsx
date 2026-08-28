@@ -13,6 +13,7 @@ import {
   Save,
   Loader2,
   Monitor,
+  Laptop,
   Tablet,
   Smartphone,
   Eye,
@@ -22,7 +23,11 @@ import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
 import type { WebsitePage } from '@/lib/services/websitePageBuilderService';
 
-export type DevicePreview = 'desktop' | 'tablet' | 'mobile';
+export type DevicePreview = 'desktop' | 'laptop' | 'tablet' | 'mobile';
+
+// F9.4 — Clasificación de páginas por grupo para el dropdown del editor
+const DETAIL_TYPES = new Set(['product_detail', 'category_detail', 'space_detail']);
+const FLOW_TYPES = new Set(['cart', 'checkout', 'order_confirmation', 'account']);
 
 interface EditorHeaderProps {
   pages: WebsitePage[];
@@ -34,6 +39,10 @@ interface EditorHeaderProps {
   onSave: () => void;
   hasChanges: boolean;
   previewUrl: string | null;
+  // F9.4 — Selector de contexto para plantillas de detalle
+  previewEntities?: Array<{ id: string; label: string }>;
+  previewEntityId?: string | null;
+  onPreviewEntityChange?: (id: string) => void;
 }
 
 export default function EditorHeader({
@@ -46,12 +55,21 @@ export default function EditorHeader({
   onSave,
   hasChanges,
   previewUrl,
+  previewEntities,
+  previewEntityId,
+  onPreviewEntityChange,
 }: EditorHeaderProps) {
   const t = useTranslations('branding.editor.header');
   const currentPage = pages.find((p) => p.id === currentPageId);
 
+  // F9.4 — Agrupar páginas por tipo: Páginas · Plantillas de detalle · Flujo de compra
+  const regularPages = pages.filter((p) => !DETAIL_TYPES.has(p.page_type) && !FLOW_TYPES.has(p.page_type));
+  const detailPages = pages.filter((p) => DETAIL_TYPES.has(p.page_type));
+  const flowPages = pages.filter((p) => FLOW_TYPES.has(p.page_type));
+
   const devices: { id: DevicePreview; icon: typeof Monitor; label: string }[] = [
     { id: 'desktop', icon: Monitor, label: t('desktop') },
+    { id: 'laptop', icon: Laptop, label: t('laptop') },
     { id: 'tablet', icon: Tablet, label: t('tablet') },
     { id: 'mobile', icon: Smartphone, label: t('mobile') },
   ];
@@ -74,14 +92,55 @@ export default function EditorHeader({
               <SelectValue placeholder={t('selectPage')} />
             </SelectTrigger>
             <SelectContent>
-              {pages.map((page) => (
-                <SelectItem key={page.id} value={page.id}>
-                  {page.title}
+              {regularPages.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500">Páginas</div>
+                  {regularPages.map((page) => (
+                    <SelectItem key={page.id} value={page.id}>
+                      {page.title}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
+              {detailPages.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 border-t mt-1">Plantillas de detalle</div>
+                  {detailPages.map((page) => (
+                    <SelectItem key={page.id} value={page.id}>
+                      {page.title}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
+              {flowPages.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-400 dark:text-gray-500 border-t mt-1">Flujo de compra</div>
+                  {flowPages.map((page) => (
+                    <SelectItem key={page.id} value={page.id}>
+                      {page.title}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* F9.4 — Selector de contexto para plantillas de detalle */}
+        {previewEntities && previewEntities.length > 0 && onPreviewEntityChange && (
+          <Select value={previewEntityId || undefined} onValueChange={onPreviewEntityChange}>
+            <SelectTrigger className="h-8 w-[200px] bg-white/10 border-white/20 text-white text-sm dark:bg-gray-800/10 dark:border-gray-700/20">
+              <SelectValue placeholder="Seleccionar entidad" />
+            </SelectTrigger>
+            <SelectContent>
+              {previewEntities.map((entity) => (
+                <SelectItem key={entity.id} value={entity.id}>
+                  {entity.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
+        )}
       </div>
 
       {/* Center: Device Preview Toggle */}

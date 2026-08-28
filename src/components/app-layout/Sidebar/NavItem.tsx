@@ -119,8 +119,12 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
         <>
           {/* VERSIÓN MÓVIL - Submenú clásico desplegable */}
           <div className="md:hidden">
-            <div 
+            <div
               onClick={handleMobileClick}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isMobileOpen}
+              aria-label={item.name}
               className={`
                 flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium w-full min-h-[44px]
                 ${isActive 
@@ -158,6 +162,7 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
                     prefetch={true}
                     onClick={handleNavigation}
                     onMouseEnter={() => handlePrefetch(subItem.href)}
+                    aria-current={isSubItemActive(subItem.href) ? 'page' : undefined}
                     className={`
                       flex items-center px-3 py-1.5 text-sm rounded-lg min-h-[40px]
                       ${isSubItemActive(subItem.href)
@@ -236,11 +241,12 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
               >
                 {item.submenu.map((subItem, subIdx) => (
                   <DropdownMenuItem key={subIdx} asChild>
-                    <Link 
+                    <Link
                       href={subItem.href}
                       prefetch={true}
                       onClick={handleNavigation}
                       onMouseEnter={() => handlePrefetch(subItem.href)}
+                      aria-current={isSubItemActive(subItem.href) ? 'page' : undefined}
                       className={`
                         flex items-center px-3 py-2 text-sm w-full cursor-default
                         ${isSubItemActive(subItem.href)
@@ -266,6 +272,8 @@ const NavItemComponent = ({ item, collapsed, onNavigate }: NavItemComponentProps
           prefetch={true}
           onClick={handleNavigation}
           onMouseEnter={() => handlePrefetch(item.href)}
+          aria-current={isActive ? 'page' : undefined}
+          aria-label={collapsed ? item.name : undefined}
           className={`
             flex items-center ${collapsed ? 'lg:justify-center' : ''} px-3 py-2 rounded-lg text-sm font-medium min-h-[44px]
             ${isActive 

@@ -16,6 +16,7 @@ import {
   Settings,
   BarChart3,
   Fingerprint,
+  HeartPulse,
 } from 'lucide-react';
 import { useOptimizedModules } from '@/hooks/useOptimizedModules';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -91,6 +92,13 @@ const navItems: QuickNavItem[] = [
     icon: <BarChart3 className="h-5 w-5" />,
     description: 'Análisis y métricas',
     color: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
+  },
+  {
+    label: 'Salud',
+    href: '/app/crm/salud',
+    icon: <HeartPulse className="h-5 w-5" />,
+    description: 'Health score',
+    color: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
   },
   {
     label: 'Identidades',

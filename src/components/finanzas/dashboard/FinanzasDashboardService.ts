@@ -129,14 +129,15 @@ class FinanzasDashboardService {
     
     const ingresosPOS = salesData?.reduce((sum, s) => sum + (Number(s.total) || 0), 0) || 0;
     
-    // Ingresos pedidos online (web_orders pagadas)
+    // Ingresos pedidos online (web_orders pagadas, sin sale_id para no duplicar)
     const { data: webOrdersData } = await supabase
       .from('web_orders')
       .select('total')
       .eq('organization_id', organizationId)
       .gte('created_at', fechaInicio)
       .lte('created_at', fechaFin + 'T23:59:59.999Z')
-      .eq('payment_status', 'paid');
+      .eq('payment_status', 'paid')
+      .is('sale_id', null);
     
     const ingresosWeb = webOrdersData?.reduce((sum, w) => sum + (Number(w.total) || 0), 0) || 0;
     

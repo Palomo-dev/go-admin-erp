@@ -45,12 +45,21 @@ export function QRScanner({ onScan, isProcessing }: QRScannerProps) {
         if (scanner?.scan) {
           setHasPermission(true);
           setIsScanning(true);
-          const result = await scanner.scan();
-          if (result?.barcode) {
-            onScan(result.barcode);
+          let nativeScanSucceeded = false;
+          try {
+            const result = await scanner.scan();
+            if (result?.barcode) {
+              onScan(result.barcode);
+              nativeScanSucceeded = true;
+            }
+          } catch (scanErr) {
+            // Usuario canceló o plugin falló — caer al flujo web
+            console.warn('[QRScanner] Escaneo nativo cancelado/falló, usando flujo web:', scanErr);
+          } finally {
+            setIsScanning(false);
           }
-          setIsScanning(false);
-          return;
+          if (nativeScanSucceeded) return;
+          // Si falló/canceló, continuar al flujo web abajo
         }
         // Si plugin no disponible, caer al flujo web
       }
@@ -72,12 +81,13 @@ export function QRScanner({ onScan, isProcessing }: QRScannerProps) {
         setHasPermission(true);
         setIsScanning(true);
       }
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { name?: string };
       console.error('Error accessing camera:', err);
       setHasPermission(false);
-      if (err.name === 'NotAllowedError') {
+      if (error.name === 'NotAllowedError') {
         setError('Permiso de cámara denegado. Habilita el acceso a la cámara en la configuración de tu navegador.');
-      } else if (err.name === 'NotFoundError') {
+      } else if (error.name === 'NotFoundError') {
         setError('No se encontró ninguna cámara en este dispositivo.');
       } else {
         setError('Error al acceder a la cámara. Intenta de nuevo.');
@@ -103,7 +113,7 @@ export function QRScanner({ onScan, isProcessing }: QRScannerProps) {
     // Usar BarcodeDetector API si está disponible
     if ('BarcodeDetector' in window) {
       try {
-        const barcodeDetector = new (window as any).BarcodeDetector({
+        const barcodeDetector = new (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (img: ImageData) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector({
           formats: ['qr_code'],
         });
         const barcodes = await barcodeDetector.detect(imageData);
@@ -111,7 +121,7 @@ export function QRScanner({ onScan, isProcessing }: QRScannerProps) {
           onScan(barcodes[0].rawValue);
           return;
         }
-      } catch (err) {
+      } catch {
         // BarcodeDetector falló, continuar con fallback
       }
     }
@@ -125,7 +135,7 @@ export function QRScanner({ onScan, isProcessing }: QRScannerProps) {
         onScan(code.data);
         return;
       }
-    } catch (err) {
+    } catch {
       // jsQR falló silenciosamente
     }
   }, [onScan, isProcessing]);

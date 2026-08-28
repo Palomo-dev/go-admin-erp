@@ -1,7 +1,7 @@
 import { signInWithGoogle } from '@/lib/supabase/config';
 import { supabase } from '@/lib/supabase/config';
 import { registerUserDevice } from '@/lib/auth/organizationAuth';
-import { isMobile } from '@/lib/utils/mobile';
+import { isMobile, getMobilePlugin } from '@/lib/utils/mobile';
 import { startMobileOAuth } from '@/lib/services/mobileAuthService';
 
 export interface GoogleLoginParams {
@@ -116,14 +116,23 @@ export const handleGoogleLogin = async ({
   
   try {
     // Flujo móvil (Capacitor): OAuth con deep link via browser externo
+    // Solo intentar si el plugin Browser nativo está disponible
+    // Si no está, caer al flujo web normal sin llamar startMobileOAuth
+    // (startMobileOAuth genera estado PKCE con redirect a app.goadmin.io
+    // que corrompe el flujo web si falla)
     if (isMobile()) {
-      const url = await startMobileOAuth('google');
-      if (!url) {
-        throw new Error('No se pudo iniciar OAuth con Google en la app móvil');
+      const browserPlugin = getMobilePlugin('Browser');
+      if (browserPlugin?.open) {
+        const url = await startMobileOAuth('google');
+        if (url) {
+          // El resultado llega via deep link listener (useMobileAuth)
+          // No hacemos setLoading(false) aquí: el listener lo maneja
+          return;
+        }
+        console.warn('[googleAuth] startMobileOAuth falló, usando flujo web');
+      } else {
+        console.warn('[googleAuth] Plugin Browser no disponible, usando flujo web');
       }
-      // El resultado llega via deep link listener (useMobileAuth)
-      // No hacemos setLoading(false) aquí: el listener lo maneja
-      return;
     }
 
     // Guardar la URL actual para redirección después del login

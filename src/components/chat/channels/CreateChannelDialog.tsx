@@ -210,6 +210,18 @@ export default function CreateChannelDialog({
               </p>
             </div>
           )}
+
+          {formData.type === 'whatsapp' && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs text-blue-700 dark:text-blue-300 space-y-1">
+              <p className="font-medium">Métodos de conexión disponibles:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li><strong>Cloud API</strong> – oficial de Meta, sin riesgo (recomendado)</li>
+                <li><strong>QR Scan ⚠️</strong> – escanear QR como WhatsApp Web, no oficial, riesgo de ban</li>
+                <li><strong>Coexistence</strong> – app en teléfono + API oficial simultáneo</li>
+              </ul>
+              <p className="pt-1">Elegirás el método al configurar el canal después de crearlo.</p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

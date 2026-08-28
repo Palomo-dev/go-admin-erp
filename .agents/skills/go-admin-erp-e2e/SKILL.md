@@ -1,5 +1,5 @@
 ---
-name: go-admin-erp E2E testing
+name: go-admin-erp-e2e
 description: End-to-end testing notes for the go-admin-erp Next.js app, including auth fallback, module bypass, theme toggle, skeleton-state capture, and responsive overflow checks.
 ---
 

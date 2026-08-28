@@ -93,11 +93,10 @@ export const getUserData = async (userId: string, organizationId?: number): Prom
   try {
     if (!userId) return null;
 
-    // Si no se proporciona organizationId, intentar obtenerlo del localStorage
+    // Si no se proporciona organizationId, usar la función canónica
     let orgId = organizationId;
-    if (!orgId && typeof window !== 'undefined') {
-      const storedOrgId = localStorage.getItem('currentOrganizationId');
-      orgId = storedOrgId ? parseInt(storedOrgId, 10) : undefined;
+    if (!orgId) {
+      orgId = getOrganizationId() || undefined;
     }
 
     console.log('getUserData - Buscando usuario:', userId, 'en organización:', orgId);

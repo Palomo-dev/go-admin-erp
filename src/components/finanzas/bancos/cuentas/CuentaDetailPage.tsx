@@ -4,16 +4,30 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { 
-  ArrowLeft, Building2, CreditCard, DollarSign, Calendar, 
-  ArrowRightLeft, Edit, RefreshCw, FileDown, Upload 
+import {
+  ArrowLeft, Building2, CreditCard, DollarSign, Calendar,
+  ArrowRightLeft, Edit, RefreshCw, FileDown, Upload, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { BancosService, BankAccount, BankTransaction } from '../BancosService';
 import { formatCurrency } from '@/utils/Utils';
+import { supabase } from '@/lib/supabase/config';
+
+/** Informacion del link de Open Finance vinculado a la cuenta */
+interface OpenFinanceLinkInfo {
+  link_id: string;
+  last_balance: number | null;
+  last_balance_at: string | null;
+}
 
 interface CuentaDetailPageProps {
   accountId: string;
@@ -25,6 +39,8 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [ofLink, setOfLink] = useState<OpenFinanceLinkInfo | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -41,6 +57,16 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
 
       setAccount(accountData);
       setTransactions(transactionsData);
+
+      // Buscar link de Open Finance vinculado a la cuenta
+      const { data: ofAccount } = await supabase
+        .from('open_finance_accounts')
+        .select('link_id, last_balance, last_balance_at')
+        .eq('bank_account_id', parseInt(accountId))
+        .eq('is_active', true)
+        .single();
+
+      setOfLink(ofAccount as OpenFinanceLinkInfo | null);
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast.error('Error al cargar los datos de la cuenta');
@@ -57,6 +83,42 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
     setIsRefreshing(true);
     await loadData();
     setIsRefreshing(false);
+  };
+
+  // Sincroniza transacciones con Open Finance
+  const handleSyncOpenFinance = async () => {
+    if (!ofLink) return;
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/integrations/open-finance/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkId: ofLink.link_id }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json() as { error?: string };
+        throw new Error(err.error ?? 'Error al sincronizar');
+      }
+
+      const result = await response.json() as {
+        stats: { synced: number; imported: number; duplicates: number };
+      };
+
+      toast.success(
+        `Sincronizacion completada: ${result.stats.synced} transacciones sincronizadas, ${result.stats.imported} importadas`,
+      );
+
+      // Recargar datos para mostrar las nuevas transacciones
+      await loadData();
+    } catch (error) {
+      console.error('Error al sincronizar con Open Finance:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Error al sincronizar con Open Finance',
+      );
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const getAccountTypeLabel = (type: string | null) => {
@@ -245,6 +307,18 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
               <p className="font-medium text-gray-900 dark:text-white">{formatDate(account.created_at)}</p>
             </div>
 
+            {/* Indicador de ultima sincronizacion con Open Finance */}
+            {ofLink?.last_balance_at && (
+              <div className="pt-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Ultima sincronizacion Open Finance
+                </p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {formatDate(ofLink.last_balance_at)}
+                </p>
+              </div>
+            )}
+
             <div className="pt-4 space-y-2">
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -253,6 +327,38 @@ export function CuentaDetailPage({ accountId }: CuentaDetailPageProps) {
                 <ArrowRightLeft className="h-4 w-4 mr-2" />
                 Ver Movimientos
               </Button>
+
+              {/* Boton Sincronizar con Open Finance */}
+              {ofLink ? (
+                <Button
+                  variant="outline"
+                  className="w-full dark:border-gray-600 border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                  onClick={handleSyncOpenFinance}
+                  disabled={isSyncing}
+                >
+                  <Zap className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-pulse' : ''}`} />
+                  {isSyncing ? 'Sincronizando...' : 'Sincronizar con Open Finance'}
+                </Button>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full dark:border-gray-600 opacity-50 cursor-not-allowed"
+                        disabled
+                      >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Sincronizar con Open Finance
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Esta cuenta no tiene un link de Open Finance vinculado</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
               <Button 
                 variant="outline"
                 className="w-full dark:border-gray-600"

@@ -657,7 +657,7 @@ export const AppLayout = ({
     let cancelled = false;
 
     const registerPush = async () => {
-      const { isMobile } = await import('@/lib/utils/platform');
+      const { isMobile } = await import('@/lib/utils/mobile');
       if (!isMobile() || cancelled) return;
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -711,7 +711,7 @@ export const AppLayout = ({
 
     const checkSubscriptionStatus = async () => {
       const allowedPaths = ['/app/organizacion/plan', '/app/plan', '/app/organizacion'];
-      const isAllowed = allowedPaths.some(p => pathname.startsWith(p));
+      const isAllowed = allowedPaths.some(p => pathname?.startsWith(p) ?? false);
       if (isAllowed) return;
 
       const { data } = await supabase
@@ -1099,9 +1099,20 @@ export const AppLayout = ({
     if (typeof window === 'undefined') return;
 
     // Sincronizar tema desde Supabase en background
+    // Resetear bandera de override manual antes de iniciar la sync
+    themeService.resetUserOverride();
     themeService.syncTheme().then((syncedTheme) => {
-      setNextTheme(syncedTheme);
+      // syncTheme retorna null si el usuario cambió el tema manualmente
+      // mientras la sincronización estaba en curso; en ese caso no sobrescribir.
+      if (syncedTheme) {
+        setNextTheme(syncedTheme);
+      }
     });
+    // NOTA: este efecto debe correr SOLO al montar. Si se incluye
+    // setNextTheme en las dependencias, next-themes 0.4.x cambia la
+    // identidad de setTheme en cada cambio de tema (useCallback con
+    // dep [theme]), lo que re-dispara la sync, resetea el override
+    // manual y revierte la elección del usuario (titileo doble).
 
     // Obtener nombre de organización
     const storedOrgName = localStorage.getItem('currentOrganizationName');
@@ -1127,7 +1138,8 @@ export const AppLayout = ({
     return () => {
       window.removeEventListener('organization-changed', handleOrgChange);
     };
-  }, [setNextTheme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Función para cerrar sesión (memoizada)
   const handleSignOut = useCallback(async () => {
@@ -1184,6 +1196,10 @@ export const AppLayout = ({
   const toggleTheme = useCallback(() => {
     const currentResolved = nextTheme === 'dark' ? 'dark' : 'light';
     const newTheme = currentResolved === 'light' ? 'dark' : 'light';
+    // Actualizar cache local inmediatamente y marcar override manual
+    // para que una syncTheme pendiente no revierta la elección del usuario.
+    themeService.setLocalTheme(newTheme);
+    themeService.markUserOverride();
     setNextTheme(newTheme);
     // Guardar en Supabase (persistencia entre dispositivos) - fire and forget
     themeService.setRemoteTheme(newTheme);

@@ -20,7 +20,7 @@ export default function StockPage() {
 
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
 
   // Estados de datos
   const [stockLevels, setStockLevels] = useState<StockLevel[]>([]);
@@ -111,10 +111,10 @@ export default function StockPage() {
 
   // Efecto para cargar datos iniciales
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && !branchLoading) {
       loadData();
     }
-  }, [organization?.id, loadData]);
+  }, [organization?.id, branchLoading, loadData]);
 
   // Efecto para refrescar cuando cambia la sucursal
   useEffect(() => {
@@ -207,7 +207,7 @@ export default function StockPage() {
   const hasActiveFilters = searchTerm !== '' || branchId !== 'all' || categoryId !== 'all' || stockFilter !== 'all';
 
   // Loading inicial
-  if (loadingOrg || isLoading) {
+  if (loadingOrg || branchLoading || isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <PageHeaderSkeleton />

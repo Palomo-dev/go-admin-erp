@@ -24,13 +24,13 @@ import {
   OnboardingBanner,
   DashboardModulos,
 } from '@/components/inicio';
-import type { DashboardData, PeriodoDashboard } from '@/components/inicio';
+import type { DashboardData, PeriodoDashboard, HorasDashboard } from '@/components/inicio';
 import { useDynamicGreeting } from '@/components/inicio/useDynamicGreeting';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { supabase } from '@/lib/supabase/config';
 
 function InicioContent() {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const error = searchParams.get('error');
   const module = searchParams.get('module');
   const { organization } = useOrganization();
@@ -45,6 +45,7 @@ function InicioContent() {
   const [fechaHoy, setFechaHoy] = useState('');
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
   const [periodo, setPeriodo] = useState<PeriodoDashboard>('hoy');
+  const [horas, setHoras] = useState<HorasDashboard | null>(null);
   const [userName, setUserName] = useState<string>('');
   const greeting = useDynamicGreeting(userName, locale);
 
@@ -86,7 +87,7 @@ function InicioContent() {
     setIsLoading(true);
     try {
       const [data, modules] = await Promise.all([
-        inicioService.getDashboardData(organization.id, periodo),
+        inicioService.getDashboardData(organization.id, periodo, horas),
         moduleManagementService.getActiveModules(organization.id).catch(() => null),
       ]);
       setDashboardData(data);
@@ -101,7 +102,7 @@ function InicioContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, toast, periodo]);
+  }, [organization?.id, toast, periodo, horas]);
 
   useEffect(() => {
     loadData();
@@ -169,7 +170,12 @@ function InicioContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <PeriodoSelector value={periodo} onChange={setPeriodo} />
+          <PeriodoSelector
+            value={periodo}
+            onChange={setPeriodo}
+            horas={horas}
+            onHorasChange={setHoras}
+          />
 
           <Link href="/marcar">
             <Button

@@ -31,7 +31,8 @@ import {
   Mail,
   Building2,
   FileText,
-  Clock
+  Clock,
+  Wallet
 } from 'lucide-react';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,6 +52,7 @@ interface CuentasPorPagarTableProps {
   onPageSizeChange: (pageSize: number) => void;
   onProgramarPago: (cuenta: AccountPayable) => void;
   onRegistrarPago: (cuenta: AccountPayable) => void;
+  onPagarOpenFinance: (cuenta: AccountPayable) => void;
   onSeleccionarCuentas: (cuentasIds: string[]) => void;
   cuentasSeleccionadas: string[];
 }
@@ -66,6 +68,7 @@ export function CuentasPorPagarTable({
   onPageSizeChange,
   onProgramarPago,
   onRegistrarPago,
+  onPagarOpenFinance,
   onSeleccionarCuentas,
   cuentasSeleccionadas
 }: CuentasPorPagarTableProps) {
@@ -345,6 +348,15 @@ export function CuentasPorPagarTable({
                             <Clock className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span>Programar Pago</span>
                           </DropdownMenuItem>
+                          {cuenta.status !== 'paid' && cuenta.balance > 0 && (
+                            <DropdownMenuItem
+                              onClick={() => onPagarOpenFinance(cuenta)}
+                              className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700"
+                            >
+                              <Wallet className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              <span>Pagar con Open Finance</span>
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator className="dark:bg-gray-700" />
                           <DropdownMenuItem onClick={() => copiarInfoProveedor(cuenta.supplier)} className="text-xs sm:text-sm dark:text-gray-300 dark:hover:bg-gray-700">
                             <Building2 className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />

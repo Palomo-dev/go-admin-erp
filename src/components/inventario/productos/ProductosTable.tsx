@@ -41,8 +41,10 @@ import {
   ArrowDown,
   ArrowUpDown,
   ImageIcon,
-  Filter
+  Filter,
+  Search
 } from 'lucide-react';
+import { Input } from "@/components/ui/input";
 import { formatCurrency } from '@/utils/Utils';
 import { Producto } from './types';
 import Image from 'next/image';
@@ -101,6 +103,11 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   const [filterHasImage, setFilterHasImage] = useState<'all' | 'with' | 'without'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'discontinued'>('all');
 
+  // Búsqueda instantánea en cliente: filtra sobre los productos ya cargados
+  // sin ir al servidor. Da feedback inmediato mientras el debounce del
+  // buscador principal (FiltrosProductos) espera para refinar en servidor.
+  const [quickSearch, setQuickSearch] = useState<string>('');
+
   // Estado para almacenar las imágenes principales de los productos
   const [productImages, setProductImages] = useState<Record<string | number, string>>({});
 
@@ -123,6 +130,19 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   };
   const processedProductos = React.useMemo(() => {
     let result = [...productos];
+
+    // Búsqueda instantánea en cliente (nombre, sku, barcode, marca, referencia)
+    if (quickSearch.trim()) {
+      const term = quickSearch.trim().toLowerCase();
+      result = result.filter(p => {
+        const name = (p.name || '').toLowerCase();
+        const sku = (p.sku || '').toLowerCase();
+        const barcode = (p.barcode || '').toLowerCase();
+        const brand = (p.brand || '').toLowerCase();
+        const reference = (p.reference || '').toLowerCase();
+        return name.includes(term) || sku.includes(term) || barcode.includes(term) || brand.includes(term) || reference.includes(term);
+      });
+    }
 
     // Filtro por imágenes
     if (filterHasImage === 'with') {
@@ -175,12 +195,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     }
 
     return result;
-  }, [productos, sortField, sortDirection, filterHasImage, filterStatus, productImages]);
+  }, [productos, sortField, sortDirection, filterHasImage, filterStatus, productImages, quickSearch]);
 
   // Reiniciar a página 1 cuando cambia la lista de productos, filtros u ordenamiento
   useEffect(() => {
     setCurrentPage(1);
-  }, [productos, filterHasImage, filterStatus, sortField, sortDirection]);
+  }, [productos, filterHasImage, filterStatus, sortField, sortDirection, quickSearch]);
 
   // Cálculo de productos por página (usa processedProductos con filtros y ordenamiento)
   const indexOfLastProduct = currentPage * pageSize;
@@ -367,6 +387,26 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     <div className="rounded-lg border shadow-sm overflow-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
       {/* Barra de filtros rápidos */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        {/* Búsqueda instantánea en cliente */}
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+          <Input
+            value={quickSearch}
+            onChange={(e) => setQuickSearch(e.target.value)}
+            placeholder="Filtrar rápido en lista..."
+            aria-label="Búsqueda rápida en la lista cargada"
+            className="h-7 pl-7 text-xs dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
+          />
+          {quickSearch && (
+            <button
+              onClick={() => setQuickSearch('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              aria-label="Limpiar búsqueda rápida"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
           <Filter className="h-3.5 w-3.5" />
           <span>Filtros:</span>
@@ -412,12 +452,12 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
           {processedProductos.length} de {productos.length} productos
         </span>
         {/* Limpiar filtros */}
-        {(filterHasImage !== 'all' || filterStatus !== 'all' || sortField) && (
+        {(filterHasImage !== 'all' || filterStatus !== 'all' || sortField || quickSearch) && (
           <Button
             variant="ghost"
             size="sm"
             className="h-7 text-xs text-red-500 hover:text-red-600"
-            onClick={() => { setFilterHasImage('all'); setFilterStatus('all'); setSortField(null); }}
+            onClick={() => { setFilterHasImage('all'); setFilterStatus('all'); setSortField(null); setQuickSearch(''); }}
           >
             <X className="h-3 w-3 mr-1" /> Limpiar
           </Button>
@@ -437,12 +477,15 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                       onChange={toggleSelectAll}
                       className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       title="Seleccionar todos en esta página"
+                      aria-label="Seleccionar todos los productos en esta página"
                     />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
                           className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
                           title="Opciones de selección"
+                          aria-label="Opciones de selección de productos"
+                          aria-haspopup="menu"
                         >
                           <ChevronDown className="h-3 w-3 text-gray-500 dark:text-gray-400" />
                         </button>
@@ -536,6 +579,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                       checked={selectedIds.includes(typeof producto.id === 'number' ? producto.id : parseInt(String(producto.id), 10))}
                       onChange={() => toggleSelect(producto.id)}
                       className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      aria-label={`Seleccionar producto ${producto.name}`}
                     />
                   </TableCell>
                 )}
@@ -645,9 +689,10 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        aria-label={`Acciones para producto ${producto.name}`}
                       >
                         <span className="sr-only">Abrir menú</span>
                         <MoreHorizontal className="h-4 w-4 dark:text-gray-300" />

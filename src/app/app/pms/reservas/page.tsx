@@ -36,7 +36,7 @@ import {
 export default function ReservasPage() {
   const router = useRouter();
   const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
   const { toast } = useToast();
 
   const [reservations, setReservations] = useState<ReservationListItem[]>([]);
@@ -98,10 +98,10 @@ export default function ReservasPage() {
 
   // Cargar datos al inicio y al cambiar de sucursal
   useEffect(() => {
-    if (organization) {
+    if (organization && !branchLoading) {
       loadData();
     }
-  }, [organization, branchFilter]);
+  }, [organization, branchFilter, branchLoading]);
 
   // Filtrar reservas cuando cambian los filtros
   useEffect(() => {
@@ -386,6 +386,7 @@ export default function ReservasPage() {
             is_ready: false,
           })),
           folio: null,
+          deposit_payments: [],
           metadata: {},
         };
         setSelectedCheckoutReservation(tempReservation);
@@ -543,7 +544,7 @@ export default function ReservasPage() {
     }
   };
 
-  if (!organization) {
+  if (!organization || branchLoading) {
     return (
       <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -75,12 +75,40 @@ const DELIVERY_TYPE_OPTIONS: { value: DeliveryType | 'all'; label: string; icon:
 export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFiltersProps) {
   const [search, setSearch] = useState(activeFilters.search || '');
 
+  // Refs estables para el debounce (evita recrear el timer en cada render)
+  const activeFiltersRef = useRef(activeFilters);
+  const onFilterChangeRef = useRef(onFilterChange);
+  useEffect(() => { activeFiltersRef.current = activeFilters; }, [activeFilters]);
+  useEffect(() => { onFilterChangeRef.current = onFilterChange; }, [onFilterChange]);
+
+  // Debounce para búsqueda instantánea: aplica el filtro 400ms después de
+  // dejar de escribir, sin requerir Enter ni click en "Buscar".
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedApplySearch = useCallback((value: string) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      onFilterChangeRef.current({ ...activeFiltersRef.current, search: value || undefined });
+    }, 400);
+  }, []);
+
+  // Limpiar timer al desmontar
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+  // Sincronizar search cuando activeFilters.search cambia externamente (Limpiar)
+  useEffect(() => {
+    setSearch(activeFilters.search || '');
+  }, [activeFilters.search]);
+
   const handleStatusToggle = (status: WebOrderStatus) => {
     const currentStatuses = activeFilters.status || [];
     const newStatuses = currentStatuses.includes(status)
       ? currentStatuses.filter(s => s !== status)
       : [...currentStatuses, status];
-    
+
     onFilterChange({ ...activeFilters, status: newStatuses.length > 0 ? newStatuses : undefined });
   };
 
@@ -93,17 +121,21 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
   };
 
   const handleDeliveryTypeChange = (value: string) => {
-    onFilterChange({ 
-      ...activeFilters, 
-      delivery_type: value === 'all' ? undefined : value as DeliveryType 
+    onFilterChange({
+      ...activeFilters,
+      delivery_type: value === 'all' ? undefined : value as DeliveryType
     });
   };
 
+  // Búsqueda instantánea: actualiza el input al instante y aplica con debounce
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    debouncedApplySearch(value);
   };
 
+  // Enter aplica inmediatamente (sin esperar el debounce)
   const handleSearchSubmit = () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     onFilterChange({ ...activeFilters, search: search || undefined });
   };
 

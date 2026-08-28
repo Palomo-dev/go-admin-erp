@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Users, LogIn, RefreshCw, QrCode, Building2, Search, AlertTriangle } from 'lucide-react';
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { useMobileNative } from '@/hooks/useMobileNative';
 
 import { 
   CheckinSearch, 
@@ -41,8 +42,12 @@ export default function GymCheckinPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization, isLoading: orgLoading } = useOrganization();
-  const { branchFilter: globalBranchFilter } = useBranch();
-  
+  const { branchFilter: globalBranchFilter, isLoading: branchLoading } = useBranch();
+
+  // Hook nativo móvil (NFC, biometría) — no-ops en web
+  const { isMobileApp, isAndroidApp, startNfcScan, stopNfcScan, authenticateBiometric } = useMobileNative();
+  const [nfcScanning, setNfcScanning] = useState(false);
+
   // Estados de búsqueda y validación
   const [isSearching, setIsSearching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -68,6 +73,8 @@ export default function GymCheckinPage() {
     expiredAccess: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstLoadRef = useRef(true);
   
   // Filtros
   const [datePreset, setDatePreset] = useState<DateRangePreset>('today');
@@ -98,7 +105,10 @@ export default function GymCheckinPage() {
   const loadData = useCallback(async () => {
     if (!service) return;
     
-    setIsLoading(true);
+    if (isFirstLoadRef.current) {
+      setIsLoading(true);
+    }
+    setIsRefreshing(true);
     try {
       const { from, to } = getDateRange(datePreset, customFrom, customTo);
       
@@ -129,15 +139,17 @@ export default function GymCheckinPage() {
         variant: 'destructive',
       });
     } finally {
+      isFirstLoadRef.current = false;
+      setIsRefreshing(false);
       setIsLoading(false);
     }
   }, [service, datePreset, customFrom, customTo, methodFilter, statusFilter, toast]);
 
   useEffect(() => {
-    if (organization?.id && !orgLoading) {
+    if (organization?.id && !orgLoading && !branchLoading) {
       loadData();
     }
-  }, [organization?.id, orgLoading, loadData]);
+  }, [organization?.id, orgLoading, branchLoading, loadData]);
 
   // Auto-refresh cada 30 segundos si es "hoy"
   useEffect(() => {
@@ -284,9 +296,39 @@ export default function GymCheckinPage() {
     setSearchResults([]);
   };
 
+  // Handler NFC — solo activo en Android nativo. En web es no-op.
+  const handleNfcScan = async () => {
+    if (!isAndroidApp) return;
+    setNfcScanning(true);
+    try {
+      const result = await startNfcScan();
+      if (result.success && result.data) {
+        // Buscar miembro por ID del tag NFC
+        const tagId = result.data.id;
+        // Por ahora, mostrar el tag escaneado — la búsqueda de miembro por tag
+        // requiere una tabla de asociación que se creará en migración futura
+        toast({
+          title: 'NFC escaneado',
+          description: `Tag ID: ${tagId}`,
+        });
+      } else if (result.error && result.error !== 'timeout') {
+        toast({
+          title: 'Error NFC',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      console.error('[gymCheckin] NFC scan error:', err);
+    } finally {
+      setNfcScanning(false);
+      await stopNfcScan();
+    }
+  };
+
   const isToday = datePreset === 'today';
 
-  if (orgLoading) {
+  if (orgLoading || branchLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 space-y-4 sm:space-y-6">
         <PageHeaderSkeleton />
@@ -318,10 +360,15 @@ export default function GymCheckinPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="sm" onClick={loadData} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
+          {isAndroidApp && (
+            <Button variant="outline" size="sm" onClick={handleNfcScan} disabled={nfcScanning}>
+              {nfcScanning ? 'Escaneando...' : '📱 NFC'}
+            </Button>
+          )}
           <Link href="/app/gym/dispositivos">
             <Button variant="outline" size="sm">
               <QrCode className="h-4 w-4 mr-2" />
@@ -332,7 +379,7 @@ export default function GymCheckinPage() {
       </div>
 
       {/* Estadísticas - Full width */}
-      <CheckinStats stats={stats} isLoading={isLoading} />
+      <CheckinStats stats={stats} isLoading={isLoading && checkins.length === 0} />
 
       {/* Alerta de membresías que vencen hoy */}
       {expiringToday.length > 0 && (
@@ -499,7 +546,7 @@ export default function GymCheckinPage() {
           {/* Historial de check-ins */}
           <CheckinHistory 
             checkins={filteredCheckins}
-            isLoading={isLoading}
+            isLoading={isLoading && checkins.length === 0}
           />
         </div>
       </div>

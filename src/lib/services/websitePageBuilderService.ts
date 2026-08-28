@@ -1,6 +1,15 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import {
+  STYLE_FIELDS,
+  SPACING_FIELDS,
+  GRID_FIELDS,
+  CAROUSEL_FIELDS,
+  CARD_FIELDS,
+  BUTTON_ITEM_FIELDS,
+  PRODUCT_CARD_INTERACTION_FIELDS,
+} from '@/lib/services/website/sectionFieldGroups';
 
 // ============================================================
 // INTERFACES
@@ -28,6 +37,35 @@ export interface WebsitePage {
   linked_category_id: number | null;
   menu_icon: string | null;
   menu_badge: string | null;
+  // F9.3 — Ajustes de layout a nivel de página (columns, gallery_width, sticky_column)
+  page_settings?: Record<string, any> | null;
+  // FASE 12 — borradores y versionado
+  draft_content?: { sections: WebsitePageSection[] } | null;
+  has_unpublished_changes?: boolean;
+  published_at?: string | null;
+}
+
+/** Versión publicada de una página (FASE 12). */
+export interface WebsitePageVersion {
+  id: string;
+  page_id: string;
+  organization_id: number;
+  content_snapshot: { sections: WebsitePageSection[] };
+  created_by: string | null;
+  created_at: string;
+  note: string | null;
+}
+
+/** Plantilla de sección guardada por el usuario (FASE 12). */
+export interface WebsiteSectionPreset {
+  id: string;
+  organization_id: number;
+  name: string;
+  section_type: string;
+  section_variant: string;
+  content: Record<string, any>;
+  created_by: string | null;
+  created_at: string;
 }
 
 /** Página con hijos anidados (árbol de menú) */
@@ -67,20 +105,93 @@ export interface SectionTypeDefinition {
   contentFields: ContentFieldDef[];
 }
 
+/**
+ * Grupo lógico al que pertenece un campo dentro del editor de secciones.
+ * El editor agrupa los campos por este valor en paneles/acordeones.
+ */
+export type FieldGroup =
+  | 'content'
+  | 'data'
+  | 'layout'
+  | 'style'
+  | 'carousel'
+  | 'behavior'
+  | 'advanced';
+
+/**
+ * Condición para mostrar/ocultar un campo dinámicamente dentro del editor.
+ * - `field`: clave de otro campo del mismo contenido (o de la sección).
+ * - `equals`: el campo referenciado debe ser exactamente igual a este valor.
+ * - `in`: el campo referenciado debe estar dentro de esta lista de valores.
+ * - `variantIn`: el campo solo se muestra si la variante de la sección está en esta lista.
+ */
+export interface FieldCondition {
+  field?: string;
+  equals?: unknown;
+  in?: unknown[];
+  variantIn?: string[];
+}
+
 export interface ContentFieldDef {
   key: string;
   label: string;
-  type: 'text' | 'textarea' | 'url' | 'image' | 'color' | 'number' | 'boolean' | 'select' | 'range';
+  type:
+    | 'text'
+    | 'textarea'
+    | 'richtext'
+    | 'url'
+    | 'image'
+    | 'color'
+    | 'number'
+    | 'boolean'
+    | 'select'
+    | 'range'
+    | 'icon'
+    | 'repeater'
+    | 'entity'
+    | 'spacing'
+    | 'alignment';
   placeholder?: string;
+  /** Texto de ayuda que explica para qué sirve el campo. */
+  helpText?: string;
+  /** Grupo lógico del editor (default: 'content'). */
+  group?: FieldGroup;
+  /** Condición para mostrar el campo. */
+  showIf?: FieldCondition;
   options?: { value: string; label: string }[];
-  defaultValue?: boolean | number;
+  /** Valor por defecto (escalar o, si `responsive: true`, `{ desktop, tablet, mobile }`). */
+  defaultValue?: unknown;
   min?: number;
   max?: number;
   step?: number;
   suffix?: string;
+  /**
+   * Si es `true`, el valor se guarda como `{ desktop, tablet, mobile }` en vez
+   * de un escalar. Los valores escalares antiguos se siguen aceptando
+   * (retrocompatibilidad). El sitio lo resuelve con `resolveResponsive()` (0.5).
+   */
+  responsive?: boolean;
+  // ---- type='repeater' ----
+  /** Campos que definen cada item del repeater. */
+  itemFields?: ContentFieldDef[];
+  /** Clave del itemField cuyo valor se muestra en la fila colapsada. */
+  itemLabelKey?: string;
+  /** Cantidad máxima de items permitidos. */
+  maxItems?: number;
+  // ---- type='entity' ----
+  /** Tipo de entidad seleccionable. */
+  entity?: 'category' | 'product' | 'branch' | 'page' | 'table_zone';
+  /** Si es `true`, permite seleccionar varias entidades. */
+  multiple?: boolean;
 }
 
-export const SECTION_CATALOG: SectionTypeDefinition[] = [
+/**
+ * Catálogo "crudo" de definiciones de secciones.
+ * Los campos de estilo (STYLE_FIELDS) se inyectan automáticamente al
+ * construir `SECTION_CATALOG`, por lo que NO deben duplicarse aquí.
+ * Ver `sectionFieldGroups.ts` (F0.2).
+ */
+const RAW_CATALOG: SectionTypeDefinition[] = [
   {
     type: 'hero',
     label: 'Hero / Banner',
@@ -98,7 +209,7 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Descripción breve' },
       { key: 'image_url', label: 'Imagen escritorio', type: 'image' },
       { key: 'image_url_mobile', label: 'Imagen móvil', type: 'image' },
-      { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...' },
+      { key: 'video_url', label: 'URL de video', type: 'url', placeholder: 'https://...', showIf: { variantIn: ['video'] } },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
       { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
       { key: 'show_overlay', label: 'Mostrar overlay oscuro', type: 'boolean', defaultValue: true },
@@ -107,6 +218,118 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { key: 'full_width', label: 'Ancho completo', type: 'boolean', defaultValue: true },
       { key: 'border_radius', label: 'Bordes redondeados (px)', type: 'range', min: 0, max: 50, step: 1, defaultValue: 0, suffix: 'px' },
       { key: 'shadow_intensity', label: 'Intensidad de sombra', type: 'range', min: 0, max: 50, step: 1, defaultValue: 0, suffix: '' },
+      // F3.1 — Altura configurable (grupo Diseño)
+      {
+        key: 'height',
+        label: 'Altura del hero',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'auto',
+        helpText: 'Controla la altura del hero. "auto" mantiene el comportamiento actual.',
+        options: [
+          { value: '50vh', label: '50 vh (media pantalla)' },
+          { value: '70vh', label: '70 vh (pantalla grande)' },
+          { value: '100vh', label: '100 vh (pantalla completa)' },
+          { value: 'auto', label: 'Automática (según contenido)' },
+          { value: 'custom', label: 'Personalizada' },
+        ],
+      },
+      {
+        key: 'custom_height',
+        label: 'Altura personalizada',
+        type: 'number',
+        group: 'layout',
+        min: 100,
+        max: 2000,
+        step: 10,
+        suffix: 'px',
+        showIf: { field: 'height', equals: 'custom' },
+        helpText: 'Altura fija en píxeles',
+      },
+      // F3.1 — Overlay avanzado
+      {
+        key: 'overlay_opacity',
+        label: 'Opacidad del overlay',
+        type: 'range',
+        group: 'style',
+        min: 0,
+        max: 100,
+        step: 5,
+        defaultValue: 70,
+        suffix: '%',
+        showIf: { field: 'show_overlay', equals: true },
+        helpText: '0 = transparente, 100 = opaco. Por defecto 70%.',
+      },
+      {
+        key: 'overlay_color',
+        label: 'Color del overlay',
+        type: 'color',
+        group: 'style',
+        showIf: { field: 'show_overlay', equals: true },
+        helpText: 'Color del overlay sobre la imagen. Vacío = color primario.',
+      },
+      // F3.1 — Posición y alineación del contenido
+      {
+        key: 'content_position',
+        label: 'Posición del contenido',
+        type: 'alignment',
+        group: 'layout',
+        defaultValue: 'middle-center',
+        helpText: 'Posición del bloque de texto dentro del hero',
+      },
+      {
+        key: 'text_align',
+        label: 'Alineación del texto',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'center',
+        options: [
+          { value: 'left', label: 'Izquierda' },
+          { value: 'center', label: 'Centro' },
+          { value: 'right', label: 'Derecha' },
+        ],
+      },
+      // F3.1 — Botones múltiples (repeater). Compatible con cta_text/cta_url heredados.
+      {
+        key: 'buttons',
+        label: 'Botones',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'label',
+        maxItems: 4,
+        helpText: 'Botones múltiples. Si está vacío, se usa el botón único de arriba.',
+        itemFields: BUTTON_ITEM_FIELDS,
+      },
+      // F3.1 — Solape con el header (F1: ya lo lee el componente, ahora se declara)
+      {
+        key: 'overlap_header',
+        label: 'Solapar con el header',
+        type: 'boolean',
+        group: 'layout',
+        defaultValue: true,
+        helpText: 'El hero sube debajo del header transparente',
+      },
+      // Booking widget (reemplaza hero booking switch ad-hoc)
+      { key: 'show_booking_widget', label: 'Widget de reserva', type: 'boolean', group: 'behavior', defaultValue: false, helpText: 'Muestra un formulario de reserva sobre el hero' },
+      // Slides (reemplaza HeroSlidesEditor ad-hoc, solo variante slider)
+      {
+        key: 'slides',
+        label: 'Slides',
+        type: 'repeater',
+        group: 'content',
+        showIf: { variantIn: ['slider'] },
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'title', label: 'Título', type: 'text', placeholder: 'Título del slide' },
+          { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Descripción del slide' },
+          { key: 'image_url', label: 'Imagen escritorio', type: 'image' },
+          { key: 'image_url_mobile', label: 'Imagen móvil', type: 'image' },
+          { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Ver más' },
+          { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/productos' },
+        ],
+      },
+      // F3.1 — CAROUSEL_FIELDS solo para la variante slider
+      ...CAROUSEL_FIELDS.map((f) => ({ ...f, showIf: { ...f.showIf, variantIn: ['slider'] } })),
     ],
   },
   {
@@ -121,6 +344,18 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestras Habitaciones' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'room_type_ids',
+        label: 'Tipos de habitación',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todos los tipos',
+      },
+      { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '6', group: 'data' },
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
     ],
   },
   {
@@ -135,6 +370,19 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Servicios' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Amenidades',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'icon', label: 'Icono', type: 'icon' },
+          { key: 'title', label: 'Nombre', type: 'text', placeholder: 'WiFi gratis' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+        ],
+      },
+      ...GRID_FIELDS,
     ],
   },
   {
@@ -150,6 +398,26 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Galería' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      // Reemplaza GalleryItemsEditor ad-hoc. Clave canónica `images` (P4/F2.5):
+      // el sitio lee `content.images ?? content.items` para retrocompatibilidad.
+      {
+        key: 'images',
+        label: 'Imágenes',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'alt',
+        itemFields: [
+          { key: 'url', label: 'Imagen', type: 'image' },
+          { key: 'alt', label: 'Texto alternativo', type: 'text' },
+          { key: 'caption', label: 'Descripción', type: 'text' },
+          { key: 'link', label: 'Enlace (opcional)', type: 'url', placeholder: 'https://...' },
+        ],
+      },
+      { key: 'lightbox', label: 'Lightbox al hacer clic', type: 'boolean', group: 'behavior', defaultValue: true },
+      ...GRID_FIELDS,
+      // CAROUSEL_FIELDS aplica sobre todo a la variante carousel
+      ...CAROUSEL_FIELDS,
     ],
   },
   {
@@ -165,6 +433,201 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Lo que dicen nuestros clientes' },
+      // FASE 6 — Fuente de datos
+      {
+        key: 'data_source',
+        label: 'Origen de los testimonios',
+        type: 'select',
+        group: 'data',
+        defaultValue: 'manual',
+        helpText: 'manual: testimonios escritos abajo · database: tabla testimonials · featured: solo destacados',
+        options: [
+          { value: 'manual', label: 'Manual (JSON)' },
+          { value: 'database', label: 'Base de datos' },
+          { value: 'featured', label: 'Destacados (BD)' },
+        ],
+      },
+      {
+        key: 'max_items',
+        label: 'Cantidad a mostrar',
+        type: 'number',
+        group: 'data',
+        placeholder: '6',
+        helpText: 'Vacío = mostrar todos',
+      },
+      {
+        key: 'randomize_order',
+        label: 'Orden aleatorio',
+        type: 'boolean',
+        group: 'data',
+        defaultValue: false,
+        helpText: 'Mezcla los testimonios en cada carga de página',
+      },
+      // Reemplaza TestimonialItemsEditor ad-hoc (solo relevante con data_source = manual)
+      {
+        key: 'items',
+        label: 'Testimonios',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        showIf: { field: 'data_source', in: ['manual', undefined] },
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Nombre del cliente' },
+          // F2.2: clave canónica `role` (el sitio lee item.role ?? item.company)
+          { key: 'role', label: 'Cargo / Empresa', type: 'text', placeholder: 'Cargo o empresa (opcional)' },
+          { key: 'content', label: 'Testimonio', type: 'textarea', placeholder: 'Opinión del cliente' },
+          { key: 'rating', label: 'Valoración', type: 'range', min: 1, max: 5, step: 1, defaultValue: 5 },
+          { key: 'avatar_url', label: 'Foto (opcional)', type: 'image' },
+        ],
+      },
+      // FASE 6 — Composición de la tarjeta
+      {
+        key: 'avatar_position',
+        label: 'Posición del avatar',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'left',
+        options: [
+          { value: 'top', label: 'Arriba' },
+          { value: 'left', label: 'Izquierda' },
+          { value: 'right', label: 'Derecha' },
+          { value: 'bottom', label: 'Abajo' },
+          { value: 'none', label: 'Sin avatar' },
+        ],
+      },
+      {
+        key: 'avatar_shape',
+        label: 'Forma del avatar',
+        type: 'select',
+        group: 'style',
+        defaultValue: 'circle',
+        options: [
+          { value: 'circle', label: 'Círculo' },
+          { value: 'square', label: 'Cuadrado' },
+          { value: 'rounded', label: 'Redondeado' },
+        ],
+      },
+      {
+        key: 'avatar_size',
+        label: 'Tamaño del avatar',
+        type: 'range',
+        group: 'layout',
+        min: 24,
+        max: 96,
+        step: 4,
+        defaultValue: 40,
+        suffix: 'px',
+      },
+      {
+        key: 'avatar_fallback',
+        label: 'Avatar por defecto',
+        type: 'select',
+        group: 'style',
+        defaultValue: 'initial',
+        helpText: 'Qué mostrar cuando no hay foto',
+        options: [
+          { value: 'initial', label: 'Inicial del nombre' },
+          { value: 'icon', label: 'Icono de usuario' },
+        ],
+      },
+      // FASE 6 — Comillas
+      {
+        key: 'quote_marks',
+        label: 'Comillas',
+        type: 'select',
+        group: 'style',
+        defaultValue: 'none',
+        options: [
+          { value: 'none', label: 'Ninguna' },
+          { value: 'before', label: 'Antes del texto' },
+          { value: 'around', label: 'Rodeando el texto' },
+          { value: 'background', label: 'De fondo (decorativa)' },
+        ],
+      },
+      { key: 'quote_mark_color', label: 'Color de comillas', type: 'color', group: 'style', showIf: { field: 'quote_marks', in: ['before', 'around', 'background'] } },
+      {
+        key: 'quote_mark_size',
+        label: 'Tamaño de comillas',
+        type: 'range',
+        group: 'style',
+        min: 16,
+        max: 96,
+        step: 4,
+        defaultValue: 48,
+        suffix: 'px',
+        showIf: { field: 'quote_marks', in: ['before', 'around', 'background'] } },
+      // FASE 6 — Texto
+      // text_align viene inyectado por CARD_FIELDS (mismo key/valor por defecto).
+      {
+        key: 'text_size',
+        label: 'Tamaño del texto',
+        type: 'select',
+        group: 'style',
+        defaultValue: 'md',
+        options: [
+          { value: 'xs', label: 'Muy pequeño' },
+          { value: 'sm', label: 'Pequeño' },
+          { value: 'md', label: 'Mediano' },
+          { value: 'lg', label: 'Grande' },
+          { value: 'xl', label: 'Muy grande' },
+          { value: '2xl', label: 'Extra grande' },
+        ],
+      },
+      {
+        key: 'text_max_lines',
+        label: 'Líneas máximas (con "leer más")',
+        type: 'number',
+        group: 'layout',
+        min: 0,
+        max: 10,
+        helpText: '0 = sin límite',
+      },
+      // FASE 6 — Valoración
+      { key: 'show_rating', label: 'Mostrar valoración', type: 'boolean', group: 'behavior', defaultValue: true },
+      {
+        key: 'rating_style',
+        label: 'Estilo de valoración',
+        type: 'select',
+        group: 'style',
+        defaultValue: 'stars',
+        showIf: { field: 'show_rating', equals: true },
+        options: [
+          { value: 'stars', label: 'Estrellas' },
+          { value: 'compact', label: 'Numérico (4.8/5)' },
+          { value: 'stars_count', label: 'Estrellas + número' },
+        ],
+      },
+      {
+        key: 'rating_position',
+        label: 'Posición de la valoración',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'top',
+        showIf: { field: 'show_rating', equals: true },
+        options: [
+          { value: 'top', label: 'Arriba' },
+          { value: 'bottom', label: 'Abajo' },
+        ],
+      },
+      { key: 'rating_color', label: 'Color de estrellas', type: 'color', group: 'style', showIf: { field: 'show_rating', equals: true } },
+      // FASE 6 — Fuente y fecha
+      { key: 'show_source', label: 'Mostrar origen (Google, Facebook…)', type: 'boolean', group: 'behavior', defaultValue: false },
+      {
+        key: 'source_badge_style',
+        label: 'Estilo del badge de origen',
+        type: 'select',
+        group: 'style',
+        defaultValue: 'pill',
+        showIf: { field: 'show_source', equals: true },
+        options: [
+          { value: 'pill', label: 'Píldora' },
+          { value: 'plain', label: 'Texto plano' },
+        ],
+      },
+      { key: 'show_date', label: 'Mostrar fecha', type: 'boolean', group: 'behavior', defaultValue: false },
+      // FASE 6 — Grid + Card compartidos
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
     ],
   },
   {
@@ -176,13 +639,23 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { id: 'centered', label: 'Centrado' },
       { id: 'banner', label: 'Banner' },
       { id: 'with_image', label: 'Con imagen' },
+      { id: 'split', label: 'Dividido' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: '¿Listo para reservar?' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
       { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar Ahora' },
       { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
-      { key: 'image_url', label: 'Imagen', type: 'image' },
+      { key: 'image_url', label: 'Imagen', type: 'image', showIf: { variantIn: ['with_image', 'split'] } },
+      // Repeater de botones usando BUTTON_ITEM_FIELDS (F2.5)
+      {
+        key: 'buttons',
+        label: 'Botones adicionales',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'label',
+        itemFields: BUTTON_ITEM_FIELDS,
+      },
     ],
   },
   {
@@ -192,12 +665,39 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     description: 'Formulario para que los clientes te contacten',
     variants: [
       { id: 'default', label: 'Por defecto' },
+      { id: 'simple', label: 'Simple' },
       { id: 'split', label: 'Dividido' },
       { id: 'with_map', label: 'Con mapa' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Contáctanos' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'email_to', label: 'Email de destino', type: 'text', placeholder: 'info@empresa.com', group: 'data', helpText: 'Correo donde llegan los mensajes del formulario' },
+      // Repeater de campos del formulario (F2.5)
+      {
+        key: 'form_fields',
+        label: 'Campos del formulario',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'label',
+        itemFields: [
+          { key: 'name', label: 'Nombre del campo', type: 'text', placeholder: 'phone' },
+          { key: 'label', label: 'Etiqueta', type: 'text', placeholder: 'Teléfono' },
+          { key: 'type', label: 'Tipo', type: 'select', options: [
+            { value: 'text', label: 'Texto' },
+            { value: 'email', label: 'Email' },
+            { value: 'tel', label: 'Teléfono' },
+            { value: 'textarea', label: 'Texto largo' },
+            { value: 'select', label: 'Desplegable' },
+            { value: 'checkbox', label: 'Casilla' },
+          ]},
+          { key: 'required', label: 'Obligatorio', type: 'boolean', defaultValue: false },
+        ],
+      },
+      { key: 'show_map', label: 'Mostrar mapa', type: 'boolean', group: 'behavior', defaultValue: false },
+      { key: 'show_phone', label: 'Mostrar teléfono', type: 'boolean', group: 'behavior', defaultValue: true },
+      { key: 'show_email', label: 'Mostrar email', type: 'boolean', group: 'behavior', defaultValue: true },
+      { key: 'show_address', label: 'Mostrar dirección', type: 'boolean', group: 'behavior', defaultValue: true },
     ],
   },
   {
@@ -206,12 +706,26 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     icon: 'MapPin',
     description: 'Mapa de ubicación',
     variants: [
+      { id: 'default', label: 'Por defecto' },
       { id: 'embedded', label: 'Embebido' },
       { id: 'full_width', label: 'Ancho completo' },
       { id: 'with_directions', label: 'Con direcciones' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Encuéntranos' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'address', label: 'Dirección', type: 'text', placeholder: 'Calle 123, Ciudad' },
+      { key: 'lat', label: 'Latitud', type: 'number', placeholder: '4.7110', group: 'data' },
+      { key: 'lng', label: 'Longitud', type: 'number', placeholder: '-74.0721', group: 'data' },
+      { key: 'zoom', label: 'Zoom', type: 'range', min: 1, max: 20, step: 1, defaultValue: 14, group: 'layout' },
+      { key: 'height', label: 'Altura (px)', type: 'number', placeholder: '400', group: 'layout' },
+      { key: 'map_style', label: 'Estilo del mapa', type: 'select', group: 'style', options: [
+        { value: 'default', label: 'Estándar' },
+        { value: 'satellite', label: 'Satélite' },
+        { value: 'dark', label: 'Oscuro' },
+        { value: 'light', label: 'Claro' },
+      ]},
+      { key: 'show_marker', label: 'Mostrar marcador', type: 'boolean', group: 'behavior', defaultValue: true },
     ],
   },
   {
@@ -226,6 +740,21 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Estadísticas',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'label',
+        itemFields: [
+          { key: 'label', label: 'Etiqueta', type: 'text', placeholder: 'Clientes felices' },
+          { key: 'value', label: 'Valor', type: 'text', placeholder: '1500' },
+          { key: 'suffix', label: 'Sufijo', type: 'text', placeholder: '+' },
+          { key: 'icon', label: 'Icono', type: 'icon' },
+        ],
+      },
+      ...GRID_FIELDS,
     ],
   },
   {
@@ -240,7 +769,13 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text' },
-      { key: 'body', label: 'Contenido', type: 'textarea' },
+      { key: 'body', label: 'Contenido', type: 'richtext' },
+      { key: 'columns', label: 'Columnas', type: 'select', group: 'layout', defaultValue: '1', options: [
+        { value: '1', label: 'Una columna' },
+        { value: '2', label: 'Dos columnas' },
+        { value: '3', label: 'Tres columnas' },
+      ]},
+      { key: 'alignment', label: 'Alineación', type: 'alignment', group: 'layout', defaultValue: 'left' },
     ],
   },
   {
@@ -251,9 +786,27 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     variants: [
       { id: 'grid', label: 'Grid' },
       { id: 'carousel', label: 'Carrusel' },
+      { id: 'simple', label: 'Simple' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestro Equipo' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Miembros',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Juan Pérez' },
+          { key: 'role', label: 'Cargo', type: 'text', placeholder: 'Gerente' },
+          { key: 'bio', label: 'Biografía', type: 'textarea' },
+          { key: 'image_url', label: 'Foto', type: 'image' },
+          { key: 'email', label: 'Email', type: 'text' },
+          { key: 'linkedin_url', label: 'LinkedIn', type: 'url' },
+        ],
+      },
+      ...GRID_FIELDS,
     ],
   },
   {
@@ -268,6 +821,20 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Preguntas Frecuentes' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      // Reemplaza FAQItemsEditor ad-hoc
+      {
+        key: 'items',
+        label: 'Preguntas',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'question',
+        itemFields: [
+          { key: 'question', label: 'Pregunta', type: 'text', placeholder: '¿Pregunta?' },
+          { key: 'answer', label: 'Respuesta', type: 'textarea', placeholder: 'Respuesta...' },
+        ],
+      },
+      ...GRID_FIELDS,
     ],
   },
   {
@@ -283,6 +850,19 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Suscríbete' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'image_url', label: 'Imagen', type: 'image', showIf: { variantIn: ['with_image', 'banner'] } },
+      { key: 'button_text', label: 'Texto del botón', type: 'text', placeholder: 'Suscribirme' },
+      { key: 'placeholder', label: 'Placeholder del email', type: 'text', placeholder: 'tu@email.com' },
+      { key: 'disclaimer', label: 'Aviso legal', type: 'textarea', placeholder: 'Al suscribirte aceptas nuestra política de privacidad' },
+      { key: 'layout', label: 'Distribución', type: 'select', group: 'layout', options: [
+        { value: 'centered', label: 'Centrado' },
+        { value: 'left', label: 'Izquierda' },
+        { value: 'split', label: 'Dividido' },
+      ]},
+      { key: 'input_bg_color', label: 'Fondo del input', type: 'color', group: 'style' },
+      { key: 'input_text_color', label: 'Color del texto del input', type: 'color', group: 'style' },
+      { key: 'button_bg_color', label: 'Color del botón', type: 'color', group: 'style' },
+      { key: 'button_text_color', label: 'Color del texto del botón', type: 'color', group: 'style' },
     ],
   },
   {
@@ -291,6 +871,7 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     icon: 'ShoppingBag',
     description: 'Grid de productos',
     variants: [
+      { id: 'default', label: 'Por defecto' },
       { id: 'grid', label: 'Grid' },
       { id: 'carousel', label: 'Carrusel' },
       { id: 'list', label: 'Lista' },
@@ -298,6 +879,35 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Productos' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      // Reemplaza CategorySelectorEditor ad-hoc
+      {
+        key: 'selected_category_ids',
+        label: 'Categorías a mostrar',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todas las categorías',
+      },
+      { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '12', group: 'data' },
+      { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
+        { value: 'default', label: 'Por defecto' },
+        { value: 'price_asc', label: 'Precio ascendente' },
+        { value: 'price_desc', label: 'Precio descendente' },
+        { value: 'name', label: 'Nombre' },
+        { value: 'sales', label: 'Más vendidos' },
+      ]},
+      { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
+      { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
+        { value: '', label: 'Ninguno' },
+        { value: 'on_sale', label: 'En oferta' },
+        { value: 'featured', label: 'Destacados' },
+        { value: 'new', label: 'Novedades' },
+      ]},
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
+      ...PRODUCT_CARD_INTERACTION_FIELDS,
     ],
   },
   {
@@ -306,29 +916,83 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     icon: 'ShoppingBag',
     description: 'Grid o carrusel de categorías de productos',
     variants: [
+      { id: 'default', label: 'Por defecto' },
       { id: 'grid', label: 'Grid' },
+      { id: 'horizontal', label: 'Horizontal' },
+      { id: 'icons', label: 'Iconos' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Explora nuestros productos por categoría' },
       { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '6' },
-      { key: 'shape', label: 'Forma', type: 'select', options: [
+      { key: 'shape', label: 'Forma', type: 'select', group: 'style', defaultValue: 'square', options: [
         { value: 'square', label: 'Cuadrado' },
-        { value: 'round', label: 'Redondo' },
+        { value: 'rounded', label: 'Redondeado' },
+        { value: 'circle', label: 'Círculo' },
+        { value: 'card', label: 'Tarjeta' },
+        { value: 'round', label: 'Redondo (obsoleto)' },
       ]},
-      { key: 'show_count', label: 'Mostrar cantidad de productos', type: 'boolean' },
-      { key: 'desktop_layout', label: 'Layout en escritorio', type: 'select', options: [
+      { key: 'desktop_layout', label: 'Layout en escritorio', type: 'select', group: 'layout', options: [
         { value: 'grid', label: 'Grid' },
         { value: 'carousel', label: 'Carrusel' },
         { value: 'list', label: 'Lista' },
       ]},
-      { key: 'desktop_columns', label: 'Columnas (escritorio)', type: 'number', placeholder: 'Auto' },
-      { key: 'desktop_rows', label: 'Filas máximas (escritorio)', type: 'number', placeholder: 'Todas' },
-      { key: 'mobile_layout', label: 'Layout en móvil', type: 'select', options: [
+      { key: 'desktop_columns', label: 'Columnas (escritorio)', type: 'number', group: 'layout', placeholder: 'Auto' },
+      { key: 'desktop_rows', label: 'Filas máximas (escritorio)', type: 'number', group: 'layout', placeholder: 'Todas' },
+      { key: 'mobile_layout', label: 'Layout en móvil', type: 'select', group: 'layout', options: [
         { value: 'grid', label: 'Grid' },
         { value: 'list', label: 'Lista' },
         { value: 'carousel', label: 'Carrusel' },
       ]},
+      // Reemplaza CategorySelectorEditor ad-hoc
+      {
+        key: 'selected_category_ids',
+        label: 'Categorías a mostrar',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todas las categorías',
+      },
+      // Reemplaza el bloque ad-hoc de opciones de categories_grid
+      { key: 'enable_search', label: 'Buscador de categorías', type: 'boolean', group: 'behavior', defaultValue: false, helpText: 'Muestra una barra de búsqueda para filtrar categorías' },
+      { key: 'enable_pagination', label: 'Paginación', type: 'boolean', group: 'behavior', defaultValue: false, helpText: 'Pagina las categorías en lugar de mostrar todas' },
+      { key: 'page_size', label: 'Categorías por página', type: 'number', group: 'behavior', defaultValue: 24, min: 6, max: 48, showIf: { field: 'enable_pagination', equals: true } },
+      // --- F4.1/F4.2: contenido de la categoría (icono, color, imagen) ---
+      { key: 'show_count', label: 'Mostrar cantidad de productos', type: 'boolean', group: 'content', defaultValue: false },
+      // `show_description` NO se define aquí: ya viene inyectado por CARD_FIELDS
+      // (sectionFieldGroups.ts). Duplicarlo causa "two children with the same key".
+      { key: 'show_icon', label: 'Mostrar icono de la categoría', type: 'boolean', group: 'content', defaultValue: false, helpText: 'Usa categories.icon (icono Lucide)' },
+      { key: 'show_image', label: 'Mostrar imagen de la categoría', type: 'boolean', group: 'content', defaultValue: true, helpText: 'Usa categories.image_url' },
+      { key: 'show_color', label: 'Usar color de la categoría', type: 'boolean', group: 'content', defaultValue: false, helpText: 'Usa categories.color como acento o fondo' },
+      { key: 'media_source', label: 'Origen del medio', type: 'select', group: 'content', defaultValue: 'auto', helpText: 'Qué mostrar cuando hay varios disponibles', options: [
+        { value: 'auto', label: 'Automático (imagen → icono → color → inicial)' },
+        { value: 'image', label: 'Solo imagen' },
+        { value: 'icon', label: 'Solo icono' },
+        { value: 'color', label: 'Solo color' },
+        { value: 'initial', label: 'Solo inicial' },
+      ]},
+      { key: 'fallback_media', label: 'Fallback sin medio', type: 'select', group: 'content', defaultValue: 'emoji', showIf: { field: 'media_source', equals: 'auto' }, options: [
+        { value: 'emoji', label: 'Emoji 🏷️' },
+        { value: 'initial', label: 'Inicial sobre color' },
+      ]},
+      { key: 'media_max_width', label: 'Ancho máximo del medio', type: 'number', group: 'layout', placeholder: 'Auto', suffix: 'px', helpText: 'Útil para variantes horizontal/icons' },
+      // --- F4.3: composición de la tarjeta ---
+      { key: 'text_position', label: 'Posición del texto', type: 'select', group: 'layout', defaultValue: 'overlay', options: [
+        { value: 'overlay', label: 'Superpuesto (con gradiente)' },
+        { value: 'below', label: 'Debajo de la imagen' },
+        { value: 'inside', label: 'Dentro (sin gradiente)' },
+        { value: 'on_hover', label: 'Al pasar el mouse' },
+      ]},
+      { key: 'title_size', label: 'Tamaño del título', type: 'select', group: 'style', defaultValue: 'lg', options: [
+        { value: 'sm', label: 'Pequeño' },
+        { value: 'md', label: 'Mediano' },
+        { value: 'lg', label: 'Grande' },
+      ]},
+      { key: 'badge', label: 'Etiqueta (texto libre)', type: 'text', group: 'content', placeholder: 'N productos' },
+      // --- F4.1: rejilla y tarjeta (inyectados) ---
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
     ],
   },
   {
@@ -343,6 +1007,35 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Productos Destacados' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'selected_category_ids',
+        label: 'Categorías a mostrar',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todas las categorías',
+      },
+      { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '8', group: 'data' },
+      { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
+        { value: 'default', label: 'Por defecto' },
+        { value: 'price_asc', label: 'Precio ascendente' },
+        { value: 'price_desc', label: 'Precio descendente' },
+        { value: 'name', label: 'Nombre' },
+        { value: 'sales', label: 'Más vendidos' },
+      ]},
+      { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
+      { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
+        { value: '', label: 'Ninguno' },
+        { value: 'on_sale', label: 'En oferta' },
+        { value: 'featured', label: 'Destacados' },
+        { value: 'new', label: 'Novedades' },
+      ]},
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
+      ...PRODUCT_CARD_INTERACTION_FIELDS,
     ],
   },
   {
@@ -368,6 +1061,7 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     variants: [
       { id: 'image_left', label: 'Imagen izquierda' },
       { id: 'image_right', label: 'Imagen derecha' },
+      { id: 'image_top', label: 'Imagen arriba' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text' },
@@ -387,6 +1081,23 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestro Menú' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Platos',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Plato del día' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+          { key: 'price', label: 'Precio', type: 'text', placeholder: '$12.000' },
+          { key: 'image_url', label: 'Imagen', type: 'image' },
+          { key: 'category', label: 'Categoría', type: 'text', placeholder: 'Entradas' },
+        ],
+      },
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
     ],
   },
   {
@@ -400,18 +1111,162 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Ofertas Especiales' },
       { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Aprovecha nuestros descuentos' },
+      // Reemplaza CategorySelectorEditor ad-hoc
+      {
+        key: 'selected_category_ids',
+        label: 'Categorías a mostrar',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todas las categorías',
+      },
+      { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '8', group: 'data' },
+      { key: 'sort_order', label: 'Orden', type: 'select', group: 'data', defaultValue: 'default', options: [
+        { value: 'default', label: 'Por defecto' },
+        { value: 'price_asc', label: 'Precio ascendente' },
+        { value: 'price_desc', label: 'Precio descendente' },
+        { value: 'name', label: 'Nombre' },
+        { value: 'sales', label: 'Más vendidos' },
+      ]},
+      { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
+      { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
+      { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
+        { value: '', label: 'Ninguno' },
+        { value: 'on_sale', label: 'En oferta' },
+        { value: 'featured', label: 'Destacados' },
+        { value: 'new', label: 'Novedades' },
+      ]},
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
+      ...PRODUCT_CARD_INTERACTION_FIELDS,
     ],
   },
   {
     type: 'promo_banners',
     label: 'Banners Promocionales',
     icon: 'Megaphone',
-    description: 'Banners de promociones destacadas',
+    description: 'Bloques promocionales con imagen que enlazan a una categoría, un producto o una URL. Úsalos para destacar campañas.',
     variants: [
       { id: 'grid', label: 'Grid' },
+      { id: 'carousel', label: 'Carrusel' },
+      { id: 'stack', label: 'Apilado' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Promociones' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'layout',
+        label: 'Distribución',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'grid',
+        helpText: 'Cómo se disponen los banners dentro de la sección',
+        options: [
+          { value: 'grid', label: 'Grid' },
+          { value: 'carousel', label: 'Carrusel' },
+          { value: 'stack', label: 'Apilado (1 columna)' },
+        ],
+      },
+      // Repeater de banners con destino tipado (F7.1).
+      // Los banners sin link_type siguen funcionando: el sitio hace fallback a
+      // link_url / cta_url (regla de retrocompatibilidad).
+      {
+        key: 'banners',
+        label: 'Banners',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'title', label: 'Título', type: 'text', placeholder: 'Oferta de verano' },
+          { key: 'subtitle', label: 'Subtítulo', type: 'textarea', placeholder: 'Hasta 50% en toda la línea' },
+          { key: 'image_url', label: 'Imagen', type: 'image' },
+          { key: 'bg_color', label: 'Color de fondo', type: 'color', group: 'style' },
+          { key: 'text_color', label: 'Color del texto', type: 'color', group: 'style' },
+          {
+            key: 'link_type',
+            label: 'Tipo de enlace',
+            type: 'select',
+            group: 'content',
+            defaultValue: 'url',
+            helpText: 'A qué lleva el banner al hacer clic',
+            options: [
+              { value: 'url', label: 'URL personalizada' },
+              { value: 'category', label: 'Categoría' },
+              { value: 'product', label: 'Producto' },
+              { value: 'page', label: 'Página del sitio' },
+            ],
+          },
+          {
+            key: 'link_category_id',
+            label: 'Categoría destino',
+            type: 'entity',
+            entity: 'category',
+            group: 'data',
+            helpText: 'Al elegir categoría se arma el enlace /categorias/{slug} automáticamente',
+            showIf: { field: 'link_type', equals: 'category' },
+          },
+          {
+            key: 'link_product_id',
+            label: 'Producto destino',
+            type: 'entity',
+            entity: 'product',
+            group: 'data',
+            helpText: 'Al elegir producto se arma el enlace /productos/{uuid} automáticamente',
+            showIf: { field: 'link_type', equals: 'product' },
+          },
+          {
+            key: 'link_page_id',
+            label: 'Página destino',
+            type: 'entity',
+            entity: 'page',
+            group: 'data',
+            helpText: 'Página interna del sitio (enlace /{slug})',
+            showIf: { field: 'link_type', equals: 'page' },
+          },
+          {
+            key: 'link_url',
+            label: 'URL destino',
+            type: 'url',
+            group: 'content',
+            placeholder: 'https://... o /ruta',
+            showIf: { field: 'link_type', equals: 'url' },
+          },
+          {
+            key: 'show_category_products',
+            label: 'Mostrar preview de productos',
+            type: 'boolean',
+            group: 'behavior',
+            defaultValue: false,
+            helpText: 'Muestra una miniatura de productos de la categoría dentro del banner',
+            showIf: { field: 'link_type', equals: 'category' },
+          },
+          {
+            key: 'max_preview_products',
+            label: 'Productos a previsualizar',
+            type: 'number',
+            group: 'behavior',
+            defaultValue: 4,
+            min: 1,
+            max: 12,
+            showIf: { field: 'show_category_products', equals: true },
+          },
+          { key: 'button_text', label: 'Texto del botón', type: 'text', placeholder: 'Ver más' },
+          {
+            key: 'button_style',
+            label: 'Estilo del botón',
+            type: 'select',
+            group: 'style',
+            defaultValue: 'solid',
+            options: [
+              { value: 'solid', label: 'Sólido' },
+              { value: 'outline', label: 'Contorno' },
+              { value: 'ghost', label: 'Transparente' },
+            ],
+          },
+        ],
+      },
+      ...GRID_FIELDS,
     ],
   },
   {
@@ -436,6 +1291,21 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
         { value: 'lg', label: 'Grande' },
       ]},
       { key: 'grayscale', label: 'Efecto blanco y negro', type: 'boolean' },
+      // Reemplaza BrandsItemsEditor ad-hoc
+      {
+        key: 'items',
+        label: 'Marcas',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'logo_url', label: 'Logo', type: 'image' },
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Nombre de la marca' },
+          { key: 'url', label: 'URL (opcional)', type: 'url', placeholder: 'https://marca.com' },
+        ],
+      },
+      // CAROUSEL_FIELDS para la variante carrusel (F2.5)
+      ...CAROUSEL_FIELDS,
     ],
   },
   {
@@ -448,6 +1318,34 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Planes' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'plan_ids',
+        label: 'Planes a mostrar',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todos los planes',
+      },
+      {
+        key: 'plans',
+        label: 'Planes personalizados',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Básico' },
+          { key: 'price', label: 'Precio', type: 'text', placeholder: '$29.000/mes' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+          { key: 'features', label: 'Características (una por línea)', type: 'textarea', placeholder: 'Gym ilimitado\nPool\nSauna' },
+          { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Suscribirme' },
+          { key: 'cta_url', label: 'URL del botón', type: 'url' },
+          { key: 'highlighted', label: 'Destacar', type: 'boolean', defaultValue: false },
+        ],
+      },
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
     ],
   },
   {
@@ -480,7 +1378,1200 @@ export const SECTION_CATALOG: SectionTypeDefinition[] = [
       { key: 'reset_hour', label: 'Hora de reinicio (0-23)', type: 'number', placeholder: '0' },
     ],
   },
+  // ============================================================
+  // F2.3 — Tipos huérfanos declarados en el catálogo
+  // (el sitio los renderiza pero el editor no los ofrecía)
+  // ============================================================
+  {
+    type: 'reservation_cta',
+    label: 'Reserva de Mesa',
+    icon: 'CalendarCheck',
+    description: 'Llamada a la acción para reservar mesa (con o sin formulario)',
+    variants: [
+      { id: 'with_form', label: 'Con formulario' },
+      { id: 'simple', label: 'Simple' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Reserva tu mesa' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar' },
+      { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: '/reservas' },
+      { key: 'show_form', label: 'Mostrar formulario inline', type: 'boolean', group: 'behavior', defaultValue: false, showIf: { variantIn: ['with_form'] } },
+      // F8.3 — Campos del formulario (repeater: qué campos mostrar)
+      {
+        key: 'form_fields',
+        label: 'Campos del formulario',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'label',
+        showIf: { variantIn: ['with_form'] },
+        helpText: 'Define qué campos aparecen en el formulario y su orden. Vacío = nombre, teléfono, fecha, hora, personas.',
+        itemFields: [
+          { key: 'name', label: 'Campo', type: 'select', options: [
+            { value: 'name', label: 'Nombre' },
+            { value: 'phone', label: 'Teléfono' },
+            { value: 'email', label: 'Email' },
+            { value: 'date', label: 'Fecha' },
+            { value: 'time', label: 'Hora' },
+            { value: 'guests', label: 'Personas' },
+          ]},
+          { key: 'label', label: 'Etiqueta personalizada', type: 'text', placeholder: 'Teléfono' },
+        ],
+      },
+      // F8.3 — Validación de campos
+      { key: 'require_phone', label: 'Teléfono obligatorio', type: 'boolean', group: 'behavior', defaultValue: true, showIf: { variantIn: ['with_form'] } },
+      { key: 'require_email', label: 'Email obligatorio', type: 'boolean', group: 'behavior', defaultValue: false, showIf: { variantIn: ['with_form'] } },
+      // F8.3 — Aforo
+      { key: 'min_guests', label: 'Mínimo de personas', type: 'number', group: 'behavior', defaultValue: 1, min: 1, max: 50, showIf: { variantIn: ['with_form'] } },
+      { key: 'max_guests', label: 'Máximo de personas', type: 'number', group: 'behavior', defaultValue: 8, min: 1, max: 100, showIf: { variantIn: ['with_form'] } },
+      // F8.3 — Intervalo de horarios
+      {
+        key: 'time_slot_interval',
+        label: 'Intervalo de horarios',
+        type: 'select',
+        group: 'behavior',
+        defaultValue: '30',
+        showIf: { variantIn: ['with_form'] },
+        helpText: 'Cada cuánto se ofrecen horas en el selector',
+        options: [
+          { value: '30', label: '30 minutos' },
+          { value: '60', label: '60 minutos' },
+          { value: '90', label: '90 minutos' },
+        ],
+      },
+      // F8.3 — Mostrar solo horarios disponibles
+      { key: 'show_available_times', label: 'Mostrar solo horarios disponibles', type: 'boolean', group: 'behavior', defaultValue: false, showIf: { variantIn: ['with_form'] }, helpText: 'El selector de hora muestra solo horarios con cupo' },
+      // F8.3 — Mensajes personalizados
+      { key: 'success_message', label: 'Mensaje de éxito', type: 'textarea', group: 'content', placeholder: '¡Reserva confirmada! Te esperamos.', showIf: { variantIn: ['with_form'] } },
+      { key: 'error_message', label: 'Mensaje de error', type: 'textarea', group: 'content', placeholder: 'No se pudo completar la reserva. Inténtalo de nuevo.', showIf: { variantIn: ['with_form'] } },
+    ],
+  },
+  {
+    type: 'specialties',
+    label: 'Especialidades',
+    icon: 'UtensilsCrossed',
+    description: 'Productos destacados o especialidades de la casa',
+    variants: [
+      { id: 'featured', label: 'Destacadas' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestras especialidades' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'selected_category_ids',
+        label: 'Categorías a mostrar',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todas',
+      },
+      { key: 'max_items', label: 'Cantidad a mostrar', type: 'number', placeholder: '6', group: 'data' },
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
+      ...PRODUCT_CARD_INTERACTION_FIELDS,
+    ],
+  },
+  {
+    type: 'chef_section',
+    label: 'Sección del Chef',
+    icon: 'ChefHat',
+    description: 'Perfil del chef del restaurante',
+    variants: [
+      { id: 'profile', label: 'Perfil' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestro Chef' },
+      { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Chef Juan Pérez' },
+      { key: 'role', label: 'Cargo', type: 'text', placeholder: 'Chef Ejecutivo' },
+      { key: 'bio', label: 'Biografía', type: 'textarea' },
+      { key: 'image_url', label: 'Foto', type: 'image' },
+      { key: 'quote', label: 'Cita destacada', type: 'textarea', placeholder: 'La cocina es pasión...' },
+    ],
+  },
+  {
+    type: 'delivery_cta',
+    label: 'Delivery (CTA)',
+    icon: 'Bike',
+    description: 'Banner de llamada a la acción para pedidos a domicilio',
+    variants: [
+      { id: 'banner', label: 'Banner' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Pide a domicilio' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Pedir ahora' },
+      { key: 'cta_url', label: 'URL del botón', type: 'url', placeholder: 'https://...' },
+      { key: 'image_url', label: 'Imagen', type: 'image' },
+    ],
+  },
+  {
+    type: 'partners',
+    label: 'Aliados / Socios',
+    icon: 'Handshake',
+    description: 'Logos o tarjetas de socios comerciales',
+    variants: [
+      { id: 'logos', label: 'Logos' },
+      { id: 'cards', label: 'Tarjetas' },
+      { id: 'carousel', label: 'Carrusel' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Aliados' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Logos',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'logo_url', label: 'Logo', type: 'image' },
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Nombre del aliado' },
+          { key: 'url', label: 'URL (opcional)', type: 'url', placeholder: 'https://...' },
+        ],
+      },
+      ...CAROUSEL_FIELDS,
+    ],
+  },
+  {
+    type: 'why_choose_us',
+    label: 'Por qué elegirnos',
+    icon: 'BadgeCheck',
+    description: 'Razones para elegir el negocio, con iconos',
+    variants: [
+      { id: 'icons', label: 'Iconos' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Por qué elegirnos' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Razones',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'icon', label: 'Icono', type: 'icon' },
+          { key: 'title', label: 'Título', type: 'text', placeholder: 'Calidad garantizada' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+        ],
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'features_grid',
+    label: 'Grid de Características',
+    icon: 'LayoutGrid',
+    description: 'Características con imagen y texto alternado',
+    variants: [
+      { id: 'alternating', label: 'Alternado' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Características' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Características',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'title', label: 'Título', type: 'text' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+          { key: 'image_url', label: 'Imagen', type: 'image' },
+        ],
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'how_it_works',
+    label: 'Cómo Funciona',
+    icon: 'ListChecks',
+    description: 'Pasos de un proceso numerado',
+    variants: [
+      { id: 'steps', label: 'Pasos' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Cómo funciona' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Pasos',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'step', label: 'Número de paso', type: 'number', placeholder: '1' },
+          { key: 'title', label: 'Título', type: 'text', placeholder: 'Regístrate' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+          { key: 'icon', label: 'Icono', type: 'icon' },
+        ],
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'services_list',
+    label: 'Lista de Servicios',
+    icon: 'ClipboardList',
+    description: 'Servicios en tarjetas, grid, lista o fila de iconos',
+    variants: [
+      { id: 'cards', label: 'Tarjetas' },
+      { id: 'grid', label: 'Grid' },
+      { id: 'icons_row', label: 'Fila de iconos' },
+      { id: 'list', label: 'Lista' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Servicios' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Servicios',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'title', label: 'Título', type: 'text' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+          { key: 'icon', label: 'Icono', type: 'icon' },
+          { key: 'image_url', label: 'Imagen', type: 'image' },
+          { key: 'cta_text', label: 'Texto del botón', type: 'text' },
+          { key: 'cta_url', label: 'URL del botón', type: 'url' },
+        ],
+      },
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
+    ],
+  },
+  {
+    type: 'pricing_table',
+    label: 'Tabla de Precios',
+    icon: 'Table',
+    description: 'Tabla de planes con columnas y características',
+    variants: [
+      { id: 'three_columns', label: 'Tres columnas' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Planes y precios' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'plans',
+        label: 'Planes',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Básico' },
+          { key: 'price', label: 'Precio', type: 'text', placeholder: '$29.000' },
+          { key: 'period', label: 'Periodo', type: 'text', placeholder: '/mes' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+          { key: 'features', label: 'Características (una por línea)', type: 'textarea', placeholder: 'Función 1\nFunción 2' },
+          { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Empezar' },
+          { key: 'cta_url', label: 'URL del botón', type: 'url' },
+          { key: 'highlighted', label: 'Destacar', type: 'boolean', defaultValue: false },
+        ],
+      },
+      ...GRID_FIELDS,
+      ...CARD_FIELDS,
+    ],
+  },
+  {
+    type: 'demo_cta',
+    label: 'Demo (CTA)',
+    icon: 'MonitorPlay',
+    description: 'Llamada a la acción con formulario para agendar demo',
+    variants: [
+      { id: 'form', label: 'Con formulario' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Solicita una demo' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Agendar demo' },
+      {
+        key: 'form_fields',
+        label: 'Campos del formulario',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'label',
+        itemFields: [
+          { key: 'name', label: 'Nombre del campo', type: 'text', placeholder: 'company' },
+          { key: 'label', label: 'Etiqueta', type: 'text', placeholder: 'Empresa' },
+          { key: 'type', label: 'Tipo', type: 'select', options: [
+            { value: 'text', label: 'Texto' },
+            { value: 'email', label: 'Email' },
+            { value: 'tel', label: 'Teléfono' },
+            { value: 'textarea', label: 'Texto largo' },
+          ]},
+          { key: 'required', label: 'Obligatorio', type: 'boolean', defaultValue: false },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'parking_zones',
+    label: 'Zonas de Parqueo',
+    icon: 'SquareParking',
+    description: 'Zonas de parqueo en grid',
+    variants: [
+      { id: 'grid', label: 'Grid' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Zonas disponibles' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'zone_ids',
+        label: 'Zonas a mostrar',
+        type: 'entity',
+        entity: 'table_zone',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todas las zonas',
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'parking_pricing',
+    label: 'Tarifas de Parqueo',
+    icon: 'CreditCard',
+    description: 'Tarifas de parqueo en tarjetas',
+    variants: [
+      { id: 'cards', label: 'Tarjetas' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestras tarifas' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'rates',
+        label: 'Tarifas',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'label',
+        itemFields: [
+          { key: 'label', label: 'Etiqueta', type: 'text', placeholder: 'Hora' },
+          { key: 'price', label: 'Precio', type: 'text', placeholder: '$3.000' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+        ],
+      },
+      ...CARD_FIELDS,
+    ],
+  },
+  {
+    type: 'parking_features',
+    label: 'Características de Parqueo',
+    icon: 'Sparkles',
+    description: 'Características del parqueo con iconos',
+    variants: [
+      { id: 'icons', label: 'Iconos' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Características' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Características',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'icon', label: 'Icono', type: 'icon' },
+          { key: 'title', label: 'Título', type: 'text' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+        ],
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'parking_availability',
+    label: 'Disponibilidad de Parqueo',
+    icon: 'Gauge',
+    description: 'Resumen de disponibilidad en tiempo real por sucursal',
+    variants: [
+      { id: 'summary', label: 'Resumen' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Cupos disponibles' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'branch_id',
+        label: 'Sucursal',
+        type: 'entity',
+        entity: 'branch',
+        group: 'data',
+        helpText: 'Sucursal cuyo parqueo se monitorea',
+      },
+      { key: 'refresh_seconds', label: 'Refrescar cada (seg)', type: 'number', placeholder: '30', group: 'behavior', defaultValue: 30 },
+    ],
+  },
+  {
+    type: 'parking_pass_plans',
+    label: 'Planes de Parqueo',
+    icon: 'CreditCard',
+    description: 'Planes de abono/membresía de parqueo en tarjetas',
+    variants: [
+      { id: 'cards', label: 'Tarjetas' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Planes de parqueo' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'plan_ids',
+        label: 'Planes a mostrar',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: se muestran todos los planes',
+      },
+      ...CARD_FIELDS,
+    ],
+  },
+  // ---- Tipos huérfanos adicionales del test de contrato (campos mínimos) ----
+  {
+    type: 'booking_transport',
+    label: 'Reserva de Transporte',
+    icon: 'Bus',
+    description: 'Reserva de transporte con banner o formulario',
+    variants: [
+      { id: 'banner', label: 'Banner' },
+      { id: 'form', label: 'Formulario' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Reserva tu viaje' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Reservar' },
+      { key: 'cta_url', label: 'URL del botón', type: 'url' },
+    ],
+  },
+  {
+    type: 'class_schedule',
+    label: 'Horario de Clases',
+    icon: 'CalendarDays',
+    description: 'Horario de clases en grid',
+    variants: [
+      { id: 'grid', label: 'Grid' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Horario de clases' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Clases',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Spinning' },
+          { key: 'day', label: 'Día', type: 'text', placeholder: 'Lunes' },
+          { key: 'time', label: 'Hora', type: 'text', placeholder: '18:00' },
+          { key: 'instructor', label: 'Instructor', type: 'text' },
+        ],
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'coverage_map',
+    label: 'Mapa de Cobertura',
+    icon: 'Map',
+    description: 'Mapa estático de cobertura de servicio',
+    variants: [
+      { id: 'static', label: 'Estático' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Zonas de cobertura' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'image_url', label: 'Imagen del mapa', type: 'image' },
+    ],
+  },
+  {
+    type: 'fleet_showcase',
+    label: 'Flota de Vehículos',
+    icon: 'Truck',
+    description: 'Showcase de vehículos en grid',
+    variants: [
+      { id: 'grid', label: 'Grid' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestra flota' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Vehículos',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Sedán' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+          { key: 'image_url', label: 'Imagen', type: 'image' },
+          { key: 'capacity', label: 'Capacidad', type: 'text', placeholder: '4 pasajeros' },
+        ],
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'gym_features',
+    label: 'Características del Gimnasio',
+    icon: 'Dumbbell',
+    description: 'Características del gimnasio con iconos',
+    variants: [
+      { id: 'icons', label: 'Iconos' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Equipamiento' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Características',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'icon', label: 'Icono', type: 'icon' },
+          { key: 'title', label: 'Título', type: 'text' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+        ],
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'integrations',
+    label: 'Integraciones',
+    icon: 'Plug',
+    description: 'Logos de integraciones disponibles',
+    variants: [
+      { id: 'logos', label: 'Logos' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Integraciones' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Integraciones',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'logo_url', label: 'Logo', type: 'image' },
+          { key: 'name', label: 'Nombre', type: 'text' },
+          { key: 'url', label: 'URL (opcional)', type: 'url' },
+        ],
+      },
+    ],
+  },
+  {
+    // FASE 10.3 — Sección de reseñas con sistema dual (generadas + reales).
+    // Los campos del grupo 'data' controlan la fuente de reseñas.
+    // Default: reviews_source = 'generated' → cero cambio visual en sitios existentes.
+    type: 'product_reviews',
+    label: 'Reseñas de Producto',
+    icon: 'Star',
+    description: 'Sección de opiniones con sistema dual: generadas, reales, mixtas o automáticas',
+    variants: [
+      { id: 'default', label: 'Lista' },
+    ],
+    contentFields: [
+      // ---- Grupo DATA: control de fuente de reseñas ----
+      {
+        key: 'reviews_source',
+        label: 'Fuente de reseñas',
+        type: 'select',
+        group: 'data',
+        defaultValue: 'generated',
+        helpText: 'Generadas = comportamiento actual. Reales = opiniones de clientes verificadas. Mixtas = reales primero, completa con generadas. Automáticas = generadas hasta acumular suficientes reales.',
+        options: [
+          { value: 'generated', label: 'Generadas (default)' },
+          { value: 'real', label: 'Reales (solo product_reviews)' },
+          { value: 'mixed', label: 'Mixtas (reales + generadas)' },
+          { value: 'auto', label: 'Automáticas (transición sola)' },
+        ],
+      },
+      {
+        key: 'auto_switch_threshold',
+        label: 'Umbral de cambio automático',
+        type: 'number',
+        group: 'data',
+        defaultValue: 3,
+        min: 1,
+        max: 20,
+        helpText: 'Número de reseñas reales necesarias para que el modo "auto" deje de mostrar generadas.',
+        showIf: { field: 'reviews_source', equals: 'auto' },
+      },
+      {
+        key: 'min_visible',
+        label: 'Mínimo de reseñas visibles',
+        type: 'number',
+        group: 'data',
+        defaultValue: 10,
+        min: 1,
+        max: 50,
+        helpText: 'Cuántas reseñas completar en modo "mixed" (reales primero, generadas después).',
+        showIf: { field: 'reviews_source', in: ['mixed', 'auto'] },
+      },
+      {
+        key: 'rating_source',
+        label: 'Origen del promedio del badge',
+        type: 'select',
+        group: 'data',
+        defaultValue: 'same_as_reviews',
+        helpText: 'De dónde sale el promedio de estrellas. "same_as_reviews" sigue la fuente activa. Importante: AggregateRating en JSON-LD solo se emite con datos reales.',
+        options: [
+          { value: 'same_as_reviews', label: 'Igual que la fuente activa' },
+          { value: 'real_only', label: 'Solo reales' },
+          { value: 'generated_only', label: 'Solo generadas' },
+        ],
+      },
+      {
+        key: 'show_generated_disclaimer',
+        label: 'Mostrar aviso "Reseñas de muestra"',
+        type: 'boolean',
+        group: 'data',
+        defaultValue: false,
+        helpText: 'Muestra un pie indicando que las opiniones son ejemplos generados. Apagado por defecto.',
+      },
+      // ---- Grupo DATA: configuración de reseñas generadas ----
+      {
+        key: 'generated_count',
+        label: 'Cantidad de reseñas generadas',
+        type: 'number',
+        group: 'data',
+        min: 1,
+        max: 5000,
+        helpText: 'Cuántas reseñas generar. Vacío = usa la lógica original (800-1600).',
+        showIf: { field: 'reviews_source', in: ['generated', 'mixed', 'auto'] },
+      },
+      {
+        key: 'generated_names_pool',
+        label: 'Conjunto de nombres',
+        type: 'select',
+        group: 'data',
+        defaultValue: 'colombia',
+        helpText: 'De qué país tomar los nombres para las reseñas generadas.',
+        options: [
+          { value: 'colombia', label: 'Colombia (actual)' },
+          { value: 'mexico', label: 'México' },
+          { value: 'espana', label: 'España' },
+          { value: 'neutro', label: 'Neutro' },
+        ],
+        showIf: { field: 'reviews_source', in: ['generated', 'mixed', 'auto'] },
+      },
+      // ---- Grupo CONTENT: textos ----
+      { key: 'empty_state_title', label: 'Título estado vacío', type: 'text', placeholder: 'Aún no hay opiniones', group: 'content', helpText: 'Texto cuando no hay reseñas reales en modo "real".' },
+      { key: 'empty_state_message', label: 'Mensaje estado vacío', type: 'textarea', placeholder: 'Sé el primero en compartir tu experiencia', group: 'content' },
+      { key: 'empty_state_cta', label: 'Botón estado vacío', type: 'text', placeholder: 'Escribir una opinión', group: 'content' },
+    ],
+  },
+  {
+    type: 'routes',
+    label: 'Rutas',
+    icon: 'Route',
+    description: 'Rutas de transporte en tarjetas',
+    variants: [
+      { id: 'cards', label: 'Tarjetas' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestras rutas' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Rutas',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Ruta Centro' },
+          { key: 'origin', label: 'Origen', type: 'text' },
+          { key: 'destination', label: 'Destino', type: 'text' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+        ],
+      },
+      ...CARD_FIELDS,
+    ],
+  },
+  {
+    type: 'transformation',
+    label: 'Transformación',
+    icon: 'TrendingUp',
+    description: 'Sección de antes y después',
+    variants: [
+      { id: 'before_after', label: 'Antes y después' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Resultados reales' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'before_image_url', label: 'Imagen "antes"', type: 'image' },
+      { key: 'after_image_url', label: 'Imagen "después"', type: 'image' },
+      { key: 'description', label: 'Descripción', type: 'textarea' },
+    ],
+  },
+  {
+    type: 'trainers',
+    label: 'Entrenadores',
+    icon: 'Users',
+    description: 'Equipo de entrenadores en grid',
+    variants: [
+      { id: 'grid', label: 'Grid' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros entrenadores' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      {
+        key: 'items',
+        label: 'Entrenadores',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'name',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text' },
+          { key: 'role', label: 'Especialidad', type: 'text', placeholder: 'Crossfit' },
+          { key: 'bio', label: 'Biografía', type: 'textarea' },
+          { key: 'image_url', label: 'Foto', type: 'image' },
+        ],
+      },
+      ...GRID_FIELDS,
+    ],
+  },
+  {
+    type: 'trip_search',
+    label: 'Buscador de Viajes',
+    icon: 'Search',
+    description: 'Formulario de búsqueda de viajes',
+    variants: [
+      { id: 'form', label: 'Formulario' },
+    ],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Busca tu viaje' },
+      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Buscar' },
+    ],
+  },
+  // ---- FASE 9.2 — Secciones de detalle de producto ----
+  {
+    type: 'product_gallery',
+    label: 'Galería de Producto',
+    icon: 'Images',
+    description: 'Galería de imágenes del producto con thumbnails y zoom',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'layout',
+        label: 'Disposición de thumbnails',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'thumbs_bottom',
+        options: [
+          { value: 'thumbs_bottom', label: 'Thumbnails abajo' },
+          { value: 'thumbs_left', label: 'Thumbnails izquierda' },
+          { value: 'grid', label: 'Grid' },
+          { value: 'carousel', label: 'Carrusel' },
+          { value: 'stacked', label: 'Apiladas' },
+        ],
+      },
+      {
+        key: 'zoom',
+        label: 'Tipo de zoom',
+        type: 'select',
+        group: 'behavior',
+        defaultValue: 'hover',
+        options: [
+          { value: 'hover', label: 'Al pasar el mouse' },
+          { value: 'click', label: 'Al hacer clic' },
+          { value: 'lightbox', label: 'Lightbox' },
+          { value: 'none', label: 'Sin zoom' },
+        ],
+      },
+      {
+        key: 'aspect_ratio',
+        label: 'Relación de aspecto',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'square',
+        options: [
+          { value: 'square', label: 'Cuadrada (1:1)' },
+          { value: '4/3', label: '4:3' },
+          { value: '16/9', label: '16:9' },
+          { value: 'auto', label: 'Automática' },
+        ],
+      },
+      { key: 'show_video', label: 'Mostrar video', type: 'boolean', defaultValue: false, group: 'content' },
+      { key: 'show_badges', label: 'Mostrar badges', type: 'boolean', defaultValue: true, group: 'content' },
+      {
+        key: 'thumb_size',
+        label: 'Tamaño de miniaturas',
+        type: 'range',
+        group: 'layout',
+        min: 40,
+        max: 120,
+        step: 5,
+        defaultValue: 80,
+        suffix: 'px',
+        showIf: { field: 'layout', in: ['thumbs_bottom', 'thumbs_left'] },
+        helpText: 'Tamaño de las miniaturas en píxeles',
+      },
+    ],
+  },
+  {
+    type: 'product_info',
+    label: 'Información de Producto',
+    icon: 'ShoppingBag',
+    description: 'Bloques de información del producto: SKU, título, rating, precio, descripción',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'blocks',
+        label: 'Bloques de información',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'id',
+        itemFields: [
+          {
+            key: 'id',
+            label: 'Tipo de bloque',
+            type: 'select',
+            options: [
+              { value: 'sku', label: 'SKU' },
+              { value: 'title', label: 'Título' },
+              { value: 'rating', label: 'Valoración' },
+              { value: 'price', label: 'Precio' },
+              { value: 'savings', label: 'Ahorro' },
+              { value: 'countdown', label: 'Countdown' },
+              { value: 'short_description', label: 'Descripción breve' },
+              { value: 'variants', label: 'Variantes' },
+              { value: 'modifiers', label: 'Modificadores' },
+              { value: 'quantity', label: 'Cantidad' },
+              { value: 'stock', label: 'Stock' },
+              { value: 'share', label: 'Compartir' },
+            ],
+          },
+          { key: 'visible', label: 'Visible', type: 'boolean', defaultValue: true },
+        ],
+      },
+      { key: 'show_countdown', label: 'Mostrar countdown', type: 'boolean', defaultValue: true, group: 'behavior' },
+    ],
+  },
+  {
+    type: 'product_actions',
+    label: 'Acciones de Producto',
+    icon: 'MousePointerClick',
+    description: 'Botones de acción: agregar al carrito, comprar ahora',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      { key: 'sticky_mobile', label: 'Sticky en móvil', type: 'boolean', defaultValue: true, group: 'behavior' },
+      {
+        key: 'position',
+        label: 'Posición de botones',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'below',
+        options: [
+          { value: 'below', label: 'Debajo de la info' },
+          { value: 'sticky', label: 'Sticky al hacer scroll' },
+          { value: 'inline', label: 'En línea con el precio' },
+        ],
+      },
+      {
+        key: 'buttons',
+        label: 'Botones personalizados',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'label',
+        maxItems: 4,
+        helpText: 'Botones personalizados. Si está vacío, se usan los botones por defecto.',
+        itemFields: BUTTON_ITEM_FIELDS,
+      },
+    ],
+  },
+  {
+    type: 'product_benefits',
+    label: 'Beneficios de Producto',
+    icon: 'Shield',
+    description: 'Grid de beneficios con icono, título y descripción',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'items',
+        label: 'Beneficios',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'title',
+        itemFields: [
+          { key: 'icon', label: 'Icono', type: 'icon' },
+          { key: 'title', label: 'Título', type: 'text', placeholder: 'Envío rápido' },
+          { key: 'description', label: 'Descripción', type: 'text', placeholder: '24-48 horas' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'product_description',
+    label: 'Descripción de Producto',
+    icon: 'Type',
+    description: 'Descripción extendida del producto con layout configurable',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'layout',
+        label: 'Disposición',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'full',
+        options: [
+          { value: 'accordion', label: 'Acordeón' },
+          { value: 'tabs', label: 'Pestañas' },
+          { value: 'full', label: 'Texto completo' },
+        ],
+      },
+      { key: 'max_height', label: 'Altura máxima (caracteres)', type: 'number', defaultValue: 180, min: 50, max: 1000, group: 'layout' },
+      { key: 'show_specs', label: 'Mostrar especificaciones', type: 'boolean', defaultValue: false, group: 'content' },
+    ],
+  },
+  {
+    type: 'related_products',
+    label: 'Productos Relacionados',
+    icon: 'Layout',
+    description: 'Productos relacionados: por categoría, tag o comprados juntos',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'source',
+        label: 'Fuente',
+        type: 'select',
+        group: 'data',
+        defaultValue: 'category',
+        options: [
+          { value: 'category', label: 'Misma categoría' },
+          { value: 'tag', label: 'Mismo tag' },
+          { value: 'manual', label: 'Selección manual' },
+          { value: 'bought_together', label: 'Comprados juntos' },
+        ],
+      },
+      { key: 'max_items', label: 'Máximo de productos', type: 'number', defaultValue: 8, min: 1, max: 20, group: 'data' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Productos relacionados', group: 'content' },
+    ],
+  },
+  {
+    type: 'product_specs',
+    label: 'Especificaciones',
+    icon: 'List',
+    description: 'Tabla de atributos y especificaciones técnicas del producto',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'title',
+        label: 'Título',
+        type: 'text',
+        placeholder: 'Especificaciones técnicas',
+        group: 'content',
+      },
+      {
+        key: 'layout',
+        label: 'Disposición',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'table',
+        options: [
+          { value: 'table', label: 'Tabla' },
+          { value: 'grid', label: 'Grid' },
+          { value: 'list', label: 'Lista' },
+        ],
+      },
+      {
+        key: 'show_empty',
+        label: 'Mostrar atributos vacíos',
+        type: 'boolean',
+        defaultValue: false,
+        group: 'content',
+        helpText: 'Muestra atributos sin valor',
+      },
+      {
+        key: 'group_by_category',
+        label: 'Agrupar por categoría',
+        type: 'boolean',
+        defaultValue: true,
+        group: 'layout',
+      },
+    ],
+  },
+  {
+    type: 'product_faq',
+    label: 'Preguntas frecuentes',
+    icon: 'HelpCircle',
+    description: 'FAQ del producto con JSON-LD para SEO',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'title',
+        label: 'Título',
+        type: 'text',
+        placeholder: 'Preguntas frecuentes',
+        group: 'content',
+      },
+      {
+        key: 'items',
+        label: 'Preguntas',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'question',
+        itemFields: [
+          { key: 'question', label: 'Pregunta', type: 'text', placeholder: '¿Pregunta?' },
+          { key: 'answer', label: 'Respuesta', type: 'textarea', placeholder: 'Respuesta...' },
+        ],
+      },
+      {
+        key: 'layout',
+        label: 'Disposición',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'accordion',
+        options: [
+          { value: 'accordion', label: 'Acordeón' },
+          { value: 'list', label: 'Lista' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'product_shipping',
+    label: 'Envío y devoluciones',
+    icon: 'Truck',
+    description: 'Información de envío, tiempos y política de devoluciones',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'title',
+        label: 'Título',
+        type: 'text',
+        placeholder: 'Envío y devoluciones',
+        group: 'content',
+      },
+      {
+        key: 'show_delivery_time',
+        label: 'Mostrar tiempo de entrega',
+        type: 'boolean',
+        defaultValue: true,
+        group: 'content',
+      },
+      {
+        key: 'show_shipping_cost',
+        label: 'Mostrar costo de envío',
+        type: 'boolean',
+        defaultValue: true,
+        group: 'content',
+      },
+      {
+        key: 'show_return_policy',
+        label: 'Mostrar política de devoluciones',
+        type: 'boolean',
+        defaultValue: true,
+        group: 'content',
+      },
+      {
+        key: 'custom_message',
+        label: 'Mensaje personalizado',
+        type: 'textarea',
+        placeholder: 'Información adicional sobre envíos...',
+        group: 'content',
+      },
+    ],
+  },
+  // ---- FASE 9.4 — Secciones de detalle de categoría ----
+  {
+    type: 'category_header',
+    label: 'Cabecera de Categoría',
+    icon: 'FolderOpen',
+    description: 'Título, descripción, imagen de portada y breadcrumb de la categoría',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      { key: 'show_image', label: 'Mostrar imagen de portada', type: 'boolean', defaultValue: true, group: 'content' },
+      { key: 'show_breadcrumb', label: 'Mostrar breadcrumb', type: 'boolean', defaultValue: true, group: 'content' },
+      { key: 'show_count', label: 'Mostrar contador de productos', type: 'boolean', defaultValue: true, group: 'content' },
+    ],
+  },
+  {
+    type: 'category_filters',
+    label: 'Filtros de Categoría',
+    icon: 'Filter',
+    description: 'Pills de subcategorías, selector de ordenamiento y toggle de vista',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      {
+        key: 'filter_position',
+        label: 'Posición de filtros',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'top',
+        options: [
+          { value: 'top', label: 'Barra superior' },
+          { value: 'sidebar', label: 'Sidebar izquierdo' },
+          { value: 'drawer', label: 'Drawer móvil' },
+        ],
+      },
+      { key: 'show_sort', label: 'Mostrar ordenamiento', type: 'boolean', defaultValue: true, group: 'content' },
+      { key: 'show_view_toggle', label: 'Mostrar toggle grid/lista', type: 'boolean', defaultValue: true, group: 'content' },
+    ],
+  },
+  {
+    type: 'category_products',
+    label: 'Grid de Productos',
+    icon: 'LayoutGrid',
+    description: 'Grid de productos de la categoría con paginación',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      { key: 'columns', label: 'Columnas', type: 'number', defaultValue: 4, min: 1, max: 6, group: 'layout' },
+      { key: 'max_items', label: 'Productos por página', type: 'number', defaultValue: 12, min: 1, max: 48, group: 'data' },
+      { key: 'empty_message', label: 'Mensaje sin productos', type: 'text', placeholder: 'No hay productos en esta categoría', group: 'content' },
+    ],
+  },
+  {
+    type: 'category_subcategories',
+    label: 'Subcategorías',
+    icon: 'FolderTree',
+    description: 'Tarjetas de subcategorías con icono e imagen',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Subcategorías', group: 'content' },
+      {
+        key: 'layout',
+        label: 'Disposición',
+        type: 'select',
+        group: 'layout',
+        defaultValue: 'grid',
+        options: [
+          { value: 'grid', label: 'Grid de tarjetas' },
+          { value: 'horizontal', label: 'Lista horizontal' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'category_seo_text',
+    label: 'Texto SEO',
+    icon: 'FileText',
+    description: 'Bloque de texto al pie de la categoría para SEO',
+    variants: [{ id: 'default', label: 'Por defecto' }],
+    contentFields: [
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Sobre esta categoría', group: 'content' },
+      { key: 'content', label: 'Contenido', type: 'textarea', placeholder: 'Texto descriptivo para SEO...', group: 'content' },
+    ],
+  },
 ];
+
+// ============================================================
+// CATÁLOGO FINAL (con grupos inyectados automáticamente)
+// ============================================================
+//
+// Los STYLE_FIELDS y SPACING_FIELDS se inyectan a cada sección para que un
+// cambio de estilo beneficie a todos los tipos a la vez (F0.2 + F0.4).
+export const SECTION_CATALOG: SectionTypeDefinition[] = RAW_CATALOG.map((s) => ({
+  ...s,
+  contentFields: [...s.contentFields, ...STYLE_FIELDS, ...SPACING_FIELDS],
+}));
 
 export function getSectionDefinition(sectionType: string): SectionTypeDefinition | undefined {
   return SECTION_CATALOG.find((s) => s.type === sectionType);
@@ -534,6 +2625,7 @@ class WebsitePageBuilderService {
     organization_id: number;
     slug: string;
     title: string;
+    page_type?: string;
     show_in_header?: boolean;
     show_in_footer?: boolean;
     header_order?: number;
@@ -542,12 +2634,13 @@ class WebsitePageBuilderService {
     linked_category_id?: number | null;
     menu_icon?: string | null;
     menu_badge?: string | null;
+    page_settings?: Record<string, any> | null;
   }): Promise<WebsitePage> {
     const { data, error } = await supabase
       .from('website_pages')
       .insert({
         ...page,
-        page_type: 'builtin',
+        page_type: page.page_type || 'builtin',
         is_published: true,
       })
       .select()
@@ -559,7 +2652,7 @@ class WebsitePageBuilderService {
 
   async updatePage(
     pageId: string,
-    updates: Partial<Pick<WebsitePage, 'title' | 'slug' | 'show_in_header' | 'show_in_footer' | 'header_order' | 'footer_order' | 'is_published' | 'meta_title' | 'meta_description' | 'og_image_url' | 'parent_page_id' | 'linked_category_id' | 'menu_icon' | 'menu_badge'>>
+    updates: Partial<Pick<WebsitePage, 'title' | 'slug' | 'show_in_header' | 'show_in_footer' | 'header_order' | 'footer_order' | 'is_published' | 'meta_title' | 'meta_description' | 'og_image_url' | 'parent_page_id' | 'linked_category_id' | 'menu_icon' | 'menu_badge' | 'page_settings'>>
   ): Promise<WebsitePage> {
     const { data, error } = await supabase
       .from('website_pages')
@@ -1043,6 +3136,248 @@ class WebsitePageBuilderService {
     return (data || []) as WebsitePage[];
   }
 
+  // ---- DRAFTS / VERSIONS / PRESETS (FASE 12) ----
+
+  /**
+   * Guarda el borrador de una página en `draft_content` (no impacta producción).
+   * Marca `has_unpublished_changes = true`.
+   */
+  async saveDraft(pageId: string, sections: WebsitePageSection[]): Promise<void> {
+    const { error } = await supabase
+      .from('website_pages')
+      .update({
+        draft_content: { sections },
+        has_unpublished_changes: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', pageId);
+
+    if (error) throw new Error(error.message || 'No se pudo guardar el borrador.');
+  }
+
+  /**
+   * Publica el borrador: copia `draft_content.sections` a las secciones vivas
+   * (upsert por id, inserta nuevas, elimina las que ya no existen), crea una
+   * versión en `website_page_versions` y limpia el borrador.
+   */
+  async publishPage(
+    pageId: string,
+    organizationId: number,
+    draftSections: WebsitePageSection[],
+    note?: string,
+  ): Promise<WebsitePageVersion> {
+    // 1. Snapshot de las secciones publicadas actuales (antes de pisar)
+    const { data: currentSections } = await supabase
+      .from('website_page_sections')
+      .select('*')
+      .eq('page_id', pageId)
+      .order('sort_order', { ascending: true });
+
+    const current = (currentSections || []) as WebsitePageSection[];
+
+    // 2. Sincronizar secciones vivas con el borrador
+    const draftIds = new Set(draftSections.map((s) => s.id));
+    const currentIds = new Set(current.map((s) => s.id));
+
+    // 2a. Eliminar secciones que ya no están en el borrador
+    const toDelete = current.filter((s) => !draftIds.has(s.id));
+    if (toDelete.length) {
+      await supabase
+        .from('website_page_sections')
+        .delete()
+        .in('id', toDelete.map((s) => s.id));
+    }
+
+    // 2b. Upsert: insertar nuevas + actualizar existentes
+    const timestamp = new Date().toISOString();
+    const upserts = draftSections.map((s, index) => ({
+      id: s.id,
+      page_id: pageId,
+      organization_id: organizationId,
+      section_type: s.section_type,
+      section_variant: s.section_variant,
+      content: s.content,
+      settings: s.settings || {},
+      sort_order: index,
+      is_visible: s.is_visible,
+      updated_at: timestamp,
+    }));
+
+    if (upserts.length) {
+      const { error: upsertError } = await supabase
+        .from('website_page_sections')
+        .upsert(upserts, { onConflict: 'id' });
+      if (upsertError) throw new Error(upsertError.message || 'No se pudo publicar las secciones.');
+    }
+
+    // 3. Crear versión (snapshot del estado publicado)
+    const { data: version, error: versionError } = await supabase
+      .from('website_page_versions')
+      .insert({
+        page_id: pageId,
+        organization_id: organizationId,
+        content_snapshot: { sections: draftSections },
+        note: note || null,
+      })
+      .select()
+      .single();
+
+    if (versionError) throw new Error(versionError.message || 'No se pudo crear la versión.');
+
+    // 4. Limpiar borrador y marcar publicado
+    await supabase
+      .from('website_pages')
+      .update({
+        draft_content: null,
+        has_unpublished_changes: false,
+        published_at: timestamp,
+        updated_at: timestamp,
+      })
+      .eq('id', pageId);
+
+    // 5. Retención: últimas 20 versiones
+    await this.pruneVersions(pageId, 20);
+
+    return version as WebsitePageVersion;
+  }
+
+  /**
+   * Restaura una versión anterior: copia su `content_snapshot.sections` a las
+   * secciones vivas y crea una nueva versión (para no perder la actual).
+   */
+  async restoreVersion(
+    pageId: string,
+    organizationId: number,
+    versionId: string,
+  ): Promise<void> {
+    const { data: version, error } = await supabase
+      .from('website_page_versions')
+      .select('*')
+      .eq('id', versionId)
+      .single();
+
+    if (error || !version) throw new Error('No se pudo cargar la versión.');
+
+    const snapshot = (version.content_snapshot as { sections: WebsitePageSection[] }).sections;
+    await this.publishPage(pageId, organizationId, snapshot, `Restaurado desde versión ${versionId}`);
+  }
+
+  /**
+   * Obtiene el historial de versiones de una página.
+   */
+  async getVersions(pageId: string): Promise<WebsitePageVersion[]> {
+    const { data, error } = await supabase
+      .from('website_page_versions')
+      .select('*')
+      .eq('page_id', pageId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []) as WebsitePageVersion[];
+  }
+
+  /**
+   * Elimina versiones antiguas más allá del límite de retención.
+   */
+  private async pruneVersions(pageId: string, keep: number): Promise<void> {
+    const { data } = await supabase
+      .from('website_page_versions')
+      .select('id')
+      .eq('page_id', pageId)
+      .order('created_at', { ascending: false })
+      .limit(keep);
+
+    const keepIds = new Set((data || []).map((v: any) => v.id));
+    const { data: all } = await supabase
+      .from('website_page_versions')
+      .select('id')
+      .eq('page_id', pageId);
+
+    const toDelete = (all || []).filter((v: any) => !keepIds.has(v.id));
+    if (toDelete.length) {
+      await supabase
+        .from('website_page_versions')
+        .delete()
+        .in('id', toDelete.map((v: any) => v.id));
+    }
+  }
+
+  /**
+   * Duplica una sección: crea una copia con sort_order + 1 y nuevo id.
+   */
+  async duplicateSection(sectionId: string): Promise<WebsitePageSection> {
+    const { data: section, error } = await supabase
+      .from('website_page_sections')
+      .select('*')
+      .eq('id', sectionId)
+      .single();
+
+    if (error || !section) throw new Error('No se pudo cargar la sección a duplicar.');
+
+    const { data: newSection, error: insertError } = await supabase
+      .from('website_page_sections')
+      .insert({
+        page_id: section.page_id,
+        organization_id: section.organization_id,
+        section_type: section.section_type,
+        section_variant: section.section_variant,
+        content: section.content,
+        settings: section.settings,
+        sort_order: (section.sort_order || 0) + 1,
+        is_visible: section.is_visible,
+      })
+      .select()
+      .single();
+
+    if (insertError) throw new Error(insertError.message || 'No se pudo duplicar la sección.');
+    return newSection as WebsitePageSection;
+  }
+
+  // ---- SECTION PRESETS (FASE 12) ----
+
+  async getSectionPresets(organizationId: number): Promise<WebsiteSectionPreset[]> {
+    const { data, error } = await supabase
+      .from('website_section_presets')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []) as WebsiteSectionPreset[];
+  }
+
+  async saveSectionPreset(
+    organizationId: number,
+    name: string,
+    sectionType: string,
+    sectionVariant: string,
+    content: Record<string, any>,
+  ): Promise<WebsiteSectionPreset> {
+    const { data, error } = await supabase
+      .from('website_section_presets')
+      .insert({
+        organization_id: organizationId,
+        name,
+        section_type: sectionType,
+        section_variant: sectionVariant,
+        content,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message || 'No se pudo guardar la plantilla.');
+    return data as WebsiteSectionPreset;
+  }
+
+  async deleteSectionPreset(presetId: string): Promise<void> {
+    const { error } = await supabase
+      .from('website_section_presets')
+      .delete()
+      .eq('id', presetId);
+
+    if (error) throw error;
+  }
+
   // ---- PREVIEW URL ----
 
   async getPreviewUrl(organizationId: number, slug?: string): Promise<string | null> {
@@ -1072,6 +3407,63 @@ class WebsitePageBuilderService {
 
     const base = `https://${data.host}`;
     return slug && slug !== 'home' ? `${base}/${slug}` : base;
+  }
+
+  // ---- F9.4: ENTIDADES PARA PREVIEW DE PLANTILLAS DE DETALLE ----
+
+  /**
+   * Obtiene una lista de entidades para el selector de contexto del editor.
+   * Dependiendo del page_type, devuelve productos, categorías o espacios.
+   */
+  async getPreviewEntities(
+    organizationId: number,
+    pageType: string,
+  ): Promise<Array<{ id: string; label: string }>> {
+    if (pageType === 'product_detail') {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, uuid, name, sku')
+        .eq('organization_id', organizationId)
+        .eq('status', 'active')
+        .order('name', { ascending: true })
+        .limit(50);
+      if (error || !data) return [];
+      return data.map((p: any) => ({
+        id: p.uuid,
+        label: `${p.name}${p.sku ? ` (${p.sku})` : ''}`,
+      }));
+    }
+
+    if (pageType === 'category_detail') {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, slug, name')
+        .eq('organization_id', organizationId)
+        .order('name', { ascending: true })
+        .limit(50);
+      if (error || !data) return [];
+      return data.map((c: any) => ({
+        id: c.slug,
+        label: c.name,
+      }));
+    }
+
+    if (pageType === 'space_detail') {
+      const { data, error } = await supabase
+        .from('space_types')
+        .select('id, slug, name')
+        .eq('organization_id', organizationId)
+        .order('name', { ascending: true })
+        .limit(50);
+      if (error || !data) return [];
+      return data.map((s: any) => ({
+        id: s.slug,
+        label: s.name,
+      }));
+    }
+
+    // cart, checkout, order_confirmation, account — no requieren selector
+    return [];
   }
 }
 

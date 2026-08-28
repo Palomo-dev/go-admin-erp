@@ -14,19 +14,14 @@ import { supabase } from '@/lib/supabase/config';
 import {
   isMobile,
   getMobilePlugin,
-  type MobileAppPlugin,
-  type MobileBrowserPlugin,
 } from '@/lib/utils/mobile';
+import {
+  MOBILE_DEEP_LINK_SCHEME,
+  NATIVE_CALLBACK_URL,
+} from '@/lib/constants/auth';
 
-// ============================================================================
-// Constantes
-// ============================================================================
-
-/** Custom URL scheme para deep links de OAuth. Debe coincidir con Info.plist y AndroidManifest. */
-export const MOBILE_DEEP_LINK_SCHEME = 'goadmin://auth-callback';
-
-/** URL del bridge API route que redirige al custom scheme. */
-export const NATIVE_CALLBACK_URL = 'https://app.goadmin.io/api/auth/native-callback';
+// Re-export para compatibilidad con código que importa de aquí
+export { MOBILE_DEEP_LINK_SCHEME, NATIVE_CALLBACK_URL };
 
 // ============================================================================
 // Tipos
@@ -161,7 +156,16 @@ export async function registerMobileAuthListener(
  */
 export async function processMobileAuthUrl(url: string): Promise<MobileAuthResult> {
   try {
-    const urlObj = new URL(url);
+    // Validar formato y protocolo del deep link antes de procesar
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch {
+      return { success: false, error: 'Formato de deep link inválido' };
+    }
+    if (urlObj.protocol !== 'goadmin:') {
+      return { success: false, error: 'Protocolo de deep link no autorizado' };
+    }
     const params = urlObj.searchParams;
 
     // Caso error

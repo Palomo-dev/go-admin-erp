@@ -7,12 +7,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import {
   bancolombiaService,
   type BancolombiaWebhookPayload,
 } from '@/lib/services/integrations/bancolombia';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 /** Determina si el payload crudo es un JWT (tres segmentos separados por punto). */
 function isJwt(raw: string): boolean {
@@ -45,11 +44,12 @@ export async function POST(request: NextRequest) {
     // Si es JWT, verificar firma y decodificar; si es JSON, parsear directo
     if (isJwt(rawBody)) {
       // Obtener client_secret para verificar firma
-      const supabase = createRouteHandlerClient({ cookies });
+      const supabase = getSupabaseAdmin();
       const { data: creds } = await supabase
         .from('integration_credentials')
         .select('secret_ref')
         .eq('connection_id', connectionId)
+        .eq('status', 'active')
         .single();
 
       let clientSecret = '';

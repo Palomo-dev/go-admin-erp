@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CloudOff, RefreshCw } from 'lucide-react';
-import { isMobile, getMobilePlugin } from '@/lib/utils/mobile';
+import { isMobile, getMobilePlugin, safeAddListener } from '@/lib/utils/mobile';
 
 /**
  * Indicador de estado offline/online para desktop (Electron) y móvil (Capacitor).
@@ -64,18 +64,19 @@ export function OfflineIndicator() {
     let networkCleanup: (() => void) | undefined;
     if (isMobileApp) {
       const network = getMobilePlugin('Network');
-      if (network?.getStatus && network?.addListener) {
+      if (network?.getStatus) {
         network.getStatus().then((status) => {
           setIsOnline(status.connected);
           if (!status.connected) setShowBanner(true);
         }).catch(() => { /* silencioso */ });
-        network.addListener('networkStatusChange', (status) => {
-          if (status.connected) {
+        safeAddListener(network, 'networkStatusChange', (status: unknown) => {
+          const { connected } = status as { connected: boolean };
+          if (connected) {
             handleOnline();
           } else {
             handleOffline();
           }
-        }).catch(() => { /* silencioso */ });
+        });
       }
     }
 

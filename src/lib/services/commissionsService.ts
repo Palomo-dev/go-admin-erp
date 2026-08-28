@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 
 export type CommissionType = 'salesperson' | 'intermediation_sale' | 'intermediation_purchase';
 export type CommissionSourceType = 'sale' | 'invoice_sale' | 'invoice_purchase' | 'opportunity';
@@ -53,19 +54,8 @@ export interface CommissionStats {
 
 class CommissionsService {
   private getOrgId(): number {
-    if (typeof window === 'undefined') return 0;
-    try {
-      const orgJson = localStorage.getItem('organizacionActiva') || sessionStorage.getItem('organizacionActiva');
-      if (orgJson) {
-        const parsed = JSON.parse(orgJson);
-        if (parsed?.id) return Number(parsed.id);
-      }
-      const simple = localStorage.getItem('currentOrganizationId') || sessionStorage.getItem('currentOrganizationId');
-      if (simple) return parseInt(simple, 10);
-    } catch {
-      // fallback
-    }
-    return 0;
+    // Usar la función canónica de useOrganization en lugar de leer localStorage directamente
+    return getOrganizationIdFromContext();
   }
 
   async getCommissions(filters?: CommissionFilters): Promise<Commission[]> {

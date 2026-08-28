@@ -7,20 +7,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { monoService, type MonoWebhookPayload } from '@/lib/services/integrations/breb';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
   try {
     // Leer payload crudo (para verificacion de firma si aplica)
     const rawBody = await request.text();
 
-    // Header de firma HMAC-SHA256 (opcional, para verificacion)
-    const signature = request.headers.get('X-Signature');
-
     // Log del payload recibido
     console.log('[BreB Webhook] Payload recibido:', rawBody);
-    if (signature) {
-      console.log('[BreB Webhook] Firma X-Signature presente');
-    }
 
     // Parsear el body como JSON
     const payload: MonoWebhookPayload = JSON.parse(rawBody);
@@ -35,6 +30,44 @@ export async function POST(request: NextRequest) {
       );
       // Responder 200 igualmente para evitar reintentos
       return NextResponse.json({ received: true }, { status: 200 });
+    }
+
+    // Verificacion de firma HMAC-SHA256
+    const signature = request.headers.get('X-Signature');
+    if (signature) {
+      // Obtener webhook secret de integration_credentials
+      const supabaseAdmin = getSupabaseAdmin();
+      const { data: creds } = await supabaseAdmin
+        .from('integration_credentials')
+        .select('secret_ref')
+        .eq('connection_id', connectionId)
+        .eq('purpose', 'webhook_secret')
+        .eq('status', 'active')
+        .single();
+
+      if (creds?.secret_ref) {
+        const isValid = monoService.verifyWebhookSignature(
+          rawBody,
+          signature,
+          creds.secret_ref,
+        );
+        if (!isValid) {
+          console.error('[BreB Webhook] Firma invalida');
+          return NextResponse.json(
+            { error: 'Firma invalida' },
+            { status: 401 },
+          );
+        }
+        console.log('[BreB Webhook] Firma verificada correctamente');
+      } else {
+        console.warn(
+          '[BreB Webhook] No se encontro webhook_secret para verificar firma',
+        );
+      }
+    } else {
+      console.warn(
+        '[BreB Webhook] Webhook recibido sin firma X-Signature',
+      );
     }
 
     // Procesar webhook via servicio

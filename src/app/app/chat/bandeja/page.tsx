@@ -54,7 +54,18 @@ export default function ChatBandejaPage() {
       loadChannels();
       loadTags();
       loadData();
-      
+
+      // Polling de despacho de mensajes QR pendientes (Evolution API)
+      const dispatchPending = async () => {
+        try {
+          await fetch('/api/integrations/whatsapp/qr/dispatch-pending', { method: 'POST' });
+        } catch {
+          /* noop */
+        }
+      };
+      dispatchPending();
+      const dispatchInterval = setInterval(dispatchPending, 5000);
+
       // Suscripción realtime para actualizar lista sin spinner
       const channel = supabase
         .channel('conversations-realtime')
@@ -74,6 +85,7 @@ export default function ChatBandejaPage() {
       
       return () => {
         supabase.removeChannel(channel);
+        clearInterval(dispatchInterval);
       };
     }
   }, [organizationId]);

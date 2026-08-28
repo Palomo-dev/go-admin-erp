@@ -9,6 +9,7 @@ import {
   invalidateBranchIdCache,
   BRANCH_CHANGED_EVENT,
 } from '@/lib/hooks/useOrganization';
+import { getMobileStorage, setMobileStorage } from '@/lib/utils/mobileStorage';
 
 // Valor especial para representar "Todas las sucursales"
 export const ALL_BRANCHES = 'all' as const;
@@ -70,7 +71,8 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
       // Restaurar modo "Todas" (solo si el usuario puede seleccionarlo)
       let allActive = false;
       try {
-        allActive = allowAll && localStorage.getItem(BRANCH_ALL_KEY) === '1';
+        const allFlag = await getMobileStorage(BRANCH_ALL_KEY);
+        allActive = allowAll && allFlag === '1';
       } catch {
         allActive = false;
       }
@@ -85,8 +87,10 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
         concrete = main?.id ?? null;
         if (concrete) {
           try {
-            localStorage.setItem('currentBranchId', concrete.toString());
-            sessionStorage.setItem('currentBranchId', concrete.toString());
+            const concreteStr = concrete.toString();
+            localStorage.setItem('currentBranchId', concreteStr);
+            sessionStorage.setItem('currentBranchId', concreteStr);
+            void setMobileStorage('currentBranchId', concreteStr);
           } catch {
             /* noop */
           }
@@ -123,11 +127,15 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       if (selection === ALL_BRANCHES) {
         localStorage.setItem(BRANCH_ALL_KEY, '1');
+        void setMobileStorage(BRANCH_ALL_KEY, '1');
         setIsAllSelected(true);
       } else {
+        const selStr = selection.toString();
         localStorage.setItem(BRANCH_ALL_KEY, '0');
-        localStorage.setItem('currentBranchId', selection.toString());
-        sessionStorage.setItem('currentBranchId', selection.toString());
+        localStorage.setItem('currentBranchId', selStr);
+        sessionStorage.setItem('currentBranchId', selStr);
+        void setMobileStorage(BRANCH_ALL_KEY, '0');
+        void setMobileStorage('currentBranchId', selStr);
         invalidateBranchIdCache();
         setIsAllSelected(false);
         setSelectedBranchId(selection);

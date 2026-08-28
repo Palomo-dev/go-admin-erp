@@ -35,20 +35,20 @@ class CashDrawerService {
     // 0. Móvil Bluetooth (Capacitor) — si es app móvil, intentar BLE primero
     if (isMobile()) {
       const mobileResult = await this.tryMobileBluetooth();
-      if (mobileResult.success) return mobileResult;
+      if (mobileResult.success) return this.withHaptic(mobileResult);
     }
 
     // 1. Desktop IPC directo
     const desktopResult = await this.tryDesktopIPC();
-    if (desktopResult.success) return desktopResult;
+    if (desktopResult.success) return this.withHaptic(desktopResult);
 
     // 2. WebUSB
     const webusbResult = await this.tryWebUSB();
-    if (webusbResult.success) return webusbResult;
+    if (webusbResult.success) return this.withHaptic(webusbResult);
 
     // 3. Print Job fallback
     const printJobResult = await this.tryPrintJob(branchId);
-    if (printJobResult.success) return printJobResult;
+    if (printJobResult.success) return this.withHaptic(printJobResult);
 
     // Ninguna estrategia funcionó
     return {
@@ -56,6 +56,21 @@ class CashDrawerService {
       strategy: 'none',
       error: 'No se pudo abrir el cajón: ninguna estrategia disponible',
     };
+  }
+
+  /**
+   * Envuelve un resultado exitoso con haptic feedback (no-op en web).
+   * Import dinámico de mobile.ts para mantener el servicio desacoplado de React.
+   */
+  private static async withHaptic(result: CashDrawerResult): Promise<CashDrawerResult> {
+    try {
+      const { getMobilePlugin } = await import('@/lib/utils/mobile');
+      const haptics = getMobilePlugin('Haptics');
+      if (haptics?.impact) {
+        await haptics.impact({ style: 'light' }).catch(() => {});
+      }
+    } catch { /* no-op en web */ }
+    return result;
   }
 
   /**

@@ -15,6 +15,7 @@ interface CreateOpportunityDialogProps {
   onClose: () => void;
   pipelineId?: string;
   stageId?: string;
+  customerId?: string;
   onSuccess?: () => void;
 }
 
@@ -23,6 +24,7 @@ export default function CreateOpportunityDialog({
   onClose,
   pipelineId,
   stageId,
+  customerId,
   onSuccess,
 }: CreateOpportunityDialogProps) {
   const [formKey, setFormKey] = useState(0);
@@ -53,6 +55,7 @@ export default function CreateOpportunityDialog({
           key={formKey}
           initialPipelineId={pipelineId}
           initialStageId={stageId}
+          initialCustomerId={customerId}
           onSuccess={handleSuccess}
           onCancel={handleCancel}
           hideHeader

@@ -122,15 +122,6 @@ export default function PipelineHeader({
       // Asegurar que organizationId sea un número entero
       const orgId = typeof organizationId === 'string' ? parseInt(organizationId, 10) : organizationId;
       
-      // Crear etapas por defecto (probability debe estar entre 0 y 1)
-      const defaultStages = [
-        { name: "Contacto Inicial", position: 1, probability: 0.10, color: "#3b82f6" },
-        { name: "Reunión Agendada", position: 2, probability: 0.30, color: "#8b5cf6" },
-        { name: "Propuesta Enviada", position: 3, probability: 0.60, color: "#f59e0b" },
-        { name: "Ganado", position: 4, probability: 1.00, color: "#22c55e" },
-        { name: "Perdido", position: 5, probability: 0, color: "#ef4444" },
-      ];
-      
       // Verificar si ya existe un pipeline por defecto
       const { data: existingDefault } = await supabase
         .from("pipelines")
@@ -142,7 +133,7 @@ export default function PipelineHeader({
       // Solo marcar como default si no existe ningún pipeline por defecto
       const shouldBeDefault = !existingDefault;
       
-      // Crear el pipeline
+      // Crear el pipeline (las etapas se gestionan desde PipelineInitializer/StageManager)
       const { data: newPipeline, error: pipelineError } = await supabase
         .from("pipelines")
         .insert({
@@ -158,20 +149,6 @@ export default function PipelineHeader({
         throw new Error(pipelineError.message || pipelineError.details || "Error al crear pipeline");
       }
       
-      // Crear las etapas por defecto
-      const stagesToInsert = defaultStages.map(stage => ({
-        ...stage,
-        pipeline_id: newPipeline.id,
-      }));
-      
-      const { error: stagesError } = await supabase
-        .from("stages")
-        .insert(stagesToInsert);
-        
-      if (stagesError) {
-        console.error("Error al crear etapas:", JSON.stringify(stagesError));
-      }
-      
       // Actualizar lista de pipelines
       setPipelines([...pipelines, newPipeline]);
       setCurrentPipeline(newPipeline);
@@ -179,7 +156,7 @@ export default function PipelineHeader({
       
       toast({
         title: "Pipeline creado",
-        description: `El pipeline "${newPipelineName}" ha sido creado exitosamente con etapas por defecto.`,
+        description: `El pipeline "${newPipelineName}" ha sido creado exitosamente. Configura las etapas desde el gestor de etapas.`,
       });
       
       setIsCreatePipelineOpen(false);
@@ -343,7 +320,7 @@ export default function PipelineHeader({
                 className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Se crearán etapas por defecto: Contacto Inicial, Reunión Agendada, Propuesta Enviada, Ganado y Perdido.
+                Podrás configurar las etapas desde el gestor de etapas del pipeline.
               </p>
             </div>
           </div>

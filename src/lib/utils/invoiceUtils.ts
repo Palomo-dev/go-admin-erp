@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Genera el siguiente número de factura secuencial para una organización
@@ -96,5 +97,53 @@ export async function validateInvoiceNumber(
   } catch (error) {
     console.error('Error validating invoice number:', error);
     return true; // En caso de error, asumir que existe para evitar duplicados
+  }
+}
+
+/**
+ * Versión server-side de generateInvoiceNumber que acepta un cliente Supabase
+ * (service role) para usar desde API routes / webhooks sin sesión de browser.
+ */
+export async function generateInvoiceNumberWithClient(
+  client: SupabaseClient,
+  organizationId: number,
+  prefix: string = 'FACT'
+): Promise<string> {
+  try {
+    const { data, error } = await client
+      .from('invoice_sales')
+      .select('number')
+      .eq('organization_id', organizationId)
+      .like('number', `${prefix}-%`);
+
+    if (error) throw error;
+
+    const existingNumbers = new Set<string>();
+    for (const row of data || []) {
+      if (row.number) existingNumbers.add(normalizeInvoiceNumber(row.number));
+    }
+
+    let maxNumber = 0;
+    const numberRegex = new RegExp(`${prefix}\\s*-\\s*(\\d{1,7})(?:\\D|$)`, 'i');
+    for (const row of data || []) {
+      if (!row.number) continue;
+      const match = row.number.match(numberRegex);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNumber) maxNumber = num;
+      }
+    }
+
+    let nextNumber = maxNumber + 1;
+    let formattedNumber = `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
+    while (existingNumbers.has(formattedNumber)) {
+      nextNumber += 1;
+      formattedNumber = `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
+    }
+
+    return formattedNumber;
+  } catch (error) {
+    console.error('Error generating invoice number (server):', error);
+    return `${prefix}-${Date.now()}`;
   }
 }

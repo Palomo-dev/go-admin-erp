@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/use-toast";
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend
 } from 'recharts';
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 
 interface ForecastByStageChartProps {
   pipelineId: string;
@@ -32,11 +33,11 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [totalForecast, setTotalForecast] = useState(0);
 
-  // Obtener el ID de organización del almacenamiento local
+  // Obtener el ID de organización usando la función canónica
   useEffect(() => {
-    const orgId = localStorage.getItem('currentOrganizationId');
+    const orgId = getOrganizationIdFromContext();
     if (orgId) {
-      setOrganizationId(Number(orgId));
+      setOrganizationId(orgId);
     }
   }, []);
 
@@ -83,8 +84,8 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
           const amount = parseFloat(String(item.amount)) || 0;
           
           // Calcular el valor ponderado usando la probabilidad de la etapa
-          const probability = item.stages?.probability || 1;
-          const forecastAmount = amount * probability;
+          const probability = item.stages?.probability || 100;
+          const forecastAmount = amount * probability / 100;
           totalForecastAmount += forecastAmount;
           
           if (!stagesMap.has(stageId)) {
@@ -153,7 +154,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-md shadow-md">
           <p className="font-medium text-gray-800 dark:text-gray-200">{data.name}</p>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Probabilidad: {(data.probability * 100).toFixed(0)}%
+            Probabilidad: {(data.probability).toFixed(0)}%
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-300">
             Total: {formatCurrency(data.amount)}
@@ -246,7 +247,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
                 const payload = entry?.payload as StageData | undefined;
                 return (
                   <span className="text-xs text-gray-600 dark:text-gray-300">
-                    {value} ({payload ? (payload.probability * 100).toFixed(0) : 0}%)
+                    {value} ({payload ? (payload.probability).toFixed(0) : 0}%)
                   </span>
                 );
               }}

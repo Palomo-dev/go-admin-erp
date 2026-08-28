@@ -10,7 +10,7 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from "@/component
 // Componentes modulares
 import CustomerDetailsModal from "./modals/CustomerDetailsModal";
 import EditCustomerModal from "./modals/EditCustomerModal";
-import CreateOpportunityModal from "./modals/CreateOpportunityModal";
+import CreateOpportunityDialog from "./modals/CreateOpportunityDialog";
 import CustomerHistoryModal from "./modals/CustomerHistoryModal";
 import CustomerStats from "./components/CustomerStats";
 import CustomersTable from "./components/CustomersTable";
@@ -34,7 +34,6 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
   const {
     // Estado
     filteredCustomers,
-    pipelineStages,
     loading,
     selectedCustomer,
     customerInteractions,
@@ -47,7 +46,6 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     isHistoryOpen,
     isCreateOpportunityOpen,
     editFormData,
-    opportunityFormData,
     formMessage,
     isSaving,
     error,
@@ -65,9 +63,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
     handleCreateOpportunity,
     handleViewHistory,
     handleEditFormChange,
-    handleOpportunityFormChange,
     saveCustomerChanges,
-    createNewOpportunity,
     handleSort
   } = usePipeline(pipelineId);
   
@@ -192,16 +188,11 @@ const ClientsView: React.FC<ClientsViewProps> = ({ pipelineId }) => {
       />
 
       {/* Modal de creación de oportunidad */}
-      <CreateOpportunityModal 
+      <CreateOpportunityDialog
         isOpen={isCreateOpportunityOpen}
         onClose={() => setIsCreateOpportunityOpen(false)}
-        customer={selectedCustomer}
-        pipelineStages={pipelineStages}
-        formData={opportunityFormData}
-        onFormChange={handleOpportunityFormChange}
-        onCreate={createNewOpportunity}
-        isSaving={isSaving}
-        formMessage={formMessage}
+        pipelineId={pipelineId}
+        customerId={selectedCustomer?.id}
       />
 
       {/* Modal de historial del cliente */}

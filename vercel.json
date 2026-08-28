@@ -1,5 +1,5 @@
 {
-  "buildCommand": "NODE_OPTIONS='--max-old-space-size=4096' next build",
+  "buildCommand": "NODE_OPTIONS='--max-old-space-size=6144' next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
@@ -8,6 +8,42 @@
     {
       "path": "/api/cron/update-exchange-rates",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/daily-sync",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/hourly-balance",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/scheduled-payments",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/anomaly-detection",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/integrations/open-finance/cron/consent-expiry",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/integrations/qr/expire-sessions",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/expire-pending-web-orders",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-web-orders",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/expire-old-notifications",
+      "schedule": "0 3 * * *"
     }
   ],
   "headers": [

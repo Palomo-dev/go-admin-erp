@@ -15,4 +15,5 @@ export { default as MobileFooterPanel } from './MobileFooterPanel';
 export { default as FooterPreviewMockup } from './FooterPreviewMockup';
 export { default as MenuGroupManager } from './MenuGroupManager';
 export { default as MenuGroupEditor } from './MenuGroupEditor';
+export { PageLayoutPanel } from './PageLayoutPanel';
 export type { DevicePreview } from './EditorHeader';

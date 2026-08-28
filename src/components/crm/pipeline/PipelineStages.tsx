@@ -1,22 +1,23 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { StageDialog, StageDialogValues } from "./StageDialog";
 import { DeleteStageDialog } from "./DeleteStageDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/lib/supabase/config";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, getCurrentTheme, applyTheme } from "@/utils/Utils";
+import { formatCurrency } from "@/utils/Utils";
 import { handleStageChangeAutomation } from "./OpportunityAutomations";
 import { BarChart3, Calendar, DollarSign, Settings, Plus, GripVertical, Trash2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 import { OpportunityDrawer } from "./OpportunityDrawer";
 import CreateOpportunityDialog from "./modals/CreateOpportunityDialog";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface Stage {
   id: string;
@@ -25,6 +26,7 @@ interface Stage {
   description?: string;
   position: number;
   pipeline_id: string;
+  probability?: number;
 }
 
 interface Customer {
@@ -68,9 +70,6 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   const [deleteStageOpen, setDeleteStageOpen] = useState(false);
   const [stageToDelete, setStageToDelete] = useState<{ id: string; name: string } | null>(null);
   
-  // Estado para drag & drop de etapas
-  const [isDraggingStage, setIsDraggingStage] = useState(false);
-
   // Estado para el drawer de detalle de oportunidad
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -114,70 +113,16 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     el.scrollLeft = scrollLeftStart.current - walk;
   };
 
-  // Obtener ID de la organización y el usuario
+  // Obtener ID de la organización usando la función canónica de useOrganization
   useEffect(() => {
-    // Obtener ID de la organización desde localStorage
-    const storedOrg = localStorage.getItem('selectedOrganization');
-    if (storedOrg) {
-      try {
-        const orgData = JSON.parse(storedOrg);
-        // Asegurar que el ID de organización se maneje como string
-        const orgId = String(orgData.id);
-        setOrganizationId(orgId);
-        console.log(`Organización guardada correctamente: ${orgId}`);
-      } catch (error) {
-        console.error('Error al parsear la organización:', error);
-        // Si hay error, buscar en otras claves
-        findOrganizationId();
-      }
+    const orgId = getOrganizationIdFromContext();
+    if (orgId) {
+      setOrganizationId(String(orgId));
     } else {
-      // Si no está en selectedOrganization, buscar en otras claves
-      findOrganizationId();
-    }
-  }, []);
-
-  // Función para buscar el ID de la organización en otras claves
-  const findOrganizationId = () => {
-    let foundOrgId = false;
-    
-    // Posibles claves donde podría estar guardado el organizationId
-    const possibleKeys = [
-      'currentOrganizationId',
-      'organizationId',
-      'organization_id',
-      'orgId',
-    ];
-    
-    // Buscar en localStorage
-    for (const key of possibleKeys) {
-      const orgId = localStorage.getItem(key);
-      if (orgId) {
-        try {
-          // Intentar convertir a string si es un JSON o asegurar que sea string
-          let orgIdValue = orgId;
-          // Si parece ser JSON, intentar parsearlo
-          if (orgId.startsWith('{') || orgId.startsWith('[')) {
-            const parsed = JSON.parse(orgId);
-            orgIdValue = parsed.id ? String(parsed.id) : String(parsed);
-          }
-          
-          console.log(`Organización encontrada en localStorage con clave: ${key}`);
-          setOrganizationId(String(orgIdValue));
-          console.log(`Organización guardada correctamente: ${orgIdValue}`);
-          foundOrgId = true;
-          break;
-        } catch (error) {
-          console.error('Error al procesar el ID de organización:', error);
-        }
-      }
-    }
-    
-    // Si no se encuentra en ninguna clave, usar null (la app manejará este caso)
-    if (!foundOrgId) {
-      console.log('No se encontró ID de organización en localStorage');
+      console.log('No se encontró ID de organización');
       setOrganizationId(null);
     }
-  }
+  }, []);
 
   // Obtener ID del usuario autenticado
   useEffect(() => {
@@ -204,7 +149,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   }, []);
 
   // Función para cargar las etapas del pipeline
-  const loadStages = async () => {
+  const loadStages = useCallback(async () => {
     if (!pipelineId) {
       console.error('ID de pipeline no definido');
       return;
@@ -245,7 +190,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pipelineId]);
 
   // Función para cargar las oportunidades (con useCallback para evitar bucles infinitos)
   const loadOpportunities = useCallback(async () => {
@@ -304,7 +249,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       console.log('Oportunidades cargadas:', data.length);
       
       // Las oportunidades ya vienen con el objeto customer desde Supabase
-      const formattedOpps = data.map((opp: any) => {
+      const formattedOpps = data.map((opp: Record<string, unknown>) => {
         // Si no hay datos del cliente, proporcionamos un valor predeterminado
         if (!opp.customer) {
           return {
@@ -313,7 +258,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
           };
         }
         return opp;
-      });
+      }) as unknown as Opportunity[];
 
       setOpportunities(formattedOpps);
     } catch (err) {
@@ -332,7 +277,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     } else {
       console.error('No se puede cargar datos: pipelineId no está definido');
     }
-  }, [pipelineId, organizationId, loadOpportunities]);
+  }, [pipelineId, organizationId, loadOpportunities, loadStages]);
 
   // Escuchar el evento para recargar datos cuando se crea una nueva oportunidad
   useEffect(() => {    
@@ -357,9 +302,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   // Calcular el valor total de las oportunidades en una etapa
   const calculateStageValue = (stageId: string): number => {
     const stageOpportunities = getOpportunitiesByStage(stageId);
-    return stageOpportunities.reduce((total: number, opp: any) => {
+    return stageOpportunities.reduce((total: number, opp: Opportunity) => {
       // Calcular el valor usando el campo amount
-      const weightedValue = opp.amount || 0; 
+      const weightedValue = opp.amount || 0;
       return total + weightedValue;
     }, 0);
   };
@@ -367,7 +312,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   // Función para abrir el diálogo de edición de etapa
   const handleOpenEditStage = (stageToEdit: Stage) => {
     const probabilityPercent = stageToEdit.probability != null
-      ? Math.round(stageToEdit.probability * 100)
+      ? Math.round(stageToEdit.probability)
       : null;
     setStageDialogMode("edit");
     setStageDialogInitial({
@@ -410,9 +355,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     if (!editingStageId) return;
 
     try {
-      const probabilityValue = values.probability !== null ? values.probability / 100 : null;
+      const probabilityValue = values.probability !== null ? values.probability : null;
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .rpc('update_stage_without_triggers', {
           p_stage_id: editingStageId,
           p_name: values.name,
@@ -430,7 +375,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
             ? {
                 ...s,
                 name: values.name,
-                probability: probabilityValue,
+                probability: probabilityValue ?? undefined,
                 color: values.color,
                 description: values.description || undefined
               }
@@ -442,11 +387,11 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         title: "Éxito",
         description: "La etapa se ha actualizado correctamente",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al actualizar la etapa:', error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo actualizar la etapa",
+        description: (error as Error).message || "No se pudo actualizar la etapa",
         variant: "destructive",
       });
       throw error;
@@ -471,8 +416,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
       const newPosition = maxPosition + 1;
       const probability = values.probability !== null
-        ? values.probability / 100
-        : Math.min(0.1 + ((newPosition - 1) / Math.max(stages.length, 1)) * 0.8, 0.9);
+        ? values.probability
+        : Math.min(10 + ((newPosition - 1) / Math.max(stages.length, 1)) * 80, 90);
 
       const { data, error } = await supabase
         .from('stages')
@@ -495,11 +440,11 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         title: "Éxito",
         description: "Etapa creada correctamente",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al crear etapa:', error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear la etapa",
+        description: (error as Error).message || "No se pudo crear la etapa",
         variant: "destructive",
       });
       throw error;
@@ -532,11 +477,11 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         title: "Éxito",
         description: "Etapa eliminada correctamente",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al eliminar etapa:', error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo eliminar la etapa",
+        description: (error as Error).message || "No se pudo eliminar la etapa",
         variant: "destructive",
       });
       throw error;
@@ -544,7 +489,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
   };
 
   // Función para reordenar etapas (drag & drop)
-  const handleStageDragEnd = async (result: any) => {
+  const handleStageDragEnd = async (result: DropResult) => {
     if (!result.destination || result.type !== 'STAGE') return;
 
     const { source, destination } = result;
@@ -556,7 +501,6 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
     // Recalcular posiciones y probabilidades
     const updatedStages = reorderedStages.map((stage, index) => {
-      const totalStages = reorderedStages.length;
       let probability: number;
       
       // Lógica de probabilidad:
@@ -565,7 +509,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       // - Resto: probabilidad progresiva basada en posición
       const stageLower = stage.name.toLowerCase();
       if (stageLower.includes('ganado') || stageLower.includes('ganada') || stageLower === 'won') {
-        probability = 1.0;
+        probability = 100;
       } else if (stageLower.includes('perdido') || stageLower.includes('perdida') || stageLower === 'lost') {
         probability = 0;
       } else {
@@ -578,9 +522,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         });
         const posInNormal = normalStages.findIndex(s => s.id === stage.id);
         if (posInNormal >= 0 && normalStages.length > 1) {
-          probability = 0.1 + (posInNormal / (normalStages.length - 1)) * 0.8;
+          probability = 10 + (posInNormal / (normalStages.length - 1)) * 80;
         } else {
-          probability = 0.5; // Por defecto 50% si es la única etapa normal
+          probability = 50; // Por defecto 50% si es la única etapa normal
         }
       }
 
@@ -613,7 +557,7 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         title: "Éxito",
         description: "Orden de etapas actualizado",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al reordenar etapas:', error);
       toast({
         title: "Error",
@@ -625,21 +569,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     }
   };
 
-  // Calcular el valor total del pipeline completo
-  const totalPipelineValue = useMemo(() => {
-    return opportunities.reduce((total, opp) => total + (opp.amount || 0), 0);
-  }, [opportunities]);
-
-  // Calcular el valor ponderado total del pipeline (considerando probabilidades)
-  const weightedPipelineValue = useMemo(() => {
-    return opportunities.reduce((total, opp) => {
-      const weightedValue = opp.amount; // Ya no usamos probability
-      return total + weightedValue;
-    }, 0);
-  }, [opportunities]);
-
   // Manejar el arrastre y soltar (oportunidades y etapas)
-  const handleDragEnd = async (result: any) => {
+  const handleDragEnd = async (result: DropResult) => {
     // Si es un drag de etapas, usar la función específica
     if (result.type === 'STAGE') {
       await handleStageDragEnd(result);
@@ -764,11 +695,11 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       });
       
       console.log('Actualización exitosa a etapa', toStageId, 'con estado', newStatus);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error al actualizar la oportunidad:", error);
       toast({
         title: "Error",
-        description: `No se pudo actualizar la oportunidad: ${error.message || "Error desconocido"}`,
+        description: `No se pudo actualizar la oportunidad: ${(error as Error).message || "Error desconocido"}`,
         variant: "destructive",
       });
       
@@ -785,10 +716,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
     // Intentar ejecutar automatizaciones (tareas, notificaciones, etc.)
     try {
-      // Obtener organizationId y userId del localStorage si no están disponibles
-      const orgId = organizationId || (localStorage.getItem('selectedOrganization') ? 
-        JSON.parse(localStorage.getItem('selectedOrganization') || '{}').id : 
-        null);
+      // Obtener organizationId y userId si no están disponibles
+      const orgId = organizationId || String(getOrganizationIdFromContext() || '');
         
       const usrId = userId || (await supabase.auth.getUser()).data.user?.id || null;
       

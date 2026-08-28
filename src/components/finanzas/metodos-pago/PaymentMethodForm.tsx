@@ -64,6 +64,9 @@ const PAYMENT_INTEGRATIONS = [
   { code: 'bancolombia_qr', name: 'Bancolombia QR', providerId: '4befaa82-4a82-459d-bb9c-f508aa953542' },
   { code: 'breb_qr', name: 'Bre-B (Mono)', providerId: '487d94de-4273-4b42-a49b-27250ed05fc7' },
   { code: 'redeban_qr', name: 'Redeban QR', providerId: 'a32ba5c2-064a-4041-b368-c4a2f1f8e4c9' },
+  // Integraciones Bold - Links de pago y QR
+  { code: 'bold_link', name: 'Bold (Link de Pago)', providerId: '67e3749b-d8e5-4c0a-ab23-309e46064cad' },
+  { code: 'bold_qr', name: 'Bold QR', providerId: '67e3749b-d8e5-4c0a-ab23-309e46064cad' },
 ];
 
 // Esquema de validación

@@ -52,12 +52,12 @@ export function PipelineInitializer({ organizationId, onInitComplete }: Pipeline
 
         // 2. Crear un nuevo pipeline predeterminado
         setMessage("Creando pipeline predeterminado...");
-        
+
         const { data: newPipeline, error: createError } = await supabase
           .from("pipelines")
           .insert({
             organization_id: organizationId,
-            name: "Pipeline de Ventas",
+            name: "Ventas B2B",
             is_default: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -72,18 +72,21 @@ export function PipelineInitializer({ organizationId, onInitComplete }: Pipeline
           return;
         }
 
-        // 3. Crear etapas básicas para el pipeline
+        // 3. Crear etapas semilla para el pipeline
         setMessage("Configurando etapas...");
-        
-        // Crear etapas sin el campo color que no existe en la base de datos
-        // Usar valores de probability entre 0 y 1 para cumplir con la restricción de la tabla
+
+        // Etapas semilla con probability en escala 0-100 (entero)
         const defaultStages = [
-          { name: "Contacto Inicial", position: 0, probability: 0.1 },
-          { name: "Reunión Agendada", position: 1, probability: 0.3 },
-          { name: "Propuesta Enviada", position: 2, probability: 0.5 },
-          { name: "Negociación", position: 3, probability: 0.7 },
-          { name: "Ganado", position: 4, probability: 1.0 },
-          { name: "Perdido", position: 5, probability: 0.0 }
+          { name: "Lead nuevo", position: 0, probability: 5 },
+          { name: "Contactado", position: 1, probability: 10 },
+          { name: "Calificado", position: 2, probability: 20 },
+          { name: "Discovery", position: 3, probability: 30 },
+          { name: "Demo", position: 4, probability: 45 },
+          { name: "Propuesta", position: 5, probability: 60 },
+          { name: "Negociación", position: 6, probability: 75 },
+          { name: "Contrato/pago", position: 7, probability: 90 },
+          { name: "Ganado", position: 8, probability: 100 },
+          { name: "Perdido", position: 9, probability: 0 }
         ];
 
         // Insertar todas las etapas con los campos correctos de la tabla

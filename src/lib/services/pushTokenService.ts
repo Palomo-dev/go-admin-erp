@@ -15,23 +15,12 @@ import { supabase } from '@/lib/supabase/config';
 import {
   isMobile,
   isIOS,
-  isAndroid,
   getMobilePlugin,
 } from '@/lib/utils/mobile';
 
 // ============================================================================
 // Tipos
 // ============================================================================
-
-interface PushTokenRow {
-  id: string;
-  user_id: string;
-  platform: 'ios' | 'android';
-  token: string;
-  app_version?: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 // ============================================================================
 // Registro de push token

@@ -132,12 +132,48 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
           .neq('status', 'deleted')
           .is('read_at', null);
 
+        // Si el módulo PM no está activo, restar las notificaciones de tareas
+        // del conteo para que el badge sea consistente con la lista (que las oculta).
+        let myTaskUnread = 0;
+        let allTaskUnread = 0;
+        if (!isPmActive) {
+          const { count: myTaskCount } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', organizationId)
+            .neq('status', 'deleted')
+            .eq('recipient_user_id', userId)
+            .is('read_at', null)
+            .filter(
+              'payload->>type',
+              'in',
+              '("task_assigned","task_completed","task_agent","task_rescheduled","task_reschedule_summary")'
+            );
+          myTaskUnread = myTaskCount ?? 0;
+
+          const { count: allTaskCount } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', organizationId)
+            .neq('status', 'deleted')
+            .is('read_at', null)
+            .filter(
+              'payload->>type',
+              'in',
+              '("task_assigned","task_completed","task_agent","task_rescheduled","task_reschedule_summary")'
+            );
+          allTaskUnread = allTaskCount ?? 0;
+        }
+
+        const finalMyUnread = Math.max(0, (myUnread ?? 0) - myTaskUnread);
+        const finalAllUnread = Math.max(0, (totalUnread ?? 0) - allTaskUnread);
+
         // Actualizar estados
         setNotifications((myData || []) as Notification[]);
         setAllNotifications((allData || []) as Notification[]);
-        setMyUnreadCount(myUnread ?? 0);
-        setAllUnreadCount(totalUnread ?? 0);
-        setUnreadCount(myUnread ?? 0);
+        setMyUnreadCount(finalMyUnread);
+        setAllUnreadCount(finalAllUnread);
+        setUnreadCount(finalMyUnread);
       } catch (error) {
         console.error('Error al cargar notificaciones:', error);
       } finally {
@@ -147,26 +183,26 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
 
     if (organizationId && userId) {
       fetchNotifications();
-      
+
       // Suscripción a cambios en notificaciones de la organización
       const notificationsSubscription = supabase
         .channel('notifications-changes')
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'notifications', 
-            filter: `organization_id=eq.${organizationId}` 
+        .on('postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `organization_id=eq.${organizationId}`
           },
           () => fetchNotifications()
         )
         .subscribe();
-      
+
       return () => {
         notificationsSubscription.unsubscribe();
       };
     }
-  }, [organizationId, userId]);  // Agregamos userId como dependencia
+  }, [organizationId, userId, isPmActive]);  // Incluimos isPmActive para recalcular conteos si cambia el módulo PM
 
   // Cerrar el menú cuando se hace clic fuera
   useEffect(() => {
@@ -240,6 +276,8 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
         onClick={() => setNotificationsOpen(!notificationsOpen)}
         className="p-2.5 rounded-md text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 dark:active:bg-gray-600 focus:outline-none relative transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         aria-label="Ver notificaciones"
+        aria-expanded={notificationsOpen}
+        aria-haspopup="menu"
       >
         <Bell className="h-5 w-5" />
         {(myUnreadCount > 0 || (isPmActive && taskReminders.length > 0)) && (

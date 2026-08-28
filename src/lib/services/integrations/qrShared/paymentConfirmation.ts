@@ -6,6 +6,10 @@
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { autoMatchFromWebhook } from './autoReconciliation';
+import {
+  createPaymentReceivedNotification,
+  createQrExpiredNotification,
+} from './qrNotificationService';
 
 /** Datos de entrada para confirmar un pago QR. */
 export interface PaymentConfirmationInput {
@@ -39,7 +43,9 @@ export interface PaymentConfirmationResult {
  *  3. Actualiza payment_qr_sessions.status y paid_at
  *  4. Inserta/actualiza en payments (status=completed, method=provider_code)
  *  5. Si bankAccountId disponible, inserta en bank_transactions
- *  6. Retorna los IDs creados
+ *  6. Inserta mapeo en integration_object_mappings (payment <-> bank_transaction)
+ *  7. Crea notificacion de pago recibido (o expirado si fue rechazado)
+ *  8. Retorna los IDs creados
  */
 export async function confirmQrPayment(
   input: PaymentConfirmationInput,
@@ -104,6 +110,18 @@ export async function confirmQrPayment(
 
     // Si fue rechazada, no se inserta payment ni bank_transaction
     if (input.status === 'rejected') {
+      // Notificar QR expirado/rechazado
+      try {
+        await createQrExpiredNotification({
+          organizationId: input.organizationId,
+          reference: session.reference,
+          amount: session.amount,
+          currency: session.currency,
+        });
+      } catch (notifErr) {
+        // No fallar toda la operacion si la notificacion falla
+        console.error('[paymentConfirmation] Error en notificacion expired:', notifErr);
+      }
       return { success: true };
     }
 
@@ -206,7 +224,41 @@ export async function confirmQrPayment(
       }
     }
 
-    // 6. Retornar IDs creados
+    // 6. Insertar mapeo entre payment y bank_transaction
+    if (paymentId && bankTransactionId && session.integration_connection_id) {
+      const { error: mappingError } = await supabase
+        .from('integration_object_mappings')
+        .insert({
+          connection_id: session.integration_connection_id,
+          external_type: 'bank_transaction',
+          external_id: String(bankTransactionId),
+          internal_table: 'payments',
+          internal_id: paymentId,
+          metadata: { source: 'qr_webhook', provider_code: session.provider_code },
+        });
+
+      if (mappingError) {
+        // No fallar toda la operacion si el mapeo falla
+        console.error('[paymentConfirmation] Error al insertar mapping:', mappingError);
+      }
+    }
+
+    // 7. Notificar pago recibido
+    try {
+      await createPaymentReceivedNotification({
+        organizationId: input.organizationId,
+        amount: session.amount,
+        currency: session.currency,
+        providerCode: session.provider_code,
+        reference: session.reference,
+        paymentId,
+      });
+    } catch (notifErr) {
+      // No fallar toda la operacion si la notificacion falla
+      console.error('[paymentConfirmation] Error en notificacion payment_received:', notifErr);
+    }
+
+    // 8. Retornar IDs creados
     return {
       success: true,
       paymentId,

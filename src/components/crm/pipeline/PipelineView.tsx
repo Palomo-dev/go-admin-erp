@@ -4,9 +4,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/config";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PipelineHeader from "./PipelineHeader";
 import PipelineStages from "./PipelineStages";
 import ForecastView from "./ForecastView";
@@ -15,282 +12,8 @@ import ClientsView from "./ClientsView";
 import AutomationsView from "./AutomationsView";
 import { Plus, FolderPlus } from "lucide-react";
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from "@/components/common/PageSkeletons";
-import { formatCurrency } from "@/utils/Utils";
 import { useOrganization } from "@/lib/hooks/useOrganization";
-
-// Interfaces para los tipos de datos
-interface Customer {
-  id: string;
-  full_name: string;
-}
-
-interface Stage {
-  id: string;
-  name: string;
-  position: number;
-}
-
-// Formulario para nueva oportunidad
-const NewOpportunityForm = ({ 
-  onClose, 
-  pipelineId, 
-  organizationId, 
-  onSuccess 
-}: { 
-  onClose: () => void; 
-  pipelineId: string; 
-  organizationId: number;
-  onSuccess?: () => void;
-}) => {
-  const [title, setTitle] = useState("");
-  const [value, setValue] = useState("");
-  const [probability, setProbability] = useState("50"); // Valor por defecto
-  const [customerId, setCustomerId] = useState("");
-  const [stageId, setStageId] = useState("");
-  const [expectedCloseDate, setExpectedCloseDate] = useState("");
-  
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [stages, setStages] = useState<Stage[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  // Cargar clientes y etapas al iniciar
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Cargar clientes
-        const { data: customersData, error: customersError } = await supabase
-          .from("customers")
-          .select("id, full_name")
-          .eq("organization_id", organizationId)
-          .order("full_name");
-          
-        if (customersError) throw customersError;
-        setCustomers(customersData || []);
-        
-        // Cargar etapas del pipeline
-        const { data: stagesData, error: stagesError } = await supabase
-          .from("stages")
-          .select("id, name, position")
-          .eq("pipeline_id", pipelineId)
-          .order("position");
-          
-        if (stagesError) throw stagesError;
-        setStages(stagesData || []);
-        
-        // Establecer la primera etapa como predeterminada
-        if (stagesData && stagesData.length > 0) {
-          setStageId(stagesData[0].id);
-        }
-      } catch (error) {
-        console.error("Error al cargar datos:", error);
-        setError("Error al cargar datos. Por favor intente nuevamente.");
-      }
-    };
-    
-    loadData();
-  }, [pipelineId, organizationId]);
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError("");
-    
-    // Validaciones
-    if (!title || !customerId || !stageId || !value) {
-      setError("Por favor complete todos los campos requeridos.");
-      setIsSubmitting(false);
-      return;
-    }
-    
-    try {
-      // Convertir valor a número
-      const numericValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
-      if (isNaN(numericValue)) {
-        setError("El valor debe ser un número válido.");
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Crear nueva oportunidad
-      const { data, error } = await supabase
-        .from("opportunities")
-        .insert({
-          name: title, // Corregido: se usa 'name' en lugar de 'title'
-          customer_id: customerId,
-          pipeline_id: pipelineId,
-          stage_id: stageId,
-          amount: numericValue, // Corregido: se usa 'amount' en lugar de 'value'
-          // Removido campo 'probability' que no existe en la tabla
-          expected_close_date: expectedCloseDate || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          organization_id: organizationId,
-          status: "open", // Corregido: solo puede ser 'open', 'won' o 'lost'
-          currency: "COP" // Campo obligatorio 'currency'
-        })
-        .select();
-        
-      if (error) throw error;
-      
-      // Notificar éxito y cerrar
-      if (onSuccess) onSuccess();
-      onClose();
-    } catch (error: any) {
-      console.error("Error al crear oportunidad:", error);
-      setError(error.message || "Error al guardar la oportunidad.");
-      setIsSubmitting(false);
-    }
-  };
-  
-  return (
-    <form onSubmit={handleSubmit}>
-      <DialogHeader>
-        <DialogTitle className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Nueva Oportunidad
-        </DialogTitle>
-        <DialogDescription className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Complete la información para crear una nueva oportunidad
-        </DialogDescription>
-      </DialogHeader>
-      
-      <div className="grid gap-4 py-4">
-        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-          <Label htmlFor="title" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-            Título *
-          </Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-            required
-          />
-        </div>
-        
-        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-          <Label htmlFor="customer" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-            Cliente *
-          </Label>
-          <Select value={customerId} onValueChange={setCustomerId}>
-            <SelectTrigger className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-              <SelectValue placeholder="Seleccionar cliente" />
-            </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              {customers.map((customer) => (
-                <SelectItem key={customer.id} value={customer.id} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                  {customer.full_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-          <Label htmlFor="stage" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-            Etapa *
-          </Label>
-          <Select value={stageId} onValueChange={setStageId}>
-            <SelectTrigger className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-              <SelectValue placeholder="Seleccionar etapa" />
-            </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              {stages.map((stage) => (
-                <SelectItem key={stage.id} value={stage.id} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                  {stage.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-          <Label htmlFor="value" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-            Valor *
-          </Label>
-          <Input
-            id="value"
-            value={value}
-            onChange={(e) => {
-              // Permitir sólo números y punto decimal
-              const inputValue = e.target.value.replace(/[^0-9.]/g, "");
-              // Evitar múltiples puntos decimales
-              const validatedValue = inputValue.replace(/\.(?=.*\.)/g, "");
-              // Actualizar el estado con el valor sin formatear
-              setValue(validatedValue);
-            }}
-            onBlur={(e) => {
-              // Formatear como moneda al perder el foco
-              if (value) {
-                const numericValue = parseFloat(value);
-                if (!isNaN(numericValue)) {
-                  setValue(formatCurrency(numericValue));
-                }
-              }
-            }}
-            className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-            placeholder="$0"
-            required
-          />
-        </div>
-        
-        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-          <Label htmlFor="probability" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-            Probabilidad
-          </Label>
-          <Select value={probability} onValueChange={setProbability}>
-            <SelectTrigger className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-              <SelectValue placeholder="Seleccionar probabilidad" />
-            </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <SelectItem value="10" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">10%</SelectItem>
-              <SelectItem value="25" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">25%</SelectItem>
-              <SelectItem value="50" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">50%</SelectItem>
-              <SelectItem value="75" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">75%</SelectItem>
-              <SelectItem value="90" className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">90%</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4">
-          <Label htmlFor="expectedCloseDate" className="text-left sm:text-right text-gray-900 dark:text-gray-100 font-medium">
-            Fecha est. cierre
-          </Label>
-          <Input
-            id="expectedCloseDate"
-            type="date"
-            value={expectedCloseDate}
-            onChange={(e) => setExpectedCloseDate(e.target.value)}
-            className="col-span-3 min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-          />
-        </div>
-      </div>
-      
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>
-      )}
-      
-      <DialogFooter className="flex-col sm:flex-row gap-2">
-        <Button
-          type="button"
-          onClick={onClose}
-          variant="outline"
-          className="w-full sm:w-auto min-h-[44px] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
-          disabled={isSubmitting}
-        >
-          Cancelar
-        </Button>
-        <Button 
-          type="submit" 
-          className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Guardando..." : "Guardar"}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-};
+import { pipelineSeedService } from "@/lib/services/crm/pipelineSeedService";
 
 export default function PipelineView() {
   const [currentPipelineId, setCurrentPipelineId] = useState<string>("");
@@ -326,6 +49,12 @@ export default function PipelineView() {
 
       // Si encontramos un pipeline predeterminado, lo usamos
       if (defaultPipeline) {
+        // Sembrar etapas semilla si el pipeline no tiene etapas (idempotente)
+        try {
+          await pipelineSeedService.seedDefaultStagesForPipeline(defaultPipeline.id);
+        } catch (err) {
+          console.warn("No se pudieron sembrar etapas por defecto:", err);
+        }
         setCurrentPipelineId(defaultPipeline.id);
         setLoading(false);
         return;
@@ -343,6 +72,12 @@ export default function PipelineView() {
       if (firstError && firstError.code !== "PGRST116") {
         console.error("Error al cargar el primer pipeline:", firstError);
       } else if (firstPipeline) {
+        // Sembrar etapas semilla si el pipeline no tiene etapas (idempotente)
+        try {
+          await pipelineSeedService.seedDefaultStagesForPipeline(firstPipeline.id);
+        } catch (err) {
+          console.warn("No se pudieron sembrar etapas por defecto:", err);
+        }
         setCurrentPipelineId(firstPipeline.id);
       }
 

@@ -246,6 +246,12 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                     </p>
                   </div>
                   <div>
+                    <span className="dark:text-gray-400 text-gray-600">Ventas totales:</span>
+                    <p className="font-medium text-emerald-600">
+                      {summary ? formatCurrency(summary.sales_total ?? summary.sales_cash) : '-'}
+                    </p>
+                  </div>
+                  <div>
                     <span className="dark:text-gray-400 text-gray-600">Ingresos:</span>
                     <p className="font-medium text-blue-600">
                       {summary ? formatCurrency(summary.cash_in) : '-'}
@@ -295,6 +301,36 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                           </span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Desglose de VENTAS por metodo de pago (solo ventas, sin abonos ni compras) */}
+                {summary?.sales_by_method && Object.keys(summary.sales_by_method).length > 0 && (
+                  <div className="space-y-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                    <span className="text-xs font-medium flex items-center gap-1 dark:text-emerald-400 text-emerald-700">
+                      <ShoppingCart className="h-3.5 w-3.5" /> Ventas por metodo de pago:
+                    </span>
+                    <div className="space-y-1.5">
+                      {Object.entries(summary.sales_by_method).map(([method, amount]) => (
+                        <div key={method} className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1.5 dark:text-gray-300 text-gray-700">
+                            {METHOD_ICONS[method] || <Wallet className="h-3.5 w-3.5" />}
+                            {METHOD_LABELS(method)}:
+                          </span>
+                          <span className="font-medium text-emerald-600">
+                            {formatCurrency(method === 'cash' ? amount - (summary.change_total || 0) : amount)}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between text-sm pt-1 border-t dark:border-emerald-800 border-emerald-200">
+                        <span className="font-medium dark:text-gray-300 text-gray-700">
+                          Total ventas:
+                        </span>
+                        <span className="font-bold text-emerald-600">
+                          {formatCurrency(summary.sales_total ?? 0)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}

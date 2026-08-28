@@ -25,6 +25,7 @@ import {
   Printer,
   Monitor,
   Wallet,
+  Clock,
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/utils/Utils';
 import { SearchSelect } from '@/components/ui/search-select';
@@ -47,6 +48,13 @@ import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
 import { RecentPrintJobsTable } from './printers/RecentPrintJobsTable';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import {
+  getOperatingHours,
+  invalidateOperatingHoursCache,
+  type OperatingHours,
+} from '@/lib/services/organizationOperatingHoursService';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
   ConsecutivosModal,
   PropinasModal,
   CargosModal,
@@ -56,7 +64,7 @@ import {
 
 export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
-  const { branch_id } = useOrganization();
+  const { branch_id, organization } = useOrganization();
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -73,6 +81,13 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
   const [savingBlindCash, setSavingBlindCash] = useState(false);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
 
+  // Horas de operación (día operativo para empresas con horarios no estándar)
+  const [operatingHours, setOperatingHours] = useState<OperatingHours | null>(null);
+  const [ohEnabled, setOhEnabled] = useState(false);
+  const [ohStart, setOhStart] = useState('08:00');
+  const [ohEnd, setOhEnd] = useState('18:00');
+  const [savingOperatingHours, setSavingOperatingHours] = useState(false);
+
   const [showConsecutivos, setShowConsecutivos] = useState(false);
   const [showPropinas, setShowPropinas] = useState(false);
   const [showCargos, setShowCargos] = useState(false);
@@ -87,7 +102,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     }
 
     try {
-      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData, requireCashData, blindCashData] = await Promise.all([
+      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData, requireCashData, blindCashData, ohData] = await Promise.all([
         ConfiguracionService.getConfigStats(),
         ConfiguracionService.getPaymentMethods(),
         ConfiguracionService.getTaxes(),
@@ -96,6 +111,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
         ConfiguracionService.getBranches(),
         ConfiguracionService.getRequireCashSessionConfig(),
         ConfiguracionService.getBlindCashCountConfig(),
+        organization?.id ? getOperatingHours(organization.id) : Promise.resolve(null),
       ]);
 
       setStats(statsData);
@@ -106,6 +122,10 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       setBranches(branchesData);
       setRequireCashSession(requireCashData);
       setBlindCashCount(blindCashData);
+      setOperatingHours(ohData);
+      setOhEnabled(ohData?.enabled ?? false);
+      setOhStart(ohData?.start_time ?? '08:00');
+      setOhEnd(ohData?.end_time ?? '18:00');
     } catch (error) {
       console.error('Error cargando configuración:', error);
       toast({
@@ -206,6 +226,51 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       });
     } finally {
       setSavingRequireCash(false);
+    }
+  };
+
+  // Guardar horas de operación en organization_settings
+  const handleSaveOperatingHours = async () => {
+    if (!organization?.id) return;
+    setSavingOperatingHours(true);
+    try {
+      const { supabase } = await import('@/lib/supabase/config');
+      const settings = ohEnabled
+        ? { enabled: true, start_time: ohStart, end_time: ohEnd }
+        : { enabled: false, start_time: ohStart, end_time: ohEnd };
+
+      const { error } = await supabase
+        .from('organization_settings')
+        .upsert({
+          organization_id: organization.id,
+          key: 'operating_hours',
+          settings,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'organization_id,key',
+        });
+
+      if (error) throw error;
+
+      // Invalidar cache para que los reportes/dashboard tomen el cambio
+      invalidateOperatingHoursCache(organization.id);
+      setOperatingHours(ohEnabled ? { enabled: true, start_time: ohStart, end_time: ohEnd } : null);
+
+      toast({
+        title: 'Horas de operación guardadas',
+        description: ohEnabled
+          ? `Día operativo: ${ohStart} a ${ohEnd}${ohStart >= ohEnd ? ' (cruza medianoche)' : ''}`
+          : 'Día calendario completo (00:00 - 23:59)',
+      });
+    } catch (error) {
+      console.error('Error guardando operating hours:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron guardar las horas de operación',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingOperatingHours(false);
     }
   };
 
@@ -488,6 +553,99 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
               disabled={savingBlindCash}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Horas de Operación (Día Operativo) */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Clock className="h-5 w-5 text-cyan-600" />
+            Horas de Operación
+          </CardTitle>
+          <CardDescription className="text-gray-500 dark:text-gray-400">
+            Define el horario del &ldquo;día operativo&rdquo; para reportes y dashboard. Para empresas que trabajan de noche (ej: 8pm a 3am), esto delimita correctamente el inicio y cierre del día.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Toggle activar/desactivar */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900 dark:text-white break-words">
+                Activar horas de operación personalizadas
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
+                {ohEnabled
+                  ? `Día operativo: ${ohStart} a ${ohEnd}${ohStart >= ohEnd ? ' (cruza medianoche)' : ''}`
+                  : 'Día calendario completo (00:00 - 23:59)'}
+              </p>
+            </div>
+            <Switch
+              checked={ohEnabled}
+              onCheckedChange={setOhEnabled}
+              disabled={savingOperatingHours}
+            />
+          </div>
+
+          {/* Selectores de hora (visibles cuando está activado) */}
+          {ohEnabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div className="space-y-2">
+                <Label htmlFor="oh-start" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Hora de inicio
+                </Label>
+                <Input
+                  id="oh-start"
+                  type="time"
+                  value={ohStart}
+                  onChange={(e) => setOhStart(e.target.value)}
+                  disabled={savingOperatingHours}
+                  className="bg-white dark:bg-gray-900"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Inicio del día operativo
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="oh-end" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Hora de cierre
+                </Label>
+                <Input
+                  id="oh-end"
+                  type="time"
+                  value={ohEnd}
+                  onChange={(e) => setOhEnd(e.target.value)}
+                  disabled={savingOperatingHours}
+                  className="bg-white dark:bg-gray-900"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Fin del día operativo. Si es menor al inicio, cruza medianoche.
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <Button
+                  onClick={handleSaveOperatingHours}
+                  disabled={savingOperatingHours}
+                  size="sm"
+                >
+                  {savingOperatingHours ? 'Guardando...' : 'Guardar horas de operación'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!ohEnabled && operatingHours === null && (
+            <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <Button
+                onClick={handleSaveOperatingHours}
+                disabled={savingOperatingHours}
+                size="sm"
+                variant="outline"
+              >
+                {savingOperatingHours ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

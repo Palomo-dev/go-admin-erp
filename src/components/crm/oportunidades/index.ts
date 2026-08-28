@@ -11,3 +11,4 @@ export { CustomerSearchSelect } from './CustomerSearchSelect';
 export { ProductSearchSelect } from './ProductSearchSelect';
 export { PipelineSearchSelect } from './PipelineSearchSelect';
 export { SpaceSearchSelect } from './SpaceSearchSelect';
+export { ScoringSection } from './ScoringSection';

@@ -4,8 +4,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
-import { getDateRange } from '@/lib/utils/timezone';
-import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { getOrgDateRange } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -40,8 +39,10 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['diario'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase.rpc('fn_reporte_cierre_caja', {
         p_organization_id: orgId,
         p_from: start,
@@ -163,8 +164,10 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
         p_from: start,
@@ -270,8 +273,10 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase.rpc('fn_reporte_ventas_por_hora', {
         p_organization_id: orgId,
         p_from: start,
@@ -330,8 +335,10 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
         p_from: start,
@@ -413,8 +420,10 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start: from, end: to } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start: from, end: to } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
 
       const [
         { data: devolucionesData, error: errDev },
@@ -534,8 +543,10 @@ export const ventasReports: ReportDefinition[] = [
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase
         .from('web_orders')
         .select('id, order_number, status, source, total, subtotal, delivery_fee, tip_amount, discount_total, delivery_type, payment_method, payment_status, customer_name, customer_email, created_at, confirmed_at, delivered_at, cancelled_at, cancellation_reason')

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -19,11 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { LossReasonData } from './types';
 
 interface LossReasonDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (data: LossReasonData) => void;
   isLoading?: boolean;
 }
 
@@ -45,20 +47,44 @@ export function LossReasonDialog({
 }: LossReasonDialogProps) {
   const [selectedReason, setSelectedReason] = useState<string>('');
   const [customReason, setCustomReason] = useState<string>('');
+  const [competitor, setCompetitor] = useState<string>('');
+  const [competitorPrice, setCompetitorPrice] = useState<string>('');
+  const [recontactDate, setRecontactDate] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
 
   const handleConfirm = () => {
-    const reason =
+    const reasonData = LOSS_REASONS.find((r) => r.value === selectedReason);
+    const label =
       selectedReason === 'other'
         ? customReason
-        : LOSS_REASONS.find((r) => r.value === selectedReason)?.label || selectedReason;
-    onConfirm(reason);
+        : reasonData?.label || selectedReason;
+
+    const data: LossReasonData = {
+      lossReasonId: selectedReason,
+      lossReasonLabel: label,
+      competitor: competitor || undefined,
+      competitorPrice: competitorPrice ? parseFloat(competitorPrice) : undefined,
+      recontactDate: recontactDate || undefined,
+      notes: notes || undefined,
+    };
+
+    onConfirm(data);
+    // Resetear estado
     setSelectedReason('');
     setCustomReason('');
+    setCompetitor('');
+    setCompetitorPrice('');
+    setRecontactDate('');
+    setNotes('');
   };
 
   const handleCancel = () => {
     setSelectedReason('');
     setCustomReason('');
+    setCompetitor('');
+    setCompetitorPrice('');
+    setRecontactDate('');
+    setNotes('');
     onOpenChange(false);
   };
 
@@ -108,6 +134,65 @@ export function LossReasonDialog({
               />
             </div>
           )}
+
+          {/* Campos estructurados adicionales */}
+          {selectedReason === 'competitor' && (
+            <div className="space-y-2">
+              <Label htmlFor="competitor" className="text-gray-700 dark:text-gray-300">
+                Competidor
+              </Label>
+              <Input
+                id="competitor"
+                value={competitor}
+                onChange={(e) => setCompetitor(e.target.value)}
+                placeholder="Nombre del competidor"
+                className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+              />
+            </div>
+          )}
+
+          {selectedReason === 'competitor' && (
+            <div className="space-y-2">
+              <Label htmlFor="competitorPrice" className="text-gray-700 dark:text-gray-300">
+                Precio del competidor
+              </Label>
+              <Input
+                id="competitorPrice"
+                type="number"
+                value={competitorPrice}
+                onChange={(e) => setCompetitorPrice(e.target.value)}
+                placeholder="0.00"
+                className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="recontactDate" className="text-gray-700 dark:text-gray-300">
+              Fecha de recontacto (opcional)
+            </Label>
+            <Input
+              id="recontactDate"
+              type="date"
+              value={recontactDate}
+              onChange={(e) => setRecontactDate(e.target.value)}
+              className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="lossNotes" className="text-gray-700 dark:text-gray-300">
+              Notas adicionales (opcional)
+            </Label>
+            <Textarea
+              id="lossNotes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notas sobre la pérdida..."
+              className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+              rows={2}
+            />
+          </div>
         </div>
 
         <DialogFooter className="gap-2">

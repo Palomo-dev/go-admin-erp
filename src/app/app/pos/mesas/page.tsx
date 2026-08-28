@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, MoreVertical, LogOut, Users, ArrowLeft, UtensilsCrossed, CheckCircle, Clock, Hash, List, Map, Search, X, Receipt, History } from 'lucide-react';
@@ -51,13 +51,15 @@ import type { TableWithSession, MesaFormData, RestaurantTable } from '@/componen
 export default function MesasPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
   const [mesas, setMesas] = useState<TableWithSession[]>([]);
   const [zonas, setZonas] = useState<string[]>([]);
   const [zonaFiltro, setZonaFiltro] = useState<string>('todas');
   const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'free' | 'occupied' | 'bill_requested' | 'reserved'>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstLoadRef = useRef(true);
   const [zoneLayouts, setZoneLayouts] = useState<Record<string, { x: number; y: number; w: number; h: number }>>({});
 
   // Paginación
@@ -88,12 +90,17 @@ export default function MesasPage() {
 
   // Cargar datos iniciales y al cambiar de sucursal
   useEffect(() => {
-    cargarDatos();
+    if (!branchLoading) {
+      cargarDatos();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter]);
+  }, [branchFilter, branchLoading]);
 
   const cargarDatos = async () => {
-    setIsLoading(true);
+    if (isFirstLoadRef.current) {
+      setIsLoading(true);
+    }
+    setIsRefreshing(true);
     try {
       const [mesasData, zonasData, zoneLayoutsData] = await Promise.all([
         MesasService.obtenerMesasConSesiones(),
@@ -112,7 +119,9 @@ export default function MesasPage() {
         variant: 'destructive',
       });
     } finally {
+      isFirstLoadRef.current = false;
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -356,18 +365,24 @@ export default function MesasPage() {
   const handleAbrirSesion = async () => {
     if (!mesaParaAbrirSesion) return;
 
+    const mesaId = mesaParaAbrirSesion.id;
+    const mesaName = mesaParaAbrirSesion.name;
+
     try {
-      await MesasService.abrirSesion(mesaParaAbrirSesion.id, {
+      await MesasService.abrirSesion(mesaId, {
         customers: comensalesNuevaSesion
       });
-      await cargarDatos();
+      // Cerrar diálogo inmediatamente antes de navegar
+      setMesaParaAbrirSesion(null);
       toast({
         title: 'Sesión abierta',
-        description: `Mesa ${mesaParaAbrirSesion.name} ahora está ocupada`,
+        description: `Mesa ${mesaName} ahora está ocupada`,
       });
-      setMesaParaAbrirSesion(null);
-      // Navegar a la mesa
-      router.push(`/app/pos/mesas/${mesaParaAbrirSesion.id}`);
+      // Navegar a la mesa inmediatamente, sin esperar cargarDatos()
+      // (la página de detalle carga su propia sesión desde la BD)
+      router.push(`/app/pos/mesas/${mesaId}`);
+      // Recargar datos en background para que al volver todo esté actualizado
+      cargarDatos();
     } catch (error: any) {
       console.error('Error abriendo sesión:', error);
       toast({
@@ -465,7 +480,7 @@ export default function MesasPage() {
     }
   };
 
-  if (isLoading) {
+  if (branchLoading || (isLoading && mesas.length === 0)) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <PageHeaderSkeleton />
@@ -475,7 +490,7 @@ export default function MesasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6">
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 p-6 space-y-6 ${isRefreshing ? 'opacity-60 pointer-events-none' : ''}`}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -518,8 +533,8 @@ export default function MesasPage() {
               Mapa
             </Button>
           </div>
-          <Button variant="outline" size="icon" onClick={cargarDatos}>
-            <RefreshCw className="h-4 w-4" />
+          <Button variant="outline" size="icon" onClick={cargarDatos} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
           <Button onClick={() => setShowMesaForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="h-4 w-4 mr-2" />

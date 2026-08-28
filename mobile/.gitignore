@@ -1,8 +1,15 @@
-# Capacitor / nativo
-android/
-ios/
-dist/
-out/
+# Capacitor / nativo — builds temporales (el proyecto nativo SÍ se commitea)
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+ios/App/build/
+ios/App/Pods/
+ios/App/output/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
 
 # Node
 node_modules/
@@ -20,10 +27,10 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Secrets
-google-services.json
-GoogleService-Info.plist
-release.keystore
-*.keystore
+# Secrets — rutas específicas para evitar exclusiones accidentales
+android/app/google-services.json
+android/app/release.keystore
+android/app/*.keystore
+ios/App/App/GoogleService-Info.plist
 .env
 .env.local

@@ -5,8 +5,7 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { getBranchFilter } from '@/lib/hooks/useOrganization';
-import { getDateRange } from '@/lib/utils/timezone';
-import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { getDateRange, getOrgDateRange } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -27,8 +26,10 @@ export const clientesReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
       const branchFilter = getBranchFilter();
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end, timezone: tz } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
 
       // Conteo total exacto (sin límite de 1000)
       const baseEq: Record<string, unknown> = { organization_id: orgId };
@@ -198,8 +199,10 @@ export const clientesReports: ReportDefinition[] = [
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const tz = await getOrganizationTimezone(orgId);
-      const { start, end } = getDateRange(periodo.fechaInicio, periodo.fechaFin, tz);
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await supabase
         .from('sales')
         .select('customer_id, total, customers!inner(first_name, last_name, customer_type, company_name)')

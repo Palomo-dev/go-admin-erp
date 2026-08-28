@@ -40,3 +40,10 @@ files:
   - build/**/*
   - package.json
   - node_modules/**/*
+
+# Desempaquetar el icono del asar para que Windows pueda usarlo como
+# icono de ventana (BrowserWindow.icon) y de la bandeja del sistema (Tray).
+# Los archivos .ico dentro de un .asar no son accesibles por las APIs nativas
+# de Windows que resuelven el icono de la ventana/taskbar.
+asarUnpack:
+  - build/icon.ico

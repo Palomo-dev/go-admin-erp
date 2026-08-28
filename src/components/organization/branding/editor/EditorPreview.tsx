@@ -1,30 +1,146 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Globe, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DevicePreview } from './EditorHeader';
+import type { WebsitePageSection } from '@/lib/services/websitePageBuilderService';
 
 interface EditorPreviewProps {
   previewUrl: string | null;
   devicePreview: DevicePreview;
   refreshKey?: number;
+  /** Secciones actuales del editor (para preview vivo por postMessage). */
+  liveSections?: WebsitePageSection[];
+  /** ID de sección activa (para scroll automático en el iframe). */
+  activeSectionId?: string | null;
+  /** Callback cuando el usuario clickea una sección dentro del iframe. */
+  onSelectSectionFromCanvas?: (sectionId: string) => void;
 }
 
 const DEVICE_WIDTHS: Record<DevicePreview, string> = {
   desktop: '100%',
+  laptop: '1024px',
   tablet: '768px',
   mobile: '375px',
 };
 
-export default function EditorPreview({ previewUrl, devicePreview, refreshKey }: EditorPreviewProps) {
+/** Orígenes del sitio permitidos para recibir postMessage. */
+const ALLOWED_SITE_ORIGINS = [
+  'http://localhost:3002',
+  'http://localhost:3000',
+  'https://erp.goadmin.io',
+  'https://go-admin-erp.vercel.app',
+];
+
+export default function EditorPreview({
+  previewUrl,
+  devicePreview,
+  refreshKey,
+  liveSections,
+  activeSectionId,
+  onSelectSectionFromCanvas,
+}: EditorPreviewProps) {
   const t = useTranslations('branding.editor.preview');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSentSections = useRef<string>('');
 
   const width = DEVICE_WIDTHS[devicePreview];
+
+  // ---- F12.1: Preview vivo por postMessage ----
+  // Envía las secciones actuales al iframe con debounce 150ms.
+  // Solo se activa si hay liveSections y el iframe ya cargó.
+  const sendPreviewMessage = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentWindow || !liveSections) return;
+
+    // Construir URL con ?preview=1 si no la tiene ya
+    const payload = {
+      type: 'goadmin:preview',
+      sections: liveSections.map((s) => ({
+        id: s.id,
+        section_type: s.section_type,
+        section_variant: s.section_variant,
+        content: s.content,
+        settings: s.settings,
+        is_visible: s.is_visible,
+      })),
+    };
+
+    // Evitar envíos redundantes (mismo payload)
+    const serialized = JSON.stringify(payload.sections);
+    if (serialized === lastSentSections.current) return;
+    lastSentSections.current = serialized;
+
+    try {
+      // Intentar enviar al origen del previewUrl; fallback a '*'
+      const targetOrigin = previewUrl ? new URL(previewUrl).origin : '*';
+      iframe.contentWindow.postMessage(payload, targetOrigin);
+    } catch {
+      // Si falla la construcción de URL, enviar con '*' (el sitio valida origen)
+      try {
+        iframe.contentWindow.postMessage(payload, '*');
+      } catch { /* noop */ }
+    }
+  }, [liveSections, previewUrl]);
+
+  // Debounce 150ms sobre cambios de secciones
+  useEffect(() => {
+    if (!liveSections) return;
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      sendPreviewMessage();
+    }, 150);
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, [liveSections, sendPreviewMessage]);
+
+  // Scroll a la sección activa
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentWindow || !activeSectionId) return;
+    try {
+      const targetOrigin = previewUrl ? new URL(previewUrl).origin : '*';
+      iframe.contentWindow.postMessage(
+        { type: 'goadmin:scroll', sectionId: activeSectionId },
+        targetOrigin,
+      );
+    } catch { /* noop */ }
+  }, [activeSectionId, previewUrl]);
+
+  // Escuchar mensajes del iframe (clic en sección → seleccionar)
+  useEffect(() => {
+    if (!onSelectSectionFromCanvas) return;
+    const handler = (e: MessageEvent) => {
+      if (!e.data || typeof e.data !== 'object') return;
+      // Validar origen si es posible
+      if (e.origin && !ALLOWED_SITE_ORIGINS.includes(e.origin)) return;
+      if (e.data.type === 'goadmin:select' && typeof e.data.sectionId === 'string') {
+        onSelectSectionFromCanvas(e.data.sectionId);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onSelectSectionFromCanvas]);
+
+  // Construir URL con ?preview=1 para activar el PreviewBridge del sitio
+  const previewUrlWithFlag = previewUrl
+    ? (() => {
+        try {
+          const url = new URL(previewUrl);
+          url.searchParams.set('preview', '1');
+          return url.toString();
+        } catch {
+          return previewUrl;
+        }
+      })()
+    : null;
 
   if (!previewUrl) {
     return (
@@ -101,12 +217,16 @@ export default function EditorPreview({ previewUrl, devicePreview, refreshKey }:
           )}
 
           <iframe
+            ref={iframeRef}
             key={refreshKey}
-            src={previewUrl}
+            src={previewUrlWithFlag ?? undefined}
             className="w-full h-full border-0"
             onLoad={() => {
               setIsLoading(false);
               setHasError(false);
+              // Reenviar secciones tras recarga del iframe
+              lastSentSections.current = '';
+              setTimeout(() => sendPreviewMessage(), 200);
             }}
             onError={() => {
               setIsLoading(false);

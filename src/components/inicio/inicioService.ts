@@ -1,8 +1,22 @@
 import { supabase } from '@/lib/supabase/config';
+import {
+  getOrgDayRange,
+  getOrgDateRange,
+  getOperatingToday,
+  getDayRange,
+} from '@/lib/utils/timezone';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { getOperatingHours } from '@/lib/services/organizationOperatingHoursService';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 export type PeriodoDashboard = 'hoy' | '7d' | '30d' | '90d' | 'año';
+
+/** Horas opcionales para filtrar el dashboard (formato HH:mm) */
+export interface HorasDashboard {
+  horaInicio: string | null; // "HH:mm" o null
+  horaFin: string | null;   // "HH:mm" o null
+}
 
 export interface DashboardKPIData {
   ventasHoy: number;
@@ -62,64 +76,129 @@ export interface DashboardData {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function startOfToday(): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+/**
+ * Suma (o resta) días a una fecha YYYY-MM-DD.
+ * Usa UTC para evitar desplazamientos por timezone del navegador.
+ */
+function addDays(dateString: string, days: number): string {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const result = new Date(Date.UTC(y, m - 1, d + days));
+  const ny = result.getUTCFullYear();
+  const nm = String(result.getUTCMonth() + 1).padStart(2, '0');
+  const nd = String(result.getUTCDate()).padStart(2, '0');
+  return `${ny}-${nm}-${nd}`;
 }
 
-function daysAgo(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+/**
+ * Devuelve el inicio del día operativo actual (UTC ISO) respetando
+ * timezone y horas de operación de la organización.
+ * Usa getOrgDayRange para calcular el rango UTC del día operativo.
+ */
+async function startOfToday(
+  organizationId: number,
+): Promise<{ start: string; end: string; operatingToday: string }> {
+  // Obtener timezone y operating hours para calcular el día operativo actual
+  // (getOperatingToday necesita ambos para manejar cruce de medianoche)
+  const [timezone, operatingHours] = await Promise.all([
+    getOrganizationTimezone(organizationId),
+    getOperatingHours(organizationId),
+  ]);
+  const operatingToday = getOperatingToday(timezone, operatingHours);
+  // Usar getOrgDayRange para obtener el rango UTC del día operativo
+  const { start, end } = await getOrgDayRange(organizationId, operatingToday);
+  return { start, end, operatingToday };
 }
 
 // Devuelve [inicio, fin] del período actual y [inicioAnterior, finAnterior] del período anterior
-function rangoPeriodo(periodo: PeriodoDashboard): {
+// Respetando timezone y horas de operación de la organización.
+// finAnterior siempre es igual a inicio del período actual (exclusive upper bound).
+// Si se pasan horasOverride, se usan en vez de las operating hours de la org.
+async function rangoPeriodo(
+  organizationId: number,
+  periodo: PeriodoDashboard,
+  horasOverride?: HorasDashboard | null,
+): Promise<{
   inicio: string;
   fin: string;
   inicioAnterior: string;
   finAnterior: string;
-} {
-  const ahora = new Date();
-  const fin = ahora.toISOString();
+  operatingToday: string;
+}> {
+  const { operatingToday } = await startOfToday(organizationId);
+  const fin = new Date().toISOString(); // momento actual
+
+  // Convertir horasOverride al formato que esperan getOrgDayRange/getOrgDateRange
+  const overrideHours = horasOverride && (horasOverride.horaInicio || horasOverride.horaFin)
+    ? {
+        enabled: true,
+        start_time: horasOverride.horaInicio,
+        end_time: horasOverride.horaFin,
+      }
+    : undefined;
+
   switch (periodo) {
     case 'hoy': {
-      const inicio = startOfToday();
-      const inicioAnterior = daysAgo(1);
-      const finAnterior = startOfToday();
-      return { inicio, fin, inicioAnterior, finAnterior };
+      let inicio: string;
+      let finPeriodoHoy: string;
+      if (overrideHours) {
+        // Con horas override: usar getDayRange directamente con el timezone de la org
+        const timezone = await getOrganizationTimezone(organizationId);
+        const range = getDayRange(operatingToday, timezone, overrideHours);
+        inicio = range.start;
+        finPeriodoHoy = range.end;
+      } else {
+        const range = await getOrgDayRange(organizationId, operatingToday);
+        inicio = range.start;
+        finPeriodoHoy = range.end;
+      }
+      const yesterday = addDays(operatingToday, -1);
+      const { start: inicioAnterior } = await getOrgDayRange(organizationId, yesterday);
+      return { inicio, fin: finPeriodoHoy, inicioAnterior, finAnterior: inicio, operatingToday };
     }
     case '7d': {
-      const inicio = daysAgo(7);
-      const inicioAnterior = daysAgo(14);
-      const finAnterior = daysAgo(7);
-      return { inicio, fin, inicioAnterior, finAnterior };
+      const start7d = addDays(operatingToday, -7);
+      const { start: inicio } = await getOrgDateRange(organizationId, start7d, operatingToday, overrideHours ?? null);
+      const start14d = addDays(operatingToday, -14);
+      const { start: inicioAnterior } = await getOrgDateRange(organizationId, start14d, start7d);
+      return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
     }
     case '30d': {
-      const inicio = daysAgo(30);
-      const inicioAnterior = daysAgo(60);
-      const finAnterior = daysAgo(30);
-      return { inicio, fin, inicioAnterior, finAnterior };
+      const start30d = addDays(operatingToday, -30);
+      const { start: inicio } = await getOrgDateRange(organizationId, start30d, operatingToday, overrideHours ?? null);
+      const start60d = addDays(operatingToday, -60);
+      const { start: inicioAnterior } = await getOrgDateRange(organizationId, start60d, start30d);
+      return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
     }
     case '90d': {
-      const inicio = daysAgo(90);
-      const inicioAnterior = daysAgo(180);
-      const finAnterior = daysAgo(90);
-      return { inicio, fin, inicioAnterior, finAnterior };
+      const start90d = addDays(operatingToday, -90);
+      const { start: inicio } = await getOrgDateRange(organizationId, start90d, operatingToday, overrideHours ?? null);
+      const start180d = addDays(operatingToday, -180);
+      const { start: inicioAnterior } = await getOrgDateRange(organizationId, start180d, start90d);
+      return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
     }
     case 'año': {
-      const inicio = daysAgo(365);
-      const inicioAnterior = daysAgo(730);
-      const finAnterior = daysAgo(365);
-      return { inicio, fin, inicioAnterior, finAnterior };
+      const start365d = addDays(operatingToday, -365);
+      const { start: inicio } = await getOrgDateRange(organizationId, start365d, operatingToday, overrideHours ?? null);
+      const start730d = addDays(operatingToday, -730);
+      const { start: inicioAnterior } = await getOrgDateRange(organizationId, start730d, start365d);
+      return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
     }
     default: {
-      const inicio = startOfToday();
-      const inicioAnterior = daysAgo(1);
-      const finAnterior = startOfToday();
-      return { inicio, fin, inicioAnterior, finAnterior };
+      let inicio: string;
+      let finDefault: string;
+      if (overrideHours) {
+        const timezone = await getOrganizationTimezone(organizationId);
+        const range = getDayRange(operatingToday, timezone, overrideHours);
+        inicio = range.start;
+        finDefault = range.end;
+      } else {
+        const range = await getOrgDayRange(organizationId, operatingToday);
+        inicio = range.start;
+        finDefault = range.end;
+      }
+      const yesterday = addDays(operatingToday, -1);
+      const { start: inicioAnterior } = await getOrgDayRange(organizationId, yesterday);
+      return { inicio, fin: finDefault, inicioAnterior, finAnterior: inicio, operatingToday };
     }
   }
 }
@@ -129,11 +208,20 @@ function rangoPeriodo(periodo: PeriodoDashboard): {
 export const inicioService = {
   async getDashboardData(
     organizationId: number,
-    periodo: PeriodoDashboard = 'hoy'
+    periodo: PeriodoDashboard = 'hoy',
+    horas?: HorasDashboard | null,
   ): Promise<DashboardData> {
-    const today = startOfToday();
-    const last30Days = daysAgo(30);
-    const { inicio: inicioPeriodo, inicioAnterior, finAnterior } = rangoPeriodo(periodo);
+    const {
+      inicio: inicioPeriodo,
+      fin: finPeriodo,
+      inicioAnterior,
+      finAnterior,
+      operatingToday,
+    } = await rangoPeriodo(organizationId, periodo, horas);
+
+    // Últimos 30 días para "ventasMes" (respetando timezone + operating hours)
+    const start30d = addDays(operatingToday, -30);
+    const { start: last30Days } = await getOrgDayRange(organizationId, start30d);
 
     // Ejecutar queries en paralelo para mayor velocidad
     const [
@@ -167,6 +255,7 @@ export const inicioService = {
         .select('total')
         .eq('organization_id', organizationId)
         .gte('sale_date', inicioPeriodo)
+        .lt('sale_date', finPeriodo)
         .in('status', ['paid', 'completed']),
       // Ventas POS últimos 30 días
       supabase
@@ -180,16 +269,19 @@ export const inicioService = {
         .select('total')
         .eq('organization_id', organizationId)
         .gte('created_at', inicioPeriodo)
+        .lt('created_at', finPeriodo)
         .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")'),
-      // Pedidos web últimos 30 días (pagados o entregados)
+        .not('status', 'in', '("cancelled","rejected")')
+        .is('sale_id', null),
+      // Pedidos web últimos 30 días (pagados o entregados, sin sale_id para no duplicar)
       supabase
         .from('web_orders')
         .select('total')
         .eq('organization_id', organizationId)
         .gte('created_at', last30Days)
         .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")'),
+        .not('status', 'in', '("cancelled","rejected")')
+        .is('sale_id', null),
       // Clientes activos
       supabase
         .from('customers')
@@ -206,7 +298,8 @@ export const inicioService = {
         .from('invoice_sales')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId)
-        .gte('issue_date', inicioPeriodo),
+        .gte('issue_date', inicioPeriodo)
+        .lt('issue_date', finPeriodo),
       // Miembros activos de la organización
       supabase
         .from('organization_members')
@@ -298,7 +391,7 @@ export const inicioService = {
         .gte('sale_date', inicioAnterior)
         .lt('sale_date', finAnterior)
         .in('status', ['paid', 'completed']),
-      // Pedidos web período anterior
+      // Pedidos web período anterior (sin sale_id para no duplicar)
       supabase
         .from('web_orders')
         .select('total')
@@ -306,7 +399,8 @@ export const inicioService = {
         .gte('created_at', inicioAnterior)
         .lt('created_at', finAnterior)
         .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")'),
+        .not('status', 'in', '("cancelled","rejected")')
+        .is('sale_id', null),
       // Facturas período anterior
       supabase
         .from('invoice_sales')
@@ -483,7 +577,15 @@ export const inicioService = {
     organizationId: number,
     dias: number = 30
   ): Promise<PuntoTendencia[]> {
-    const desde = daysAgo(dias - 1); // incluir hoy
+    // Usar timezone de la organización para calcular el rango correcto
+    const [timezone, operatingHours] = await Promise.all([
+      getOrganizationTimezone(organizationId),
+      getOperatingHours(organizationId),
+    ]);
+    const operatingToday = getOperatingToday(timezone, operatingHours);
+    const startDias = addDays(operatingToday, -(dias - 1));
+    const { start: desde } = await getOrgDayRange(organizationId, startDias);
+
     const [salesRes, webOrdersRes] = await Promise.all([
       supabase
         .from('sales')
@@ -497,32 +599,39 @@ export const inicioService = {
         .eq('organization_id', organizationId)
         .gte('created_at', desde)
         .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")'),
+        .not('status', 'in', '("cancelled","rejected")')
+        .is('sale_id', null),
     ]);
 
-    // Agregar por día (YYYY-MM-DD)
-    const porDia = new Map<string, number>();
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
+    // Formateador para extraer YYYY-MM-DD en el timezone de la organización
+    const dtf = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
 
-    // Inicializar todos los días del rango con 0
+    const porDia = new Map<string, number>();
+
+    // Inicializar todos los días del rango con 0 (usando fechas del timezone org)
     for (let i = dias - 1; i >= 0; i--) {
-      const d = new Date(hoy);
-      d.setDate(d.getDate() - i);
-      porDia.set(d.toISOString().slice(0, 10), 0);
+      const fecha = addDays(operatingToday, -i);
+      porDia.set(fecha, 0);
     }
 
-    // Sumar ventas POS
+    // Sumar ventas POS (formateando la fecha al timezone de la org)
     (salesRes.data || []).forEach((v) => {
-      const dia = (v.sale_date || '').slice(0, 10);
+      if (!v.sale_date) return;
+      const dia = dtf.format(new Date(v.sale_date));
       if (porDia.has(dia)) {
         porDia.set(dia, (porDia.get(dia) || 0) + Number(v.total || 0));
       }
     });
 
-    // Sumar pedidos web
+    // Sumar pedidos web (formateando la fecha al timezone de la org)
     (webOrdersRes.data || []).forEach((v) => {
-      const dia = (v.created_at || '').slice(0, 10);
+      if (!v.created_at) return;
+      const dia = dtf.format(new Date(v.created_at));
       if (porDia.has(dia)) {
         porDia.set(dia, (porDia.get(dia) || 0) + Number(v.total || 0));
       }

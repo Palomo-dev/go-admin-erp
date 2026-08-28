@@ -7,6 +7,7 @@ import { formatCurrency } from '@/utils/Utils';
 import { Target, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from "@/components/ui/use-toast";
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 
 interface GoalCompletionWidgetProps {
   pipelineId: string;
@@ -26,11 +27,11 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
   const [goalData, setGoalData] = useState<GoalData | null>(null);
   const [organizationId, setOrganizationId] = useState<number | null>(null);
 
-  // Obtener el ID de organización del almacenamiento local
+  // Obtener el ID de organización usando la función canónica
   useEffect(() => {
-    const orgId = localStorage.getItem('currentOrganizationId');
+    const orgId = getOrganizationIdFromContext();
     if (orgId) {
-      setOrganizationId(Number(orgId));
+      setOrganizationId(orgId);
     }
   }, []);
 
@@ -84,8 +85,8 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
         
         // Calcular montos ponderados basados en la probabilidad de cada etapa
         const forecastData = opportunitiesData?.map(opp => ({
-          amount: opp.amount || 0,
-          forecast_amount: (opp.amount || 0) * (opp.stages?.probability || 1)
+          amount: Number(opp.amount) || 0,
+          forecast_amount: (Number(opp.amount) || 0) * (opp.stages?.[0]?.probability || 100) / 100
         }));
 
         // 3. Calcular totales
@@ -93,11 +94,11 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
         let totalBrutoAmount = 0;
 
         if (forecastData && forecastData.length > 0) {
-          totalForecastAmount = forecastData.reduce((sum, item) => 
-            sum + parseFloat(item.forecast_amount || '0'), 0);
-          
-          totalBrutoAmount = forecastData.reduce((sum, item) => 
-            sum + parseFloat(item.amount || '0'), 0);
+          totalForecastAmount = forecastData.reduce((sum, item) =>
+            sum + (Number(item.forecast_amount) || 0), 0);
+
+          totalBrutoAmount = forecastData.reduce((sum, item) =>
+            sum + (Number(item.amount) || 0), 0);
         }
 
         // 4. Calcular porcentaje de cumplimiento

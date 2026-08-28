@@ -27,7 +27,7 @@ import { supabase } from '@/lib/supabase/config';
 export default function CalendarioPage() {
   const router = useRouter();
   const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter, isLoading: branchLoading } = useBranch();
   const { toast } = useToast();
 
   const [startDate, setStartDate] = useState(() => {
@@ -98,11 +98,11 @@ export default function CalendarioPage() {
   };
 
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && !branchLoading) {
       setIsLoading(true);
       loadData();
     }
-  }, [organization?.id, branchFilter, startDate, daysToShow]);
+  }, [organization?.id, branchFilter, branchLoading, startDate, daysToShow]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

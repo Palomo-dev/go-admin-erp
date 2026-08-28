@@ -348,10 +348,11 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                     <td className="px-3 sm:px-4 py-3 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             className="h-9 w-9 sm:h-8 sm:w-8 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600"
+                            aria-label={`Acciones para cliente ${customer.full_name}`}
                           >
                             <MoreHorizontal className="h-5 w-5 sm:h-4 sm:w-4" />
                             <span className="sr-only">Abrir menú</span>

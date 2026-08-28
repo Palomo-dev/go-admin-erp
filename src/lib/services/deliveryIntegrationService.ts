@@ -118,8 +118,8 @@ class DeliveryIntegrationService {
    * Crea un shipment automáticamente desde un web_order con delivery_type = 'delivery_own'
    */
   async createShipmentFromWebOrder(webOrder: WebOrder): Promise<DeliveryShipment> {
-    if (webOrder.delivery_type !== 'delivery_own') {
-      throw new Error('Solo se pueden crear shipments para pedidos con delivery propio');
+    if (webOrder.delivery_type !== 'delivery_own' && webOrder.delivery_type !== 'delivery_third_party') {
+      throw new Error('Solo se pueden crear shipments para pedidos con delivery (propio o tercero)');
     }
 
     // Verificar si ya existe un shipment para este pedido
@@ -173,6 +173,7 @@ class DeliveryIntegrationService {
 
     // Registrar evento de creación
     await this.createTransportEvent({
+      organization_id: webOrder.organization_id,
       reference_type: 'shipment',
       reference_id: data.id,
       event_type: 'created',
@@ -268,6 +269,7 @@ class DeliveryIntegrationService {
 
     // Registrar evento
     await this.createTransportEvent({
+      organization_id: shipment.organization_id,
       reference_type: 'shipment',
       reference_id: shipmentId,
       event_type: 'assigned',
@@ -313,6 +315,7 @@ class DeliveryIntegrationService {
 
     // Registrar evento
     await this.createTransportEvent({
+      organization_id: data.organization_id,
       reference_type: 'shipment',
       reference_id: shipmentId,
       event_type: 'picked',
@@ -405,6 +408,7 @@ class DeliveryIntegrationService {
 
     // Registrar evento
     await this.createTransportEvent({
+      organization_id: shipment.organization_id,
       reference_type: 'shipment',
       reference_id: shipmentId,
       event_type: 'delivered',
@@ -438,6 +442,13 @@ class DeliveryIntegrationService {
       longitude?: number;
     }
   ): Promise<void> {
+    // Obtener organization_id del shipment
+    const { data: shipment } = await supabase
+      .from('shipments')
+      .select('organization_id')
+      .eq('id', shipmentId)
+      .single();
+
     // Contar intentos previos
     const { count } = await supabase
       .from('delivery_attempts')
@@ -463,6 +474,7 @@ class DeliveryIntegrationService {
 
     // Registrar evento
     await this.createTransportEvent({
+      organization_id: shipment?.organization_id || 0,
       reference_type: 'shipment',
       reference_id: shipmentId,
       event_type: 'delivery_failed',

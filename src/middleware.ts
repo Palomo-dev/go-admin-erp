@@ -81,6 +81,8 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/stripe/',  // <-- Excluir APIs de Stripe
     '/api/sessions/', // <-- Excluir APIs de sesiones
     '/api/integrations/twilio/', // <-- Excluir webhooks de Twilio (autenticación propia via firma)
+    '/api/integrations/whatsapp/webhook', // <-- Excluir webhook de WhatsApp Cloud API (verificación Meta)
+    '/api/integrations/whatsapp/qr/inbound', // <-- Excluir callback del microservicio Baileys (autenticación propia via shared secret)
     '/api/super-admin-access', // <-- Excluir canje de token de super admin (autenticación propia via token BD)
     '/api/super-admin-cleanup', // <-- Excluir cleanup de super admin (autenticación propia via body)
     '/api/factus/', // <-- Excluir APIs de Factus (usan credenciales de entorno, no requieren sesión)
@@ -115,6 +117,17 @@ export async function middleware(request: NextRequest) {
   // Verificar si debemos saltar esta ruta completamente
   if (shouldSkipRoute(pathname)) {
     return NextResponse.next();
+  }
+
+  // Limpiar cookie OAuth stale en rutas que no son select-organization.
+  // Esta cookie contiene tokens completos y si no se borra causa HTTP 431.
+  if (pathname !== '/auth/select-organization') {
+    const oauthCookie = request.cookies.get('go-admin-oauth-session');
+    if (oauthCookie) {
+      const response = NextResponse.next();
+      response.cookies.delete('go-admin-oauth-session');
+      return response;
+    }
   }
   
   // Para el middleware en el servidor, necesitamos crear un cliente temporal

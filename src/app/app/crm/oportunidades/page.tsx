@@ -16,6 +16,7 @@ import {
   Pipeline,
   Stage,
   Customer,
+  LossReasonData,
 } from '@/components/crm/oportunidades';
 
 export default function OportunidadesPage() {
@@ -160,12 +161,12 @@ export default function OportunidadesPage() {
     setShowLossDialog(true);
   };
 
-  const handleMarkLost = async (reason: string) => {
+  const handleMarkLost = async (data: LossReasonData) => {
     if (!selectedOpportunityId) return;
 
     setIsProcessing(true);
     try {
-      await opportunitiesService.markAsLost(selectedOpportunityId, reason);
+      await opportunitiesService.markAsLost(selectedOpportunityId, data);
       setShowLossDialog(false);
       setSelectedOpportunityId(null);
       toast({

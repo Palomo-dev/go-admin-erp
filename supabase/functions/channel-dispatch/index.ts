@@ -187,13 +187,75 @@ Deno.serve(async (req: Request) => {
       return json({ skipped: "canal no despachable" });
     }
 
-    // 3. Credenciales
+    // 3. Credenciales - verificar si es canal QR (Baileys) o Cloud API
     const { data: credRow } = await supabase
       .from("channel_credentials")
-      .select("credentials")
+      .select("credentials, provider")
       .eq("channel_id", msg.channel_id)
-      .eq("provider", "meta")
       .maybeSingle();
+
+    // Si es canal Baileys (QR), despachar via Evolution API
+    if (credRow?.provider === "baileys") {
+      const evolutionUrl = Deno.env.get("EVOLUTION_API_URL") || "";
+      const evolutionKey = Deno.env.get("EVOLUTION_API_KEY") || "";
+
+      if (!evolutionUrl) {
+        // Sin URL de Evolution API, marcar como pendiente (el ERP lo despachará por polling)
+        await supabase
+          .from("messages")
+          .update({ metadata: { ...(msg.metadata || {}), dispatch_pending: true, dispatch_method: "baileys" } })
+          .eq("id", msg.id);
+        return json({ skipped: "baileys_pending_dispatch", channel: channel.type });
+      }
+
+      // Enviar via Evolution API
+      const { data: conv2 } = await supabase
+        .from("conversations")
+        .select("customer_id")
+        .eq("id", msg.conversation_id)
+        .single();
+      if (!conv2?.customer_id) return json({ error: "Conversación sin customer" }, 400);
+
+      const recipient = await resolveRecipient(channel.type, msg.channel_id, conv2.customer_id);
+      if (!recipient) return json({ error: "No se encontró destinatario" }, 400);
+
+      const text = cleanText(msg.content || "");
+      const instanceName = `wa-qr-${msg.channel_id}`;
+      // Evolution API espera solo el número (sin @s.whatsapp.net)
+      const number = recipient.replace(/@(s\.whatsapp\.net|lid)$/, "");
+
+      const sendRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: evolutionKey,
+        },
+        body: JSON.stringify({ number, text }),
+      });
+      const sendData = await sendRes.json().catch(() => ({}));
+
+      await supabase.from("message_events").insert({
+        organization_id: msg.organization_id,
+        message_id: msg.id,
+        event_type: sendRes.ok ? "sent" : "failed",
+        provider_payload: sendData,
+        error_message: sendRes.ok ? null : (sendData.error || "Error Baileys"),
+      });
+
+      await supabase
+        .from("messages")
+        .update({
+          metadata: {
+            ...(msg.metadata || {}),
+            dispatched: sendRes.ok,
+            dispatch_channel: "baileys",
+            dispatch_error: sendRes.ok ? null : (sendData.error || "Error"),
+          },
+        })
+        .eq("id", msg.id);
+
+      return json({ success: sendRes.ok, channel: "baileys", externalId: sendData.messageId });
+    }
 
     const creds = (credRow?.credentials || {}) as Record<string, string>;
 

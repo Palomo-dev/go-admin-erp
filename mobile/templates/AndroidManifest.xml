@@ -1,0 +1,134 @@
+<!--
+  AndroidManifest.xml — Template para GoAdmin ERP (Capacitor)
+  ============================================================
+  Este archivo se copia a: mobile/android/app/src/main/AndroidManifest.xml
+  DESPUÉS de ejecutar `npx cap add android`.
+
+  IMPORTANTE: Debes hacer un MERGE con el AndroidManifest.xml generado
+  por Capacitor. Capacitor genera su propio manifest con referencias a
+  actividades y servicios de plugins. Conserva esos elementos y añade
+  los permisos y configuraciones de este template.
+
+  Pasos:
+  1. Ejecutar `npx cap add android`
+  2. Abrir mobile/android/app/src/main/AndroidManifest.xml (generado)
+  3. Añadir los permisos <uses-permission> de este template
+  4. Añadir el <intent-filter> de deep link goadmin:// a MainActivity
+  5. Añadir el <service> de Firebase Messaging dentro de <application>
+  6. Verificar que @string/app_name existe en res/values/strings.xml
+
+  Requisitos:
+  - Android Studio 2025.2.1+
+  - Java 17
+  - compileSdk 35 (Android 15)
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ============================================================
+         PERMISOS NORMALES (no requieren runtime request)
+         ============================================================ -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- ============================================================
+         PERMISOS PELIGROSOS (requieren runtime request)
+         El app debe solicitar estos permisos en runtime con
+         @capacitor-community/permissions o plugins nativos.
+         ============================================================ -->
+    <!-- Cámara: escaneo QR de productos y pagos -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Ubicación: marcación de asistencia y transporte -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Notificaciones push (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Vibración para notificaciones -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Biometría: login con huella / Face ID equivalente -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+    <!-- ============================================================
+         NFC — check-in de gimnasio y marcación de asistencia
+         ============================================================ -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
+    <!-- ============================================================
+         BLUETOOTH — impresión de tickets en impresoras térmicas
+         BLUETOOTH y BLUETOOTH_ADMIN son legacy (API 30 y menor)
+         BLUETOOTH_SCAN y BLUETOOTH_CONNECT son nuevos (API 31+)
+         ============================================================ -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- ============================================================
+         ALMACENAMIENTO — lectura/escritura (legacy, API 32 y menor)
+         En API 33+ se usa Scoped Storage (no requiere estos permisos)
+         ============================================================ -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
+    <!-- ============================================================
+         APPLICATION
+         ============================================================ -->
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <!-- ========================================================
+             ACTIVITY PRINCIPAL — MainActivity (Capacitor)
+             launchMode="singleTask" para manejar deep links sin
+             crear instancias duplicadas de la app.
+             ======================================================== -->
+        <activity
+            android:name="io.goadmin.app.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme.NoActionBarLaunch">
+
+            <!-- Launcher principal -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- ==================================================
+                 DEEP LINK — esquema goadmin://
+                 Permite abrir la app desde URLs como:
+                 goadmin://productos/123
+                 goadmin://pos/venta/456
+                 ================================================== -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="goadmin" />
+            </intent-filter>
+        </activity>
+
+        <!-- ========================================================
+             FIREBASE MESSAGING SERVICE
+             Recibe push notifications vía FCM (Firebase Cloud Messaging).
+             Requiere google-services.json en app/ y el plugin
+             com.google.gms.google-services aplicado en build.gradle.
+             ======================================================== -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchSelect } from '@/components/ui/search-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
@@ -67,6 +68,7 @@ interface Invoice {
   payment_method: string | null;
   notes: string | null;
   tax_included?: boolean; // Indicador si los impuestos están incluidos en los precios
+  opportunity_id?: string | null; // Relación con oportunidad (opcional)
   created_by?: string; // ID del usuario que crea la factura
 };
 
@@ -79,7 +81,7 @@ interface NuevaFacturaFormProps {
 
 export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }: NuevaFacturaFormProps = {}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
   const organizationId = getOrganizationId();
   
   // Parámetros de duplicación
@@ -111,6 +113,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [isCustomPaymentTerm, setIsCustomPaymentTerm] = useState<boolean>(false);
   const [paymentMethodCode, setPaymentMethodCode] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [includeInCashRegister, setIncludeInCashRegister] = useState<boolean>(true);
   const [sendToFactus, setSendToFactus] = useState<boolean>(false);
   const { alwaysEnabled: eInvoiceAlwaysEnabled } = useElectronicInvoicePreference();
 
@@ -140,6 +143,10 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [subtotal, setSubtotal] = useState<number>(0);
   const [taxTotal, setTaxTotal] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
+
+  // Estado para selector de oportunidad (opcional)
+  const [opportunities, setOpportunities] = useState<{ id: string; name: string; customer_id?: string | null }[]>([]);
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string>('none');
 
   // Totales calculados desde los items (fuente de verdad para comisiones)
   // Los estados subtotal/total pueden estar en 0 si la sincronización
@@ -260,6 +267,73 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     };
     loadMembers();
   }, [organizationId]);
+
+  // Cargar oportunidades abiertas de la organización
+  useEffect(() => {
+    const loadOpportunities = async () => {
+      if (!organizationId) return;
+      try {
+        const { data, error } = await supabase
+          .from('opportunities')
+          .select('id, name, customer_id')
+          .eq('organization_id', organizationId)
+          .eq('status', 'open')
+          .order('name');
+        if (error) return;
+        if (data) setOpportunities(data);
+      } catch (e) {
+        console.error('Error loading opportunities:', e);
+      }
+    };
+    loadOpportunities();
+  }, [organizationId]);
+
+  // Manejar selección de oportunidad: prefill de productos y cliente
+  const handleOpportunityChange = async (opportunityId: string) => {
+    setSelectedOpportunityId(opportunityId);
+    if (opportunityId === 'none') return;
+
+    try {
+      // Cargar productos de la oportunidad
+      const { data: oppProducts, error: oppError } = await supabase
+        .from('opportunity_products')
+        .select('product_id, quantity, unit_price, total_price')
+        .eq('opportunity_id', opportunityId);
+
+      if (oppError || !oppProducts || oppProducts.length === 0) return;
+
+      // Obtener nombres de productos
+      const productIds = oppProducts.map((op: any) => op.product_id);
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name')
+        .in('id', productIds);
+
+      const productMap = new Map((products || []).map((p: any) => [p.id, p.name] as [number, string]));
+
+      const newItems: InvoiceItem[] = oppProducts.map((op: any) => ({
+        invoice_type: 'sale' as const,
+        product_id: op.product_id,
+        description: productMap.get(op.product_id) || '',
+        qty: Number(op.quantity) || 0,
+        unit_price: Number(op.unit_price) || 0,
+        tax_code: null,
+        tax_rate: 0,
+        tax_included: taxIncluded,
+        total_line: Number(op.total_price) || (Number(op.quantity) || 0) * (Number(op.unit_price) || 0),
+        discount_amount: 0,
+      }));
+      setItems(newItems);
+
+      // Prefill del cliente si la oportunidad tiene customer_id
+      const opp = opportunities.find((o) => o.id === opportunityId);
+      if (opp?.customer_id) {
+        setSelectedCustomerId(opp.customer_id);
+      }
+    } catch (e) {
+      console.error('Error loading opportunity products:', e);
+    }
+  };
 
   // Cargar datos de factura para edición
   useEffect(() => {
@@ -543,6 +617,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         tax_total: safeTaxTotal,
         total: safeTotal,
         salesperson_id: salespersonId || null,
+        opportunity_id: selectedOpportunityId !== 'none' ? selectedOpportunityId : null,
         commission_rate: commissionRate || 0,
         commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none',
         commission_method: salespersonId && commissionRate > 0 ? commissionMethod : 'percentage',
@@ -572,6 +647,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setIsLoading(true);
       
       // 1. Primero crear el registro en sales
+      // source='invoice' para distinguir de ventas POS y web.
+      // include_in_cash_register se controla con un checkbox (Fase 3).
       const sale = {
         organization_id: Number(organizationId),
         branch_id: branchId,
@@ -584,6 +661,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         balance: safeTotal, // Al crear, el balance es igual al total
         status: 'pending', // Estado permitido por la restricción sales_status_check
         payment_status: 'pending', // Por defecto pendiente de pago
+        source: 'invoice',
+        include_in_cash_register: includeInCashRegister,
         notes: notes,
         discount_total: 0 // Valor por defecto
       };
@@ -671,13 +750,18 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         tax_included: taxIncluded, // Agregamos el campo tax_included
         created_by: currentUserId, // Asignamos el ID del usuario actual
       };
+
+      // Añadir opportunity_id si se seleccionó una oportunidad
+      const invoiceWithOpportunity = selectedOpportunityId !== 'none'
+        ? { ...invoice, opportunity_id: selectedOpportunityId }
+        : invoice;
       
       // Añadir campos de comisión al insert
       const commissionAmountCalc = salespersonId && commissionRate > 0
         ? (commissionMethod === 'fixed_amount' ? commissionRate : Math.round((safeSubtotal > 0 ? safeSubtotal : safeTotal) * commissionRate / 100 * 100) / 100)
         : 0;
       const invoiceWithCommission = {
-        ...invoice,
+        ...invoiceWithOpportunity,
         salesperson_id: salespersonId || null,
         commission_rate: commissionRate || 0,
         commission_type: salespersonId && commissionRate > 0 ? commissionType : 'none',
@@ -989,6 +1073,45 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         />
       </div>
       
+      {/* Selector de Oportunidad (opcional) */}
+      {opportunities.length > 0 && (
+        <div className="
+          border border-gray-200 dark:border-gray-700
+          bg-gray-50/50 dark:bg-gray-900/30
+          p-3 sm:p-4
+          rounded-lg
+        ">
+          <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
+            Oportunidad (opcional)
+          </h3>
+          <div className="flex flex-col gap-1.5">
+            <Select value={selectedOpportunityId} onValueChange={handleOpportunityChange}>
+              <SelectTrigger className="
+                w-full text-sm
+                bg-white dark:bg-gray-900
+                border-gray-300 dark:border-gray-600
+                text-gray-900 dark:text-gray-100
+              ">
+                <SelectValue placeholder="Sin oportunidad asociada" />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectItem value="none" className="text-gray-900 dark:text-gray-100">Sin oportunidad asociada</SelectItem>
+                {opportunities.map((opp) => (
+                  <SelectItem key={opp.id} value={opp.id} className="text-gray-900 dark:text-gray-100">
+                    {opp.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedOpportunityId !== 'none' && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Al seleccionar una oportunidad, se cargan sus productos y se asocia la factura a ella.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      
       {/* Items de Factura */}
       <div className="
         border border-gray-200 dark:border-gray-700
@@ -1108,11 +1231,11 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             <Label htmlFor="notes" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
               Notas
             </Label>
-            <Input 
-              id="notes" 
-              value={notes} 
+            <Input
+              id="notes"
+              value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="Notas adicionales" 
+              placeholder="Notas adicionales"
               className="
                 text-sm
                 bg-white dark:bg-gray-900
@@ -1121,6 +1244,19 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
                 placeholder:text-gray-500 dark:placeholder:text-gray-400
               "
             />
+          </div>
+          <div className="lg:col-span-2 flex items-center gap-2">
+            <Checkbox
+              id="include_in_cash_register"
+              checked={includeInCashRegister}
+              onCheckedChange={(checked) => setIncludeInCashRegister(checked === true)}
+            />
+            <Label htmlFor="include_in_cash_register" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+              Incluir en arqueo de caja
+            </Label>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              (Marca si esta factura debe aparecer en el cuadre de caja POS)
+            </span>
           </div>
           <div className="lg:col-span-2 pt-2">
             <div className={`p-2 sm:p-3 rounded-lg flex flex-wrap items-center justify-between ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : ''}`}>

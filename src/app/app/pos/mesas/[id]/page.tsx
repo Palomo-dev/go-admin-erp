@@ -26,6 +26,16 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { SearchSelect } from '@/components/ui/search-select';
 import { formatCurrency } from '@/utils/Utils';
 import { AddProductDialog } from '@/components/pos/mesas/id/AddProductDialog';
@@ -62,7 +72,7 @@ export default function MesaDetallePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization, branch_id } = useOrganization();
-  const tableId = params.id as string; // UUID
+  const tableId = params?.id as string; // UUID
   const [currentBranch, setCurrentBranch] = useState<any>(null);
 
   const [session, setSession] = useState<TableSessionWithDetails | null>(null);
@@ -91,6 +101,7 @@ export default function MesaDetallePage() {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [showHistorial, setShowHistorial] = useState(false);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
+  const [showLiberarConfirm, setShowLiberarConfirm] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -873,6 +884,27 @@ export default function MesaDetallePage() {
         description: error.message || 'No se pudo actualizar la cantidad de comensales',
         variant: 'destructive',
       });
+    }
+  };
+
+  // Liberar mesa desde el detalle (igual que desde la lista)
+  const handleLiberarMesa = async () => {
+    try {
+      await MesasService.liberarMesa(tableId);
+      toast({
+        title: 'Mesa liberada',
+        description: `Mesa ${mesaNombre} liberada exitosamente`,
+      });
+      setShowLiberarConfirm(false);
+      router.push('/app/pos/mesas');
+    } catch (error: any) {
+      console.error('Error liberando mesa:', error);
+      toast({
+        title: 'Error al liberar mesa',
+        description: error?.message || 'No se pudo liberar la mesa',
+        variant: 'destructive',
+      });
+      setShowLiberarConfirm(false);
     }
   };
 
@@ -1659,6 +1691,7 @@ export default function MesaDetallePage() {
             onOpenSplitBill={handleOpenSplitBill}
             onCancelSplit={handleCancelSplit}
             onCheckout={handleCheckout}
+            onLiberarMesa={() => setShowLiberarConfirm(true)}
             cashSessionActive={!!cashSession}
           />
         </div>
@@ -1897,6 +1930,28 @@ export default function MesaDetallePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmar Liberar Mesa */}
+      <AlertDialog open={showLiberarConfirm} onOpenChange={setShowLiberarConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Liberar mesa {mesaNombre}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción cerrará la sesión activa de la mesa y marcará las comandas
+              pendientes como entregadas. ¿Deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLiberarMesa}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Sí, liberar mesa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

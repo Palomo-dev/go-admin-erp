@@ -24,9 +24,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
+import { supabase } from "@/lib/supabase/config";
+import { WonCloseModal } from "./WonCloseModal";
 
 interface KanbanBoardProps {
   showStageManager?: boolean;
+}
+
+// Estado para el modal de cierre ganado
+interface WonCloseState {
+  open: boolean;
+  opportunityId: string;
+  opportunityName: string;
+  originalStageId: string;
+  destStageId: string;
 }
 
 // Tipo para las estadísticas de etapas
@@ -47,6 +58,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
   const [stageStats, setStageStats] = useState<StageStats[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [realtimeEnabled, setRealtimeEnabled] = useState(true);
+  const [wonClose, setWonClose] = useState<WonCloseState | null>(null);
   
   // Referencias para mantener suscripciones activas
   const stagesSubscriptionRef = useRef<RealtimeSubscription | null>(null);
@@ -373,7 +385,35 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     // Actualizar el estado local
     setPipeline(newPipeline);
 
-    // Actualizar en Supabase usando el servicio
+    // Si la etapa no cambió, no hacemos nada más
+    if (result.source.droppableId === destination.droppableId) return;
+
+    // Verificar si la etapa destino es is_won (cierre ganado)
+    let destStageIsWon = false;
+    try {
+      const { data: destStage } = await supabase
+        .from('stages')
+        .select('is_won')
+        .eq('id', destination.droppableId)
+        .maybeSingle();
+      destStageIsWon = Boolean((destStage as { is_won?: boolean } | null)?.is_won);
+    } catch (err) {
+      console.warn("No se pudo verificar is_won de la etapa destino:", err);
+    }
+
+    // Si es etapa is_won, abrir WonCloseModal en lugar de actualizar directamente
+    if (destStageIsWon) {
+      setWonClose({
+        open: true,
+        opportunityId: result.draggableId,
+        opportunityName: opportunityToMove.name || 'Oportunidad',
+        originalStageId: result.source.droppableId,
+        destStageId: destination.droppableId,
+      });
+      return;
+    }
+
+    // Flujo normal: actualizar en Supabase y ejecutar automatizaciones
     try {
       // Utilizamos el servicio kanban para actualizar la etapa de la oportunidad
       const updateResult = await updateOpportunityStage(
@@ -422,6 +462,66 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
       // Revertir el estado local si hay error
       fetchPipelineData();
     }
+  };
+
+  // Confirmar cierre ganado: persistir cambio de etapa + automatizaciones
+  const handleWonCloseComplete = async () => {
+    if (!wonClose) return;
+    try {
+      // Persistir el cambio de etapa a la etapa is_won
+      const updateResult = await updateOpportunityStage(
+        wonClose.opportunityId,
+        wonClose.destStageId
+      );
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || "Error al actualizar la oportunidad");
+      }
+
+      // Ejecutar automatizaciones de cambio de etapa
+      const organizationId = getOrganizationId();
+      if (organizationId) {
+        setProcessingAutomation(wonClose.opportunityId);
+        handleStageChangeAutomation({
+          opportunityId: wonClose.opportunityId,
+          fromStageId: wonClose.originalStageId,
+          toStageId: wonClose.destStageId,
+          organizationId: String(organizationId),
+        }).then((result) => {
+          setProcessingAutomation(null);
+          if (!result.success) {
+            console.error("Error en automatizaciones:", result.error);
+          }
+        }).catch(error => {
+          setProcessingAutomation(null);
+          console.error("Error al ejecutar automatizaciones:", error);
+        });
+      }
+
+      toast({
+        title: "Oportunidad ganada",
+        description: "Cierre completado con acciones de trazabilidad.",
+        duration: 4000,
+      });
+    } catch (err: any) {
+      console.error("Error al confirmar cierre ganado:", err);
+      toast({
+        title: "Error",
+        description: err.message || "No se pudo completar el cierre",
+        variant: "destructive",
+      });
+      fetchPipelineData();
+    } finally {
+      setWonClose(null);
+    }
+  };
+
+  // Cancelar cierre ganado: revertir el drag a la etapa original
+  const handleWonCloseCancel = () => {
+    if (!wonClose) return;
+    // Revertir el estado local recargando los datos desde la BD
+    // (la oportunidad sigue en su etapa original porque no se persistió)
+    fetchPipelineData();
+    setWonClose(null);
   };
 
   let StageManagerComponent: any = null;
@@ -620,6 +720,24 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
       <div className="flex items-center justify-center mt-4 gap-2">
         <Skeleton className="h-5 w-40" />
       </div>
+    )}
+
+    {/* Modal de cierre ganado con acciones encadenadas */}
+    {wonClose && (
+      <WonCloseModal
+        open={wonClose.open}
+        onOpenChange={(v) => {
+          if (!v) {
+            handleWonCloseCancel();
+          } else {
+            setWonClose({ ...wonClose, open: v });
+          }
+        }}
+        opportunityId={wonClose.opportunityId}
+        opportunityName={wonClose.opportunityName}
+        onComplete={handleWonCloseComplete}
+        onCancel={handleWonCloseCancel}
+      />
     )}
   </div>
   );

@@ -3,7 +3,23 @@ import { getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { PropinasService } from '@/components/pos/propinas/propinasService';
 import { deliveryIntegrationService } from './deliveryIntegrationService';
 import { stockMovementService } from './stockMovementService';
+import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
+
+/**
+ * Sub-métodos de Wompi (pasarela de pago del website).
+ * Ver webOrderServerConfirmation.ts para detalles del mapeo.
+ */
+const WOMPI_SUB_METHODS = new Set([
+  'nequi', 'card', 'pse', 'bancolombia_transfer',
+  'bancolombia_collect', 'daviplata', 'wompi',
+]);
+
+function mapWebPaymentMethodToInvoice(method: string | null | undefined): string {
+  if (!method) return 'wompi';
+  if (WOMPI_SUB_METHODS.has(method)) return 'wompi';
+  return method;
+}
 
 export interface ConfirmOrderResult {
   saleId: string;
@@ -11,6 +27,10 @@ export interface ConfirmOrderResult {
   tipId?: string;
   shipmentId?: string;
   couponRedemptionId?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  accountReceivableId?: string;
+  paymentId?: string;
 }
 
 /**
@@ -105,18 +125,42 @@ class WebOrderConfirmationService {
       couponRedemptionId = await this.redeemCoupon(order, saleId);
     }
 
-    // 6. Crear shipment automático si es delivery propio
+    // 6. Crear shipment automático para pedidos con delivery (propio o tercero)
     let shipmentId: string | undefined;
-    if (order.delivery_type === 'delivery_own') {
+    if (order.delivery_type === 'delivery_own' || order.delivery_type === 'delivery_third_party') {
       shipmentId = await this.createShipment(order);
     }
 
-    // 7. Calcular estimated_delivery_at para pedidos delivery
+    // 7. Crear factura de venta (invoice_sales) + invoice_items si el pedido está pagado
+    let invoiceId: string | undefined;
+    let invoiceNumber: string | undefined;
+    let accountReceivableId: string | undefined;
+    let paymentId: string | undefined;
+
+    if (effectivePaymentStatus === 'paid') {
+      const invoiceResult = await this.createInvoice(order, saleId, userId);
+      invoiceId = invoiceResult.invoiceId;
+      invoiceNumber = invoiceResult.invoiceNumber;
+
+      // 8. Crear registro de pago (payments) asociado a la factura
+      if (invoiceId) {
+        paymentId = await this.createPayment(order, invoiceId, userId);
+      }
+
+      // 9. Crear cuenta por cobrar si hay cliente y balance pendiente
+      // (la cuenta por cobrar también la crea un trigger al insertar la factura,
+      //  pero la creamos explícitamente para garantizar consistencia con customer_id)
+      if (order.customer_id && invoiceId) {
+        accountReceivableId = await this.createAccountReceivable(order, saleId);
+      }
+    }
+
+    // 10. Calcular estimated_delivery_at para pedidos delivery
     const estimatedDeliveryAt = order.delivery_type !== 'pickup'
       ? new Date(Date.now() + (estimatedMinutes + 30) * 60000).toISOString()
       : undefined;
 
-    // 8. Actualizar web_orders: sale_id + status + timestamps
+    // 11. Actualizar web_orders: sale_id + status + timestamps
     const { error: updateError } = await supabase
       .from('web_orders')
       .update({
@@ -135,13 +179,16 @@ class WebOrderConfirmationService {
       throw new Error(`Error vinculando pedido con venta: ${updateError.message}`);
     }
 
-    return { saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId };
+    return { saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, invoiceId, invoiceNumber, accountReceivableId, paymentId };
   }
 
   /**
-   * Crear venta POS a partir de un web_order
+   * Crear venta web a partir de un web_order
+   * source='web' e include_in_cash_register=false para que no aparezca en caja POS.
+   * sale_date usa la fecha original del pedido, no la fecha de confirmación.
    */
   private async createSale(order: WebOrder, userId: string): Promise<string> {
+    const saleDate = order.created_at || new Date().toISOString();
     const { data: sale, error } = await supabase
       .from('sales')
       .insert({
@@ -149,13 +196,18 @@ class WebOrderConfirmationService {
         branch_id: order.branch_id,
         customer_id: order.customer_id || null,
         user_id: userId,
+        sale_date: saleDate,
         total: order.total,
         subtotal: order.subtotal,
         tax_total: order.tax_total,
         discount_total: order.discount_total,
+        delivery_fee: Number(order.delivery_fee) || 0,
+        tip_amount: Number(order.tip_amount) || 0,
         balance: order.payment_status === 'paid' ? 0 : order.total,
         status: order.payment_status === 'paid' ? 'paid' : 'pending',
         payment_status: order.payment_status || 'pending',
+        source: 'web',
+        include_in_cash_register: false,
         notes: `Pedido web: ${order.order_number}`,
       })
       .select('id')
@@ -334,7 +386,7 @@ class WebOrderConfirmationService {
   }
 
   /**
-   * Crear shipment automático para pedidos con delivery propio
+   * Crear shipment automático para pedidos con delivery (propio o tercero)
    */
   private async createShipment(order: WebOrder): Promise<string> {
     try {
@@ -343,6 +395,191 @@ class WebOrderConfirmationService {
     } catch (error) {
       console.error('Error creando shipment automático:', error);
       // No bloquear la confirmación si falla el shipment
+      return '';
+    }
+  }
+
+  /**
+   * Crear factura de venta (invoice_sales + invoice_items) a partir de un web_order pagado.
+   * Sigue el mismo patrón que POSService.checkout para mantener consistencia contable.
+   */
+  private async createInvoice(
+    order: WebOrder,
+    saleId: string,
+    userId: string
+  ): Promise<{ invoiceId: string; invoiceNumber: string }> {
+    try {
+      const invoiceNumber = await generateInvoiceNumber(order.organization_id, 'FACT');
+      const now = new Date().toISOString();
+
+      // Calcular totales incluyendo delivery_fee
+      const subtotal = Number(order.subtotal) || 0;
+      const taxTotal = Number(order.tax_total) || 0;
+      const discountTotal = Number(order.discount_total) || 0;
+      const deliveryFee = Number(order.delivery_fee) || 0;
+      const total = Number(order.total) || (subtotal + taxTotal - discountTotal + deliveryFee);
+
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoice_sales')
+        .insert({
+          organization_id: order.organization_id,
+          branch_id: order.branch_id,
+          customer_id: order.customer_id || null,
+          sale_id: saleId,
+          number: invoiceNumber,
+          issue_date: now,
+          due_date: now,
+          currency: 'COP',
+          subtotal,
+          tax_total: taxTotal,
+          total,
+          balance: 0, // Pedido pagado → balance 0
+          status: 'paid',
+          payment_method: mapWebPaymentMethodToInvoice(order.payment_method),
+          payment_terms: 0,
+          created_by: userId,
+          notes: `Factura generada automáticamente desde pedido web ${order.order_number}`,
+        })
+        .select('id, number')
+        .single();
+
+      if (invoiceError) {
+        console.error('Error creando invoice_sales:', invoiceError);
+        return { invoiceId: '', invoiceNumber: '' };
+      }
+
+      // Crear invoice_items a partir de web_order_items
+      const invoiceItems = (order.items || []).map(item => ({
+        invoice_id: invoice.id,
+        invoice_sales_id: invoice.id,
+        invoice_type: 'sale',
+        product_id: item.product_id,
+        description: item.product_name?.substring(0, 255) || 'Producto web',
+        qty: item.quantity,
+        unit_price: Number(item.unit_price) || 0,
+        total_line: Number(item.total) || 0,
+        tax_rate: 0,
+        discount_amount: Number(item.discount_amount) || 0,
+        tax_included: false,
+      }));
+
+      if (invoiceItems.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('invoice_items')
+          .insert(invoiceItems);
+
+        if (itemsError) {
+          console.error('Error creando invoice_items:', itemsError);
+        }
+      }
+
+      console.log(`📄 Factura creada: ${invoice.number} para pedido web ${order.order_number}`);
+      return { invoiceId: invoice.id, invoiceNumber: invoice.number };
+    } catch (error) {
+      console.error('Error en createInvoice:', error);
+      return { invoiceId: '', invoiceNumber: '' };
+    }
+  }
+
+  /**
+   * Crear registro de pago (payments) asociado a la factura.
+   * Si ya existe un pago creado por el webhook de la pasarela, no duplicar.
+   */
+  private async createPayment(
+    order: WebOrder,
+    invoiceId: string,
+    userId: string
+  ): Promise<string> {
+    try {
+      // Verificar si ya existe un pago para este web_order (creado por webhook)
+      const { data: existingPayment } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('source', 'web_order')
+        .eq('source_id', order.id)
+        .eq('status', 'completed')
+        .limit(1)
+        .maybeSingle();
+
+      if (existingPayment) {
+        // Ya existe pago del webhook — vincularlo a la factura
+        await supabase
+          .from('payments')
+          .update({ source: 'invoice_sales', source_id: invoiceId })
+          .eq('id', existingPayment.id);
+        return existingPayment.id;
+      }
+
+      // Crear pago nuevo asociado a la factura
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          organization_id: order.organization_id,
+          branch_id: order.branch_id,
+          source: 'invoice_sales',
+          source_id: invoiceId,
+          amount: Number(order.total) || 0,
+          method: mapWebPaymentMethodToInvoice(order.payment_method),
+          currency: 'COP',
+          status: 'completed',
+          created_by: userId,
+        })
+        .select('id')
+        .single();
+
+      if (paymentError) {
+        console.error('Error creando payment:', paymentError);
+        return '';
+      }
+
+      return payment.id;
+    } catch (error) {
+      console.error('Error en createPayment:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Crear cuenta por cobrar (accounts_receivable) para el cliente.
+   * Aunque el pedido esté pagado (balance 0), se crea el registro para trazabilidad.
+   */
+  private async createAccountReceivable(
+    order: WebOrder,
+    saleId: string
+  ): Promise<string> {
+    try {
+      // Verificar si ya existe una cuenta por cobrar para esta venta
+      const { data: existingAR } = await supabase
+        .from('accounts_receivable')
+        .select('id')
+        .eq('sale_id', saleId)
+        .maybeSingle();
+
+      if (existingAR) return existingAR.id;
+
+      const total = Number(order.total) || 0;
+      const { data: ar, error: arError } = await supabase
+        .from('accounts_receivable')
+        .insert({
+          organization_id: order.organization_id,
+          customer_id: order.customer_id!,
+          sale_id: saleId,
+          amount: total,
+          balance: 0, // Pedido pagado → balance 0
+          due_date: new Date().toISOString(),
+          status: 'paid',
+        })
+        .select('id')
+        .single();
+
+      if (arError) {
+        console.error('Error creando accounts_receivable:', arError);
+        return '';
+      }
+
+      return ar.id;
+    } catch (error) {
+      console.error('Error en createAccountReceivable:', error);
       return '';
     }
   }

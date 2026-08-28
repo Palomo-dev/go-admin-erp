@@ -46,7 +46,12 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'DARK',
       backgroundColor: '#0f172a',
-      overlaysWebView: false,
+      overlaysWebView: true,
+    },
+    SafeArea: {
+      customColorForBackground: '#0f172a',
+      customColorForStatusBar: '#0f172a',
+      statusBarStyle: 'DARK',
     },
     Keyboard: {
       resize: 'native',

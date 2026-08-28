@@ -8,6 +8,7 @@ import { Filter } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from "@/components/ui/use-toast";
 import { FunnelChart, Funnel, LabelList, Tooltip, ResponsiveContainer } from 'recharts';
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
 
 interface WeightedFunnelChartProps {
   pipelineId: string;
@@ -29,11 +30,11 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [totalWeightedAmount, setTotalWeightedAmount] = useState(0);
 
-  // Obtener el ID de organización del almacenamiento local
+  // Obtener el ID de organización usando la función canónica
   useEffect(() => {
-    const orgId = localStorage.getItem('currentOrganizationId');
+    const orgId = getOrganizationIdFromContext();
     if (orgId) {
-      setOrganizationId(Number(orgId));
+      setOrganizationId(orgId);
     }
   }, []);
 

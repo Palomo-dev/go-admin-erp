@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -92,97 +93,116 @@ export function NotificationList({
     );
   }
 
+  // Render de un item de notificación (reutilizable para .map y Virtuoso)
+  const renderNotificationItem = (notif: BandejaNotification, index?: number) => {
+    const type = notif.payload?.type || '';
+    const title = notif.payload?.title || type || 'Notificación';
+    const content = notif.payload?.content || '';
+    const ChannelIcon = channelIcons[notif.channel] || Bell;
+    const st = statusConfig[notif.status] || statusConfig.pending;
+    const StatusIcon = st.icon;
+    const isUnread = !notif.read_at;
+
+    return (
+      <div
+        key={notif.id}
+        onClick={() => handleRowClick(notif)}
+        aria-setsize={index !== undefined ? notifications.length : undefined}
+        aria-posinset={index !== undefined ? index + 1 : undefined}
+        className={cn(
+          'flex flex-wrap items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm',
+          isUnread
+            ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+        )}
+      >
+        {/* Indicador no leída */}
+        <div className="flex-shrink-0 pt-1">
+          {isUnread ? (
+            <span className="block w-2.5 h-2.5 bg-blue-500 rounded-full" />
+          ) : (
+            <span className="block w-2.5 h-2.5 rounded-full bg-transparent" />
+          )}
+        </div>
+
+        {/* Canal */}
+        <div className="flex-shrink-0 p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+          <ChannelIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+        </div>
+
+        {/* Contenido */}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-0.5">
+            <span className={cn('text-sm font-medium truncate', isUnread ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300')}>
+              {title}
+            </span>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+              {typeLabels[type] || type.replace(/_/g, ' ') || 'General'}
+            </Badge>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{content}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <Badge className={cn('text-[10px] px-1.5 py-0', st.color)}>
+              <StatusIcon className="h-3 w-3 mr-0.5" />
+              {st.label}
+            </Badge>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">
+              {new Date(notif.created_at).toLocaleString('es', {
+                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+              })}
+            </span>
+            {notif.error_msg && (
+              <span className="text-[10px] text-red-500 truncate max-w-[200px]" title={notif.error_msg}>
+                <AlertCircle className="h-3 w-3 inline mr-0.5" />
+                {notif.error_msg}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex flex-wrap items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          {isUnread ? (
+            <Button variant="ghost" size="sm" onClick={() => onMarkRead(notif.id)} title="Marcar como leída" className="h-7 w-7 p-0">
+              <Eye className="h-3.5 w-3.5 text-blue-500" />
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => onMarkUnread(notif.id)} title="Marcar como no leída" className="h-7 w-7 p-0">
+              <EyeOff className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+            </Button>
+          )}
+          {notif.status === 'failed' && (
+            <Button variant="ghost" size="sm" onClick={() => onResend(notif.id)} title="Reintentar envío" className="h-7 w-7 p-0">
+              <RotateCcw className="h-3.5 w-3.5 text-orange-500" />
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => onResend(notif.id)} title="Reenviar como nueva" className="h-7 w-7 p-0">
+            <Copy className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // Umbral de virtualización: solo usar Virtuoso si hay más de 100 items
+  // (regla: < 100 items → overhead no vale la pena)
+  const UMBRAL_VIRTUALIZACION = 100;
+  const usarVirtuoso = notifications.length > UMBRAL_VIRTUALIZACION;
+
   return (
     <>
-      <div className="space-y-1">
-        {notifications.map((notif) => {
-          const type = notif.payload?.type || '';
-          const title = notif.payload?.title || type || 'Notificación';
-          const content = notif.payload?.content || '';
-          const ChannelIcon = channelIcons[notif.channel] || Bell;
-          const st = statusConfig[notif.status] || statusConfig.pending;
-          const StatusIcon = st.icon;
-          const isUnread = !notif.read_at;
-
-          return (
-            <div
-              key={notif.id}
-              onClick={() => handleRowClick(notif)}
-              className={cn(
-                'flex flex-wrap items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm',
-                isUnread
-                  ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
-                  : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50'
-              )}
-            >
-              {/* Indicador no leída */}
-              <div className="flex-shrink-0 pt-1">
-                {isUnread ? (
-                  <span className="block w-2.5 h-2.5 bg-blue-500 rounded-full" />
-                ) : (
-                  <span className="block w-2.5 h-2.5 rounded-full bg-transparent" />
-                )}
-              </div>
-
-              {/* Canal */}
-              <div className="flex-shrink-0 p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-                <ChannelIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-              </div>
-
-              {/* Contenido */}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                  <span className={cn('text-sm font-medium truncate', isUnread ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300')}>
-                    {title}
-                  </span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex-shrink-0">
-                    {typeLabels[type] || type.replace(/_/g, ' ') || 'General'}
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{content}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <Badge className={cn('text-[10px] px-1.5 py-0', st.color)}>
-                    <StatusIcon className="h-3 w-3 mr-0.5" />
-                    {st.label}
-                  </Badge>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                    {new Date(notif.created_at).toLocaleString('es', {
-                      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-                    })}
-                  </span>
-                  {notif.error_msg && (
-                    <span className="text-[10px] text-red-500 truncate max-w-[200px]" title={notif.error_msg}>
-                      <AlertCircle className="h-3 w-3 inline mr-0.5" />
-                      {notif.error_msg}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Acciones */}
-              <div className="flex flex-wrap items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                {isUnread ? (
-                  <Button variant="ghost" size="sm" onClick={() => onMarkRead(notif.id)} title="Marcar como leída" className="h-7 w-7 p-0">
-                    <Eye className="h-3.5 w-3.5 text-blue-500" />
-                  </Button>
-                ) : (
-                  <Button variant="ghost" size="sm" onClick={() => onMarkUnread(notif.id)} title="Marcar como no leída" className="h-7 w-7 p-0">
-                    <EyeOff className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
-                  </Button>
-                )}
-                {notif.status === 'failed' && (
-                  <Button variant="ghost" size="sm" onClick={() => onResend(notif.id)} title="Reintentar envío" className="h-7 w-7 p-0">
-                    <RotateCcw className="h-3.5 w-3.5 text-orange-500" />
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => onResend(notif.id)} title="Reenviar como nueva" className="h-7 w-7 p-0">
-                  <Copy className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {usarVirtuoso ? (
+        <Virtuoso
+          data={notifications}
+          itemContent={(index, notif) => renderNotificationItem(notif, index)}
+          style={{ height: '100%', width: '100%' }}
+          totalCount={notifications.length}
+        />
+      ) : (
+        <div className="space-y-1">
+          {notifications.map((notif, index) => renderNotificationItem(notif, index))}
+        </div>
+      )}
 
       {/* Paginación */}
       {totalPages > 1 && (

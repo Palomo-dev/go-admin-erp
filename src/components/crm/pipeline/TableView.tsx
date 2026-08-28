@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import { ArrowUpDown, MoreHorizontal, Search, Filter } from "lucide-react";
+import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 
 interface Stage {
   id: string;
@@ -85,11 +86,11 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
   
   const router = useRouter();
 
-  // Obtener el ID de la organización del localStorage
+  // Obtener el ID de la organización usando la función canónica
   useEffect(() => {
-    const orgId = localStorage.getItem("currentOrganizationId");
+    const orgId = getOrganizationIdFromContext();
     if (orgId) {
-      setOrganizationId(Number(orgId));
+      setOrganizationId(orgId);
     }
   }, []);
 

@@ -20,6 +20,11 @@ export interface PeriodoCierre {
   fechaInicio: string; // ISO date (yyyy-mm-dd)
   fechaFin: string; // ISO date (yyyy-mm-dd)
   etiqueta: string; // "Cierre Diario — 03/08/2026" | "Q3 2026" | etc.
+  // Horas opcionales para filtrar dentro del día (formato "HH:mm" 24h).
+  // Si se definen, los reportes usan estas horas en vez del día completo.
+  // Útil para empresas con horarios no estándar (ej: 8pm a 3am).
+  horaInicio?: string | null; // "HH:mm" o null
+  horaFin?: string | null;    // "HH:mm" o null
 }
 
 /** Tipo de dato de una columna de reporte */

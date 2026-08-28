@@ -97,8 +97,9 @@ export function DashboardAtajos({ activeModuleCodes }: DashboardAtajosProps) {
     ? atajos.filter(a => !a.moduleCode || activeModuleCodes.includes(a.moduleCode))
     : atajos;
 
-  // Grid adaptativo: auto-fit expande los atajos para llenar todo el ancho sin huecos
-  const gridCols = "grid-cols-[repeat(auto-fit,minmax(0,1fr))]";
+  // Grid: 3 columnas fijas en móvil (varias filas), auto-fit desde sm+ para
+  // expandir y llenar todo el ancho disponible sin huecos.
+  const gridCols = "grid-cols-3 sm:grid-cols-[repeat(auto-fit,minmax(0,1fr))]";
 
   return (
     <div className={`grid ${gridCols} gap-2 sm:gap-3`}>

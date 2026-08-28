@@ -7,6 +7,7 @@ import {
   GRID_FIELDS,
   CAROUSEL_FIELDS,
   CARD_FIELDS,
+  CATEGORY_CARD_FIELDS,
   BUTTON_ITEM_FIELDS,
   PRODUCT_CARD_INTERACTION_FIELDS,
 } from '@/lib/services/website/sectionFieldGroups';
@@ -178,6 +179,8 @@ export interface ContentFieldDef {
   itemLabelKey?: string;
   /** Cantidad máxima de items permitidos. */
   maxItems?: number;
+  /** Items por defecto que se muestran cuando el repeater está vacío. */
+  defaultItems?: Record<string, unknown>[];
   // ---- type='entity' ----
   /** Tipo de entidad seleccionable. */
   entity?: 'category' | 'product' | 'branch' | 'page' | 'table_zone';
@@ -471,6 +474,26 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'content',
         itemLabelKey: 'name',
         showIf: { field: 'data_source', in: ['manual', undefined] },
+        defaultItems: [
+          {
+            name: 'María González',
+            role: 'Cliente verificada',
+            content: 'Excelente producto y servicio. Llegó antes de lo esperado y la calidad superó mis expectativas.',
+            rating: 5,
+          },
+          {
+            name: 'Carlos Pérez',
+            role: 'Cliente verificado',
+            content: 'Muy buena experiencia de compra. Definitivamente volveré a comprar aquí.',
+            rating: 5,
+          },
+          {
+            name: 'Ana Martínez',
+            role: 'Cliente verificada',
+            content: 'Los productos son de excelente calidad y el envío fue rapidísimo.',
+            rating: 4,
+          },
+        ],
         itemFields: [
           { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Nombre del cliente' },
           // F2.2: clave canónica `role` (el sitio lee item.role ?? item.company)
@@ -593,8 +616,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         showIf: { field: 'show_rating', equals: true },
         options: [
           { value: 'stars', label: 'Estrellas' },
-          { value: 'compact', label: 'Numérico (4.8/5)' },
-          { value: 'stars_count', label: 'Estrellas + número' },
+          { value: 'compact', label: 'Compacto (★ 4.6)' },
+          { value: 'stars_count', label: 'Estrellas + valoración (★★★★★ 4.6/5)' },
+          { value: 'stars_rating', label: 'Estrellas + valoración (★★★★★ 4.6/5)' },
+          { value: 'rating_count', label: 'Solo valoración (4.6/5)' },
         ],
       },
       {
@@ -626,8 +651,16 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       },
       { key: 'show_date', label: 'Mostrar fecha', type: 'boolean', group: 'behavior', defaultValue: false },
       // FASE 6 — Grid + Card compartidos
+      // Filtrar campos de CARD_FIELDS que no aplican a testimonios
+      // (show_description, show_compare_price, price_style, currency_position son de productos)
       ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      ...CARD_FIELDS.filter((f) => ![
+        'show_description',
+        'show_compare_price',
+        'price_style',
+        'currency_position',
+        'title_lines',
+      ].includes(f.key)),
     ],
   },
   {
@@ -900,11 +933,47 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
-        { value: '', label: 'Ninguno' },
+        { value: 'none', label: 'Ninguno' },
         { value: 'on_sale', label: 'En oferta' },
         { value: 'featured', label: 'Destacados' },
         { value: 'new', label: 'Novedades' },
       ]},
+      // Campos de carrusel solo visibles en variante carousel
+      {
+        key: 'slides_per_view',
+        label: 'Productos visibles a la vez',
+        type: 'number',
+        group: 'carousel',
+        responsive: true,
+        min: 1,
+        max: 8,
+        defaultValue: 4,
+        showIf: { variantIn: ['carousel'] },
+      },
+      {
+        key: 'autoplay',
+        label: 'Reproducción automática',
+        type: 'boolean',
+        group: 'carousel',
+        defaultValue: false,
+        showIf: { variantIn: ['carousel'] },
+      },
+      {
+        key: 'loop',
+        label: 'Bucle infinito',
+        type: 'boolean',
+        group: 'carousel',
+        defaultValue: true,
+        showIf: { variantIn: ['carousel'] },
+      },
+      {
+        key: 'enable_swipe',
+        label: 'Deslizar con el dedo',
+        type: 'boolean',
+        group: 'carousel',
+        defaultValue: true,
+        showIf: { variantIn: ['carousel'] },
+      },
       ...GRID_FIELDS,
       ...CARD_FIELDS,
       ...PRODUCT_CARD_INTERACTION_FIELDS,
@@ -914,12 +983,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     type: 'categories_grid',
     label: 'Categorías',
     icon: 'ShoppingBag',
-    description: 'Grid o carrusel de categorías de productos',
+    description: 'Grid, lista o carrusel de categorías de productos',
     variants: [
-      { id: 'default', label: 'Por defecto' },
-      { id: 'grid', label: 'Grid' },
-      { id: 'horizontal', label: 'Horizontal' },
-      { id: 'icons', label: 'Iconos' },
+      { id: 'default', label: 'Categorías' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },
@@ -932,14 +998,17 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'card', label: 'Tarjeta' },
         { value: 'round', label: 'Redondo (obsoleto)' },
       ]},
-      { key: 'desktop_layout', label: 'Layout en escritorio', type: 'select', group: 'layout', options: [
+      { key: 'desktop_layout', label: 'Layout en escritorio', type: 'select', group: 'layout', defaultValue: 'grid', options: [
         { value: 'grid', label: 'Grid' },
         { value: 'carousel', label: 'Carrusel' },
         { value: 'list', label: 'Lista' },
       ]},
       { key: 'desktop_columns', label: 'Columnas (escritorio)', type: 'number', group: 'layout', placeholder: 'Auto' },
       { key: 'desktop_rows', label: 'Filas máximas (escritorio)', type: 'number', group: 'layout', placeholder: 'Todas' },
-      { key: 'mobile_layout', label: 'Layout en móvil', type: 'select', group: 'layout', options: [
+      { key: 'mobile_columns', label: 'Columnas (móvil)', type: 'number', group: 'layout', placeholder: 'Auto', helpText: 'Vacío = hereda de escritorio' },
+      { key: 'mobile_rows', label: 'Filas máximas (móvil)', type: 'number', group: 'layout', placeholder: 'Todas' },
+      { key: 'mobile_layout', label: 'Layout en móvil', type: 'select', group: 'layout', defaultValue: 'inherit', options: [
+        { value: 'inherit', label: 'Heredar de escritorio' },
         { value: 'grid', label: 'Grid' },
         { value: 'list', label: 'Lista' },
         { value: 'carousel', label: 'Carrusel' },
@@ -960,8 +1029,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'page_size', label: 'Categorías por página', type: 'number', group: 'behavior', defaultValue: 24, min: 6, max: 48, showIf: { field: 'enable_pagination', equals: true } },
       // --- F4.1/F4.2: contenido de la categoría (icono, color, imagen) ---
       { key: 'show_count', label: 'Mostrar cantidad de productos', type: 'boolean', group: 'content', defaultValue: false },
-      // `show_description` NO se define aquí: ya viene inyectado por CARD_FIELDS
-      // (sectionFieldGroups.ts). Duplicarlo causa "two children with the same key".
+      // `show_description` NO se define aquí: ya viene inyectado por CATEGORY_CARD_FIELDS
       { key: 'show_icon', label: 'Mostrar icono de la categoría', type: 'boolean', group: 'content', defaultValue: false, helpText: 'Usa categories.icon (icono Lucide)' },
       { key: 'show_image', label: 'Mostrar imagen de la categoría', type: 'boolean', group: 'content', defaultValue: true, helpText: 'Usa categories.image_url' },
       { key: 'show_color', label: 'Usar color de la categoría', type: 'boolean', group: 'content', defaultValue: false, helpText: 'Usa categories.color como acento o fondo' },
@@ -976,7 +1044,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'emoji', label: 'Emoji 🏷️' },
         { value: 'initial', label: 'Inicial sobre color' },
       ]},
-      { key: 'media_max_width', label: 'Ancho máximo del medio', type: 'number', group: 'layout', placeholder: 'Auto', suffix: 'px', helpText: 'Útil para variantes horizontal/icons' },
+      { key: 'media_max_width', label: 'Ancho máximo del medio', type: 'number', group: 'layout', placeholder: 'Auto', suffix: 'px', helpText: 'Útil para layout lista/iconos' },
       // --- F4.3: composición de la tarjeta ---
       { key: 'text_position', label: 'Posición del texto', type: 'select', group: 'layout', defaultValue: 'overlay', options: [
         { value: 'overlay', label: 'Superpuesto (con gradiente)' },
@@ -984,15 +1052,20 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'inside', label: 'Dentro (sin gradiente)' },
         { value: 'on_hover', label: 'Al pasar el mouse' },
       ]},
+      { key: 'overlay_color', label: 'Color del gradiente', type: 'color', group: 'style', defaultValue: '#000000', showIf: { field: 'text_position', in: ['overlay', 'on_hover'] }, helpText: 'Color base del gradiente sobre la imagen' },
+      { key: 'overlay_opacity', label: 'Opacidad del gradiente', type: 'range', group: 'style', min: 0, max: 100, step: 10, defaultValue: 60, suffix: '%', showIf: { field: 'text_position', in: ['overlay', 'on_hover'] } },
+      { key: 'overlay_text_color', label: 'Color del texto sobre imagen', type: 'color', group: 'style', defaultValue: '#FFFFFF', showIf: { field: 'text_position', in: ['overlay', 'inside', 'on_hover'] } },
       { key: 'title_size', label: 'Tamaño del título', type: 'select', group: 'style', defaultValue: 'lg', options: [
         { value: 'sm', label: 'Pequeño' },
         { value: 'md', label: 'Mediano' },
         { value: 'lg', label: 'Grande' },
       ]},
       { key: 'badge', label: 'Etiqueta (texto libre)', type: 'text', group: 'content', placeholder: 'N productos' },
-      // --- F4.1: rejilla y tarjeta (inyectados) ---
-      ...GRID_FIELDS,
-      ...CARD_FIELDS,
+      // --- Espaciado de la sección ---
+      { key: 'gap', label: 'Separación', type: 'range', group: 'layout', min: 0, max: 48, step: 4, defaultValue: 16, suffix: 'px' },
+      { key: 'full_width', label: 'Ancho completo de pantalla', type: 'boolean', group: 'layout', defaultValue: false },
+      // --- Tarjeta (inyectado, sin campos de precio) ---
+      ...CATEGORY_CARD_FIELDS,
     ],
   },
   {
@@ -1028,11 +1101,47 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
-        { value: '', label: 'Ninguno' },
+        { value: 'none', label: 'Ninguno' },
         { value: 'on_sale', label: 'En oferta' },
         { value: 'featured', label: 'Destacados' },
         { value: 'new', label: 'Novedades' },
       ]},
+      // Campos de carrusel solo visibles en variante carousel
+      {
+        key: 'slides_per_view',
+        label: 'Productos visibles a la vez',
+        type: 'number',
+        group: 'carousel',
+        responsive: true,
+        min: 1,
+        max: 8,
+        defaultValue: 4,
+        showIf: { variantIn: ['carousel'] },
+      },
+      {
+        key: 'autoplay',
+        label: 'Reproducción automática',
+        type: 'boolean',
+        group: 'carousel',
+        defaultValue: false,
+        showIf: { variantIn: ['carousel'] },
+      },
+      {
+        key: 'loop',
+        label: 'Bucle infinito',
+        type: 'boolean',
+        group: 'carousel',
+        defaultValue: true,
+        showIf: { variantIn: ['carousel'] },
+      },
+      {
+        key: 'enable_swipe',
+        label: 'Deslizar con el dedo',
+        type: 'boolean',
+        group: 'carousel',
+        defaultValue: true,
+        showIf: { variantIn: ['carousel'] },
+      },
       ...GRID_FIELDS,
       ...CARD_FIELDS,
       ...PRODUCT_CARD_INTERACTION_FIELDS,
@@ -1132,7 +1241,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'show_filters', label: 'Mostrar filtros', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'show_search', label: 'Mostrar buscador', type: 'boolean', group: 'behavior', defaultValue: false },
       { key: 'filter', label: 'Filtro rápido', type: 'select', group: 'data', options: [
-        { value: '', label: 'Ninguno' },
+        { value: 'none', label: 'Ninguno' },
         { value: 'on_sale', label: 'En oferta' },
         { value: 'featured', label: 'Destacados' },
         { value: 'new', label: 'Novedades' },

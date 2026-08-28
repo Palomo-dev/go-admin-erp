@@ -210,6 +210,35 @@ export default function GlobalSettingsPanel({
         </div>
       </div>
 
+      {/* Moneda junto al precio */}
+      <div>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">💱 Moneda junto al precio</Label>
+        <div className="space-y-2 rounded-md border dark:border-gray-700 p-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-600 dark:text-gray-400">Mostrar código de moneda (ej: COP, USD)</span>
+            <Switch
+              checked={(settings as any).show_currency_code ?? false}
+              onCheckedChange={(checked) => onUpdate({ ...settings, show_currency_code: checked } as any)}
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-gray-500 dark:text-gray-500">Lado del precio</span>
+            <Select
+              value={(settings as any).currency_position ?? 'left'}
+              onValueChange={(val) => onUpdate({ ...settings, currency_position: val } as any)}
+            >
+              <SelectTrigger className="h-7 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="left">Izquierda (COP $14.248)</SelectItem>
+                <SelectItem value="right">Derecha ($14.248 COP)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
       {/* Texto del botón del carrito */}
       <div>
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-2 block">🛒 Texto botón del carrito</Label>

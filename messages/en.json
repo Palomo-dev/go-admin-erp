@@ -332,7 +332,14 @@
       "invoicesToday": "Invoices Today",
       "members": "Members",
       "activeReservations": "Active Reservations",
-      "receivables": "Receivables"
+      "receivables": "Receivables",
+      "webVisits": "Web Visits",
+      "webOrders": "Web Orders",
+      "pending": "pend.",
+      "paid": "paid",
+      "cancelled": "cancel.",
+      "liveVisitor": "live visitor",
+      "liveVisitors": "live visitors"
     },
     "activity": {
       "title": "Recent Activity",

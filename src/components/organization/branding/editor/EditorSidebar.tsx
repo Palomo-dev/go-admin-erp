@@ -222,9 +222,14 @@ export default function EditorSidebar({
       })
     : sections;
 
-  const handleDragStart = (index: number) => setDragIndex(index);
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  };
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     if (dragIndex !== null && dragIndex !== index) {
       onReorder(dragIndex, index);
       setDragIndex(index);
@@ -378,7 +383,7 @@ export default function EditorSidebar({
               themePalette={themePalette}
               activeViewport={activeViewport}
               sectionManifest={sectionManifest}
-              onDragStart={() => handleDragStart(index)}
+              onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
             />
@@ -425,7 +430,7 @@ interface SectionListItemProps {
   themePalette?: ThemePalette;
   activeViewport?: Viewport;
   sectionManifest?: SectionManifest | null;
-  onDragStart: () => void;
+  onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }
@@ -477,15 +482,25 @@ function SectionListItem({
     if (!grouped[g]) grouped[g] = [];
     grouped[g].push(f);
   });
-  const visibleGroups = GROUP_ORDER.filter((g) => grouped[g.id]?.length);
+  const visibleGroups = GROUP_ORDER.filter((g) =>
+    grouped[g.id]?.some((f) => isFieldVisible(f, section.content, section.section_variant)),
+  );
 
   const handleFieldChange = (field: ContentFieldDef, v: unknown) => {
     // `spacing` escribe múltiples keys: v es el content mergeado completo.
     if (field.type === 'spacing') {
       onUpdateContent(v as Record<string, any>);
-    } else {
-      onUpdateContent({ ...section.content, [field.key]: v });
+      return;
     }
+    const next = { ...section.content, [field.key]: v };
+    // Exclusión mutua: show_icon y show_image en categories_grid.
+    // Al activar uno, se desactiva el otro para evitar conflictos de media_source.
+    if (field.key === 'show_icon' && v === true) {
+      next.show_image = false;
+    } else if (field.key === 'show_image' && v === true) {
+      next.show_icon = false;
+    }
+    onUpdateContent(next);
   };
 
   return (

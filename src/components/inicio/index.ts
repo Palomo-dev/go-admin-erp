@@ -11,6 +11,8 @@ export type {
 } from './inicioService';
 
 export { DashboardKPIs } from './DashboardKPIs';
+export { LiveVisitorsBadge } from './LiveVisitorsBadge';
+export { useLiveVisitors } from './useLiveVisitors';
 export { DashboardAtajos } from './DashboardAtajos';
 export { DashboardActividad } from './DashboardActividad';
 export { DashboardTendencia } from './DashboardTendencia';

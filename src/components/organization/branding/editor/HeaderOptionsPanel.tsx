@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -920,6 +921,9 @@ function ActionsOrderEditor({
   order: string[];
   onChange: (order: string[]) => void;
 }) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
   const moveUp = (index: number) => {
     if (index === 0) return;
     const next = [...order];
@@ -933,12 +937,53 @@ function ActionsOrderEditor({
     onChange(next);
   };
 
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDragIndex(index);
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragIndex !== null && dragIndex !== index) setOverIndex(index);
+  };
+  const handleDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    const from = dragIndex;
+    if (from === null || from === index) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const next = [...order];
+    const [moved] = next.splice(from, 1);
+    next.splice(index, 0, moved);
+    onChange(next);
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
   return (
     <div className="space-y-1">
       {order.map((action, i) => (
         <div
           key={action}
-          className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 px-2 py-1.5"
+          draggable
+          onDragStart={(e) => handleDragStart(e, i)}
+          onDragOver={(e) => handleDragOver(e, i)}
+          onDrop={(e) => handleDrop(e, i)}
+          onDragEnd={handleDragEnd}
+          className={`flex items-center gap-2 rounded border px-2 py-1.5 cursor-grab active:cursor-grabbing transition-colors ${
+            dragIndex === i
+              ? 'opacity-40 border-blue-400 bg-blue-50 dark:bg-blue-950/30'
+              : overIndex === i
+                ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/20'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5'
+          }`}
         >
           <GripVertical className="h-3 w-3 text-gray-400 dark:text-gray-500 shrink-0" />
           <span className="text-xs flex-1 dark:text-gray-200">{ACTION_LABELS[action] ?? action}</span>

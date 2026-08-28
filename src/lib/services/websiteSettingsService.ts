@@ -138,6 +138,8 @@ export interface WebsiteSettings {
   cta_text_color: string | null;
   cta_margin_top: number;
   cta_margin_bottom: number;
+  show_currency_code: boolean;
+  currency_position: 'left' | 'right';
 }
 
 export interface GalleryImage {
@@ -396,6 +398,8 @@ class WebsiteSettingsService {
           topbar_show_phone: true,
           topbar_announcement: null,
           topbar_contact_position: 'left',
+          show_currency_code: false,
+          currency_position: 'left',
         })
         .select()
         .single();
@@ -453,6 +457,8 @@ class WebsiteSettingsService {
       font_heading?: string;
       font_body?: string;
       logo_height?: number;
+      show_currency_code?: boolean;
+      currency_position?: 'left' | 'right';
     }
   ): Promise<WebsiteSettings> {
     const { data, error } = await supabase
@@ -697,6 +703,25 @@ class WebsiteSettingsService {
       topbar_show_phone?: boolean;
       topbar_announcement?: string | null;
       topbar_contact_position?: string;
+      // Fase 12: iconos personalizables y orden de acciones
+      cart_icon?: string | null;
+      search_icon?: string | null;
+      auth_icon?: string | null;
+      currency_icon?: string | null;
+      minimal_menu_style?: string | null;
+      actions_order?: any;
+      // Fase 12C: CTA personalizable
+      cta_padding_x?: number;
+      cta_padding_y?: number;
+      cta_border_radius?: number;
+      cta_border_width?: number;
+      cta_border_color?: string | null;
+      cta_full_width?: boolean;
+      cta_shadow?: string | null;
+      cta_bg_color?: string | null;
+      cta_text_color?: string | null;
+      cta_margin_top?: number;
+      cta_margin_bottom?: number;
     }
   ): Promise<WebsiteSettings> {
     try {

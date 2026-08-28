@@ -39,6 +39,7 @@ import { useHistory } from '@/components/organization/branding/editor/useHistory
 import { extractStyle, applyStyle } from '@/components/organization/branding/editor/styleUtils';
 import { websiteMenuGroupService, type MenuGroup } from '@/lib/services/websiteMenuGroupService';
 import type { SectionManifest } from '@/lib/services/website/sectionContract';
+import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function PageEditorPage() {
@@ -501,6 +502,38 @@ export default function PageEditorPage() {
     }
   };
 
+  // ---- F9.2 — MATERIALIZAR SECCIONES POR DEFECTO ----
+  const handleMaterializeDefaultSections = async () => {
+    if (!currentPage || !organizationId) return;
+    const defaultSections = getDefaultSectionsForPageType(currentPage.page_type);
+    if (defaultSections.length === 0) return;
+
+    try {
+      const created = await websitePageBuilderService.materializeDefaultSections(
+        currentPage.id,
+        organizationId,
+        defaultSections,
+      );
+      if (created.length === 0) {
+        toast({ title: 'La página ya tiene secciones', description: 'No se materializaron secciones por defecto.' });
+        return;
+      }
+      // Recargar la página para reflejar las nuevas secciones
+      const pageData = await websitePageBuilderService.getPageWithSections(currentPage.id);
+      setCurrentPage(pageData);
+      if (pageData?.sections) resetSections(pageData.sections);
+      setPreviewRefreshKey((k) => k + 1);
+      toast({ title: 'Secciones materializadas', description: `${created.length} secciones por defecto creadas.` });
+    } catch (error: any) {
+      console.error('Error materializing default sections:', error);
+      toast({
+        title: 'Error',
+        description: error?.message || 'No se pudieron materializar las secciones por defecto.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // ---- PAGE SEO UPDATE ----
   const handleUpdatePageSEO = (updates: { meta_title?: string; meta_description?: string; og_image_url?: string }) => {
     if (!currentPage) return;
@@ -801,6 +834,8 @@ export default function PageEditorPage() {
           canRedo={canRedo}
           sectionSearch={sectionSearch}
           onSectionSearchChange={setSectionSearch}
+          pageType={currentPage.page_type}
+          onMaterializeDefaultSections={handleMaterializeDefaultSections}
           showGlobalSettings={showGlobalSettings}
           onToggleGlobalSettings={() => setShowGlobalSettings(!showGlobalSettings)}
           globalSettingsContent={

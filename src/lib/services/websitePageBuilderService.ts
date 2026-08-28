@@ -2874,6 +2874,59 @@ class WebsitePageBuilderService {
     if (error) throw error;
   }
 
+  // ---- F9.2 — MATERIALIZAR SECCIONES POR DEFECTO ----
+
+  /**
+   * Persiste las secciones por defecto de un page_type (ej. product_detail)
+   * como secciones reales en la BD, para que el editor pueda editarlas
+   * individualmente y el storefront las renderice via SectionRenderer.
+   *
+   * Solo se materializa si la página NO tiene secciones existentes (idempotente).
+   * Devuelve las secciones creadas, o [] si ya había secciones.
+   */
+  async materializeDefaultSections(
+    pageId: string,
+    organizationId: number,
+    defaultSections: Array<{ section_type: string; section_variant: string }>,
+  ): Promise<WebsitePageSection[]> {
+    // Verificar que la página no tenga secciones existentes
+    const { data: existing, error: existingError } = await supabase
+      .from('website_page_sections')
+      .select('id')
+      .eq('page_id', pageId)
+      .limit(1);
+
+    if (existingError) throw existingError;
+    if (existing && existing.length > 0) {
+      // Ya tiene secciones: no materializar (idempotente)
+      return [];
+    }
+
+    // Insertar todas las secciones por defecto
+    const rows = defaultSections.map((def, index) => ({
+      page_id: pageId,
+      organization_id: organizationId,
+      section_type: def.section_type,
+      section_variant: def.section_variant,
+      content: {},
+      settings: {},
+      sort_order: index,
+      is_visible: true,
+    }));
+
+    const { data, error } = await supabase
+      .from('website_page_sections')
+      .insert(rows)
+      .select()
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('Supabase materializeDefaultSections error:', error.message, error.code);
+      throw new Error(error.message || 'No se pudieron materializar las secciones por defecto.');
+    }
+    return (data || []) as WebsitePageSection[];
+  }
+
   // ---- MENU TREE (jerarquía header/footer) ----
 
   /**

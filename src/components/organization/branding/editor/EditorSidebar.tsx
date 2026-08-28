@@ -54,6 +54,7 @@ import type {
 } from '@/lib/services/websitePageBuilderService';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
 import { getSectionSyncStatus, type SectionManifest } from '@/lib/services/website/sectionContract';
+import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
 import FieldRenderer from './fields/FieldRenderer';
 import type { ThemePalette, Viewport } from './fields/types';
 
@@ -165,6 +166,9 @@ interface EditorSidebarProps {
   showPageLayout?: boolean;
   onTogglePageLayout?: () => void;
   pageLayoutContent?: React.ReactNode;
+  // F9.2 — Secciones por defecto (materialización)
+  pageType?: string;
+  onMaterializeDefaultSections?: () => void;
 }
 
 export default function EditorSidebar({
@@ -207,6 +211,8 @@ export default function EditorSidebar({
   showPageLayout,
   onTogglePageLayout,
   pageLayoutContent,
+  pageType,
+  onMaterializeDefaultSections,
 }: EditorSidebarProps) {
   const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -356,6 +362,48 @@ export default function EditorSidebar({
             'Layout de página',
             pageLayoutContent,
           )}
+
+        {/* F9.2 — Secciones por defecto (solo si la página no tiene secciones) */}
+        {sections.length === 0 && pageType && onMaterializeDefaultSections && (() => {
+          const defaultSections = getDefaultSectionsForPageType(pageType);
+          if (defaultSections.length === 0) return null;
+          return (
+            <div className="mx-3 my-2 rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 p-3">
+              <div className="flex items-start gap-2 mb-2">
+                <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                    Secciones por defecto
+                  </p>
+                  <p className="text-[11px] text-blue-700/80 dark:text-blue-300/70 mt-0.5">
+                    Esta página usa el layout por defecto. Materializa las secciones para editarlas individualmente.
+                  </p>
+                </div>
+              </div>
+              <ul className="space-y-1 mb-2">
+                {defaultSections.map((ds) => {
+                  const def = getSectionDefinition(ds.section_type);
+                  const IconComponent = def ? ICON_MAP[def.icon] || Layout : Layout;
+                  return (
+                    <li key={ds.id} className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400 py-1 px-2 rounded bg-white/60 dark:bg-white/5">
+                      <IconComponent className="h-3 w-3 shrink-0 text-gray-400" />
+                      <span className="truncate">{ds.label}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Button
+                onClick={onMaterializeDefaultSections}
+                size="sm"
+                variant="outline"
+                className="w-full h-7 text-[11px] border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Materializar secciones
+              </Button>
+            </div>
+          );
+        })()}
 
         {filteredSections.map((section, index) => {
           const def = getSectionDefinition(section.section_type);

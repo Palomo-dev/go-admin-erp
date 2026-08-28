@@ -23,6 +23,8 @@ export interface VentasComprasData {
   fecha: string;
   ventas: number;
   compras: number;
+  /** Granularidad de agrupación: 'dia' (rangos ≤31d) o 'mes' (rangos mayores) */
+  granularidad?: 'dia' | 'mes';
 }
 
 export interface AgingData {
@@ -318,7 +320,16 @@ class FinanzasDashboardService {
   
   async getVentasVsCompras(organizationId: number, filters: DashboardFilters): Promise<VentasComprasData[]> {
     const { fechaInicio, fechaFin } = filters;
-    
+
+    // Determinar granularidad: si el rango es ≤31 días → agrupar por día,
+    // si es mayor → agrupar por mes (comportamiento original).
+    const diasRango = Math.ceil(
+      (new Date(fechaFin).getTime() - new Date(fechaInicio).getTime()) / (1000 * 60 * 60 * 24),
+    ) + 1;
+    const granularidad: 'dia' | 'mes' = diasRango <= 31 ? 'dia' : 'mes';
+    // Clave de agrupación: 'YYYY-MM-DD' (día) o 'YYYY-MM' (mes)
+    const groupKey = (raw: string | null) => (raw ?? '').substring(0, granularidad === 'dia' ? 10 : 7);
+
     // Obtener ventas agrupadas por mes
     const { data: ventasData } = await supabase
       .from('invoice_sales')
@@ -326,7 +337,7 @@ class FinanzasDashboardService {
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
       .lte('issue_date', fechaFin);
-    
+
     // Obtener compras agrupadas por mes
     const { data: comprasData } = await supabase
       .from('invoice_purchase')
@@ -334,28 +345,38 @@ class FinanzasDashboardService {
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
       .lte('issue_date', fechaFin);
-    
-    // Agrupar por mes
-    const mesMap = new Map<string, { ventas: number; compras: number }>();
-    
+
+    // Agrupar por día o mes según la granularidad
+    const bucketMap = new Map<string, { ventas: number; compras: number }>();
+
     ventasData?.forEach((v: InvoiceDateRow) => {
-      const mes = v.issue_date?.substring(0, 7) || '';
-      if (!mesMap.has(mes)) {
-        mesMap.set(mes, { ventas: 0, compras: 0 });
-      }
-      mesMap.get(mes)!.ventas += Number(v.total) || 0;
+      const key = groupKey(v.issue_date);
+      if (!key) return;
+      if (!bucketMap.has(key)) bucketMap.set(key, { ventas: 0, compras: 0 });
+      bucketMap.get(key)!.ventas += Number(v.total) || 0;
     });
-    
+
     comprasData?.forEach((c: InvoiceDateRow) => {
-      const mes = c.issue_date?.substring(0, 7) || '';
-      if (!mesMap.has(mes)) {
-        mesMap.set(mes, { ventas: 0, compras: 0 });
-      }
-      mesMap.get(mes)!.compras += Number(c.total) || 0;
+      const key = groupKey(c.issue_date);
+      if (!key) return;
+      if (!bucketMap.has(key)) bucketMap.set(key, { ventas: 0, compras: 0 });
+      bucketMap.get(key)!.compras += Number(c.total) || 0;
     });
-    
-    return Array.from(mesMap.entries())
-      .map(([fecha, { ventas, compras }]) => ({ fecha, ventas, compras }))
+
+    // Si la granularidad es diaria, rellenar TODOS los días del rango
+    // (incluso los que no tienen datos) para mostrar el mes completo
+    // progresando día a día, como un calendario.
+    if (granularidad === 'dia') {
+      const inicio = new Date(fechaInicio + 'T00:00:00');
+      const fin = new Date(fechaFin + 'T00:00:00');
+      for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().substring(0, 10);
+        if (!bucketMap.has(key)) bucketMap.set(key, { ventas: 0, compras: 0 });
+      }
+    }
+
+    return Array.from(bucketMap.entries())
+      .map(([fecha, { ventas, compras }]) => ({ fecha, ventas, compras, granularidad }))
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
   }
   

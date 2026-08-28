@@ -11,7 +11,9 @@ import type { BaseFieldProps } from './types';
 
 /** Control select con shadcn/ui. */
 export default function SelectField({ field, value, onChange }: BaseFieldProps) {
-  const options = field.options || [];
+  // Radix Select.Item no permite value="" (reservado para limpiar selección).
+  // Se filtran opciones con valor vacío para evitar crash en runtime.
+  const options = (field.options || []).filter((opt) => opt.value !== '');
   return (
     <Select
       value={(value as string) || options[0]?.value || ''}

@@ -63,6 +63,27 @@ const getMovementLabel = (type: string) => {
   }
 };
 
+/**
+ * Determina si un movimiento es de entrada (suma stock) o salida (resta stock).
+ * `qty` en stock_movements siempre es positivo (magnitud); el signo real lo da
+ * `direction`. Devuelve true para entradas, false para salidas, null para
+ * movimientos neutros (transferencias/ajustes) donde el signo no aplica.
+ */
+const isEntryMovement = (type: string): boolean | null => {
+  switch (type.toLowerCase()) {
+    case 'entrada':
+    case 'in':
+    case 'purchase':
+      return true;
+    case 'salida':
+    case 'out':
+    case 'sale':
+      return false;
+    default:
+      return null;
+  }
+};
+
 const MovimientosRecientes: FC<MovimientosRecientesProps> = ({ movements, isLoading, className }) => {
   if (isLoading) {
     return (
@@ -138,15 +159,25 @@ const MovimientosRecientes: FC<MovimientosRecientesProps> = ({ movements, isLoad
                 </p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className={cn(
-                  "font-semibold",
-                  movement.quantity > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                )}>
-                  {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatDate(movement.createdAt)}
-                </p>
+                {(() => {
+                  const isEntry = isEntryMovement(movement.type);
+                  const signedQty = isEntry === false ? -Math.abs(movement.quantity) : movement.quantity;
+                  const colorClass = isEntry === false
+                    ? 'text-red-600 dark:text-red-400'
+                    : isEntry === true
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-gray-600 dark:text-gray-300';
+                  return (
+                    <>
+                      <p className={cn('font-semibold', colorClass)}>
+                        {signedQty > 0 ? '+' : ''}{signedQty}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatDate(movement.createdAt)}
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))}

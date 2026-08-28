@@ -331,7 +331,14 @@
       "invoicesToday": "Faturas Hoje",
       "members": "Membros",
       "activeReservations": "Reservas Ativas",
-      "receivables": "A Receber"
+      "receivables": "A Receber",
+      "webVisits": "Visitas Web",
+      "webOrders": "Pedidos Web",
+      "pending": "pend.",
+      "paid": "pagos",
+      "cancelled": "cancel.",
+      "liveVisitor": "visitante ao vivo",
+      "liveVisitors": "visitantes ao vivo"
     },
     "activity": {
       "title": "Atividade Recente",

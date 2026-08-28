@@ -385,7 +385,29 @@ export const GRID_FIELDS: ContentFieldDef[] = [
 // ============================================================
 
 export const BUTTON_ITEM_FIELDS: ContentFieldDef[] = [
+  {
+    key: 'position',
+    label: 'Posición en la tarjeta',
+    type: 'select',
+    group: 'layout',
+    defaultValue: 'below',
+    helpText: 'Dónde se ubica este botón dentro de la tarjeta',
+    options: [
+      { value: 'below', label: 'Debajo de la imagen (centrado)' },
+      { value: 'below_left', label: 'Debajo a la izquierda' },
+      { value: 'below_right', label: 'Debajo a la derecha' },
+      { value: 'beside_price', label: 'Junto al precio' },
+      { value: 'overlay_bottom', label: 'Sobre imagen - abajo' },
+      { value: 'overlay_top_left', label: 'Sobre imagen - arriba izquierda' },
+      { value: 'overlay_top_right', label: 'Sobre imagen - arriba derecha' },
+      { value: 'overlay_bottom_left', label: 'Sobre imagen - abajo izquierda' },
+      { value: 'overlay_bottom_right', label: 'Sobre imagen - abajo derecha' },
+      { value: 'overlay_hover', label: 'Sobre imagen - al pasar el mouse' },
+      { value: 'bottom_bar', label: 'Barra inferior fija' },
+    ],
+  },
   { key: 'label', label: 'Texto', type: 'text', group: 'content' },
+  { key: 'label_when_parent', label: 'Texto para producto con variantes', type: 'text', group: 'content', showIf: { field: 'action', equals: 'add_to_cart' }, helpText: 'Texto alternativo cuando el producto tiene variantes (ej: "Elegir", "Ver opciones"). Si está vacío usa el texto principal.' },
   { key: 'url', label: 'Enlace', type: 'url', group: 'content' },
   {
     key: 'variant',
@@ -398,6 +420,7 @@ export const BUTTON_ITEM_FIELDS: ContentFieldDef[] = [
       { value: 'outline', label: 'Contorno' },
       { value: 'ghost', label: 'Transparente' },
       { value: 'link', label: 'Enlace' },
+      { value: 'gradient', label: 'Degradado' },
     ],
   },
   {
@@ -425,7 +448,16 @@ export const BUTTON_ITEM_FIELDS: ContentFieldDef[] = [
       { value: 'right', label: 'Derecha' },
     ],
   },
-  { key: 'bg_color', label: 'Color', type: 'color', group: 'style' },
+  {
+    key: 'icon_only',
+    label: 'Solo icono (sin texto)',
+    type: 'boolean',
+    group: 'behavior',
+    defaultValue: false,
+    helpText: 'Si está activo, el botón muestra solo el icono sin texto',
+  },
+  { key: 'bg_color', label: 'Color de fondo', type: 'color', group: 'style' },
+  { key: 'bg_color_end', label: 'Color de fondo 2 (degradado)', type: 'color', group: 'style', showIf: { field: 'variant', equals: 'gradient' } },
   { key: 'text_color', label: 'Color del texto', type: 'color', group: 'style' },
   {
     key: 'radius',
@@ -437,6 +469,14 @@ export const BUTTON_ITEM_FIELDS: ContentFieldDef[] = [
     step: 2,
     defaultValue: 8,
     suffix: 'px',
+  },
+  {
+    key: 'full_width',
+    label: 'Ancho completo',
+    type: 'boolean',
+    group: 'layout',
+    defaultValue: true,
+    helpText: 'Si está activo, este botón ocupa todo el ancho disponible. Si no, solo su contenido.',
   },
   {
     key: 'full_width_mobile',
@@ -642,6 +682,141 @@ export const CARD_FIELDS: ContentFieldDef[] = [
 ];
 
 // ============================================================
+// CATEGORY_CARD_FIELDS — subset de CARD_FIELDS para categorías
+// (sin precio, sin card_layout/title_lines redundantes con text_position/title_size)
+// ============================================================
+
+export const CATEGORY_CARD_FIELDS: ContentFieldDef[] = [
+  {
+    key: 'card_radius',
+    label: 'Radio de la tarjeta',
+    type: 'range',
+    group: 'style',
+    min: 0,
+    max: 48,
+    step: 2,
+    defaultValue: 8,
+    suffix: 'px',
+  },
+  {
+    key: 'card_shadow',
+    label: 'Sombra de la tarjeta',
+    type: 'select',
+    group: 'style',
+    defaultValue: 'sm',
+    options: [
+      { value: 'none', label: 'Ninguna' },
+      { value: 'sm', label: 'Suave' },
+      { value: 'md', label: 'Media' },
+      { value: 'lg', label: 'Fuerte' },
+      { value: 'xl', label: 'Muy fuerte' },
+    ],
+  },
+  {
+    key: 'card_border_width',
+    label: 'Grosor del borde de la tarjeta',
+    type: 'range',
+    group: 'style',
+    min: 0,
+    max: 8,
+    step: 1,
+    defaultValue: 0,
+    suffix: 'px',
+  },
+  {
+    key: 'card_border_color',
+    label: 'Color del borde de la tarjeta',
+    type: 'color',
+    group: 'style',
+    showIf: { field: 'card_border_width', in: [1, 2, 3, 4, 5, 6, 7, 8] },
+  },
+  {
+    key: 'card_bg',
+    label: 'Fondo de la tarjeta',
+    type: 'color',
+    group: 'style',
+  },
+  {
+    key: 'card_padding',
+    label: 'Padding interno',
+    type: 'range',
+    group: 'layout',
+    min: 0,
+    max: 48,
+    step: 4,
+    defaultValue: 16,
+    suffix: 'px',
+  },
+  {
+    key: 'card_hover',
+    label: 'Efecto al pasar el mouse',
+    type: 'select',
+    group: 'behavior',
+    defaultValue: 'none',
+    options: [
+      { value: 'none', label: 'Ninguno' },
+      { value: 'zoom', label: 'Zoom' },
+      { value: 'lift', label: 'Elevar' },
+      { value: 'glow', label: 'Brillo' },
+      { value: 'border', label: 'Borde' },
+    ],
+  },
+  {
+    key: 'card_shadow_hover',
+    label: 'Sombra al pasar el mouse',
+    type: 'select',
+    group: 'behavior',
+    defaultValue: 'lg',
+    options: [
+      { value: 'none', label: 'Ninguna' },
+      { value: 'sm', label: 'Suave' },
+      { value: 'md', label: 'Media' },
+      { value: 'lg', label: 'Fuerte' },
+      { value: 'xl', label: 'Muy fuerte' },
+    ],
+  },
+  {
+    key: 'image_fit',
+    label: 'Ajuste de la imagen',
+    type: 'select',
+    group: 'style',
+    defaultValue: 'cover',
+    options: [
+      { value: 'cover', label: 'Cubrir' },
+      { value: 'contain', label: 'Contener' },
+      { value: 'fill', label: 'Rellenar' },
+    ],
+  },
+  {
+    key: 'image_ratio',
+    label: 'Proporción de la imagen',
+    type: 'select',
+    group: 'style',
+    defaultValue: '1:1',
+    options: [
+      { value: '1:1', label: 'Cuadrada (1:1)' },
+      { value: '4:3', label: '4:3' },
+      { value: '3:4', label: '3:4 (vertical)' },
+      { value: '16:9', label: '16:9' },
+    ],
+  },
+  {
+    key: 'text_align',
+    label: 'Alineación del texto',
+    type: 'alignment',
+    group: 'layout',
+    defaultValue: 'left',
+  },
+  {
+    key: 'show_description',
+    label: 'Mostrar descripción',
+    type: 'boolean',
+    group: 'content',
+    defaultValue: false,
+  },
+];
+
+// ============================================================
 // PRODUCT_CARD_INTERACTION_FIELDS — badges, botones y rating de cards de producto
 // ============================================================
 
@@ -652,12 +827,18 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
     type: 'repeater',
     group: 'content',
     itemLabelKey: 'type',
+    defaultItems: [
+      { type: 'discount', label: '-{value}%', position: 'top-left', shape: 'pill', size: 'sm' },
+      { type: 'new', label: 'Nuevo', position: 'top-right', shape: 'pill', size: 'sm' },
+      { type: 'free_shipping', label: 'Envío gratis', position: 'bottom-left', shape: 'pill', size: 'sm' },
+    ],
     itemFields: [
       {
         key: 'type',
         label: 'Tipo',
         type: 'select',
         group: 'content',
+        defaultValue: 'discount',
         options: [
           { value: 'discount', label: 'Descuento' },
           { value: 'new', label: 'Nuevo' },
@@ -668,6 +849,7 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
           { value: 'variants', label: 'Variantes' },
           { value: 'sales_count', label: 'N° vendidos' },
           { value: 'rating', label: 'Valoración' },
+          { value: 'category', label: 'Categoría' },
           { value: 'custom', label: 'Personalizado' },
         ],
       },
@@ -734,6 +916,10 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
     type: 'repeater',
     group: 'content',
     itemLabelKey: 'action',
+    defaultItems: [
+      { action: 'add_to_cart', variant: 'solid', size: 'sm', label: 'Agregar', icon: 'Plus', full_width: true },
+      { action: 'buy_now', variant: 'outline', size: 'sm', label: 'Comprar', icon: 'ShoppingBag', full_width: true },
+    ],
     itemFields: [
       {
         key: 'action',
@@ -756,19 +942,6 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
     ],
   },
   {
-    key: 'buttons_position',
-    label: 'Posición de los botones',
-    type: 'select',
-    group: 'layout',
-    defaultValue: 'below',
-    options: [
-      { value: 'below', label: 'Debajo' },
-      { value: 'overlay_hover', label: 'Al pasar el mouse' },
-      { value: 'bottom_bar', label: 'Barra inferior' },
-      { value: 'beside_price', label: 'Junto al precio' },
-    ],
-  },
-  {
     key: 'buttons_layout',
     label: 'Distribución de botones',
     type: 'select',
@@ -781,31 +954,41 @@ export const PRODUCT_CARD_INTERACTION_FIELDS: ContentFieldDef[] = [
     ],
   },
   {
-    key: 'icon_only_buttons',
-    label: 'Solo iconos (sin texto)',
-    type: 'boolean',
-    group: 'behavior',
-    defaultValue: false,
-  },
-  {
     key: 'show_rating',
     label: 'Mostrar valoración',
     type: 'boolean',
     group: 'content',
     defaultValue: false,
-    helpText: 'Solo tiene sentido tras la FASE 10 (reviews reales)',
+    helpText: 'Muestra estrellas de valoración (reviews automáticos o reales)',
+  },
+  {
+    key: 'reviews_source',
+    label: 'Fuente de reseñas',
+    type: 'select',
+    group: 'content',
+    defaultValue: 'generated',
+    showIf: { field: 'show_rating', equals: true },
+    helpText: 'generated: automáticas · real: solo reseñas verificadas · mixed: reales + automáticas · auto: migra solo',
+    options: [
+      { value: 'generated', label: 'Automáticas (generadas)' },
+      { value: 'real', label: 'Reales (verificadas)' },
+      { value: 'mixed', label: 'Mixtas (reales + automáticas)' },
+      { value: 'auto', label: 'Automático (migra solo)' },
+    ],
   },
   {
     key: 'rating_style',
     label: 'Estilo de valoración',
     type: 'select',
     group: 'style',
-    defaultValue: 'stars',
+    defaultValue: 'stars_count',
     showIf: { field: 'show_rating', equals: true },
     options: [
       { value: 'stars', label: 'Estrellas' },
-      { value: 'compact', label: 'Compacto' },
-      { value: 'stars_count', label: 'Estrellas + cantidad' },
+      { value: 'compact', label: 'Compacto (★ 4.6)' },
+      { value: 'stars_count', label: 'Estrellas + cantidad (★★★★★ 4.6/5 · 1.247)' },
+      { value: 'stars_rating', label: 'Estrellas + valoración (★★★★★ 4.6/5)' },
+      { value: 'rating_count', label: 'Valoración + cantidad (4.6/5 · 1.247)' },
     ],
   },
   {

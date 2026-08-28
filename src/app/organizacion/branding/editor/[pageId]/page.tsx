@@ -584,6 +584,13 @@ export default function PageEditorPage() {
           'mobile_breakpoint', 'header_opacity',
           'header_bg_color', 'topbar_bg_color', 'nav_bg_color', 'accent_color',
           'topbar_show_email', 'topbar_show_phone', 'topbar_announcement', 'topbar_contact_position',
+          // Fase 12: iconos personalizables y orden de acciones
+          'cart_icon', 'search_icon', 'auth_icon', 'currency_icon',
+          'minimal_menu_style', 'actions_order',
+          // Fase 12C: CTA personalizable
+          'cta_padding_x', 'cta_padding_y', 'cta_border_radius', 'cta_border_width',
+          'cta_border_color', 'cta_full_width', 'cta_shadow', 'cta_bg_color',
+          'cta_text_color', 'cta_margin_top', 'cta_margin_bottom',
           // Footer config (Fase 2)
           'footer_style', 'footer_columns', 'footer_background', 'footer_custom_bg_color',
           'footer_show_contact', 'footer_show_hours', 'footer_show_social', 'footer_show_categories',

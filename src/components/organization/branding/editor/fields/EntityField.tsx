@@ -131,13 +131,19 @@ function CategoryEntity({
     const load = async () => {
       if (!organizationId) return;
       setLoading(true);
-      const { data } = await supabase
-        .from('categories')
-        .select('id, name, image_url, parent_id')
-        .eq('organization_id', organizationId)
-        .order('rank', { ascending: true });
-      setCategories(data || []);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('id, name, image_url, parent_id')
+          .eq('organization_id', organizationId)
+          .order('name', { ascending: true });
+        if (error) throw error;
+        setCategories(data || []);
+      } catch {
+        setCategories([]);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [organizationId]);
@@ -303,14 +309,20 @@ function ProductEntity({
         return;
       }
       setSearching(true);
-      const { data } = await supabase
-        .from('products')
-        .select('id, name, sku, image_url')
-        .eq('organization_id', organizationId)
-        .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
-        .limit(20);
-      setResults(data || []);
-      setSearching(false);
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, name, sku, image_url')
+          .eq('organization_id', organizationId)
+          .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
+          .limit(20);
+        if (error) throw error;
+        setResults(data || []);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
     };
     const t = setTimeout(search, 300);
     return () => clearTimeout(t);
@@ -401,14 +413,20 @@ function PageEntity({
     const load = async () => {
       if (!organizationId) return;
       setLoading(true);
-      const { data } = await supabase
-        .from('website_pages')
-        .select('id, slug, title')
-        .eq('organization_id', organizationId)
-        .eq('is_published', true)
-        .order('title', { ascending: true });
-      setPages(data || []);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from('website_pages')
+          .select('id, slug, title')
+          .eq('organization_id', organizationId)
+          .eq('is_published', true)
+          .order('title', { ascending: true });
+        if (error) throw error;
+        setPages(data || []);
+      } catch {
+        setPages([]);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [organizationId]);
@@ -511,13 +529,19 @@ function BranchEntity({
     const load = async () => {
       if (!organizationId) return;
       setLoading(true);
-      const { data } = await supabase
-        .from('branches')
-        .select('id, name')
-        .eq('organization_id', organizationId)
-        .order('name', { ascending: true });
-      setBranches(data || []);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from('branches')
+          .select('id, name')
+          .eq('organization_id', organizationId)
+          .order('name', { ascending: true });
+        if (error) throw error;
+        setBranches(data || []);
+      } catch {
+        setBranches([]);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [organizationId]);
@@ -617,20 +641,26 @@ function TableZoneEntity({
     const load = async () => {
       if (!organizationId) return;
       setLoading(true);
-      const { data } = await supabase
-        .from('restaurant_zone_layouts')
-        .select('id, zone_name')
-        .eq('organization_id', organizationId)
-        .order('zone_name', { ascending: true });
-      // Deduplicar por zone_name (puede haber varias filas con la misma zona)
-      const seen = new Set<string>();
-      const unique = (data || []).filter((z) => {
-        if (seen.has(z.zone_name)) return false;
-        seen.add(z.zone_name);
-        return true;
-      });
-      setZones(unique);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from('restaurant_zone_layouts')
+          .select('id, zone_name')
+          .eq('organization_id', organizationId)
+          .order('zone_name', { ascending: true });
+        if (error) throw error;
+        // Deduplicar por zone_name (puede haber varias filas con la misma zona)
+        const seen = new Set<string>();
+        const unique = (data || []).filter((z) => {
+          if (seen.has(z.zone_name)) return false;
+          seen.add(z.zone_name);
+          return true;
+        });
+        setZones(unique);
+      } catch {
+        setZones([]);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [organizationId]);

@@ -12,20 +12,45 @@ import {
   Hotel,
   CreditCard,
   Minus,
+  Eye,
+  ShoppingCart,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
-import type { DashboardKPIData, PeriodoDashboard } from './inicioService';
+import type { DashboardKPIData, PeriodoDashboard, PuntoHora, PuntoDiaMes } from './inicioService';
+import { useLiveVisitors } from './useLiveVisitors';
 import { useTranslations, useLocale } from 'next-intl';
-import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+} from 'recharts';
 
 interface DashboardKPIsProps {
   data: DashboardKPIData | null;
   isLoading: boolean;
   periodo?: PeriodoDashboard;
+  organizationId?: number | null;
 }
 
-const kpiConfig = [
+interface KpiConfigItem {
+  key: keyof DashboardKPIData;
+  labelKey: string;
+  icon: typeof DollarSign;
+  color: string;
+  isCurrency: boolean;
+  href: string;
+  deltaKey: keyof DashboardKPIData | null;
+  dynamicLabel: boolean;
+  useMonthLabel?: boolean;
+  hasDesglose?: boolean;
+  span2?: boolean; // ocupar 2 columnas en desktop (sm+)
+}
+
+const kpiConfig: KpiConfigItem[] = [
   {
     key: 'ventasHoy' as const,
     labelKey: 'salesToday' as const,
@@ -43,8 +68,10 @@ const kpiConfig = [
     color: 'green',
     isCurrency: true,
     href: '/app/finanzas',
-    deltaKey: null,
-    dynamicLabel: false,
+    deltaKey: 'ventasMesAnterior' as const,
+    dynamicLabel: true,
+    useMonthLabel: true, // etiqueta muestra nombre del mes, no el período
+    span2: true,
   },
   {
     key: 'clientesActivos' as const,
@@ -53,7 +80,7 @@ const kpiConfig = [
     color: 'purple',
     isCurrency: false,
     href: '/app/crm',
-    deltaKey: null,
+    deltaKey: 'clientesAnterior' as const,
     dynamicLabel: false,
   },
   {
@@ -63,7 +90,7 @@ const kpiConfig = [
     color: 'orange',
     isCurrency: false,
     href: '/app/inventario/productos',
-    deltaKey: null,
+    deltaKey: 'productosAnterior' as const,
     dynamicLabel: false,
   },
   {
@@ -83,7 +110,7 @@ const kpiConfig = [
     color: 'indigo',
     isCurrency: false,
     href: '/app/hrm/empleados',
-    deltaKey: null,
+    deltaKey: 'empleadosAnterior' as const,
     dynamicLabel: false,
   },
   {
@@ -93,7 +120,7 @@ const kpiConfig = [
     color: 'teal',
     isCurrency: false,
     href: '/app/pms',
-    deltaKey: null,
+    deltaKey: 'reservasAnterior' as const,
     dynamicLabel: false,
   },
   {
@@ -103,8 +130,30 @@ const kpiConfig = [
     color: 'red',
     isCurrency: true,
     href: '/app/finanzas/cuentas-por-cobrar',
-    deltaKey: null,
+    deltaKey: 'cuentasAnterior' as const,
     dynamicLabel: false,
+  },
+  {
+    key: 'visitasWeb' as const,
+    labelKey: 'webVisits' as const,
+    icon: Eye,
+    color: 'pink',
+    isCurrency: false,
+    href: '/app/pos/pedidos-online',
+    deltaKey: 'visitasWebAnterior' as const,
+    dynamicLabel: true,
+  },
+  {
+    key: 'comprasWeb' as const,
+    labelKey: 'webOrders' as const,
+    icon: ShoppingCart,
+    color: 'amber',
+    isCurrency: false,
+    href: '/app/pos/pedidos-online',
+    deltaKey: 'comprasWebAnterior' as const,
+    dynamicLabel: true,
+    hasDesglose: true, // mostrar desglose de pendientes/canceladas/pagadas
+    span2: true,
   },
 ];
 
@@ -117,6 +166,8 @@ const colorMap: Record<string, { bg: string; icon: string; text: string; stroke:
   indigo: { bg: 'bg-indigo-50 dark:bg-indigo-900/20', icon: 'text-indigo-600 dark:text-indigo-400', text: 'text-indigo-700 dark:text-indigo-300', stroke: '#6366f1' },
   teal: { bg: 'bg-teal-50 dark:bg-teal-900/20', icon: 'text-teal-600 dark:text-teal-400', text: 'text-teal-700 dark:text-teal-300', stroke: '#14b8a6' },
   red: { bg: 'bg-red-50 dark:bg-red-900/20', icon: 'text-red-600 dark:text-red-400', text: 'text-red-700 dark:text-red-300', stroke: '#ef4444' },
+  pink: { bg: 'bg-pink-50 dark:bg-pink-900/20', icon: 'text-pink-600 dark:text-pink-400', text: 'text-pink-700 dark:text-pink-300', stroke: '#ec4899' },
+  amber: { bg: 'bg-amber-50 dark:bg-amber-900/20', icon: 'text-amber-600 dark:text-amber-400', text: 'text-amber-700 dark:text-amber-300', stroke: '#f59e0b' },
 };
 
 // Etiqueta dinámica según período
@@ -142,8 +193,19 @@ function generateSparklineData(value: number, deltaPct: number | null, points = 
   return result;
 }
 
+// Props comunes para tooltips de recharts
+interface TooltipPayloadItem {
+  value: number;
+  dataKey: string;
+  payload: { hora?: number; idx?: number; dia?: number };
+}
+interface TooltipProps {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+}
+
 // Tooltip para el mini-sparkline
-function SparklineTooltip({ active, payload }: any) {
+function SparklineTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload || !payload.length) return null;
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm px-2 py-1 text-[10px] font-medium text-gray-700 dark:text-gray-200">
@@ -152,14 +214,181 @@ function SparklineTooltip({ active, payload }: any) {
   );
 }
 
-export function DashboardKPIs({ data, isLoading, periodo = 'hoy' }: DashboardKPIsProps) {
+// Sparkline real con eje X de horas y dos líneas: hoy vs ayer a esta misma hora
+function VentasHorariasSparkline({
+  hoy,
+  ayer,
+  horaActual,
+  stroke,
+  formatValue,
+}: {
+  hoy: PuntoHora[];
+  ayer: PuntoHora[];
+  horaActual: number;
+  stroke: string;
+  formatValue: (n: number) => string;
+}) {
+  // Recortar hasta la hora actual (inclusive) y combinar ambas series por hora
+  const data = hoy
+    .filter((p) => p.hora <= horaActual)
+    .map((p) => ({
+      hora: p.hora,
+      hoy: p.total,
+      ayer: ayer.find((a) => a.hora === p.hora)?.total ?? 0,
+    }));
+
+  const fmtHora = (h: number) => `${h}h`;
+
+  return (
+    <div className="mt-2 h-10 -mx-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 2, right: 4, bottom: 0, left: 4 }}>
+          <XAxis
+            dataKey="hora"
+            tickFormatter={fmtHora}
+            tick={{ fontSize: 8, fill: 'currentColor' }}
+            className="text-gray-400 dark:text-gray-500"
+            interval="preserveStartEnd"
+            minTickGap={16}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis hide domain={[0, 'auto']} />
+          <RechartsTooltip
+            content={({ active, payload }: TooltipProps) => {
+              if (!active || !payload || !payload.length) return null;
+              const hora = payload[0]?.payload?.hora;
+              return (
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm px-2 py-1 text-[10px] font-medium text-gray-700 dark:text-gray-200 space-y-0.5">
+                  <div className="text-gray-500">{fmtHora(hora ?? 0)}</div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full" style={{ background: stroke }} />
+                    Hoy: {formatValue(payload.find((p) => p.dataKey === 'hoy')?.value ?? 0)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-gray-400" />
+                    Ayer: {formatValue(payload.find((p) => p.dataKey === 'ayer')?.value ?? 0)}
+                  </div>
+                </div>
+              );
+            }}
+            cursor={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="ayer"
+            stroke="#9ca3af"
+            strokeWidth={1.25}
+            strokeDasharray="3 2"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="hoy"
+            stroke={stroke}
+            strokeWidth={1.75}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// Sparkline mensual genérico: eje X = día del mes, dos líneas (mes actual vs mes anterior)
+function MensualSparkline({
+  mesActual,
+  mesAnterior,
+  diaActual,
+  stroke,
+  formatValue,
+}: {
+  mesActual: PuntoDiaMes[];
+  mesAnterior: PuntoDiaMes[];
+  diaActual: number;
+  stroke: string;
+  formatValue: (n: number) => string;
+}) {
+  // Combinar ambas series por día del mes, recortando hasta el día actual
+  const dias = Array.from({ length: diaActual }, (_, i) => i + 1);
+  const data = dias.map((dia) => ({
+    dia,
+    actual: mesActual.find((p) => p.dia === dia)?.total ?? 0,
+    anterior: mesAnterior.find((p) => p.dia === dia)?.total ?? 0,
+  }));
+
+  const fmtDia = (d: number) => `${d}`;
+
+  return (
+    <div className="mt-2 h-10 -mx-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 2, right: 4, bottom: 0, left: 4 }}>
+          <XAxis
+            dataKey="dia"
+            tickFormatter={fmtDia}
+            tick={{ fontSize: 8, fill: 'currentColor' }}
+            className="text-gray-400 dark:text-gray-500"
+            interval="preserveStartEnd"
+            minTickGap={20}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis hide domain={[0, 'auto']} />
+          <RechartsTooltip
+            content={({ active, payload }: TooltipProps) => {
+              if (!active || !payload || !payload.length) return null;
+              const dia = payload[0]?.payload?.dia;
+              return (
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm px-2 py-1 text-[10px] font-medium text-gray-700 dark:text-gray-200 space-y-0.5">
+                  <div className="text-gray-500">Día {dia}</div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full" style={{ background: stroke }} />
+                    Este mes: {formatValue(payload.find((p) => p.dataKey === 'actual')?.value ?? 0)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-gray-400" />
+                    Mes pasado: {formatValue(payload.find((p) => p.dataKey === 'anterior')?.value ?? 0)}
+                  </div>
+                </div>
+              );
+            }}
+            cursor={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="anterior"
+            stroke="#9ca3af"
+            strokeWidth={1.25}
+            strokeDasharray="3 2"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="actual"
+            stroke={stroke}
+            strokeWidth={1.75}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId }: DashboardKPIsProps) {
   const t = useTranslations('home.kpis');
   const locale = useLocale();
+  // Visitantes en vivo via Realtime (solo para el KPI visitasWeb)
+  const { liveCount, isActive } = useLiveVisitors(organizationId);
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 10 }).map((_, i) => (
           <Skeleton key={i} className="h-28 rounded-xl" />
         ))}
       </div>
@@ -171,13 +400,22 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy' }: DashboardKPI
       {kpiConfig.map((kpi) => {
         const colors = colorMap[kpi.color] || colorMap.blue;
         const Icon = kpi.icon;
-        const value = data ? data[kpi.key] : 0;
+        const isLiveVisits = kpi.key === 'visitasWeb' && periodo === 'hoy';
+        const value = data ? (data[kpi.key] as number) : 0;
 
-        // Etiqueta dinámica: "Ventas Hoy" → "Ventas 7 días" etc.
+        // Etiqueta dinámica:
+        // - ventasMes con useMonthLabel → "Ventas {NombreMes}" (ej: "Ventas Agosto")
+        // - otros dynamicLabel → "Ventas {periodo}" (ej: "Ventas 7 días")
         const baseLabel = t(kpi.labelKey);
-        const label = kpi.dynamicLabel
-          ? baseLabel.replace(/Hoy$/i, periodoLabel[periodo])
-          : baseLabel;
+        let label = baseLabel;
+        if (kpi.useMonthLabel && data?.mesActualNumero && data?.anioActual) {
+          const nombreMes = new Date(data.anioActual, data.mesActualNumero - 1)
+            .toLocaleDateString(locale, { month: 'long' });
+          // Reemplazar "30 días"/"30 days"/"30 dias"/"30 jours" por el nombre del mes
+          label = baseLabel.replace(/\s*30\s+\S+$/i, ` ${nombreMes}`);
+        } else if (kpi.dynamicLabel) {
+          label = baseLabel.replace(/Hoy$/i, periodoLabel[periodo]);
+        }
 
         // Cálculo de delta % vs período anterior
         let deltaPct: number | null = null;
@@ -200,8 +438,54 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy' }: DashboardKPI
             ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
             : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300';
 
-        // Datos para el mini-sparkline
+        // Datos para el mini-sparkline sintético (fallback)
         const sparkData = generateSparklineData(value, deltaPct).map((v, i) => ({ idx: i, val: v }));
+
+        // Determinar qué sparkline mostrar según KPI y período
+        const fmtVal = kpi.isCurrency ? formatCurrency : (n: number) => n.toLocaleString(locale);
+        const isDynamicKpi = kpi.dynamicLabel; // ventasHoy, facturasHoy
+
+        // Series horarias (periodo='hoy'): ventasHoy, facturasHoy, visitasWeb, comprasWeb
+        const horaHoy = kpi.key === 'ventasHoy'
+          ? data?.ventasPorHoraHoy
+          : kpi.key === 'facturasHoy'
+            ? data?.facturasPorHoraHoy
+            : kpi.key === 'visitasWeb'
+              ? data?.visitasPorHoraHoy
+              : kpi.key === 'comprasWeb'
+                ? data?.comprasPorHoraHoy
+                : undefined;
+        const horaAyer = kpi.key === 'ventasHoy'
+          ? data?.ventasPorHoraAyer
+          : kpi.key === 'facturasHoy'
+            ? data?.facturasPorHoraAyer
+            : kpi.key === 'visitasWeb'
+              ? data?.visitasPorHoraAyer
+              : kpi.key === 'comprasWeb'
+                ? data?.comprasPorHoraAyer
+                : undefined;
+        const hasHoraria = isDynamicKpi && periodo === 'hoy' && horaHoy && horaAyer && data?.horaActualOrg !== undefined;
+
+        // Series por período (periodo!='hoy'): ventasHoy, facturasHoy, visitasWeb, comprasWeb
+        const periodoSerie = kpi.key === 'ventasHoy'
+          ? data?.ventasPorDiaPeriodo
+          : kpi.key === 'facturasHoy'
+            ? data?.facturasPorDiaPeriodo
+            : kpi.key === 'visitasWeb'
+              ? data?.visitasPorDiaPeriodo
+              : kpi.key === 'comprasWeb'
+                ? data?.comprasPorDiaPeriodo
+                : undefined;
+        const hasPeriodo = isDynamicKpi && periodo !== 'hoy' && periodoSerie;
+
+        // Series mensuales (KPIs no dinámicos): ventasMes o seriesDiarias
+        let serieMensual: { actual: PuntoDiaMes[]; anterior: PuntoDiaMes[] } | null = null;
+        if (kpi.key === 'ventasMes' && data?.ventasPorDiaMesActual && data?.ventasPorDiaMesAnterior) {
+          serieMensual = { actual: data.ventasPorDiaMesActual, anterior: data.ventasPorDiaMesAnterior };
+        } else if (data?.seriesDiarias) {
+          const entry = data.seriesDiarias[kpi.key as keyof typeof data.seriesDiarias];
+          if (entry) serieMensual = entry;
+        }
 
         const content = (
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all h-full flex flex-col">
@@ -213,11 +497,44 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy' }: DashboardKPI
                 {label}
               </span>
             </div>
-            <p className={`text-lg font-bold ${colors.text}`}>
-              {kpi.isCurrency
-                ? formatCurrency(value)
-                : value.toLocaleString(locale)}
-            </p>
+            {/* Total del día + contador en vivo al lado (solo visitasWeb + periodo 'hoy') */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className={`text-lg font-bold ${colors.text}`}>
+                {kpi.isCurrency
+                  ? formatCurrency(value)
+                  : value.toLocaleString(locale)}
+              </p>
+              {isLiveVisits && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                  <span className="relative flex h-2 w-2">
+                    {isActive && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    )}
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  </span>
+                  <span className="text-[10px] font-semibold text-green-700 dark:text-green-300">
+                    {liveCount} {liveCount === 1 ? t('liveVisitor') : t('liveVisitors')}
+                  </span>
+                </span>
+              )}
+            </div>
+            {/* Desglose de compras web por estado */}
+            {kpi.hasDesglose && data && (
+              <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+                <span className="inline-flex items-center gap-0.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                  {data.comprasWebPendientes} {t('pending')}
+                </span>
+                <span className="inline-flex items-center gap-0.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  {data.comprasWebPagadas} {t('paid')}
+                </span>
+                <span className="inline-flex items-center gap-0.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                  {data.comprasWebCanceladas} {t('cancelled')}
+                </span>
+              </div>
+            )}
             {/* Badge pill */}
             <div className="mt-1.5">
               <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${badgeClass}`}>
@@ -238,34 +555,66 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy' }: DashboardKPI
                 )}
               </span>
             </div>
-            {/* Mini-sparkline con tooltip */}
-            <div className="mt-2 h-8 -mx-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sparkData}>
-                  <YAxis domain={['dataMin', 'dataMax']} hide />
-                  <RechartsTooltip content={<SparklineTooltip />} cursor={false} />
-                  <Line
-                    type="monotone"
-                    dataKey="val"
-                    stroke={colors.stroke}
-                    strokeWidth={1.5}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {/* Mini-sparkline:
+                - KPIs dinámicos (ventasHoy, facturasHoy) con periodo='hoy': horario (hoy vs ayer a esta hora)
+                - KPIs dinámicos con periodo!='hoy': diario por posición del período (actual vs anterior)
+                - KPIs no dinámicos con serie mensual: diario del mes (mes actual vs anterior)
+                - fallback: sintético */}
+            {hasHoraria ? (
+              <VentasHorariasSparkline
+                hoy={horaHoy!}
+                ayer={horaAyer!}
+                horaActual={data!.horaActualOrg!}
+                stroke={colors.stroke}
+                formatValue={fmtVal}
+              />
+            ) : hasPeriodo ? (
+              <MensualSparkline
+                mesActual={periodoSerie!.actual}
+                mesAnterior={periodoSerie!.anterior}
+                diaActual={periodoSerie!.actual.length}
+                stroke={colors.stroke}
+                formatValue={fmtVal}
+              />
+            ) : serieMensual && data?.diaActualMes ? (
+              <MensualSparkline
+                mesActual={serieMensual.actual}
+                mesAnterior={serieMensual.anterior}
+                diaActual={data.diaActualMes}
+                stroke={colors.stroke}
+                formatValue={fmtVal}
+              />
+            ) : (
+              <div className="mt-2 h-8 -mx-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={sparkData}>
+                    <YAxis domain={['dataMin', 'dataMax']} hide />
+                    <RechartsTooltip content={<SparklineTooltip />} cursor={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="val"
+                      stroke={colors.stroke}
+                      strokeWidth={1.5}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         );
 
+        const spanClass = kpi.span2 ? 'sm:col-span-2' : '';
+
         if (kpi.href) {
           return (
-            <Link key={kpi.key} href={kpi.href} className="block">
+            <Link key={kpi.key} href={kpi.href} className={`block ${spanClass}`}>
               {content}
             </Link>
           );
         }
-        return <div key={kpi.key}>{content}</div>;
+        return <div key={kpi.key} className={spanClass}>{content}</div>;
       })}
     </div>
   );

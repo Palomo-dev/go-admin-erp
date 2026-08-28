@@ -93,8 +93,15 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
       
       setLoading(true);
       try {
+        // Si el módulo PM no está activo, excluir notificaciones de tareas en la
+        // query (no en el cliente) para que el limit aplique solo sobre las que
+        // se van a mostrar. Si se filtra en el cliente, las notificaciones no-tarea
+        // quedan enterradas bajo las de tareas y fuera del limit, causando
+        // discrepancia entre el badge (que cuenta todas) y la lista (que muestra 0).
+        const taskTypesFilter = '("task_assigned","task_completed","task_agent","task_rescheduled","task_reschedule_summary")';
+
         // 1. Mis notificaciones (dirigidas al usuario)
-        const { data: myData, error: myError } = await supabase
+        let myQuery = supabase
           .from('notifications')
           .select('*')
           .eq('organization_id', organizationId)
@@ -103,16 +110,28 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
           .order('created_at', { ascending: false })
           .limit(15);
 
+        if (!isPmActive) {
+          myQuery = myQuery.not('payload->>type', 'in', taskTypesFilter);
+        }
+
+        const { data: myData, error: myError } = await myQuery;
+
         if (myError) throw myError;
 
         // 2. Todas las notificaciones de la org
-        const { data: allData, error: allError } = await supabase
+        let allQuery = supabase
           .from('notifications')
           .select('*')
           .eq('organization_id', organizationId)
           .neq('status', 'deleted')
           .order('created_at', { ascending: false })
           .limit(20);
+
+        if (!isPmActive) {
+          allQuery = allQuery.not('payload->>type', 'in', taskTypesFilter);
+        }
+
+        const { data: allData, error: allError } = await allQuery;
 
         if (allError) throw allError;
 

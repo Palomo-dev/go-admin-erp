@@ -97,15 +97,8 @@ export function DashboardAtajos({ activeModuleCodes }: DashboardAtajosProps) {
     ? atajos.filter(a => !a.moduleCode || activeModuleCodes.includes(a.moduleCode))
     : atajos;
 
-  // Grid adaptativo: si hay pocos atajos, que ocupen más espacio
-  const count = filteredAtajos.length;
-  const gridCols = count <= 2
-    ? 'grid-cols-2'
-    : count <= 4
-      ? 'grid-cols-2 sm:grid-cols-4'
-      : count <= 6
-        ? 'grid-cols-3 sm:grid-cols-6'
-        : 'grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10';
+  // Grid adaptativo: auto-fit expande los atajos para llenar todo el ancho sin huecos
+  const gridCols = "grid-cols-[repeat(auto-fit,minmax(0,1fr))]";
 
   return (
     <div className={`grid ${gridCols} gap-2 sm:gap-3`}>

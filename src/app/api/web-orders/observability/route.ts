@@ -43,9 +43,26 @@ export async function GET(request: Request) {
 
     const orgId = parseInt(organizationId, 10);
 
+    // ── 0. Obtener sucursales de la organización para filtrar stock ──
+    const { data: orgBranches, error: branchesError } = await supabase
+      .from('branches')
+      .select('id')
+      .eq('organization_id', orgId);
+
+    if (branchesError) {
+      console.error('[Observability] Error branches:', branchesError);
+      return NextResponse.json(
+        { error: branchesError.message },
+        { status: 500 }
+      );
+    }
+
+    const branchIds = (orgBranches || []).map((b: any) => b.id);
+
     // ── 1. Stock reservado vs disponible por sucursal ──
     // Solo productos con qty_reserved > 0 (los que tienen reserva activa).
-    const { data: stockRows, error: stockError } = await supabase
+    // Filtrado por las sucursales de la organización actual.
+    const stockQuery = supabase
       .from('stock_levels')
       .select(
         `id, product_id, branch_id, qty_on_hand, qty_reserved, updated_at,
@@ -53,8 +70,19 @@ export async function GET(request: Request) {
          branches ( id, name )`
       )
       .gt('qty_reserved', 0)
-      .is('lot_id', null)
-      .order('updated_at', { ascending: true });
+      .is('lot_id', null);
+
+    if (branchIds.length > 0) {
+      stockQuery.in('branch_id', branchIds);
+    } else {
+      // Sin sucursales → devolver vacío
+      stockQuery.eq('branch_id', -1);
+    }
+
+    const { data: stockRows, error: stockError } = await stockQuery.order(
+      'updated_at',
+      { ascending: true }
+    );
 
     if (stockError) {
       console.error('[Observability] Error stock:', stockError);
@@ -95,6 +123,7 @@ export async function GET(request: Request) {
          payment_method, total, customer_name, customer_email, created_at,
          branches ( id, name )`
       )
+      .eq('organization_id', orgId)
       .eq('status', 'pending')
       .eq('payment_status', 'pending')
       .is('stock_released_at', null)

@@ -65,6 +65,23 @@ export default function RepeaterField({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const didNormalize = useRef(false);
+  const didInitDefaults = useRef(false);
+
+  // Pre-poblar con defaultItems cuando el array está vacío (una sola vez).
+  // Esto hace que el editor muestre los botones/badges por defecto en lugar
+  // de "Sin elementos", pero el usuario puede eliminarlos si no los quiere.
+  useEffect(() => {
+    if (didInitDefaults.current) return;
+    if (items.length === 0 && field.defaultItems && field.defaultItems.length > 0) {
+      didInitDefaults.current = true;
+      const defaults = field.defaultItems.map((item) => ({
+        ...item,
+        id: crypto.randomUUID(),
+      }));
+      onChange(defaults);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Normalizar ids una sola vez (retrocompatibilidad con items sin id).
   useEffect(() => {
@@ -111,9 +128,14 @@ export default function RepeaterField({
     onChange(items.map((i) => (i.id === id ? { ...i, [key]: val } : i)));
   };
 
-  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragStart = (e: React.DragEvent, idx: number) => {
+    setDragIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(idx));
+  };
   const handleDragOver = (e: React.DragEvent, idx: number) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     if (dragIdx !== null && dragIdx !== idx) {
       const reordered = [...items];
       const [moved] = reordered.splice(dragIdx, 1);
@@ -149,7 +171,7 @@ export default function RepeaterField({
               <div
                 key={itemId}
                 draggable
-                onDragStart={() => handleDragStart(idx)}
+                onDragStart={(e) => handleDragStart(e, idx)}
                 onDragOver={(e) => handleDragOver(e, idx)}
                 onDragEnd={handleDragEnd}
                 className={cn(

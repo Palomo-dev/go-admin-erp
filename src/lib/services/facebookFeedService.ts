@@ -429,7 +429,7 @@ function buildFacebookRow(
     : parentData?.product_images;
   let imageLink = '';
   if (imagesSource && imagesSource.length > 0) {
-    const primaryImg = imagesSource.find((img: any) => img.is_primary);
+    const primaryImg = imagesSource.find((img) => img.is_primary);
     const img = primaryImg || imagesSource[0];
     if (img && img.storage_path) {
       const supabase = getServerSupabase();
@@ -510,25 +510,25 @@ export function formatPriceWithDecimals(
   return `${formatted} ${currency}`;
 }
 
-function extractVariantData(variantData: any): VariantInfo {
+function extractVariantData(variantData: unknown): VariantInfo {
   const info: VariantInfo = {};
   if (!variantData) return info;
   try {
     const vd = typeof variantData === 'string' ? JSON.parse(variantData) : variantData;
     if (Array.isArray(vd)) {
-      vd.forEach((attr: any) => {
+      (vd as VariantAttr[]).forEach((attr) => {
         const type = (attr.type || attr.name || '').toLowerCase();
         const value = attr.value || '';
         assignVariantField(info, type, value);
       });
-    } else if (vd.attributes && Array.isArray(vd.attributes)) {
-      vd.attributes.forEach((attr: any) => {
+    } else if (vd && typeof vd === 'object' && 'attributes' in vd && Array.isArray((vd as { attributes: unknown }).attributes)) {
+      ((vd as { attributes: VariantAttr[] }).attributes).forEach((attr) => {
         const type = (attr.type || attr.name || '').toLowerCase();
         const value = attr.value || '';
         assignVariantField(info, type, value);
       });
-    } else {
-      Object.entries(vd).forEach(([key, value]) => {
+    } else if (vd && typeof vd === 'object') {
+      Object.entries(vd as Record<string, unknown>).forEach(([key, value]) => {
         const type = key.toLowerCase();
         assignVariantField(info, type, String(value));
       });

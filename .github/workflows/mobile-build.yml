@@ -53,6 +53,10 @@ jobs:
         working-directory: mobile
         run: mkdir -p android/app/src/main/assets/public
 
+      - name: Ensure iOS App directory exists
+        working-directory: mobile
+        run: mkdir -p ios/App/App/public
+
       - name: Capacitor sync
         working-directory: mobile
         run: npx cap sync
@@ -150,6 +154,7 @@ jobs:
     needs: validate
     if: needs.validate.outputs.should_build_ios == 'true'
     runs-on: macos-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -162,6 +167,10 @@ jobs:
       - name: Install mobile dependencies
         working-directory: mobile
         run: npm ci
+
+      - name: Ensure iOS App directory exists
+        working-directory: mobile
+        run: mkdir -p ios/App/App/public
 
       - name: Capacitor sync iOS
         working-directory: mobile

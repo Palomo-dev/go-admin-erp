@@ -58,7 +58,7 @@ export function StageConfigDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: stage.name || "",
-      probability: stage.probability || 0,
+      probability: Math.round(Number(stage.probability) * 100) || 0,
       color: stage.color || "#3498db",
       description: stage.description || "",
     },
@@ -69,7 +69,7 @@ export function StageConfigDialog({
     if (isOpen) {
       form.reset({
         name: stage.name || "",
-        probability: stage.probability || 0,
+        probability: Math.round(Number(stage.probability) * 100) || 0,
         color: stage.color || "#3498db",
         description: stage.description || "",
       });
@@ -79,12 +79,12 @@ export function StageConfigDialog({
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
     try {
-      // Actualizar la etapa en Supabase
+      // Actualizar la etapa en Supabase (probability se guarda como decimal 0-1)
       const { error } = await supabase
         .from("stages")
         .update({
           name: values.name,
-          probability: values.probability,
+          probability: values.probability / 100,
           color: values.color,
           description: values.description,
           updated_at: new Date().toISOString(),
@@ -97,7 +97,7 @@ export function StageConfigDialog({
       const updatedStage = {
         ...stage,
         name: values.name,
-        probability: values.probability,
+        probability: values.probability / 100,
         color: values.color,
         description: values.description,
       };
@@ -158,7 +158,7 @@ export function StageConfigDialog({
                       min={0}
                       max={100}
                       step={1}
-                      defaultValue={[field.value]}
+                      value={[field.value]}
                       onValueChange={(values) => field.onChange(values[0])}
                       className="mt-2"
                     />

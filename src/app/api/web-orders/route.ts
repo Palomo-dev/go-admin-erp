@@ -35,6 +35,10 @@ interface CreateWebOrderRequest {
   delivery_address?: {
     address?: string;
     city?: string;
+    country?: string;        // código ISO-3 del país ej: "COL"
+    state?: string;          // nombre del estado/departamento
+    state_code?: string;     // código del estado
+    department?: string;     // alias de state para compatibilidad
     neighborhood?: string;
     instructions?: string;
     lat?: number;
@@ -91,6 +95,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Sanitizar delivery_address: conservar campos existentes + nuevos (country/state/department)
+    // Solo se incluyen los campos presentes (no null) para no ensuciar el JSONB.
+    const rawAddr = body.delivery_address || {};
+    const sanitizedAddress: Record<string, any> = {};
+
+    if (typeof rawAddr.address === 'string' && rawAddr.address.trim()) {
+      sanitizedAddress.address = rawAddr.address.trim();
+    }
+    if (typeof rawAddr.city === 'string' && rawAddr.city.trim()) {
+      sanitizedAddress.city = rawAddr.city.trim();
+    }
+    // country: código ISO-3, máx 3 caracteres
+    if (typeof rawAddr.country === 'string' && rawAddr.country.trim()) {
+      const country = rawAddr.country.trim().toUpperCase().slice(0, 3);
+      if (country) sanitizedAddress.country = country;
+    }
+    // state: nombre libre, máx 100 caracteres
+    if (typeof rawAddr.state === 'string' && rawAddr.state.trim()) {
+      sanitizedAddress.state = rawAddr.state.trim().slice(0, 100);
+    }
+    // state_code: código corto, máx 10 caracteres
+    if (typeof rawAddr.state_code === 'string' && rawAddr.state_code.trim()) {
+      sanitizedAddress.state_code = rawAddr.state_code.trim().slice(0, 10);
+    }
+    // department: alias de state, máx 100 caracteres
+    if (typeof rawAddr.department === 'string' && rawAddr.department.trim()) {
+      sanitizedAddress.department = rawAddr.department.trim().slice(0, 100);
+    }
+    if (typeof rawAddr.neighborhood === 'string' && rawAddr.neighborhood.trim()) {
+      sanitizedAddress.neighborhood = rawAddr.neighborhood.trim();
+    }
+    if (typeof rawAddr.instructions === 'string' && rawAddr.instructions.trim()) {
+      sanitizedAddress.instructions = rawAddr.instructions.trim();
+    }
+    if (typeof rawAddr.lat === 'number' && !Number.isNaN(rawAddr.lat)) {
+      sanitizedAddress.lat = rawAddr.lat;
+    }
+    if (typeof rawAddr.lng === 'number' && !Number.isNaN(rawAddr.lng)) {
+      sanitizedAddress.lng = rawAddr.lng;
+    }
+
     // Obtener cliente Supabase
     const supabase = getSupabaseClient();
 
@@ -139,7 +184,7 @@ export async function POST(request: NextRequest) {
         total,
         delivery_type: body.delivery_type,
         delivery_partner: body.delivery_partner,
-        delivery_address: body.delivery_address || {},
+        delivery_address: sanitizedAddress,
         is_scheduled: body.is_scheduled || false,
         scheduled_at: body.scheduled_at,
         payment_status: 'pending',

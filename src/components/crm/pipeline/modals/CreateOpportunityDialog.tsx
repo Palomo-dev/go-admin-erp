@@ -44,13 +44,14 @@ export default function CreateOpportunityDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] max-h-[95vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 p-0">
+      <DialogContent className="max-w-6xl w-[96vw] h-[92vh] max-h-[92vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 p-0">
         <DialogHeader className="sr-only">
           <DialogTitle>Nueva Oportunidad</DialogTitle>
           <DialogDescription>
             Crear una nueva oportunidad con productos, espacios y conceptos personalizados
           </DialogDescription>
         </DialogHeader>
+        <div className="p-5 h-full">
         <OpportunityForm
           key={formKey}
           initialPipelineId={pipelineId}
@@ -60,6 +61,7 @@ export default function CreateOpportunityDialog({
           onCancel={handleCancel}
           hideHeader
         />
+        </div>
       </DialogContent>
     </Dialog>
   );

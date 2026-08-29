@@ -45,7 +45,7 @@ export interface SearchDataResult {
 
 // Páginas predefinidas del sistema
 export const PAGINAS_PREDEFINIDAS = [
-  { id: 'inicio', name: 'Inicio', type: 'page', url: '/app' },
+  { id: 'inicio', name: 'Inicio', type: 'page', url: '/app/inicio' },
   { id: 'clientes', name: 'Clientes', type: 'page', url: '/app/clientes' },
   { id: 'organizacion', name: 'Organización', type: 'page', url: '/app/organizacion' },
   { id: 'finanzas', name: 'Finanzas', type: 'page', url: '/app/finanzas' },

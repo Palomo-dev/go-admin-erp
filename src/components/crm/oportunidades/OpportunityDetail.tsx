@@ -96,7 +96,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [oppData, productsData, spacesData, customData, activitiesData, tasksData, notesData] = await Promise.all([
+      const results = await Promise.allSettled([
         opportunitiesService.getOpportunityById(opportunityId),
         opportunitiesService.getOpportunityProducts(opportunityId),
         opportunitiesService.getOpportunitySpaces(opportunityId),
@@ -105,6 +105,21 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
         opportunitiesService.getOpportunityTasks(opportunityId),
         opportunitiesService.getOpportunityNotes(opportunityId),
       ]);
+
+      const oppData = results[0].status === 'fulfilled' ? results[0].value : null;
+      const productsData = results[1].status === 'fulfilled' ? results[1].value : [];
+      const spacesData = results[2].status === 'fulfilled' ? results[2].value : [];
+      const customData = results[3].status === 'fulfilled' ? results[3].value : [];
+      const activitiesData = results[4].status === 'fulfilled' ? results[4].value : [];
+      const tasksData = results[5].status === 'fulfilled' ? results[5].value : [];
+      const notesData = results[6].status === 'fulfilled' ? results[6].value : [];
+
+      // Log warnings for failed requests without crashing the whole page
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.warn(`Error cargando recurso ${i}:`, r.reason);
+        }
+      });
 
       setOpportunity(oppData);
       setProducts(productsData);
@@ -577,7 +592,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                       {stage.name}
                       {stage.probability && (
                         <span className={`text-[10px] ${stage.id === opportunity.stage_id ? 'text-blue-200' : 'text-gray-400'}`}>
-                          {(stage.probability).toFixed(0)}%
+                          {(Math.round(Number(stage.probability) * 100))}%
                         </span>
                       )}
                     </button>
@@ -1269,7 +1284,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                 </div>
                 <span className="font-bold text-sm text-gray-900 dark:text-white">
                   {opportunity.stage?.probability
-                    ? `${(opportunity.stage.probability).toFixed(0)}%`
+                    ? `${Math.round(Number(opportunity.stage.probability) * 100)}%`
                     : '-'}
                 </span>
               </div>

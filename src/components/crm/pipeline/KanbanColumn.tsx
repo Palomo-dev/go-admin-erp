@@ -98,12 +98,12 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
           {stage.probability !== null && (
             <div className="mt-1 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <div className="w-full bg-gray-200 dark:bg-gray-600 h-1 rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full ${getStageColorClass()}`}
-                  style={{ width: `${stage.probability}%` }}
+                  style={{ width: `${Math.round(Number(stage.probability) * 100)}%` }}
                 />
               </div>
-              <span className="shrink-0">{stage.probability}%</span>
+              <span className="shrink-0">{Math.round(Number(stage.probability) * 100)}%</span>
             </div>
           )}
         </div>

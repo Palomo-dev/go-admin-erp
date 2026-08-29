@@ -78,7 +78,7 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
                     {formatCurrency(data.totalAmount)}
                   </span>
                   <span className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 ml-1 sm:ml-2">
-                    × {((data.stage.probability || 0)).toFixed(0)}%
+                    × {Math.round(Number(data.stage.probability || 0) * 100)}%
                   </span>
                 </div>
               </div>

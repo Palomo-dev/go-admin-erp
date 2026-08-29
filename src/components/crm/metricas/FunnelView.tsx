@@ -294,7 +294,7 @@ export function FunnelView({ pipelineId }: FunnelViewProps) {
                       </span>
                     </div>
                     <div className="text-[10px] text-gray-400 mt-0.5">
-                      {stage.probability}% prob.
+                      {Math.round(Number(stage.probability) * 100)}% prob.
                     </div>
                   </div>
 

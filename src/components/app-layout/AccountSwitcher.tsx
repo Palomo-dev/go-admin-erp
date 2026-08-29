@@ -200,7 +200,7 @@ export const AccountSwitcher = ({ userData, collapsed = false }: AccountSwitcher
       return;
     }
     limpiarEstadoDeSesionAnterior();
-    window.location.href = '/app';
+    window.location.href = '/app/inicio';
   };
 
   const handleRemoveAccount = (e: React.MouseEvent, userId: string) => {

@@ -460,7 +460,7 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
                     ></span>
                     <span>{stage.name}</span>
                     <Badge variant="secondary" className="ml-2">
-                      {stage.probability}%
+                      {Math.round(Number(stage.probability) * 100)}%
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1">

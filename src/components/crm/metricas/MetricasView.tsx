@@ -255,7 +255,7 @@ export function MetricasView() {
                           </span>
                         </div>
                         <div className="text-[10px] text-gray-400 mt-0.5">
-                          {stage.probability}% prob.
+                          {Math.round(Number(stage.probability) * 100)}% prob.
                         </div>
                       </div>
                       <div className="flex-1 relative">

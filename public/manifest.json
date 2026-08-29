@@ -4,6 +4,7 @@
   "description": "Sistema de administración ERP - POS, inventario, finanzas, CRM y más",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
   "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#0f172a",

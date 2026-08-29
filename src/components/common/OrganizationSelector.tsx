@@ -7,6 +7,7 @@ import { Organization, organizationService } from '@/lib/services/organizationSe
 import { supabase } from '@/lib/supabase/config';
 import { guardarOrganizacionActiva, obtenerOrganizacionActiva, cambiarOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { getOrganizationLogoUrl } from '@/lib/supabase/imageUtils';
+import { getOrgColor } from '@/lib/utils/organizationColors';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import CreateOrganizationDialog from '../organization/CreateOrganizationDialog';
@@ -211,7 +212,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
               }`}
             >
               {org.logo_url && getOrganizationLogoUrl(org.logo_url) ? (
-                <div className="w-6 h-6 relative rounded-full overflow-hidden border-2 border-blue-200 dark:border-blue-700 shadow-sm flex-shrink-0">
+                <div className={`w-6 h-6 relative rounded-full overflow-hidden border-2 ${getOrgColor(org.id).border} shadow-sm flex-shrink-0`}>
                   <Image
                     src={getOrganizationLogoUrl(org.logo_url)}
                     alt={org.name || 'Logo organización'}
@@ -220,7 +221,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
                   />
                 </div>
               ) : (
-                <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 text-white text-sm font-medium shadow-sm border-2 border-blue-200 dark:border-blue-700 flex-shrink-0">
+                <div className={`w-6 h-6 flex items-center justify-center rounded-full ${getOrgColor(org.id).bg} text-white text-sm font-medium shadow-sm border-2 ${getOrgColor(org.id).border} flex-shrink-0`}>
                   {org.name && org.name.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -310,8 +311,8 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
         className="w-full flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 shadow-sm hover:shadow"
       >
         {selectedOrg?.logo_url && getOrganizationLogoUrl(selectedOrg.logo_url) ? (
-          <div className="w-6 h-6 relative rounded-full overflow-hidden border-2 border-blue-200 dark:border-blue-700 shadow-sm">
-            <Image 
+          <div className={`w-6 h-6 relative rounded-full overflow-hidden border-2 ${getOrgColor(selectedOrg.id).border} shadow-sm`}>
+            <Image
               src={getOrganizationLogoUrl(selectedOrg.logo_url)}
               alt={selectedOrg.name || 'Logo organización'}
               fill
@@ -319,7 +320,7 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
             />
           </div>
         ) : (
-          <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 text-white text-sm font-medium shadow-sm border-2 border-blue-200 dark:border-blue-700">
+          <div className={`w-6 h-6 flex items-center justify-center rounded-full ${getOrgColor(selectedOrg?.id).bg} text-white text-sm font-medium shadow-sm border-2 ${getOrgColor(selectedOrg?.id).border}`}>
             {selectedOrg?.name && selectedOrg.name.charAt(0).toUpperCase()}
           </div>
         )}

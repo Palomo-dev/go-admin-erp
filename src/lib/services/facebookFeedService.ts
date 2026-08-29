@@ -21,6 +21,86 @@ interface VariantInfo {
   pattern?: string;
 }
 
+interface CategoryRef {
+  id: number;
+  name: string;
+}
+
+interface ProductRecord {
+  id: number;
+  uuid: string;
+  organization_id: number;
+  sku: string;
+  name: string;
+  description: string | null;
+  category_id: number | null;
+  unit_code: string | null;
+  barcode: string | null;
+  status: string;
+  track_stock: boolean | null;
+  parent_product_id: number | null;
+  is_parent: boolean | null;
+  product_type: string;
+  brand: string | null;
+  reference: string | null;
+  variant_data: unknown;
+  station: string | null;
+  tax_id: number | null;
+  is_composite: boolean | null;
+  production_type: string | null;
+  created_at: string;
+  updated_at: string;
+  categories: CategoryRef | null;
+}
+
+interface ProductPrice {
+  id: number;
+  product_id: number;
+  price: string | number;
+  compare_price: string | number | null;
+  effective_from: string;
+  effective_to: string | null;
+}
+
+interface ProductImage {
+  id: number;
+  product_id: number;
+  storage_path: string;
+  is_primary: boolean | null;
+}
+
+interface StockLevel {
+  product_id: number;
+  branch_id: number;
+  qty_on_hand: number | null;
+  qty_reserved: number | null;
+}
+
+interface ProductTag {
+  id: number;
+  name: string;
+}
+
+interface ProductTagRelation {
+  product_id: number;
+  tag_id: number;
+}
+
+interface ProductData extends ProductRecord {
+  price: number;
+  compare_price: number;
+  stock: number;
+  product_prices: ProductPrice[];
+  product_images: ProductImage[];
+  category: CategoryRef | null;
+}
+
+interface VariantAttr {
+  type?: string;
+  name?: string;
+  value?: string;
+}
+
 interface OrgCurrency {
   code: string;
   name: string;
@@ -127,7 +207,7 @@ export async function generateFacebookFeedCSV(
 
   // 4. Consultar todos los productos padres activos
   const PAGE_SIZE = 200;
-  let mainProducts: any[] = [];
+  let mainProducts: ProductRecord[] = [];
   for (let page = 0; ; page++) {
     const desde = page * PAGE_SIZE;
     const hasta = desde + PAGE_SIZE - 1;
@@ -155,10 +235,10 @@ export async function generateFacebookFeedCSV(
 
   if (mainProducts.length === 0) return { csv: '', count: 0 };
 
-  const productIds = mainProducts.map((p: any) => p.id);
+  const productIds = mainProducts.map((p) => p.id);
 
   // 5. Consultar hijos (variantes)
-  let childrenData: any[] = [];
+  let childrenData: ProductRecord[] = [];
   for (let i = 0; i < productIds.length; i += PAGE_SIZE) {
     const batch = productIds.slice(i, i + PAGE_SIZE);
     const { data, error } = await supabase
@@ -177,18 +257,18 @@ export async function generateFacebookFeedCSV(
   }
 
   // 6. Mapear hijos por parent_product_id
-  const childrenMap = new Map<number, any[]>();
-  childrenData.forEach((child: any) => {
+  const childrenMap = new Map<number, ProductRecord[]>();
+  childrenData.forEach((child) => {
     const parentId = child.parent_product_id;
     if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
     childrenMap.get(parentId)!.push(child);
   });
 
   // 7. Recopilar todos los ids para consultar relaciones
-  const allIds = [...productIds, ...childrenData.map((c: any) => c.id)];
+  const allIds = [...productIds, ...childrenData.map((c) => c.id)];
 
   const batchedFetch = async (table: string, select: string, column: string) => {
-    const allData: any[] = [];
+    const allData: Record<string, unknown>[] = [];
     for (let i = 0; i < allIds.length; i += PAGE_SIZE) {
       const batch = allIds.slice(i, i + PAGE_SIZE);
       const { data, error } = await supabase.from(table).select(select).in(column, batch);
@@ -213,28 +293,28 @@ export async function generateFacebookFeedCSV(
   ]);
 
   // 8. Mapear relaciones
-  const pricesMap = new Map<number, any[]>();
-  pricesData.forEach((p: any) => {
+  const pricesMap = new Map<number, ProductPrice[]>();
+  pricesData.forEach((p) => {
     if (!pricesMap.has(p.product_id)) pricesMap.set(p.product_id, []);
     pricesMap.get(p.product_id)!.push(p);
   });
 
-  const imagesMap = new Map<number, any[]>();
-  imagesData.forEach((img: any) => {
+  const imagesMap = new Map<number, ProductImage[]>();
+  imagesData.forEach((img) => {
     if (!imagesMap.has(img.product_id)) imagesMap.set(img.product_id, []);
     imagesMap.get(img.product_id)!.push(img);
   });
 
   const stockMap = new Map<number, number>();
-  stockData.forEach((s: any) => {
+  stockData.forEach((s) => {
     const available = (s.qty_on_hand || 0) - (s.qty_reserved || 0);
     stockMap.set(s.product_id, (stockMap.get(s.product_id) || 0) + available);
   });
 
   const tagsMap = new Map<number, string[]>();
   if (tagsRelationsData && tagsRelationsData.length > 0) {
-    tagsRelationsData.forEach((rel: any) => {
-      const tag = tagsData.find((t: any) => t.id === rel.tag_id);
+    tagsRelationsData.forEach((rel) => {
+      const tag = tagsData.find((t) => t.id === rel.tag_id);
       if (tag) {
         const existing = tagsMap.get(rel.product_id) || [];
         existing.push(tag.name);
@@ -246,12 +326,12 @@ export async function generateFacebookFeedCSV(
   // 9. Construir filas CSV
   const rows: FacebookRow[] = [];
 
-  const buildProductData = (raw: any) => {
+  const buildProductData = (raw: ProductRecord): ProductData => {
     const pid = raw.id;
     const prices = pricesMap.get(pid) || [];
     const validPrices = prices
-      .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
-      .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
+      .filter((pp) => !pp.effective_to || new Date(pp.effective_to) > new Date())
+      .sort((a, b) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime());
     const currentPrice = validPrices.length > 0 ? Number(validPrices[0].price) : 0;
     const comparePrice = validPrices.length > 0 && validPrices[0].compare_price ? Number(validPrices[0].compare_price) : 0;
 
@@ -295,13 +375,13 @@ export async function generateFacebookFeedCSV(
 // ─── Helpers (duplicados de facebookCatalogExport para uso server-side) ───
 
 function buildFacebookRow(
-  product: any,
+  product: ProductData,
   parentSku: string,
   currency: string,
   webDomain?: string,
   organizationName?: string,
   tags?: string[],
-  parentData?: any,
+  parentData?: ProductData,
   formatter?: PriceFormatter
 ): FacebookRow {
   const pid = Number(product.id);
@@ -328,8 +408,8 @@ function buildFacebookRow(
   let saleDateRange = '';
   if (comparePrice > 0 && pricesSource && pricesSource.length > 0) {
     const validPrice = pricesSource
-      .filter((pp: any) => !pp.effective_to || new Date(pp.effective_to) > new Date())
-      .sort((a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime())[0];
+      .filter((pp) => !pp.effective_to || new Date(pp.effective_to) > new Date())
+      .sort((a, b) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime())[0];
     if (validPrice) {
       const from = new Date(validPrice.effective_from).toISOString();
       const to = validPrice.effective_to

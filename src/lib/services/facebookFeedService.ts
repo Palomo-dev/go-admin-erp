@@ -5,6 +5,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import { FACEBOOK_CATALOG_HEADERS } from '@/components/inventario/productos/facebookCatalogExport';
 
 interface FacebookRow {
@@ -20,6 +21,21 @@ interface VariantInfo {
   pattern?: string;
 }
 
+interface OrgCurrency {
+  code: string;
+  name: string;
+  decimals: number;
+  is_base: boolean;
+}
+
+interface LatestRates {
+  rateBase: number;
+  rateTarget: number;
+  rateDate: string;
+}
+
+type PriceFormatter = (amount: number, currency: string) => string;
+
 function getServerSupabase(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -30,10 +46,16 @@ function getServerSupabase(): SupabaseClient {
 /**
  * Genera el CSV del catálogo de Facebook para una organización.
  * Retorna el contenido CSV listo para servir como feed.
+ *
+ * Si `targetCurrency` es undefined, null o igual a la moneda base de la organización,
+ * se ejecuta exactamente el mismo flujo que antes (sin conversión).
+ * Si `targetCurrency` está presente y difiere de la moneda base, se convierten los
+ * precios usando la tasa más reciente de `currency_rates`.
  */
 export async function generateFacebookFeedCSV(
-  organizationId: number
-): Promise<{ csv: string; count: number }> {
+  organizationId: number,
+  targetCurrency?: string | null
+): Promise<{ csv: string; count: number; rateDate?: string }> {
   const supabase = getServerSupabase();
 
   // 1. Obtener moneda base
@@ -44,6 +66,44 @@ export async function generateFacebookFeedCSV(
     .eq('is_base', true)
     .maybeSingle();
   const currency = currencyData?.currency_code || 'COP';
+
+  // Determinar si se requiere conversión de moneda
+  const needsConversion = !!targetCurrency && targetCurrency.toUpperCase() !== currency.toUpperCase();
+
+  // Variables para la rama multi-moneda
+  let conversionFactor = 1;
+  let targetDecimals = 2;
+  let activeCurrency = currency;
+  let activeFormatter: PriceFormatter | undefined;
+  let rateDate: string | undefined;
+
+  if (needsConversion && targetCurrency) {
+    const targetCode = targetCurrency.toUpperCase();
+
+    // 1a. Validar que la moneda destino exista en el catálogo maestro (currencies).
+    // No se valida contra organization_currencies — cualquier moneda del catálogo
+    // maestro puede usarse para generar un feed convertido.
+    const targetConfig = await getCurrencyMaster(supabase, targetCode);
+    if (!targetConfig) {
+      throw new InvalidCurrencyError(targetCode);
+    }
+
+    // 1b. Leer decimales de la moneda destino
+    targetDecimals = targetConfig.decimals;
+
+    // 1c. Obtener tasas más recientes para base y destino
+    const rates = await getLatestRates(supabase, currency, targetCode);
+    if (!rates) {
+      throw new RateUnavailableError(targetCode);
+    }
+
+    // 1d. Calcular factor de conversión: precio_destino = precio_base * (rate_destino / rate_base)
+    conversionFactor = rates.rateTarget / rates.rateBase;
+    rateDate = rates.rateDate;
+    activeCurrency = targetCode;
+    activeFormatter = (amount: number, cur: string) =>
+      formatPriceWithDecimals(amount, cur, targetDecimals);
+  }
 
   // 2. Obtener dominio web
   const { data: domainData } = await supabase
@@ -208,20 +268,28 @@ export async function generateFacebookFeedCSV(
 
   for (const raw of mainProducts) {
     const product = buildProductData(raw);
+    if (needsConversion) {
+      product.price = product.price * conversionFactor;
+      product.compare_price = product.compare_price * conversionFactor;
+    }
     const pid = Number(product.id);
-    rows.push(buildFacebookRow(product, '', currency, webDomain, organizationName, tagsMap.get(pid) || [], undefined));
+    rows.push(buildFacebookRow(product, '', activeCurrency, webDomain, organizationName, tagsMap.get(pid) || [], undefined, activeFormatter));
 
     const children = childrenMap.get(raw.id) || [];
     for (const childRaw of children) {
       const child = buildProductData(childRaw);
+      if (needsConversion) {
+        child.price = child.price * conversionFactor;
+        child.compare_price = child.compare_price * conversionFactor;
+      }
       const childId = Number(child.id);
-      rows.push(buildFacebookRow(child, product.sku || '', currency, webDomain, organizationName, tagsMap.get(childId) || tagsMap.get(pid) || [], product));
+      rows.push(buildFacebookRow(child, product.sku || '', activeCurrency, webDomain, organizationName, tagsMap.get(childId) || tagsMap.get(pid) || [], product, activeFormatter));
     }
   }
 
   // 10. Generar CSV
   const csvContent = buildCSV(rows);
-  return { csv: csvContent, count: rows.length };
+  return { csv: csvContent, count: rows.length, rateDate };
 }
 
 // ─── Helpers (duplicados de facebookCatalogExport para uso server-side) ───
@@ -233,7 +301,8 @@ function buildFacebookRow(
   webDomain?: string,
   organizationName?: string,
   tags?: string[],
-  parentData?: any
+  parentData?: any,
+  formatter?: PriceFormatter
 ): FacebookRow {
   const pid = Number(product.id);
   const sku = product.sku || String(pid);
@@ -247,10 +316,11 @@ function buildFacebookRow(
   const availability = stock > 0 ? 'in stock' : 'out of stock';
 
   const price = product.price ?? parentData?.price ?? 0;
-  const priceStr = price > 0 ? formatPrice(price, currency) : '';
+  const fmt = formatter || formatPrice;
+  const priceStr = price > 0 ? fmt(price, currency) : '';
 
   const comparePrice = product.compare_price ?? parentData?.compare_price ?? 0;
-  const salePriceStr = comparePrice > 0 ? formatPrice(comparePrice, currency) : '';
+  const salePriceStr = comparePrice > 0 ? fmt(comparePrice, currency) : '';
 
   const pricesSource = (product.product_prices && product.product_prices.length > 0)
     ? product.product_prices
@@ -342,6 +412,24 @@ function formatPrice(amount: number, currency: string): string {
   return `${formatted} ${currency}`;
 }
 
+/**
+ * Formatea un precio usando el número de decimales configurado para la moneda.
+ * Usa Intl.NumberFormat con agrupación de miles.
+ * No modifica `formatPrice` (que se mantiene para el feed sin conversión).
+ */
+export function formatPriceWithDecimals(
+  amount: number,
+  currency: string,
+  decimals: number
+): string {
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    useGrouping: true,
+  }).format(amount);
+  return `${formatted} ${currency}`;
+}
+
 function extractVariantData(variantData: any): VariantInfo {
   const info: VariantInfo = {};
   if (!variantData) return info;
@@ -400,6 +488,120 @@ function buildCSV(rows: FacebookRow[]): string {
     FACEBOOK_CATALOG_HEADERS.map((h) => escapeCSV(row[h] || '')).join(',')
   );
   return [headerLine, ...dataLines].join('\n');
+}
+
+// ─── Helpers de moneda (multi-moneda) ───
+
+/**
+ * Obtiene una moneda del catálogo maestro (`currencies`) por su código.
+ * Retorna null si no existe o no está activa.
+ */
+export async function getCurrencyMaster(
+  supabase: SupabaseClient,
+  code: string
+): Promise<{ code: string; name: string; decimals: number } | null> {
+  const { data, error } = await supabase
+    .from('currencies')
+    .select('code, name, decimals')
+    .eq('code', code)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Obtiene las monedas configuradas para una organización, incluyendo
+ * el número de decimales de cada una (join con `currencies`).
+ */
+export async function getOrgCurrencies(
+  supabase: SupabaseClient,
+  organizationId: number
+): Promise<OrgCurrency[]> {
+  // Query 1: monedas configuradas para la organización
+  const { data: orgRows, error: orgError } = await supabase
+    .from('organization_currencies')
+    .select('currency_code, is_base')
+    .eq('organization_id', organizationId);
+
+  if (orgError) throw orgError;
+  if (!orgRows || orgRows.length === 0) return [];
+
+  // Query 2: datos maestros de las monedas (decimales, nombre)
+  const codes = orgRows.map((r) => r.currency_code);
+  const { data: curRows, error: curError } = await supabase
+    .from('currencies')
+    .select('code, name, decimals')
+    .in('code', codes);
+
+  if (curError) throw curError;
+
+  // Construir mapa de moneda → datos maestros
+  const curMap = new Map<string, { name: string; decimals: number }>();
+  for (const c of curRows || []) {
+    curMap.set(c.code, { name: c.name, decimals: c.decimals });
+  }
+
+  return orgRows.map((row): OrgCurrency => {
+    const cur = curMap.get(row.currency_code);
+    return {
+      code: row.currency_code,
+      name: cur?.name || row.currency_code,
+      decimals: typeof cur?.decimals === 'number' ? cur.decimals : 2,
+      is_base: !!row.is_base,
+    };
+  });
+}
+
+/**
+ * Obtiene las tasas más recientes (misma fecha) para la moneda base y la moneda destino.
+ * Ambas tasas están expresadas como unidades de la moneda por 1 USD.
+ * Devuelve null si no se encuentran ambas tasas en la misma fecha.
+ */
+export async function getLatestRates(
+  supabase: SupabaseClient,
+  baseCode: string,
+  targetCode: string
+): Promise<LatestRates | null> {
+  const base = baseCode.toUpperCase();
+  const target = targetCode.toUpperCase();
+
+  // Obtener las tasas más recientes para ambas monedas (base_currency_code = 'USD').
+  // Se traen los últimos registros ordenados por fecha descendente y se
+  // busca la fecha más reciente en la que existan AMBAS tasas.
+  const { data: rates, error: ratesError } = await supabase
+    .from('currency_rates')
+    .select('code, rate_date, rate')
+    .in('code', [base, target])
+    .eq('base_currency_code', 'USD')
+    .order('rate_date', { ascending: false })
+    .limit(60);
+
+  if (ratesError) throw ratesError;
+  if (!rates || rates.length === 0) return null;
+
+  // Agrupar por fecha y buscar la primera fecha (más reciente) con ambas tasas.
+  // El Map preserva el orden de inserción, y la query viene ordenada desc.
+  const byDate = new Map<string, { base?: number; target?: number }>();
+  for (const r of rates) {
+    const dateStr = String(r.rate_date);
+    if (!byDate.has(dateStr)) byDate.set(dateStr, {});
+    const entry = byDate.get(dateStr)!;
+    if (String(r.code).toUpperCase() === base) entry.base = Number(r.rate);
+    if (String(r.code).toUpperCase() === target) entry.target = Number(r.rate);
+  }
+
+  for (const [dateStr, entry] of byDate) {
+    if (entry.base !== undefined && entry.target !== undefined) {
+      return {
+        rateBase: entry.base,
+        rateTarget: entry.target,
+        rateDate: dateStr,
+      };
+    }
+  }
+
+  return null;
 }
 
 // ─── Gestión del token de feed ───
@@ -463,7 +665,17 @@ export async function validateFeedToken(organizationId: number, token: string): 
     .maybeSingle();
 
   const storedToken = prefs?.settings?.facebook_feed_token;
-  return storedToken === token;
+  if (!storedToken || typeof storedToken !== 'string') return false;
+
+  // Comparación en tiempo constante para mitigar timing attacks
+  try {
+    const a = Buffer.from(storedToken);
+    const b = Buffer.from(token);
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -506,8 +718,216 @@ export async function regenerateFeedToken(organizationId: number): Promise<strin
 }
 
 function generateToken(organizationId: number): string {
-  const random = Math.random().toString(36).substring(2, 15);
-  const timestamp = Date.now().toString(36);
   const orgHash = Buffer.from(`${organizationId}`).toString('base64url').substring(0, 8);
-  return `${orgHash}-${timestamp}-${random}`;
+  const uuid = randomUUID();
+  return `${orgHash}-${uuid}`;
 }
+
+// ─── Configuración multi-moneda del feed (Fase 2) ───
+
+export interface FeedCurrency {
+  code: string;
+  name: string;
+  decimals: number;
+  is_base: boolean;
+}
+
+export interface FeedConfig {
+  token: string;
+  currencies: FeedCurrency[];
+  rateDate: string | null;
+  defaultCurrency: string | null;
+}
+
+/**
+ * Obtiene SOLO las monedas activas, fecha de tasas y moneda por defecto del feed
+ * (sin el token). Es la parte "lenta" de getFeedConfig: 3 queries RLS.
+ *
+ * Se separa de getFeedConfig para que el dialog pueda pedir el token (rápido)
+ * y las monedas (lento) en paralelo, sin bloquear la URL principal.
+ *
+ * Usa el Supabase client del navegador (con cookies de sesión) para que RLS aplique.
+ */
+export async function getFeedCurrencies(
+  organizationId: number,
+  supabase: SupabaseClient
+): Promise<Omit<FeedConfig, 'token'>> {
+  // Las 4 queries son independientes entre sí → se ejecutan en paralelo para
+  // reducir el tiempo total de `get_currencies` (de ~4 RTT secuenciales a 1).
+  const [curRes, baseRes, rateRes, prefsRes] = await Promise.all([
+    // 1. Todas las monedas activas del catálogo maestro (tabla `currencies`).
+    //    No se filtra por organization_currencies — el usuario quiere ver las
+    //    10 monedas disponibles para poder generar feeds de cualquiera.
+    supabase
+      .from('currencies')
+      .select('code, name, decimals')
+      .eq('is_active', true)
+      .order('code', { ascending: true }),
+
+    // 2. Moneda base de la organización (para marcar is_base y que el dialog
+    //    la excluya del listado de monedas extra — la base es la URL principal).
+    supabase
+      .from('organization_currencies')
+      .select('currency_code')
+      .eq('organization_id', organizationId)
+      .eq('is_base', true)
+      .maybeSingle(),
+
+    // 3. Fecha más reciente de currency_rates.
+    supabase
+      .from('currency_rates')
+      .select('rate_date')
+      .order('rate_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+
+    // 4. Moneda por defecto guardada en organization_preferences.settings.
+    supabase
+      .from('organization_preferences')
+      .select('settings')
+      .eq('organization_id', organizationId)
+      .maybeSingle(),
+  ]);
+
+  if (curRes.error) throw curRes.error;
+  if (baseRes.error) throw baseRes.error;
+  if (rateRes.error) throw rateRes.error;
+  if (prefsRes.error) throw prefsRes.error;
+
+  const baseCode = (baseRes.data?.currency_code || 'COP').toUpperCase();
+
+  const currencies: FeedCurrency[] = (curRes.data || []).map((c) => ({
+    code: c.code,
+    name: c.name,
+    decimals: c.decimals,
+    is_base: c.code.toUpperCase() === baseCode,
+  }));
+
+  const rateDate = rateRes.data?.rate_date ?? null;
+
+  const defaultCurrency =
+    (prefsRes.data?.settings as Record<string, unknown> | null)?.facebook_feed_default_currency as
+      | string
+      | null ?? null;
+
+  return { currencies, rateDate, defaultCurrency };
+}
+
+/**
+ * Obtiene la configuración completa del feed de Facebook para una organización:
+ * token, monedas activas, fecha más reciente de tasas y moneda por defecto.
+ *
+ * Usa el Supabase client del navegador (con cookies de sesión) para que las
+ * policies de RLS apliquen automáticamente — solo miembros de la org pueden ver.
+ */
+export async function getFeedConfig(
+  organizationId: number,
+  supabase: SupabaseClient
+): Promise<FeedConfig> {
+  // Token (service role, rápido) y monedas (RLS, lento) en paralelo
+  const [token, currencies] = await Promise.all([
+    getOrCreateFeedToken(organizationId),
+    getFeedCurrencies(organizationId, supabase),
+  ]);
+  return { token, ...currencies };
+}
+
+/**
+ * Guarda la moneda por defecto del feed de Facebook para una organización.
+ *
+ * Valida que la moneda exista en organization_currencies para la org antes de
+ * guardarla en organization_preferences.settings.facebook_feed_default_currency.
+ *
+ * Usa el Supabase client del navegador (con cookies de sesión) para que RLS aplique.
+ */
+export async function setDefaultFeedCurrency(
+  organizationId: number,
+  currency: string,
+  supabase: SupabaseClient
+): Promise<{ success: true; default_currency: string }> {
+  // 1. Validar que la moneda exista para la org
+  const { data: orgCurrency, error: orgCurrencyError } = await supabase
+    .from('organization_currencies')
+    .select('currency_code')
+    .eq('organization_id', organizationId)
+    .eq('currency_code', currency)
+    .maybeSingle();
+
+  if (orgCurrencyError) throw orgCurrencyError;
+
+  if (!orgCurrency) {
+    throw new InvalidCurrencyError(currency);
+  }
+
+  // 2. Leer settings actuales para hacer merge (no sobrescribir otros campos)
+  const { data: existing, error: fetchError } = await supabase
+    .from('organization_preferences')
+    .select('organization_id, settings')
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+
+  if (fetchError) throw fetchError;
+
+  const currentSettings =
+    (existing?.settings as Record<string, unknown> | null) ?? {};
+  const newSettings = {
+    ...currentSettings,
+    facebook_feed_default_currency: currency,
+  };
+
+  // 3. Upsert en organization_preferences
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from('organization_preferences')
+      .update({
+        settings: newSettings,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('organization_id', organizationId);
+
+    if (updateError) throw updateError;
+  } else {
+    const { error: insertError } = await supabase
+      .from('organization_preferences')
+      .insert({
+        organization_id: organizationId,
+        settings: { facebook_feed_default_currency: currency },
+      });
+
+    if (insertError) throw insertError;
+  }
+
+  return { success: true, default_currency: currency };
+}
+
+/**
+ * Error específico para moneda no configurada en la organización.
+ * Permite al endpoint devolver un 400 con código INVALID_CURRENCY.
+ */
+export class InvalidCurrencyError extends Error {
+  code = 'INVALID_CURRENCY' as const;
+  currency: string;
+
+  constructor(currency: string) {
+    super(`La moneda ${currency} no está configurada para esta organización`);
+    this.name = 'InvalidCurrencyError';
+    this.currency = currency;
+  }
+}
+
+/**
+ * Error específico para tasas de cambio no disponibles.
+ * Permite al endpoint devolver un 503 con código RATE_UNAVAILABLE.
+ */
+export class RateUnavailableError extends Error {
+  code = 'RATE_UNAVAILABLE' as const;
+  currency: string;
+
+  constructor(currency: string) {
+    super(`No hay tasas de cambio disponibles para ${currency}`);
+    this.name = 'RateUnavailableError';
+    this.currency = currency;
+  }
+}
+
+// ─── Tipos auxiliares ───

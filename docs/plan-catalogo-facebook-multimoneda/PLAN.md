@@ -4,7 +4,8 @@
 > monedas, reutilizando la integración existente con OpenExchangeRates y las
 > monedas configuradas en el módulo `/app/app/finanzas/monedas`.
 >
-> **Estado:** análisis y diseño. No se ha escrito código todavía.
+> **Estado:** IMPLEMENTADO Y APROBADO (Ronda 2: QA 9.6/10, Tester 9.5/10).
+> Ver `PROGRESS.md` para el historial de rondas.
 > **Proyecto Supabase:** `jgmgphmzusbluqhuqihj`
 > **Stack:** Next.js App Router · Supabase/Postgres · TypeScript estricto · shadcn/ui
 

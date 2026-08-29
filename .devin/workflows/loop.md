@@ -233,3 +233,6 @@ qa-reviewer con base en el reporte del tester.
   2. [alto] No valida formato de NIT colombiano
 - Próxima acción: nueva ronda del builder atendiendo los 2 puntos
 -->
+
+## Urgente
+- [ ] siempre borrar los documentos test y los archivos sql despues de aplicarlos. es más evitar hacer archivos sql en el repositorio. 

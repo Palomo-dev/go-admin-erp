@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, memo } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -24,6 +24,7 @@ interface DynamicSidebarProps {
 
 const DynamicSidebar = memo(({ organizationId, collapsed = false, onSignOut }: DynamicSidebarProps) => {
   const pathname = usePathname();
+  const router = useRouter();
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const { 
     coreModules, 
@@ -205,7 +206,7 @@ const DynamicSidebar = memo(({ organizationId, collapsed = false, onSignOut }: D
       <div className="flex-shrink-0">
         <UserProfile 
           collapsed={collapsed}
-          onSubscriptionClick={() => window.location.href = '/app/plan'}
+          onSubscriptionClick={() => router.push('/app/plan')}
           onSignOut={onSignOut}
         />
       </div>

@@ -105,6 +105,7 @@ import { moduleManagementService } from '@/lib/services/moduleManagementService'
 import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
 import { getModuleCodeByHref } from '@/lib/config/modulePages';
 import { registerUserDevice } from '@/lib/auth/organizationAuth';
+import { getOrgColor } from '@/lib/utils/organizationColors';
 
 // Función helper para obtener URL del logo
 const getOrganizationLogoUrl = (logoPath: string) => {
@@ -484,20 +485,10 @@ export const AppLayout = ({
   
   // Estado para indicar recarga del perfil
   const [profileRefresh, setProfileRefresh] = useState(0);
-  
-  // Helper function para obtener el logo de la organización activa
-  const getActiveOrgLogo = () => {
-    try {
-      const orgData = localStorage.getItem('organizacionActiva');
-      if (orgData) {
-        const org = JSON.parse(orgData);
-        return org.logo_url ? getOrganizationLogoUrl(org.logo_url) : null;
-      }
-    } catch (error) {
-      console.error('Error parsing organization data:', error);
-    }
-    return null;
-  };
+
+  // Flag de error de carga del logo (se declara aquí, se usa más abajo
+  // después de que orgId esté disponible).
+  const [logoLoadError, setLogoLoadError] = useState(false);
   
   // Estados para control del sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -537,6 +528,33 @@ export const AppLayout = ({
   
   // Estado para almacenar el ID de la organización
   const [orgId, setOrgId] = useState<string | null>(null);
+
+  // Logo de la organización activa (memoizado para evitar releer localStorage
+  // en cada render y causar titileo/fallo de carga cuando el sidebar colapsa).
+  // Se recalcula solo cuando cambia orgId o profileRefresh (cambio de org).
+  const activeOrgLogo = useMemo(() => {
+    try {
+      const orgData = localStorage.getItem('organizacionActiva');
+      if (orgData) {
+        const org = JSON.parse(orgData);
+        return org.logo_url ? getOrganizationLogoUrl(org.logo_url) : null;
+      }
+    } catch (error) {
+      console.error('Error parsing organization data:', error);
+    }
+    return null;
+    // orgId y profileRefresh son dependencias intencionales: fuerzan a
+    // releer localStorage cuando cambia la organización activa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, profileRefresh]);
+
+  // Resetear el flag de error de carga cuando cambia el logo
+  useEffect(() => {
+    setLogoLoadError(false);
+  }, [activeOrgLogo]);
+
+  // Color determinístico de la organización activa (para el avatar sin logo)
+  const orgColor = useMemo(() => getOrgColor(orgId ? parseInt(orgId, 10) : null), [orgId]);
 
   // Estado para saber si el usuario actual es administrador de la organización
   // (controla, por ejemplo, la visibilidad de ModuleLimitNotification)
@@ -1273,41 +1291,43 @@ export const AppLayout = ({
           
           {/* Selector de Organización */}
           {orgId && (
-            <div className={`flex-shrink-0 mx-3 mt-3 mb-2 ${sidebarCollapsed && !isMobileViewport ? 'p-2 lg:relative lg:group' : 'p-3'} bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-md border border-blue-100 dark:border-blue-800 transition-all duration-200 hover:shadow-lg`}>
+            <div className={`flex-shrink-0 mx-3 mt-3 mb-2 ${sidebarCollapsed && !isMobileViewport ? 'p-2 lg:relative lg:group' : 'p-3'} ${orgColor.containerBg} rounded-lg shadow-md border ${orgColor.containerBorder} transition-all duration-200 hover:shadow-lg`}>
               {/* Organización para sidebar colapsado (solo escritorio: en móvil el ancho es fijo) */}
               {sidebarCollapsed && !isMobileViewport && (
                 <>
                   {/* Icono/Logo centrado cuando está colapsado */}
                   <div className="flex justify-center items-center">
-                    {getActiveOrgLogo() ? (
+                    {activeOrgLogo && !logoLoadError ? (
                       <div className="w-8 h-8 lg:w-7 lg:h-7 lg:mx-auto">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img 
-                          src={getActiveOrgLogo()!}
+                        <img
+                          src={activeOrgLogo}
                           alt="Logo"
-                          className="w-full h-full object-cover rounded-full border-2 border-blue-200 dark:border-blue-700 shadow-sm"
+                          onError={() => setLogoLoadError(true)}
+                          className={`w-full h-full object-cover rounded-full border-2 ${orgColor.border} shadow-sm`}
                         />
                       </div>
                     ) : (
-                      <div className="w-8 h-8 lg:w-7 lg:h-7 lg:mx-auto flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 text-white font-medium shadow-sm border-2 border-blue-200 dark:border-blue-700">
+                      <div className={`w-8 h-8 lg:w-7 lg:h-7 lg:mx-auto flex items-center justify-center rounded-full ${orgColor.bg} text-white font-medium shadow-sm border-2 ${orgColor.border}`}>
                         {orgName && orgName.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="ml-3 lg:hidden text-sm font-medium text-blue-900 dark:text-blue-100 truncate flex-1">{orgName}</span>
+                    <span className={`ml-3 lg:hidden text-sm font-medium ${orgColor.text} truncate flex-1`}>{orgName}</span>
                   </div>
-                  
+
                   {/* Tooltip para mostrar el nombre de la organización cuando está contraído */}
                   <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 pl-2 hidden lg:group-hover:block z-50 whitespace-nowrap">
                     <div className="bg-gray-800 text-white text-sm py-1 px-3 rounded shadow-lg flex items-center">
-                      {getActiveOrgLogo() ? (
+                      {activeOrgLogo && !logoLoadError ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
-                        <img 
-                          src={getActiveOrgLogo()!}
+                        <img
+                          src={activeOrgLogo}
                           alt="Logo"
+                          onError={() => setLogoLoadError(true)}
                           className="w-5 h-5 rounded-full mr-2 object-cover border border-gray-300 dark:border-gray-700 shadow-sm"
                         />
                       ) : (
-                        <div className="w-5 h-5 mr-2 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white text-xs font-medium shadow-sm border border-gray-300 dark:border-gray-700">
+                        <div className={`w-5 h-5 mr-2 flex items-center justify-center rounded-full ${orgColor.bg} text-white text-xs font-medium shadow-sm border border-gray-300 dark:border-gray-700`}>
                           {orgName && orgName.charAt(0).toUpperCase()}
                         </div>
                       )}

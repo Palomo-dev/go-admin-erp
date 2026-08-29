@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateFacebookFeedCSV, validateFeedToken } from '@/lib/services/facebookFeedService';
+import {
+  generateFacebookFeedCSV,
+  validateFeedToken,
+  InvalidCurrencyError,
+  RateUnavailableError,
+} from '@/lib/services/facebookFeedService';
 
 /**
  * GET /api/facebook-feed?org_id=123&token=abc
@@ -37,8 +42,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Leer parámetro opcional de moneda destino
+    const currency = searchParams.get('currency');
+    const hasCurrency = !!currency && currency.trim() !== '';
+    const targetCurrency = hasCurrency ? currency!.toUpperCase() : undefined;
+
     // Generar CSV
-    const { csv, count } = await generateFacebookFeedCSV(organizationId);
+    const result = await generateFacebookFeedCSV(organizationId, targetCurrency);
+    const { csv, count, rateDate } = result;
 
     if (count === 0) {
       return NextResponse.json(
@@ -50,20 +61,54 @@ export async function GET(request: NextRequest) {
     // Retornar CSV con headers compatibles con Facebook Commerce Manager
     // Facebook requiere: Content-Type text/csv, Content-Disposition inline (no attachment)
     // Sin BOM (\uFEFF) porque Facebook puede no reconocer el formato
+    const headers: Record<string, string> = {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'inline',
+      'Cache-Control': 'public, max-age=3600',
+      'X-Product-Count': String(count),
+      'Access-Control-Allow-Origin': '*',
+    };
+
+    // Headers adicionales para feed multi-moneda
+    if (hasCurrency && targetCurrency) {
+      headers['X-Feed-Currency'] = targetCurrency;
+      if (rateDate) {
+        headers['X-Rate-Date'] = rateDate;
+      }
+    }
+
     return new NextResponse(csv, {
       status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': 'inline',
-        'Cache-Control': 'public, max-age=3600',
-        'X-Product-Count': String(count),
-        'Access-Control-Allow-Origin': '*',
-      },
+      headers,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof InvalidCurrencyError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'INVALID_CURRENCY',
+            message: error.message,
+            details: { currency: error.currency },
+          },
+        },
+        { status: 400 }
+      );
+    }
+    if (error instanceof RateUnavailableError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'RATE_UNAVAILABLE',
+            message: error.message,
+            details: { currency: error.currency },
+          },
+        },
+        { status: 503 }
+      );
+    }
     console.error('Error in GET /api/facebook-feed:', error);
     return NextResponse.json(
-      { error: 'Error interno del servidor', details: error?.message },
+      { error: { code: 'INTERNAL', message: 'Error interno del servidor' } },
       { status: 500 }
     );
   }

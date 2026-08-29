@@ -54,8 +54,13 @@ const config: CapacitorConfig = {
       statusBarStyle: 'DARK',
     },
     Keyboard: {
-      resize: 'native',
+      // 'body' redimensiona el contenido web (CSS) en vez del WebView nativo.
+      // 'native' causa un espacio blanco arriba del teclado en apps con
+      // server.url remoto porque el WebView no se ajusta correctamente.
+      resize: 'body',
       resizeOnFullScreen: true,
+      style: 'DARK',
+      scroll: true,
     },
     CapacitorUpdater: {
       // Capgo OTA actualiza el bundle nativo (no la web, que se sirve remota).

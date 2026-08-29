@@ -108,50 +108,60 @@ class FinanzasDashboardService {
   
   async getKPIs(organizationId: number, filters: DashboardFilters): Promise<KPIData> {
     const { fechaInicio, fechaFin } = filters;
-    
+    // fechaFin viene como 'YYYY-MM-DD'. Usar lt con el día siguiente para
+    // incluir todo el día fechaFin (hasta 23:59:59), ya que los campos
+    // sale_date/issue_date son timestamptz y comparar con lte('2026-08-28')
+    // excluye todo lo posterior a las 00:00:00 UTC del 28.
+    const fechaFinNextDay = new Date(fechaFin + 'T00:00:00Z');
+    fechaFinNextDay.setUTCDate(fechaFinNextDay.getUTCDate() + 1);
+    const fechaFinExclusive = fechaFinNextDay.toISOString();
+
     // Ingresos (facturas de venta pagadas)
+    // Excluir facturas que ya tienen sale_id (se generaron desde una venta
+    // POS que ya se suma más abajo) para evitar doble conteo.
     const { data: ventasData } = await supabase
       .from('invoice_sales')
       .select('total')
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
-      .lte('issue_date', fechaFin)
-      .in('status', ['paid', 'partial']);
-    
+      .lt('issue_date', fechaFinExclusive)
+      .in('status', ['paid', 'partial'])
+      .is('sale_id', null);
+
     const ingresosFacturas = ventasData?.reduce((sum, v) => sum + (Number(v.total) || 0), 0) || 0;
-    
+
     // Ingresos POS (sales pagadas)
     const { data: salesData } = await supabase
       .from('sales')
       .select('total')
       .eq('organization_id', organizationId)
       .gte('sale_date', fechaInicio)
-      .lte('sale_date', fechaFin)
+      .lt('sale_date', fechaFinExclusive)
       .eq('payment_status', 'paid');
-    
+
     const ingresosPOS = salesData?.reduce((sum, s) => sum + (Number(s.total) || 0), 0) || 0;
-    
+
     // Ingresos pedidos online (web_orders pagadas, sin sale_id para no duplicar)
     const { data: webOrdersData } = await supabase
       .from('web_orders')
       .select('total')
       .eq('organization_id', organizationId)
       .gte('created_at', fechaInicio)
-      .lte('created_at', fechaFin + 'T23:59:59.999Z')
+      .lt('created_at', fechaFinExclusive)
       .eq('payment_status', 'paid')
       .is('sale_id', null);
-    
+
     const ingresosWeb = webOrdersData?.reduce((sum, w) => sum + (Number(w.total) || 0), 0) || 0;
-    
+
     const ingresos = ingresosFacturas + ingresosPOS + ingresosWeb;
-    
+
     // Egresos (facturas de compra pagadas)
     const { data: comprasData } = await supabase
       .from('invoice_purchase')
       .select('total')
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
-      .lte('issue_date', fechaFin)
+      .lt('issue_date', fechaFinExclusive)
       .in('status', ['paid', 'partial']);
     
     const egresos = comprasData?.reduce((sum, c) => sum + (Number(c.total) || 0), 0) || 0;

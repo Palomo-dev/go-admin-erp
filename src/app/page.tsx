@@ -1,7 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { signOut } from '@/lib/supabase/config';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/config';
 import { 
   HomeIcon, 
   UsersIcon, 
@@ -197,6 +199,25 @@ const modules: Module[] = [
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  // Redirect client-side a /app/inicio si el usuario tiene sesión.
+  // Se hace aquí (no en middleware) para que iOS pueda instalar la PWA
+  // desde '/' sin que un redirect 302 cambie la URL de instalación.
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && mounted) {
+          router.replace('/app/inicio');
+        }
+      } catch {
+        // Sin sesión → mostrar landing page
+      }
+    })();
+    return () => { mounted = false; };
+  }, [router]);
 
   const handleSignOut = async () => {
     try {

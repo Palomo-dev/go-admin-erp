@@ -453,6 +453,9 @@ export const inicioService = {
       // Visitas web del período actual y anterior
       visitasWebHoyRes,
       visitasWebAnteriorRes,
+      // Conteo exacto de visitas (sin límite de 1000 del cliente Supabase)
+      visitasWebCountRes,
+      visitasWebAnteriorCountRes,
       // Compras web del período actual (todos los estados) y anterior
       comprasWebTodasRes,
       comprasWebAnteriorRes,
@@ -722,6 +725,19 @@ export const inicioService = {
         .eq('organization_id', organizationId)
         .gte('created_at', inicioAnterior)
         .lt('created_at', finAnterior),
+      // Conteo exacto de visitas (head:true evita el límite de 1000 filas)
+      supabase
+        .from('website_visits')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .gte('created_at', inicioPeriodo)
+        .lt('created_at', finPeriodo),
+      supabase
+        .from('website_visits')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .gte('created_at', inicioAnterior)
+        .lt('created_at', finAnterior),
       // ─── Compras web (todos los estados) ───────────────────────────────────────
       // Período actual: traer status y payment_status para desglose
       supabase
@@ -762,8 +778,11 @@ export const inicioService = {
     const cuentasAnterior = (cuentasMesAnteriorRes.data || []).reduce((s, c) => s + Number(c.balance || 0), 0);
 
     // KPIs nuevos: visitas web y compras web por estado
-    const visitasWeb = (visitasWebHoyRes.data || []).length;
-    const visitasWebAnterior = (visitasWebAnteriorRes.data || []).length;
+    // Usar count exacto (head:true) para evitar el límite de 1000 filas del
+    // cliente Supabase. Las queries de datos (visitasWebHoyRes) siguen
+    // limitadas a 1000 pero solo se usan para las series horarias/diarias.
+    const visitasWeb = visitasWebCountRes.count ?? 0;
+    const visitasWebAnterior = visitasWebAnteriorCountRes.count ?? 0;
     const comprasWebTodas = comprasWebTodasRes.data || [];
     const comprasWeb = comprasWebTodas.length;
     const comprasWebPendientes = comprasWebTodas.filter(

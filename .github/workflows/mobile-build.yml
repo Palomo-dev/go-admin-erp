@@ -19,7 +19,7 @@ on:
           - both
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   CAPACITOR_APP_ID: io.goadmin.app
 
 jobs:
@@ -49,24 +49,27 @@ jobs:
         working-directory: mobile
         run: npx tsc --noEmit
 
-      - name: Capacitor sync
+      - name: Ensure Android assets directory exists
         working-directory: mobile
-        run: npx cap sync
+        run: mkdir -p android/app/src/main/assets/public
+
+      - name: Capacitor sync (Android only)
+        working-directory: mobile
+        run: npx cap sync android
 
       - name: Decide platforms
         id: decide
         run: |
-          PLATFORM="${{ github.event.inputs.platform || 'both' }}"
+          PLATFORM="${{ github.event.inputs.platform || 'android' }}"
           if [ "$PLATFORM" = "android" ] || [ "$PLATFORM" = "both" ]; then
             echo "android=true" >> $GITHUB_OUTPUT
           else
             echo "android=false" >> $GITHUB_OUTPUT
           fi
-          if [ "$PLATFORM" = "ios" ] || [ "$PLATFORM" = "both" ]; then
-            echo "ios=true" >> $GITHUB_OUTPUT
-          else
-            echo "ios=false" >> $GITHUB_OUTPUT
-          fi
+          # iOS deshabilitado: el proyecto Xcode no está commiteado (falta
+          # App.xcodeproj, Podfile, etc.). Reactivar cuando se haga cap add ios
+          # y se commitee el proyecto nativo completo.
+          echo "ios=false" >> $GITHUB_OUTPUT
 
   # ============================================================================
   # Job 2: Build Android (.aab)
@@ -88,7 +91,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -98,6 +101,10 @@ jobs:
       - name: Install mobile dependencies
         working-directory: mobile
         run: npm ci
+
+      - name: Ensure Android assets directory exists
+        working-directory: mobile
+        run: mkdir -p android/app/src/main/assets/public
 
       - name: Capacitor sync Android
         working-directory: mobile
@@ -116,6 +123,7 @@ jobs:
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          chmod +x ./gradlew
           if [ -f app/release.keystore ]; then
             ./gradlew bundleRelease \
               -Pandroid.injected.signing.store.file=app/release.keystore \
@@ -142,6 +150,7 @@ jobs:
     needs: validate
     if: needs.validate.outputs.should_build_ios == 'true'
     runs-on: macos-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -154,6 +163,10 @@ jobs:
       - name: Install mobile dependencies
         working-directory: mobile
         run: npm ci
+
+      - name: Ensure iOS App directory exists
+        working-directory: mobile
+        run: mkdir -p ios/App/App/public
 
       - name: Capacitor sync iOS
         working-directory: mobile

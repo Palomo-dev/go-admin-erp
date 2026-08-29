@@ -114,8 +114,33 @@ export async function GET(request: Request) {
       }));
 
     // ── 2. Pedidos pendientes próximos a expirar ──
-    // Traemos los pendientes y calculamos cuáles expiran en los próximos
-    // `withinMinutes` minutos según el tiempo efectivo por organización.
+    // Conteo exacto de pendientes (sin limit) para el resumen.
+    const { count: pendingOrdersCount, error: countError } = await supabase
+      .from('web_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .eq('status', 'pending')
+      .eq('payment_status', 'pending')
+      .is('stock_released_at', null);
+
+    if (countError) {
+      console.error('[Observability] Error count pedidos:', countError);
+      return NextResponse.json(
+        { error: countError.message },
+        { status: 500 }
+      );
+    }
+
+    // Para evaluar "próximos a expirar" solo necesitamos los pedidos creados
+    // dentro de la ventana máxima de expiración (1440 min = 24h para métodos
+    // manuales) más el margen withinMinutes. Traer los más antiguos (de hace
+    // meses) es inútil: ya expiraron y no son "próximos", además hace que el
+    // conteo quede truncado por el limit y nunca cambie.
+    const maxEffectiveMinutes = 1440; // métodos manuales
+    const sinceDate = new Date(
+      now - (maxEffectiveMinutes + withinMinutes) * 60 * 1000
+    ).toISOString();
+
     const { data: pendingOrders, error: ordersError } = await supabase
       .from('web_orders')
       .select(
@@ -127,8 +152,9 @@ export async function GET(request: Request) {
       .eq('status', 'pending')
       .eq('payment_status', 'pending')
       .is('stock_released_at', null)
+      .gte('created_at', sinceDate)
       .order('created_at', { ascending: true })
-      .limit(100);
+      .limit(500);
 
     if (ordersError) {
       console.error('[Observability] Error pedidos:', ordersError);
@@ -181,10 +207,10 @@ export async function GET(request: Request) {
           expiresAt: new Date(expiresAt).toISOString(),
           minutesUntilExpiry,
           effectiveExpirationMinutes: effectiveMinutes,
-          isNearExpiry: minutesUntilExpiry <= withinMinutes,
+          isNearExpiry: minutesUntilExpiry >= 0 && minutesUntilExpiry <= withinMinutes,
         };
       })
-      .filter((o: any) => o.minutesUntilExpiry <= withinMinutes)
+      .filter((o: any) => o.minutesUntilExpiry >= 0 && o.minutesUntilExpiry <= withinMinutes)
       .sort((a: any, b: any) => a.minutesUntilExpiry - b.minutesUntilExpiry);
 
     // ── Resumen ──
@@ -195,7 +221,7 @@ export async function GET(request: Request) {
         0
       ),
       orphanReservations: reservedStock.filter((r) => r.isOrphan).length,
-      pendingOrdersCount: (pendingOrders || []).length,
+      pendingOrdersCount: pendingOrdersCount ?? 0,
       ordersNearExpiryCount: ordersNearExpiry.length,
     };
 

@@ -6,8 +6,9 @@ import { supabase } from "@/lib/supabase/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, SlidersHorizontal, Plus, Loader2, LayoutGrid } from "lucide-react";
+import { PlusCircle, SlidersHorizontal, Plus, Loader2, LayoutGrid, Users } from "lucide-react";
 import CreateOpportunityDialog from "./modals/CreateOpportunityDialog";
+import BulkActionsDialog from "./modals/BulkActionsDialog";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { Switch } from "@/components/ui/switch";
 import { 
@@ -59,6 +60,7 @@ export default function PipelineHeader({
   const [newPipelineName, setNewPipelineName] = useState("");
   const [isCreatingPipeline, setIsCreatingPipeline] = useState(false);
   const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
+  const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
   
   // Cargar los pipelines de la organización cuando tengamos el ID
   useEffect(() => {
@@ -282,14 +284,24 @@ export default function PipelineHeader({
             </DropdownMenuContent>
           </DropdownMenu>
         
-        <Button 
+        <Button
           onClick={() => setCreateOpportunityOpen(true)}
-          size="sm" 
+          size="sm"
           className="w-full sm:w-auto min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm"
         >
           <PlusCircle className="h-5 w-5 mr-2" />
           <span className="hidden sm:inline">Nueva Oportunidad</span>
           <span className="sm:hidden">Nueva</span>
+        </Button>
+        <Button
+          onClick={() => setBulkActionsOpen(true)}
+          size="sm"
+          variant="outline"
+          className="w-full sm:w-auto min-h-[44px] border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium text-sm"
+        >
+          <Users className="h-4 w-4 mr-2" />
+          <span className="hidden sm:inline">Asignación Masiva</span>
+          <span className="sm:hidden">Asignar</span>
         </Button>
       </div>
 
@@ -297,6 +309,17 @@ export default function PipelineHeader({
         isOpen={createOpportunityOpen}
         onClose={() => setCreateOpportunityOpen(false)}
         pipelineId={currentPipelineId}
+        onSuccess={() => window.dispatchEvent(new Event('refresh-pipeline-data'))}
+      />
+
+      <BulkActionsDialog
+        isOpen={bulkActionsOpen}
+        onClose={() => setBulkActionsOpen(false)}
+        pipelineId={currentPipelineId}
+        onSuccess={() => {
+          onPipelineChange(currentPipelineId);
+          window.dispatchEvent(new Event('refresh-pipeline-data'));
+        }}
       />
       
       {/* Diálogo para crear nuevo pipeline */}

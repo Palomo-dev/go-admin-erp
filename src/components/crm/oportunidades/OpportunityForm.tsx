@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -167,38 +166,39 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
   }, [opportunity?.id]);
 
   const loadInitialData = async () => {
-    setIsLoading(true);
+    // No bloquear la UI: mostrar el formulario inmediatamente
+    setIsLoading(false);
+
+    // Cargar pipelines y customers primero (son los más urgentes para el form)
     try {
-      // Cargar datos en paralelo con manejo de errores individual
-      const [pipelinesResult, customersResult, productsResult, spacesResult] = await Promise.allSettled([
+      const [pipelinesResult, customersResult] = await Promise.allSettled([
         opportunitiesService.getPipelines(),
         opportunitiesService.getCustomers(),
-        opportunitiesService.getProducts(),
-        opportunitiesService.getSpaces(),
       ]);
 
-      // Procesar resultados
       const pipelinesData = pipelinesResult.status === 'fulfilled' ? pipelinesResult.value : [];
       const customersData = customersResult.status === 'fulfilled' ? customersResult.value : [];
-      const productsData = productsResult.status === 'fulfilled' ? productsResult.value : [];
-      const spacesData = spacesResult.status === 'fulfilled' ? spacesResult.value : [];
 
       setPipelines(pipelinesData);
       setCustomers(customersData);
-      setProducts(productsData);
-      setSpaces(spacesData);
 
       // Solo establecer pipeline por defecto si no hay uno inicial
       if (pipelinesData.length > 0 && !pipelineId && !initialPipelineId) {
         const defaultPipeline = pipelinesData.find((p) => p.is_default) || pipelinesData[0];
         setPipelineId(defaultPipeline.id);
       }
-    } catch (error) {
-      // Con Promise.allSettled este catch raramente se ejecuta
-      // pero lo mantenemos por seguridad
-    } finally {
-      setIsLoading(false);
+    } catch {
+      // silencioso
     }
+
+    // Cargar productos y espacios en segundo plano (no bloquean el form)
+    Promise.allSettled([
+      opportunitiesService.getProducts(),
+      opportunitiesService.getSpaces(),
+    ]).then(([productsResult, spacesResult]) => {
+      if (productsResult.status === 'fulfilled') setProducts(productsResult.value);
+      if (spacesResult.status === 'fulfilled') setSpaces(spacesResult.value);
+    });
   };
 
   const loadStages = async (pipelineId: string) => {
@@ -456,6 +456,8 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
       } else {
         router.push('/app/crm/oportunidades');
       }
+      // Notificar al pipeline para que recargue en tiempo real
+      window.dispatchEvent(new Event('refresh-pipeline-data'));
     } catch (error) {
       console.error('Error guardando oportunidad:', error);
       toast({
@@ -476,21 +478,13 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4 p-4">
-        <Skeleton className="h-8 w-1/2" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // El formulario se muestra inmediatamente; los selects se llenan
+  // cuando los datos llegan en segundo plano. No hay skeleton.
+  // (Solo se mantiene el skeleton para el caso de edición con opportunity.id
+  //  donde necesitamos cargar relaciones antes de mostrar valores correctos)
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="flex flex-col h-full space-y-4">
       {/* Header */}
       {!hideHeader && (
         <div className="flex items-center gap-4">
@@ -509,13 +503,13 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
         {/* Información principal */}
-        <Card className="lg:col-span-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Información General</CardTitle>
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-gray-900 dark:text-white text-base">Información General</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Nombre */}
               <div className="sm:col-span-2">
@@ -562,7 +556,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                             className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: stage.color }}
                           />
-                          {stage.name} ({(stage.probability).toFixed(0)}%)
+                          {stage.name} ({Math.round(Number(stage.probability) * 100)}%)
                         </div>
                       </SelectItem>
                     ))}
@@ -702,17 +696,17 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           </CardContent>
         </Card>
 
-        {/* Comisión - columna derecha */}
-        <div className="lg:col-span-1 space-y-6">
+        {/* Comisión y productos - columna derecha */}
+        <div className="space-y-4 flex flex-col">
         {/* Sección de Comisión */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-gray-900 dark:text-white text-base flex items-center gap-2">
               <User className="h-4 w-4 text-blue-500" />
               Comisión (opcional)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             <div>
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
                 Comisionista
@@ -770,7 +764,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           {/* Productos cotizados */}
           <Card className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-gray-900 dark:text-white text-base">Productos</CardTitle>
+              <CardTitle className="text-gray-900 dark:text-white text-sm">Productos</CardTitle>
               <ProductSearchDialog
                 mode="sale"
                 currency={currency}
@@ -841,7 +835,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           {/* Espacios (PMS) */}
           <Card className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-gray-900 dark:text-white text-base">Espacios (PMS)</CardTitle>
+              <CardTitle className="text-gray-900 dark:text-white text-sm">Espacios (PMS)</CardTitle>
               <Button
                 type="button"
                 variant="outline"
@@ -922,7 +916,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
           {/* Conceptos Personalizados */}
           <Card className="bg-white dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-gray-900 dark:text-white text-base">Otros Conceptos</CardTitle>
+              <CardTitle className="text-gray-900 dark:text-white text-sm">Otros Conceptos</CardTitle>
               <Button
                 type="button"
                 variant="outline"
@@ -1015,7 +1009,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
       </div>
 
       {/* Acciones */}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 pt-2 border-t border-gray-200 dark:border-gray-700 mt-2">
         <Button
           type="button"
           variant="outline"

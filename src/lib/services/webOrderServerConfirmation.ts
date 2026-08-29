@@ -115,6 +115,9 @@ export const webOrderServerConfirmation = {
     // 2. Crear cliente nuevo
     // Nota: full_name es GENERATED ALWAYS (first_name || ' ' || last_name),
     // no se puede insertar directamente.
+    // La tabla customers no tiene columnas country/state — el país se infiere
+    // vía fiscal_municipality_id, pero guardamos la info de envío en metadata.
+    const addr = (order.delivery_address || {}) as Record<string, unknown>;
     const { data: newCustomer, error: createError } = await supabase
       .from('customers')
       .insert({
@@ -125,7 +128,13 @@ export const webOrderServerConfirmation = {
         phone,
         is_registered: false,
         roles: ['cliente'],
-        metadata: { source: 'web_order', web_order_number: order.order_number },
+        metadata: {
+          source: 'web_order',
+          web_order_number: order.order_number,
+          country: (addr.country || null) as string | null,
+          state: (addr.state || addr.department || null) as string | null,
+          state_code: (addr.state_code || null) as string | null,
+        },
       })
       .select('id')
       .single();
@@ -142,6 +151,72 @@ export const webOrderServerConfirmation = {
       .eq('id', order.id);
 
     return newCustomer.id;
+  },
+
+  /**
+   * Crea una dirección en `customer_addresses` para el cliente resuelto, pero
+   * solo si el cliente aún no tiene ninguna dirección registrada.
+   *
+   * La tabla `customers` no guarda país/estado directamente (se infiere vía
+   * `fiscal_municipality_id`), así que la dirección de envío del pedido web se
+   * persiste aquí en `customer_addresses` que sí tiene `country_code`,
+   * `department`, `city` y `municipality_id`.
+   */
+  async ensureCustomerAddressFromOrder(
+    supabase: SupabaseClient,
+    order: WebOrder & { items?: WebOrder['items'] },
+    customerId: string
+  ): Promise<void> {
+    const addr = (order.delivery_address || {}) as Record<string, unknown>;
+    const addressLine = (addr.address || addr.street || '') as string;
+    const city = (addr.city || '') as string;
+
+    // Solo proceder si hay datos mínimos de dirección
+    if (!addressLine || !city) return;
+
+    try {
+      // Verificar si el cliente ya tiene direcciones
+      const { data: existingAddresses, error: checkError } = await supabase
+        .from('customer_addresses')
+        .select('id')
+        .eq('organization_id', order.organization_id)
+        .eq('customer_id', customerId)
+        .limit(1);
+
+      if (checkError) {
+        console.error('[webOrderServerConfirmation] Error verificando direcciones del cliente:', checkError);
+        return;
+      }
+
+      // Si ya tiene al menos una dirección, no crear otra
+      if (existingAddresses && existingAddresses.length > 0) return;
+
+      const { error: addrError } = await supabase
+        .from('customer_addresses')
+        .insert({
+          organization_id: order.organization_id,
+          customer_id: customerId,
+          label: 'Principal',
+          recipient_name: order.customer_name || '',
+          recipient_phone: order.customer_phone || '',
+          address_line1: addressLine,
+          city,
+          department: (addr.department || addr.state || '') as string,
+          country_code: (addr.country || null) as string | null,
+          postal_code: (addr.postal_code || null) as string | null,
+          latitude: (addr.lat || addr.latitude || null) as number | null,
+          longitude: (addr.lng || addr.longitude || null) as number | null,
+          delivery_instructions: (addr.instructions || '') as string,
+          is_default: true,
+          is_active: true,
+        });
+
+      if (addrError) {
+        console.error('[webOrderServerConfirmation] Error creando customer_address:', addrError);
+      }
+    } catch (addrErr) {
+      console.error('[webOrderServerConfirmation] Error en ensureCustomerAddressFromOrder:', addrErr);
+    }
   },
 
   /**
@@ -236,6 +311,18 @@ export const webOrderServerConfirmation = {
         }
       } catch (custError) {
         console.error('[webOrderServerConfirmation] Error en cliente automático:', custError);
+      }
+    }
+
+    // ── 0a. Persistir dirección de envío en customer_addresses ──
+    // Si se resolvió un cliente (venga del pedido o se creó/encontró ahora),
+    // y el pedido trae dirección de envío con country/state/city, crear el
+    // registro de dirección solo si el cliente no tiene ninguna aún.
+    if (customerId) {
+      try {
+        await this.ensureCustomerAddressFromOrder(supabase, order, customerId);
+      } catch (addrError) {
+        console.error('[webOrderServerConfirmation] Error persistiendo dirección del cliente:', addrError);
       }
     }
 
@@ -526,6 +613,15 @@ export const webOrderServerConfirmation = {
           const addr = (order.delivery_address || {}) as Record<string, unknown>;
           const trackingNumber = `TRK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
+          // La tabla shipments no tiene columna delivery_country, así que el
+          // país se persiste en metadata (jsonb) y se anexa a delivery_instructions.
+          const country = (addr.country || '') as string;
+          const stateCode = (addr.state_code || '') as string;
+          const baseInstructions = (addr.instructions || order.customer_notes || '') as string;
+          const deliveryInstructions = country
+            ? `${baseInstructions}${baseInstructions ? ' | ' : ''}País: ${country}${stateCode ? ` (${stateCode})` : ''}`
+            : baseInstructions;
+
           const { data: shipment, error: shipmentError } = await supabase
             .from('shipments')
             .insert({
@@ -544,7 +640,7 @@ export const webOrderServerConfirmation = {
               delivery_longitude: (addr.lng || addr.longitude || null) as number | null,
               delivery_contact_name: order.customer_name || null,
               delivery_contact_phone: order.customer_phone || null,
-              delivery_instructions: (addr.instructions || order.customer_notes || '') as string,
+              delivery_instructions: deliveryInstructions,
               status: 'pending',
               notes: `Pedido web: ${order.order_number}`,
               metadata: {
@@ -553,6 +649,9 @@ export const webOrderServerConfirmation = {
                 items_count: order.items?.length || 0,
                 delivery_type: order.delivery_type,
                 delivery_partner: order.delivery_partner || null,
+                delivery_country: country || null,
+                delivery_state: (addr.state || addr.department || '') as string,
+                delivery_state_code: stateCode || null,
               },
             })
             .select('id')

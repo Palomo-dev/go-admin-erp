@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
 import { Customer } from './types';
 
@@ -117,7 +116,7 @@ export function CustomerSearchSelect({
             </div>
           </div>
           
-          <ScrollArea className="h-[280px]">
+          <div className="max-h-[280px] overflow-y-auto">
             <div className="p-2">
               {/* Opción sin cliente */}
               <div
@@ -184,7 +183,7 @@ export function CustomerSearchSelect({
                 </div>
               ) : null}
             </div>
-          </ScrollArea>
+          </div>
         </PopoverContent>
       </Popover>
     </div>

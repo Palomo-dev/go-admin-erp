@@ -258,7 +258,7 @@ export default function OrganizationList({ showActions = false, onDelete, filter
       window.dispatchEvent(new Event('organization-changed'));
 
       // Navegación suave al dashboard (re-monta componentes con el nuevo org)
-      router.push('/app');
+      router.push('/app/inicio');
     } catch (err: any) {
       console.error('Error selecting organization:', err);
       setError(err.message);

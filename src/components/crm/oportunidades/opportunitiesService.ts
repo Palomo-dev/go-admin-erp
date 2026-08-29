@@ -90,9 +90,9 @@ class OpportunitiesService {
       .from('organization_members')
       .select(`
         user_id,
-        users:user_id (
-          id,
-          email
+        profiles:user_id (
+          first_name,
+          last_name
         )
       `)
       .eq('organization_id', this.getOrganizationId())
@@ -101,8 +101,8 @@ class OpportunitiesService {
     if (error) throw error;
     return (data || []).map((m: any) => ({
       id: m.user_id,
-      email: m.users?.email || '',
-      full_name: m.users?.email?.split('@')[0] || 'Usuario',
+      email: '',
+      full_name: `${m.profiles?.first_name || ''} ${m.profiles?.last_name || ''}`.trim() || 'Usuario',
     }));
   }
 
@@ -228,13 +228,13 @@ class OpportunitiesService {
     if (input.products && input.products.length > 0) {
       const productsToInsert = input.products.map((p) => ({
         opportunity_id: data.id,
-        product_id: p.product_id,
-        quantity: p.quantity,
-        unit_price: p.unit_price,
-        total_price: p.quantity * p.unit_price,
+        product_id: Number(p.product_id),
+        quantity: Number(p.quantity),
+        unit_price: Number(p.unit_price),
       }));
 
-      await supabase.from('opportunity_products').insert(productsToInsert);
+      const { error: prodError } = await supabase.from('opportunity_products').insert(productsToInsert);
+      if (prodError) console.warn('Error insertando productos:', prodError.message);
     }
 
     // Agregar espacios si existen
@@ -242,12 +242,12 @@ class OpportunitiesService {
       const spacesToInsert = input.spaces.map((s) => ({
         opportunity_id: data.id,
         space_id: s.space_id,
-        nights: s.nights,
-        unit_price: s.unit_price,
-        total_price: s.nights * s.unit_price,
+        nights: Number(s.nights),
+        unit_price: Number(s.unit_price),
       }));
 
-      await supabase.from('opportunity_spaces').insert(spacesToInsert);
+      const { error: spaceError } = await supabase.from('opportunity_spaces').insert(spacesToInsert);
+      if (spaceError) console.warn('Error insertando espacios:', spaceError.message);
     }
 
     // Agregar conceptos personalizados si existen
@@ -255,12 +255,12 @@ class OpportunitiesService {
       const customToInsert = input.customLines.map((c) => ({
         opportunity_id: data.id,
         concept: c.concept,
-        quantity: c.quantity,
-        unit_price: c.unit_price,
-        total_price: c.quantity * c.unit_price,
+        quantity: Number(c.quantity),
+        unit_price: Number(c.unit_price),
       }));
 
-      await supabase.from('opportunity_custom_lines').insert(customToInsert);
+      const { error: customError } = await supabase.from('opportunity_custom_lines').insert(customToInsert);
+      if (customError) console.warn('Error insertando conceptos:', customError.message);
     }
 
     return data;
@@ -827,9 +827,9 @@ class OpportunitiesService {
       .from('notes')
       .select(`
         *,
-        user:user_id (
-          id,
-          email
+        profiles:user_id (
+          first_name,
+          last_name
         )
       `)
       .eq('related_type', 'opportunity')

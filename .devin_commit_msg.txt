@@ -1,0 +1,8 @@
+fix(ci): Java 17 a 21 — Capacitor 8 requiere source release 21
+
+capacitor-android compila con source release 21 pero el workflow usaba
+Java 17, causando "invalid source release: 21" en compileReleaseJavaWithJavac.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

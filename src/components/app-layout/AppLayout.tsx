@@ -1142,6 +1142,40 @@ export const AppLayout = ({
     const storedOrgId = localStorage.getItem('currentOrganizationId');
     setOrgId(storedOrgId);
 
+    // Fallback PWA iOS: si no hay orgId en localStorage (storage separado en
+    // PWA standalone), intentar cargarlo desde la sesión de Supabase.
+    if (!storedOrgId) {
+      (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user?.id) return;
+          // Buscar la organización activa del usuario
+          const { data: member } = await supabase
+            .from('organization_members')
+            .select('organization_id, organizations(id, name, subdomain)')
+            .eq('user_id', session.user.id)
+            .eq('is_active', true)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          if (member?.organization_id && member?.organizations) {
+            const org = member.organizations as any;
+            const orgIdStr = org.id.toString();
+            // Persistir en localStorage para futuras cargas
+            localStorage.setItem('currentOrganizationId', orgIdStr);
+            if (org.name) localStorage.setItem('currentOrganizationName', org.name);
+            if (org.subdomain) localStorage.setItem('organization', org.subdomain);
+            setOrgId(orgIdStr);
+            if (org.name) setOrgName(org.name);
+            // Notificar a otros componentes
+            window.dispatchEvent(new CustomEvent('organization-changed'));
+          }
+        } catch (e) {
+          console.error('[AppLayout] Fallback orgId desde sesión falló:', e);
+        }
+      })();
+    }
+
     // Escuchar cambios de organización sin recargar la página
     const handleOrgChange = () => {
       const newOrgId = localStorage.getItem('currentOrganizationId');

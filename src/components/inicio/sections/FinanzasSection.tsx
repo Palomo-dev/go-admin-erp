@@ -34,10 +34,17 @@ import type {
 const CURRENCY_CODE = 'COP';
 
 function getDefaultFilters(): DashboardFilters {
+  // Usar fecha local (no UTC) para que fechaFin sea el día actual en la
+  // zona horaria del usuario, no el día siguiente/m anterior en UTC.
   const hoy = new Date();
   const hace30 = new Date();
   hace30.setDate(hace30.getDate() - 30);
-  const fmt = (d: Date) => d.toISOString().split('T')[0];
+  const fmt = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
   return {
     fechaInicio: fmt(hace30),
     fechaFin: fmt(hoy),

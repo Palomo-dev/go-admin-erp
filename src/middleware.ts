@@ -668,13 +668,10 @@ async function handleRouteProtection(request: NextRequest, isAuthenticated: bool
 
   // Redirigir usuarios autenticados fuera de rutas de auth (excepto logout e invite)
   if (isAuthenticated) {
-    // Redirigir '/' a /app/inicio para usuarios autenticados
-    if (pathname === '/') {
-      if (shouldDebug) {
-        console.log('🚀 [MIDDLEWARE] Redirigiendo usuario autenticado desde / a /app/inicio');
-      }
-      return NextResponse.redirect(new URL('/app/inicio', request.url));
-    }
+    // NOTA: NO redirigir '/' a /app/inicio en el middleware.
+    // El redirect se hace client-side en src/app/page.tsx con router.replace()
+    // para que iOS pueda instalar la PWA desde '/' sin que un redirect
+    // server-side (302) cambie la URL de instalación que iOS usa como raíz.
 
     // Permitir /auth/login?addAccount=1: es el flujo del selector de cuentas
     // para agregar una sesión adicional sin cerrar la actual.

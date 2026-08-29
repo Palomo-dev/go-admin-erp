@@ -50,7 +50,8 @@ interface ProductRecord {
   production_type: string | null;
   created_at: string;
   updated_at: string;
-  categories: CategoryRef | null;
+  // Supabase devuelve un array por el join embebido `categories(id, name)`.
+  categories: CategoryRef[] | null;
 }
 
 interface ProductPrice {
@@ -229,7 +230,7 @@ export async function generateFacebookFeedCSV(
 
     if (error) throw error;
     if (!data || data.length === 0) break;
-    mainProducts = mainProducts.concat(data);
+    mainProducts = mainProducts.concat(data as ProductRecord[]);
     if (data.length < PAGE_SIZE) break;
   }
 
@@ -253,13 +254,14 @@ export async function generateFacebookFeedCSV(
       .in('parent_product_id', batch)
       .neq('status', 'deleted');
     if (error) throw error;
-    if (data) childrenData = childrenData.concat(data);
+    if (data) childrenData = childrenData.concat(data as ProductRecord[]);
   }
 
   // 6. Mapear hijos por parent_product_id
   const childrenMap = new Map<number, ProductRecord[]>();
   childrenData.forEach((child) => {
     const parentId = child.parent_product_id;
+    if (parentId == null) return; // huérfano sin padre: ignorar
     if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
     childrenMap.get(parentId)!.push(child);
   });
@@ -267,29 +269,33 @@ export async function generateFacebookFeedCSV(
   // 7. Recopilar todos los ids para consultar relaciones
   const allIds = [...productIds, ...childrenData.map((c) => c.id)];
 
-  const batchedFetch = async (table: string, select: string, column: string) => {
-    const allData: Record<string, unknown>[] = [];
+  const batchedFetch = async <T>(
+    table: string,
+    select: string,
+    column: string
+  ): Promise<T[]> => {
+    const allData: T[] = [];
     for (let i = 0; i < allIds.length; i += PAGE_SIZE) {
       const batch = allIds.slice(i, i + PAGE_SIZE);
       const { data, error } = await supabase.from(table).select(select).in(column, batch);
       if (error) throw error;
-      if (data) allData.push(...data);
+      if (data) allData.push(...(data as unknown as T[]));
     }
     return allData;
   };
 
   const [pricesData, imagesData, stockData, tagsData, tagsRelationsData] = await Promise.all([
-    batchedFetch('product_prices', 'id, product_id, price, compare_price, effective_from, effective_to', 'product_id'),
-    batchedFetch('product_images', 'id, product_id, storage_path, is_primary', 'product_id'),
-    batchedFetch('stock_levels', 'product_id, branch_id, qty_on_hand, qty_reserved', 'product_id'),
-    (async () => {
+    batchedFetch<ProductPrice>('product_prices', 'id, product_id, price, compare_price, effective_from, effective_to', 'product_id'),
+    batchedFetch<ProductImage>('product_images', 'id, product_id, storage_path, is_primary', 'product_id'),
+    batchedFetch<StockLevel>('stock_levels', 'product_id, branch_id, qty_on_hand, qty_reserved', 'product_id'),
+    (async (): Promise<ProductTag[]> => {
       const { data } = await supabase
         .from('product_tags')
         .select('id, name')
         .eq('organization_id', organizationId);
-      return data || [];
+      return (data as ProductTag[]) || [];
     })(),
-    batchedFetch('product_tag_relations', 'product_id, tag_id', 'product_id'),
+    batchedFetch<ProductTagRelation>('product_tag_relations', 'product_id, tag_id', 'product_id'),
   ]);
 
   // 8. Mapear relaciones
@@ -342,7 +348,9 @@ export async function generateFacebookFeedCSV(
       stock: stockMap.get(pid) || 0,
       product_prices: prices,
       product_images: imagesMap.get(pid) || [],
-      category: raw.categories,
+      // Supabase devuelve `categories` como array por el join embebido;
+      // nos quedamos con el primer (único) elemento como categoría.
+      category: raw.categories && raw.categories.length > 0 ? raw.categories[0] : null,
     };
   };
 

@@ -49,22 +49,27 @@ export function PWARegister() {
     const handleClick = (e: MouseEvent) => {
       const link = (e.target as HTMLElement)?.closest('a');
       if (!link) return;
-      if (link.target !== '_blank') return;
 
       const href = link.href;
       if (!href) return;
 
       // Solo interceptar enlaces del mismo origen
+      let url: URL;
       try {
-        const url = new URL(href, window.location.origin);
+        url = new URL(href, window.location.origin);
         if (url.origin !== window.location.origin) return;
       } catch {
         return;
       }
 
-      // Prevenir apertura en Safari externo, navegar dentro del PWA
-      e.preventDefault();
-      window.location.href = href;
+      // Interceptar target="_blank" Y enlaces que causarían full-page reload
+      // en iOS standalone (que rompen el modo pantalla completa)
+      if (link.target === '_blank' || link.target === '_top') {
+        e.preventDefault();
+        e.stopPropagation();
+        // Usar router de Next.js si está disponible, sino location.assign
+        window.location.assign(href);
+      }
     };
 
     document.addEventListener('click', handleClick, true);

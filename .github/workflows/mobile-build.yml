@@ -123,6 +123,7 @@ jobs:
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          chmod +x ./gradlew
           if [ -f app/release.keystore ]; then
             ./gradlew bundleRelease \
               -Pandroid.injected.signing.store.file=app/release.keystore \

@@ -90,6 +90,61 @@ npm run mobile:run:android    # Deploy a dispositivo/emulador Android
 npm run mobile:run:ios        # Deploy a dispositivo/simulador iOS
 ```
 
+## Generar APK instalable (para testing manual)
+
+### APK debug (firmado con debug keystore — rápido para testing)
+
+```bash
+cd mobile
+npm run build:android:debug
+# APK generado en: android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### APK release (firmado con debug keystore si no hay release keystore)
+
+```bash
+cd mobile
+npm run build:android:apk
+# APK generado en: android/app/build/outputs/apk/release/app-release.apk
+```
+
+> **Nota:** Sin keystore de release configurado, el APK de release se firma con
+> el debug keystore. Esto permite instalarlo en dispositivos para testing, pero
+> **NO es válido para Google Play Store**. Para Play Store, configura un keystore
+> de release (ver `mobile/store/signing/android-keystore.md`).
+
+### APK release firmado (para distribución)
+
+```bash
+cd mobile
+# Requiere keystore en android/app/release.keystore
+export ANDROID_STORE_PASSWORD="tu_password"
+export ANDROID_KEY_PASSWORD="tu_password"
+npm run build:android:apk:signed
+```
+
+### Cómo transferir el APK al celular SIN corromperlo
+
+> **NUNCA envíes el APK por WhatsApp o Telegram.** Estas apps comprimen y
+> modifican el binario del APK, cambiando su extensión (`.apk` → `.apk.doc`)
+> y corrompiendo los headers. El celular muestra "No se instaló la app".
+
+**Métodos seguros:**
+
+1. **USB (recomendado):** Copia el APK por cable al celular
+2. **Google Drive / Dropbox:** Sube el APK y descárgalo en el celular
+3. **Servidor web:** Sube el APK a un URL y descárgalo desde el navegador del celular
+4. **ADB (avanzado):** `adb install app-debug.apk` (instala directamente sin transferir)
+5. **Si debes usar WhatsApp:** Primero comprime el APK en un `.zip` y envía el ZIP
+
+### Pasos para instalar el APK en el celular
+
+1. Transfiere el APK por un método seguro (ver arriba)
+2. En el celular: **Ajustes → Seguridad → Orígenes desconocidos** (activar)
+3. Abre el archivo `.apk` desde el administrador de archivos
+4. Toca **Instalar**
+5. Si Google Play Protect bloquea la instalación, toca **Instalar de todos modos**
+
 ## Scripts disponibles (desde raíz del proyecto)
 
 | Script | Descripción |

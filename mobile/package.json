@@ -12,6 +12,9 @@
     "run:android": "cap run android",
     "run:ios": "cap run ios",
     "build:android": "cap build android",
+    "build:android:apk": "cd android && ./gradlew assembleRelease && echo 'APK en app/build/outputs/apk/release/app-release.apk'",
+    "build:android:debug": "cd android && ./gradlew assembleDebug && echo 'APK en app/build/outputs/apk/debug/app-debug.apk'",
+    "build:android:apk:signed": "cd android && ./gradlew assembleRelease -PRELEASE_STORE_FILE=app/release.keystore -PRELEASE_STORE_PASSWORD=$ANDROID_STORE_PASSWORD -PRELEASE_KEY_ALIAS=goadmin -PRELEASE_KEY_PASSWORD=$ANDROID_KEY_PASSWORD && echo 'APK en app/build/outputs/apk/release/app-release.apk'",
     "build:ios": "cap build ios",
     "deploy:capgo": "capgo bundle upload --channel production"
   },

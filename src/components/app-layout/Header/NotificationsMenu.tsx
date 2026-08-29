@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Clock, Inbox, Mail, Smartphone, MessageSquare, User, Users, FolderKanban } from 'lucide-react';
+import { Bell, Clock, Inbox, Mail, Smartphone, MessageSquare, User, Users, FolderKanban, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
@@ -289,6 +289,29 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
     }
   };
 
+  // Descartar (ocultar) una notificación del panel marcándola como 'deleted'
+  const dismissNotification = async (id: string, wasUnread: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ status: 'deleted' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Remover de ambas listas y ajustar conteos si era no leída
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      setAllNotifications(prev => prev.filter(n => n.id !== id));
+      if (wasUnread) {
+        setMyUnreadCount(prev => Math.max(0, prev - 1));
+        setAllUnreadCount(prev => Math.max(0, prev - 1));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error('Error al descartar notificación:', err);
+    }
+  };
+
   return (
     <div className="relative" ref={notificationMenuRef}>
       <button
@@ -476,14 +499,27 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
                           <ChannelIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           <p className="text-base sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{title}</p>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                          {new Date(notification.created_at).toLocaleString('es', {
-                            day: '2-digit',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(notification.created_at).toLocaleString('es', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dismissNotification(notification.id, !notification.read_at);
+                            }}
+                            className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 dark:hover:text-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            aria-label="Descartar notificación"
+                            title="Descartar notificación"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                       {content && (
                         <p className="text-sm sm:text-xs mt-2 sm:mt-1 text-gray-600 dark:text-gray-300 line-clamp-2 pl-6">

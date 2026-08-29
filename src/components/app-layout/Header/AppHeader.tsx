@@ -24,7 +24,7 @@ export const AppHeader = ({
   const t = useTranslations('nav');
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
+    <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 mobile-safe-top">
       <div className="flex justify-between items-center px-2 sm:px-4 py-2.5 min-h-[60px]">
         {/* Grupo izquierdo: menú + sucursal (móvil) */}
         <div className="flex items-center gap-1 sm:gap-2">

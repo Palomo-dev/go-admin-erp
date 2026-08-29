@@ -379,6 +379,185 @@ function MensualSparkline({
   );
 }
 
+// Colores para el desglose de compras web por estado
+const COMPRAS_COLORS = {
+  pedidos: '#f59e0b', // ámbar
+  pagados: '#22c55e', // verde
+  canceladas: '#ef4444', // rojo
+};
+
+// Tooltip compartido para los sparklines de compras web (6 series: 3 hoy + 3 ayer)
+interface ComprasTooltipProps {
+  active?: boolean;
+  payload?: { value: number; dataKey: string; payload: { hora?: number; dia?: number } }[];
+  xLabel: string; // "hora" | "día"
+  fmtX: (n: number) => string;
+}
+function ComprasWebTooltip({ active, payload, xLabel, fmtX }: ComprasTooltipProps) {
+  if (!active || !payload || !payload.length) return null;
+  const x = payload[0]?.payload?.hora ?? payload[0]?.payload?.dia ?? 0;
+  const get = (key: string) => payload.find((p) => p.dataKey === key)?.value ?? 0;
+  const Row = ({ color, label, value, dashed }: { color: string; label: string; value: number; dashed?: boolean }) => (
+    <div className="flex items-center gap-1">
+      <span
+        className="inline-block w-2 h-2 rounded-full"
+        style={{ background: color, opacity: dashed ? 0.6 : 1 }}
+      />
+      <span className={dashed ? 'italic' : ''}>{label}: {value}</span>
+    </div>
+  );
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm px-2 py-1 text-[10px] font-medium text-gray-700 dark:text-gray-200 space-y-0.5">
+      <div className="text-gray-500">{xLabel} {fmtX(x)}</div>
+      <Row color={COMPRAS_COLORS.pedidos} label="Pedidos hoy" value={get('hoyPedidos')} />
+      <Row color={COMPRAS_COLORS.pagados} label="Pagados hoy" value={get('hoyPagados')} />
+      <Row color={COMPRAS_COLORS.canceladas} label="Cancelados hoy" value={get('hoyCanceladas')} />
+      <Row color={COMPRAS_COLORS.pedidos} label="Pedidos ayer" value={get('ayerPedidos')} dashed />
+      <Row color={COMPRAS_COLORS.pagados} label="Pagados ayer" value={get('ayerPagados')} dashed />
+      <Row color={COMPRAS_COLORS.canceladas} label="Cancelados ayer" value={get('ayerCanceladas')} dashed />
+    </div>
+  );
+}
+
+// Sparkline horario de compras web con desglose por estado (pedidos/pagados/cancelados)
+// y comparación vs ayer a la misma hora.
+function ComprasWebHorariasSparkline({
+  hoy, ayer, hoyPagadas, ayerPagadas, hoyCanceladas, ayerCanceladas, horaActual,
+}: {
+  hoy: PuntoHora[];
+  ayer: PuntoHora[];
+  hoyPagadas: PuntoHora[];
+  ayerPagadas: PuntoHora[];
+  hoyCanceladas: PuntoHora[];
+  ayerCanceladas: PuntoHora[];
+  horaActual: number;
+}) {
+  const data = hoy
+    .filter((p) => p.hora <= horaActual)
+    .map((p) => ({
+      hora: p.hora,
+      hoyPedidos: p.total,
+      ayerPedidos: ayer.find((a) => a.hora === p.hora)?.total ?? 0,
+      hoyPagados: hoyPagadas.find((a) => a.hora === p.hora)?.total ?? 0,
+      ayerPagados: ayerPagadas.find((a) => a.hora === p.hora)?.total ?? 0,
+      hoyCanceladas: hoyCanceladas.find((a) => a.hora === p.hora)?.total ?? 0,
+      ayerCanceladas: ayerCanceladas.find((a) => a.hora === p.hora)?.total ?? 0,
+    }));
+  const fmtHora = (h: number) => `${h}h`;
+  const lineCfg = [
+    { key: 'ayerPedidos', color: COMPRAS_COLORS.pedidos, dashed: true, w: 1 },
+    { key: 'ayerPagados', color: COMPRAS_COLORS.pagados, dashed: true, w: 1 },
+    { key: 'ayerCanceladas', color: COMPRAS_COLORS.canceladas, dashed: true, w: 1 },
+    { key: 'hoyPedidos', color: COMPRAS_COLORS.pedidos, dashed: false, w: 1.75 },
+    { key: 'hoyPagados', color: COMPRAS_COLORS.pagados, dashed: false, w: 1.5 },
+    { key: 'hoyCanceladas', color: COMPRAS_COLORS.canceladas, dashed: false, w: 1.5 },
+  ];
+  return (
+    <div className="mt-2 h-10 -mx-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 2, right: 4, bottom: 0, left: 4 }}>
+          <XAxis
+            dataKey="hora"
+            tickFormatter={fmtHora}
+            tick={{ fontSize: 8, fill: 'currentColor' }}
+            className="text-gray-400 dark:text-gray-500"
+            interval="preserveStartEnd"
+            minTickGap={16}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis hide domain={[0, 'auto']} allowDecimals={false} />
+          <RechartsTooltip
+            content={<ComprasWebTooltip xLabel="hora" fmtX={fmtHora} />}
+            cursor={false}
+          />
+          {lineCfg.map((l) => (
+            <Line
+              key={l.key}
+              type="monotone"
+              dataKey={l.key}
+              stroke={l.color}
+              strokeWidth={l.w}
+              strokeDasharray={l.dashed ? '3 2' : undefined}
+              dot={false}
+              isAnimationActive={false}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// Sparkline por período (7d/30d/90d/año) de compras web con desglose por estado
+// y comparación vs período anterior.
+function ComprasWebMensualSparkline({
+  actual, anterior, actualPagadas, anteriorPagadas, actualCanceladas, anteriorCanceladas, diaActual,
+}: {
+  actual: PuntoDiaMes[];
+  anterior: PuntoDiaMes[];
+  actualPagadas: PuntoDiaMes[];
+  anteriorPagadas: PuntoDiaMes[];
+  actualCanceladas: PuntoDiaMes[];
+  anteriorCanceladas: PuntoDiaMes[];
+  diaActual: number;
+}) {
+  const dias = Array.from({ length: diaActual }, (_, i) => i + 1);
+  const data = dias.map((dia) => ({
+    dia,
+    hoyPedidos: actual.find((p) => p.dia === dia)?.total ?? 0,
+    ayerPedidos: anterior.find((p) => p.dia === dia)?.total ?? 0,
+    hoyPagados: actualPagadas.find((p) => p.dia === dia)?.total ?? 0,
+    ayerPagados: anteriorPagadas.find((p) => p.dia === dia)?.total ?? 0,
+    hoyCanceladas: actualCanceladas.find((p) => p.dia === dia)?.total ?? 0,
+    ayerCanceladas: anteriorCanceladas.find((p) => p.dia === dia)?.total ?? 0,
+  }));
+  const fmtDia = (d: number) => `${d}`;
+  const lineCfg = [
+    { key: 'ayerPedidos', color: COMPRAS_COLORS.pedidos, dashed: true, w: 1 },
+    { key: 'ayerPagados', color: COMPRAS_COLORS.pagados, dashed: true, w: 1 },
+    { key: 'ayerCanceladas', color: COMPRAS_COLORS.canceladas, dashed: true, w: 1 },
+    { key: 'hoyPedidos', color: COMPRAS_COLORS.pedidos, dashed: false, w: 1.75 },
+    { key: 'hoyPagados', color: COMPRAS_COLORS.pagados, dashed: false, w: 1.5 },
+    { key: 'hoyCanceladas', color: COMPRAS_COLORS.canceladas, dashed: false, w: 1.5 },
+  ];
+  return (
+    <div className="mt-2 h-10 -mx-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 2, right: 4, bottom: 0, left: 4 }}>
+          <XAxis
+            dataKey="dia"
+            tickFormatter={fmtDia}
+            tick={{ fontSize: 8, fill: 'currentColor' }}
+            className="text-gray-400 dark:text-gray-500"
+            interval="preserveStartEnd"
+            minTickGap={20}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis hide domain={[0, 'auto']} allowDecimals={false} />
+          <RechartsTooltip
+            content={<ComprasWebTooltip xLabel="día" fmtX={fmtDia} />}
+            cursor={false}
+          />
+          {lineCfg.map((l) => (
+            <Line
+              key={l.key}
+              type="monotone"
+              dataKey={l.key}
+              stroke={l.color}
+              strokeWidth={l.w}
+              strokeDasharray={l.dashed ? '3 2' : undefined}
+              dot={false}
+              isAnimationActive={false}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId }: DashboardKPIsProps) {
   const t = useTranslations('home.kpis');
   const locale = useLocale();
@@ -478,6 +657,16 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 : undefined;
         const hasPeriodo = isDynamicKpi && periodo !== 'hoy' && periodoSerie;
 
+        // Desglose de compras web por estado (pedidos/pagados/cancelados) para sparkline
+        const isComprasWeb = kpi.key === 'comprasWeb';
+        const hasComprasHoraria = isComprasWeb
+          && hasHoraria
+          && !!data?.comprasPorHoraHoyPagadas && !!data?.comprasPorHoraHoyCanceladas
+          && !!data?.comprasPorHoraAyerPagadas && !!data?.comprasPorHoraAyerCanceladas;
+        const hasComprasPeriodo = isComprasWeb
+          && hasPeriodo
+          && !!data?.comprasPorDiaPeriodoPagadas && !!data?.comprasPorDiaPeriodoCanceladas;
+
         // Series mensuales (KPIs no dinámicos): ventasMes o seriesDiarias
         let serieMensual: { actual: PuntoDiaMes[]; anterior: PuntoDiaMes[] } | null = null;
         if (kpi.key === 'ventasMes' && data?.ventasPorDiaMesActual && data?.ventasPorDiaMesAnterior) {
@@ -556,11 +745,32 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
               </span>
             </div>
             {/* Mini-sparkline:
+                - comprasWeb con desglose por estado: pedidos/pagados/cancelados (hoy vs ayer)
                 - KPIs dinámicos (ventasHoy, facturasHoy) con periodo='hoy': horario (hoy vs ayer a esta hora)
                 - KPIs dinámicos con periodo!='hoy': diario por posición del período (actual vs anterior)
                 - KPIs no dinámicos con serie mensual: diario del mes (mes actual vs anterior)
                 - fallback: sintético */}
-            {hasHoraria ? (
+            {hasComprasHoraria ? (
+              <ComprasWebHorariasSparkline
+                hoy={horaHoy!}
+                ayer={horaAyer!}
+                hoyPagadas={data!.comprasPorHoraHoyPagadas!}
+                ayerPagadas={data!.comprasPorHoraAyerPagadas!}
+                hoyCanceladas={data!.comprasPorHoraHoyCanceladas!}
+                ayerCanceladas={data!.comprasPorHoraAyerCanceladas!}
+                horaActual={data!.horaActualOrg!}
+              />
+            ) : hasComprasPeriodo ? (
+              <ComprasWebMensualSparkline
+                actual={periodoSerie!.actual}
+                anterior={periodoSerie!.anterior}
+                actualPagadas={data!.comprasPorDiaPeriodoPagadas!.actual}
+                anteriorPagadas={data!.comprasPorDiaPeriodoPagadas!.anterior}
+                actualCanceladas={data!.comprasPorDiaPeriodoCanceladas!.actual}
+                anteriorCanceladas={data!.comprasPorDiaPeriodoCanceladas!.anterior}
+                diaActual={periodoSerie!.actual.length}
+              />
+            ) : hasHoraria ? (
               <VentasHorariasSparkline
                 hoy={horaHoy!}
                 ayer={horaAyer!}

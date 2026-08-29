@@ -69,6 +69,11 @@ export interface DashboardKPIData {
   visitasPorHoraAyer?: PuntoHora[];
   comprasPorHoraHoy?: PuntoHora[];
   comprasPorHoraAyer?: PuntoHora[];
+  // Desglose horario por estado (pedidos = total; pagados/cancelados = subset)
+  comprasPorHoraHoyPagadas?: PuntoHora[];
+  comprasPorHoraHoyCanceladas?: PuntoHora[];
+  comprasPorHoraAyerPagadas?: PuntoHora[];
+  comprasPorHoraAyerCanceladas?: PuntoHora[];
   // Hora actual (0-23) en timezone de la org (para recortar el sparkline)
   horaActualOrg?: number;
   // Series diarias del mes calendario: mes actual vs mes anterior (mismos días)
@@ -79,6 +84,9 @@ export interface DashboardKPIData {
   facturasPorDiaPeriodo?: SerieDiariaKpi;
   visitasPorDiaPeriodo?: SerieDiariaKpi;
   comprasPorDiaPeriodo?: SerieDiariaKpi;
+  // Desglose por período (7d, 30d, 90d, año) por estado
+  comprasPorDiaPeriodoPagadas?: SerieDiariaKpi;
+  comprasPorDiaPeriodoCanceladas?: SerieDiariaKpi;
   // Series diarias para los demás KPIs (creados por día, mes actual vs anterior)
   seriesDiarias?: {
     clientesActivos?: SerieDiariaKpi;
@@ -722,10 +730,10 @@ export const inicioService = {
         .eq('organization_id', organizationId)
         .gte('created_at', inicioPeriodo)
         .lt('created_at', finPeriodo),
-      // Período anterior: contar todas para delta
+      // Período anterior: contar todas para delta (con status/payment_status para desglose)
       supabase
         .from('web_orders')
-        .select('created_at')
+        .select('status, payment_status, created_at')
         .eq('organization_id', organizationId)
         .gte('created_at', inicioAnterior)
         .lt('created_at', finAnterior),
@@ -778,6 +786,10 @@ export const inicioService = {
     let visitasPorHoraAyer: PuntoHora[] | undefined;
     let comprasPorHoraHoy: PuntoHora[] | undefined;
     let comprasPorHoraAyer: PuntoHora[] | undefined;
+    let comprasPorHoraHoyPagadas: PuntoHora[] | undefined;
+    let comprasPorHoraHoyCanceladas: PuntoHora[] | undefined;
+    let comprasPorHoraAyerPagadas: PuntoHora[] | undefined;
+    let comprasPorHoraAyerCanceladas: PuntoHora[] | undefined;
     let horaActualOrg: number | undefined;
     if (periodo === 'hoy') {
       const timezone = await getOrganizationTimezone(organizationId);
@@ -808,6 +820,17 @@ export const inicioService = {
       const comprasAyerReg = (comprasWebAnteriorRes.data || []).map((o) => ({ total: 1, fecha: o.created_at }));
       comprasPorHoraHoy = agruparPorHoraLocal(comprasHoyReg, timezone);
       comprasPorHoraAyer = agruparPorHoraLocal(comprasAyerReg, timezone);
+      // Desglose por estado: pagados (payment_status='paid') y cancelados (status cancelled/rejected)
+      const esCancelada = (o: { status?: string }) => o.status === 'cancelled' || o.status === 'rejected';
+      const esPagada = (o: { payment_status?: string }) => o.payment_status === 'paid';
+      const comprasHoyPagadasReg = (comprasWebTodasRes.data || []).filter(esPagada).map((o) => ({ total: 1, fecha: o.created_at }));
+      const comprasHoyCanceladasReg = (comprasWebTodasRes.data || []).filter(esCancelada).map((o) => ({ total: 1, fecha: o.created_at }));
+      const comprasAyerPagadasReg = (comprasWebAnteriorRes.data || []).filter(esPagada).map((o) => ({ total: 1, fecha: o.created_at }));
+      const comprasAyerCanceladasReg = (comprasWebAnteriorRes.data || []).filter(esCancelada).map((o) => ({ total: 1, fecha: o.created_at }));
+      comprasPorHoraHoyPagadas = agruparPorHoraLocal(comprasHoyPagadasReg, timezone);
+      comprasPorHoraHoyCanceladas = agruparPorHoraLocal(comprasHoyCanceladasReg, timezone);
+      comprasPorHoraAyerPagadas = agruparPorHoraLocal(comprasAyerPagadasReg, timezone);
+      comprasPorHoraAyerCanceladas = agruparPorHoraLocal(comprasAyerCanceladasReg, timezone);
     }
 
     // Series diarias por período (7d, 30d, 90d, año): actual vs anterior por posición
@@ -815,6 +838,8 @@ export const inicioService = {
     let facturasPorDiaPeriodo: SerieDiariaKpi | undefined;
     let visitasPorDiaPeriodo: SerieDiariaKpi | undefined;
     let comprasPorDiaPeriodo: SerieDiariaKpi | undefined;
+    let comprasPorDiaPeriodoPagadas: SerieDiariaKpi | undefined;
+    let comprasPorDiaPeriodoCanceladas: SerieDiariaKpi | undefined;
     if (periodo !== 'hoy') {
       const timezone = await getOrganizationTimezone(organizationId);
       // Calcular fechas de inicio/fin en YYYY-MM-DD (timezone de la org) para cada período
@@ -857,6 +882,29 @@ export const inicioService = {
       comprasPorDiaPeriodo = {
         actual: agruparPorDiaPeriodo(comprasPeriodoActual, timezone, fechaInicioActual, fechaFinActual),
         anterior: agruparPorDiaPeriodo(comprasPeriodoAnterior, timezone, fechaInicioAnterior, fechaFinAnterior),
+      };
+      // Desglose por estado para el período
+      const esCanceladaP = (o: { status?: string }) => o.status === 'cancelled' || o.status === 'rejected';
+      const esPagadaP = (o: { payment_status?: string }) => o.payment_status === 'paid';
+      comprasPorDiaPeriodoPagadas = {
+        actual: agruparPorDiaPeriodo(
+          (comprasWebTodasRes.data || []).filter(esPagadaP).map((o) => ({ total: 1, fecha: o.created_at })),
+          timezone, fechaInicioActual, fechaFinActual,
+        ),
+        anterior: agruparPorDiaPeriodo(
+          (comprasWebAnteriorRes.data || []).filter(esPagadaP).map((o) => ({ total: 1, fecha: o.created_at })),
+          timezone, fechaInicioAnterior, fechaFinAnterior,
+        ),
+      };
+      comprasPorDiaPeriodoCanceladas = {
+        actual: agruparPorDiaPeriodo(
+          (comprasWebTodasRes.data || []).filter(esCanceladaP).map((o) => ({ total: 1, fecha: o.created_at })),
+          timezone, fechaInicioActual, fechaFinActual,
+        ),
+        anterior: agruparPorDiaPeriodo(
+          (comprasWebAnteriorRes.data || []).filter(esCanceladaP).map((o) => ({ total: 1, fecha: o.created_at })),
+          timezone, fechaInicioAnterior, fechaFinAnterior,
+        ),
       };
     }
 
@@ -938,6 +986,10 @@ export const inicioService = {
       visitasPorHoraAyer,
       comprasPorHoraHoy,
       comprasPorHoraAyer,
+      comprasPorHoraHoyPagadas,
+      comprasPorHoraHoyCanceladas,
+      comprasPorHoraAyerPagadas,
+      comprasPorHoraAyerCanceladas,
       horaActualOrg,
       ventasPorDiaMesActual,
       ventasPorDiaMesAnterior,
@@ -945,6 +997,8 @@ export const inicioService = {
       facturasPorDiaPeriodo,
       visitasPorDiaPeriodo,
       comprasPorDiaPeriodo,
+      comprasPorDiaPeriodoPagadas,
+      comprasPorDiaPeriodoCanceladas,
       seriesDiarias,
       diaActualMes,
       mesActualNumero,

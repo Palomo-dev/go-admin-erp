@@ -22,7 +22,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import { electronicInvoicingService } from '@/lib/services/electronicInvoicingService';
 import { useElectronicInvoicePreference } from '@/lib/hooks/useElectronicInvoicePreference';
-import { toLocalDateString, parseLocalDate, formatCurrency } from '@/utils/Utils';
+import { parseLocalDate, formatCurrency } from '@/utils/Utils';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 
 // Tipo para un ítem de factura
@@ -606,8 +606,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         number: invoiceNumber,
         customer_id: selectedCustomerId,
         branch_id: branchId,
-        issue_date: issueDate ? toLocalDateString(issueDate) : null,
-        due_date: dueDate ? toLocalDateString(dueDate) : null,
+        issue_date: issueDate ? issueDate.toISOString() : null,
+        due_date: dueDate ? dueDate.toISOString() : null,
         currency,
         payment_terms: paymentTerms,
         payment_method: paymentMethodCode || null,
@@ -736,8 +736,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         customer_id: selectedCustomerId || null,
         sale_id: saleData.id, // Vinculamos con la venta creada
         number: invoiceNumber,
-        issue_date: issueDate ? toLocalDateString(issueDate) : null,
-        due_date: dueDate ? toLocalDateString(dueDate) : null,
+        issue_date: issueDate ? issueDate.toISOString() : null,
+        due_date: dueDate ? dueDate.toISOString() : null,
         currency: currency, // Moneda seleccionada por el usuario
         subtotal: safeSubtotal,
         tax_total: safeTaxTotal,

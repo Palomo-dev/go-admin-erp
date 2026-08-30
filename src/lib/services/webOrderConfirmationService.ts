@@ -54,16 +54,20 @@ class WebOrderConfirmationService {
    */
   async confirmOrder(
     order: WebOrder,
-    estimatedMinutes: number = 30,
-    markAsPaid: boolean = false
+    options: {
+      prepMs: number;
+      transitMs?: number;
+      markAsPaid?: boolean;
+    }
   ): Promise<ConfirmOrderResult> {
     const userId = await getCurrentUserId();
     if (!userId) throw new Error('No se pudo obtener el usuario actual');
 
     const now = new Date().toISOString();
-    const estimatedReadyAt = new Date(Date.now() + estimatedMinutes * 60000).toISOString();
+    const estimatedReadyAt = new Date(Date.now() + options.prepMs).toISOString();
 
     // Si se marca como pagado, sobrescribir payment_status del pedido
+    const markAsPaid = options.markAsPaid ?? false;
     const effectivePaymentStatus = markAsPaid ? 'paid' : order.payment_status;
     const orderForSale = markAsPaid ? { ...order, payment_status: 'paid' as const } : order;
 
@@ -110,7 +114,7 @@ class WebOrderConfirmationService {
       order,
       saleId,
       insertedSaleItems,
-      estimatedMinutes
+      Math.round(options.prepMs / 60000)
     );
 
     // 4. Crear tip si tip_amount > 0
@@ -156,8 +160,9 @@ class WebOrderConfirmationService {
     }
 
     // 10. Calcular estimated_delivery_at para pedidos delivery
-    const estimatedDeliveryAt = order.delivery_type !== 'pickup'
-      ? new Date(Date.now() + (estimatedMinutes + 30) * 60000).toISOString()
+    //     = Listo aprox + tiempo de traslado (definido por el operario)
+    const estimatedDeliveryAt = order.delivery_type !== 'pickup' && options.transitMs && options.transitMs > 0
+      ? new Date(Date.now() + options.prepMs + options.transitMs).toISOString()
       : undefined;
 
     // 11. Actualizar web_orders: sale_id + status + timestamps
@@ -449,7 +454,7 @@ class WebOrderConfirmationService {
       }
 
       // Crear invoice_items a partir de web_order_items
-      const invoiceItems = (order.items || []).map(item => ({
+      const productItems = (order.items || []).map(item => ({
         invoice_id: invoice.id,
         invoice_sales_id: invoice.id,
         invoice_type: 'sale',
@@ -462,6 +467,31 @@ class WebOrderConfirmationService {
         discount_amount: Number(item.discount_amount) || 0,
         tax_included: false,
       }));
+
+      // Línea de envío (delivery_fee): el trigger fn_recalc_invoice_totals
+      // recalcula total = SUM(invoice_items) al insertar las líneas. Si no se
+      // incluye el envío como una línea, el total de la factura queda en solo
+      // los productos y se desincroniza con sale.total (que sí incluye envío),
+      // generando además un "overpayment" del pago web frente a la factura.
+      // `deliveryFee` fue calculado arriba en el bloque de totales.
+      const invoiceItems = [
+        ...productItems,
+        ...(deliveryFee > 0
+          ? [{
+              invoice_id: invoice.id,
+              invoice_sales_id: invoice.id,
+              invoice_type: 'sale',
+              product_id: null,
+              description: 'Envío (Delivery)',
+              qty: 1,
+              unit_price: deliveryFee,
+              total_line: deliveryFee,
+              tax_rate: 0,
+              discount_amount: 0,
+              tax_included: false,
+            }]
+          : []),
+      ];
 
       if (invoiceItems.length > 0) {
         const { error: itemsError } = await supabase

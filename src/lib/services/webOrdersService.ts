@@ -45,6 +45,10 @@ export interface WebOrder {
   delivery_address?: {
     address?: string;
     city?: string;
+    country?: string;
+    state?: string;
+    state_code?: string;
+    department?: string;
     neighborhood?: string;
     instructions?: string;
     lat?: number;
@@ -186,7 +190,29 @@ class WebOrdersService {
       }
 
       if (filters?.search) {
-        query = query.or(`order_number.ilike.%${filters.search}%,customer_name.ilike.%${filters.search}%,customer_phone.ilike.%${filters.search}%`);
+        const searchTerm = filters.search;
+
+        // Buscar IDs de pedidos que coinciden por nombre de producto (tabla relacionada)
+        const { data: matchingItems } = await supabase
+          .from('web_order_items')
+          .select('web_order_id')
+          .ilike('product_name', `%${searchTerm}%`);
+        const orderIdsFromProducts = (matchingItems || []).map((item: any) => item.web_order_id);
+
+        // Condiciones OR: número, nombre (incluye apellido), teléfono, correo y dirección (JSONB)
+        const orConditions = [
+          `order_number.ilike.%${searchTerm}%`,
+          `customer_name.ilike.%${searchTerm}%`,
+          `customer_phone.ilike.%${searchTerm}%`,
+          `customer_email.ilike.%${searchTerm}%`,
+          `delivery_address->>address.ilike.%${searchTerm}%`,
+          `delivery_address->>city.ilike.%${searchTerm}%`,
+          `delivery_address->>neighborhood.ilike.%${searchTerm}%`,
+        ];
+        if (orderIdsFromProducts.length > 0) {
+          orConditions.push(`id.in.(${orderIdsFromProducts.join(',')})`);
+        }
+        query = query.or(orConditions.join(','));
       }
 
       if (filters?.is_scheduled !== undefined) {

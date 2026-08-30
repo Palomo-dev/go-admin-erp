@@ -475,8 +475,8 @@ export const webOrderServerConfirmation = {
         invoiceId = invoice.id;
         invoiceNumber = invoice.number;
 
-        // Crear invoice_items
-        const invoiceItems = (order.items || []).map((item) => ({
+        // Crear invoice_items a partir de web_order_items
+        const productItems = (order.items || []).map((item) => ({
           invoice_id: invoice.id,
           invoice_sales_id: invoice.id,
           invoice_type: 'sale',
@@ -489,6 +489,31 @@ export const webOrderServerConfirmation = {
           discount_amount: Number(item.discount_amount) || 0,
           tax_included: false,
         }));
+
+        // Línea de envío (delivery_fee): el trigger fn_recalc_invoice_totals
+        // recalcula total = SUM(invoice_items) al insertar las líneas. Si no se
+        // incluye el envío como una línea, el total de la factura queda en solo
+        // los productos y se desincroniza con sale.total (que sí incluye envío),
+        // generando además un "overpayment" del pago web frente a la factura.
+        const deliveryFee = Number(order.delivery_fee) || 0;
+        const invoiceItems = [
+          ...productItems,
+          ...(deliveryFee > 0
+            ? [{
+                invoice_id: invoice.id,
+                invoice_sales_id: invoice.id,
+                invoice_type: 'sale',
+                product_id: null,
+                description: 'Envío (Delivery)',
+                qty: 1,
+                unit_price: deliveryFee,
+                total_line: deliveryFee,
+                tax_rate: 0,
+                discount_amount: 0,
+                tax_included: false,
+              }]
+            : []),
+        ];
 
         if (invoiceItems.length > 0) {
           const { error: invItemsError } = await supabase

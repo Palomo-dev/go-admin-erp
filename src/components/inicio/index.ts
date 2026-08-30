@@ -11,6 +11,9 @@ export type {
 } from './inicioService';
 
 export { DashboardKPIs } from './DashboardKPIs';
+export type { KpiConfigItem } from './DashboardKPIs';
+export { KpiDetailDialog } from './KpiDetailDialog';
+export { useDashboardRealtime } from './useDashboardRealtime';
 export { LiveVisitorsBadge } from './LiveVisitorsBadge';
 export { useLiveVisitors } from './useLiveVisitors';
 export { DashboardAtajos } from './DashboardAtajos';

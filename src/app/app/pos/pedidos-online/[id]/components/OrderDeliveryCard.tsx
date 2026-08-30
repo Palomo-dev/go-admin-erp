@@ -90,9 +90,15 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
             {address.neighborhood && (
               <p className="text-sm text-muted-foreground dark:text-gray-400 ml-6">
                 {address.neighborhood}
-                {address.city && `, ${address.city}`}
               </p>
             )}
+            <p className="text-sm text-muted-foreground dark:text-gray-400 ml-6">
+              {[
+                address.city,
+                address.state || address.department,
+                address.country,
+              ].filter(Boolean).join(', ')}
+            </p>
             {address.instructions && (
               <p className="text-sm text-yellow-600 dark:text-yellow-400 ml-6">
                 📝 {address.instructions}

@@ -19,7 +19,7 @@ import { AssignDeliveryDialog } from '@/components/pos/pedidos-online';
 
 export default function WebOrderDetailPage() {
   const params = useParams();
-  const orderId = params.id as string;
+  const orderId = params?.id as string;
 
   const {
     order,
@@ -34,8 +34,10 @@ export default function WebOrderDetailPage() {
     setAssignDeliveryOpen,
     cancelReason,
     setCancelReason,
-    estimatedMinutes,
-    setEstimatedMinutes,
+    prepTime,
+    setPrepTime,
+    transitTime,
+    setTransitTime,
     markAsPaid,
     setMarkAsPaid,
     handleConfirmOrder,
@@ -108,8 +110,11 @@ export default function WebOrderDetailPage() {
       <ConfirmOrderDialog
         open={confirmDialogOpen}
         onOpenChange={setConfirmDialogOpen}
-        estimatedMinutes={estimatedMinutes}
-        onEstimatedMinutesChange={setEstimatedMinutes}
+        prepTime={prepTime}
+        onPrepTimeChange={setPrepTime}
+        transitTime={transitTime}
+        onTransitTimeChange={setTransitTime}
+        isDelivery={order?.delivery_type !== 'pickup'}
         onConfirm={handleConfirmOrder}
         markAsPaid={markAsPaid}
         onMarkAsPaidChange={setMarkAsPaid}

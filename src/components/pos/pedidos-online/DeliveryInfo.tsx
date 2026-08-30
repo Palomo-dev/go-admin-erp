@@ -8,6 +8,9 @@ import type { DeliveryType } from '@/lib/services/webOrdersService';
 interface DeliveryAddress {
   address?: string;
   city?: string;
+  country?: string;
+  state?: string;
+  department?: string;
   neighborhood?: string;
   instructions?: string;
   lat?: number;
@@ -87,9 +90,15 @@ export function DeliveryInfo({
               {deliveryAddress.neighborhood && (
                 <p className="text-sm text-muted-foreground ml-6">
                   {deliveryAddress.neighborhood}
-                  {deliveryAddress.city && `, ${deliveryAddress.city}`}
                 </p>
               )}
+              <p className="text-sm text-muted-foreground ml-6">
+                {[
+                  deliveryAddress.city,
+                  deliveryAddress.state || deliveryAddress.department,
+                  deliveryAddress.country,
+                ].filter(Boolean).join(', ')}
+              </p>
               {deliveryAddress.instructions && (
                 <p className="text-sm text-yellow-600 dark:text-yellow-400 ml-6">
                   📝 {deliveryAddress.instructions}

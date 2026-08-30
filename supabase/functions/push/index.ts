@@ -22,6 +22,7 @@ interface WebhookPayload {
   record: {
     id: string;
     recipient_user_id: string | null;
+    organization_id: number | null;
     channel: string;
     payload: {
       title?: string;
@@ -144,16 +145,8 @@ Deno.serve(async (req) => {
 
   const payload: WebhookPayload = await req.json();
 
-  if (payload.record.channel !== "push") {
+  if (payload.record.channel !== "push" && payload.record.channel !== "app") {
     return new Response(JSON.stringify({ skipped: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const userId = payload.record.recipient_user_id;
-  if (!userId) {
-    return new Response(JSON.stringify({ skipped: "no user" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -166,11 +159,40 @@ Deno.serve(async (req) => {
   const data = payload.record.payload.data;
   const url = data?.url || "/";
 
+  // Determinar los destinatarios:
+  // - Si recipient_user_id existe → solo ese usuario
+  // - Si es null y hay organization_id → todos los miembros activos de la org
+  let targetUserIds: string[] = [];
+
+  if (payload.record.recipient_user_id) {
+    targetUserIds = [payload.record.recipient_user_id];
+  } else if (payload.record.organization_id) {
+    const { data: members, error: memberErr } = await supabase
+      .from("organization_members")
+      .select("user_id")
+      .eq("organization_id", payload.record.organization_id)
+      .eq("is_active", true);
+
+    if (memberErr) {
+      console.warn("[push] Error querying org members:", memberErr.message);
+    } else if (members) {
+      targetUserIds = members.map((m) => m.user_id).filter(Boolean);
+    }
+  }
+
+  if (targetUserIds.length === 0) {
+    return new Response(JSON.stringify({ skipped: "no recipients" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   // ── Canal 1: FCM/APNs (APK nativo) ──
+  // Consultar tokens de TODOS los usuarios destinatarios
   const { data: tokens, error } = await supabase
     .from("device_push_tokens")
-    .select("token, platform")
-    .eq("user_id", userId);
+    .select("token, platform, user_id")
+    .in("user_id", targetUserIds);
 
   let fcmSent = 0;
   const expiredTokens: string[] = [];
@@ -198,28 +220,30 @@ Deno.serve(async (req) => {
 
   // ── Canal 2: Web Push (PWA) ──
   // Despacha al endpoint del ERP que ya tiene la lógica de web-push + VAPID.
-  // No se repite lógica: la Edge Function solo orquesta, el ERP envía.
+  // Se envía un request por cada usuario destinatario.
   let webPushSent = 0;
-  try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (pushWebhookSecret) {
-      headers["x-internal-secret"] = pushWebhookSecret;
-    }
+  const wpHeaders: Record<string, string> = { "Content-Type": "application/json" };
+  if (pushWebhookSecret) {
+    wpHeaders["x-internal-secret"] = pushWebhookSecret;
+  }
 
-    const wpResp = await fetch(`${erpBaseUrl}/api/push/web`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ userId, title, body, url }),
-    });
+  for (const uid of targetUserIds) {
+    try {
+      const wpResp = await fetch(`${erpBaseUrl}/api/push/web`, {
+        method: "POST",
+        headers: wpHeaders,
+        body: JSON.stringify({ userId: uid, title, body, url }),
+      });
 
-    if (wpResp.ok) {
-      const wpData = await wpResp.json();
-      webPushSent = wpData.sent || 0;
-    } else {
-      console.warn("[push] Web Push endpoint responded:", wpResp.status);
+      if (wpResp.ok) {
+        const wpData = await wpResp.json();
+        webPushSent += wpData.sent || 0;
+      } else {
+        console.warn("[push] Web Push endpoint responded:", wpResp.status);
+      }
+    } catch (err) {
+      console.warn("[push] Error despachando Web Push:", err);
     }
-  } catch (err) {
-    console.warn("[push] Error despachando Web Push:", err);
   }
 
   // Marcar notificación como enviada (si al menos un canal tuvo éxito)
@@ -232,6 +256,7 @@ Deno.serve(async (req) => {
 
   return new Response(
     JSON.stringify({
+      recipients: targetUserIds.length,
       fcm_sent: fcmSent,
       web_push_sent: webPushSent,
       expired: expiredTokens.length,

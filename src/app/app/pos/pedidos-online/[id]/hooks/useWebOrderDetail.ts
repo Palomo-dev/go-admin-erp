@@ -8,6 +8,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
+import { type EstimatedTime, timeToMs, formatEstimatedTime } from '../components';
 
 interface UseWebOrderDetailReturn {
   order: WebOrder | null;
@@ -23,8 +24,10 @@ interface UseWebOrderDetailReturn {
   setAssignDeliveryOpen: (open: boolean) => void;
   cancelReason: string;
   setCancelReason: (reason: string) => void;
-  estimatedMinutes: number;
-  setEstimatedMinutes: (minutes: number) => void;
+  prepTime: EstimatedTime;
+  setPrepTime: (time: EstimatedTime) => void;
+  transitTime: EstimatedTime;
+  setTransitTime: (time: EstimatedTime) => void;
   markAsPaid: boolean;
   setMarkAsPaid: (value: boolean) => void;
   // Actions
@@ -55,7 +58,8 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [assignDeliveryOpen, setAssignDeliveryOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [estimatedMinutes, setEstimatedMinutes] = useState(30);
+  const [prepTime, setPrepTime] = useState<EstimatedTime>({ value: 30, unit: 'minutes' });
+  const [transitTime, setTransitTime] = useState<EstimatedTime>({ value: 30, unit: 'minutes' });
   const [markAsPaid, setMarkAsPaid] = useState(false);
 
   const loadOrder = useCallback(async () => {
@@ -126,8 +130,15 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     if (!order) return;
     setActionLoading(true);
     try {
-      const result = await webOrderConfirmationService.confirmOrder(order, estimatedMinutes, markAsPaid);
-      const parts = [`Venta creada · Comanda enviada a cocina · ${estimatedMinutes} min`];
+      const isDelivery = order.delivery_type !== 'pickup';
+      const transitMs = isDelivery ? timeToMs(transitTime) : 0;
+      const result = await webOrderConfirmationService.confirmOrder(order, {
+        prepMs: timeToMs(prepTime),
+        transitMs,
+        markAsPaid,
+      });
+      const parts = [`Venta creada · Comanda enviada a cocina · Listo: ${formatEstimatedTime(prepTime)}`];
+      if (isDelivery && transitMs > 0) parts.push(`· Entrega: ${formatEstimatedTime(transitTime)}`);
       if (markAsPaid) parts.push('· Marcado como pagado');
       if (result.shipmentId) parts.push('· Envío creado');
       toast({
@@ -246,7 +257,11 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     // Fallback: si por alguna razón no tiene sale_id, crear venta vía confirmación
     setActionLoading(true);
     try {
-      const result = await webOrderConfirmationService.confirmOrder(order, 30);
+      const result = await webOrderConfirmationService.confirmOrder(order, {
+        prepMs: timeToMs(prepTime),
+        transitMs: order.delivery_type !== 'pickup' ? timeToMs(transitTime) : 0,
+        markAsPaid: false,
+      });
       toast({ title: 'Venta creada exitosamente' });
       router.push(`/app/pos/ventas/${result.saleId}`);
     } catch (error: any) {
@@ -327,8 +342,10 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setAssignDeliveryOpen,
     cancelReason,
     setCancelReason,
-    estimatedMinutes,
-    setEstimatedMinutes,
+    prepTime,
+    setPrepTime,
+    transitTime,
+    setTransitTime,
     markAsPaid,
     setMarkAsPaid,
     handleConfirmOrder,

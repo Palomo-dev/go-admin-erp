@@ -321,7 +321,11 @@ export default function DetalleFactura({ factura }: { factura: any }) {
   const marcarComoPagada = async () => {
     try {
       const fechaPagoISO = new Date(fechaMarcarPagada + 'T' + new Date().toTimeString().split(' ')[0]).toISOString();
-      
+
+      // Obtener el usuario actual al inicio (necesario para sales.user_id y payments.created_by)
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
       // Verificar si la factura ya tiene un sale_id asociado
       if (!facturaActual.sale_id) {
         // Crear un registro de venta si no existe
@@ -331,9 +335,10 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             organization_id: facturaActual.organization_id,
             branch_id: facturaActual.branch_id,
             customer_id: facturaActual.customer_id,
+            user_id: user?.id, // user_id es NOT NULL en la tabla sales
             total: facturaActual.total,
             balance: 0,  // Se marca con saldo 0 ya que se pagará completamente
-            status: 'completed',
+            status: 'paid', // sales_status_check solo permite: draft, paid, partial, pending, void
             payment_status: 'paid',
             sale_date: new Date().toISOString(),
             notes: `Venta automática generada desde factura ${facturaActual.number}`,
@@ -369,10 +374,6 @@ export default function DetalleFactura({ factura }: { factura: any }) {
             
         if (error) throw error;
       }
-      
-      // Obtener el usuario actual
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
       
       // Crear un registro de pago automático
       const { error: paymentError } = await supabase

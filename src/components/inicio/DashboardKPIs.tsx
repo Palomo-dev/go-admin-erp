@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useState } from 'react';
 import {
   DollarSign,
   TrendingUp,
@@ -17,8 +17,9 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
-import type { DashboardKPIData, PeriodoDashboard, PuntoHora, PuntoDiaMes } from './inicioService';
+import type { DashboardKPIData, PeriodoDashboard, HorasDashboard, PuntoHora, PuntoDiaMes } from './inicioService';
 import { useLiveVisitors } from './useLiveVisitors';
+import { KpiDetailDialog } from './KpiDetailDialog';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   ResponsiveContainer,
@@ -34,9 +35,10 @@ interface DashboardKPIsProps {
   isLoading: boolean;
   periodo?: PeriodoDashboard;
   organizationId?: number | null;
+  horas?: HorasDashboard | null;
 }
 
-interface KpiConfigItem {
+export interface KpiConfigItem {
   key: keyof DashboardKPIData;
   labelKey: string;
   icon: typeof DollarSign;
@@ -50,14 +52,14 @@ interface KpiConfigItem {
   span2?: boolean; // ocupar 2 columnas en desktop (sm+)
 }
 
-const kpiConfig: KpiConfigItem[] = [
+export const kpiConfig: KpiConfigItem[] = [
   {
     key: 'ventasHoy' as const,
     labelKey: 'salesToday' as const,
     icon: DollarSign,
     color: 'blue',
     isCurrency: true,
-    href: '/app/pos',
+    href: '/app/pos/ventas',
     deltaKey: 'ventasAnterior' as const,
     dynamicLabel: true, // etiqueta cambia según período
   },
@@ -67,7 +69,7 @@ const kpiConfig: KpiConfigItem[] = [
     icon: TrendingUp,
     color: 'green',
     isCurrency: true,
-    href: '/app/finanzas',
+    href: '/app/pos/ventas',
     deltaKey: 'ventasMesAnterior' as const,
     dynamicLabel: true,
     useMonthLabel: true, // etiqueta muestra nombre del mes, no el período
@@ -99,7 +101,7 @@ const kpiConfig: KpiConfigItem[] = [
     icon: Receipt,
     color: 'cyan',
     isCurrency: false,
-    href: '/app/finanzas/facturas',
+    href: '/app/finanzas/facturas-venta',
     deltaKey: 'facturasAnterior' as const,
     dynamicLabel: true,
   },
@@ -558,11 +560,13 @@ function ComprasWebMensualSparkline({
   );
 }
 
-export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId }: DashboardKPIsProps) {
+export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId, horas }: DashboardKPIsProps) {
   const t = useTranslations('home.kpis');
   const locale = useLocale();
   // Visitantes en vivo via Realtime (solo para el KPI visitasWeb)
   const { liveCount, isActive } = useLiveVisitors(organizationId);
+  // KPI seleccionado para el modal de detalle
+  const [selectedKpi, setSelectedKpi] = useState<KpiConfigItem | null>(null);
 
   if (isLoading) {
     return (
@@ -575,6 +579,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
   }
 
   return (
+    <>
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       {kpiConfig.map((kpi) => {
         const colors = colorMap[kpi.color] || colorMap.blue;
@@ -819,13 +824,29 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
 
         if (kpi.href) {
           return (
-            <Link key={kpi.key} href={kpi.href} className={`block ${spanClass}`}>
+            <button
+              key={kpi.key}
+              type="button"
+              onClick={() => setSelectedKpi(kpi)}
+              className={`block text-left w-full ${spanClass}`}
+              aria-label={`${label} - ver detalle`}
+            >
               {content}
-            </Link>
+            </button>
           );
         }
         return <div key={kpi.key} className={spanClass}>{content}</div>;
       })}
     </div>
+    <KpiDetailDialog
+      open={selectedKpi !== null}
+      onOpenChange={(open) => { if (!open) setSelectedKpi(null); }}
+      kpi={selectedKpi}
+      periodo={periodo}
+      horas={horas}
+      organizationId={organizationId}
+      initialData={data}
+    />
+    </>
   );
 }

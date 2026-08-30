@@ -12,5 +12,5 @@ export { OrderCustomerCard } from './OrderCustomerCard';
 export { OrderDeliveryCard } from './OrderDeliveryCard';
 
 // Componentes de diálogos
-export { ConfirmOrderDialog } from './ConfirmOrderDialog';
+export { ConfirmOrderDialog, type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './ConfirmOrderDialog';
 export { CancelOrderDialog } from './CancelOrderDialog';

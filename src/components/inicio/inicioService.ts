@@ -496,12 +496,12 @@ export const inicioService = {
         .or('payment_status.eq.paid,status.eq.delivered')
         .not('status', 'in', '("cancelled","rejected")')
         .is('sale_id', null),
-      // Clientes activos
+      // Clientes activos (total global)
       supabase
         .from('customers')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId),
-      // Productos activos
+      // Productos activos (total global)
       supabase
         .from('products')
         .select('id', { count: 'exact', head: true })
@@ -514,19 +514,19 @@ export const inicioService = {
         .eq('organization_id', organizationId)
         .gte('issue_date', inicioPeriodo)
         .lt('issue_date', finPeriodo),
-      // Miembros activos de la organización
+      // Miembros activos de la organización (total global)
       supabase
         .from('organization_members')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId)
         .eq('is_active', true),
-      // Reservas activas
+      // Reservas activas (total global)
       supabase
         .from('reservations')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', organizationId)
         .in('status', ['confirmed', 'checked_in']),
-      // Cuentas por cobrar (status reales: overdue, current, partial, paid)
+      // Cuentas por cobrar (saldo actual, status reales: overdue, current, partial, paid)
       supabase
         .from('accounts_receivable')
         .select('balance')

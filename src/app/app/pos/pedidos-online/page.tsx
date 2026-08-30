@@ -61,6 +61,14 @@ import {
   type OrderSource
 } from '@/lib/services/webOrdersService';
 import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './[id]/components';
 
 interface LocalFilters {
   status?: WebOrderStatus[];
@@ -121,7 +129,8 @@ export default function PedidosOnlinePage() {
     orderId: null
   });
   const [markAsPaid, setMarkAsPaid] = useState(false);
-  const [estimatedMinutes, setEstimatedMinutes] = useState(30);
+  const [prepTime, setPrepTime] = useState<EstimatedTime>({ value: 30, unit: 'minutes' });
+  const [transitTime, setTransitTime] = useState<EstimatedTime>({ value: 30, unit: 'minutes' });
   const [actionLoading, setActionLoading] = useState(false);
 
   // Calcular rango de fecha según preset
@@ -292,8 +301,13 @@ export default function PedidosOnlinePage() {
       const order = await webOrdersService.getOrderById(confirmDialog.orderId);
       if (!order) throw new Error('Pedido no encontrado');
 
-      const result = await webOrderConfirmationService.confirmOrder(order, estimatedMinutes, markAsPaid);
-      const parts = ['Venta creada', 'Comanda enviada a cocina', `${estimatedMinutes} min`];
+      const result = await webOrderConfirmationService.confirmOrder(order, {
+        prepMs: timeToMs(prepTime),
+        transitMs: order.delivery_type !== 'pickup' ? timeToMs(transitTime) : 0,
+        markAsPaid,
+      });
+      const parts = ['Venta creada', 'Comanda enviada a cocina', `Listo: ${formatEstimatedTime(prepTime)}`];
+      if (order.delivery_type !== 'pickup' && transitTime.value > 0) parts.push(`Entrega: ${formatEstimatedTime(transitTime)}`);
       if (markAsPaid) parts.push('Marcado como pagado');
       if (result.couponRedemptionId) parts.push('Cupón redimido');
       toast({
@@ -979,6 +993,8 @@ export default function PedidosOnlinePage() {
                           {order.delivery_type !== 'pickup' && order.delivery_address?.city && (
                             <span className="text-xs text-muted-foreground dark:text-gray-400">
                               {order.delivery_address.city}
+                              {(order.delivery_address.state || order.delivery_address.department) && `, ${order.delivery_address.state || order.delivery_address.department}`}
+                              {order.delivery_address.country && `, ${order.delivery_address.country}`}
                             </span>
                           )}
                         </div>
@@ -1264,16 +1280,63 @@ export default function PedidosOnlinePage() {
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div>
-              <Label htmlFor="estimated-time" className="dark:text-gray-200">Tiempo estimado (minutos)</Label>
-              <Input
-                id="estimated-time"
-                type="number"
-                value={estimatedMinutes}
-                onChange={(e) => setEstimatedMinutes(Number(e.target.value))}
-                min={5}
-                max={120}
-                className="mt-2"
-              />
+              <Label htmlFor="prep-time-list" className="dark:text-gray-200">
+                Tiempo de preparación (Listo aprox)
+              </Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  id="prep-time-list"
+                  type="number"
+                  value={prepTime.value}
+                  onChange={(e) => setPrepTime({ ...prepTime, value: Number(e.target.value) })}
+                  min={1}
+                  className="flex-1"
+                />
+                <Select
+                  value={prepTime.unit}
+                  onValueChange={(unit: TimeUnit) => setPrepTime({ ...prepTime, unit })}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="minutes">Minutos</SelectItem>
+                    <SelectItem value="hours">Horas</SelectItem>
+                    <SelectItem value="days">Días</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="transit-time-list" className="dark:text-gray-200">
+                Tiempo de traslado (Entrega aprox)
+              </Label>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  id="transit-time-list"
+                  type="number"
+                  value={transitTime.value}
+                  onChange={(e) => setTransitTime({ ...transitTime, value: Number(e.target.value) })}
+                  min={0}
+                  className="flex-1"
+                />
+                <Select
+                  value={transitTime.unit}
+                  onValueChange={(unit: TimeUnit) => setTransitTime({ ...transitTime, unit })}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="minutes">Minutos</SelectItem>
+                    <SelectItem value="hours">Horas</SelectItem>
+                    <SelectItem value="days">Días</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-sm text-muted-foreground dark:text-gray-400 mt-2">
+                Tiempo desde que está listo hasta que llega al cliente. Pon 0 si es retiro en tienda.
+              </p>
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox

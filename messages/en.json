@@ -339,7 +339,8 @@
       "paid": "paid",
       "cancelled": "cancel.",
       "liveVisitor": "live visitor",
-      "liveVisitors": "live visitors"
+      "liveVisitors": "live visitors",
+      "viewFullPage": "View full page"
     },
     "activity": {
       "title": "Recent Activity",

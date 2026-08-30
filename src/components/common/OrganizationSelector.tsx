@@ -207,10 +207,11 @@ const OrganizationSelector = memo(({ userId, className = '', showCreateOption = 
               key={org.id}
               role="menuitem"
               onClick={(e) => { e.stopPropagation(); handleSelectOrganization(org); }}
-              className={`flex items-center px-4 py-3 sm:py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              className={`relative flex items-center px-4 py-3 sm:py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 ${
                 selectedOrg?.id === org.id ? 'bg-gray-100 dark:bg-gray-700' : ''
               }`}
             >
+              <span className={`absolute left-0 top-0 bottom-0 w-1 ${getOrgColor(org.id).bg}`} aria-hidden="true" />
               {org.logo_url && getOrganizationLogoUrl(org.logo_url) ? (
                 <div className={`w-6 h-6 relative rounded-full overflow-hidden border-2 ${getOrgColor(org.id).border} shadow-sm flex-shrink-0`}>
                   <Image

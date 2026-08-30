@@ -164,7 +164,7 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
           <Input
-            placeholder="Buscar por # pedido, nombre o teléfono..."
+            placeholder="Buscar por # pedido, nombre, teléfono, correo, dirección o producto..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}

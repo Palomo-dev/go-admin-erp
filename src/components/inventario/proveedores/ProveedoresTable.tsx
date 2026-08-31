@@ -24,6 +24,7 @@ import {
 import { Proveedor } from './types';
 import { cn } from '@/utils/Utils';
 import Link from 'next/link';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface ProveedoresTableProps {
   proveedores: Proveedor[];
@@ -111,7 +112,13 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
                 <TableCell className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">{proveedor.id}</TableCell>
-                <TableCell className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">{proveedor.name}</TableCell>
+                <TableCell className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <CopyableId
+                    label={proveedor.name}
+                    copyValue={proveedor.uuid}
+                    onClick={() => router.push(`/app/inventario/proveedores/${proveedor.uuid}`)}
+                  />
+                </TableCell>
                 <TableCell className="hidden md:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.nit || '-'}</TableCell>
                 <TableCell className="hidden lg:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.contact || '-'}</TableCell>
                 <TableCell className="hidden sm:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.phone || '-'}</TableCell>

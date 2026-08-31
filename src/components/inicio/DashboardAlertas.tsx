@@ -58,7 +58,9 @@ export function DashboardAlertas({ organizationId, activeModuleCodes }: Dashboar
   useEffect(() => {
     if (!organizationId) return;
     let cancelled = false;
-    setIsLoading(true);
+    // Solo mostrar skeleton en la carga inicial; en refetchs posteriores
+    // (ej. auto-refresh del dashboard) mantener los datos previos para evitar parpadeo.
+    setIsLoading(alertas.length === 0);
     inicioService
       .getAlertas(organizationId)
       .then((result) => {
@@ -79,6 +81,7 @@ export function DashboardAlertas({ organizationId, activeModuleCodes }: Dashboar
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, activeModuleCodes]);
 
   if (isLoading) {

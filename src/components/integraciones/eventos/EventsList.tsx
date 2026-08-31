@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Activity,
   ArrowDownLeft,
@@ -24,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { CopyableId } from '@/components/common/CopyableId';
 import { IntegrationEvent } from '@/lib/services/integrationsService';
 import { cn, formatDate } from '@/utils/Utils';
 
@@ -81,6 +83,7 @@ export function EventsList({
   onReprocess,
   onCopyId,
 }: EventsListProps) {
+  const router = useRouter();
   if (loading) {
     return (
       <div className="space-y-2">
@@ -174,12 +177,12 @@ export function EventsList({
                         )}
                       </div>
                       <div>
-                        <Link
-                          href={`/app/integraciones/eventos/${event.id}`}
-                          className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
-                        >
-                          {event.event_type}
-                        </Link>
+                        <CopyableId
+                          label={event.event_type}
+                          copyValue={event.id}
+                          onClick={() => router.push(`/app/integraciones/eventos/${event.id}`)}
+                          iconSize={12}
+                        />
                         {event.external_event_id && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[150px]">
                             {event.external_event_id}

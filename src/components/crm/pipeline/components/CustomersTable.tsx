@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Customer } from "../types";
 import { formatCurrency } from "@/utils/Utils";
 import {
@@ -26,6 +27,7 @@ import {
   Phone,
   User,
 } from "lucide-react";
+import { CopyableId } from "@/components/common/CopyableId";
 
 // Función para obtener las iniciales del nombre
 const getInitials = (name: string): string => {
@@ -56,6 +58,7 @@ export default function CustomersTable({
   sortField,
   sortDirection,
 }: CustomersTableProps) {
+  const router = useRouter();
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-x-auto">
       <Table>
@@ -123,9 +126,13 @@ export default function CustomersTable({
                     </Avatar>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm truncate">
-                        {customer.full_name}
-                      </div>
+                      <CopyableId
+                        label={customer.full_name}
+                        copyValue={customer.id}
+                        onClick={() => router.push(`/app/crm/clientes/${customer.id}`)}
+                        iconSize={12}
+                        className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm truncate block"
+                      />
                       {/* Mostrar contacto en móvil */}
                       <div className="sm:hidden mt-1 space-y-0.5">
                         {customer.email && (

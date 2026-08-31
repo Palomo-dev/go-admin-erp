@@ -40,6 +40,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 import { AccountPayable } from './types';
 import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface CuentasPorPagarTableProps {
   cuentas: AccountPayable[];
@@ -275,11 +276,14 @@ export function CuentasPorPagarTable({
                       <div className="flex flex-col">
                         {cuenta.invoice_purchase?.number_ext ? (
                           <>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {cuenta.invoice_purchase.number_ext}
-                            </span>
+                            <CopyableId
+                              label={cuenta.invoice_purchase.number_ext}
+                              copyValue={cuenta.invoice_purchase.number_ext}
+                              onClick={() => router.push(`/app/finanzas/cuentas-por-pagar/${cuenta.id}`)}
+                              iconSize={12}
+                            />
                             <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                              {cuenta.invoice_purchase.issue_date && 
+                              {cuenta.invoice_purchase.issue_date &&
                                 formatDate(cuenta.invoice_purchase.issue_date)
                               }
                             </span>

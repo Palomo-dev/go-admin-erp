@@ -25,6 +25,7 @@ import {
 import { formatCurrency } from '@/utils/Utils';
 import { BankAccount } from './BancosService';
 import { RealTimeBalanceWidget } from './RealTimeBalanceWidget';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface BankAccountCardProps {
   account: BankAccount;
@@ -87,7 +88,12 @@ export function BankAccountCard({ account, onToggleActive }: BankAccountCardProp
             </div>
             <div>
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                {account.name}
+                <CopyableId
+                  label={account.name}
+                  copyValue={String(account.id)}
+                  onClick={() => router.push(`/app/finanzas/bancos/cuentas/${account.id}`)}
+                  iconSize={12}
+                />
               </CardTitle>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {account.bank_name || 'Sin banco'}

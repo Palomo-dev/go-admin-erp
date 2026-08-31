@@ -51,6 +51,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SegmentosService } from './SegmentosService';
 import { Segment, SegmentStats } from './types';
 import { formatDate } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export function SegmentosPage() {
   const router = useRouter();
@@ -251,9 +252,13 @@ export function SegmentosPage() {
                 >
                   <TableCell className="py-2 sm:py-3">
                     <div>
-                      <p className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">
-                        {segment.name}
-                      </p>
+                      <CopyableId
+                        label={segment.name}
+                        copyValue={segment.id}
+                        onClick={() => router.push(`/app/crm/segmentos/${segment.id}`)}
+                        iconSize={12}
+                        className="text-xs sm:text-sm truncate max-w-[150px] sm:max-w-none block"
+                      />
                       {segment.description && (
                         <p className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
                           {segment.description}

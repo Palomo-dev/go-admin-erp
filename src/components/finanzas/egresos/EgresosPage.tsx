@@ -38,6 +38,7 @@ import { formatCurrency, formatDate } from '@/utils/Utils';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
 import { NuevoEgresoDialog } from './NuevoEgresoDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export function EgresosPage() {
   const router = useRouter();
@@ -272,7 +273,12 @@ export function EgresosPage() {
                 filteredMovements.map((movement) => (
                   <TableRow key={movement.uuid} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <TableCell className="font-medium text-gray-900 dark:text-white">
-                      #{movement.id}
+                      <CopyableId
+                        label={`#${movement.id}`}
+                        copyValue={String(movement.id)}
+                        onClick={() => router.push(`/app/finanzas/egresos/${movement.uuid}`)}
+                        iconSize={12}
+                      />
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${

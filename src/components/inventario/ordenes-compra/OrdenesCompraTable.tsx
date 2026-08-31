@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import type { PurchaseOrder } from '@/lib/services/purchaseOrderService';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface OrdenesCompraTableProps {
   orders: PurchaseOrder[];
@@ -56,6 +58,7 @@ export function OrdenesCompraTable({
   onDelete, 
   onStatusChange 
 }: OrdenesCompraTableProps) {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -96,7 +99,11 @@ export function OrdenesCompraTable({
               paginatedOrders.map((order) => (
                 <TableRow key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <TableCell className="font-medium text-gray-900 dark:text-gray-100">
-                    OC-{order.id}
+                    <CopyableId
+                      label={`OC-${order.id}`}
+                      copyValue={String(order.id)}
+                      onClick={() => router.push(`/app/inventario/ordenes-compra/${order.uuid}`)}
+                    />
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
                     {order.suppliers?.name || '-'}

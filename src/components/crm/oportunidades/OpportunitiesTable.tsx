@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Opportunity } from './types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface OpportunitiesTableProps {
   opportunities: Opportunity[];
@@ -203,7 +204,13 @@ export function OpportunitiesTable({
               >
                 <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
                   <div>
-                    <span className="truncate max-w-[120px] sm:max-w-none block">{opportunity.name}</span>
+                    <CopyableId
+                      label={opportunity.name}
+                      copyValue={opportunity.id}
+                      onClick={() => router.push(`/app/crm/oportunidades/${opportunity.id}`)}
+                      iconSize={12}
+                      className="truncate max-w-[120px] sm:max-w-none block"
+                    />
                     <span className="sm:hidden text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 block">
                       {opportunity.customer?.full_name || '-'}
                     </span>

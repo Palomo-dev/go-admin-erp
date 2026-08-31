@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { 
   Card, 
@@ -23,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface Customer {
   id: string;
@@ -36,6 +38,7 @@ interface Customer {
 }
 
 export function CustomersList() {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,7 +165,14 @@ export function CustomersList() {
               <TableBody>
                 {filteredCustomers.map((customer) => (
                   <TableRow key={customer.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700/50">
-                    <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">{customer.full_name}</TableCell>
+                    <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
+                      <CopyableId
+                        label={customer.full_name}
+                        copyValue={customer.id}
+                        onClick={() => router.push(`/app/crm/clientes/${customer.id}`)}
+                        iconSize={12}
+                      />
+                    </TableCell>
                     <TableCell className="py-2 sm:py-3">
                       <div className="flex flex-col">
                         {customer.email && <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px]">{customer.email}</span>}

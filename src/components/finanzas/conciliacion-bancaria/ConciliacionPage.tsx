@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConciliacionService, ConciliacionStats } from './ConciliacionService';
 import { BankReconciliation, BankAccount } from '../bancos/BancosService';
 import { formatCurrency } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export function ConciliacionPage() {
   const router = useRouter();
@@ -271,7 +272,12 @@ export function ConciliacionPage() {
                     </div>
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">
-                        {rec.bank_account?.name || 'Cuenta'}
+                        <CopyableId
+                          label={rec.bank_account?.name || 'Cuenta'}
+                          copyValue={String(rec.id)}
+                          onClick={() => router.push(`/app/finanzas/conciliacion-bancaria/${rec.id}`)}
+                          iconSize={12}
+                        />
                       </p>
                       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                         <Calendar className="h-3 w-3" />

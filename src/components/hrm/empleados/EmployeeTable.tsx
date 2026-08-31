@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,6 +32,7 @@ import {
   Users,
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export interface EmployeeRow {
   id: string;
@@ -97,6 +99,7 @@ export function EmployeeTable({
   onDuplicate,
   onChangeStatus,
 }: EmployeeTableProps) {
+  const router = useRouter();
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('es-CO', {
       year: 'numeric',
@@ -166,9 +169,13 @@ export function EmployeeTable({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">
-                      <span className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white truncate">
-                        {employee.full_name}
-                      </span>
+                      <CopyableId
+                        label={employee.full_name}
+                        copyValue={employee.id}
+                        onClick={() => router.push(`/app/hrm/empleados/${employee.id}`)}
+                        iconSize={12}
+                        className="font-medium text-xs sm:text-sm truncate"
+                      />
                       {employee.email && (
                         <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
                           {employee.email}

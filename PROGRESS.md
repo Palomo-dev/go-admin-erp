@@ -455,3 +455,87 @@ Todas las fases compilan exitosamente en ambos repositorios. Las fases F0ï¿½F
   1. [bajo] Validacion de token vacio tras parsing (edge case).
   2. [bajo] Sin rate limiting HTTP (opcional).
 - Calificacion final N1: 9.2/10 — APROBADA
+
+---
+
+## Objetivo actual: CRM Revenue OS - Sistema comercial y revenue-operations multi-tenant
+
+Evolucion del CRM a un sistema comercial y revenue-operations completo, configurable
+por organizacion, con ciclo: Lead -> Contact -> Company -> Opportunity -> Activity ->
+Quotation -> Contract -> Payment -> Customer -> Onboarding -> Customer Success ->
+Subscription -> Renewal -> Expansion -> Referral.
+
+Documentacion completa en docs/crm-revenue-os/:
+- PLAN.md - plan maestro con 16 fases + mapeo de los 30 puntos del metodo comercial
+- ANEXO-A-INVENTARIO-ACTUAL.md - inventario de UI, BD y backend existente
+- ANEXO-B-PROVEEDORES-Y-APIS.md - investigacion de proveedores (Twilio, ElevenLabs, OpenAI, Google, Resend, WhatsApp, Motion)
+- FASE-00 a FASE-15 - documentos detallados por fase (UI + BD + Backend + tests + DoD)
+
+### Fases del CRM Revenue OS
+
+| Fase | Nombre | Estado | Ronda | Calificacion | Doc |
+|------|--------|--------|-------|--------------|-----|
+| F0 | Fundaciones, higiene y registry de proveedores | doc-completa | 0 | - | FASE-00-FUNDACIONES.md |
+| F1 | Estructura comercial: ICP, verticales, roles, playbooks | doc-completa | 0 | - | FASE-01-ESTRUCTURA-COMERCIAL.md |
+| F2 | Pipeline profesional: gates, scoring, discovery, objeciones | doc-completa | 0 | - | FASE-02-PIPELINE-PROFESIONAL.md |
+| F3 | Telefonía en el CRM: softphone multiplataforma y grabacion | doc-completa | 0 | - | FASE-03-TELEFONIA-CRM.md |
+| F4 | Transcripcion, analisis IA y calificacion automatica de llamadas | doc-completa | 0 | - | FASE-04-TRANSCRIPCION-ANALISIS-IA.md |
+| F5 | Llamadas desde el celular personal (bridge 2 patas) | doc-completa | 0 | - | FASE-05-LLAMADAS-MOVIL-PERSONAL.md |
+| F6 | Agente de IA de voz con proposito | doc-completa | 0 | - | FASE-06-AGENTE-IA-VOZ.md |
+| F7 | Email propio: Resend, React Email y editor de plantillas | doc-completa | 0 | - | FASE-07-EMAIL-Y-PLANTILLAS.md |
+| F8 | Motor de automatizaciones y secuencias multicanal por etapa | doc-completa | 0 | - | FASE-08-AUTOMATIZACIONES-SECUENCIAS.md |
+| F9 | Ficha 360: cliente, oportunidad y drawer completo | doc-completa | 0 | - | FASE-09-FICHA-360.md |
+| F10 | Demo, propuesta, contrato y pago | doc-completa | 0 | - | FASE-10-PROPUESTA-CONTRATO-PAGO.md |
+| F11 | Postventa: onboarding, activacion, health, renovacion, expansion | doc-completa | 0 | - | FASE-11-POSTVENTA.md |
+| F12 | Referidos y partners | doc-completa | 0 | - | FASE-12-REFERIDOS-PARTNERS.md |
+| F13 | Equipo, cuotas, comisiones y dashboard de vendedor | doc-completa | 0 | - | FASE-13-EQUIPO-COMISIONES.md |
+| F14 | Revenue OS: metricas, forecast y matematica comercial | doc-completa | 0 | - | FASE-14-REVENUE-OS.md |
+| F15 | Motion UX y cross-platform: PWA, Capacitor y Electron | doc-completa | 0 | - | FASE-15-MOTION-CROSS-PLATFORM.md |
+
+### Orden de implementacion recomendado
+
+1. F0 - higiene, fixes de bugs criticos, registry de proveedores, env vars, Motion
+2. F1 - estructura comercial configurable
+3. F2 - pipeline profesional
+4. F3 - telefonía CRM (softphone + grabacion)
+5. F4 - transcripcion y analisis IA
+6. F5 - llamadas movil personal (bridge)
+7. F7 - email y plantillas (en paralelo)
+8. F6 - agente IA de voz
+9. F8 - automatizaciones y secuencias
+10. F9 - ficha 360
+11. F10 - propuesta, contrato, pago
+12. F11 - postventa
+13. F12 - referidos y partners
+14. F13 - equipo, comisiones
+15. F14 - Revenue OS
+16. F15 - Motion y cross-platform
+
+### Reglas de implementacion
+
+- Una fase no comienza hasta que la anterior tenga calificacion >= 9.5/10
+- Cambios de BD via Supabase MCP (proyecto jgmgphmzusbluqhuqihj), NUNCA archivos .sql
+- Cero organizationId = 1 hardcodeado
+- Cero archivos .sql en el repo
+- 
+pm run lint + 	sc --noEmit + 
+pm test limpios antes de aprobar
+- Workflow: builder -> tester -> QA-reviewer por fase, hasta >= 9.5
+
+### Bugs criticos a resolver en F0
+
+- callService.ts: service-role client, user_profiles (no existe, es profiles), organizationId: 1 hardcodeado
+- /api/crm/ia/*: no valida que la oportunidad pertenezca a la org del usuario
+- /api/ai-assistant/transcribe: sin auth, sin validacion de org, sin limite de tamaño, sin creditos
+- Twilio webhooks legacy: documentados como activos y desactivados simultaneamente
+- .env.example: falta Twilio, OpenAI, ElevenLabs, Deepgram, SendGrid service-role
+- stages: columnas duplicadas de orden (display_order vs position)
+- /app/crm/configuracion: linkado pero la ruta no existe
+- AutomationsView.tsx: anuncia "proximamente"
+- ElevenLabs/Deepgram/OpenAI Realtime: codigo escrito pero no cableado
+
+### Estado de documentacion
+
+- **Documentacion completa**: las 16 fases (F0-F15) + PLAN + 2 anexos estan escritas
+- **Implementacion**: pendiente - no se ha aplicado ningun cambio de BD, codigo, commit, push ni PR
+- **Proximo paso**: comenzar implementacion de F0 cuando el usuario lo autorice

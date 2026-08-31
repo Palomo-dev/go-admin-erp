@@ -177,6 +177,252 @@ export default function ImportarProductosPage() {
   };
 
   /**
+   * Detecta si el archivo tiene el formato "Space" (listado simple sin SKU):
+   * Columnas: Producto, Categoría, P. Venta, [Descuento], [Promoción 2x]
+   * No tiene columna Código/SKU. Retorna la fila de encabezado o -1 si no coincide.
+   */
+  const detectSpaceFormat = (rawData: Array<Array<string | number | null>>): number => {
+    for (let i = 0; i < Math.min(10, rawData.length); i++) {
+      const row = rawData[i];
+      if (!row) continue;
+      const cells = row.map(c => String(c || '').toLowerCase().trim());
+      const hasProducto = cells.some(c => c === 'producto');
+      const hasCategoria = cells.some(c => c === 'categoría' || c === 'categoria');
+      const hasPVenta = cells.some(c => c === 'p. venta' || c === 'p venta' || c === 'precio' || c === 'precio de venta');
+      const hasCodigo = cells.some(c => c === 'código' || c === 'codigo' || c === 'sku');
+      // Formato Space: tiene Producto + Categoría + P. Venta pero NO tiene Código/SKU
+      if (hasProducto && hasCategoria && hasPVenta && !hasCodigo) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  /**
+   * Tamaños conocidos para detección automática de variantes.
+   * Si el nombre empieza con uno de estos prefijos, se considera variante de tamaño
+   * del producto cuyo nombre es el resto. Ej: "PEQUEÑO GRANI CON LICOR" →
+   * variante "Tamaño=Pequeño" del producto padre "GRANI CON LICOR".
+   */
+  const SIZE_PREFIXES = [
+    'EXTRAGRANDE', 'EXTRA GRANDE', 'EXTRA',
+    'GRANDE', 'GRAN',
+    'MEDIANO', 'MED',
+    'PEQUEÑO', 'PEQUE', 'PEQUEO',
+    '1LT', '1 LT', 'LITRO', '1L',
+    'MEDIA', 'MEDIA DE',
+  ];
+
+  /**
+   * Detecta si un nombre de producto empieza con un tamaño conocido.
+   * Retorna { size, baseName } o null si no coincide.
+   */
+  const detectSizeVariant = (name: string): { size: string; baseName: string } | undefined => {
+    const upper = name.toUpperCase().trim();
+    for (const prefix of SIZE_PREFIXES) {
+      if (upper.startsWith(prefix + ' ')) {
+        const baseName = name.substring(prefix.length).trim();
+        if (baseName.length > 0) {
+          // Normalizar el tamaño para mostrarlo limpio
+          let size = prefix;
+          if (prefix === 'EXTRAGRANDE' || prefix === 'EXTRA GRANDE') size = 'Extragrande';
+          else if (prefix === 'GRANDE' || prefix === 'GRAN') size = 'Grande';
+          else if (prefix === 'MEDIANO' || prefix === 'MED') size = 'Mediano';
+          else if (prefix === 'PEQUEÑO' || prefix === 'PEQUE' || prefix === 'PEQUEO') size = 'Pequeño';
+          else if (prefix === '1LT' || prefix === '1 LT' || prefix === '1L') size = '1 Litro';
+          else if (prefix === 'LITRO') size = '1 Litro';
+          else if (prefix === 'MEDIA' || prefix === 'MEDIA DE') size = 'Media';
+          else size = prefix.charAt(0) + prefix.slice(1).toLowerCase();
+          return { size, baseName };
+        }
+      }
+    }
+    return undefined;
+  };
+
+  /**
+   * Parsea archivo con formato "Space" (listado simple sin SKU).
+   * - Autogenera SKUs con prefijo SP- + slug del nombre
+   * - Detecta tamaños (PEQUEÑO/MEDIANO/GRANDE/EXTRAGRANDE/1LT) y agrupa como variantes
+   *   de un producto padre, usando la lógica de variantes que ya soporta el importador
+   *   (isParent, parentSku, variantData)
+   * - La promo 2x NO se mapea a compare_price (eso es para descuentos de producto).
+   *   Se deja indicada en notas para configurar después en /app/pos/promociones
+   *   con tipo buy_x_get_y.
+   */
+  const parseSpaceFormat = (rawData: Array<Array<string | number | null>>, headerRow: number): ImportRow[] => {
+    const headers = rawData[headerRow].map((h: string | number | null) => String(h || '').toLowerCase().trim());
+    const nameIdx = headers.findIndex(h => h === 'producto' || h === 'nombre' || h === 'name');
+    const categoryIdx = headers.findIndex(h => h === 'categoría' || h === 'categoria' || h === 'category');
+    const priceIdx = headers.findIndex(h => h === 'p. venta' || h === 'p venta' || h === 'precio' || h === 'precio de venta' || h === 'price');
+    const discountIdx = headers.findIndex(h => h === 'descuento' || h === 'descuento ' || h === 'discount');
+    const promoTotalIdx = headers.findIndex(h => h.includes('promoción') || h.includes('promocion') || h.includes('promo'));
+
+    if (nameIdx === -1 || priceIdx === -1) return [];
+
+    // Primera pasada: leer todos los productos crudos
+    interface RawProduct {
+      row: number;
+      name: string;
+      category?: string;
+      price?: number;
+      discountPrice?: number;
+      promoTotal?: number;
+      sizeVariant?: { size: string; baseName: string };
+    }
+    const rawProducts: RawProduct[] = [];
+
+    for (let i = headerRow + 1; i < rawData.length; i++) {
+      const row = rawData[i];
+      if (!row || !row[nameIdx]) continue;
+      const name = String(row[nameIdx]).trim();
+      if (!name) continue;
+
+      const category = categoryIdx !== -1 ? String(row[categoryIdx] || '').trim() : undefined;
+      const normalPrice = priceIdx !== -1 ? Number(row[priceIdx]) || undefined : undefined;
+      const discountPrice = discountIdx !== -1 ? Number(row[discountIdx]) || undefined : undefined;
+      const promoTotal = promoTotalIdx !== -1 ? Number(row[promoTotalIdx]) || undefined : undefined;
+      const sizeVariant = detectSizeVariant(name);
+
+      rawProducts.push({ row: i + 1, name, category, price: normalPrice, discountPrice, promoTotal, sizeVariant });
+    }
+
+    // Agrupar variantes por (baseName + category) para detectar productos padre
+    // Si hay 2+ productos con el mismo baseName en la misma categoría, son variantes
+    const variantGroups = new Map<string, RawProduct[]>();
+    const standaloneProducts: RawProduct[] = [];
+
+    for (const prod of rawProducts) {
+      if (prod.sizeVariant) {
+        const groupKey = `${prod.sizeVariant.baseName.toLowerCase()}|${(prod.category || '').toLowerCase()}`;
+        const existing = variantGroups.get(groupKey) || [];
+        existing.push(prod);
+        variantGroups.set(groupKey, existing);
+      } else {
+        standaloneProducts.push(prod);
+      }
+    }
+
+    // Si un grupo tiene solo 1 elemento, no es variante → tratarlo como standalone
+    for (const [, prods] of variantGroups) {
+      if (prods.length < 2) {
+        standaloneProducts.push(...prods);
+      }
+    }
+    // Filtrar grupos con 2+ elementos
+    const realVariantGroups = new Map<string, RawProduct[]>();
+    for (const [key, prods] of variantGroups) {
+      if (prods.length >= 2) realVariantGroups.set(key, prods);
+    }
+
+    const rows: ImportRow[] = [];
+    const seenSkus = new Set<string>();
+
+    // Generar SKU único con prefijo SP-
+    const generateSku = (name: string, rowNum: number): string => {
+      let baseSku = `SP-${slugify(name).substring(0, 40)}`;
+      if (!baseSku || baseSku === 'SP-') {
+        baseSku = `SP-${String(rowNum).padStart(3, '0')}`;
+      }
+      let sku = baseSku;
+      let suffix = 1;
+      while (seenSkus.has(sku)) {
+        suffix++;
+        sku = `${baseSku}-${suffix}`;
+      }
+      seenSkus.add(sku);
+      return sku;
+    };
+
+    // Construir nota de promo 2x para configurar después en /app/pos/promociones
+    const buildPromoNote = (normalPrice?: number, discountPrice?: number, promoTotal?: number): string | undefined => {
+      if (!discountPrice || discountPrice <= 0 || !normalPrice || normalPrice <= discountPrice) return undefined;
+      if (promoTotal && promoTotal > 0) {
+        return `Configurar promo 2x1 en /app/pos/promociones (buy_x_get_y): 2 por $${promoTotal.toLocaleString('es-CO')} (c/u $${discountPrice.toLocaleString('es-CO')}, normal $${normalPrice.toLocaleString('es-CO')})`;
+      }
+      return `Configurar promo 2x1 en /app/pos/promociones (buy_x_get_y): c/u $${discountPrice.toLocaleString('es-CO')} (normal $${normalPrice.toLocaleString('es-CO')})`;
+    };
+
+    // Procesar grupos de variantes: crear producto padre + variantes hijas
+    for (const [, prods] of realVariantGroups) {
+      const firstProd = prods[0];
+      const baseName = firstProd.sizeVariant!.baseName;
+      const category = firstProd.category;
+
+      // Producto padre
+      const parentSku = generateSku(baseName, firstProd.row);
+      // Precio del padre: el precio más bajo entre las variantes (o el primero)
+      const parentPrice = Math.min(...prods.map(p => p.price || Infinity).filter(p => p !== Infinity));
+      const parentPromoNote = buildPromoNote(
+        parentPrice,
+        prods.find(p => p.discountPrice && p.discountPrice > 0)?.discountPrice,
+        prods.find(p => p.promoTotal && p.promoTotal > 0)?.promoTotal,
+      );
+
+      rows.push({
+        row: firstProd.row,
+        sku: parentSku,
+        name: baseName,
+        type: 'Producto',
+        category: category || undefined,
+        unit: 'Unidad',
+        price: parentPrice !== Infinity ? parentPrice : undefined,
+        stock: 0,
+        isParent: true,
+        status: 'pending',
+        notes: parentPromoNote,
+      });
+
+      // Variantes hijas
+      for (const prod of prods) {
+        const variantSku = generateSku(prod.name, prod.row);
+        const variantNote = buildPromoNote(prod.price, prod.discountPrice, prod.promoTotal);
+        const variantData = JSON.stringify({ Tamaño: prod.sizeVariant!.size });
+
+        rows.push({
+          row: prod.row,
+          sku: variantSku,
+          name: prod.name,
+          type: 'Producto',
+          category: prod.category || undefined,
+          unit: 'Unidad',
+          price: prod.price,
+          stock: 0,
+          parentSku,
+          isParent: false,
+          variantData,
+          status: 'pending',
+          notes: variantNote,
+        });
+      }
+    }
+
+    // Procesar productos standalone (sin variantes)
+    for (const prod of standaloneProducts) {
+      const sku = generateSku(prod.name, prod.row);
+      const note = buildPromoNote(prod.price, prod.discountPrice, prod.promoTotal);
+
+      rows.push({
+        row: prod.row,
+        sku,
+        name: prod.name,
+        type: 'Producto',
+        category: prod.category || undefined,
+        unit: 'Unidad',
+        price: prod.price,
+        stock: 0,
+        status: 'pending',
+        notes: note,
+      });
+    }
+
+    // Ordenar por fila original para preview ordenado
+    rows.sort((a, b) => a.row - b.row);
+
+    return rows;
+  };
+
+  /**
    * Parsea archivo XLSX/CSV de "Gestión de productos y servicios" (Siigo)
    * Columnas: Tipo, Código, Nombre, Unidad, Precios, Impuestos, Stock, Estado
    * Header en fila 4 (0-indexed), datos desde fila 5
@@ -187,6 +433,31 @@ export default function ImportarProductosPage() {
       const wb = XLSX.read(buffer, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rawData: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+      // Detectar formato "Space" (listado simple sin SKU, con promo 2x)
+      const spaceHeaderRow = detectSpaceFormat(rawData);
+      if (spaceHeaderRow !== -1) {
+        const rows = parseSpaceFormat(rawData, spaceHeaderRow);
+        if (rows.length === 0) {
+          toast({
+            title: 'Sin datos',
+            description: 'No se encontraron productos válidos en el archivo',
+            variant: 'destructive',
+          });
+          return;
+        }
+        const variantCount = rows.filter(r => r.isParent === true).length;
+        const variantChildCount = rows.filter(r => r.parentSku).length;
+        const promoCount = rows.filter(r => r.notes && r.notes.includes('promo 2x1')).length;
+        setPreviewData(rows);
+        setStats({ total: rows.length, success: 0, errors: 0, pending: rows.length });
+        toast({
+          title: 'Formato Space detectado',
+          description: `${rows.length} productos cargados${variantCount > 0 ? `, ${variantCount} productos padre con ${variantChildCount} variantes de tamaño` : ''}${promoCount > 0 ? `, ${promoCount} con promo 2x1 (configurar en /app/pos/promociones)` : ''}. SKUs autogenerados con prefijo SP-.`,
+        });
+        setStep('preview');
+        return;
+      }
 
       // Buscar fila de encabezados (contiene "Código", "SKU" o "Nombre")
       let headerRow = -1;
@@ -1451,7 +1722,11 @@ export default function ImportarProductosPage() {
                   <li>• <strong>Estado</strong> - active/inactive</li>
                 </ul>
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                  También compatible con archivos de Siigo ("Gestión de productos y servicios").
+                  Compatible con archivos de Siigo ("Gestión de productos y servicios") y
+                  formato Space (Producto, Categoría, P. Venta, Descuento, Promoción 2x).
+                  El formato Space autogenera SKUs, detecta tamaños (Pequeño/Mediano/Grande/Extragrande)
+                  como variantes, y marca la promo 2x1 en notas para configurar después
+                  en /app/pos/promociones (tipo buy_x_get_y).
                 </p>
               </div>
             </CardContent>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -10,6 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CopyableId } from '@/components/common/CopyableId';
 import { ConnectionStatusBadge } from './ConnectionStatusBadge';
 import { ConnectionActions } from './ConnectionActions';
 import { IntegrationConnection, IntegrationConnector, IntegrationProvider } from '@/lib/services/integrationsService';
@@ -105,6 +107,7 @@ export function ConnectionsTable({
   onHealthCheck,
   onDelete,
 }: ConnectionsTableProps) {
+  const router = useRouter();
   const formatLastSync = (date: string | undefined) => {
     if (!date) return 'Nunca';
     return formatDistanceToNow(new Date(date), { addSuffix: true, locale: es });
@@ -148,9 +151,12 @@ export function ConnectionsTable({
                         {provider?.name?.[0]?.toUpperCase() || 'C'}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {connection.name}
-                        </p>
+                        <CopyableId
+                          label={connection.name}
+                          copyValue={connection.id}
+                          onClick={() => router.push(`/app/integraciones/conexiones/${connection.id}`)}
+                          iconSize={12}
+                        />
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {provider?.name || connector?.name || 'Desconocido'}
                           {connector?.name && provider?.name && connector.name !== provider.name && (

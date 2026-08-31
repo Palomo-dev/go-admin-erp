@@ -30,6 +30,7 @@ import {
   Trash2,
   Banknote,
 } from 'lucide-react';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface LoansTableProps {
   loans: EmployeeLoan[];
@@ -136,8 +137,14 @@ export function LoansTable({
               className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
               onClick={() => handleViewDetail(loan)}
             >
-              <TableCell className="font-mono text-sm text-gray-900 dark:text-white">
-                {loan.loan_number || '-'}
+              <TableCell>
+                <CopyableId
+                  label={loan.loan_number || '-'}
+                  copyValue={loan.id}
+                  onClick={() => handleViewDetail(loan)}
+                  iconSize={12}
+                  className="font-mono text-sm"
+                />
               </TableCell>
               <TableCell>
                 <div>

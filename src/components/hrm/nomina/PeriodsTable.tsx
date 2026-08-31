@@ -29,6 +29,7 @@ import {
   Trash2,
   Calendar,
 } from 'lucide-react';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface PeriodsTableProps {
   periods: PayrollPeriod[];
@@ -118,8 +119,14 @@ export function PeriodsTable({
               className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
               onClick={() => handleViewDetail(period)}
             >
-              <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
-                {period.name || '-'}
+              <TableCell className="py-2 sm:py-3">
+                <CopyableId
+                  label={period.name || '-'}
+                  copyValue={period.id}
+                  onClick={() => handleViewDetail(period)}
+                  iconSize={12}
+                  className="font-medium text-xs sm:text-sm"
+                />
               </TableCell>
               <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                 {frequencyLabels[period.frequency] || period.frequency}

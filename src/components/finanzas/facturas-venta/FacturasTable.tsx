@@ -17,6 +17,7 @@ import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 import DetalleFactura from './id/DetalleFactura';
 import { PagosFactura } from './PagosFactura';
 import { ElectronicInvoiceStatus } from '@/components/finanzas/facturacion-electronica';
+import { CopyableId } from '@/components/common/CopyableId';
 
 // Función para formatear fechas sin usar Date (evita errores de tipo)
 const formatearFecha = (fechaStr: string | null): string => {
@@ -537,7 +538,12 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                     {(currentPage - 1) * pageSize + index + 1}
                   </TableCell>
               <TableCell className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
-                {factura.number}
+                <CopyableId
+                  label={factura.number}
+                  copyValue={factura.number}
+                  onClick={() => router.push(`/app/finanzas/facturas-venta/${factura.id}`)}
+                  iconSize={12}
+                />
               </TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm break-words whitespace-normal min-w-0">{factura.customer_name}</TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm whitespace-nowrap">{formatearFecha(factura.issue_date)}</TableCell>

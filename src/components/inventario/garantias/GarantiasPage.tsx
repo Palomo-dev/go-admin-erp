@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,7 @@ import {
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { CreateClaimDialog } from './CreateClaimDialog';
 import { formatDate, formatCurrency } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 const STATUS_CONFIG: Record<WarrantyClaimStatus, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: <Clock size={12} /> },
@@ -71,6 +73,7 @@ const PAGE_SIZE = 20;
 
 export function GarantiasPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const organizationId = getOrganizationId();
 
   const [claims, setClaims] = useState<WarrantyClaimWithDetails[]>([]);
@@ -309,9 +312,11 @@ export function GarantiasPage() {
                       return (
                         <TableRow key={claim.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/70">
                           <TableCell>
-                            <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
-                              #{claim.id.substring(0, 8)}
-                            </span>
+                            <CopyableId
+                              label={`#${claim.id.substring(0, 8)}`}
+                              copyValue={claim.id}
+                              onClick={() => router.push(`/app/inventario/garantias/${claim.id}`)}
+                            />
                           </TableCell>
                           <TableCell>
                             <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">

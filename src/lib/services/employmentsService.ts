@@ -148,6 +148,7 @@ export interface OrganizationMemberOption {
 export interface BranchOption {
   id: number;
   name: string;
+  is_main?: boolean | null;
 }
 
 export interface DepartmentOption {
@@ -640,7 +641,7 @@ export class EmploymentsService {
 
     const { data, error } = await supabase
       .from('branches')
-      .select('id, name')
+      .select('id, name, is_main')
       .eq('organization_id', this.organizationId)
       .eq('is_active', true)
       .order('name');

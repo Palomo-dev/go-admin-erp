@@ -26,6 +26,7 @@ import {
 } from '@/components/inicio';
 import type { DashboardData, PeriodoDashboard, HorasDashboard } from '@/components/inicio';
 import { useDynamicGreeting } from '@/components/inicio/useDynamicGreeting';
+import { useDashboardRealtime } from '@/components/inicio/useDashboardRealtime';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { supabase } from '@/lib/supabase/config';
 import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
@@ -83,31 +84,58 @@ function InicioContent() {
     }).catch(() => {});
   }, []);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
     if (!organization?.id) return;
-    setIsLoading(true);
+    if (!silent) setIsLoading(true);
     try {
       const [data, modules] = await Promise.all([
         inicioService.getDashboardData(organization.id, periodo, horas),
         moduleManagementService.getActiveModules(organization.id).catch(() => null),
       ]);
       setDashboardData(data);
-      if (modules) setActiveModuleCodes(modules.map(m => m.code));
+      // Solo actualizar activeModuleCodes si el contenido real cambió,
+      // para evitar re-renders y refetchs innecesarios en componentes hijos
+      // (DashboardAlertas, DashboardModulos) durante el auto-refresh silencioso.
+      if (modules) {
+        const newCodes = modules.map(m => m.code).sort();
+        setActiveModuleCodes((prev) => {
+          if (prev && prev.length === newCodes.length && prev.every((c, i) => c === newCodes[i])) {
+            return prev; // mismo contenido → mantener referencia previa
+          }
+          return newCodes;
+        });
+      }
     } catch (err) {
       console.error('Error cargando dashboard:', err);
-      toast({
-        title: 'Error',
-        description: t('errorLoadingDashboard'),
-        variant: 'destructive',
-      });
+      if (!silent) {
+        toast({
+          title: 'Error',
+          description: t('errorLoadingDashboard'),
+          variant: 'destructive',
+        });
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
-  }, [organization?.id, toast, periodo, horas]);
+  }, [organization?.id, toast, t, periodo, horas]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Realtime + auto-refresh para las cards del dashboard (igual que pedidos-online).
+  // Recarga silenciosa: actualiza datos sin mostrar el skeleton de carga.
+  const handleRealtimeRefresh = useCallback(() => {
+    loadData(true);
+  }, [loadData]);
+
+  useDashboardRealtime(
+    organization?.id ?? null,
+    periodo,
+    horas,
+    handleRealtimeRefresh,
+    !!organization?.id,
+  );
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

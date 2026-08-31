@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -31,6 +32,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export interface JobPositionRow {
   id: string;
@@ -61,6 +63,7 @@ export function JobPositionTable({
   onToggleActive,
   onDelete,
 }: JobPositionTableProps) {
+  const router = useRouter();
   const formatSalaryRange = (min: number | null, max: number | null) => {
     if (min === null && max === null) return '-';
     if (min !== null && max !== null) {
@@ -127,9 +130,13 @@ export function JobPositionTable({
             >
               <TableCell className="py-2 sm:py-3">
                 <div className="flex flex-col min-w-0">
-                  <span className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white truncate">
-                    {position.name}
-                  </span>
+                  <CopyableId
+                    label={position.name}
+                    copyValue={position.id}
+                    onClick={() => router.push(`/app/hrm/cargos/${position.id}`)}
+                    iconSize={12}
+                    className="font-medium text-xs sm:text-sm truncate"
+                  />
                   {position.code && (
                     <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-mono">
                       {position.code}

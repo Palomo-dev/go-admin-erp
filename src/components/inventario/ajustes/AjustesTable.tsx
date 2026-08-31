@@ -31,7 +31,9 @@ import {
 import { formatDate } from '@/utils/Utils';
 import { ADJUSTMENT_TYPES, ADJUSTMENT_REASONS, type InventoryAdjustment } from '@/lib/services/adjustmentService';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface AjustesTableProps {
   data: InventoryAdjustment[];
@@ -74,6 +76,7 @@ export function AjustesTable({
   onCancel,
   onDelete
 }: AjustesTableProps) {
+  const router = useRouter();
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -145,7 +148,11 @@ export function AjustesTable({
                   className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 >
                   <TableCell className="font-mono text-sm text-gray-600 dark:text-gray-400">
-                    #{item.id}
+                    <CopyableId
+                      label={`#${item.id}`}
+                      copyValue={String(item.id)}
+                      onClick={() => router.push(`/app/inventario/ajustes/${item.id}`)}
+                    />
                   </TableCell>
                   <TableCell className="text-gray-600 dark:text-gray-400 whitespace-nowrap">
                     {formatDate(item.created_at)}

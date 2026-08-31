@@ -38,6 +38,7 @@ import { formatCurrency, formatDate } from '@/utils/Utils';
 import { transferenciasService, BankTransfer } from '@/lib/services/transferenciasService';
 import { NuevaTransferenciaDialog } from './NuevaTransferenciaDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { CopyableId } from '@/components/common/CopyableId';
 
 const statusColors: Record<string, string> = {
   completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
@@ -311,7 +312,16 @@ export function TransferenciasPage() {
                       {formatCurrency(transfer.amount)}
                     </TableCell>
                     <TableCell className="text-gray-500 dark:text-gray-400">
-                      {transfer.reference || '-'}
+                      {transfer.reference ? (
+                        <CopyableId
+                          label={transfer.reference}
+                          copyValue={transfer.id}
+                          onClick={() => router.push(`/app/finanzas/transferencias/${transfer.id}`)}
+                          iconSize={12}
+                        />
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColors[transfer.status]}>

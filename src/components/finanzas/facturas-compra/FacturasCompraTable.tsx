@@ -27,6 +27,7 @@ import { InvoicePurchase, FiltrosFacturasCompra } from './types';
 import { formatCurrency, formatDate, cn, parseLocalDate } from '@/utils/Utils';
 import { Pagination } from '@/components/ui/pagination';
 import { RegistrarPagoModal } from './RegistrarPagoModal';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export type { FiltrosFacturasCompra };
 
@@ -47,8 +48,8 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   const pageSize = 10;
 
   // Detectar si estamos en inventario o finanzas
-  const basePath = pathname.includes('/inventario/') 
-    ? '/app/inventario/facturas-compra' 
+  const basePath = pathname?.includes('/inventario/')
+    ? '/app/inventario/facturas-compra'
     : '/app/finanzas/facturas-compra';
 
   // Cargar facturas
@@ -248,7 +249,12 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                 >
                   <TableCell className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-200 py-2 sm:py-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="break-words whitespace-normal min-w-0 sm:max-w-none">{factura.number_ext}</span>
+                      <CopyableId
+                        label={factura.number_ext}
+                        copyValue={factura.number_ext}
+                        onClick={() => handleVerDetalles(factura.id)}
+                        iconSize={12}
+                      />
                       {factura.due_date && factura.balance > 0 && parseLocalDate(factura.due_date) < new Date() && (
                         <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                       )}

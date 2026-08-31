@@ -251,9 +251,13 @@ export function SegmentosPage() {
                 >
                   <TableCell className="py-2 sm:py-3">
                     <div>
-                      <p className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-100 truncate max-w-[150px] sm:max-w-none">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); router.push(`/app/crm/segmentos/${segment.id}`); }}
+                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium text-xs sm:text-sm truncate max-w-[150px] sm:max-w-none block"
+                        title="Ver detalle"
+                      >
                         {segment.name}
-                      </p>
+                      </button>
                       {segment.description && (
                         <p className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
                           {segment.description}

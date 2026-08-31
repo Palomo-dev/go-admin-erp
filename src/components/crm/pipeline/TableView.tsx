@@ -514,7 +514,13 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
                 <TableRow key={opportunity.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <TableCell className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                     <div className="flex flex-col">
-                      <span>{opportunity.name}</span>
+                      <button
+                        onClick={() => router.push(`/app/crm/oportunidades/${opportunity.id}`)}
+                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-semibold"
+                        title="Ver detalle"
+                      >
+                        {opportunity.name}
+                      </button>
                       <span className="sm:hidden text-gray-600 dark:text-gray-400 font-normal mt-1">{opportunity.customer_name || "Sin cliente"}</span>
                     </div>
                   </TableCell>

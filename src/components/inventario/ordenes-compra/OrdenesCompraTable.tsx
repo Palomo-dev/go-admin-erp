@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +57,7 @@ export function OrdenesCompraTable({
   onDelete, 
   onStatusChange 
 }: OrdenesCompraTableProps) {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -96,7 +98,13 @@ export function OrdenesCompraTable({
               paginatedOrders.map((order) => (
                 <TableRow key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <TableCell className="font-medium text-gray-900 dark:text-gray-100">
-                    OC-{order.id}
+                    <button
+                      onClick={() => router.push(`/app/inventario/ordenes-compra/${order.uuid}`)}
+                      className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                      title="Ver detalle"
+                    >
+                      OC-{order.id}
+                    </button>
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
                     {order.suppliers?.name || '-'}

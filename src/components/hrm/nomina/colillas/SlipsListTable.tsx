@@ -136,9 +136,13 @@ export function SlipsListTable({
               </TableCell>
               <TableCell>
                 <div>
-                  <div className="font-medium text-gray-900 dark:text-white">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleViewSlip(slip); }}
+                    className="font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                    title="Ver detalle"
+                  >
                     {slip.employee_name}
-                  </div>
+                  </button>
                   {slip.employee_code && (
                     <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
                       {slip.employee_code}

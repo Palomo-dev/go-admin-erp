@@ -210,9 +210,13 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                   <div className="space-y-2">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-medium text-sm text-gray-900 dark:text-white">
+                        <button
+                          onClick={() => handleVerDetalles(cuenta)}
+                          className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                          title="Ver detalle de la cuenta por cobrar"
+                        >
                           {cuenta.customer_name}
-                        </h3>
+                        </button>
                         <p className="text-[10px] text-gray-500 dark:text-gray-400">
                           ID: {cuenta.id.slice(0, 8)}...
                         </p>
@@ -319,7 +323,13 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                     <TableRow key={cuenta.id} className="dark:border-gray-700 dark:hover:bg-gray-700/50">
                       <TableCell className="font-medium dark:text-white">
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium">{cuenta.customer_name}</span>
+                          <button
+                            onClick={() => handleVerDetalles(cuenta)}
+                            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                            title="Ver detalle de la cuenta por cobrar"
+                          >
+                            {cuenta.customer_name}
+                          </button>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             ID: {cuenta.id.slice(0, 8)}...
                           </span>

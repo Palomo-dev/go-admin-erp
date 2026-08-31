@@ -316,7 +316,13 @@ export function ShipmentsList({
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    <span className="text-blue-600 dark:text-blue-400">{shipment.tracking_number}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); router.push(`/app/transporte/envios/${shipment.id}`); }}
+                      className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                      title="Ver detalle"
+                    >
+                      {shipment.tracking_number}
+                    </button>
                   </div>
                   {shipment.shipment_number && (
                     <p className="text-xs text-gray-500 mt-0.5 dark:text-gray-400">

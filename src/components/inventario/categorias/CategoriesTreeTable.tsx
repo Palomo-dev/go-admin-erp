@@ -260,7 +260,7 @@ export function CategoriesTreeTable({
                                 {!cat.icon && (
                                   <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-200 dark:border-gray-600" style={{ backgroundColor: cat.color || '#3B82F6' }} />
                                 )}
-                                <Link href={`/app/inventario/categorias/${cat.uuid}`} className="font-medium text-gray-900 dark:text-white break-words whitespace-normal hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                <Link href={`/app/inventario/categorias/${cat.uuid}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left break-words whitespace-normal transition-colors">
                                   {cat.name}
                                 </Link>
                                 {node.level > 0 && (

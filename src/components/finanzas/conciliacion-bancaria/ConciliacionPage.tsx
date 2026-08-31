@@ -271,7 +271,13 @@ export function ConciliacionPage() {
                     </div>
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">
-                        {rec.bank_account?.name || 'Cuenta'}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); router.push(`/app/finanzas/conciliacion-bancaria/${rec.id}`); }}
+                          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                          title="Ver detalle"
+                        >
+                          {rec.bank_account?.name || 'Cuenta'}
+                        </button>
                       </p>
                       <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                         <Calendar className="h-3 w-3" />

@@ -679,9 +679,9 @@ export default function DetalleFactura({ factura }: { factura: any }) {
     }
   };
 
-  // Manejar la navegación de regreso
+  // Manejar la navegación de regreso a la página de facturas de venta
   const handleBack = () => {
-    router.back();
+    router.push('/app/finanzas/facturas-venta');
   };
 
   return (

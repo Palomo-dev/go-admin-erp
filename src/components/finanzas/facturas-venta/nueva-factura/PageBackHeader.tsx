@@ -9,9 +9,9 @@ export function PageBackHeader() {
   // Usamos el router para la navegación
   const router = useRouter();
 
-  // Función para volver a la página anterior
+  // Función para volver a la página de facturas de venta
   const handleBack = () => {
-    router.back();
+    router.push('/app/finanzas/facturas-venta');
   };
 
   return (

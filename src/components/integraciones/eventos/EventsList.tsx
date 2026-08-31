@@ -176,7 +176,7 @@ export function EventsList({
                       <div>
                         <Link
                           href={`/app/integraciones/eventos/${event.id}`}
-                          className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
                         >
                           {event.event_type}
                         </Link>

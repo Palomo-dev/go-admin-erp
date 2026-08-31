@@ -118,8 +118,14 @@ export function PeriodsTable({
               className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
               onClick={() => handleViewDetail(period)}
             >
-              <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
-                {period.name || '-'}
+              <TableCell className="py-2 sm:py-3">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleViewDetail(period); }}
+                  className="font-medium text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                  title="Ver detalle"
+                >
+                  {period.name || '-'}
+                </button>
               </TableCell>
               <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell">
                 {frequencyLabels[period.frequency] || period.frequency}

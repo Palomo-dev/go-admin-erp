@@ -121,9 +121,13 @@ export function PackagesTable({
                 </TableCell>
                 <TableCell>
                   <div>
-                    <div className="font-medium text-gray-900 dark:text-white">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleViewDetail(pkg); }}
+                      className="font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                      title="Ver detalle"
+                    >
                       {pkg.name}
-                    </div>
+                    </button>
                     {pkg.description && (
                       <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
                         {pkg.description}

@@ -311,7 +311,17 @@ export function TransferenciasPage() {
                       {formatCurrency(transfer.amount)}
                     </TableCell>
                     <TableCell className="text-gray-500 dark:text-gray-400">
-                      {transfer.reference || '-'}
+                      {transfer.reference ? (
+                        <button
+                          onClick={() => router.push(`/app/finanzas/transferencias/${transfer.id}`)}
+                          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                          title="Ver detalle"
+                        >
+                          {transfer.reference}
+                        </button>
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColors[transfer.status]}>

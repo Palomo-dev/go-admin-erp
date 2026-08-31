@@ -328,7 +328,13 @@ export function NotasCreditoPage() {
                 notas.map((nota) => (
                   <TableRow key={nota.id} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <TableCell className="font-medium text-gray-900 dark:text-white">
-                      {nota.number}
+                      <button
+                        onClick={() => router.push(`/app/finanzas/notas-credito/${nota.id}`)}
+                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                        title="Ver detalle"
+                      >
+                        {nota.number}
+                      </button>
                     </TableCell>
                     <TableCell className="text-gray-600 dark:text-gray-300">
                       <div className="flex items-center gap-2">

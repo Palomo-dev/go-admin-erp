@@ -203,7 +203,13 @@ export function OpportunitiesTable({
               >
                 <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
                   <div>
-                    <span className="truncate max-w-[120px] sm:max-w-none block">{opportunity.name}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); router.push(`/app/crm/oportunidades/${opportunity.id}`); }}
+                      className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium truncate max-w-[120px] sm:max-w-none block"
+                      title="Ver detalle"
+                    >
+                      {opportunity.name}
+                    </button>
                     <span className="sm:hidden text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 block">
                       {opportunity.customer?.full_name || '-'}
                     </span>

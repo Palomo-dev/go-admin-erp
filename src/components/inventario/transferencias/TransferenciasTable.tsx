@@ -86,7 +86,13 @@ export function TransferenciasTable({
                 className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
                 <TableCell className="font-medium dark:text-white">
-                  #{transferencia.id}
+                  <button
+                    onClick={() => router.push(`/app/inventario/transferencias/${transferencia.id}`)}
+                    className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                    title="Ver detalle"
+                  >
+                    #{transferencia.id}
+                  </button>
                 </TableCell>
                 <TableCell className="dark:text-gray-300">
                   {transferencia.origin_branch?.name || '-'}

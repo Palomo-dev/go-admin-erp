@@ -340,31 +340,63 @@ class FinanzasDashboardService {
     // Clave de agrupación: 'YYYY-MM-DD' (día) o 'YYYY-MM' (mes)
     const groupKey = (raw: string | null) => (raw ?? '').substring(0, granularidad === 'dia' ? 10 : 7);
 
-    // Obtener ventas agrupadas por mes
-    const { data: ventasData } = await supabase
-      .from('invoice_sales')
-      .select('issue_date, total')
-      .eq('organization_id', organizationId)
-      .gte('issue_date', fechaInicio)
-      .lte('issue_date', fechaFin);
+    // fechaFinExclusive: día siguiente a fechaFin para usar lt (incluye todo el día fechaFin)
+    const fechaFinNextDay = new Date(fechaFin + 'T00:00:00Z');
+    fechaFinNextDay.setUTCDate(fechaFinNextDay.getUTCDate() + 1);
+    const fechaFinExclusive = fechaFinNextDay.toISOString();
 
-    // Obtener compras agrupadas por mes
+    // Ventas: alineado con getKPIs — 3 fuentes para evitar doble conteo:
+    // 1. invoice_sales pagadas/parciales sin sale_id (facturas independientes del POS)
+    // 2. sales pagadas (ventas POS)
+    // 3. web_orders pagadas sin sale_id (pedidos web no vinculados a una sale)
+    const [ventasFacturasRes, ventasPosRes, ventasWebRes] = await Promise.all([
+      supabase
+        .from('invoice_sales')
+        .select('issue_date, total')
+        .eq('organization_id', organizationId)
+        .gte('issue_date', fechaInicio)
+        .lt('issue_date', fechaFinExclusive)
+        .in('status', ['paid', 'partial'])
+        .is('sale_id', null),
+      supabase
+        .from('sales')
+        .select('sale_date, total')
+        .eq('organization_id', organizationId)
+        .gte('sale_date', fechaInicio)
+        .lt('sale_date', fechaFinExclusive)
+        .eq('payment_status', 'paid'),
+      supabase
+        .from('web_orders')
+        .select('created_at, total')
+        .eq('organization_id', organizationId)
+        .gte('created_at', fechaInicio)
+        .lt('created_at', fechaFinExclusive)
+        .eq('payment_status', 'paid')
+        .is('sale_id', null),
+    ]);
+
+    // Compras: facturas de compra pagadas/parciales (alineado con getKPIs)
     const { data: comprasData } = await supabase
       .from('invoice_purchase')
       .select('issue_date, total')
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
-      .lte('issue_date', fechaFin);
+      .lt('issue_date', fechaFinExclusive)
+      .in('status', ['paid', 'partial']);
 
     // Agrupar por día o mes según la granularidad
     const bucketMap = new Map<string, { ventas: number; compras: number }>();
 
-    ventasData?.forEach((v: InvoiceDateRow) => {
-      const key = groupKey(v.issue_date);
+    const addVenta = (raw: string | null, total: number | string | null) => {
+      const key = groupKey(raw);
       if (!key) return;
       if (!bucketMap.has(key)) bucketMap.set(key, { ventas: 0, compras: 0 });
-      bucketMap.get(key)!.ventas += Number(v.total) || 0;
-    });
+      bucketMap.get(key)!.ventas += Number(total) || 0;
+    };
+
+    (ventasFacturasRes.data || []).forEach((v: InvoiceDateRow) => addVenta(v.issue_date, v.total));
+    (ventasPosRes.data || []).forEach((v: { sale_date: string | null; total: number | string | null }) => addVenta(v.sale_date, v.total));
+    (ventasWebRes.data || []).forEach((v: { created_at: string | null; total: number | string | null }) => addVenta(v.created_at, v.total));
 
     comprasData?.forEach((c: InvoiceDateRow) => {
       const key = groupKey(c.issue_date);

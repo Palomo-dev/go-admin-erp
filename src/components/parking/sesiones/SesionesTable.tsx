@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -115,6 +116,7 @@ export function SesionesTable({
   onPrint,
   canEdit = false,
 }: SesionesTableProps) {
+  const router = useRouter();
   if (isLoading) {
     return <TableSkeleton rows={5} columns={9} />;
   }
@@ -163,9 +165,13 @@ export function SesionesTable({
                 >
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono font-semibold text-gray-900 dark:text-white">
+                      <button
+                        onClick={() => router.push(`/app/parking/sesiones/${session.id}`)}
+                        className="font-mono font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                        title="Ver detalle"
+                      >
                         {session.vehicle_plate}
-                      </span>
+                      </button>
                       {session.is_subscriber && (
                         <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
                           Abonado

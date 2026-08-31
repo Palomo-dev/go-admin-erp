@@ -136,8 +136,14 @@ export function LoansTable({
               className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
               onClick={() => handleViewDetail(loan)}
             >
-              <TableCell className="font-mono text-sm text-gray-900 dark:text-white">
-                {loan.loan_number || '-'}
+              <TableCell>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleViewDetail(loan); }}
+                  className="font-mono text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                  title="Ver detalle"
+                >
+                  {loan.loan_number || '-'}
+                </button>
               </TableCell>
               <TableCell>
                 <div>

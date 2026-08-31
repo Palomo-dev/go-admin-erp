@@ -537,7 +537,13 @@ export function FacturasTable({ filtros }: FacturasTableProps = {}) {
                     {(currentPage - 1) * pageSize + index + 1}
                   </TableCell>
               <TableCell className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
-                {factura.number}
+                <button
+                  onClick={() => router.push(`/app/finanzas/facturas-venta/${factura.id}`)}
+                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-semibold"
+                  title="Ver detalle de la factura"
+                >
+                  {factura.number}
+                </button>
               </TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm break-words whitespace-normal min-w-0">{factura.customer_name}</TableCell>
               <TableCell className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm whitespace-nowrap">{formatearFecha(factura.issue_date)}</TableCell>

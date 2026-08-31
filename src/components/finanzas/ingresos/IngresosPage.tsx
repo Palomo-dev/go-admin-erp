@@ -283,7 +283,13 @@ export function IngresosPage() {
                 filteredMovements.map((movement) => (
                   <TableRow key={movement.uuid} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <TableCell className="font-medium text-gray-900 dark:text-white">
-                      #{movement.id}
+                      <button
+                        onClick={() => router.push(`/app/finanzas/ingresos/${movement.uuid}`)}
+                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                        title="Ver detalle"
+                      >
+                        #{movement.id}
+                      </button>
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${

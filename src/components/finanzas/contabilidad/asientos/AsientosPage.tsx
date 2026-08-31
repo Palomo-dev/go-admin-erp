@@ -325,7 +325,13 @@ export function AsientosPage() {
               {filteredAsientos.map((asiento) => (
                 <TableRow key={asiento.id} className="dark:border-gray-700">
                   <TableCell className="font-mono text-gray-900 dark:text-white">
-                    #{asiento.id}
+                    <button
+                      onClick={() => router.push(`/app/finanzas/contabilidad/asientos/${asiento.id}`)}
+                      className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                      title="Ver detalle"
+                    >
+                      #{asiento.id}
+                    </button>
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
                     {new Date(asiento.entry_date).toLocaleDateString('es-CO')}

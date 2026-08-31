@@ -141,8 +141,14 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
               className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
               onClick={() => router.push(`/app/finanzas/cotizaciones/${cot.id}`)}
             >
-              <TableCell className="font-medium text-blue-600 dark:text-blue-400">
-                {cot.number}
+              <TableCell className="font-medium">
+                <button
+                  onClick={(e) => { e.stopPropagation(); router.push(`/app/finanzas/cotizaciones/${cot.id}`); }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                  title="Ver detalle"
+                >
+                  {cot.number}
+                </button>
               </TableCell>
               <TableCell className="text-gray-900 dark:text-gray-100">
                 {cot.customers?.full_name || 'N/A'}

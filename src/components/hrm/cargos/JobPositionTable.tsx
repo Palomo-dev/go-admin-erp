@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -61,6 +62,7 @@ export function JobPositionTable({
   onToggleActive,
   onDelete,
 }: JobPositionTableProps) {
+  const router = useRouter();
   const formatSalaryRange = (min: number | null, max: number | null) => {
     if (min === null && max === null) return '-';
     if (min !== null && max !== null) {
@@ -127,9 +129,16 @@ export function JobPositionTable({
             >
               <TableCell className="py-2 sm:py-3">
                 <div className="flex flex-col min-w-0">
-                  <span className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white truncate">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/app/hrm/cargos/${position.id}`);
+                    }}
+                    className="font-medium text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left truncate"
+                    title="Ver detalle"
+                  >
                     {position.name}
-                  </span>
+                  </button>
                   {position.code && (
                     <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-mono">
                       {position.code}

@@ -87,7 +87,13 @@ export function BankAccountCard({ account, onToggleActive }: BankAccountCardProp
             </div>
             <div>
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                {account.name}
+                <button
+                  onClick={() => router.push(`/app/finanzas/bancos/cuentas/${account.id}`)}
+                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                  title="Ver detalle"
+                >
+                  {account.name}
+                </button>
               </CardTitle>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {account.bank_name || 'Sin banco'}

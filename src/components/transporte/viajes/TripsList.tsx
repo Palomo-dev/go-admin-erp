@@ -146,9 +146,13 @@ export function TripsList({
                 onClick={() => handleViewDetails(trip)}
               >
                 <TableCell className="font-medium">
-                  <span className="text-blue-600 dark:text-blue-400">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleViewDetails(trip); }}
+                    className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                    title="Ver detalle"
+                  >
                     {trip.trip_code}
-                  </span>
+                  </button>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">

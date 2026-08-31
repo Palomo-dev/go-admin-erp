@@ -47,8 +47,8 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
   const pageSize = 10;
 
   // Detectar si estamos en inventario o finanzas
-  const basePath = pathname.includes('/inventario/') 
-    ? '/app/inventario/facturas-compra' 
+  const basePath = pathname?.includes('/inventario/')
+    ? '/app/inventario/facturas-compra'
     : '/app/finanzas/facturas-compra';
 
   // Cargar facturas
@@ -248,7 +248,13 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                 >
                   <TableCell className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-200 py-2 sm:py-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="break-words whitespace-normal min-w-0 sm:max-w-none">{factura.number_ext}</span>
+                      <button
+                        onClick={() => handleVerDetalles(factura.id)}
+                        className="break-words whitespace-normal min-w-0 sm:max-w-none text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
+                        title="Ver detalle de la factura"
+                      >
+                        {factura.number_ext}
+                      </button>
                       {factura.due_date && factura.balance > 0 && parseLocalDate(factura.due_date) < new Date() && (
                         <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                       )}

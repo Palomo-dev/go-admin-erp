@@ -193,7 +193,13 @@ export function VentasTable({
                 )}
               </TableCell>
               <TableCell className="font-mono text-sm dark:text-gray-300">
-                {sale.invoice_number || sale.id.slice(0, 8) + '...'}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onView(sale); }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-mono text-sm text-left"
+                  title="Ver detalle de la venta"
+                >
+                  {sale.invoice_number || sale.id.slice(0, 8) + '...'}
+                </button>
               </TableCell>
               <TableCell className="dark:text-gray-300">
                 {sale.customer ? (

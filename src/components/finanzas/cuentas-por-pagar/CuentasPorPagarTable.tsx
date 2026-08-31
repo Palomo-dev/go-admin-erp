@@ -275,11 +275,15 @@ export function CuentasPorPagarTable({
                       <div className="flex flex-col">
                         {cuenta.invoice_purchase?.number_ext ? (
                           <>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            <button
+                              onClick={() => router.push(`/app/finanzas/cuentas-por-pagar/${cuenta.id}`)}
+                              className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                              title="Ver detalle de la cuenta por pagar"
+                            >
                               {cuenta.invoice_purchase.number_ext}
-                            </span>
+                            </button>
                             <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                              {cuenta.invoice_purchase.issue_date && 
+                              {cuenta.invoice_purchase.issue_date &&
                                 formatDate(cuenta.invoice_purchase.issue_date)
                               }
                             </span>

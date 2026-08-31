@@ -623,7 +623,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                   <Link
                     href={`/app/inventario/productos/${producto.uuid || producto.id}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="max-w-[150px] sm:max-w-none break-words whitespace-normal hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+                    className="max-w-[150px] sm:max-w-none break-words whitespace-normal text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium transition-colors"
                     title={`Ver detalle de ${producto.name}`}
                   >
                     {producto.name}

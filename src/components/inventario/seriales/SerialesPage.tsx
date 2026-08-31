@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ const PAGE_SIZE = 20;
 
 export function SerialesPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const organizationId = getOrganizationId();
   const currentBranchId = getCurrentBranchId();
 
@@ -298,9 +300,13 @@ export function SerialesPage() {
                       return (
                         <TableRow key={serial.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/70">
                           <TableCell>
-                            <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+                            <button
+                              onClick={() => router.push(`/app/inventario/seriales/${serial.id}`)}
+                              className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
+                              title="Ver detalle"
+                            >
                               {serial.serial}
-                            </span>
+                            </button>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">

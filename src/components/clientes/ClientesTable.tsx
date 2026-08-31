@@ -1,4 +1,7 @@
+'use client';
+
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { MoreHorizontal, Building2, User } from 'lucide-react';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 import {
@@ -66,6 +69,7 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
   onSelectionChange,
   isLoading = false,
 }) => {
+  const router = useRouter();
   // Función para formatear fechas
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
@@ -198,9 +202,13 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </div>
                         <div className="flex flex-col min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                            <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm break-words min-w-0">
+                            <button
+                              onClick={() => router.push(`/app/clientes/${customer.id}`)}
+                              className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left text-xs sm:text-sm break-words min-w-0"
+                              title="Ver detalle"
+                            >
                               {customer.full_name}
-                            </span>
+                            </button>
                             {customer.customer_type === 'company' ? (
                               <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-full">
                                 <Building2 className="h-2.5 w-2.5" />

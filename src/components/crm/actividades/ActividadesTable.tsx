@@ -141,9 +141,13 @@ export function ActividadesTable({
                     <Badge variant="outline" className={`mb-1 text-[10px] sm:text-xs ${config.color} dark:border-gray-600`}>
                       {config.label}
                     </Badge>
-                    <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleViewDetail(activity); }}
+                      className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium line-clamp-2"
+                      title="Ver detalle"
+                    >
                       {activity.notes || 'Sin descripción'}
-                    </p>
+                    </button>
                     <div className="sm:hidden mt-1 text-[10px] text-gray-500 dark:text-gray-400">
                       {formatDateTime(activity.occurred_at)}
                     </div>

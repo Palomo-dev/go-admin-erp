@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Eye, Truck, PackageCheck, XCircle } from 'lucide-react';
 import { InventoryTransfer } from './types';
 import { formatDate } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface TransferenciasTableProps {
   transferencias: InventoryTransfer[];
@@ -86,13 +87,11 @@ export function TransferenciasTable({
                 className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
                 <TableCell className="font-medium dark:text-white">
-                  <button
+                  <CopyableId
+                    label={`#${transferencia.id}`}
+                    copyValue={String(transferencia.id)}
                     onClick={() => router.push(`/app/inventario/transferencias/${transferencia.id}`)}
-                    className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                    title="Ver detalle"
-                  >
-                    #{transferencia.id}
-                  </button>
+                  />
                 </TableCell>
                 <TableCell className="dark:text-gray-300">
                   {transferencia.origin_branch?.name || '-'}

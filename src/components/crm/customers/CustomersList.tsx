@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface Customer {
   id: string;
@@ -165,13 +166,12 @@ export function CustomersList() {
                 {filteredCustomers.map((customer) => (
                   <TableRow key={customer.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700/50">
                     <TableCell className="py-2 sm:py-3 font-medium text-xs sm:text-sm text-gray-900 dark:text-white">
-                      <button
+                      <CopyableId
+                        label={customer.full_name}
+                        copyValue={customer.id}
                         onClick={() => router.push(`/app/crm/clientes/${customer.id}`)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                        title="Ver detalle"
-                      >
-                        {customer.full_name}
-                      </button>
+                        iconSize={12}
+                      />
                     </TableCell>
                     <TableCell className="py-2 sm:py-3">
                       <div className="flex flex-col">

@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import type { PurchaseOrder } from '@/lib/services/purchaseOrderService';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface OrdenesCompraTableProps {
   orders: PurchaseOrder[];
@@ -98,13 +99,11 @@ export function OrdenesCompraTable({
               paginatedOrders.map((order) => (
                 <TableRow key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <TableCell className="font-medium text-gray-900 dark:text-gray-100">
-                    <button
+                    <CopyableId
+                      label={`OC-${order.id}`}
+                      copyValue={String(order.id)}
                       onClick={() => router.push(`/app/inventario/ordenes-compra/${order.uuid}`)}
-                      className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                      title="Ver detalle"
-                    >
-                      OC-{order.id}
-                    </button>
+                    />
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
                     {order.suppliers?.name || '-'}

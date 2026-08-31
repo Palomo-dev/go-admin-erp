@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { formatCurrency } from '@/utils/Utils';
 import { CotizacionesService, type Quotation, type QuotationFilters } from '@/lib/services/cotizacionesService';
+import { CopyableId } from '@/components/common/CopyableId';
 
 const formatearFecha = (fechaStr: string | null | undefined): string => {
   if (!fechaStr) return 'N/A';
@@ -142,13 +143,12 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
               onClick={() => router.push(`/app/finanzas/cotizaciones/${cot.id}`)}
             >
               <TableCell className="font-medium">
-                <button
-                  onClick={(e) => { e.stopPropagation(); router.push(`/app/finanzas/cotizaciones/${cot.id}`); }}
-                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                  title="Ver detalle"
-                >
-                  {cot.number}
-                </button>
+                <CopyableId
+                  label={cot.number}
+                  copyValue={cot.number}
+                  onClick={() => router.push(`/app/finanzas/cotizaciones/${cot.id}`)}
+                  iconSize={12}
+                />
               </TableCell>
               <TableCell className="text-gray-900 dark:text-gray-100">
                 {cot.customers?.full_name || 'N/A'}

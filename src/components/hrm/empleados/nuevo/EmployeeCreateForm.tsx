@@ -49,6 +49,7 @@ export interface OrganizationMemberOption {
 export interface BranchOption {
   id: number;
   name: string;
+  is_main?: boolean | null;
 }
 
 export interface DepartmentOption {
@@ -181,6 +182,17 @@ export function EmployeeCreateForm({
 
   // Miembros disponibles (sin employment)
   const availableMembers = members.filter((m) => !m.has_employment);
+
+  // Default branch_id a la sucursal principal cuando los branches cargan
+  useEffect(() => {
+    if (branches.length > 0 && formData.branch_id === null) {
+      const mainBranch = branches.find((b) => b.is_main === true);
+      setFormData((prev) => ({
+        ...prev,
+        branch_id: (mainBranch || branches[0]).id,
+      }));
+    }
+  }, [branches, formData.branch_id]);
 
   // Validar código único con debounce
   useEffect(() => {

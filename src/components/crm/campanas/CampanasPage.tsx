@@ -56,6 +56,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CampanasService } from './CampanasService';
 import { Campaign, CampaignStats, CAMPAIGN_STATUS_CONFIG, CHANNEL_CONFIG, CampaignChannel } from './types';
 import { formatDate } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 const channelIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   MessageCircle,
@@ -271,13 +272,13 @@ export function CampanasPage() {
                     onClick={() => router.push(`/app/crm/campanas/${campaign.id}`)}
                   >
                     <TableCell className="py-2 sm:py-3">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); router.push(`/app/crm/campanas/${campaign.id}`); }}
-                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none block"
-                        title="Ver detalle"
-                      >
-                        {campaign.name}
-                      </button>
+                      <CopyableId
+                        label={campaign.name}
+                        copyValue={campaign.id}
+                        onClick={() => router.push(`/app/crm/campanas/${campaign.id}`)}
+                        iconSize={12}
+                        className="text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none block"
+                      />
                     </TableCell>
                     <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
                       {channelConfig ? (

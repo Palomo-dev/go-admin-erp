@@ -43,6 +43,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { CopyableId } from '@/components/common/CopyableId';
 import { ShipmentPagination } from './ShipmentPagination';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -316,13 +317,12 @@ export function ShipmentsList({
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    <button
-                      onClick={(e) => { e.stopPropagation(); router.push(`/app/transporte/envios/${shipment.id}`); }}
-                      className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                      title="Ver detalle"
-                    >
-                      {shipment.tracking_number}
-                    </button>
+                    <CopyableId
+                      label={shipment.tracking_number || ''}
+                      copyValue={shipment.tracking_number || ''}
+                      onClick={() => router.push(`/app/transporte/envios/${shipment.id}`)}
+                      iconSize={12}
+                    />
                   </div>
                   {shipment.shipment_number && (
                     <p className="text-xs text-gray-500 mt-0.5 dark:text-gray-400">

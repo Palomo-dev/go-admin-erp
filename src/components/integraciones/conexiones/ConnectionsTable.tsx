@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CopyableId } from '@/components/common/CopyableId';
 import { ConnectionStatusBadge } from './ConnectionStatusBadge';
 import { ConnectionActions } from './ConnectionActions';
 import { IntegrationConnection, IntegrationConnector, IntegrationProvider } from '@/lib/services/integrationsService';
@@ -150,13 +151,12 @@ export function ConnectionsTable({
                         {provider?.name?.[0]?.toUpperCase() || 'C'}
                       </div>
                       <div>
-                        <button
+                        <CopyableId
+                          label={connection.name}
+                          copyValue={connection.id}
                           onClick={() => router.push(`/app/integraciones/conexiones/${connection.id}`)}
-                          className="font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
-                          title="Ver detalle"
-                        >
-                          {connection.name}
-                        </button>
+                          iconSize={12}
+                        />
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {provider?.name || connector?.name || 'Desconocido'}
                           {connector?.name && provider?.name && connector.name !== provider.name && (

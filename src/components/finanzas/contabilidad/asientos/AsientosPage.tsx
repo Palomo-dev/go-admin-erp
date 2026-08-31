@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ContabilidadService, JournalEntry, ChartAccount } from '../ContabilidadService';
 import { formatCurrency, formatNumber } from '@/utils/Utils';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface JournalLineInput {
   account_code: string;
@@ -48,7 +49,7 @@ export function AsientosPage() {
   useEffect(() => {
     loadData();
     // Si viene con action=new, abrir dialog
-    if (searchParams.get('action') === 'new') {
+    if (searchParams?.get('action') === 'new') {
       setShowDialog(true);
     }
   }, []);
@@ -325,13 +326,12 @@ export function AsientosPage() {
               {filteredAsientos.map((asiento) => (
                 <TableRow key={asiento.id} className="dark:border-gray-700">
                   <TableCell className="font-mono text-gray-900 dark:text-white">
-                    <button
+                    <CopyableId
+                      label={`#${asiento.id}`}
+                      copyValue={String(asiento.id)}
                       onClick={() => router.push(`/app/finanzas/contabilidad/asientos/${asiento.id}`)}
-                      className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                      title="Ver detalle"
-                    >
-                      #{asiento.id}
-                    </button>
+                      iconSize={12}
+                    />
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300">
                     {new Date(asiento.entry_date).toLocaleDateString('es-CO')}

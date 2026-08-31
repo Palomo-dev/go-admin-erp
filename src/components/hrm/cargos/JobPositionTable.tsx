@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export interface JobPositionRow {
   id: string;
@@ -129,16 +130,13 @@ export function JobPositionTable({
             >
               <TableCell className="py-2 sm:py-3">
                 <div className="flex flex-col min-w-0">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      router.push(`/app/hrm/cargos/${position.id}`);
-                    }}
-                    className="font-medium text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left truncate"
-                    title="Ver detalle"
-                  >
-                    {position.name}
-                  </button>
+                  <CopyableId
+                    label={position.name}
+                    copyValue={position.id}
+                    onClick={() => router.push(`/app/hrm/cargos/${position.id}`)}
+                    iconSize={12}
+                    className="font-medium text-xs sm:text-sm truncate"
+                  />
                   {position.code && (
                     <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-mono">
                       {position.code}

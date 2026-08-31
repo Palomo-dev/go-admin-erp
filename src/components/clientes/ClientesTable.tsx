@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { CopyableId } from '@/components/common/CopyableId';
 import { ClientesPagination } from './ClientesPagination';
 
 interface Customer {
@@ -202,13 +203,12 @@ const ClientesTable: React.FC<ClientesTableProps> = ({
                         </div>
                         <div className="flex flex-col min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                            <button
+                            <CopyableId
+                              label={customer.full_name}
+                              copyValue={customer.id}
                               onClick={() => router.push(`/app/clientes/${customer.id}`)}
-                              className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left text-xs sm:text-sm break-words min-w-0"
-                              title="Ver detalle"
-                            >
-                              {customer.full_name}
-                            </button>
+                              iconSize={12}
+                            />
                             {customer.customer_type === 'company' ? (
                               <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-full">
                                 <Building2 className="h-2.5 w-2.5" />

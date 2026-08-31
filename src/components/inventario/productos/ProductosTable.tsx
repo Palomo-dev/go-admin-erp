@@ -51,6 +51,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
 import { useOrgCurrency, formatMonedaSinDecimales } from '@/lib/hooks/useOrgCurrency';
 // Using direct Supabase storage calls for URL generation
+import { CopyableId } from '@/components/common/CopyableId';
 
 
 interface ProductosTableProps {
@@ -84,6 +85,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   onSelectionChange
 }) => {
 
+  const router = useRouter();
   const orgCurrency = useOrgCurrency();
   // Formato sin decimales para la tabla usando la moneda de la organización
   const formatPrecioTabla = (value: number): string =>
@@ -620,14 +622,11 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
                 </TableCell>
                 <TableCell className="hidden md:table-cell font-mono text-xs sm:text-sm dark:text-gray-300">{producto.sku}</TableCell>
                 <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
-                  <Link
-                    href={`/app/inventario/productos/${producto.uuid || producto.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="max-w-[150px] sm:max-w-none break-words whitespace-normal text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium transition-colors"
-                    title={`Ver detalle de ${producto.name}`}
-                  >
-                    {producto.name}
-                  </Link>
+                  <CopyableId
+                    label={producto.name}
+                    copyValue={String(producto.uuid || producto.id)}
+                    onClick={() => router.push(`/app/inventario/productos/${producto.uuid || producto.id}`)}
+                  />
                 </TableCell>
                 <TableCell className="hidden md:table-cell text-xs sm:text-sm">
                   <div className="flex flex-wrap gap-1">

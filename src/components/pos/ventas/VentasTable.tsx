@@ -35,6 +35,7 @@ import {
 import { SaleWithDetails } from './types';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { cn } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface VentasTableProps {
   sales: SaleWithDetails[];
@@ -193,13 +194,13 @@ export function VentasTable({
                 )}
               </TableCell>
               <TableCell className="font-mono text-sm dark:text-gray-300">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onView(sale); }}
-                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-mono text-sm text-left"
-                  title="Ver detalle de la venta"
-                >
-                  {sale.invoice_number || sale.id.slice(0, 8) + '...'}
-                </button>
+                <CopyableId
+                  label={sale.invoice_number || sale.id.slice(0, 8) + '...'}
+                  copyValue={sale.id}
+                  onClick={() => onView(sale)}
+                  iconSize={12}
+                  className="font-mono text-sm"
+                />
               </TableCell>
               <TableCell className="dark:text-gray-300">
                 {sale.customer ? (

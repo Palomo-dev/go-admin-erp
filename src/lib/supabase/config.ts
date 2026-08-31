@@ -1145,9 +1145,12 @@ export const acceptInvitation = async ({
       .eq('is_main', true)
       .single();
 
-    const branchId = branchData?.id || null;
+    // Usar branch_id de la invitacion si existe, si no la sucursal principal
+    const branchId = inviteData.branch_id || branchData?.id || null;
 
-    // Agregamos el usuario a la tabla profiles con todos los campos requeridos
+    // Agregamos el usuario a la tabla profiles
+    // (profiles no tiene branch_id/organization_id/role_id; esos viven en
+    // organization_members y member_branches. Se usa last_org_id como referencia.)
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
@@ -1156,12 +1159,8 @@ export const acceptInvitation = async ({
         first_name: userData.firstName || userData.first_name,
         last_name: userData.lastName || userData.last_name,
         phone: userData.phoneNumber || userData.phone,
-        organization_id: inviteData.organization_id,
-        role_id: inviteData.role_id,
-        branch_id: branchId,
+        last_org_id: inviteData.organization_id,
         status: 'active',
-        is_owner: false,
-        metadata: {},
         preferred_language: 'es',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -1226,7 +1225,8 @@ export const createProfileFromInvitation = async ({
       .eq('is_main', true)
       .single();
 
-    const branchId = branchData?.id || null;
+    // Usar branch_id de la invitacion si existe, si no la sucursal principal
+    const branchId = inviteData.branch_id || branchData?.id || null;
 
     // Actualizar contraseña si se proporciona
     if (password) {
@@ -1241,14 +1241,13 @@ export const createProfileFromInvitation = async ({
       console.log('Contraseña actualizada exitosamente');
     }
 
-    // Actualizar perfil (el trigger ya creó el perfil básico)
+    // Actualizar perfil (profiles no tiene branch_id; se guarda last_org_id)
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
         first_name: userData.firstName || userData.first_name,
         last_name: userData.lastName || userData.last_name,
         phone: userData.phoneNumber || userData.phone,
-        branch_id: branchId,
         last_org_id: inviteData.organization_id,
         updated_at: new Date().toISOString()
       })
@@ -1270,7 +1269,7 @@ export const createProfileFromInvitation = async ({
 
     if (!existingMembership) {
       // Crear membresía en la organización
-      const { error: membershipError } = await supabase
+      const { data: newMembership, error: membershipError } = await supabase
         .from('organization_members')
         .insert({
           user_id: authUserId,
@@ -1278,13 +1277,27 @@ export const createProfileFromInvitation = async ({
           role_id: inviteData.role_id,
           job_position_id: inviteData.job_position_id || null,
           is_active: true
-        });
+        })
+        .select('id')
+        .single();
 
       if (membershipError) {
         console.error('Error al crear membresía:', membershipError);
         return { error: { message: 'Error al crear la membresía en la organización: ' + membershipError.message } };
       }
       console.log('Membresía en organización creada exitosamente');
+
+      // Asignar sucursal en member_branches y actualizar employment
+      if (branchId && newMembership?.id) {
+        await supabase
+          .from('member_branches')
+          .insert({ organization_member_id: newMembership.id, branch_id: branchId });
+        await supabase
+          .from('employments')
+          .update({ branch_id: branchId, updated_at: new Date().toISOString() })
+          .eq('organization_member_id', newMembership.id)
+          .is('branch_id', null);
+      }
     } else {
       // Actualizar membresía existente
       const { error: updateMembershipError } = await supabase
@@ -1302,6 +1315,26 @@ export const createProfileFromInvitation = async ({
         return { error: { message: 'Error al actualizar la membresía: ' + updateMembershipError.message } };
       }
       console.log('Membresía en organización actualizada exitosamente');
+
+      // Asignar sucursal en member_branches y actualizar employment
+      if (branchId && existingMembership.id) {
+        const { data: existingMB } = await supabase
+          .from('member_branches')
+          .select('id')
+          .eq('organization_member_id', existingMembership.id)
+          .eq('branch_id', branchId)
+          .maybeSingle();
+        if (!existingMB) {
+          await supabase
+            .from('member_branches')
+            .insert({ organization_member_id: existingMembership.id, branch_id: branchId });
+        }
+        await supabase
+          .from('employments')
+          .update({ branch_id: branchId, updated_at: new Date().toISOString() })
+          .eq('organization_member_id', existingMembership.id)
+          .is('branch_id', null);
+      }
     }
 
     // Marcar la invitación como utilizada

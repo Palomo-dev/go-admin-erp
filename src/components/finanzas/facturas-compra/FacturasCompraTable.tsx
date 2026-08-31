@@ -27,6 +27,7 @@ import { InvoicePurchase, FiltrosFacturasCompra } from './types';
 import { formatCurrency, formatDate, cn, parseLocalDate } from '@/utils/Utils';
 import { Pagination } from '@/components/ui/pagination';
 import { RegistrarPagoModal } from './RegistrarPagoModal';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export type { FiltrosFacturasCompra };
 
@@ -248,13 +249,12 @@ export function FacturasCompraTable({ filtros }: FacturasCompraTableProps) {
                 >
                   <TableCell className="font-medium text-xs sm:text-sm text-gray-900 dark:text-gray-200 py-2 sm:py-3">
                     <div className="flex items-center gap-1.5">
-                      <button
+                      <CopyableId
+                        label={factura.number_ext}
+                        copyValue={factura.number_ext}
                         onClick={() => handleVerDetalles(factura.id)}
-                        className="break-words whitespace-normal min-w-0 sm:max-w-none text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                        title="Ver detalle de la factura"
-                      >
-                        {factura.number_ext}
-                      </button>
+                        iconSize={12}
+                      />
                       {factura.due_date && factura.balance > 0 && parseLocalDate(factura.due_date) < new Date() && (
                         <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                       )}

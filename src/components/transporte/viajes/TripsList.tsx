@@ -36,6 +36,7 @@ import {
   MapPin,
   AlertTriangle,
 } from 'lucide-react';
+import { CopyableId } from '@/components/common/CopyableId';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { TripWithDetails } from '@/lib/services/tripsService';
@@ -146,13 +147,12 @@ export function TripsList({
                 onClick={() => handleViewDetails(trip)}
               >
                 <TableCell className="font-medium">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleViewDetails(trip); }}
-                    className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                    title="Ver detalle"
-                  >
-                    {trip.trip_code}
-                  </button>
+                  <CopyableId
+                    label={trip.trip_code}
+                    copyValue={trip.trip_code}
+                    onClick={() => handleViewDetails(trip)}
+                    iconSize={12}
+                  />
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">

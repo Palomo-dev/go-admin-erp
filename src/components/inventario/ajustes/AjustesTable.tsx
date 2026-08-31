@@ -33,6 +33,7 @@ import { ADJUSTMENT_TYPES, ADJUSTMENT_REASONS, type InventoryAdjustment } from '
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface AjustesTableProps {
   data: InventoryAdjustment[];
@@ -147,13 +148,11 @@ export function AjustesTable({
                   className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 >
                   <TableCell className="font-mono text-sm text-gray-600 dark:text-gray-400">
-                    <button
+                    <CopyableId
+                      label={`#${item.id}`}
+                      copyValue={String(item.id)}
                       onClick={() => router.push(`/app/inventario/ajustes/${item.id}`)}
-                      className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium font-mono"
-                      title="Ver detalle"
-                    >
-                      #{item.id}
-                    </button>
+                    />
                   </TableCell>
                   <TableCell className="text-gray-600 dark:text-gray-400 whitespace-nowrap">
                     {formatDate(item.created_at)}

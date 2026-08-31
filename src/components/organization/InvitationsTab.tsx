@@ -40,7 +40,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [roles, setRoles] = useState<{ id: string; name: string; code: string }[]>([]);
-  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+  const [branches, setBranches] = useState<{ id: number; name: string; is_main: boolean | null }[]>([]);
   const [jobPositions, setJobPositions] = useState<{ id: string; name: string }[]>([]);
 
   // Form state
@@ -79,7 +79,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
     try {
       const { data, error } = await supabase
         .from('branches')
-        .select('id, name')
+        .select('id, name, is_main')
         .eq('organization_id', orgId)
         .eq('is_active', true)
         .order('name');
@@ -88,7 +88,9 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
 
       setBranches(data || []);
       if (data && data.length > 0) {
-        setBranchId(String(data[0].id));
+        // Auto-seleccionar la sucursal principal como default
+        const mainBranch = data.find((b) => b.is_main === true);
+        setBranchId(String((mainBranch || data[0]).id));
       }
     } catch (err: any) {
       console.error('Error fetching branches:', err);
@@ -267,6 +269,12 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
         return;
       }
 
+      // La sucursal es obligatoria si la organizacion tiene sucursales activas
+      if (branches.length > 0 && !branchId) {
+        setError(t('requiredFields'));
+        return;
+      }
+
       // Validar límite de usuarios del plan
       if (maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers) {
         setError(t('userLimitReached', { max: maxUsers }));
@@ -399,7 +407,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       setRoleId('');
       setJobPositionId('');
       if (branches.length > 0) {
-        setBranchId(String(branches[0].id));
+        const mainBranch = branches.find((b) => b.is_main === true);
+        setBranchId(String((mainBranch || branches[0]).id));
       }
       
       // Refresh invitations list y conteos de límite
@@ -847,7 +856,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
             {branches.length > 0 && (
               <div>
                 <label htmlFor="branch" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Sucursal
+                  Sucursal <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="branch"
@@ -855,8 +864,11 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   value={branchId}
                   onChange={(e) => setBranchId(e.target.value)}
                   disabled={!!(maxUsers && (currentMemberCount + pendingInvitationsCount) >= maxUsers)}
-                  className="mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed dark:focus:ring-blue-400 dark:focus:border-blue-400"
+                  className={`mt-1 block w-full bg-white dark:bg-gray-800 dark:text-gray-200 border rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed dark:focus:ring-blue-400 dark:focus:border-blue-400 ${!branchId ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'}`}
                 >
+                  <option value="" disabled>
+                    Selecciona una sucursal
+                  </option>
                   {branches.map((branch) => (
                     <option key={branch.id} value={branch.id}>
                       {branch.name}

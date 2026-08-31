@@ -52,6 +52,7 @@ import { formatCurrency, formatDate, parseLocalDate } from '@/utils/Utils';
 import { AplicarAbonoModal } from './AplicarAbonoModal';
 import { EnviarRecordatorioModal } from './EnviarRecordatorioModal';
 import { cn } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface CuentasPorCobrarTableProps {
   resultado: ResultadoPaginado<CuentaPorCobrar>;
@@ -210,13 +211,12 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                   <div className="space-y-2">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <button
+                        <CopyableId
+                          label={cuenta.customer_name}
+                          copyValue={cuenta.id}
                           onClick={() => handleVerDetalles(cuenta)}
-                          className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
-                          title="Ver detalle de la cuenta por cobrar"
-                        >
-                          {cuenta.customer_name}
-                        </button>
+                          iconSize={12}
+                        />
                         <p className="text-[10px] text-gray-500 dark:text-gray-400">
                           ID: {cuenta.id.slice(0, 8)}...
                         </p>
@@ -323,13 +323,12 @@ export function CuentasPorCobrarTable({ resultado, isLoading, onRefresh, onPageC
                     <TableRow key={cuenta.id} className="dark:border-gray-700 dark:hover:bg-gray-700/50">
                       <TableCell className="font-medium dark:text-white">
                         <div className="flex flex-col">
-                          <button
+                          <CopyableId
+                            label={cuenta.customer_name}
+                            copyValue={cuenta.id}
                             onClick={() => handleVerDetalles(cuenta)}
-                            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
-                            title="Ver detalle de la cuenta por cobrar"
-                          >
-                            {cuenta.customer_name}
-                          </button>
+                            iconSize={12}
+                          />
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             ID: {cuenta.id.slice(0, 8)}...
                           </span>

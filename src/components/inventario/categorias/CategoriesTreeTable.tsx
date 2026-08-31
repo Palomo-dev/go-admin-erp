@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import {
   useRouter } from 'next/navigation';
 import { DragDropContext,
@@ -52,6 +51,7 @@ import {
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { FlatNode } from './useCategories';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface CategoriesTreeTableProps {
   filtered: FlatNode[];
@@ -260,9 +260,11 @@ export function CategoriesTreeTable({
                                 {!cat.icon && (
                                   <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-200 dark:border-gray-600" style={{ backgroundColor: cat.color || '#3B82F6' }} />
                                 )}
-                                <Link href={`/app/inventario/categorias/${cat.uuid}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left break-words whitespace-normal transition-colors">
-                                  {cat.name}
-                                </Link>
+                                <CopyableId
+                                  label={cat.name}
+                                  copyValue={cat.uuid}
+                                  onClick={() => router.push(`/app/inventario/categorias/${cat.uuid}`)}
+                                />
                                 {node.level > 0 && (
                                   <span className="text-[10px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 flex-shrink-0">
                                     Nv.{node.level}

@@ -27,6 +27,7 @@ import {
   Phone,
   User,
 } from "lucide-react";
+import { CopyableId } from "@/components/common/CopyableId";
 
 // Función para obtener las iniciales del nombre
 const getInitials = (name: string): string => {
@@ -125,13 +126,13 @@ export default function CustomersTable({
                     </Avatar>
                     
                     <div className="flex-1 min-w-0">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); router.push(`/app/crm/clientes/${customer.id}`); }}
-                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm truncate block"
-                        title="Ver detalle"
-                      >
-                        {customer.full_name}
-                      </button>
+                      <CopyableId
+                        label={customer.full_name}
+                        copyValue={customer.id}
+                        onClick={() => router.push(`/app/crm/clientes/${customer.id}`)}
+                        iconSize={12}
+                        className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm truncate block"
+                      />
                       {/* Mostrar contacto en móvil */}
                       <div className="sm:hidden mt-1 space-y-0.5">
                         {customer.email && (

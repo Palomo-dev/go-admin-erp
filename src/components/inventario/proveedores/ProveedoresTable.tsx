@@ -24,6 +24,7 @@ import {
 import { Proveedor } from './types';
 import { cn } from '@/utils/Utils';
 import Link from 'next/link';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface ProveedoresTableProps {
   proveedores: Proveedor[];
@@ -112,13 +113,11 @@ const ProveedoresTable: React.FC<ProveedoresTableProps> = ({
               >
                 <TableCell className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">{proveedor.id}</TableCell>
                 <TableCell className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
-                  <button
+                  <CopyableId
+                    label={proveedor.name}
+                    copyValue={proveedor.uuid}
                     onClick={() => router.push(`/app/inventario/proveedores/${proveedor.uuid}`)}
-                    className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                    title="Ver detalle"
-                  >
-                    {proveedor.name}
-                  </button>
+                  />
                 </TableCell>
                 <TableCell className="hidden md:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.nit || '-'}</TableCell>
                 <TableCell className="hidden lg:table-cell text-xs sm:text-sm text-gray-700 dark:text-gray-300">{proveedor.contact || '-'}</TableCell>

@@ -69,6 +69,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './[id]/components';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface LocalFilters {
   status?: WebOrderStatus[];
@@ -934,13 +935,13 @@ export default function PedidosOnlinePage() {
                       <td className="p-3">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1 flex-wrap">
-                            <button
+                            <CopyableId
+                              label={order.order_number}
+                              copyValue={order.id}
                               onClick={() => handleViewDetails(order.id)}
-                              className="font-medium text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left break-all sm:break-normal"
-                              title="Ver detalle del pedido"
-                            >
-                              {order.order_number}
-                            </button>
+                              iconSize={12}
+                              className="font-medium text-xs sm:text-sm break-all sm:break-normal"
+                            />
                             {order.is_scheduled && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
                                 <CalendarClock className="h-3 w-3" />

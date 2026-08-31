@@ -45,6 +45,7 @@ import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import type { SerialWithDetails, SerialStats, SerialStatus } from '@/lib/services/serialTrackingService';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { formatDate, formatCurrency } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 const STATUS_CONFIG: Record<SerialStatus, { label: string; color: string; icon: React.ReactNode }> = {
   in_stock: { label: 'En Stock', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: <CheckCircle2 size={12} /> },
@@ -300,13 +301,11 @@ export function SerialesPage() {
                       return (
                         <TableRow key={serial.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/70">
                           <TableCell>
-                            <button
+                            <CopyableId
+                              label={serial.serial}
+                              copyValue={serial.serial}
                               onClick={() => router.push(`/app/inventario/seriales/${serial.id}`)}
-                              className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
-                              title="Ver detalle"
-                            >
-                              {serial.serial}
-                            </button>
+                            />
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">

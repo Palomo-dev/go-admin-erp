@@ -37,6 +37,7 @@ import {
   Calendar,
   DollarSign,
 } from 'lucide-react';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface PackagesTableProps {
   packages: CompensationPackage[];
@@ -121,13 +122,13 @@ export function PackagesTable({
                 </TableCell>
                 <TableCell>
                   <div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleViewDetail(pkg); }}
-                      className="font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
-                      title="Ver detalle"
-                    >
-                      {pkg.name}
-                    </button>
+                    <CopyableId
+                      label={pkg.name}
+                      copyValue={pkg.id}
+                      onClick={() => handleViewDetail(pkg)}
+                      iconSize={12}
+                      className="font-medium"
+                    />
                     {pkg.description && (
                       <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">
                         {pkg.description}

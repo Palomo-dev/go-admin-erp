@@ -54,6 +54,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { notasCreditoService, NotaCredito } from '@/lib/services/notasCreditoService';
+import { CopyableId } from '@/components/common/CopyableId';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
@@ -328,13 +329,12 @@ export function NotasCreditoPage() {
                 notas.map((nota) => (
                   <TableRow key={nota.id} className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <TableCell className="font-medium text-gray-900 dark:text-white">
-                      <button
+                      <CopyableId
+                        label={nota.number}
+                        copyValue={nota.number}
                         onClick={() => router.push(`/app/finanzas/notas-credito/${nota.id}`)}
-                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium"
-                        title="Ver detalle"
-                      >
-                        {nota.number}
-                      </button>
+                        iconSize={12}
+                      />
                     </TableCell>
                     <TableCell className="text-gray-600 dark:text-gray-300">
                       <div className="flex items-center gap-2">

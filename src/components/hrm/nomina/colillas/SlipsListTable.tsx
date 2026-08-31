@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Eye, MoreHorizontal, CheckCircle, DollarSign, Download, FileText } from 'lucide-react';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface SlipsListTableProps {
   slips: PayrollSlip[];
@@ -136,13 +137,13 @@ export function SlipsListTable({
               </TableCell>
               <TableCell>
                 <div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleViewSlip(slip); }}
-                    className="font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
-                    title="Ver detalle"
-                  >
-                    {slip.employee_name}
-                  </button>
+                  <CopyableId
+                    label={slip.employee_name || 'Sin asignar'}
+                    copyValue={slip.id}
+                    onClick={() => handleViewSlip(slip)}
+                    iconSize={12}
+                    className="font-medium"
+                  />
                   {slip.employee_code && (
                     <div className="text-sm text-gray-500 dark:text-gray-400 font-mono">
                       {slip.employee_code}

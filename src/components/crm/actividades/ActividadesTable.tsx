@@ -38,6 +38,7 @@ import {
 import { formatDate } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, ACTIVITY_TYPE_CONFIG } from './types';
+import { CopyableId } from '@/components/common/CopyableId';
 
 interface ActividadesTableProps {
   activities: Activity[];
@@ -141,13 +142,13 @@ export function ActividadesTable({
                     <Badge variant="outline" className={`mb-1 text-[10px] sm:text-xs ${config.color} dark:border-gray-600`}>
                       {config.label}
                     </Badge>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleViewDetail(activity); }}
-                      className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left font-medium line-clamp-2"
-                      title="Ver detalle"
-                    >
-                      {activity.notes || 'Sin descripción'}
-                    </button>
+                    <CopyableId
+                      label={activity.notes || 'Sin descripción'}
+                      copyValue={activity.id}
+                      onClick={() => handleViewDetail(activity)}
+                      iconSize={12}
+                      className="text-xs sm:text-sm line-clamp-2"
+                    />
                     <div className="sm:hidden mt-1 text-[10px] text-gray-500 dark:text-gray-400">
                       {formatDateTime(activity.occurred_at)}
                     </div>

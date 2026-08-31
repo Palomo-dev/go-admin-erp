@@ -32,6 +32,7 @@ import {
   Users,
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/Utils';
+import { CopyableId } from '@/components/common/CopyableId';
 
 export interface EmployeeRow {
   id: string;
@@ -168,16 +169,13 @@ export function EmployeeTable({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/app/hrm/empleados/${employee.id}`);
-                        }}
-                        className="font-medium text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left truncate"
-                        title="Ver detalle"
-                      >
-                        {employee.full_name}
-                      </button>
+                      <CopyableId
+                        label={employee.full_name}
+                        copyValue={employee.id}
+                        onClick={() => router.push(`/app/hrm/empleados/${employee.id}`)}
+                        iconSize={12}
+                        className="font-medium text-xs sm:text-sm truncate"
+                      />
                       {employee.email && (
                         <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
                           {employee.email}

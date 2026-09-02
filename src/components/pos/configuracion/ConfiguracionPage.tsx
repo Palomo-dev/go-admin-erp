@@ -26,6 +26,7 @@ import {
   Monitor,
   Wallet,
   Clock,
+  Users,
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/utils/Utils';
 import { SearchSelect } from '@/components/ui/search-select';
@@ -42,7 +43,10 @@ import {
   defaultRequireCashSessionConfig,
   PosBlindCashCountConfig,
   defaultBlindCashCountConfig,
+  PosCashSessionModeConfig,
+  defaultCashSessionModeConfig,
 } from './configuracionService';
+import { CajasService } from '@/components/pos/cajas/CajasService';
 import { PrintersSection } from './printers/PrintersSection';
 import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
 import { RecentPrintJobsTable } from './printers/RecentPrintJobsTable';
@@ -79,6 +83,8 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
   const [savingRequireCash, setSavingRequireCash] = useState(false);
   const [blindCashCount, setBlindCashCount] = useState<PosBlindCashCountConfig>(defaultBlindCashCountConfig);
   const [savingBlindCash, setSavingBlindCash] = useState(false);
+  const [cashSessionMode, setCashSessionMode] = useState<PosCashSessionModeConfig>(defaultCashSessionModeConfig);
+  const [savingCashMode, setSavingCashMode] = useState(false);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
 
   // Horas de operación (día operativo para empresas con horarios no estándar)
@@ -102,7 +108,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
     }
 
     try {
-      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData, requireCashData, blindCashData, ohData] = await Promise.all([
+      const [statsData, paymentsData, taxesData, chargesData, categoriesDisplayData, branchesData, requireCashData, blindCashData, cashModeData, ohData] = await Promise.all([
         ConfiguracionService.getConfigStats(),
         ConfiguracionService.getPaymentMethods(),
         ConfiguracionService.getTaxes(),
@@ -111,6 +117,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
         ConfiguracionService.getBranches(),
         ConfiguracionService.getRequireCashSessionConfig(),
         ConfiguracionService.getBlindCashCountConfig(),
+        ConfiguracionService.getCashSessionModeConfig(),
         organization?.id ? getOperatingHours(organization.id) : Promise.resolve(null),
       ]);
 
@@ -122,6 +129,9 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       setBranches(branchesData);
       setRequireCashSession(requireCashData);
       setBlindCashCount(blindCashData);
+      setCashSessionMode(cashModeData);
+      // Invalidar cache de modo de cajas en CajasService para que tome el valor fresco
+      CajasService.invalidateCashSessionModeCache();
       setOperatingHours(ohData);
       setOhEnabled(ohData?.enabled ?? false);
       setOhStart(ohData?.start_time ?? '08:00');
@@ -226,6 +236,33 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       });
     } finally {
       setSavingRequireCash(false);
+    }
+  };
+
+  const handleToggleCashSessionMode = async (value: boolean) => {
+    const previous = cashSessionMode;
+    const newMode: PosCashSessionModeConfig['mode'] = value ? 'user' : 'branch';
+    setCashSessionMode({ mode: newMode });
+    setSavingCashMode(true);
+    try {
+      await ConfiguracionService.saveCashSessionModeConfig({ mode: newMode });
+      // Invalidar cache de CajasService para que el nuevo modo se aplique de inmediato
+      CajasService.invalidateCashSessionModeCache();
+      toast({
+        title: 'Actualizado',
+        description: value
+          ? 'Caja por cajero activada: cada miembro gestiona su propia caja'
+          : 'Caja por sucursal activada: una sola caja compartida por sucursal',
+      });
+    } catch {
+      setCashSessionMode(previous);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la configuración',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingCashMode(false);
     }
   };
 
@@ -521,6 +558,45 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
               disabled={savingRequireCash}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Caja por Cajero (modo de asignación de cajas) */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Users className="h-5 w-5 text-teal-600" />
+            Caja por Cajero
+          </CardTitle>
+          <CardDescription className="text-gray-500 dark:text-gray-400">
+            Define si la caja es única por sucursal (compartida por todos los cajeros) o si cada miembro de la organización abre y gestiona su propia caja dentro de la sucursal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900 dark:text-white break-words">
+                Una caja por cajero
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 break-words">
+                {cashSessionMode.mode === 'user'
+                  ? 'Cada miembro abre su propia caja, registra sus ventas y hace su cierre de forma independiente'
+                  : 'Una sola caja compartida por sucursal (todos los cajeros registran en la misma caja)'}
+              </p>
+            </div>
+            <Switch
+              checked={cashSessionMode.mode === 'user'}
+              onCheckedChange={handleToggleCashSessionMode}
+              disabled={savingCashMode}
+            />
+          </div>
+          {cashSessionMode.mode === 'user' && (
+            <div className="mt-3 p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800">
+              <p className="text-sm text-teal-800 dark:text-teal-200">
+                <strong>Modo cajero activo:</strong> en cada sucursal, cada miembro puede tener una caja abierta simultáneamente. El resumen y cierre de cada caja incluyen únicamente las ventas y movimientos del cajero que la abrió.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

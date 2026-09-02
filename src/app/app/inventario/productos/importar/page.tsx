@@ -738,6 +738,10 @@ export default function ImportarProductosPage() {
 
     const orgId = organization.id;
 
+    // Obtener el usuario autenticado para registros de auditoría (product_notes.user_id es NOT NULL)
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id ?? null;
+
     // Obtener branch_id principal de la organización
     const { data: branches } = await supabase
       .from('branches')
@@ -1219,7 +1223,7 @@ export default function ImportarProductosPage() {
             product_id: productId,
             content: row.notes,
             organization_id: orgId,
-            user_id: null,
+            user_id: userId,
           });
         }
 

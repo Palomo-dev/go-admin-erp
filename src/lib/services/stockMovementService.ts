@@ -6,6 +6,98 @@ export interface SaleItemForStock {
   unit_price?: number;
 }
 
+interface RecipeItemForStock {
+  product_id: number;
+  quantity: number;
+  track_stock: boolean;
+}
+
+/**
+ * Devuelve la lista de productos cuyo stock debe reservarse/liberarse para
+ * un item vendido. Si el producto tiene receta activa, devuelve los
+ * ingredientes (con cantidad convertida a la unidad base del ingrediente).
+ * Si además el producto compuesto tiene track_stock=true, lo incluye.
+ * Si no tiene receta, devuelve solo el producto mismo.
+ */
+async function getRecipeItemsForStock(
+  productId: number,
+  qty: number,
+  organizationId: number
+): Promise<RecipeItemForStock[]> {
+  // Buscar receta activa
+  const { data: recipe } = await supabase
+    .from('product_recipes')
+    .select('id')
+    .eq('product_id', productId)
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+
+  if (!recipe) {
+    // Sin receta → solo el producto
+    const { data: prod } = await supabase
+      .from('products')
+      .select('track_stock')
+      .eq('id', productId)
+      .maybeSingle();
+    return [{ product_id: productId, quantity: qty, track_stock: prod?.track_stock ?? true }];
+  }
+
+  // Con receta → traer ingredientes + track_stock del compuesto
+  const { data: ingredients } = await supabase
+    .from('recipe_ingredients')
+    .select(
+      'ingredient_product_id, quantity, unit_code, ingredient_product:products(id, track_stock, unit_code)'
+    )
+    .eq('recipe_id', recipe.id);
+
+  const { data: compositeProd } = await supabase
+    .from('products')
+    .select('track_stock')
+    .eq('id', productId)
+    .maybeSingle();
+
+  const items: RecipeItemForStock[] = [];
+
+  for (const ing of ingredients || []) {
+    const ingProd = (ing as { ingredient_product?: { track_stock?: boolean; unit_code?: string | null } }).ingredient_product;
+    const trackStock = ingProd?.track_stock ?? true;
+    if (!trackStock) continue;
+
+    // Conversión de unidades: recipe_unit → product_unit
+    let convertedQty = Number(ing.quantity) * qty;
+    const fromUnit = ing.unit_code;
+    const toUnit = ingProd?.unit_code;
+    if (fromUnit && toUnit && fromUnit !== toUnit) {
+      const { data: conv } = await supabase
+        .from('unit_conversions')
+        .select('factor')
+        .eq('from_unit_code', fromUnit)
+        .eq('to_unit_code', toUnit)
+        .or(`organization_id.is.null,organization_id.eq.${organizationId}`)
+        .order('organization_id', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      if (conv?.factor && conv.factor > 0) {
+        convertedQty = convertedQty * Number(conv.factor);
+      }
+    }
+
+    items.push({
+      product_id: ing.ingredient_product_id,
+      quantity: convertedQty,
+      track_stock: true,
+    });
+  }
+
+  // Si el compuesto también rastrea stock, incluirlo
+  if (compositeProd?.track_stock === true) {
+    items.push({ product_id: productId, quantity: qty, track_stock: true });
+  }
+
+  return items;
+}
+
 /**
  * Motivo por el que un item no llego a afectar el inventario.
  * Antes estos casos solo incrementaban un contador `skipped` que nadie leia, asi
@@ -131,8 +223,9 @@ export const stockMovementService = {
     branchId: number,
     orderId: string | number,
     items: SaleItemForStock[],
-    updatedBy?: string
+    _updatedBy?: string
   ): Promise<StockDecrementResult> {
+    void _updatedBy; // reservado para uso futuro (auditoría de reservas)
     const errors: string[] = [];
     const skippedItems: StockSkippedItem[] = [];
 
@@ -148,57 +241,48 @@ export const stockMovementService = {
         continue;
       }
 
-      // Verificar track_stock del producto
-      const { data: product } = await supabase
-        .from('products')
-        .select('track_stock, name')
-        .eq('id', item.product_id)
-        .maybeSingle();
+      // Expandir receta: obtener lista de productos a reservar
+      // (ingredientes + compuesto si track_stock=true, o solo el producto si no tiene receta)
+      const recipeItems = await getRecipeItemsForStock(item.product_id, qty, organizationId);
 
-      if (!product) {
-        skippedItems.push({ productId: item.product_id, reason: 'product_not_found' });
-        continue;
-      }
+      for (const ri of recipeItems) {
+        if (!ri.track_stock) continue;
 
-      if (product.track_stock === false) {
-        skippedItems.push({ productId: item.product_id, productName: product.name, reason: 'not_tracked' });
-        continue;
-      }
-
-      // Incrementar qty_reserved
-      const { data: existing } = await supabase
-        .from('stock_levels')
-        .select('id, qty_reserved')
-        .eq('product_id', item.product_id)
-        .eq('branch_id', branchId)
-        .is('lot_id', null)
-        .limit(1)
-        .maybeSingle();
-
-      if (existing) {
-        const { error } = await supabase
+        // Incrementar qty_reserved
+        const { data: existing } = await supabase
           .from('stock_levels')
-          .update({
-            qty_reserved: (Number(existing.qty_reserved) || 0) + qty,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
+          .select('id, qty_reserved')
+          .eq('product_id', ri.product_id)
+          .eq('branch_id', branchId)
+          .is('lot_id', null)
+          .limit(1)
+          .maybeSingle();
 
-        if (error) errors.push(`Producto ${item.product_id}: ${error.message}`);
-      } else {
-        const { error } = await supabase
-          .from('stock_levels')
-          .insert({
-            product_id: item.product_id,
-            branch_id: branchId,
-            lot_id: null,
-            qty_on_hand: 0,
-            qty_reserved: qty,
-            avg_cost: 0,
-            min_level: 0,
-          });
+        if (existing) {
+          const { error } = await supabase
+            .from('stock_levels')
+            .update({
+              qty_reserved: (Number(existing.qty_reserved) || 0) + ri.quantity,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id);
 
-        if (error) errors.push(`Producto ${item.product_id}: ${error.message}`);
+          if (error) errors.push(`Producto ${ri.product_id}: ${error.message}`);
+        } else {
+          const { error } = await supabase
+            .from('stock_levels')
+            .insert({
+              product_id: ri.product_id,
+              branch_id: branchId,
+              lot_id: null,
+              qty_on_hand: 0,
+              qty_reserved: ri.quantity,
+              avg_cost: 0,
+              min_level: 0,
+            });
+
+          if (error) errors.push(`Producto ${ri.product_id}: ${error.message}`);
+        }
       }
     }
 
@@ -228,26 +312,33 @@ export const stockMovementService = {
         continue;
       }
 
-      const { data: existing } = await supabase
-        .from('stock_levels')
-        .select('id, qty_reserved')
-        .eq('product_id', item.product_id)
-        .eq('branch_id', branchId)
-        .is('lot_id', null)
-        .limit(1)
-        .maybeSingle();
+      // Expandir receta para liberar reservas de ingredientes también
+      const recipeItems = await getRecipeItemsForStock(item.product_id, qty, 0);
 
-      if (existing) {
-        const newReserved = Math.max(0, (Number(existing.qty_reserved) || 0) - qty);
-        const { error } = await supabase
+      for (const ri of recipeItems) {
+        if (!ri.track_stock) continue;
+
+        const { data: existing } = await supabase
           .from('stock_levels')
-          .update({
-            qty_reserved: newReserved,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
+          .select('id, qty_reserved')
+          .eq('product_id', ri.product_id)
+          .eq('branch_id', branchId)
+          .is('lot_id', null)
+          .limit(1)
+          .maybeSingle();
 
-        if (error) errors.push(`Producto ${item.product_id}: ${error.message}`);
+        if (existing) {
+          const newReserved = Math.max(0, (Number(existing.qty_reserved) || 0) - ri.quantity);
+          const { error } = await supabase
+            .from('stock_levels')
+            .update({
+              qty_reserved: newReserved,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id);
+
+          if (error) errors.push(`Producto ${ri.product_id}: ${error.message}`);
+        }
       }
     }
 

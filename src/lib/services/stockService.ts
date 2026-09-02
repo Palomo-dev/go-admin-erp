@@ -503,6 +503,7 @@ class StockService {
       { value: 'return', label: 'Devolución' },
       { value: 'initial', label: 'Inventario Inicial' },
       { value: 'production', label: 'Producción' },
+      { value: 'recipe_consumption', label: 'Consumo Receta' },
       { value: 'waste', label: 'Merma' }
     ];
   }

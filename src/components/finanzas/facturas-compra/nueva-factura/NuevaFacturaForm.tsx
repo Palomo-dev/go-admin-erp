@@ -15,6 +15,17 @@ import {
   InvoicePurchase 
 } from '../types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toastError } from '@/components/ui/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { InformacionBasicaForm } from './InformacionBasicaForm';
 import { ItemsListForm } from './ItemsListForm';
 import { ResumenFactura } from './ResumenFactura';
@@ -50,13 +61,15 @@ export function NuevaFacturaForm({
   const [loading, setLoading] = useState(false);
   
   // Detectar si estamos en inventario o finanzas
-  const basePath = pathname.includes('/inventario/') 
-    ? '/app/inventario/facturas-compra' 
+  const basePath = pathname?.includes('/inventario/')
+    ? '/app/inventario/facturas-compra'
     : '/app/finanzas/facturas-compra';
   const [proveedores, setProveedores] = useState<SupplierBase[]>([]);
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
   const [monedas, setMonedas] = useState<OrganizationCurrency[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Confirmación de cancelación (reemplaza window.confirm nativo)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   
   // Estados para impuestos avanzados
   const [taxCalculation, setTaxCalculation] = useState<TaxCalculationResult>({
@@ -451,16 +464,25 @@ export function NuevaFacturaForm({
       }
     } catch (error) {
       console.error(esEdicion ? 'Error actualizando factura:' : 'Error creando factura:', error);
-      alert(esEdicion ? 'Error al actualizar la factura. Por favor, inténtelo de nuevo.' : 'Error al crear la factura. Por favor, inténtelo de nuevo.');
+      toastError(
+        'Error',
+        esEdicion
+          ? 'No se pudo actualizar la factura. Por favor, inténtelo de nuevo.'
+          : 'No se pudo crear la factura. Por favor, inténtelo de nuevo.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    if (confirm('¿Está seguro de que desea cancelar? Se perderán todos los cambios.')) {
-      router.push(basePath);
-    }
+    // Abrir AlertDialog de confirmación en vez de window.confirm nativo.
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelConfirm(false);
+    router.push(basePath);
   };
 
   // Memoizar cálculo de totales incluyendo taxCalculation y appliedTaxes
@@ -703,6 +725,24 @@ export function NuevaFacturaForm({
           />
         </div>
       </form>
+
+      {/* Confirmación de cancelación (reemplaza window.confirm) */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Cancelar la factura?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se perderán todos los cambios no guardados. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Seguir editando</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCancel}>
+              Sí, cancelar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

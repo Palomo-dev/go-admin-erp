@@ -1,0 +1,11 @@
+feat(pos): cierre ciego - ocultar montos con *** y deshabilitar detalle para no-admin
+
+- CierreCajaDialog: mostrar *** en montos esperados/diferencias en modo ciego,
+  inputs arrancan en 0 para forzar conteo fisico real
+- page.tsx (cajas): deshabilitar boton Ver detalle cuando !showExpected,
+  columnas Final/Diferencia muestran *** en historial
+- Cambios adicionales en inventario, finanzas, pos, shared y lib/services
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

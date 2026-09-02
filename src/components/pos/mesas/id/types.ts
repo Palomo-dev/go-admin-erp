@@ -39,6 +39,24 @@ export interface Product {
   parent_product?: {
     product_images?: ProductImage[];
   } | null;
+  // Campos adicionales retornados por POSService.getProductsPaginated
+  // (no están en la tabla products pero se hidratan en el servicio).
+  price?: number | null;
+  compare_price?: number | null;
+  category?: { id: number; name: string; slug: string; station: string | null; requires_preparation: boolean } | null;
+  has_variants?: boolean;
+  variant_count?: number;
+  has_modifiers?: boolean;
+  track_stock?: boolean;
+  stock_quantity?: number;
+  qty_reserved?: number;
+  is_out_of_stock?: boolean;
+  is_favorite?: boolean;
+  sales_count_90d?: number;
+  has_recipe?: boolean;
+  recipe_id?: number | null;
+  recipe_name?: string | null;
+  image?: string | null;
 }
 
 export interface Sale {

@@ -51,6 +51,11 @@ export interface InvoicePurchase {
   supplier?: SupplierBase;
   items?: InvoiceItem[];
   accounts_payable?: AccountPayable[];
+  // Impuestos aplicados (relación invoice_purchase_applied_taxes)
+  applied_taxes?: {
+    tax_code: string;
+    is_applied: boolean;
+  }[];
 }
 
 export interface InvoiceItem {

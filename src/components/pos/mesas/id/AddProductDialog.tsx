@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon, Check } from 'lucide-react';
+import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon, Check, Star, Flame, ChefHat } from 'lucide-react';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { Product, ProductToAdd, SelectedProductModifier } from './types';
@@ -26,6 +26,8 @@ import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CategoryFilterBar } from '@/components/pos/CategoryFilterBar';
 import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from '@/components/pos/configuracion/configuracionService';
+import { useToast } from '@/components/ui/use-toast';
+import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
 
 interface Category {
   id: number;
@@ -76,6 +78,12 @@ export function AddProductDialog({
   const [selectedParentProduct, setSelectedParentProduct] = useState<any>(null);
   // Ref sincrónico para prevenir cierre del diálogo cuando se abre el selector de variantes
   const variantDialogOpeningRef = useRef(false);
+  // Productos cuyo toggle de favorito está en curso (para deshabilitar el botón)
+  const [togglingFavorites, setTogglingFavorites] = useState<Set<number>>(new Set());
+  const { toast } = useToast();
+  // Diálogo de detalle de receta vinculada a un producto
+  const [recipeView, setRecipeView] = useState<ProductRecipe | null>(null);
+  const [recipeViewLoading, setRecipeViewLoading] = useState(false);
 
   // Cargar productos reales de la base de datos
   useEffect(() => {
@@ -169,11 +177,82 @@ export function AddProductDialog({
     }, 100);
   };
 
+  // Ver la receta vinculada a un producto (abre un diálogo con ingredientes y rendimiento).
+  // No agrega el producto al carrito: es solo consulta desde el grid de productos.
+  const handleViewRecipe = async (product: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!product.recipe_id) return;
+    try {
+      setRecipeViewLoading(true);
+      setRecipeView(null);
+      const recipe = await recipeService.getRecipeById(product.recipe_id);
+      setRecipeView(recipe);
+    } catch (error) {
+      console.error('Error cargando receta:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar la receta del producto',
+        variant: 'destructive',
+      });
+    } finally {
+      setRecipeViewLoading(false);
+    }
+  };
+
+  // Toggle de favorito: marca/desmarca el producto como favorito de la organización.
+  // Optimistic update en el estado local; si falla, revierte. No agrega el producto
+  // al carrito (el clic en la card se detiene con stopPropagation).
+  const handleToggleFavorite = async (productId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (togglingFavorites.has(productId)) return;
+
+    const prevProducts = products;
+    const product = prevProducts.find((p: any) => p.id === productId);
+    const wasFavorite = product?.is_favorite ?? false;
+    setProducts(prev => prev.map((p: any) =>
+      p.id === productId ? { ...p, is_favorite: !wasFavorite } : p
+    ));
+    setTogglingFavorites(prev => new Set(prev).add(productId));
+
+    try {
+      const isNowFavorite = await POSService.toggleProductFavorite(productId);
+      setProducts(prev => prev.map((p: any) =>
+        p.id === productId ? { ...p, is_favorite: isNowFavorite } : p
+      ));
+      toast({
+        title: isNowFavorite ? 'Agregado a favoritos' : 'Quitado de favoritos',
+        description: isNowFavorite
+          ? 'El producto aparecerá primero en el POS.'
+          : 'El producto ya no se priorizará.',
+        duration: 1800,
+      });
+    } catch (error) {
+      setProducts(prev => prev.map((p: any) =>
+        p.id === productId ? { ...p, is_favorite: wasFavorite } : p
+      ));
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el favorito.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTogglingFavorites(prev => {
+        const next = new Set(prev);
+        next.delete(productId);
+        return next;
+      });
+    }
+  };
+
   // Agregar producto al carrito
   const addToCart = (product: any, modifiers: SelectedProductModifier[] = []) => {
     const basePrice = product.price || 0;
     if (basePrice === 0) {
-      alert('Este producto no tiene precio configurado');
+      toast({
+        title: 'Producto sin precio',
+        description: 'Este producto no tiene precio configurado',
+        variant: 'destructive',
+      });
       return;
     }
     const extraTotal = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
@@ -268,7 +347,11 @@ export function AddProductDialog({
       onOpenChange(false);
     } catch (error) {
       console.error('Error agregando productos:', error);
-      alert('Error al agregar productos. Por favor intente nuevamente.');
+      toast({
+        title: 'Error',
+        description: 'No se pudieron agregar los productos. Por favor intente nuevamente.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -340,7 +423,7 @@ export function AddProductDialog({
                 <div className="relative w-full sm:w-80">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Buscar productos..."
+                    placeholder="Buscar por nombre, SKU, código de barras, variantes o modificadores..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 h-10"
@@ -468,6 +551,32 @@ export function AddProductDialog({
                               <Check className="h-2.5 w-2.5" /> Incluido
                             </div>
                           )}
+                          {/* Badge Top: más vendidos en los últimos 90 días (bottom-left) */}
+                          {Number(product.sales_count_90d) > 0 && (
+                            <div
+                              className="absolute bottom-2 left-2 bg-orange-500 text-white rounded-full px-1.5 py-0.5 text-[0.6rem] font-bold z-10 flex items-center gap-0.5"
+                              title={`${Math.round(Number(product.sales_count_90d))} unidades vendidas en los últimos 90 días`}
+                            >
+                              <Flame className="h-2.5 w-2.5" />
+                              Top
+                            </div>
+                          )}
+                          {/* Botón estrella favorito (bottom-right) */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleFavorite(product.id, e)}
+                            disabled={togglingFavorites.has(product.id)}
+                            aria-label={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                            title={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                            className={cn(
+                              'absolute bottom-2 right-2 z-20 rounded-full p-1 transition-all duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed',
+                              product.is_favorite
+                                ? 'bg-amber-400 text-white hover:bg-amber-500'
+                                : 'bg-white/90 text-gray-400 hover:text-amber-500 hover:bg-white'
+                            )}
+                          >
+                            <Star className={cn('h-3.5 w-3.5', product.is_favorite && 'fill-current')} />
+                          </button>
                         </div>
 
                         {/* Información */}
@@ -496,8 +605,21 @@ export function AddProductDialog({
                             </span>
                           </div>
                           {product.sku && (
-                            <div className="text-[0.6rem] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate text-center">
-                              {product.sku}
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[0.6rem] text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate flex-1 text-center">
+                                {product.sku}
+                              </span>
+                              {product.has_recipe && product.recipe_id && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleViewRecipe(product, e)}
+                                  aria-label="Ver receta de producción"
+                                  title="Ver receta de producción"
+                                  className="shrink-0 rounded-full p-1 text-orange-600 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-900/40 transition-colors"
+                                >
+                                  <ChefHat className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -761,6 +883,116 @@ export function AddProductDialog({
         onSelectVariant={handleVariantSelect}
       />
     )}
+
+    {/* Diálogo de detalle de receta vinculada */}
+    <Dialog open={!!recipeView || recipeViewLoading} onOpenChange={(open) => { if (!open) { setRecipeView(null); setRecipeViewLoading(false); } }}>
+      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
+        <DialogHeader>
+          <DialogTitle className="dark:text-white flex items-center gap-2">
+            <ChefHat className="h-5 w-5 text-orange-600" />
+            Receta de producción
+          </DialogTitle>
+          <DialogDescription className="dark:text-gray-400">
+            {recipeView?.product?.name ?? recipeView?.name ?? ''}
+          </DialogDescription>
+        </DialogHeader>
+
+        {recipeViewLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Skeleton className="h-6 w-8" />
+          </div>
+        ) : recipeView ? (
+          <div className="space-y-4">
+            {/* Info general */}
+            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-lg">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Producto</p>
+                <p className="font-medium dark:text-white">
+                  {recipeView.product?.name ?? `#${recipeView.product_id}`}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                  SKU: {recipeView.product?.sku ?? 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Rendimiento</p>
+                <p className="font-medium dark:text-white font-mono">
+                  {recipeView.yield_qty} {recipeView.yield_unit_code ?? ''}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Estado</p>
+                <Badge
+                  className={
+                    recipeView.is_active
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                      : ''
+                  }
+                  variant={recipeView.is_active ? 'default' : 'secondary'}
+                >
+                  {recipeView.is_active ? 'Activa' : 'Inactiva'}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Versión</p>
+                <p className="font-medium dark:text-white font-mono">v{recipeView.version}</p>
+              </div>
+            </div>
+
+            {/* Notas */}
+            {recipeView.notes && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notas</p>
+                <p className="text-sm dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg whitespace-pre-wrap">
+                  {recipeView.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Ingredientes */}
+            <div>
+              <p className="text-sm font-medium dark:text-gray-300 mb-2">
+                Ingredientes ({recipeView.ingredients?.length ?? 0})
+              </p>
+              <div className="space-y-2">
+                {recipeView.ingredients?.length ? (
+                  recipeView.ingredients.map((ing, i) => (
+                    <div
+                      key={ing.id}
+                      className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-400 font-mono w-6">#{i + 1}</span>
+                        <div>
+                          <p className="font-medium text-sm dark:text-white">
+                            {ing.ingredient_product?.name ?? `#${ing.ingredient_product_id}`}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                            {ing.ingredient_product?.sku ?? 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm dark:text-gray-200">
+                          {ing.quantity} {ing.unit_code}
+                        </span>
+                        {ing.is_optional && (
+                          <Badge variant="secondary" className="text-[0.6rem]">Opcional</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Esta receta no tiene ingredientes definidos.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

@@ -112,6 +112,24 @@ export const defaultBlindCashCountConfig: PosBlindCashCountConfig = {
   blind_cash_count: false,
 };
 
+/**
+ * Modo de asignación de cajas en una sucursal.
+ * - 'branch': una sola caja compartida por sucursal (default, comportamiento histórico).
+ * - 'user':   cada cajero (miembro) abre y gestiona su propia caja dentro de la sucursal,
+ *             llevando el registro individual de sus ventas y haciendo su propio cierre.
+ */
+export type PosCashSessionMode = 'branch' | 'user';
+
+export interface PosCashSessionModeConfig {
+  mode: PosCashSessionMode;
+}
+
+const POS_CASH_SESSION_MODE_KEY = 'pos_cash_session_mode';
+
+export const defaultCashSessionModeConfig: PosCashSessionModeConfig = {
+  mode: 'branch',
+};
+
 export const defaultCategoriesDisplayConfig: PosCategoriesDisplayConfig = {
   mode: 'searchselect',
   orderBy: 'display_order',
@@ -390,6 +408,48 @@ export class ConfiguracionService {
       .upsert({
         organization_id: orgId,
         key: POS_BLIND_CASH_COUNT_KEY,
+        settings: merged,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'organization_id,key',
+      });
+
+    if (error) throw error;
+  }
+
+  // Obtener configuración de modo de cajas (por sucursal vs por cajero)
+  static async getCashSessionModeConfig(): Promise<PosCashSessionModeConfig> {
+    const orgId = getOrganizationId();
+
+    const { data, error } = await supabase
+      .from('organization_settings')
+      .select('settings')
+      .eq('organization_id', orgId)
+      .eq('key', POS_CASH_SESSION_MODE_KEY)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error obteniendo configuración de modo de cajas:', error);
+      return defaultCashSessionModeConfig;
+    }
+
+    const stored = data?.settings || {};
+    // Validar que el modo sea uno de los valores permitidos
+    const mode: PosCashSessionMode = stored.mode === 'user' ? 'user' : 'branch';
+    return { mode };
+  }
+
+  // Guardar configuración de modo de cajas
+  static async saveCashSessionModeConfig(config: Partial<PosCashSessionModeConfig>): Promise<void> {
+    const orgId = getOrganizationId();
+    const current = await this.getCashSessionModeConfig();
+    const merged = { ...current, ...config };
+
+    const { error } = await supabase
+      .from('organization_settings')
+      .upsert({
+        organization_id: orgId,
+        key: POS_CASH_SESSION_MODE_KEY,
         settings: merged,
         updated_at: new Date().toISOString(),
       }, {

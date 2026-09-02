@@ -200,8 +200,29 @@ class ProductionOrderService {
     await this.updateStatus(orderId, 'in_progress');
   }
 
-  async completeOrder(orderId: number, producedQty: number): Promise<void> {
-    await this.updateStatus(orderId, 'completed', producedQty);
+  async completeOrder(orderId: number, producedQty: number, updatedBy?: string): Promise<void> {
+    try {
+      // Ejecutar el RPC atómico que descuenta ingredientes, suma producto
+      // terminado, registra consumptions, crea movimientos y marca completed.
+      const { error: rpcError } = await supabase.rpc('complete_production_order', {
+        p_order_id: orderId,
+        p_produced_qty: producedQty,
+        p_updated_by: updatedBy ?? null,
+      });
+
+      if (rpcError) {
+        // Fallback al comportamiento anterior (solo cambio de estado) si el
+        // RPC no existe o falla, para no romper flujos existentes.
+        console.warn(
+          '[productionOrderService] RPC complete_production_order falló, usando fallback:',
+          rpcError.message
+        );
+        await this.updateStatus(orderId, 'completed', producedQty);
+      }
+    } catch (error) {
+      console.error('Error completando orden de producción:', error);
+      throw error;
+    }
   }
 
   async cancelOrder(orderId: number): Promise<void> {

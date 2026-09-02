@@ -302,6 +302,53 @@ export class TransferenciasService {
           updated_by: user?.id
         });
 
+      // Actualizar stock_levels del destino (sumar qty recibida)
+      const { error: errorStockDest } = await supabase.rpc('update_stock_level', {
+        p_organization_id: organizationId,
+        p_branch_id: transferencia.dest_branch_id,
+        p_product_id: item.product_id,
+        p_lot_id: item.lot_id || null,
+        p_qty_change: itemRecibido.received_qty,
+      });
+
+      if (errorStockDest) {
+        // Fallback: actualizar directamente stock_levels
+        console.warn(
+          '[TransferenciasService] RPC update_stock_level falló en recepción, usando fallback:',
+          errorStockDest.message
+        );
+        const { data: existingDest } = await supabase
+          .from('stock_levels')
+          .select('id, qty_on_hand')
+          .eq('branch_id', transferencia.dest_branch_id)
+          .eq('product_id', item.product_id)
+          .is('lot_id', item.lot_id ? null : null)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingDest) {
+          await supabase
+            .from('stock_levels')
+            .update({
+              qty_on_hand: (Number(existingDest.qty_on_hand) || 0) + itemRecibido.received_qty,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingDest.id);
+        } else {
+          await supabase
+            .from('stock_levels')
+            .insert({
+              product_id: item.product_id,
+              branch_id: transferencia.dest_branch_id,
+              lot_id: item.lot_id || null,
+              qty_on_hand: itemRecibido.received_qty,
+              qty_reserved: 0,
+              avg_cost: 0,
+              min_level: 0,
+            });
+        }
+      }
+
       if (!itemCompleto) {
         todosCompletos = false;
       }

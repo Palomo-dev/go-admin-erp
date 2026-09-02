@@ -37,6 +37,13 @@ export interface Supplier {
   account_type?: string;
   icon?: string;
   color?: string;
+  // Campos fiscales DIAN/Factus
+  dv?: string | null;
+  municipality_code?: string | null;
+  identification_document_code?: string | null;
+  country_code?: string | null;
+  legal_organization_code?: string | null;
+  trade_name?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +75,13 @@ export interface SupplierInput {
   bank_name?: string;
   bank_account?: string;
   account_type?: string;
+  // Campos fiscales DIAN/Factus
+  dv?: string | null;
+  municipality_code?: string | null;
+  identification_document_code?: string | null;
+  country_code?: string | null;
+  legal_organization_code?: string | null;
+  trade_name?: string | null;
 }
 
 // Estadísticas de proveedores
@@ -285,6 +299,12 @@ class SupplierService {
           bank_name: input.bank_name || null,
           bank_account: input.bank_account || null,
           account_type: input.account_type || null,
+          dv: input.dv || null,
+          municipality_code: input.municipality_code || null,
+          identification_document_code: input.identification_document_code || null,
+          country_code: input.country_code || 'CO',
+          legal_organization_code: input.legal_organization_code || null,
+          trade_name: input.trade_name || null,
         })
         .select()
         .single();
@@ -335,6 +355,12 @@ class SupplierService {
           bank_name: input.bank_name || null,
           bank_account: input.bank_account || null,
           account_type: input.account_type || null,
+          dv: input.dv || null,
+          municipality_code: input.municipality_code || null,
+          identification_document_code: input.identification_document_code || null,
+          country_code: input.country_code || 'CO',
+          legal_organization_code: input.legal_organization_code || null,
+          trade_name: input.trade_name || null,
           updated_at: new Date().toISOString()
         })
         .eq('uuid', supplierUuid)
@@ -577,6 +603,12 @@ class SupplierService {
             bank_name: supplier.bank_name || null,
             bank_account: supplier.bank_account || null,
             account_type: supplier.account_type || null,
+            dv: supplier.dv || null,
+            municipality_code: supplier.municipality_code || null,
+            identification_document_code: supplier.identification_document_code || null,
+            country_code: supplier.country_code || 'CO',
+            legal_organization_code: supplier.legal_organization_code || null,
+            trade_name: supplier.trade_name || null,
           });
 
         if (error) {

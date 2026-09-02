@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { SearchSelect } from '@/components/ui/search-select';
 import {
   Select,
   SelectContent,
@@ -17,8 +18,6 @@ import {
 } from '@/components/ui/select';
 import {
   ArrowLeft,
-  Plus,
-  Trash2,
   Save,
   Send,
   Loader2,
@@ -26,61 +25,84 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
+import { formatCurrency } from '@/utils/Utils';
 import { ProviderSelector, type ProviderData } from './ProviderSelector';
+import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
+import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
+import { FormaPagoSelector } from '@/components/finanzas/facturas-venta/nueva-factura/FormaPagoSelector';
+import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-factura/NuevaFacturaForm';
 
-interface ItemRow {
-  id: string;
-  code_reference: string;
-  name: string;
-  quantity: string;
-  discount_rate: string;
-  price: string;
-  tax_rate: string;
-  unit_measure_code: string;
-  standard_code: string;
-  is_excluded: boolean;
-}
-
-const TAX_RATES = [
-  { value: '0', label: '0% (Excluido)' },
-  { value: '5', label: '5%' },
-  { value: '19', label: '19%' },
-];
+// Re-exportar InvoiceItem para compatibilidad
+export type { InvoiceItem };
 
 const PAYMENT_FORMS = [
   { value: '1', label: 'Contado' },
   { value: '2', label: 'Crédito' },
 ];
 
-const PAYMENT_METHODS = [
-  { value: '10', label: 'Efectivo' },
-  { value: '42', label: 'Consignación bancaria' },
-  { value: '47', label: 'Transferencia débito' },
-  { value: '48', label: 'Tarjeta crédito' },
-  { value: '49', label: 'Tarjeta débito' },
-  { value: '20', label: 'Cheque' },
-];
+/**
+ * Genera el siguiente código de referencia secuencial para documentos soporte.
+ * Sigue el mismo patrón que generateInvoiceNumber (invoiceUtils.ts) pero consulta
+ * support_documents con prefijo 'DS' para evitar duplicados por organización.
+ */
+async function generateSupportDocumentReference(
+  organizationId: number,
+  prefix: string = 'DS'
+): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from('support_documents')
+      .select('reference_code')
+      .eq('organization_id', organizationId)
+      .like('reference_code', `${prefix}-%`);
 
-function generateReferenceCode(): string {
-  const date = new Date();
-  const ymd = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
-  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `DS-${ymd}-${rand}`;
+    if (error) throw error;
+
+    const existing = new Set<string>();
+    let maxNumber = 0;
+    const numberRegex = new RegExp(`${prefix}\\s*-\\s*(\\d{1,7})(?:\\D|$)`, 'i');
+
+    for (const row of data || []) {
+      if (!row.reference_code) continue;
+      existing.add(row.reference_code.trim().toUpperCase());
+      const match = row.reference_code.match(numberRegex);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNumber) maxNumber = num;
+      }
+    }
+
+    let nextNumber = maxNumber + 1;
+    let formatted = `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
+    while (existing.has(formatted)) {
+      nextNumber += 1;
+      formatted = `${prefix}-${nextNumber.toString().padStart(4, '0')}`;
+    }
+    return formatted;
+  } catch (error) {
+    console.error('Error generando referencia DS:', error);
+    return `${prefix}-${Date.now()}`;
+  }
 }
 
-function newItem(): ItemRow {
-  return {
-    id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    code_reference: '',
-    name: '',
-    quantity: '1.00',
-    discount_rate: '0',
-    price: '0',
-    tax_rate: '0',
-    unit_measure_code: '94',
-    standard_code: '999',
-    is_excluded: true,
+interface OrganizationCurrency {
+  currency_code: string;
+  is_base: boolean;
+  currencies?: {
+    code: string;
+    name: string;
+    symbol: string;
   };
+}
+
+interface InvoicePurchaseOption {
+  id: string;
+  number_ext: string;
+  supplier_id: number;
+  issue_date: string | null;
+  total: number | null;
+  currency: string | null;
+  supplier?: { name: string; nit: string | null } | null;
 }
 
 export function SupportDocumentForm() {
@@ -91,14 +113,15 @@ export function SupportDocumentForm() {
   const [isSending, setIsSending] = useState(false);
 
   // Datos generales
-  const [referenceCode, setReferenceCode] = useState(generateReferenceCode());
+  const [referenceCode, setReferenceCode] = useState('');
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
   const [createdTime, setCreatedTime] = useState(new Date().toTimeString().substring(0, 8));
   const [observation, setObservation] = useState('');
   const [paymentForm, setPaymentForm] = useState('1');
-  const [paymentMethodCode, setPaymentMethodCode] = useState('10');
+  const [paymentMethodCode, setPaymentMethodCode] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [invoicePurchaseId, setInvoicePurchaseId] = useState('');
+  const [currency, setCurrency] = useState('COP');
+  const [invoicePurchaseId, setInvoicePurchaseId] = useState<string>('');
 
   // Proveedor
   const [provider, setProvider] = useState<ProviderData>({
@@ -109,76 +132,156 @@ export function SupportDocumentForm() {
     country_code: 'CO',
   });
 
-  // Items
-  const [items, setItems] = useState<ItemRow[]>([newItem()]);
+  // Items (usa el tipo InvoiceItem de factura-venta)
+  const [items, setItems] = useState<InvoiceItem[]>([
+    {
+      id: `item-${Date.now()}`,
+      description: '',
+      qty: 1,
+      unit_price: 0,
+      tax_code: null,
+      tax_rate: 0,
+      tax_included: false,
+      total_line: 0,
+      discount_amount: 0,
+    },
+  ]);
 
-  React.useEffect(() => {
+  // Impuestos (patrón de factura-venta)
+  const [taxIncluded, setTaxIncluded] = useState<boolean>(false);
+  const [appliedTaxes, setAppliedTaxes] = useState<{ [key: string]: boolean }>({});
+  const [appliedTaxTotals, setAppliedTaxTotals] = useState<{ [key: string]: any }>({});
+  const [subtotal, setSubtotal] = useState<number>(0);
+  const [taxTotal, setTaxTotal] = useState<number>(0);
+  const [total, setTotal] = useState<number>(0);
+
+  // Seriales (no se usan en documentos soporte pero ItemsFactura los requiere)
+  const [serialSelections, setSerialSelections] = useState<Record<number, number[]>>({});
+
+  // Monedas y facturas de compra
+  const [orgCurrencies, setOrgCurrencies] = useState<OrganizationCurrency[]>([]);
+  const [invoicePurchaseOptions, setInvoicePurchaseOptions] = useState<InvoicePurchaseOption[]>([]);
+  const [loadingCurrencies, setLoadingCurrencies] = useState(false);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+
+  useEffect(() => {
     const orgId = getOrganizationId();
     setOrganizationId(orgId);
   }, []);
 
-  const addItem = () => setItems((prev) => [...prev, newItem()]);
+  // Generar referencia secuencial al cargar
+  useEffect(() => {
+    if (organizationId && !referenceCode) {
+      generateSupportDocumentReference(organizationId, 'DS').then(setReferenceCode);
+    }
+  }, [organizationId, referenceCode]);
 
-  const removeItem = (id: string) =>
-    setItems((prev) => (prev.length > 1 ? prev.filter((i) => i.id !== id) : prev));
+  // Cargar monedas de la organización
+  const loadCurrencies = useCallback(async () => {
+    if (!organizationId) return;
+    setLoadingCurrencies(true);
+    try {
+      const { data: orgCurrencies, error } = await supabase
+        .from('organization_currencies')
+        .select('currency_code, is_base')
+        .eq('organization_id', organizationId)
+        .order('is_base', { ascending: false });
 
-  const updateItem = (id: string, field: keyof ItemRow, value: string | boolean) =>
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, [field]: value } : i)));
+      if (error) throw error;
 
-  // Cálculos
-  const subtotal = items.reduce((sum, item) => {
-    const qty = Number(item.quantity) || 0;
-    const price = Number(item.price) || 0;
-    const discount = Number(item.discount_rate) || 0;
-    return sum + qty * price * (1 - discount / 100);
-  }, 0);
+      if (!orgCurrencies || orgCurrencies.length === 0) {
+        setOrgCurrencies([{ currency_code: 'COP', is_base: true, currencies: { code: 'COP', name: 'Peso Colombiano', symbol: '$' } }]);
+        return;
+      }
 
-  const taxTotal = items.reduce((sum, item) => {
-    if (item.is_excluded) return sum;
-    const qty = Number(item.quantity) || 0;
-    const price = Number(item.price) || 0;
-    const discount = Number(item.discount_rate) || 0;
-    const net = qty * price * (1 - discount / 100);
-    return sum + net * (Number(item.tax_rate) / 100);
-  }, 0);
+      const codes = orgCurrencies.map((oc) => oc.currency_code);
+      const { data: currencies } = await supabase
+        .from('currencies')
+        .select('code, name, symbol')
+        .in('code', codes);
 
-  const total = subtotal + taxTotal;
+      const combined = orgCurrencies.map((oc) => ({
+        ...oc,
+        currencies: currencies?.find((c) => c.code === oc.currency_code),
+      }));
+      setOrgCurrencies(combined);
+
+      // Seleccionar moneda base por defecto
+      const base = combined.find((c) => c.is_base);
+      if (base) setCurrency(base.currency_code);
+    } catch (err) {
+      console.error('Error cargando monedas:', err);
+      setOrgCurrencies([{ currency_code: 'COP', is_base: true, currencies: { code: 'COP', name: 'Peso Colombiano', symbol: '$' } }]);
+    } finally {
+      setLoadingCurrencies(false);
+    }
+  }, [organizationId]);
+
+  // Cargar facturas de compra para el SearchSelect
+  const loadInvoicePurchases = useCallback(async () => {
+    if (!organizationId) return;
+    setLoadingInvoices(true);
+    try {
+      const { data, error } = await supabase
+        .from('invoice_purchase')
+        .select(`
+          id, number_ext, supplier_id, issue_date, total, currency,
+          supplier:suppliers(name, nit)
+        `)
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setInvoicePurchaseOptions((data || []) as unknown as InvoicePurchaseOption[]);
+    } catch (err) {
+      console.error('Error cargando facturas de compra:', err);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  }, [organizationId]);
+
+  useEffect(() => {
+    if (organizationId) {
+      loadCurrencies();
+      loadInvoicePurchases();
+    }
+  }, [organizationId, loadCurrencies, loadInvoicePurchases]);
+
+  // Opciones para SearchSelect de factura de compra
+  const invoicePurchaseSearchOptions = useMemo(
+    () =>
+      invoicePurchaseOptions.map((inv) => ({
+        value: inv.id,
+        label: `${inv.number_ext}${inv.supplier?.name ? ` — ${inv.supplier.name}` : ''}`,
+        sublabel: `${inv.issue_date ? new Date(inv.issue_date).toLocaleDateString() : 'S/F'} · ${formatCurrency(Number(inv.total || 0))} ${inv.currency || ''}`,
+      })),
+    [invoicePurchaseOptions]
+  );
+
+  const handleItemsChange = useCallback((newItems: InvoiceItem[]) => {
+    setItems(newItems);
+  }, []);
+
+  const handleTaxIncludedChange = useCallback((value: boolean) => {
+    setTaxIncluded(value);
+    setItems((prev) => prev.map((item) => ({ ...item, tax_included: value })));
+  }, []);
 
   const validate = (): string | null => {
-    if (!provider.identification) return 'Debe ingresar la identificación del proveedor';
-    if (!provider.names) return 'Debe ingresar el nombre del proveedor';
-    if (!provider.address) return 'Debe ingresar la dirección del proveedor';
+    if (!provider.identification) return 'Debe seleccionar un proveedor';
+    if (!provider.names) return 'Debe seleccionar un proveedor';
+    if (!provider.address) return 'El proveedor debe tener dirección (requerido por DIAN)';
     if (items.length === 0) return 'Debe agregar al menos un item';
     for (const item of items) {
-      if (!item.name) return 'Todos los items deben tener un nombre';
-      if (Number(item.quantity) <= 0) return 'Las cantidades deben ser mayores a 0';
-      if (Number(item.price) < 0) return 'Los precios no pueden ser negativos';
+      if (!item.description) return 'Todos los items deben tener una descripción';
+      if (Number(item.qty) <= 0) return 'Las cantidades deben ser mayores a 0';
+      if (Number(item.unit_price) < 0) return 'Los precios no pueden ser negativos';
     }
     if (paymentForm === '2' && !dueDate) return 'Debe ingresar fecha de vencimiento para pago a crédito';
+    if (!paymentMethodCode) return 'Debe seleccionar un método de pago';
     return null;
   };
-
-  const buildPayload = () => ({
-    reference_code: referenceCode,
-    issue_date: new Date(issueDate).toISOString(),
-    created_time: createdTime,
-    observation,
-    payment_details: [
-      {
-        payment_form: paymentForm,
-        payment_method_code: paymentMethodCode,
-        amount: total.toFixed(2),
-        ...(paymentForm === '2' && dueDate ? { due_date: dueDate } : {}),
-      },
-    ],
-    cash_rounding_amount: 0,
-    provider,
-    subtotal: Number(subtotal.toFixed(2)),
-    tax_total: Number(taxTotal.toFixed(2)),
-    total: Number(total.toFixed(2)),
-    ...(invoicePurchaseId ? { invoice_purchase_id: invoicePurchaseId } : {}),
-    ...(provider.supplier_id ? { supplier_id: provider.supplier_id } : {}),
-  });
 
   const saveDraft = async (sendToDian = false) => {
     const validationError = validate();
@@ -194,25 +297,38 @@ export function SupportDocumentForm() {
     }
 
     try {
+      // Totales seguros recalculados desde los items (fuente de verdad)
+      const safeSubtotal = Number(subtotal.toFixed(2));
+      const safeTaxTotal = Number(taxTotal.toFixed(2));
+      const safeTotal = Number(total.toFixed(2));
+
       // 1. Guardar documento soporte en BD
-      const payload = buildPayload();
       const { data: sd, error: sdError } = await supabase
         .from('support_documents')
         .insert({
           organization_id: organizationId,
-          reference_code: payload.reference_code,
-          issue_date: payload.issue_date,
-          created_time: payload.created_time,
-          observation: payload.observation,
-          payment_details: payload.payment_details,
-          cash_rounding_amount: payload.cash_rounding_amount,
-          provider: payload.provider,
-          subtotal: payload.subtotal,
-          tax_total: payload.tax_total,
-          total: payload.total,
+          reference_code: referenceCode,
+          issue_date: new Date(issueDate).toISOString(),
+          created_time: createdTime,
+          observation,
+          payment_details: [
+            {
+              payment_form: paymentForm,
+              payment_method_code: paymentMethodCode,
+              amount: safeTotal.toFixed(2),
+              ...(paymentForm === '2' && dueDate ? { due_date: dueDate } : {}),
+            },
+          ],
+          cash_rounding_amount: 0,
+          provider,
+          subtotal: safeSubtotal,
+          tax_total: safeTaxTotal,
+          total: safeTotal,
+          currency,
+          tax_included: taxIncluded,
           status: 'draft',
-          supplier_id: payload.supplier_id || null,
-          invoice_purchase_id: payload.invoice_purchase_id || null,
+          supplier_id: provider.supplier_id || null,
+          invoice_purchase_id: invoicePurchaseId || null,
         })
         .select()
         .single();
@@ -221,25 +337,25 @@ export function SupportDocumentForm() {
         throw new Error(sdError?.message || 'Error guardando documento soporte');
       }
 
-      // 2. Guardar items en invoice_items
+      // 2. Guardar items en invoice_items (mapear InvoiceItem → campos de BD)
       const itemsToInsert = items.map((item, index) => ({
-        invoice_id: sd.id, // referenciado para compatibilidad
+        invoice_id: sd.id,
         invoice_type: 'support_document',
         support_document_id: sd.id,
-        description: item.name,
-        qty: Number(item.quantity),
-        unit_price: Number(item.price),
-        tax_code: '01',
-        tax_rate: Number(item.tax_rate),
+        invoice_sales_id: null,
+        invoice_purchase_id: null,
+        product_id: item.product_id || null,
+        description: item.description,
+        qty: Number(item.qty),
+        unit_price: Number(item.unit_price),
+        tax_code: item.tax_code || '01',
+        tax_rate: Number(item.tax_rate || 0),
         total_line:
-          Number(item.quantity) *
-          Number(item.price) *
-          (1 - (Number(item.discount_rate) || 0) / 100),
-        discount_rate: Number(item.discount_rate) || 0,
-        discount_amount: 0,
-        tax_included: false,
-        code_reference: item.code_reference || `ITEM-${index + 1}`,
-        is_excluded: item.is_excluded ? 1 : 0,
+          Number(item.qty) * Number(item.unit_price) - (Number(item.discount_amount) || 0),
+        discount_amount: Number(item.discount_amount) || 0,
+        tax_included: taxIncluded,
+        code_reference: item.product_id ? `PROD-${item.product_id}` : `ITEM-${index + 1}`,
+        is_excluded: Number(item.tax_rate || 0) === 0 ? 1 : 0,
         note: '',
       }));
 
@@ -323,8 +439,11 @@ export function SupportDocumentForm() {
             <Input
               value={referenceCode}
               onChange={(e) => setReferenceCode(e.target.value)}
-              placeholder="DS-2026-0001"
+              placeholder="DS-0001"
             />
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+              Auto-generado secuencial por organización
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Fecha de emisión *</Label>
@@ -344,6 +463,28 @@ export function SupportDocumentForm() {
             />
           </div>
           <div className="space-y-1.5">
+            <Label className="text-xs">Moneda *</Label>
+            <Select value={currency} onValueChange={setCurrency} disabled={loadingCurrencies}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar moneda" />
+              </SelectTrigger>
+              <SelectContent>
+                {orgCurrencies.length === 0 ? (
+                  <SelectItem value="_empty" disabled>
+                    {loadingCurrencies ? 'Cargando...' : 'Sin monedas configuradas'}
+                  </SelectItem>
+                ) : (
+                  orgCurrencies.map((oc) => (
+                    <SelectItem key={oc.currency_code} value={oc.currency_code}>
+                      {oc.currencies?.name || oc.currency_code}
+                      {oc.is_base && ' (base)'}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <Label className="text-xs">Forma de pago *</Label>
             <Select value={paymentForm} onValueChange={setPaymentForm}>
               <SelectTrigger>
@@ -353,21 +494,6 @@ export function SupportDocumentForm() {
                 {PAYMENT_FORMS.map((f) => (
                   <SelectItem key={f.value} value={f.value}>
                     {f.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Método de pago *</Label>
-            <Select value={paymentMethodCode} onValueChange={setPaymentMethodCode}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -384,6 +510,10 @@ export function SupportDocumentForm() {
             </div>
           )}
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+            <Label className="text-xs">Método de pago *</Label>
+            <FormaPagoSelector formaPago={paymentMethodCode} onChange={setPaymentMethodCode} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
             <Label className="text-xs">Observaciones</Label>
             <Textarea
               value={observation}
@@ -395,10 +525,14 @@ export function SupportDocumentForm() {
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
             <Label className="text-xs">Factura de compra relacionada (opcional)</Label>
-            <Input
+            <SearchSelect
+              options={invoicePurchaseSearchOptions}
               value={invoicePurchaseId}
-              onChange={(e) => setInvoicePurchaseId(e.target.value)}
-              placeholder="UUID de factura de compra (opcional)"
+              onValueChange={(v) => setInvoicePurchaseId(v === 'none' ? '' : v)}
+              placeholder="Seleccionar factura de compra..."
+              searchPlaceholder="Buscar por número o proveedor..."
+              emptyText={loadingInvoices ? 'Cargando facturas...' : 'No se encontraron facturas'}
+              noneLabel="Sin factura de compra"
             />
           </div>
         </CardContent>
@@ -414,116 +548,39 @@ export function SupportDocumentForm() {
         </CardContent>
       </Card>
 
-      {/* Items */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Items del Documento</CardTitle>
-          <Button type="button" variant="outline" size="sm" onClick={addItem}>
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar item
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="grid grid-cols-12 gap-2 items-end p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
-            >
-              <div className="col-span-12 sm:col-span-2 space-y-1">
-                <Label className="text-xs">Código ref.</Label>
-                <Input
-                  value={item.code_reference}
-                  onChange={(e) => updateItem(item.id, 'code_reference', e.target.value)}
-                  placeholder="001"
-                />
-              </div>
-              <div className="col-span-12 sm:col-span-4 space-y-1">
-                <Label className="text-xs">Descripción *</Label>
-                <Input
-                  value={item.name}
-                  onChange={(e) => updateItem(item.id, 'name', e.target.value)}
-                  placeholder="Producto o servicio"
-                />
-              </div>
-              <div className="col-span-6 sm:col-span-1 space-y-1">
-                <Label className="text-xs">Cantidad</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={item.quantity}
-                  onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                />
-              </div>
-              <div className="col-span-6 sm:col-span-2 space-y-1">
-                <Label className="text-xs">Precio unit.</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={item.price}
-                  onChange={(e) => updateItem(item.id, 'price', e.target.value)}
-                />
-              </div>
-              <div className="col-span-6 sm:col-span-1 space-y-1">
-                <Label className="text-xs">% Desc.</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={item.discount_rate}
-                  onChange={(e) => updateItem(item.id, 'discount_rate', e.target.value)}
-                />
-              </div>
-              <div className="col-span-6 sm:col-span-1 space-y-1">
-                <Label className="text-xs">% IVA</Label>
-                <Select
-                  value={item.tax_rate}
-                  onValueChange={(v) => updateItem(item.id, 'tax_rate', v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TAX_RATES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-12 sm:col-span-1 flex justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeItem(item.id)}
-                  disabled={items.length === 1}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+      {/* Items (reutiliza ItemsFactura de factura-venta) */}
+      <div className="
+        border border-gray-200 dark:border-gray-700
+        bg-white dark:bg-gray-800
+        p-3 sm:p-4
+        rounded-lg
+        space-y-3
+      ">
+        <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
+          Items del Documento Soporte
+        </h3>
+        <ItemsFactura
+          items={items}
+          onItemsChange={handleItemsChange}
+          taxIncluded={taxIncluded}
+          organizationId={organizationId ? Number(organizationId) : undefined}
+          serialSelections={serialSelections}
+          onSerialSelectionsChange={setSerialSelections}
+        />
+      </div>
 
-          {/* Totales */}
-          <div className="flex justify-end mt-4">
-            <div className="w-full sm:w-64 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                <span className="font-medium">${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">IVA:</span>
-                <span className="font-medium">${taxTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-base font-bold border-t pt-2 dark:border-gray-700">
-                <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Impuestos y Totales (reutiliza ImpuestosFactura de factura-venta) */}
+      <ImpuestosFactura
+        organizationId={organizationId}
+        items={items}
+        taxIncluded={taxIncluded}
+        onTaxIncludedChange={handleTaxIncludedChange}
+        onAppliedTaxesChange={setAppliedTaxes}
+        onTaxTotalsChange={setAppliedTaxTotals}
+        onSubtotalCalculated={setSubtotal}
+        onTaxTotalCalculated={setTaxTotal}
+        onTotalCalculated={setTotal}
+      />
 
       {/* Acciones */}
       <div className="flex flex-col sm:flex-row gap-3 justify-end">
@@ -563,4 +620,3 @@ export function SupportDocumentForm() {
 }
 
 export default SupportDocumentForm;
-

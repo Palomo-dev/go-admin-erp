@@ -17,6 +17,7 @@ import ImageUploader from '@/components/common/ImageUploader';
 import Link from 'next/link';
 import { HabeasDataCheckbox } from '@/components/shared/DianLookupButton';
 import type { DianNormalizedData } from '@/lib/services/dianLookupService';
+import { calcularDv, mapearTipoDocADian } from '@/lib/utils/nitDv';
 
 interface NuevoProveedorFormProps {
   /** Cuando se provee, tras crear el proveedor se llama en lugar de navegar (uso en diálogos) */
@@ -38,6 +39,9 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
     country: 'Colombia', postal_code: '', tax_id: '', tax_regime: '',
     payment_terms: '', credit_days: undefined, website: '',
     bank_name: '', bank_account: '', account_type: '',
+    // Campos fiscales DIAN/Factus
+    dv: '', municipality_code: '', identification_document_code: '31',
+    country_code: 'CO', legal_organization_code: '1', trade_name: '',
   });
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -171,9 +175,35 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplierType, documentTypes]);
 
+  // Auto-mapear doc_type interno → codigo DIAN (identification_document_code)
+  // y legal_organization_code segun tipo de proveedor (1=empresa, 2=persona)
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      identification_document_code: prev.doc_type
+        ? mapearTipoDocADian(prev.doc_type)
+        : prev.identification_document_code,
+      legal_organization_code: supplierType === 'company' ? '1' : '2',
+    }));
+  }, [formData.doc_type, supplierType]);
+
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  // Calcular dígito de verificación desde el NIT (módulo 11 DIAN)
+  const handleCalcularDv = () => {
+    const nitLimpio = (formData.nit || '').replace(/[^0-9]/g, '');
+    if (!nitLimpio) {
+      toast({ title: 'Ingresa el NIT primero', variant: 'destructive' });
+      return;
+    }
+    const dv = calcularDv(nitLimpio);
+    if (dv !== null) {
+      handleChange('dv', String(dv));
+      toast({ title: 'DV calculado', description: `Dígito de verificación: ${dv}` });
+    }
   };
 
   const handleAIDescription = async () => {
@@ -384,7 +414,7 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
                       {generatingDesc ? 'Generando...' : 'Generar con IA'}
                     </Button>
                   </div>
-                  <RichTextEditor value={formData.description} onChange={(html) => handleChange('description', html)} placeholder="Descripción del proveedor, productos que ofrece..." className="dark:bg-gray-900 dark:border-gray-700" />
+                  <RichTextEditor value={formData.description || ''} onChange={(html) => handleChange('description', html)} placeholder="Descripción del proveedor, productos que ofrece..." className="dark:bg-gray-900 dark:border-gray-700" />
                 </div>
               </CardContent>
             </Card>
@@ -496,6 +526,111 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
               </CardContent>
             </Card>
 
+            {/* Datos fiscales DIAN / Factus */}
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-lg dark:text-white flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-blue-600" />Datos Fiscales DIAN
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="dark:text-gray-300">Dígito de Verificación (DV)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={formData.dv || ''}
+                        onChange={(e) => handleChange('dv', e.target.value.slice(0, 1))}
+                        placeholder="0-9"
+                        maxLength={1}
+                        className="dark:bg-gray-900 dark:border-gray-700 w-20"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCalcularDv}
+                        disabled={!formData.nit}
+                        className="h-10"
+                      >
+                        Calcular DV
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Auto-calculable desde el NIT (módulo 11)
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="dark:text-gray-300">Nombre Comercial</Label>
+                    <Input
+                      value={formData.trade_name || ''}
+                      onChange={(e) => handleChange('trade_name', e.target.value)}
+                      placeholder="Nombre comercial (opcional)"
+                      className="dark:bg-gray-900 dark:border-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <Label className="dark:text-gray-300">Código Tipo Documento DIAN</Label>
+                    <Select
+                      value={formData.identification_document_code || '31'}
+                      onValueChange={(v) => handleChange('identification_document_code', v)}
+                    >
+                      <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="31">31 - NIT</SelectItem>
+                        <SelectItem value="13">13 - Cédula de ciudadanía</SelectItem>
+                        <SelectItem value="22">22 - Cédula de extranjería</SelectItem>
+                        <SelectItem value="42">42 - Doc. identificación extranjero</SelectItem>
+                        <SelectItem value="12">12 - Tarjeta de identidad</SelectItem>
+                        <SelectItem value="41">41 - Pasaporte</SelectItem>
+                        <SelectItem value="91">91 - NUIP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="dark:text-gray-300">Tipo Organización DIAN</Label>
+                    <Select
+                      value={formData.legal_organization_code || '1'}
+                      onValueChange={(v) => handleChange('legal_organization_code', v)}
+                    >
+                      <SelectTrigger className="dark:bg-gray-900 dark:border-gray-700">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 - Empresa</SelectItem>
+                        <SelectItem value="2">2 - Persona Natural</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="dark:text-gray-300">Código País</Label>
+                    <Input
+                      value={formData.country_code || 'CO'}
+                      onChange={(e) => handleChange('country_code', e.target.value.toUpperCase().slice(0, 2))}
+                      placeholder="CO"
+                      maxLength={2}
+                      className="dark:bg-gray-900 dark:border-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <Label className="dark:text-gray-300">Código Municipio DIAN</Label>
+                    <Input
+                      value={formData.municipality_code || ''}
+                      onChange={(e) => handleChange('municipality_code', e.target.value.slice(0, 5))}
+                      placeholder="05001"
+                      maxLength={5}
+                      className="dark:bg-gray-900 dark:border-gray-700"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Código DIAN de 5 dígitos (ej: 05001 = Medellín)
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Bancaria */}
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
@@ -536,7 +671,7 @@ export function NuevoProveedorForm({ onSuccess, onCancel, embedded = false }: Nu
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <RichTextEditor value={formData.notes} onChange={(html) => handleChange('notes', html)} placeholder="Información adicional sobre el proveedor..." className="dark:bg-gray-900 dark:border-gray-700" />
+                <RichTextEditor value={formData.notes || ''} onChange={(html) => handleChange('notes', html)} placeholder="Información adicional sobre el proveedor..." className="dark:bg-gray-900 dark:border-gray-700" />
               </CardContent>
             </Card>
           </div>

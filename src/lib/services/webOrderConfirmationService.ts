@@ -538,10 +538,21 @@ class WebOrderConfirmationService {
         // Ya existe pago del webhook/website — vincularlo a la factura.
         // Mapear el submétodo (nequi, daviplata, pse, card) a la pasarela real
         // (wompi) para que la notificación muestre el método correcto.
+        // Normalizar status a 'completed': el website inserta el payment con
+        // status='paid', pero fn_invoice_sales_paid (usada por los triggers
+        // fn_recalc_invoice_totals / fn_recalc_invoice_balance_from_payments)
+        // SOLO cuenta pagos con status='completed'. Sin esta normalización la
+        // factura queda con balance=total aunque el pago exista, y se crea una
+        // cuenta por cobrar fantasma con saldo.
         const mappedMethod = mapWebPaymentMethodToInvoice(order.payment_method);
         await supabase
           .from('payments')
-          .update({ source: 'invoice_sales', source_id: invoiceId, method: mappedMethod })
+          .update({
+            source: 'invoice_sales',
+            source_id: invoiceId,
+            method: mappedMethod,
+            status: 'completed',
+          })
           .eq('id', existingPayment.id);
 
         // El trigger trg_notify_payment_registered ya creó una notificación con

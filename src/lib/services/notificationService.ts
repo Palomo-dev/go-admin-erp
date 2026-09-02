@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
 import { sendgridService } from '@/lib/services/integrations/sendgrid';
 
 export interface NotificationPayload {

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/utils/orgId';
 
 /**
  * Servicio CRM para calcular el score GOC (Grado de Oportunidad Comercial) desde scoring_configs.

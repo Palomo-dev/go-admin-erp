@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
 import { CotizacionesService, type Quotation, type QuotationItem } from '@/lib/services/cotizacionesService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 

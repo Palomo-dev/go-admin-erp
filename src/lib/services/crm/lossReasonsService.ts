@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
+import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/utils/orgId';
 
 /**
  * Servicio CRM para gestionar el catálogo de razones de pérdida.

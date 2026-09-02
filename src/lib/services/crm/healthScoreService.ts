@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
 
 /**
  * Servicio CRM para calcular y gestionar el health score de clientes (FASE 4 - Post-venta).

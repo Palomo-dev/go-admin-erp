@@ -195,3 +195,11 @@ export async function createPipelineFromTemplate(
 
   return pipelineId;
 }
+
+/**
+ * Busca una plantilla por su key (usado como id).
+ * Usado por la API route /api/crm/pipeline-templates/[id]/import.
+ */
+export function getPipelineTemplateById(id: string): PipelineTemplate | null {
+  return PIPELINE_TEMPLATES.find((t) => t.key === id) ?? null;
+}

@@ -1,5 +1,19 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
+// Resolución segura de organization_id tanto en client como en server.
+// El hook useOrganization.ts tiene 'use client' por lo que no puede
+// importarse estáticamente desde API routes (server).
+// En server-side, el organizationId debe pasarse explícitamente al
+// constructor del servicio; si no se pasa, devuelve 0.
+function resolveOrgId(): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('@/lib/hooks/useOrganization');
+    return mod.getOrganizationId?.() ?? 0;
+  } catch {
+    return 0;
+  }
+}
 
 /**
  * Servicio CRM para gestión de comisiones de oportunidades.
@@ -71,7 +85,7 @@ class CommissionService {
   private orgId: number;
 
   constructor(organizationId?: number) {
-    this.orgId = organizationId ?? getOrganizationIdFromContext();
+    this.orgId = organizationId ?? resolveOrgId();
   }
 
   private getOrgId(): number {
@@ -583,7 +597,6 @@ export async function bulkPayCommissions(
   orgId: number,
   supabase: SupabaseClient
 ): Promise<{ paid: number; failed: number }> {
-  const now = new Date().toISOString();
   let paid = 0;
   let failed = 0;
 

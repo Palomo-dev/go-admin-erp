@@ -49,7 +49,7 @@ export async function POST(
       // Body vacío es válido
     }
 
-    const pipelineName = body.pipelineName || template.name;
+    const pipelineName = body.pipelineName || template.label;
     const setAsDefault = body.setAsDefault ?? false;
 
     // 3. Verificar idempotencia: si ya existe un pipeline con ese nombre para la org, no duplicar
@@ -128,8 +128,8 @@ export async function POST(
         data: {
           pipelineId,
           pipelineName,
-          templateId: template.id,
-          templateName: template.name,
+          templateId: template.key,
+          templateName: template.label,
           stagesCreated: template.stages.length,
           isDefault: setAsDefault,
         },

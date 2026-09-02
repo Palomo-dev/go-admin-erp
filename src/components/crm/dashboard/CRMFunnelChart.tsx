@@ -49,7 +49,7 @@ function FunnelBar({ stage, maxCount, index }: { stage: PipelineStageData; maxCo
           </span>
         </div>
         <div className="absolute -right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs px-2 py-1 rounded whitespace-nowrap z-10">
-          {Math.round(Number(stage.probability) * 100)}% probabilidad
+          {Math.round(Number(stage.probability))}% probabilidad
         </div>
       </div>
     </div>

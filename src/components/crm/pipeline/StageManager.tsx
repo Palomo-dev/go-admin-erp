@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Settings2, PlusCircle, X, Trash2, AlertCircle, Check, ArrowUpCircle, ArrowDownCircle, Edit, ChevronUp, ChevronDown, GripVertical, Move, Plus } from "lucide-react";
+import { Settings2, PlusCircle, X, Trash2, AlertCircle, Check, ArrowUpCircle, ArrowDownCircle, Edit, ChevronUp, ChevronDown, GripVertical, Move, Plus, Trophy, XCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase/config";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -27,6 +28,8 @@ interface StageFormData {
   color?: string;
   pipelineId: string;
   isDefault?: boolean;
+  is_won?: boolean;
+  is_lost?: boolean;
 }
 
 interface StageManagerProps {
@@ -79,6 +82,8 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
         probability: values.probability,
         color: values.color || "#3498db",
         organization_id: organizationId,
+        is_won: values.is_won || false,
+        is_lost: values.is_lost || false,
         created_at: new Date().toISOString(),
       };
 
@@ -118,6 +123,8 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
           position: values.position,
           probability: values.probability,
           color: values.color,
+          is_won: values.is_won || false,
+          is_lost: values.is_lost || false,
           updated_at: new Date().toISOString(),
         })
         .eq("id", values.id);
@@ -271,13 +278,19 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
       position: 0,
       probability: 0,
       color: "#3498db",
-      pipelineId: pipeline?.id || ""
+      pipelineId: pipeline?.id || "",
+      is_won: false,
+      is_lost: false,
     });
 
     // Inicializar datos cuando se abre el dialog para editar
     useEffect(() => {
       if (editingStage) {
-        setFormData(editingStage);
+        setFormData({
+          ...editingStage,
+          is_won: (editingStage as StageFormData).is_won || false,
+          is_lost: (editingStage as StageFormData).is_lost || false,
+        });
       } else {
         // Para nueva etapa, calcular la siguiente posición disponible
         if (pipeline && pipeline.stages) {
@@ -289,7 +302,9 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
             position: maxPosition + 10, // Dejamos espacio entre posiciones
             probability: 0,
             color: "#3498db",
-            pipelineId: pipeline.id
+            pipelineId: pipeline.id,
+            is_won: false,
+            is_lost: false,
           });
         }
       }
@@ -372,6 +387,59 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
                   <span className="text-sm text-muted-foreground">
                     {formData.color}
                   </span>
+                </div>
+              </div>
+
+              {/* Switches de cierre ganado / perdido */}
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <div>
+                      <Label className="text-sm font-medium text-green-700 dark:text-green-400">
+                        Cierre ganado
+                      </Label>
+                      <p className="text-xs text-green-600 dark:text-green-500">
+                        Mover aquí = ganada
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.is_won || false}
+                    onCheckedChange={(checked) =>
+                      setFormData({
+                        ...formData,
+                        is_won: checked,
+                        // Si activa ganado, desactiva perdido
+                        is_lost: checked ? false : formData.is_lost,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <div>
+                      <Label className="text-sm font-medium text-red-700 dark:text-red-400">
+                        Cierre perdido
+                      </Label>
+                      <p className="text-xs text-red-600 dark:text-red-500">
+                        Mover aquí = perdida
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.is_lost || false}
+                    onCheckedChange={(checked) =>
+                      setFormData({
+                        ...formData,
+                        is_lost: checked,
+                        // Si activa perdido, desactiva ganado
+                        is_won: checked ? false : formData.is_won,
+                      })
+                    }
+                  />
                 </div>
               </div>
             </div>
@@ -460,7 +528,7 @@ export function StageManager({ pipeline, onPipelineChange, onStagesUpdate }: Sta
                     ></span>
                     <span>{stage.name}</span>
                     <Badge variant="secondary" className="ml-2">
-                      {Math.round(Number(stage.probability) * 100)}%
+                      {Math.round(Number(stage.probability))}%
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1">

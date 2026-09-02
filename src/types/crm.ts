@@ -38,6 +38,8 @@ export interface Stage {
   pipeline_id: string;
   color?: string;
   description?: string;
+  is_won?: boolean;
+  is_lost?: boolean;
   opportunities?: Opportunity[];
   count?: number;
   totalAmount?: number;

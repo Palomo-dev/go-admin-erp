@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
 
 /**
  * Servicio CRM para gestión de comisiones de oportunidades.
@@ -71,7 +71,7 @@ class CommissionService {
   private orgId: number;
 
   constructor(organizationId?: number) {
-    this.orgId = organizationId ?? getOrganizationIdFromContext();
+    this.orgId = organizationId ?? getOrganizationId();
   }
 
   private getOrgId(): number {
@@ -444,3 +444,227 @@ class CommissionService {
 
 export const commissionService = new CommissionService();
 export default CommissionService;
+
+// ─── Funciones server-side (F13) — gestión de comisiones ─────────────────────
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+export interface CommissionRow {
+  id: string;
+  organization_id: number;
+  commission_type: string;
+  source_type: string;
+  source_id: string;
+  payee_type: string;
+  payee_id: string | null;
+  payee_name: string | null;
+  base_amount: number;
+  commission_rate: number;
+  commission_amount: number;
+  currency: string | null;
+  status: string;
+  accrued_at: string | null;
+  paid_at: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommissionStatsFilters {
+  status?: string;
+  payee_id?: string;
+  from_date?: string;
+  to_date?: string;
+}
+
+export interface CommissionStats {
+  total_accrued: number;
+  total_paid: number;
+  total_pending: number;
+  total_rejected: number;
+  count_by_status: Record<string, number>;
+}
+
+/**
+ * Marca una comisión como pagada.
+ */
+export async function payCommission(
+  commissionId: string,
+  orgId: number,
+  supabase: SupabaseClient
+): Promise<CommissionRow | null> {
+  const { data, error } = await supabase
+    .from('commissions')
+    .update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', commissionId)
+    .eq('organization_id', orgId)
+    .eq('status', 'accrued')
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[commissionService.payCommission] error:', error.message);
+    throw error;
+  }
+
+  return data as CommissionRow | null;
+}
+
+/**
+ * Rechaza una comisión con un motivo.
+ */
+export async function rejectCommission(
+  commissionId: string,
+  orgId: number,
+  reason: string,
+  supabase: SupabaseClient
+): Promise<CommissionRow | null> {
+  const { data, error } = await supabase
+    .from('commissions')
+    .update({
+      status: 'rejected',
+      notes: reason,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', commissionId)
+    .eq('organization_id', orgId)
+    .in('status', ['accrued', 'paid'])
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[commissionService.rejectCommission] error:', error.message);
+    throw error;
+  }
+
+  return data as CommissionRow | null;
+}
+
+/**
+ * Clawback: revierte una comisión pagada (devuelve a estado 'accrued' o 'rejected').
+ */
+export async function clawbackCommission(
+  commissionId: string,
+  orgId: number,
+  supabase: SupabaseClient
+): Promise<CommissionRow | null> {
+  const { data, error } = await supabase
+    .from('commissions')
+    .update({
+      status: 'rejected',
+      paid_at: null,
+      notes: 'Clawback aplicado',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', commissionId)
+    .eq('organization_id', orgId)
+    .eq('status', 'paid')
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[commissionService.clawbackCommission] error:', error.message);
+    throw error;
+  }
+
+  return data as CommissionRow | null;
+}
+
+/**
+ * Pago masivo de comisiones.
+ */
+export async function bulkPayCommissions(
+  commissionIds: string[],
+  orgId: number,
+  supabase: SupabaseClient
+): Promise<{ paid: number; failed: number }> {
+  let paid = 0;
+  let failed = 0;
+
+  // Procesar una por una para validar que cada una esté en estado 'accrued'
+  for (const id of commissionIds) {
+    const result = await payCommission(id, orgId, supabase);
+    if (result) {
+      paid++;
+    } else {
+      failed++;
+    }
+  }
+
+  return { paid, failed };
+}
+
+/**
+ * Obtiene estadísticas de comisiones de una organización.
+ */
+export async function getCommissionStats(
+  orgId: number,
+  supabase: SupabaseClient,
+  filters?: CommissionStatsFilters
+): Promise<CommissionStats> {
+  let query = supabase
+    .from('commissions')
+    .select('status, commission_amount')
+    .eq('organization_id', orgId);
+
+  if (filters?.status) {
+    query = query.eq('status', filters.status);
+  }
+  if (filters?.payee_id) {
+    query = query.eq('payee_id', filters.payee_id);
+  }
+  if (filters?.from_date) {
+    query = query.gte('accrued_at', filters.from_date);
+  }
+  if (filters?.to_date) {
+    query = query.lte('accrued_at', filters.to_date);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) {
+    console.error('[commissionService.getCommissionStats] error:', error?.message);
+    return {
+      total_accrued: 0,
+      total_paid: 0,
+      total_pending: 0,
+      total_rejected: 0,
+      count_by_status: {},
+    };
+  }
+
+  const rows = data as Array<{ status: string; commission_amount: number }>;
+
+  const stats: CommissionStats = {
+    total_accrued: 0,
+    total_paid: 0,
+    total_pending: 0,
+    total_rejected: 0,
+    count_by_status: {},
+  };
+
+  for (const row of rows) {
+    const amount = Number(row.commission_amount) || 0;
+    stats.count_by_status[row.status] = (stats.count_by_status[row.status] || 0) + 1;
+
+    switch (row.status) {
+      case 'accrued':
+        stats.total_accrued += amount;
+        stats.total_pending += amount;
+        break;
+      case 'paid':
+        stats.total_paid += amount;
+        break;
+      case 'rejected':
+        stats.total_rejected += amount;
+        break;
+    }
+  }
+
+  return stats;
+}

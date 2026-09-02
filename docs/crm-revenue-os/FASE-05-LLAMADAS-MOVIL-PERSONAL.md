@@ -140,7 +140,7 @@ Usuario confirma → CRM registra con duration_source='estimated'
 
 ```sql
 CREATE TABLE mobile_call_bridges (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id uuid NOT NULL,
   agent_phone text NOT NULL,
@@ -209,12 +209,12 @@ SELECT column_name FROM information_schema.columns
 <!-- /api/voice/twiml/agent-leg -->
 <Response>
   <Gather numDigits="1" action="/api/voice/twiml/agent-leg-confirm" method="POST" timeout="10">
-    <Say voice="Polly.Lupepe" language="es-CO">
+    <Say voice="Polly.Lupe" language="es-CO">
       Conectando con {{customer_name}} de {{company_name}}.
       Esta llamada será grabada. Pulse 1 para continuar.
     </Say>
   </Gather>
-  <Say voice="Polly.Lupepe" language="es-CO">
+  <Say voice="Polly.Lupe" language="es-CO">
     No se recibió confirmación. Colgando.
   </Say>
   <Hangup/>
@@ -222,7 +222,7 @@ SELECT column_name FROM information_schema.columns
 
 <!-- /api/voice/twiml/agent-leg-confirm (recibe el dígito) -->
 <Response>
-  <Say voice="Polly.Lupepe" language="es-CO">
+  <Say voice="Polly.Lupe" language="es-CO">
     Conectando. Esta llamada será grabada para fines de calidad y servicio.
   </Say>
   <Dial
@@ -242,7 +242,7 @@ SELECT column_name FROM information_schema.columns
 <!-- /api/voice/twiml/ivr-inbound -->
 <Response>
   <Gather numDigits="10" action="/api/voice/twiml/ivr-dial" method="POST" timeout="15">
-    <Say voice="Polly.Lupepe" language="es-CO">
+    <Say voice="Polly.Lupe" language="es-CO">
       Bienvenido. Marque el número destino o pulse 0 para su siguiente llamada pendiente.
     </Say>
   </Gather>
@@ -250,7 +250,7 @@ SELECT column_name FROM information_schema.columns
 
 <!-- /api/voice/twiml/ivr-dial (recibe el dígito) -->
 <Response>
-  <Say voice="Polly.Lupepe" language="es-CO">
+  <Say voice="Polly.Lupe" language="es-CO">
     Conectando. Esta llamada será grabada.
   </Say>
   <Dial record="record-from-answer-dual" ...>

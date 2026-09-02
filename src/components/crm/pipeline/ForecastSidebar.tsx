@@ -130,7 +130,7 @@ const ForecastSidebar: React.FC<ForecastSidebarProps> = ({ pipelineId, showDetai
           const amount = Number(opp.amount) || 0;
           // Manejar correctamente el acceso a la propiedad probability
           const probability = opp.stages && typeof opp.stages === 'object' ? Number(opp.stages.probability) : 0;
-          const weightedAmountForOpp = amount * probability / 100;
+          const weightedAmountForOpp = amount * (probability / 100);
           
           // Fecha esperada de cierre
           const closeDate = opp.expected_close_date ? new Date(opp.expected_close_date) : null;

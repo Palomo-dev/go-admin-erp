@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
 import { CotizacionesService, type Quotation, type QuotationItem } from '@/lib/services/cotizacionesService';
+import { promotionEngine } from '@/lib/services/promotionEngine';
 
 /**
  * Servicio CRM para generación de propuestas (cotizaciones narradas).
@@ -140,10 +141,42 @@ class ProposalService {
         };
       });
 
-      // 5. Calcular totales
-      const subtotal = items.reduce((sum, item) => sum + item.total_line, 0);
+      // 5. Evaluar promociones activas para Finanzas (propuesta CRM)
+      let evaluatedItems = items;
+      let discountTotal = 0;
+      try {
+        const promoResult = await promotionEngine.evaluate({
+          channel: 'finances',
+          items: items.map(it => ({
+            product_id: it.product_id || 0,
+            quantity: Number(it.qty) || 0,
+            unit_price: Number(it.unit_price) || 0,
+          })),
+          organization_id: orgId,
+        });
+
+        if (promoResult.discountTotal > 0) {
+          evaluatedItems = items.map(it => {
+            if (!it.discount_amount || it.discount_amount === 0) {
+              const promoDiscount = promoResult.itemDiscounts[it.product_id || 0] || 0;
+              if (promoDiscount > 0) {
+                return { ...it, discount_amount: promoDiscount };
+              }
+            }
+            return it;
+          });
+          discountTotal = promoResult.discountTotal;
+        }
+      } catch (promoErr) {
+        console.warn('[proposalService] No se pudieron evaluar promociones:', promoErr);
+      }
+
+      // 6. Calcular totales
+      const subtotal = evaluatedItems.reduce(
+        (sum, item) => sum + (item.total_line - (item.discount_amount || 0)),
+        0,
+      );
       const taxTotal = 0;
-      const discountTotal = 0;
       const total = subtotal + taxTotal - discountTotal;
 
       // 6. Generar número de cotización
@@ -181,8 +214,8 @@ class ProposalService {
       const quotation = newQuot as { id: string; number: string };
 
       // 9. Insertar líneas de cotización
-      if (items.length > 0) {
-        const itemsToInsert = items.map((item) => ({
+      if (evaluatedItems.length > 0) {
+        const itemsToInsert = evaluatedItems.map((item) => ({
           ...item,
           quotation_id: quotation.id,
         }));

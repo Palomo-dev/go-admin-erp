@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { createClient } from '@supabase/supabase-js';
+import { createPipelineFromTemplate } from '@/lib/services/crm/pipelineTemplates';
 
 // Cliente Service Role para bypass de RLS en operaciones del servidor
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -102,6 +103,19 @@ export async function POST(request: NextRequest) {
     if (action === 'activate') {
       console.log(`POST /api/modules - Activating module ${moduleCode} for org ${orgId}`);
       result = await moduleManagementService.activateModule(orgId, moduleCode, supabaseServer, modulePages);
+
+      // Al activar el módulo CRM, provisionar los pipelines de Onboarding y Renovación
+      // para que aparezcan en el selector del PipelineHeader desde el inicio.
+      if (result.success && moduleCode === 'crm') {
+        try {
+          await createPipelineFromTemplate(supabaseServer, orgId, 'onboarding');
+          await createPipelineFromTemplate(supabaseServer, orgId, 'renewal');
+          console.log(`POST /api/modules - Pipelines de onboarding y renovación provisionados para org ${orgId}`);
+        } catch (provisionErr) {
+          // No fallar la activación del módulo si la provisión de pipelines falla
+          console.warn('POST /api/modules - Advertencia provisionando pipelines CRM:', provisionErr);
+        }
+      }
     } else if (action === 'deactivate') {
       console.log(`POST /api/modules - Deactivating module ${moduleCode} for org ${orgId}`);
       result = await moduleManagementService.deactivateModule(orgId, moduleCode, supabaseServer);

@@ -1,16 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { Activity, ActivityMetadata, ActivityType, NewActivity } from '@/types/activity'
 import { createActivity } from './activityService'
-
-// Configuración de Supabase (usar Service Role Key para bypass de RLS en pruebas)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
 
 // Tipos de eventos de llamada
 export enum CallEvent {
@@ -55,17 +45,17 @@ export class VoipCallService {
   /**
    * Procesa un evento de llamada y crea/actualiza actividad
    */
-  static async processCallEvent(eventData: CallEventData): Promise<Activity | null> {
+  static async processCallEvent(supabase: SupabaseClient, eventData: CallEventData): Promise<Activity | null> {
     try {
       console.log('🔄 Procesando evento de llamada:', eventData.event, eventData.callSid)
       
       // Obtener o crear actividad existente
-      const existingActivity = await this.getActivityByCallSid(eventData.callSid)
+      const existingActivity = await this.getActivityByCallSid(supabase, eventData.callSid)
       
       if (existingActivity) {
-        return await this.updateCallActivity(existingActivity, eventData)
+        return await this.updateCallActivity(supabase, existingActivity, eventData)
       } else {
-        return await this.createCallActivity(eventData)
+        return await this.createCallActivity(supabase, eventData)
       }
     } catch (error) {
       console.error('❌ Error procesando evento de llamada:', error)
@@ -76,7 +66,7 @@ export class VoipCallService {
   /**
    * Busca actividad existente por call_sid
    */
-  private static async getActivityByCallSid(callSid: string): Promise<Activity | null> {
+  private static async getActivityByCallSid(supabase: SupabaseClient, callSid: string): Promise<Activity | null> {
     const { data, error } = await supabase
       .from('activities')
       .select('*')
@@ -94,7 +84,7 @@ export class VoipCallService {
   /**
    * Crea nueva actividad para llamada
    */
-  private static async createCallActivity(eventData: CallEventData): Promise<Activity> {
+  private static async createCallActivity(supabase: SupabaseClient, eventData: CallEventData): Promise<Activity> {
     console.log('📞 === CREANDO ACTIVIDAD DE LLAMADA ===');
     console.log('📄 EventData recibido:', eventData);
     
@@ -102,8 +92,8 @@ export class VoipCallService {
       activity_type: ActivityType.CALL,
       user_id: eventData.userId,
       notes: this.generateCallNotes(eventData),
-      related_type: await this.getRelatedTypeFromPhone(eventData.from, eventData.to),
-      related_id: await this.getRelatedIdFromPhone(eventData.from, eventData.to),
+      related_type: await this.getRelatedTypeFromPhone(supabase, eventData.from, eventData.to),
+      related_id: await this.getRelatedIdFromPhone(supabase, eventData.from, eventData.to),
       occurred_at: eventData.timestamp,
       metadata: this.buildCallMetadata(eventData)
     }
@@ -121,7 +111,7 @@ export class VoipCallService {
   /**
    * Actualiza actividad existente con nuevo evento
    */
-  private static async updateCallActivity(activity: Activity, eventData: CallEventData): Promise<Activity> {
+  private static async updateCallActivity(supabase: SupabaseClient, activity: Activity, eventData: CallEventData): Promise<Activity> {
     const updatedMetadata = {
       ...activity.metadata,
       ...this.buildCallMetadata(eventData)
@@ -221,11 +211,10 @@ export class VoipCallService {
   /**
    * Determina el tipo de entidad relacionada desde número de teléfono
    */
-  private static async getRelatedTypeFromPhone(from: string, to: string): Promise<string | undefined> {
+  private static async getRelatedTypeFromPhone(supabase: SupabaseClient, from: string, to: string): Promise<string | undefined> {
     // Lógica para determinar si es customer, lead, etc.
     const customerPhone = from.startsWith('+') ? from : to
     
-    // Usar Service Role client para bypass de RLS
   const { data } = await supabase
     .from('customers')
     .select('id')
@@ -239,7 +228,7 @@ export class VoipCallService {
   /**
    * Obtiene ID de entidad relacionada desde número de teléfono
    */
-  private static async getRelatedIdFromPhone(from: string, to: string): Promise<string | undefined> {
+  private static async getRelatedIdFromPhone(supabase: SupabaseClient, from: string, to: string): Promise<string | undefined> {
     const customerPhone = from.startsWith('+') ? from : to
     
     const { data } = await supabase
@@ -253,22 +242,6 @@ export class VoipCallService {
     return data?.id
   }
 
-  /**
-   * Obtiene organización desde número de teléfono o usuario
-   */
-  static async getOrganizationFromCall(userId?: string): Promise<number> {
-    if (userId) {
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('organization_id')
-        .eq('id', userId)
-        .single()
-      
-      return data?.organization_id || 1
-    }
-    
-    return 1 // Organización por defecto
-  }
 }
 
 // Funciones de utilidad para Twilio
@@ -277,7 +250,7 @@ export class TwilioUtils {
   /**
    * Convierte evento de Twilio a formato estándar
    */
-  static twilioToCallEvent(twilioEvent: any): CallEventData {
+  static twilioToCallEvent(twilioEvent: any, organizationId: number): CallEventData {
     return {
       callSid: twilioEvent.CallSid,
       provider: VoipProvider.TWILIO,
@@ -289,7 +262,7 @@ export class TwilioUtils {
       duration: parseInt(twilioEvent.CallDuration) || undefined,
       status: twilioEvent.CallStatus,
       recordingUrl: twilioEvent.RecordingUrl,
-      organizationId: 1 // TODO: Obtener dinámicamente en eventos reales de Twilio
+      organizationId
     }
   }
 

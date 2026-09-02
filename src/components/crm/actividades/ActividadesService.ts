@@ -275,11 +275,11 @@ class ActividadesService {
     }
   }
 
-  async getCustomers(): Promise<{ id: string; full_name: string; email?: string }[]> {
+  async getCustomers(): Promise<{ id: string; full_name: string; email?: string; phone?: string }[]> {
     try {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, full_name, email')
+        .select('id, full_name, email, phone')
         .eq('organization_id', this.getOrgId())
         .order('full_name')
         .limit(100);

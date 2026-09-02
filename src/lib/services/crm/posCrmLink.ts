@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/utils/orgId';
 import {
-  getOrganizationId,
   getCurrentBranchIdWithFallback,
   getCurrentUserId,
 } from '@/lib/hooks/useOrganization';

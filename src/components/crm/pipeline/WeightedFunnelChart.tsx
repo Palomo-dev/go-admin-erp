@@ -96,8 +96,8 @@ const WeightedFunnelChart: React.FC<WeightedFunnelChartProps> = ({ pipelineId, c
             0
           );
 
-          const probability = parseFloat(stage.probability) / 100 || 0;
-          const weightedAmount = totalAmount * probability;
+          const probability = parseFloat(stage.probability) || 0;
+          const weightedAmount = totalAmount * (probability / 100);
           totalWeighted += weightedAmount;
 
           // Añadir datos de esta etapa

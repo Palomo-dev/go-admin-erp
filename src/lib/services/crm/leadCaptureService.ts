@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
 
 /**
  * Servicio CRM para captura automática de leads desde webhooks y otros canales.

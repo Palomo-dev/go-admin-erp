@@ -83,9 +83,9 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
           const stageId = item.stage_id;
           const amount = parseFloat(String(item.amount)) || 0;
           
-          // Calcular el valor ponderado usando la probabilidad de la etapa
-          const probability = item.stages?.probability || 100;
-          const forecastAmount = amount * probability / 100;
+          // Calcular el valor ponderado usando la probabilidad de la etapa (escala 0-100)
+          const probability = item.stages?.probability ?? 100;
+          const forecastAmount = amount * (probability / 100);
           totalForecastAmount += forecastAmount;
           
           if (!stagesMap.has(stageId)) {
@@ -154,7 +154,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-md shadow-md">
           <p className="font-medium text-gray-800 dark:text-gray-200">{data.name}</p>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Probabilidad: {Math.round(Number(data.probability) * 100)}%
+            Probabilidad: {Math.round(Number(data.probability))}%
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-300">
             Total: {formatCurrency(data.amount)}
@@ -247,7 +247,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
                 const payload = entry?.payload as StageData | undefined;
                 return (
                   <span className="text-xs text-gray-600 dark:text-gray-300">
-                    {value} ({payload ? Math.round(Number(payload.probability) * 100) : 0}%)
+                    {value} ({payload ? Math.round(Number(payload.probability)) : 0}%)
                   </span>
                 );
               }}

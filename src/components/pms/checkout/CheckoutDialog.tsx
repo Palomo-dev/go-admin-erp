@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/select';
 import type { CheckoutReservation } from '@/lib/services/checkoutService';
 import checkoutService from '@/lib/services/checkoutService';
+// type CheckoutReservation.folio.items extended with product_id?, quantity?, unit_price? in checkoutService.ts
 import { formatCurrency, cn } from '@/utils/Utils';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
 import foliosService, { type FolioItem } from '@/lib/services/foliosService';
@@ -56,6 +57,7 @@ import { TaxSummary } from '@/components/pos/TaxSummary';
 import { obtenerOrganizacionActiva, getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { POSService } from '@/lib/services/posService';
+import { promotionEngine } from '@/lib/services/promotionEngine';
 import type { Cart, CartItem } from '@/components/pos/types';
 
 interface PaymentEntry {
@@ -125,6 +127,7 @@ export function CheckoutDialog({
   const [cashSessionOpen, setCashSessionOpen] = useState<boolean | null>(null);
   const [pendingItems, setPendingItems] = useState<FolioItem[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [promoDiscounts, setPromoDiscounts] = useState<Record<number, number>>({});
 
   // Estados para pago QR
   const [showQrDialog, setShowQrDialog] = useState(false);
@@ -173,12 +176,15 @@ export function CheckoutDialog({
       // Items del folio
       if (reservation.folio?.items) {
         reservation.folio.items.forEach((fi, idx) => {
+          const promoDiscount = (fi.product_id && fi.product_id > 0)
+            ? (promoDiscounts[fi.product_id] || 0)
+            : 0;
           items.push({
             id: `folio-${idx}`,
             cart_id: 'checkout',
-            product_id: 0,
+            product_id: fi.product_id || 0,
             product: {
-              id: 0,
+              id: fi.product_id || 0,
               organization_id: org.id,
               sku: 'FOLIO',
               name: fi.description,
@@ -188,9 +194,10 @@ export function CheckoutDialog({
               updated_at: now,
               price: fi.amount,
             },
-            quantity: 1,
-            unit_price: fi.amount,
-            total: fi.amount,
+            quantity: fi.quantity || 1,
+            unit_price: fi.unit_price || fi.amount,
+            total: fi.amount - promoDiscount,
+            discount_amount: promoDiscount,
             created_at: fi.created_at || now,
             updated_at: fi.created_at || now,
           });
@@ -246,7 +253,7 @@ export function CheckoutDialog({
     } catch {
       return null;
     }
-  }, [reservation, taxIncluded, appliedTaxIds, extraNightsCharge]);
+  }, [reservation, taxIncluded, appliedTaxIds, extraNightsCharge, promoDiscounts]);
 
   // Validación de fechas
   const [dateWarning, setDateWarning] = useState<{
@@ -466,6 +473,36 @@ export function CheckoutDialog({
       setIsRefreshingFolio(false);
     }
   }, [reservation?.folio?.id]);
+
+  // --- Evaluar promociones activas para POS (PMS checkout) ---
+  useEffect(() => {
+    if (!reservation?.folio?.items || reservation.folio.items.length === 0) {
+      setPromoDiscounts({});
+      return;
+    }
+    const org = obtenerOrganizacionActiva();
+    const branchId = getCurrentBranchId() || 0;
+    const folioItems = reservation.folio.items.filter((fi) => fi.product_id && fi.product_id > 0);
+    if (folioItems.length === 0) {
+      setPromoDiscounts({});
+      return;
+    }
+    promotionEngine.evaluate({
+      channel: 'pos',
+      items: folioItems.map(fi => ({
+        product_id: fi.product_id!,
+        quantity: fi.quantity || 1,
+        unit_price: fi.unit_price || fi.amount,
+      })),
+      organization_id: org.id,
+      branch_id: branchId,
+    }).then(result => {
+      setPromoDiscounts(result.itemDiscounts);
+    }).catch(err => {
+      console.warn('[PMS Checkout] No se pudieron evaluar promociones:', err);
+      setPromoDiscounts({});
+    });
+  }, [reservation?.folio?.items]);
 
   // Totales pre-calculados (necesarios antes del early return para los calculados de pago)
   const lodgingTotal = (reservation?.total_estimated || 0) + extraNightsCharge;

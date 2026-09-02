@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, RefreshCw, ArrowLeft, CalendarClock } from 'lucide-react';
+import { Plus, RefreshCw, ArrowLeft, CalendarClock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { ActividadesFiltros } from './ActividadesFiltros';
 import { ActividadesStats } from './ActividadesStats';
@@ -11,6 +12,8 @@ import { ActividadesTable } from './ActividadesTable';
 import { ActividadForm } from './ActividadForm';
 import { ActividadesPagination } from './ActividadesPagination';
 import { actividadesService } from './ActividadesService';
+import { ActivityActions } from '@/components/crm/pipeline/drawer/ActivityActions';
+import { SearchSelect } from '@/components/ui/search-select';
 import {
   Activity,
   ActivityFilters,
@@ -50,6 +53,33 @@ export function ActividadesPage() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteActivity, setDeleteActivity] = useState<Activity | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<{
+    id: string;
+    full_name: string;
+    email?: string | null;
+    phone?: string | null;
+  } | null>(null);
+
+  // Cargar datos del cliente seleccionado
+  useEffect(() => {
+    if (selectedCustomerId) {
+      const c = customers.find((c) => c.id === selectedCustomerId);
+      if (c) {
+        setSelectedCustomer({
+          id: c.id,
+          full_name: c.full_name,
+          email: (c as any).email || null,
+          phone: (c as any).phone || null,
+        });
+      } else {
+        setSelectedCustomer(null);
+      }
+    } else {
+      setSelectedCustomer(null);
+    }
+  }, [selectedCustomerId, customers]);
   
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -234,8 +264,55 @@ export function ActividadesPage() {
             <Plus className="h-4 w-4 mr-2" />
             Nueva Actividad
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowQuickActions(!showQuickActions)}
+            className="dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            Acciones rápidas
+          </Button>
         </div>
       </div>
+
+      {/* Acciones rápidas — mismas del drawer del pipeline */}
+      {showQuickActions && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Acciones rápidas con APIs (Twilio, Resend, WhatsApp, Gemini)
+            </h2>
+          </div>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                Selecciona un cliente para activar las acciones
+              </Label>
+              <SearchSelect
+                options={customers.map((c) => ({ value: c.id, label: c.full_name }))}
+                value={selectedCustomerId || 'none'}
+                onValueChange={(v) => setSelectedCustomerId(v === 'none' ? '' : v)}
+                placeholder="Sin cliente"
+                searchPlaceholder="Buscar cliente..."
+                noneLabel="Sin cliente"
+                className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              />
+            </div>
+            {selectedCustomer && (
+              <ActivityActions
+                opportunityId={undefined}
+                customer={selectedCustomer}
+                onActivityLogged={loadData}
+              />
+            )}
+            {!selectedCustomer && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">
+                Selecciona un cliente para habilitar Llamar (Twilio), Email (Resend), WhatsApp y Reunión (calendario).
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <ActividadesStats stats={stats} isLoading={isLoading} />

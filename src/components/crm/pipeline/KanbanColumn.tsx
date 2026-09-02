@@ -40,7 +40,7 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
       return `bg-[${stage.color}]`;
     }
     
-    // Si no hay color definido, usar la probabilidad
+    // Si no hay color definido, usar la probabilidad (escala 0-100)
     const probability = stage.probability || 0;
     if (probability < 25) return 'bg-red-500'; // Etapa inicial
     if (probability < 50) return 'bg-amber-500'; // Etapa intermedia
@@ -48,11 +48,12 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
     return 'bg-green-500'; // Etapa final
   };
 
-  // Determinar el nombre de la etapa para mostrar iconos
+  // Determinar el tipo de etapa usando los flags de la BD (is_won / is_lost)
+  // con fallback al nombre para etapas legacy sin flags
   const stageName = stage.name?.toLowerCase() || '';
-  const isNewStage = stageName.includes('nuevo') || stageName.includes('lead');
-  const isWonStage = stageName.includes('ganado') || stageName.includes('cerrado') || stageName.includes('won');
-  const isLostStage = stageName.includes('perdido') || stageName.includes('lost');
+  const isWonStage = Boolean(stage.is_won);
+  const isLostStage = Boolean(stage.is_lost);
+  const isNewStage = !isWonStage && !isLostStage && (stageName.includes('nuevo') || stageName.includes('lead'));
 
   return (
     <>
@@ -67,11 +68,17 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
           <div className="flex justify-between items-center gap-1">
             <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
               {isNewStage && <span className="text-blue-500 dark:text-blue-400 text-xs sm:text-sm shrink-0">●</span>}
-              {isWonStage && <span className="text-green-500 dark:text-green-400 text-xs sm:text-sm shrink-0">✓</span>}
-              {isLostStage && <span className="text-red-500 dark:text-red-400 text-xs sm:text-sm shrink-0">✗</span>}
+              {isWonStage && <span className="text-green-500 dark:text-green-400 text-xs sm:text-sm shrink-0" title="Etapa de cierre ganado">✓</span>}
+              {isLostStage && <span className="text-red-500 dark:text-red-400 text-xs sm:text-sm shrink-0" title="Etapa de cierre perdido">✗</span>}
               <h3 className="font-medium text-xs sm:text-sm truncate">{stage.name}</h3>
-              <Badge 
-                variant={isWonStage ? "success" : (isLostStage ? "destructive" : "secondary")} 
+              {isWonStage && (
+                <span className="text-[9px] sm:text-[10px] font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded shrink-0">GANADO</span>
+              )}
+              {isLostStage && (
+                <span className="text-[9px] sm:text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded shrink-0">PERDIDO</span>
+              )}
+              <Badge
+                variant={isWonStage ? "success" : (isLostStage ? "destructive" : "secondary")}
                 className="text-[10px] sm:text-xs font-normal shrink-0"
               >
                 {opportunities.length}
@@ -100,10 +107,10 @@ const KanbanColumn = ({ stage, opportunities, stageTotal, isLoading, onStageUpda
               <div className="w-full bg-gray-200 dark:bg-gray-600 h-1 rounded-full overflow-hidden">
                 <div
                   className={`h-full ${getStageColorClass()}`}
-                  style={{ width: `${Math.round(Number(stage.probability) * 100)}%` }}
+                  style={{ width: `${Math.round(Number(stage.probability))}%` }}
                 />
               </div>
-              <span className="shrink-0">{Math.round(Number(stage.probability) * 100)}%</span>
+              <span className="shrink-0">{Math.round(Number(stage.probability))}%</span>
             </div>
           )}
         </div>

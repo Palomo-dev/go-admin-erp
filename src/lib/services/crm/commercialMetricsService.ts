@@ -1,8 +1,9 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Servicio CRM - Métricas comerciales avanzadas (FASE 5).
+ * Servicio CRM - Métricas comerciales avanzadas (FASE 5 / FASE 14).
  *
  * Calcula:
  * - Win rate (tasa de cierre)
@@ -14,6 +15,9 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
  * Reusa RPCs existentes:
  * - fn_reporte_crm_funnel
  * - fn_reporte_crm_ranking_vendedores
+ * - fn_revenue_metrics (FASE 14)
+ * - fn_pipeline_funnel (FASE 14)
+ * - fn_cohort_retention (FASE 14)
  *
  * Tabla: opportunity_stage_history (opportunity_id, stage_id, entered_at, exited_at)
  * Tabla: opportunities (id, organization_id, status, amount, currency, created_at, closed_at)
@@ -68,6 +72,47 @@ export interface FunnelMetrics {
   total_pipeline: number;
   forecast: number;
   overall_conversion: number;
+}
+
+// ============== Tipos FASE 14 - Revenue OS RPC ==============
+
+export interface RevenueMetricRPCRow {
+  month: string;
+  deals_won: number;
+  deals_lost: number;
+  deals_open: number;
+  revenue_won_pipeline: number;
+  revenue_lost: number;
+  revenue_pipeline: number;
+  arpa: number;
+  avg_sales_cycle_days: number;
+  win_rate: number;
+  revenue_collected: number;
+  commissions_paid: number;
+}
+
+export interface PipelineFunnelRPCRow {
+  stage_id: string;
+  stage_name: string;
+  position: number;
+  opportunity_count: number;
+  total_amount: number;
+  avg_amount: number;
+}
+
+export interface CohortRetentionRPCRow {
+  cohort_month: string;
+  cohort_size: number;
+  retained_m1: number;
+  retained_m2: number;
+  retained_m3: number;
+  retained_m6: number;
+  retained_m12: number;
+  retention_m1_pct: number;
+  retention_m2_pct: number;
+  retention_m3_pct: number;
+  retention_m6_pct: number;
+  retention_m12_pct: number;
 }
 
 // ============== Servicio ==============
@@ -353,7 +398,7 @@ class CommercialMetricsService {
 
       const totalPipeline = stages.reduce((sum: number, s: FunnelStageMetric) => sum + s.current_amount, 0);
       const forecast = stages.reduce(
-        (sum: number, s: FunnelStageMetric) => sum + (s.current_amount * s.probability) / 100,
+        (sum: number, s: FunnelStageMetric) => sum + (s.current_amount * s.probability),
         0
       );
       const totalEntered = stages.reduce((sum: number, s: FunnelStageMetric) => sum + s.entered_count, 0);
@@ -515,6 +560,118 @@ class CommercialMetricsService {
       return [];
     }
   }
+}
+
+// ============== FASE 14 - Revenue OS RPC ==============
+
+/**
+ * Ejecuta fn_revenue_metrics RPC (FASE 14).
+ * Retorna métricas mensuales de revenue en el rango [startDate, endDate].
+ * Recibe un SupabaseClient explícito (para uso server-side con orgContext).
+ */
+export async function getRevenueMetricsFromRPC(
+  orgId: number,
+  startDate: string,
+  endDate: string,
+  supabaseClient: SupabaseClient
+): Promise<RevenueMetricRPCRow[]> {
+  const { data, error } = await supabaseClient.rpc('fn_revenue_metrics', {
+    p_org_id: orgId,
+    p_start: startDate,
+    p_end: endDate,
+  });
+
+  if (error) {
+    console.warn('[commercialMetricsService] fn_revenue_metrics no disponible:', error.message);
+    return [];
+  }
+
+  if (!data || !Array.isArray(data)) return [];
+
+  return (data as Array<Record<string, unknown>>).map((row) => ({
+    month: String(row.month ?? ''),
+    deals_won: Number(row.deals_won) || 0,
+    deals_lost: Number(row.deals_lost) || 0,
+    deals_open: Number(row.deals_open) || 0,
+    revenue_won_pipeline: Number(row.revenue_won_pipeline) || 0,
+    revenue_lost: Number(row.revenue_lost) || 0,
+    revenue_pipeline: Number(row.revenue_pipeline) || 0,
+    arpa: Number(row.arpa) || 0,
+    avg_sales_cycle_days: Number(row.avg_sales_cycle_days) || 0,
+    win_rate: Number(row.win_rate) || 0,
+    revenue_collected: Number(row.revenue_collected) || 0,
+    commissions_paid: Number(row.commissions_paid) || 0,
+  }));
+}
+
+/**
+ * Ejecuta fn_pipeline_funnel RPC (FASE 14).
+ * Retorna el funnel actual de pipeline por etapa.
+ * Recibe un SupabaseClient explícito (para uso server-side con orgContext).
+ */
+export async function getPipelineFunnelFromRPC(
+  orgId: number,
+  supabaseClient: SupabaseClient
+): Promise<PipelineFunnelRPCRow[]> {
+  const { data, error } = await supabaseClient.rpc('fn_pipeline_funnel', {
+    p_org_id: orgId,
+  });
+
+  if (error) {
+    console.warn('[commercialMetricsService] fn_pipeline_funnel no disponible:', error.message);
+    return [];
+  }
+
+  if (!data || !Array.isArray(data)) return [];
+
+  return (data as Array<Record<string, unknown>>).map((row) => ({
+    stage_id: String(row.stage_id ?? ''),
+    stage_name: String(row.stage_name ?? ''),
+    position: Number(row.position) || 0,
+    opportunity_count: Number(row.opportunity_count) || 0,
+    total_amount: Number(row.total_amount) || 0,
+    avg_amount: Number(row.avg_amount) || 0,
+  }));
+}
+
+/**
+ * Ejecuta fn_cohort_retention RPC (FASE 14).
+ * Retorna cohortes de retención en el rango [startDate, endDate].
+ * Recibe un SupabaseClient explícito (para uso server-side con orgContext).
+ */
+export async function getCohortRetentionFromRPC(
+  orgId: number,
+  startDate: string,
+  endDate: string,
+  supabaseClient: SupabaseClient
+): Promise<CohortRetentionRPCRow[]> {
+  const { data, error } = await supabaseClient.rpc('fn_cohort_retention', {
+    p_org_id: orgId,
+    p_start: startDate,
+    p_end: endDate,
+  });
+
+  if (error) {
+    console.warn('[commercialMetricsService] fn_cohort_retention no disponible:', error.message);
+    return [];
+  }
+
+  if (!data || !Array.isArray(data)) return [];
+
+  return (data as Array<Record<string, unknown>>).map((row) => ({
+    cohort_month: String(row.cohort_month ?? ''),
+    cohort_size: Number(row.cohort_size) || 0,
+    retained_m1: Number(row.retained_m1) || 0,
+    retained_m2: Number(row.retained_m2) || 0,
+    retained_m3: Number(row.retained_m3) || 0,
+    retained_m6: Number(row.retained_m6) || 0,
+    retained_m12: Number(row.retained_m12) || 0,
+    retention_m1_pct: Number(row.retention_m1_pct) || 0,
+    retention_m2_pct: Number(row.retention_m2_pct) || 0,
+    retention_m3_pct: Number(row.retention_m3_pct) || 0,
+    retention_m6_pct: Number(row.retention_m6_pct) || 0,
+    retention_m12_pct: Number(row.retention_m12_pct) || 0,
+  }));
 }
 
 export const commercialMetricsService = new CommercialMetricsService();

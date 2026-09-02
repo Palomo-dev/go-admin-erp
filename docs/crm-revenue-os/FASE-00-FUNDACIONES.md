@@ -12,6 +12,8 @@
 
 **Qué NO entra:** no implementa features del CRM (pipeline, llamadas, email, IA). Esos son F1–F15. F0 solo prepara.
 
+> **Naturaleza de este documento:** este archivo es la **especificación del trabajo de F0**, no el resultado de un trabajo previo. Los bugs G1–G15 descritos en §1 existen **hoy** en el código (verificado en el repositorio actual) y **se corrigen como parte del trabajo de F0**. Las dependencias de §3.5 no están instaladas aún — se instalan en F0. Los archivos marcados como "crear" en §3.2, §4.2 y §10 no existen aún — se crean en F0. La tabla §1 refleja el estado **antes** de ejecutar F0; al terminar, todos los 🔴/🟠/🟡 deben quedar en verde y el §8 (Definition of Done) debe poder tildarse completo.
+
 **Puntos del método que cubre:** 32 (modelo de datos canónico — parcial, se completa en F2/F9) y la frontera de plataforma del PLAN.md §0.
 
 ---
@@ -29,7 +31,7 @@
 | Webhooks legacy desactivados | 🟠 bug G5 | `src/app/api/webhooks/{voip,sms,email}/twilio/route.ts` |
 | `.env.example` incompleto (23 vars faltantes) | 🟠 bug G6 | `.env.example` |
 | `stages.display_order` duplica `position` | 🟠 bug G7 | BD + `src/components/crm/reportes/ReportesService.ts` |
-| `/app/crm/configuracion` link sin destino | 🟡 bug G8 | `src/components/crm/dashboard/CRMQuickNav.tsx:112` |
+| `CRMQuickNav.tsx:112` linkea a `/app/crm/configuracion` que no existe | 🟡 bug G8 | `src/components/crm/dashboard/CRMQuickNav.tsx:112` — arreglar link a `/app/configuracion?modulo=crm` |
 | `elevenLabsTTS.ts`/`deepgramSTT.ts`/`realtimeSession.ts` muerto | 🟡 bug G11 | `src/lib/services/integrations/twilio/voiceAgent/` |
 | `verticals` sin `slug`/`color`/`sort_order` | 🟡 bug G12 | BD |
 | `ConfiguracionHub.tsx`/`CustomersList.tsx` huérfanos | 🟡 bug G14 | `src/components/crm/{configuracion,customers}/` |
@@ -53,7 +55,7 @@ Aplicar vía `apply_migration` del MCP de Supabase (project `jgmgphmzusbluqhuqih
 
 ```sql
 CREATE TABLE provider_configs (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   category text NOT NULL CHECK (category IN (
     'voice','stt','tts','llm','email','whatsapp','sms',
@@ -389,20 +391,22 @@ Tabla completa a documentar en `.env.example`. Cada variable con un comentario d
 
 ### 3.5 Dependencias npm a instalar
 
+> **Estado verificado (package.json actual):** ninguno de los 6 paquetes está instalado. `twilio` (server SDK) sí existe (`^5.12.1`), pero **`@twilio/voice-sdk`** (WebRTC client) es distinto y falta. Las versiones a continuación son las últimas estables publicadas hace ≥7 días al momento de escribir este documento — reconfirmar con `npm view <pkg> version` antes de instalar.
+
 ```bash
-npm i motion @twilio/voice-sdk resend react-email @google/genai svix
+npm i motion@^13.1.1 @twilio/voice-sdk@^2.18.3 resend@^6.25.0 react-email@^6.9.3 @google/genai@^2.20.0 svix@^2.2.0
 ```
 
 > **Regla del proyecto:** preferir versiones publicadas hace ≥7 días. No usar `latest` ni rangos flotantes sin `^` acotado. Verificar `npm view <pkg> time` antes de instalar.
 
-| Paquete | Para qué fase | Notas |
-|---|---|---|
-| `motion` | F15 (primitivas en F0) | Sucesor de Framer Motion. `import { motion } from 'motion/react'` |
-| `@twilio/voice-sdk` | F3 | WebRTC calling en browser/PWA/Electron |
-| `resend` | F7 | Email transaccional y marketing |
-| `react-email` | F7 | Plantillas TSX → HTML |
-| `@google/genai` | F4 | Gemini 2.5 Flash para análisis de llamadas |
-| `svix` | F7 | Verificación de webhooks de Resend |
+| Paquete | Versión recomendada | En package.json | Para qué fase | Notas |
+|---|---|---|---|---|
+| `motion` | `^13.1.1` | ❌ falta | F15 (primitivas en F0) | Sucesor de Framer Motion. `import { motion } from 'motion/react'` |
+| `@twilio/voice-sdk` | `^2.18.3` | ❌ falta | F3 | WebRTC calling en browser/PWA/Electron. Distinto de `twilio` (server SDK, ya instalado) |
+| `resend` | `^6.25.0` | ❌ falta | F7 | Email transaccional y marketing |
+| `react-email` | `^6.9.3` | ❌ falta | F7 | Plantillas TSX → HTML |
+| `@google/genai` | `^2.20.0` | ❌ falta | F4 | Gemini 2.5 Flash para análisis de llamadas |
+| `svix` | `^2.2.0` | ❌ falta | F7 | Verificación de webhooks de Resend |
 
 ---
 
@@ -410,28 +414,13 @@ npm i motion @twilio/voice-sdk resend react-email @google/genai svix
 
 ### 4.1 Rutas
 
-| URL | Archivo | Acción | Qué muestra |
-|---|---|---|---|
-| `/app/crm/configuracion` | `src/app/app/crm/configuracion/page.tsx` | **crear** | Redirect a `/app/configuracion?modulo=crm` |
-
-#### Implementación del redirect
-
-```typescript
-// src/app/app/crm/configuracion/page.tsx
-import { redirect } from 'next/navigation';
-
-export default function CrmConfiguracionPage() {
-  redirect('/app/configuracion?modulo=crm');
-}
-```
-
-> Verificar antes cómo funciona `configModulesRegistry.ts` y `useConfiguracionState` para confirmar que `?modulo=crm` abre el tab correcto. Si el registry usa un ID distinto, ajustar el query param.
+**No se crea ninguna ruta nueva de configuración.** La configuración del CRM ya está centralizada en `/app/configuracion` (con `?modulo=crm` para abrir el tab CRM). Solo se arregla el link roto en `CRMQuickNav.tsx`.
 
 ### 4.2 Componentes
 
 | Archivo | Acción | Props | Qué hace |
 |---|---|---|---|
-| `src/components/crm/dashboard/CRMQuickNav.tsx` | modificar | — | Verificar que el link de configuración apunta a `/app/crm/configuracion` (ya existe en `:112`) |
+| `src/components/crm/dashboard/CRMQuickNav.tsx` | modificar | — | Arreglar link `:112` de `/app/crm/configuracion` → `/app/configuracion?modulo=crm` (ya centralizado) |
 | `src/components/crm/configuracion/ConfiguracionHub.tsx` | **eliminar** | — | Código huérfano (bug G14) |
 | `src/components/crm/customers/CustomersList.tsx` | **eliminar** | — | Código huérfano (bug G14) |
 | `src/components/shared/MotionProvider.tsx` | **crear** | `children` | `MotionConfig` global con `reducedMotion: 'user'` |
@@ -590,7 +579,7 @@ No aplica en F0 (no hay UI nueva).
 - [ ] `.env.example` documenta las 23 variables faltantes + las nuevas.
 - [ ] `motion`, `@twilio/voice-sdk`, `resend`, `react-email`, `@google/genai`, `svix` instalados.
 - [ ] `MotionProvider` montado en `src/app/app/layout.tsx`.
-- [ ] `/app/crm/configuracion` responde con redirect a `/app/configuracion?modulo=crm`.
+- [ ] `CRMQuickNav.tsx:112` apunta a `/app/configuracion?modulo=crm` (no a `/app/crm/configuracion`).
 - [ ] `ConfiguracionHub.tsx` y `CustomersList.tsx` eliminados.
 - [ ] Webhooks legacy `/api/webhooks/{voip,sms,email}/twilio` eliminados; `docs/VOIP_SETUP.md` actualizado.
 - [ ] `src/__tests__/guardrails.test.ts` pasa.
@@ -638,8 +627,7 @@ No aplica en F0 (no hay UI nueva).
 | `src/app/api/webhooks/voip/twilio/route.ts` | eliminar | Webhook legacy (G5) |
 | `src/app/api/webhooks/sms/twilio/route.ts` | eliminar | Webhook legacy (G5) |
 | `src/app/api/webhooks/email/twilio/route.ts` | eliminar | Webhook legacy (G5) |
-| `src/app/app/crm/configuracion/page.tsx` | crear | Redirect (G8) |
-| `src/components/crm/dashboard/CRMQuickNav.tsx` | modificar | Verificar link (G8) |
+| `src/components/crm/dashboard/CRMQuickNav.tsx` | modificar | Arreglar link `:112` a `/app/configuracion?modulo=crm` (G8) |
 | `src/components/crm/configuracion/ConfiguracionHub.tsx` | eliminar | Huérfano (G14) |
 | `src/components/crm/customers/CustomersList.tsx` | eliminar | Huérfano (G14) |
 | `src/components/shared/MotionProvider.tsx` | crear | `MotionConfig` global |

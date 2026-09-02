@@ -2,6 +2,9 @@
  * ElevenLabs TTS — Text-to-Speech con voces ultra-realistas
  * GO Admin ERP — Voice Agent v2
  *
+ * F6: cablear — este archivo está escrito pero no importado aún en el flujo activo.
+ * Se conecta en Fase 6 (Realtime Voice Agent) como proveedor TTS del ConversationRelay.
+ *
  * Reemplaza el TTS de OpenAI Realtime por voces más naturales.
  * Requiere: ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL
  */

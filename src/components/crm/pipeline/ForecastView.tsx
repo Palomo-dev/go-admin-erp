@@ -36,8 +36,8 @@ interface Opportunity {
   expected_close_date: string;
   stage_id: string;
   stage_name?: string;
-  probability: number; // Valor porcentual (0-100)
-  probabilityPercent: number; // Valor porcentual (0-100)
+  probability: number; // Valor 0-100
+  probabilityPercent: number; // Valor 0-100
   customer_name?: string;
   status: string;
 }
@@ -209,7 +209,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
       }
       
       // Usar el monto convertido para cálculos
-      const weightedAmountForOpp = convertedAmount * probability / 100;
+      const weightedAmountForOpp = convertedAmount * (probability / 100);
 
       totalAmount += convertedAmount;
       weightedAmount += weightedAmountForOpp;
@@ -217,7 +217,7 @@ const ForecastView: React.FC<ForecastViewProps> = ({ pipelineId }) => {
 
       // Extraer información de etapa y cliente
       const stageName = opp.stages?.name || "Sin etapa";
-      const probabilityPercent = probability; // Ya está en escala 0-100
+      const probabilityPercent = probability; // Escala 0-100
       const customerName = opp.customers?.full_name || "Sin cliente";
       const opportunity: Opportunity = {
         id: opp.id,

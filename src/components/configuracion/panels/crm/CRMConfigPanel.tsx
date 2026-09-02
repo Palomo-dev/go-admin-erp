@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { MessageSquare, Tags, Key, Globe, Layers, AlertCircle, Gauge, ListChecks, DollarSign, Users } from 'lucide-react';
+import { MessageSquare, Tags, Key, Globe, Layers, AlertCircle, Gauge, ListChecks, DollarSign, Users, Network, Target } from 'lucide-react';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
@@ -29,6 +29,8 @@ import { ScoringConfigurator } from './sections/ScoringConfigurator';
 import { ExitGatesEditor } from './sections/ExitGatesEditor';
 import { CommissionsPanel } from './sections/CommissionsPanel';
 import { ReferralsProgramCard } from './sections/ReferralsProgramCard';
+import { EstructuraComercialManager } from './sections/EstructuraComercialManager';
+import { ICPManager } from './sections/ICPManager';
 import ChatChannelsService, {
   ChatChannel,
   ChannelStats,
@@ -91,6 +93,8 @@ export function CRMConfigPanel() {
   const [exitGatesModalOpen, setExitGatesModalOpen] = useState(false);
   const [commissionsModalOpen, setCommissionsModalOpen] = useState(false);
   const [referralsModalOpen, setReferralsModalOpen] = useState(false);
+  const [estructuraModalOpen, setEstructuraModalOpen] = useState(false);
+  const [icpModalOpen, setIcpModalOpen] = useState(false);
 
   // === Load Canales ===
   const loadChannels = useCallback(async () => {
@@ -620,6 +624,42 @@ export function CRMConfigPanel() {
               Configurar →
             </button>
           </div>
+
+          {/* Card: Estructura comercial */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-2">
+              <Network className="h-5 w-5 text-rose-500" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Estructura Comercial</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Define roles comerciales, equipos con miembros y territorios con criterios
+            </p>
+            <button
+              type="button"
+              onClick={() => setEstructuraModalOpen(true)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configurar →
+            </button>
+          </div>
+
+          {/* Card: ICP */}
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-violet-500" />
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">ICP (Ideal Customer Profile)</h4>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Perfiles A/B/C con criterios, pesos, SLA y evaluador de clientes
+            </p>
+            <button
+              type="button"
+              onClick={() => setIcpModalOpen(true)}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configurar →
+            </button>
+          </div>
         </div>
       </div>
 
@@ -693,6 +733,30 @@ export function CRMConfigPanel() {
             </DialogDescription>
           </DialogHeader>
           <ReferralsProgramCard />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={estructuraModalOpen} onOpenChange={setEstructuraModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Estructura Comercial</DialogTitle>
+            <DialogDescription>
+              Gestiona roles, equipos con miembros y territorios con criterios
+            </DialogDescription>
+          </DialogHeader>
+          <EstructuraComercialManager />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={icpModalOpen} onOpenChange={setIcpModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>ICP (Ideal Customer Profile)</DialogTitle>
+            <DialogDescription>
+              Perfiles A/B/C con criterios, pesos, SLA y evaluador de clientes
+            </DialogDescription>
+          </DialogHeader>
+          <ICPManager />
         </DialogContent>
       </Dialog>
 

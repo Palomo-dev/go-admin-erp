@@ -257,7 +257,7 @@ export default function BulkCreateOpportunitiesDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {stages.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} ({Math.round(Number(s.probability) * 100)}%)</SelectItem>
+                    <SelectItem key={s.id} value={s.id}>{s.name} ({Math.round(Number(s.probability))}%)</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

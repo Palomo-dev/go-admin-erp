@@ -126,7 +126,7 @@
 
 ```sql
 CREATE TABLE voice_agents (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   slug text NOT NULL,
@@ -174,9 +174,9 @@ CREATE POLICY va_delete ON voice_agents FOR DELETE USING (organization_id = curr
 
 ```sql
 CREATE TABLE voice_agent_campaigns (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  voice_agent_id bigint NOT NULL REFERENCES voice_agents(id) ON DELETE CASCADE,
+  voice_agent_id uuid NOT NULL REFERENCES voice_agents(id) ON DELETE CASCADE,
   name text NOT NULL,
   objective text,
   target_source text NOT NULL CHECK (target_source IN (
@@ -202,11 +202,11 @@ CREATE POLICY vac_update ON voice_agent_campaigns FOR UPDATE USING (organization
 CREATE POLICY vac_delete ON voice_agent_campaigns FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE voice_agent_calls (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  campaign_id bigint REFERENCES voice_agent_campaigns(id) ON DELETE CASCADE,
-  voice_agent_id bigint NOT NULL REFERENCES voice_agents(id) ON DELETE CASCADE,
-  call_id bigint REFERENCES calls(id) ON DELETE SET NULL,
+  campaign_id uuid REFERENCES voice_agent_campaigns(id) ON DELETE CASCADE,
+  voice_agent_id uuid NOT NULL REFERENCES voice_agents(id) ON DELETE CASCADE,
+  call_id uuid REFERENCES calls(id) ON DELETE SET NULL,
   customer_id integer,
   opportunity_id uuid,
   purpose_context jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -235,11 +235,11 @@ CREATE POLICY vacalls_delete ON voice_agent_calls FOR DELETE USING (organization
 
 ```sql
 CREATE TABLE voice_agent_runs (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  voice_agent_id bigint NOT NULL REFERENCES voice_agents(id) ON DELETE CASCADE,
-  voice_agent_call_id bigint REFERENCES voice_agent_calls(id) ON DELETE CASCADE,
-  call_id bigint REFERENCES calls(id) ON DELETE CASCADE,
+  voice_agent_id uuid NOT NULL REFERENCES voice_agents(id) ON DELETE CASCADE,
+  voice_agent_call_id uuid REFERENCES voice_agent_calls(id) ON DELETE CASCADE,
+  call_id uuid REFERENCES calls(id) ON DELETE CASCADE,
   turns jsonb NOT NULL DEFAULT '[]'::jsonb,
   tools_invoked jsonb NOT NULL DEFAULT '[]'::jsonb,
   decisions jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -259,7 +259,7 @@ CREATE POLICY varuns_insert ON voice_agent_runs FOR INSERT WITH CHECK (organizat
 
 ```sql
 ALTER TABLE calls
-  ADD COLUMN IF NOT EXISTS voice_agent_id bigint REFERENCES voice_agents(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS voice_agent_id uuid REFERENCES voice_agents(id) ON DELETE SET NULL;
 ```
 
 ### 4.2 Schema jsonb canónico
@@ -782,6 +782,13 @@ function checkResponseGuardrails(response: string, agent: VoiceAgent): { blocked
 - Whitelist de tools: el agente solo puede invocar las tools en `allowed_tools`.
 - Anti-abuso: `do_not_call` list, límite de intentos, horarios.
 - Las voces clonadas son por organización (API key de ElevenLabs de la org).
+
+> **Nota R7 (2026-09-01) — validación de firma de webhook:**
+> El webhook `/api/voice/twiml/ai-agent` tenía una condición
+> `NODE_ENV === 'production'` que omitía la validación de firma de Twilio en
+> desarrollo. Se eliminó. Patrón consistente aplicado:
+> - Si no hay `TWILIO_AUTH_TOKEN` → `console.warn` + omitir validación.
+> - Si hay token y firma inválida → **403** (siempre, sin importar `NODE_ENV`).
 
 ---
 

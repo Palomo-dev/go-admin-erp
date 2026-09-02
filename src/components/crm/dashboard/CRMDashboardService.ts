@@ -82,7 +82,7 @@ class CRMDashboardService {
 
     const monthForecast = forecastData?.reduce((sum, o) => {
       const probability = (o.stages as any)?.probability || 0;
-      return sum + ((o.amount || 0) * (probability / 100));
+      return sum + ((o.amount || 0) * (probability || 0));
     }, 0) || 0;
 
     // Campañas activas
@@ -187,7 +187,7 @@ class CRMDashboardService {
     });
 
     const totalValue = stagesData.reduce((sum, s) => sum + s.value, 0);
-    const weightedValue = stagesData.reduce((sum, s) => sum + s.value * ((s.probability) / 100), 0);
+    const weightedValue = stagesData.reduce((sum, s) => sum + s.value * ((s.probability || 0) / 100), 0);
 
     return { stages: stagesData, totalValue, weightedValue };
   }

@@ -14,15 +14,26 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { HtmlContentRenderer } from "@/components/shared/HtmlContentRenderer";
 import { toast } from "@/components/ui/use-toast";
 import { opportunitiesService } from "@/components/crm/oportunidades/opportunitiesService";
 import { ScoringSection } from "@/components/crm/oportunidades/ScoringSection";
-import type { Activity } from "@/components/crm/oportunidades/types";
+import { DocumentUploader } from "@/components/crm/documents/DocumentUploader";
+import { StructuredLossDialog } from "@/components/crm/oportunidades/StructuredLossDialog";
+import { WonCloseModal } from "@/components/crm/pipeline/WonCloseModal";
+import { getOrganizationId } from "@/lib/hooks/useOrganization";
+import type { LossReasonData } from "@/components/crm/oportunidades/types";
 import { formatCurrency } from "@/utils/Utils";
 import { translateOpportunityStatus } from "@/utils/crmTranslations";
+import { ActivityActions } from "./drawer/ActivityActions";
+import { FollowupSection } from "./drawer/FollowupSection";
+import { SalesTeamTerritorySelectors } from "./drawer";
+import { DiscoverySection } from "./drawer/DiscoverySection";
+import { DiscoveryConfigDialog } from "./drawer/DiscoveryConfigDialog";
+import { ClosedWonDialog } from "./drawer/ClosedWonDialog";
+import { TasksSection } from "./drawer/TasksSection";
+import { CustomerEditDialog } from "../shared/CustomerEditDialog";
 import {
   User,
   Mail,
@@ -38,6 +49,7 @@ import {
   CircleDot,
   Edit,
   Plus,
+  SquarePen,
   Package,
   BedDouble,
   FileText,
@@ -45,6 +57,10 @@ import {
   Pin,
   PinOff,
   Loader2,
+  FolderOpen,
+  Target,
+  XCircle,
+  Trophy,
 } from "lucide-react";
 
 interface CustomerInfo {
@@ -68,6 +84,9 @@ interface ActivityItem {
   notes?: string | null;
   occurred_at: string;
   related_type?: string | null;
+  channel?: string | null;
+  outcome?: string | null;
+  duration_seconds?: number | null;
 }
 
 interface TaskItem {
@@ -91,11 +110,7 @@ interface ProductItem {
   quantity: number;
   unit_price: number;
   total_price: number;
-  product?: {
-    id: number;
-    name: string;
-    sku?: string;
-  };
+  product?: { id: number; name: string; sku?: string };
 }
 
 interface SpaceItem {
@@ -103,13 +118,7 @@ interface SpaceItem {
   nights: number;
   unit_price: number;
   total_price: number;
-  space?: {
-    id: string;
-    label: string;
-    space_types?: {
-      name: string;
-    };
-  };
+  space?: { id: string; label: string; space_types?: { name: string } };
 }
 
 interface CustomLineItem {
@@ -120,20 +129,40 @@ interface CustomLineItem {
   total_price: number;
 }
 
+interface OpportunityFull {
+  id: string;
+  name: string;
+  amount?: number | null;
+  currency?: string | null;
+  expected_close_date?: string | null;
+  status?: string | null;
+  customer_id?: string | null;
+  customer?: { id: string; full_name: string; email?: string | null } | null;
+  created_at?: string | null;
+  last_contact_at?: string | null;
+  next_contact_at?: string | null;
+  contact_channel?: string | null;
+  contact_result?: string | null;
+  temperature?: string | null;
+  next_action?: string | null;
+  objection_id?: string | null;
+  discovery_data?: Record<string, unknown> | null;
+  win_data?: Record<string, unknown> | null;
+  loss_reason?: string | null;
+  loss_reason_value?: string | null;
+  competitor_name?: string | null;
+  competitor_price?: number | null;
+  missing_features?: string[] | null;
+  recontact_at?: string | null;
+  closed_at?: string | null;
+  sales_team_id?: string | null;
+  territory_id?: string | null;
+}
+
 interface OpportunityDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  opportunity: {
-    id: string;
-    name: string;
-    amount?: number | null;
-    currency?: string | null;
-    expected_close_date?: string | null;
-    status?: string | null;
-    customer_id?: string | null;
-    customer?: { id: string; full_name: string; email?: string | null } | null;
-    created_at?: string | null;
-  } | null;
+  opportunity: OpportunityFull | null;
 }
 
 const getStatusColor = (status: string) => {
@@ -151,27 +180,9 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const getTaskStatusColor = (status: string) => {
-  switch (status?.toLowerCase()) {
-    case "completed":
-    case "done":
-      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-    case "in_progress":
-      return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
-    case "cancelled":
-      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-    default:
-      return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
-  }
-};
-
 const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return "N/A";
-  return new Date(dateStr).toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return new Date(dateStr).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 const formatDateTime = (dateStr?: string | null) => {
@@ -197,31 +208,34 @@ const translateActivityType = (type: string) => {
     updated: "Actualizado",
     message: "Mensaje",
     visit: "Visita",
+    follow_up: "Seguimiento",
+    reminder: "Recordatorio",
+    automation_log: "Automatización",
   };
   return translations[type?.toLowerCase()] || type || "Actividad";
 };
 
-export function OpportunityDrawer({
-  open,
-  onOpenChange,
-  opportunity,
-}: OpportunityDrawerProps) {
+export function OpportunityDrawer({ open, onOpenChange, opportunity }: OpportunityDrawerProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [customer, setCustomer] = useState<CustomerInfo | null>(null);
+  const [showCustomerEdit, setShowCustomerEdit] = useState(false);
+  const [showDiscoveryConfig, setShowDiscoveryConfig] = useState(false);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [spaces, setSpaces] = useState<SpaceItem[]>([]);
   const [customLines, setCustomLines] = useState<CustomLineItem[]>([]);
+  const [oppData, setOppData] = useState<OpportunityFull | null>(null);
+
+  // Dialogs
+  const [lossDialogOpen, setLossDialogOpen] = useState(false);
+  const [wonDialogOpen, setWonDialogOpen] = useState(false);
+  const [wonCloseOpen, setWonCloseOpen] = useState(false);
+  const [closingLost, setClosingLost] = useState(false);
 
   // Form state
-  const [newActivityNotes, setNewActivityNotes] = useState("");
-  const [newActivityType, setNewActivityType] = useState("note");
-  const [isAddingActivity, setIsAddingActivity] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [isAddingTask, setIsAddingTask] = useState(false);
   const [newNoteBody, setNewNoteBody] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
 
@@ -235,6 +249,7 @@ export function OpportunityDrawer({
     setProducts([]);
     setSpaces([]);
     setCustomLines([]);
+    setOppData(opportunity);
 
     try {
       const results = await Promise.allSettled([
@@ -244,35 +259,26 @@ export function OpportunityDrawer({
         opportunitiesService.getOpportunityProducts(opportunity.id),
         opportunitiesService.getOpportunitySpaces(opportunity.id),
         opportunitiesService.getOpportunityCustomLines(opportunity.id),
+        opportunitiesService.getOpportunityById(opportunity.id),
       ]);
 
-      if (results[0].status === 'fulfilled') setActivities(results[0].value as ActivityItem[]);
-      else console.warn('Error cargando actividades:', results[0].reason);
+      if (results[0].status === "fulfilled") setActivities(results[0].value as ActivityItem[]);
+      if (results[1].status === "fulfilled") setTasks(results[1].value as TaskItem[]);
+      if (results[2].status === "fulfilled") setNotes(results[2].value as NoteItem[]);
+      if (results[3].status === "fulfilled") setProducts(results[3].value as ProductItem[]);
+      if (results[4].status === "fulfilled") setSpaces(results[4].value as SpaceItem[]);
+      if (results[5].status === "fulfilled") setCustomLines(results[5].value as CustomLineItem[]);
+      if (results[6].status === "fulfilled") {
+        const full = results[6].value as OpportunityFull | null;
+        if (full) setOppData({ ...opportunity, ...full });
+      }
 
-      if (results[1].status === 'fulfilled') setTasks(results[1].value as TaskItem[]);
-      else console.warn('Error cargando tareas:', results[1].reason);
-
-      if (results[2].status === 'fulfilled') setNotes(results[2].value as NoteItem[]);
-      else console.warn('Error cargando notas:', results[2].reason);
-
-      if (results[3].status === 'fulfilled') setProducts(results[3].value as ProductItem[]);
-      else console.warn('Error cargando productos:', results[3].reason);
-
-      if (results[4].status === 'fulfilled') setSpaces(results[4].value as SpaceItem[]);
-      else console.warn('Error cargando espacios:', results[4].reason);
-
-      if (results[5].status === 'fulfilled') setCustomLines(results[5].value as CustomLineItem[]);
-      else console.warn('Error cargando conceptos:', results[5].reason);
-
-      // Cargar info completa del cliente
       const customerId = opportunity.customer_id || opportunity.customer?.id;
       if (customerId) {
         const custDetails = await opportunitiesService.getCustomerDetails(customerId);
-        if (custDetails) {
-          setCustomer(custDetails as CustomerInfo);
-        }
+        if (custDetails) setCustomer(custDetails as CustomerInfo);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error cargando datos del drawer:", error);
     } finally {
       setLoading(false);
@@ -285,43 +291,6 @@ export function OpportunityDrawer({
     }
   }, [open, opportunity, loadData]);
 
-  const handleAddActivity = async () => {
-    if (!opportunity || !newActivityNotes.trim()) return;
-    setIsAddingActivity(true);
-    try {
-      await opportunitiesService.createActivity(
-        opportunity.id,
-        newActivityType as Activity["activity_type"],
-        newActivityNotes
-      );
-      setNewActivityNotes("");
-      setNewActivityType("note");
-      await loadData();
-      toast({ title: "Éxito", description: "Actividad registrada" });
-    } catch (error) {
-      console.error("Error:", error);
-      toast({ title: "Error", description: "No se pudo registrar la actividad", variant: "destructive" });
-    } finally {
-      setIsAddingActivity(false);
-    }
-  };
-
-  const handleAddTask = async () => {
-    if (!opportunity || !newTaskTitle.trim()) return;
-    setIsAddingTask(true);
-    try {
-      await opportunitiesService.createTask(opportunity.id, newTaskTitle);
-      setNewTaskTitle("");
-      await loadData();
-      toast({ title: "Éxito", description: "Tarea creada" });
-    } catch (error) {
-      console.error("Error:", error);
-      toast({ title: "Error", description: "No se pudo crear la tarea", variant: "destructive" });
-    } finally {
-      setIsAddingTask(false);
-    }
-  };
-
   const handleAddNote = async () => {
     if (!opportunity || !newNoteBody.trim()) return;
     setIsAddingNote(true);
@@ -329,9 +298,8 @@ export function OpportunityDrawer({
       await opportunitiesService.createNote(opportunity.id, newNoteBody);
       setNewNoteBody("");
       await loadData();
-      toast({ title: "Éxito", description: "Nota agregada" });
-    } catch (error) {
-      console.error("Error:", error);
+      toast({ title: "Nota agregada" });
+    } catch {
       toast({ title: "Error", description: "No se pudo agregar la nota", variant: "destructive" });
     } finally {
       setIsAddingNote(false);
@@ -342,9 +310,8 @@ export function OpportunityDrawer({
     try {
       await opportunitiesService.deleteNote(noteId);
       await loadData();
-      toast({ title: "Éxito", description: "Nota eliminada" });
-    } catch (error) {
-      console.error("Error:", error);
+      toast({ title: "Nota eliminada" });
+    } catch {
       toast({ title: "Error", description: "No se pudo eliminar", variant: "destructive" });
     }
   };
@@ -353,32 +320,8 @@ export function OpportunityDrawer({
     try {
       await opportunitiesService.toggleNotePin(noteId, isPinned);
       await loadData();
-    } catch (error) {
-      console.error("Error:", error);
+    } catch {
       toast({ title: "Error", description: "No se pudo actualizar", variant: "destructive" });
-    }
-  };
-
-  const handleToggleTask = async (taskId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "done" || currentStatus === "completed" ? "open" : "done";
-    try {
-      await opportunitiesService.updateTask(taskId, { status: newStatus });
-      await loadData();
-    } catch (error) {
-      console.error("Error:", error);
-      toast({ title: "Error", description: "No se pudo actualizar", variant: "destructive" });
-    }
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm("¿Eliminar esta tarea?")) return;
-    try {
-      await opportunitiesService.deleteTask(taskId);
-      await loadData();
-      toast({ title: "Éxito", description: "Tarea eliminada" });
-    } catch (error) {
-      console.error("Error:", error);
-      toast({ title: "Error", description: "No se pudo eliminar", variant: "destructive" });
     }
   };
 
@@ -388,12 +331,37 @@ export function OpportunityDrawer({
     router.push(`/app/crm/oportunidades/${opportunity.id}/editar`);
   };
 
+  const handleMarkLost = async (data: LossReasonData) => {
+    if (!opportunity) return;
+    setClosingLost(true);
+    try {
+      await opportunitiesService.markAsLost(opportunity.id, data);
+      toast({ title: "Oportunidad cerrada como perdida" });
+      setLossDialogOpen(false);
+      await loadData();
+      window.dispatchEvent(new Event("refresh-pipeline-data"));
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error desconocido";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      setClosingLost(false);
+    }
+  };
+
+  const handleWonConfirmed = async () => {
+    await loadData();
+    setWonDialogOpen(false);
+    // Abrir el WonCloseModal con pasos financieros
+    setWonCloseOpen(true);
+    window.dispatchEvent(new Event("refresh-pipeline-data"));
+  };
+
   const formattedAmount = opportunity
-    ? formatCurrency(
-        parseFloat(opportunity.amount?.toString() || "0") || 0,
-        opportunity.currency || "COP"
-      )
+    ? formatCurrency(parseFloat(opportunity.amount?.toString() || "0") || 0, opportunity.currency || "COP")
     : "";
+
+  const isWon = oppData?.status === "won";
+  const isLost = oppData?.status === "lost";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -414,28 +382,44 @@ export function OpportunityDrawer({
                     {opportunity.customer?.full_name || "Cliente no especificado"}
                   </SheetDescription>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                   {opportunity.status && (
-                    <Badge
-                      className={`text-xs ${getStatusColor(opportunity.status)}`}
-                    >
+                    <Badge className={`text-xs ${getStatusColor(opportunity.status)}`}>
                       {translateOpportunityStatus(opportunity.status)}
                     </Badge>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleEdit}
-                    className="h-8 px-3 text-xs border-gray-200 dark:border-gray-700"
-                  >
+                  <Button size="sm" variant="outline" onClick={handleEdit} className="h-8 px-3 text-xs">
                     <Edit className="h-3.5 w-3.5 mr-1" />
                     Editar
                   </Button>
                 </div>
               </div>
+
+              {/* Acciones de cierre rápido */}
+              {!isWon && !isLost && (
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    onClick={() => setWonDialogOpen(true)}
+                    className="h-8 text-xs bg-green-600 hover:bg-green-700"
+                  >
+                    <Trophy className="h-3.5 w-3.5 mr-1" />
+                    Cerrar ganada
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setLossDialogOpen(true)}
+                    className="h-8 text-xs border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <XCircle className="h-3.5 w-3.5 mr-1" />
+                    Cerrar perdida
+                  </Button>
+                </div>
+              )}
             </SheetHeader>
 
-            {/* Contenido scrolleable */}
+            {/* Contenido scroll único */}
             <div className="p-4 sm:p-6 space-y-5">
               {loading ? (
                 <div className="space-y-4">
@@ -445,7 +429,37 @@ export function OpportunityDrawer({
                 </div>
               ) : (
                 <>
-                  {/* Info de la oportunidad */}
+                  {/* ===== Acciones operativas ===== */}
+                  <section>
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <Target className="h-4 w-4 text-blue-500" />
+                      Acciones
+                    </h3>
+                    <ActivityActions
+                      opportunityId={opportunity.id}
+                      customer={customer}
+                      onActivityLogged={loadData}
+                    />
+                  </section>
+
+                  <Separator />
+
+                  {/* ===== Seguimiento ===== */}
+                  <section>
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      Seguimiento
+                    </h3>
+                    <FollowupSection
+                      opportunityId={opportunity.id}
+                      initialData={oppData || undefined}
+                      onUpdated={loadData}
+                    />
+                  </section>
+
+                  <Separator />
+
+                  {/* ===== Info de la oportunidad ===== */}
                   <section>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                       <CircleDot className="h-4 w-4 text-blue-500" />
@@ -486,25 +500,57 @@ export function OpportunityDrawer({
 
                   <Separator />
 
-                  {/* Calificación GOC */}
+                  {/* ===== Equipo y Territorio ===== */}
+                  <SalesTeamTerritorySelectors
+                    opportunityId={opportunity.id}
+                    initialTeamId={oppData?.sales_team_id}
+                    initialTerritoryId={oppData?.territory_id}
+                    initialSalespersonId={oppData?.salesperson_id}
+                    onUpdated={loadData}
+                  />
+
+                  <Separator />
+
+                  {/* ===== Calificación GOC ===== */}
                   <ScoringSection opportunityId={opportunity.id} />
 
                   <Separator />
 
-                  {/* Info del cliente */}
+                  {/* ===== Discovery ===== */}
+                  <section>
+                    <DiscoverySection
+                      opportunityId={opportunity.id}
+                      initialData={oppData?.discovery_data}
+                      onUpdated={loadData}
+                      onConfigure={() => setShowDiscoveryConfig(true)}
+                    />
+                  </section>
+
+                  <Separator />
+
+                  {/* ===== Info del cliente ===== */}
                   <section>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                       <User className="h-4 w-4 text-blue-500" />
                       Información del Cliente
+                      {customer && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs ml-auto"
+                          onClick={() => setShowCustomerEdit(true)}
+                        >
+                          <SquarePen className="h-3 w-3 mr-1" />
+                          Editar
+                        </Button>
+                      )}
                     </h3>
                     {customer ? (
                       <Card className="p-4 bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
                         <div className="space-y-2.5 text-sm">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-gray-400 shrink-0" />
-                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                              {customer.full_name}
-                            </span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{customer.full_name}</span>
                           </div>
                           {customer.company_name && (
                             <div className="flex items-center gap-2">
@@ -565,9 +611,105 @@ export function OpportunityDrawer({
                     )}
                   </section>
 
+                  {/* ===== Resumen de pérdida (si aplica) ===== */}
+                  {isLost && oppData && (
+                    <>
+                      <Separator />
+                      <section>
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          Razón de pérdida
+                        </h3>
+                        <Card className="p-4 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                          <div className="space-y-2 text-sm">
+                            <div>
+                              <span className="text-xs text-gray-500 block">Razón:</span>
+                              <span className="font-medium">{oppData.loss_reason || oppData.loss_reason_value || "N/A"}</span>
+                            </div>
+                            {oppData.competitor_name && (
+                              <div>
+                                <span className="text-xs text-gray-500 block">Competidor:</span>
+                                <span>{oppData.competitor_name}</span>
+                              </div>
+                            )}
+                            {oppData.competitor_price != null && (
+                              <div>
+                                <span className="text-xs text-gray-500 block">Precio competidor:</span>
+                                <span>{formatCurrency(Number(oppData.competitor_price), opportunity.currency || "COP")}</span>
+                              </div>
+                            )}
+                            {oppData.missing_features && oppData.missing_features.length > 0 && (
+                              <div>
+                                <span className="text-xs text-gray-500 block">Funcionalidades faltantes:</span>
+                                <ul className="list-disc list-inside text-xs">
+                                  {oppData.missing_features.map((f, i) => (
+                                    <li key={i}>{f}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {oppData.recontact_at && (
+                              <div>
+                                <span className="text-xs text-gray-500 block">Recontactar:</span>
+                                <span>{formatDate(oppData.recontact_at)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      </section>
+                    </>
+                  )}
+
+                  {/* ===== Resumen de ganada (si aplica) ===== */}
+                  {isWon && oppData?.win_data && Object.keys(oppData.win_data).length > 0 && (
+                    <>
+                      <Separator />
+                      <section>
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-green-500" />
+                          Ficha de handoff
+                        </h3>
+                        <Card className="p-4 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            {(oppData.win_data as Record<string, string>).product && (
+                              <div className="col-span-2">
+                                <span className="text-xs text-gray-500 block">Qué compró:</span>
+                                <span className="font-medium">{(oppData.win_data as Record<string, string>).product}</span>
+                              </div>
+                            )}
+                            {(oppData.win_data as Record<string, string>).modules && (
+                              <div className="col-span-2">
+                                <span className="text-xs text-gray-500 block">Módulos:</span>
+                                <span>{(oppData.win_data as Record<string, string>).modules}</span>
+                              </div>
+                            )}
+                            {(oppData.win_data as Record<string, string>).users_count && (
+                              <div>
+                                <span className="text-xs text-gray-500 block">Usuarios:</span>
+                                <span>{(oppData.win_data as Record<string, string>).users_count}</span>
+                              </div>
+                            )}
+                            {(oppData.win_data as Record<string, string>).branches_count && (
+                              <div>
+                                <span className="text-xs text-gray-500 block">Sucursales:</span>
+                                <span>{(oppData.win_data as Record<string, string>).branches_count}</span>
+                              </div>
+                            )}
+                            {(oppData.win_data as Record<string, string>).responsible && (
+                              <div className="col-span-2">
+                                <span className="text-xs text-gray-500 block">Responsable:</span>
+                                <span>{(oppData.win_data as Record<string, string>).responsible}</span>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      </section>
+                    </>
+                  )}
+
                   <Separator />
 
-                  {/* Productos */}
+                  {/* ===== Productos ===== */}
                   {products.length > 0 && (
                     <>
                       <section>
@@ -585,9 +727,7 @@ export function OpportunityDrawer({
                                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                   {prod.product?.name || "Producto sin nombre"}
                                 </span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                  x{prod.quantity}
-                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">x{prod.quantity}</span>
                               </div>
                               <span className="text-sm font-medium text-blue-600 dark:text-blue-400 shrink-0">
                                 {formatCurrency(prod.total_price, opportunity.currency || "COP")}
@@ -600,7 +740,7 @@ export function OpportunityDrawer({
                     </>
                   )}
 
-                  {/* Espacios */}
+                  {/* ===== Espacios ===== */}
                   {spaces.length > 0 && (
                     <>
                       <section>
@@ -618,9 +758,7 @@ export function OpportunityDrawer({
                                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                   {sp.space?.label || "Espacio sin nombre"}
                                 </span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                  {sp.nights} noche(s)
-                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{sp.nights} noche(s)</span>
                               </div>
                               <span className="text-sm font-medium text-blue-600 dark:text-blue-400 shrink-0">
                                 {formatCurrency(sp.total_price, opportunity.currency || "COP")}
@@ -633,7 +771,7 @@ export function OpportunityDrawer({
                     </>
                   )}
 
-                  {/* Conceptos personalizados */}
+                  {/* ===== Conceptos personalizados ===== */}
                   {customLines.length > 0 && (
                     <>
                       <section>
@@ -648,12 +786,8 @@ export function OpportunityDrawer({
                               className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
                             >
                               <div className="flex-1 min-w-0">
-                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                  {cl.concept}
-                                </span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                  x{cl.quantity}
-                                </span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{cl.concept}</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">x{cl.quantity}</span>
                               </div>
                               <span className="text-sm font-medium text-blue-600 dark:text-blue-400 shrink-0">
                                 {formatCurrency(cl.total_price, opportunity.currency || "COP")}
@@ -666,48 +800,12 @@ export function OpportunityDrawer({
                     </>
                   )}
 
-                  {/* Actividades */}
+                  {/* ===== Actividades ===== */}
                   <section>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                       <ActivityIcon className="h-4 w-4 text-blue-500" />
                       Actividades ({activities.length})
                     </h3>
-                    {/* Formulario nueva actividad */}
-                    <div className="mb-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                      <div className="flex gap-2 mb-2">
-                        <select
-                          value={newActivityType}
-                          onChange={(e) => setNewActivityType(e.target.value)}
-                          className="text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-gray-700 dark:text-gray-300"
-                        >
-                          <option value="note">Nota</option>
-                          <option value="call">Llamada</option>
-                          <option value="email">Correo</option>
-                          <option value="meeting">Reunión</option>
-                          <option value="visit">Visita</option>
-                        </select>
-                        <RichTextEditor
-                          value={newActivityNotes}
-                          onChange={setNewActivityNotes}
-                          placeholder="Descripción de la actividad..."
-                          minHeight={60}
-                          className="flex-1"
-                        />
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={handleAddActivity}
-                        disabled={isAddingActivity || !newActivityNotes.trim()}
-                        className="w-full h-8 text-xs"
-                      >
-                        {isAddingActivity ? (
-                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                        ) : (
-                          <Plus className="h-3.5 w-3.5 mr-1" />
-                        )}
-                        Registrar Actividad
-                      </Button>
-                    </div>
                     {activities.length > 0 ? (
                       <div className="space-y-2">
                         {activities.map((act) => (
@@ -728,7 +826,12 @@ export function OpportunityDrawer({
                                 </span>
                               </div>
                               {act.notes && (
-                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{act.notes}</p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 whitespace-pre-wrap">{act.notes}</p>
+                              )}
+                              {act.duration_seconds != null && act.duration_seconds > 0 && (
+                                <span className="text-xs text-gray-400 mt-0.5 block">
+                                  Duración: {Math.floor(act.duration_seconds / 60)}m {act.duration_seconds % 60}s
+                                </span>
                               )}
                             </div>
                           </div>
@@ -736,101 +839,35 @@ export function OpportunityDrawer({
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                        No hay actividades registradas.
+                        No hay actividades registradas. Usa las acciones arriba para registrar llamadas, emails, WhatsApp o reuniones.
                       </p>
                     )}
                   </section>
 
                   <Separator />
 
-                  {/* Tareas */}
+                  {/* ===== Tareas (reutiliza PM) ===== */}
                   <section>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                       <CheckSquare className="h-4 w-4 text-blue-500" />
                       Tareas ({tasks.length})
                     </h3>
-                    {/* Formulario nueva tarea */}
-                    <div className="mb-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                      <div className="flex gap-2">
-                        <Input
-                          value={newTaskTitle}
-                          onChange={(e) => setNewTaskTitle(e.target.value)}
-                          placeholder="Título de la tarea..."
-                          className="text-sm flex-1"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleAddTask}
-                          disabled={isAddingTask || !newTaskTitle.trim()}
-                          className="h-9 px-3 text-xs shrink-0"
-                        >
-                          {isAddingTask ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Plus className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                    {tasks.length > 0 ? (
-                      <div className="space-y-2">
-                        {tasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
-                          >
-                            <button
-                              onClick={() => handleToggleTask(task.id, task.status)}
-                              className="mt-0.5 shrink-0 w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                            >
-                              <CheckSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className={`text-sm font-medium ${task.status === 'done' || task.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
-                                  {task.title}
-                                </span>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <Badge className={`text-xs ${getTaskStatusColor(task.status)}`}>
-                                    {task.status}
-                                  </Badge>
-                                  <button
-                                    onClick={() => handleDeleteTask(task.id)}
-                                    className="text-gray-400 hover:text-red-500 transition-colors"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                              {task.description && (
-                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{task.description}</p>
-                              )}
-                              {task.due_date && (
-                                <div className="flex items-center gap-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                  <Calendar className="h-3 w-3" />
-                                  Vence: {formatDate(task.due_date)}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                        No hay tareas asociadas.
-                      </p>
-                    )}
+                    <TasksSection
+                      opportunityId={opportunity.id}
+                      customerId={opportunity.customer_id || undefined}
+                      tasks={tasks}
+                      onTasksChanged={loadData}
+                    />
                   </section>
 
                   <Separator />
 
-                  {/* Notas */}
+                  {/* ===== Notas ===== */}
                   <section>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                       <StickyNote className="h-4 w-4 text-blue-500" />
                       Notas ({notes.length})
                     </h3>
-                    {/* Formulario nueva nota */}
                     <div className="mb-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                       <RichTextEditor
                         value={newNoteBody}
@@ -845,11 +882,7 @@ export function OpportunityDrawer({
                         disabled={isAddingNote || !newNoteBody.trim()}
                         className="w-full h-8 text-xs"
                       >
-                        {isAddingNote ? (
-                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                        ) : (
-                          <Plus className="h-3.5 w-3.5 mr-1" />
-                        )}
+                        {isAddingNote ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
                         Agregar Nota
                       </Button>
                     </div>
@@ -880,11 +913,7 @@ export function OpportunityDrawer({
                                     className="text-gray-400 hover:text-blue-500 transition-colors p-1"
                                     title={note.is_pinned ? "Desfijar" : "Fijar"}
                                   >
-                                    {note.is_pinned ? (
-                                      <PinOff className="h-3.5 w-3.5" />
-                                    ) : (
-                                      <Pin className="h-3.5 w-3.5" />
-                                    )}
+                                    {note.is_pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
                                   </button>
                                   <button
                                     onClick={() => handleDeleteNote(note.id)}
@@ -900,10 +929,30 @@ export function OpportunityDrawer({
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                        No hay notas registradas.
-                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">No hay notas registradas.</p>
                     )}
+                  </section>
+
+                  <Separator />
+
+                  {/* ===== Documentos ===== */}
+                  <section>
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4 text-blue-500" />
+                      Documentos
+                    </h3>
+                    {(() => {
+                      const orgId = getOrganizationId();
+                      if (!orgId || !opportunity.id) return null;
+                      return (
+                        <DocumentUploader
+                          organizationId={orgId}
+                          relatedType="opportunity"
+                          relatedId={opportunity.id}
+                          title="Documentos de la oportunidad"
+                        />
+                      );
+                    })()}
                   </section>
                 </>
               )}
@@ -911,6 +960,54 @@ export function OpportunityDrawer({
           </>
         )}
       </SheetContent>
+
+      {/* Diálogo editar/crear cliente */}
+      {opportunity?.customer_id && (
+        <CustomerEditDialog
+          customerId={opportunity.customer_id}
+          open={showCustomerEdit}
+          onOpenChange={setShowCustomerEdit}
+          onSaved={loadData}
+          editMode
+        />
+      )}
+
+      {/* Diálogo configurar discovery */}
+      <DiscoveryConfigDialog
+        open={showDiscoveryConfig}
+        onOpenChange={setShowDiscoveryConfig}
+        onSaved={loadData}
+      />
+
+      {/* Dialogs estructurados */}
+      <StructuredLossDialog
+        open={lossDialogOpen}
+        onOpenChange={setLossDialogOpen}
+        onConfirm={handleMarkLost}
+        isLoading={closingLost}
+      />
+
+      <ClosedWonDialog
+        open={wonDialogOpen}
+        onOpenChange={setWonDialogOpen}
+        opportunityId={opportunity?.id || ""}
+        opportunityName={opportunity?.name}
+        initialWinData={oppData?.win_data}
+        onConfirmed={handleWonConfirmed}
+      />
+
+      {opportunity && (
+        <WonCloseModal
+          open={wonCloseOpen}
+          onOpenChange={setWonCloseOpen}
+          opportunityId={opportunity.id}
+          opportunityName={opportunity.name}
+          onComplete={() => {
+            setWonCloseOpen(false);
+            loadData();
+          }}
+        />
+      )}
     </Sheet>
   );
 }

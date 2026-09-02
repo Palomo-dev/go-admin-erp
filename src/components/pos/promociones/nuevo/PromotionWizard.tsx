@@ -32,13 +32,16 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PromotionsService } from '../promotionsService';
-import { 
-  CreatePromotionData, 
-  PromotionType, 
+import {
+  CreatePromotionData,
+  PromotionType,
   AppliesTo,
   CreatePromotionRuleData,
+  RuleType,
+  RuleTypeDB,
   PROMOTION_TYPE_LABELS,
-  APPLIES_TO_LABELS
+  APPLIES_TO_LABELS,
+  WEEK_DAYS
 } from '../types';
 import { cn } from '@/utils/Utils';
 import { toast } from 'sonner';
@@ -80,6 +83,10 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     usage_limit: undefined,
     is_combinable: false,
     priority: 0,
+    applies_to_web: true,
+    applies_to_pos: true,
+    applies_to_finances: false,
+    applicable_days: null,
     rules: [],
     ...initialData
   });
@@ -170,17 +177,27 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
 
   const buildRules = (): CreatePromotionRuleData[] => {
     const rules: CreatePromotionRuleData[] = [];
-    
+
+    // Mapear ruleType ('include'/'exclude') + applies_to al valor compuesto
+    // que exige el CHECK constraint de promotion_rules en la BD.
+    const mapRuleType = (appliesTo: AppliesTo, type: RuleType): RuleTypeDB => {
+      if (appliesTo === 'products') return type === 'include' ? 'include_product' : 'exclude_product';
+      if (appliesTo === 'categories') return type === 'include' ? 'include_category' : 'exclude_category';
+      return type === 'include' ? 'include_product' : 'exclude_product';
+    };
+
     if (formData.applies_to === 'products') {
+      const dbRuleType = mapRuleType(formData.applies_to, ruleType);
       selectedProducts.forEach(productId => {
-        rules.push({ rule_type: ruleType, product_id: productId });
+        rules.push({ rule_type: dbRuleType, product_id: productId });
       });
     } else if (formData.applies_to === 'categories') {
+      const dbRuleType = mapRuleType(formData.applies_to, ruleType);
       selectedCategories.forEach(categoryId => {
-        rules.push({ rule_type: ruleType, category_id: categoryId });
+        rules.push({ rule_type: dbRuleType, category_id: categoryId });
       });
     }
-    
+
     return rules;
   };
 
@@ -492,6 +509,108 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                   />
                 </div>
               </div>
+
+              {/* Canales de aplicación */}
+              <div className="space-y-3">
+                <Label className="dark:text-gray-200">Canales de Aplicación</Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+                  Dónde se puede usar esta promoción
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
+                    <div>
+                      <Label className="dark:text-white text-sm">Web / Pedidos Online</Label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Sitio público</p>
+                    </div>
+                    <Switch
+                      checked={formData.applies_to_web ?? true}
+                      onCheckedChange={(checked) => handleChange('applies_to_web', checked)}
+                      className="data-[state=checked]:bg-blue-600"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
+                    <div>
+                      <Label className="dark:text-white text-sm">POS</Label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Ventas en tienda</p>
+                    </div>
+                    <Switch
+                      checked={formData.applies_to_pos ?? true}
+                      onCheckedChange={(checked) => handleChange('applies_to_pos', checked)}
+                      className="data-[state=checked]:bg-blue-600"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-800">
+                    <div>
+                      <Label className="dark:text-white text-sm">Finanzas</Label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Facturación / Documentos</p>
+                    </div>
+                    <Switch
+                      checked={formData.applies_to_finances ?? false}
+                      onCheckedChange={(checked) => handleChange('applies_to_finances', checked)}
+                      className="data-[state=checked]:bg-blue-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Días de la semana recurrentes */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="dark:text-gray-200">Días de Aplicación</Label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Selecciona los días. Si no seleccionas ninguno, aplica todos los días.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7 dark:text-gray-300"
+                    onClick={() => handleChange('applicable_days', null)}
+                  >
+                    Todos los días
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {WEEK_DAYS.map((day) => {
+                    const selected = (formData.applicable_days || []).includes(day.value);
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => {
+                          const current = formData.applicable_days || [];
+                          const next = selected
+                            ? current.filter((d) => d !== day.value)
+                            : [...current, day.value];
+                          handleChange('applicable_days', next.length === 0 ? null : next);
+                        }}
+                        className={cn(
+                          'px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all',
+                          selected
+                            ? 'border-blue-600 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-300'
+                        )}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {formData.applicable_days && formData.applicable_days.length > 0 && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    Aplica los: {formData.applicable_days
+                      .map((d) => WEEK_DAYS.find((wd) => wd.value === d)?.label)
+                      .join(', ')}
+                  </p>
+                )}
+                {(!formData.applicable_days || formData.applicable_days.length === 0) && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Aplica todos los días de la semana
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -541,39 +660,124 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
                     <Input
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
-                      placeholder="Buscar productos..."
+                      placeholder="Buscar productos por nombre, SKU o variante..."
                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
-                  <div className="max-h-60 overflow-y-auto space-y-2 p-2 border rounded-lg dark:border-gray-700">
-                    {products.map(product => (
-                      <label key={product.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded">
-                        <Checkbox
-                          checked={selectedProducts.includes(product.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedProducts([...selectedProducts, product.id]);
-                            } else {
-                              setSelectedProducts(selectedProducts.filter(id => id !== product.id));
-                            }
-                          }}
-                        />
-                        <div>
-                          <span className="dark:text-white">{product.name}</span>
-                          <span className="text-xs text-gray-500 ml-2">SKU: {product.sku}</span>
+                  <div className="max-h-60 overflow-y-auto p-2 border rounded-lg dark:border-gray-700">
+                    {(() => {
+                      // Etiqueta legible de variantes (ej: "Color: Rojo · Talla: M")
+                      const getVariantLabel = (p: any): string | null => {
+                        if (!p.variant_data) return null;
+                        const entries = Object.entries(p.variant_data).filter(
+                          ([, v]) => v && String(v).trim() !== ''
+                        );
+                        if (entries.length === 0) return null;
+                        return entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
+                      };
+
+                      // Filtrar por término de búsqueda (nombre, sku, padre, atributos)
+                      const search = productSearch.trim().toLowerCase();
+                      const filtered = products.filter((p: any) => {
+                        if (!search) return true;
+                        const variantAttrs = p.variant_data
+                          ? Object.values(p.variant_data).join(' ').toLowerCase()
+                          : '';
+                        return (
+                          String(p.name).toLowerCase().includes(search) ||
+                          String(p.sku).toLowerCase().includes(search) ||
+                          String(p.parent_name || '').toLowerCase().includes(search) ||
+                          variantAttrs.includes(search)
+                        );
+                      });
+
+                      // Agrupar por padre (o por nombre si no tiene)
+                      const grouped = filtered.reduce((acc: Record<string, any[]>, p: any) => {
+                        const key = p.parent_name || p.name;
+                        if (!acc[key]) acc[key] = [];
+                        acc[key].push(p);
+                        return acc;
+                      }, {});
+
+                      const groups = Object.entries(grouped);
+                      if (groups.length === 0) {
+                        return (
+                          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                            <Package className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No se encontraron productos</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-1">
+                          {groups.map(([groupName, groupProducts]) => {
+                            const hasVariants =
+                              groupProducts.length > 1 ||
+                              (groupProducts[0].variant_data && getVariantLabel(groupProducts[0]));
+                            return (
+                              <div key={groupName}>
+                                {hasVariants && (
+                                  <div className="sticky top-0 z-10 px-3 py-1.5 bg-gray-50 dark:bg-gray-750 border-b dark:border-gray-700">
+                                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                                      {groupName}
+                                    </span>
+                                  </div>
+                                )}
+                                {groupProducts.map((product: any) => {
+                                  const variantLabel = getVariantLabel(product);
+                                  return (
+                                    <label
+                                      key={product.id}
+                                      className="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                                    >
+                                      <Checkbox
+                                        checked={selectedProducts.includes(product.id)}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setSelectedProducts([...selectedProducts, product.id]);
+                                          } else {
+                                            setSelectedProducts(selectedProducts.filter(id => id !== product.id));
+                                          }
+                                        }}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <span className="dark:text-white block break-words whitespace-normal">
+                                          {hasVariants && variantLabel ? variantLabel : product.name}
+                                        </span>
+                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">
+                                          {product.sku}
+                                        </span>
+                                      </div>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
                         </div>
-                      </label>
-                    ))}
+                      );
+                    })()}
                   </div>
                   {selectedProducts.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {selectedProducts.map(id => {
                         const product = products.find(p => p.id === id);
-                        return product ? (
+                        if (!product) return null;
+                        const variantLabel = product.variant_data
+                          ? Object.entries(product.variant_data)
+                              .filter(([, v]) => v && String(v).trim() !== '')
+                              .map(([k, v]) => `${k}: ${v}`)
+                              .join(' · ')
+                          : null;
+                        const label = product.parent_name && variantLabel
+                          ? `${product.parent_name} · ${variantLabel}`
+                          : product.name;
+                        return (
                           <Badge key={id} variant="secondary" className="dark:bg-gray-700">
-                            {product.name}
+                            {label}
                           </Badge>
-                        ) : null;
+                        );
                       })}
                     </div>
                   )}

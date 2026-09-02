@@ -25,7 +25,7 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
         (o) => o.stage_id === stage.id && o.status === 'open'
       );
       const totalAmount = stageOpps.reduce((sum, o) => sum + (o.amount || 0), 0);
-      const weightedAmount = totalAmount * (stage.probability || 0) / 100;
+      const weightedAmount = totalAmount * ((stage.probability || 0) / 100);
 
       return {
         stage,
@@ -78,7 +78,7 @@ export function ForecastByStage({ stages, opportunities, isLoading }: ForecastBy
                     {formatCurrency(data.totalAmount)}
                   </span>
                   <span className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 ml-1 sm:ml-2">
-                    × {Math.round(Number(data.stage.probability || 0) * 100)}%
+                    × {Math.round(Number(data.stage.probability || 0))}%
                   </span>
                 </div>
               </div>

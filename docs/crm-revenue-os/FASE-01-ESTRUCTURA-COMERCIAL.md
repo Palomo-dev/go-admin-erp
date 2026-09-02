@@ -45,7 +45,7 @@ Aplicar vía `apply_migration` del MCP (project `jgmgphmzusbluqhuqihj`).
 
 ```sql
 CREATE TABLE sales_roles (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   code text NOT NULL,
   name text NOT NULL,
@@ -68,7 +68,7 @@ CREATE POLICY sales_roles_update ON sales_roles FOR UPDATE USING (organization_i
 CREATE POLICY sales_roles_delete ON sales_roles FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE sales_teams (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   description text,
@@ -86,7 +86,7 @@ CREATE POLICY sales_teams_update ON sales_teams FOR UPDATE USING (organization_i
 CREATE POLICY sales_teams_delete ON sales_teams FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE sales_team_members (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   sales_team_id integer NOT NULL REFERENCES sales_teams(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -107,7 +107,7 @@ CREATE POLICY stm_update ON sales_team_members FOR UPDATE USING (organization_id
 CREATE POLICY stm_delete ON sales_team_members FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE territories (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   criteria jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -129,7 +129,7 @@ CREATE POLICY territories_delete ON territories FOR DELETE USING (organization_i
 
 ```sql
 CREATE TABLE icp_profiles (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   band text NOT NULL,
@@ -151,7 +151,7 @@ CREATE POLICY icp_profiles_update ON icp_profiles FOR UPDATE USING (organization
 CREATE POLICY icp_profiles_delete ON icp_profiles FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE icp_criteria (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   icp_profile_id integer NOT NULL REFERENCES icp_profiles(id) ON DELETE CASCADE,
   field_key text NOT NULL,
@@ -182,8 +182,48 @@ ALTER TABLE customers
   ADD COLUMN IF NOT EXISTS company_size text,
   ADD COLUMN IF NOT EXISTS branches_count integer,
   ADD COLUMN IF NOT EXISTS current_software text,
-  ADD COLUMN IF NOT EXISTS lifecycle_stage text NOT NULL DEFAULT 'lead';
+  ADD COLUMN IF NOT EXISTS lifecycle_stage text NOT NULL DEFAULT 'lead'
+    CHECK (lifecycle_stage IN ('lead','opportunity','customer','churned'));
 ```
+
+**Backfill obligatorio de `lifecycle_stage` — no omitir.**
+
+`DEFAULT 'lead'` marcaría los **31 620 clientes reales** (31 402 `person` + 218
+`company`) como "lead", lo que devolvería **cohortes vacías en F14** y health score
+inválido en F11. Hay que clasificarlos por hechos financieros reales:
+
+```sql
+-- 1) Cliente real = tiene al menos una factura pagada o parcial
+UPDATE customers c
+   SET lifecycle_stage = 'customer'
+ WHERE EXISTS (
+   SELECT 1 FROM invoice_sales i
+    WHERE i.customer_id = c.id
+      AND i.organization_id = c.organization_id
+      AND i.status IN ('paid','partial')
+ );
+
+-- 2) Oportunidad = tiene oportunidad abierta pero ninguna factura pagada
+UPDATE customers c
+   SET lifecycle_stage = 'opportunity'
+ WHERE c.lifecycle_stage = 'lead'
+   AND EXISTS (
+   SELECT 1 FROM opportunities o
+    WHERE o.customer_id = c.id
+      AND o.organization_id = c.organization_id
+      AND o.status = 'open'
+ );
+
+-- 3) El resto queda en 'lead' (correcto por defecto).
+-- 'churned' lo asigna F11 según inactividad; no se backfillea aquí.
+
+CREATE INDEX IF NOT EXISTS idx_customers_org_lifecycle
+  ON customers (organization_id, lifecycle_stage);
+```
+
+> `customers` tiene 31 620 filas: ejecutar los `UPDATE` en la ventana de
+> mantenimiento y crear el índice con `CREATE INDEX CONCURRENTLY` si se aplica
+> con tráfico activo.
 
 ### 2.2 Schemas jsonb canónicos
 
@@ -361,6 +401,15 @@ SELECT column_name FROM information_schema.columns
 | `src/lib/services/crm/verticalsService.ts` | modificar | Extender con `positioning` |
 | `src/lib/services/crm/scoringService.ts` | modificar | Estandarizar schema GOC |
 | `src/lib/services/crm/roleService.ts` | **crear** | CRUD de `sales_roles`/`teams`/`members` |
+
+> **Nota R7 (2026-09-01) — filtros `organization_id` en update/delete:**
+> `icpService.updateICPProfile` y `icpService.deleteICPProfile` ahora filtran
+> explícitamente por `organization_id` en el `.update()` / `.delete()` de Supabase
+> (además del filtro por `id`). Igualmente, `verticalsService.update` y
+> `verticalsService.delete` ahora filtran por `organization_id`. Sin este filtro,
+> un update/delete por `id` solo podría afectar registros de otra organización si
+> el `id` se adivina o se pasa por error. RLS protege, pero el filtro en la query
+> es defensa en profundidad.
 
 #### `icpService.ts` — firmas principales
 

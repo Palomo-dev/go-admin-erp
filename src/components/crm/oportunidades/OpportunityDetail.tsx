@@ -8,15 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ActivityActions } from '@/components/crm/pipeline/drawer/ActivityActions';
+import { TasksSection } from '@/components/crm/pipeline/drawer/TasksSection';
+import { OpportunityDocuments } from '@/components/crm/oportunidades/OpportunityDocuments';
+import { CustomerEditDialog } from '@/components/crm/shared/CustomerEditDialog';
 import {
   ArrowLeft,
   Edit,
@@ -38,8 +35,6 @@ import {
   BedDouble,
   FileText,
   TrendingUp,
-  CheckSquare,
-  Square,
   Pin,
   PinOff,
   StickyNote,
@@ -48,6 +43,7 @@ import {
   MapPin,
   Building2,
   IdCard,
+  Paperclip,
   Tag,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -77,14 +73,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [showLossDialog, setShowLossDialog] = useState(false);
-  const [newActivityType, setNewActivityType] = useState<Activity['activity_type']>('note');
-  const [newActivityNotes, setNewActivityNotes] = useState('');
-  const [isAddingActivity, setIsAddingActivity] = useState(false);
-
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState('medium');
-  const [newTaskDueDate, setNewTaskDueDate] = useState('');
-  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [showCustomerEdit, setShowCustomerEdit] = useState(false);
 
   const [newNoteBody, setNewNoteBody] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -258,84 +247,6 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
       });
     } finally {
       setIsUpdating(false);
-    }
-  };
-
-  const handleAddActivity = async () => {
-    if (!opportunity || !newActivityNotes.trim()) return;
-    setIsAddingActivity(true);
-    try {
-      await opportunitiesService.createActivity(opportunity.id, newActivityType, newActivityNotes);
-      setNewActivityNotes('');
-      await loadData();
-      toast({
-        title: 'Éxito',
-        description: 'Actividad registrada correctamente',
-      });
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo registrar la actividad',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsAddingActivity(false);
-    }
-  };
-
-  const handleAddTask = async () => {
-    if (!opportunity || !newTaskTitle.trim()) return;
-    setIsAddingTask(true);
-    try {
-      await opportunitiesService.createTask(opportunity.id, newTaskTitle, {
-        priority: newTaskPriority,
-        due_date: newTaskDueDate || undefined,
-      });
-      setNewTaskTitle('');
-      setNewTaskPriority('medium');
-      setNewTaskDueDate('');
-      await loadData();
-      toast({
-        title: 'Éxito',
-        description: 'Tarea creada correctamente',
-      });
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo crear la tarea',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsAddingTask(false);
-    }
-  };
-
-  const handleToggleTask = async (taskId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'done' || currentStatus === 'completed' ? 'open' : 'done';
-    try {
-      await opportunitiesService.updateTask(taskId, { status: newStatus });
-      await loadData();
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la tarea',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('¿Eliminar esta tarea?')) return;
-    try {
-      await opportunitiesService.deleteTask(taskId);
-      await loadData();
-      toast({ title: 'Éxito', description: 'Tarea eliminada' });
-    } catch (error) {
-      console.error('Error:', error);
-      toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
     }
   };
 
@@ -592,7 +503,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                       {stage.name}
                       {stage.probability && (
                         <span className={`text-[10px] ${stage.id === opportunity.stage_id ? 'text-blue-200' : 'text-gray-400'}`}>
-                          {(Math.round(Number(stage.probability) * 100))}%
+                          {(Math.round(Number(stage.probability)))}%
                         </span>
                       )}
                     </button>
@@ -607,40 +518,82 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
 
           {/* Tabs de contenido */}
           <Tabs defaultValue="products" className="w-full">
-            <TabsList className="bg-gray-100 dark:bg-gray-800 w-full justify-start h-auto p-1 flex-wrap">
-              <TabsTrigger value="products" className="text-xs gap-1.5">
-                <Package className="h-3.5 w-3.5" />
-                Productos ({products.length})
-              </TabsTrigger>
-              <TabsTrigger value="spaces" className="text-xs gap-1.5">
-                <BedDouble className="h-3.5 w-3.5" />
-                Espacios ({spaces.length})
-              </TabsTrigger>
-              <TabsTrigger value="custom" className="text-xs gap-1.5">
-                <FileText className="h-3.5 w-3.5" />
-                Conceptos ({customLines.length})
-              </TabsTrigger>
-              <TabsTrigger value="activities" className="text-xs gap-1.5">
-                <MessageSquare className="h-3.5 w-3.5" />
-                Actividades ({activities.length})
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="text-xs gap-1.5">
-                <ListTodo className="h-3.5 w-3.5" />
-                Tareas ({tasks.length})
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="text-xs gap-1.5">
-                <StickyNote className="h-3.5 w-3.5" />
-                Notas ({notes.length})
-              </TabsTrigger>
-              <TabsTrigger value="timeline" className="text-xs gap-1.5">
-                <Clock className="h-3.5 w-3.5" />
-                Timeline
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="text-xs gap-1.5">
-                <BarChart3 className="h-3.5 w-3.5" />
-                Analítica
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto">
+              <TabsList className="bg-transparent h-auto p-0 gap-1">
+                <TabsTrigger value="products" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <Package className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Productos ({products.length})
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="spaces" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <BedDouble className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Espacios ({spaces.length})
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="custom" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <FileText className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Conceptos ({customLines.length})
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="activities" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <MessageSquare className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Actividades ({activities.length})
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="tasks" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <ListTodo className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Tareas ({tasks.length})
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <StickyNote className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Notas ({notes.length})
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <Paperclip className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Documentos
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="timeline" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <Clock className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Timeline
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:shadow-none dark:data-[state=active]:bg-primary/20">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 transition-colors group-data-[state=active]:bg-primary">
+                    <BarChart3 className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 transition-colors group-data-[state=active]:text-white" />
+                  </div>
+                  <span className="whitespace-nowrap text-gray-600 dark:text-gray-400 transition-colors group-data-[state=active]:text-primary dark:group-data-[state=active]:text-primary font-medium">
+                    Analítica
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* Tab Productos */}
             <TabsContent value="products">
@@ -786,49 +739,21 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
               </Card>
             </TabsContent>
 
-            {/* Tab Actividades */}
+            {/* Tab Actividades — con acciones operativas del drawer */}
             <TabsContent value="activities">
               <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardContent className="pt-6 space-y-4">
-                  {/* Nueva actividad */}
-                  <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-3 border border-gray-100 dark:border-gray-800">
-                    <div className="flex gap-2">
-                      <Select
-                        value={newActivityType}
-                        onValueChange={(v) => setNewActivityType(v as Activity['activity_type'])}
-                      >
-                        <SelectTrigger className="w-32 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-gray-800">
-                          <SelectItem value="note">Nota</SelectItem>
-                          <SelectItem value="call">Llamada</SelectItem>
-                          <SelectItem value="email">Email</SelectItem>
-                          <SelectItem value="meeting">Reunión</SelectItem>
-                          <SelectItem value="task">Tarea</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <RichTextEditor
-                        value={newActivityNotes}
-                        onChange={setNewActivityNotes}
-                        placeholder="Escribe una nota o actividad..."
-                        minHeight={60}
-                        className="flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        onClick={handleAddActivity}
-                        disabled={isAddingActivity || !newActivityNotes.trim()}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        {isAddingActivity && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        Agregar
-                      </Button>
-                    </div>
-                  </div>
+                  {/* Acciones operativas: llamar, email, WhatsApp, reunión */}
+                  <ActivityActions
+                    opportunityId={opportunity.id}
+                    customer={opportunity.customer ? {
+                      id: opportunity.customer.id,
+                      full_name: opportunity.customer.full_name,
+                      email: opportunity.customer.email,
+                      phone: opportunity.customer.phone,
+                    } : null}
+                    onActivityLogged={loadData}
+                  />
 
                   {/* Timeline de actividades */}
                   {activities.length === 0 ? (
@@ -869,116 +794,24 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
               </Card>
             </TabsContent>
 
-            {/* Tab Tareas */}
+            {/* Tab Tareas — con TaskSection avanzado del drawer */}
             <TabsContent value="tasks">
               <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardContent className="pt-6 space-y-4">
-                  {/* Nueva tarea */}
-                  <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg space-y-3 border border-gray-100 dark:border-gray-800">
-                    <input
-                      type="text"
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      placeholder="Título de la tarea..."
-                      className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex gap-2 flex-wrap">
-                      <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
-                        <SelectTrigger className="w-32 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-gray-800">
-                          <SelectItem value="low">Baja</SelectItem>
-                          <SelectItem value="medium">Media</SelectItem>
-                          <SelectItem value="high">Alta</SelectItem>
-                          <SelectItem value="urgent">Urgente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <input
-                        type="date"
-                        value={newTaskDueDate}
-                        onChange={(e) => setNewTaskDueDate(e.target.value)}
-                        className="px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={handleAddTask}
-                        disabled={isAddingTask || !newTaskTitle.trim()}
-                        className="bg-blue-600 hover:bg-blue-700 text-white ml-auto"
-                      >
-                        {isAddingTask && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        Agregar
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Lista de tareas */}
-                  {tasks.length === 0 ? (
-                    <div className="text-center py-8">
-                      <ListTodo className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">No hay tareas registradas</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {tasks.map((task) => {
-                        const isDone = task.status === 'done' || task.status === 'completed';
-                        const priorityColors: Record<string, string> = {
-                          urgent: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-                          high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
-                          medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-                          low: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-                        };
-                        return (
-                          <div
-                            key={task.id}
-                            className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-800"
-                          >
-                            <button
-                              onClick={() => handleToggleTask(task.id, task.status)}
-                              className="mt-0.5 shrink-0"
-                            >
-                              {isDone ? (
-                                <CheckSquare className="h-5 w-5 text-green-500" />
-                              ) : (
-                                <Square className="h-5 w-5 text-gray-400" />
-                              )}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className={`text-sm font-medium ${isDone ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}>
-                                  {task.title}
-                                </p>
-                                {task.priority && (
-                                  <Badge variant="secondary" className={`text-xs ${priorityColors[task.priority] || ''}`}>
-                                    {task.priority}
-                                  </Badge>
-                                )}
-                              </div>
-                              {task.description && (
-                                <HtmlContentRenderer html={task.description} className="mt-1 text-xs text-gray-500 dark:text-gray-400" />
-                              )}
-                              <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
-                                {task.due_date && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {format(new Date(task.due_date), 'dd/MM/yyyy', { locale: es })}
-                                  </span>
-                                )}
-                                <span>{formatDistanceToNow(new Date(task.created_at), { addSuffix: true, locale: es })}</span>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="shrink-0 text-gray-400 hover:text-red-500"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <TasksSection
+                    opportunityId={opportunity.id}
+                    customerId={opportunity.customer_id || undefined}
+                    tasks={tasks.map((t) => ({
+                      id: t.id,
+                      title: t.title,
+                      status: t.status,
+                      priority: t.priority,
+                      due_date: t.due_date,
+                      description: t.description,
+                      assigned_to: t.assigned_to,
+                    }))}
+                    onTasksChanged={loadData}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1055,6 +888,18 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                       ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab Documentos */}
+            <TabsContent value="documents">
+              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <CardContent className="pt-6">
+                  <OpportunityDocuments
+                    opportunityId={opportunity.id}
+                    organizationId={opportunity.organization_id}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1213,7 +1058,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                             <div className="flex justify-between">
                               <span className="text-gray-500 dark:text-gray-400">Valor ponderado</span>
                               <span className="font-medium text-blue-600 dark:text-blue-400">
-                                {formatCurrency(displayAmount * (opportunity?.stage?.probability || 0) / 100)}
+                                {formatCurrency(displayAmount * (opportunity?.stage?.probability || 0))}
                               </span>
                             </div>
                             {opportunity?.expected_close_date && (
@@ -1284,7 +1129,7 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
                 </div>
                 <span className="font-bold text-sm text-gray-900 dark:text-white">
                   {opportunity.stage?.probability
-                    ? `${Math.round(Number(opportunity.stage.probability) * 100)}%`
+                    ? `${Math.round(Number(opportunity.stage.probability))}%`
                     : '-'}
                 </span>
               </div>
@@ -1362,6 +1207,17 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
               <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                 <User className="h-4 w-4 text-blue-500" />
                 Cliente
+                {opportunity.customer_id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs ml-auto"
+                    onClick={() => setShowCustomerEdit(true)}
+                  >
+                    <Edit className="h-3 w-3 mr-1" />
+                    Editar
+                  </Button>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1458,6 +1314,17 @@ export function OpportunityDetail({ opportunityId }: OpportunityDetailProps) {
         onConfirm={handleMarkLost}
         isLoading={isUpdating}
       />
+
+      {/* Diálogo editar cliente */}
+      {opportunity.customer_id && (
+        <CustomerEditDialog
+          customerId={opportunity.customer_id}
+          open={showCustomerEdit}
+          onOpenChange={setShowCustomerEdit}
+          onSaved={loadData}
+          editMode
+        />
+      )}
     </div>
   );
 }

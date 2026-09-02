@@ -252,7 +252,7 @@ export class TwilioEmailService {
    */
   private static async getUserFromEmail(email: string): Promise<string | undefined> {
     // TODO: Implementar lógica para determinar usuario
-    // Por ejemplo, buscar en user_profiles por email
+    // Por ejemplo, buscar en profiles por email
     return undefined // Placeholder
   }
 

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { POSService } from '@/lib/services/posService';
 import { supabase } from '@/lib/supabase/config';
+import { useCommissionRate } from '@/lib/hooks/useCommissionRate';
 import { PrintService, BusinessInfo, CashierInfo, BranchInfo } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { CashDrawerService } from '@/lib/services/cashDrawerService';
@@ -119,6 +120,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const [commissionRate, setCommissionRate] = useState<number>(0);
   const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>('salesperson');
   const [commissionMethod, setCommissionMethod] = useState<'percentage' | 'fixed_amount'>('percentage');
+  const { resolveRate: resolveCommissionRate } = useCommissionRate();
 
   // Estados para delivery
   const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery_own' | 'delivery_third_party'>('pickup');
@@ -752,6 +754,21 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const serialSelectionsComplete = serializedItems.every(
     (item) => (serialSelections[item.product_id]?.length ?? 0) === item.quantity
   );
+
+  // Handler que pre-llena la tasa de comisión desde vendor_commission_rates
+  // al seleccionar un vendedor. El usuario puede override después.
+  const handleSalespersonChange = async (value: string) => {
+    setSalespersonId(value);
+    if (value && value !== '__none__') {
+      const rate = await resolveCommissionRate(value);
+      if (rate > 0) {
+        setCommissionRate(rate);
+        setCommissionMethod('percentage');
+      }
+    } else {
+      setCommissionRate(0);
+    }
+  };
 
   const handleCheckout = async () => {
     if (!canComplete) return;
@@ -2049,7 +2066,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         <Label className="text-xs dark:text-gray-400 text-gray-600">
                           Vendedor
                         </Label>
-                        <Select value={salespersonId} onValueChange={setSalespersonId}>
+                        <Select value={salespersonId} onValueChange={handleSalespersonChange}>
                           <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-300">
                             <SelectValue placeholder="Seleccionar..." />
                           </SelectTrigger>

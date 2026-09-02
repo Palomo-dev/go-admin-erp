@@ -56,6 +56,21 @@ export interface Opportunity {
   source?: string;
   vertical_id?: string;
   next_contact_at?: string;
+  // FASE 2 — Nuevas columnas
+  record_type?: 'lead' | 'deal';
+  last_contact_at?: string | null;
+  contact_channel?: string | null;
+  contact_result?: string | null;
+  objection_id?: string | null;
+  loss_reason_value?: string | null;
+  competitor_name?: string | null;
+  competitor_price?: number | null;
+  missing_features?: string[] | null;
+  recontact_at?: string | null;
+  discovery_data?: Record<string, unknown> | null;
+  closed_at?: string | null;
+  win_data?: Record<string, unknown> | null;
+  next_action?: string | null;
   // Relaciones
   customer?: Customer;
   stage?: Stage;
@@ -204,6 +219,7 @@ export interface OpportunityFilters {
   dateFrom?: string;
   dateTo?: string;
   search?: string;
+  record_type?: 'lead' | 'deal';
 }
 
 export interface OpportunityStats {
@@ -241,6 +257,7 @@ export interface CreateOpportunityInput {
   source?: string;
   vertical_id?: string;
   next_contact_at?: string;
+  record_type?: 'lead' | 'deal';
   products?: {
     product_id: number;
     quantity: number;
@@ -274,6 +291,22 @@ export interface UpdateOpportunityInput {
   source?: string;
   vertical_id?: string;
   next_contact_at?: string;
+  // FASE 2 — Nuevas columnas
+  record_type?: 'lead' | 'deal';
+  last_contact_at?: string | null;
+  contact_channel?: string | null;
+  contact_result?: string | null;
+  objection_id?: string | null;
+  loss_reason_value?: string | null;
+  competitor_name?: string | null;
+  competitor_price?: number | null;
+  missing_features?: string[] | null;
+  recontact_at?: string | null;
+  discovery_data?: Record<string, unknown> | null;
+  win_data?: Record<string, unknown> | null;
+  next_action?: string | null;
+  closed_at?: string | null;
+  temperature?: string | null;
   products?: {
     product_id: number;
     quantity: number;

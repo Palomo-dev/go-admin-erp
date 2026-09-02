@@ -59,23 +59,21 @@ export default function PromocionesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <PromotionsHeader
-          filters={filters}
-          onFiltersChange={handleFiltersChange}
-          onRefresh={loadPromotions}
-          totalPromotions={promotions.length}
-          activePromotions={activePromotions}
-          loading={loading}
-        />
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <PromotionsHeader
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        onRefresh={loadPromotions}
+        totalPromotions={promotions.length}
+        activePromotions={activePromotions}
+        loading={loading}
+      />
 
-        <PromotionsList
-          promotions={promotions}
-          loading={loading}
-          onRefresh={loadPromotions}
-        />
-      </div>
+      <PromotionsList
+        promotions={promotions}
+        loading={loading}
+        onRefresh={loadPromotions}
+      />
     </div>
   );
 }

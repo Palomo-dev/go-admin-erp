@@ -77,7 +77,7 @@
 
 ```sql
 CREATE TABLE calls (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   provider text NOT NULL DEFAULT 'twilio',
   provider_call_sid text,
@@ -89,7 +89,7 @@ CREATE TABLE calls (
   customer_id integer,
   opportunity_id uuid,
   user_id uuid,
-  voice_agent_id bigint,
+  voice_agent_id uuid,
   status text NOT NULL DEFAULT 'dialing' CHECK (status IN (
     'dialing','ringing','in_progress','completed','failed','busy','no_answer','canceled','voicemail'
   )),
@@ -125,9 +125,9 @@ CREATE POLICY calls_delete ON calls FOR DELETE USING (organization_id = current_
 
 ```sql
 CREATE TABLE call_recordings (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  call_id bigint NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+  call_id uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
   provider_recording_sid text,
   channels text NOT NULL DEFAULT 'dual',
   duration_seconds integer,
@@ -149,9 +149,9 @@ CREATE POLICY rec_update ON call_recordings FOR UPDATE USING (organization_id = 
 CREATE POLICY rec_delete ON call_recordings FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE call_consents (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  call_id bigint NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+  call_id uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
   consent_type text NOT NULL,
   announced_at timestamptz NOT NULL DEFAULT now(),
   method text NOT NULL DEFAULT 'voice_announcement',
@@ -165,7 +165,7 @@ CREATE POLICY cons_select ON call_consents FOR SELECT USING (organization_id = c
 CREATE POLICY cons_insert ON call_consents FOR INSERT WITH CHECK (organization_id = current_org_id());
 
 CREATE TABLE phone_numbers (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   e164 text NOT NULL,
   provider text NOT NULL DEFAULT 'twilio',

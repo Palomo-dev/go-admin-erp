@@ -321,12 +321,12 @@ async function handleCheckoutSessionCompleted(checkoutSession: any) {
       .eq('is_core', true)
 
     if (coreModules) {
-      for (const module of coreModules) {
+      for (const coreModule of coreModules) {
         await supabase
           .from('organization_modules')
           .upsert({
             organization_id: organizationId,
-            module_code: module.code,
+            module_code: coreModule.code,
             is_active: true,
             enabled_at: new Date().toISOString(),
           }, {
@@ -803,9 +803,10 @@ async function handleAddonSubscriptionCompleted(checkoutSession: any) {
     let currentPeriodStart: string | null = null;
     let currentPeriodEnd: string | null = null;
 
+    const { stripe } = await import('@/lib/stripe/server');
     if (subscriptionId && stripe) {
       try {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
         currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
         currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
       } catch (retrieveErr: any) {

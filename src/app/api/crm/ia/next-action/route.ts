@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { supabase } from '@/lib/supabase/config';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 /**
  * API Route - Recomienda la próxima acción para una oportunidad del CRM.
@@ -32,6 +32,19 @@ interface NextActionResponse {
 }
 
 export async function POST(request: NextRequest) {
+  let ctx;
+  try {
+    ctx = await getServerOrgContext();
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.statusCode }
+      );
+    }
+    throw err;
+  }
+
   try {
     const body = await request.json();
     const { opportunityId } = body as { opportunityId?: string };
@@ -44,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Recopilar contexto de la oportunidad
-    const context = await gatherOpportunityContext(opportunityId);
+    const context = await gatherOpportunityContext(ctx.supabase, ctx.organizationId, opportunityId);
     if (!context) {
       return NextResponse.json(
         { error: 'No se pudo obtener información de la oportunidad' },
@@ -95,10 +108,12 @@ interface OpportunityContext {
 }
 
 async function gatherOpportunityContext(
+  supabase: Awaited<ReturnType<typeof getServerOrgContext>>['supabase'],
+  organizationId: number,
   opportunityId: string
 ): Promise<OpportunityContext | null> {
   try {
-    // Obtener la oportunidad
+    // Obtener la oportunidad — filtrar por organización
     const { data: opp, error: oppError } = await supabase
       .from('opportunities')
       .select(`
@@ -114,6 +129,7 @@ async function gatherOpportunityContext(
         stage:stages(id, name, probability)
       `)
       .eq('id', opportunityId)
+      .eq('organization_id', organizationId)
       .maybeSingle();
 
     if (oppError || !opp) return null;
@@ -136,12 +152,13 @@ async function gatherOpportunityContext(
       (Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Obtener actividades recientes
+    // Obtener actividades recientes — filtrar por organización
     const { data: activities } = await supabase
       .from('activities')
       .select('activity_type, title, occurred_at, description')
       .eq('related_id', opportunityId)
       .eq('related_type', 'opportunity')
+      .eq('organization_id', organizationId)
       .order('occurred_at', { ascending: false })
       .limit(10);
 
@@ -200,7 +217,7 @@ async function recommendWithLLM(
 ## Oportunidad
 - Nombre: ${context.opportunity_name}
 - Cliente: ${context.customer_name}
-- Etapa: ${context.stage_name} (${context.stage_probability}% probabilidad)
+- Etapa: ${context.stage_name} (${Math.round(context.stage_probability)}% probabilidad)
 - Monto: ${context.amount} ${context.currency}
 - Días en etapa: ${context.days_in_stage}
 - Días sin actividad: ${context.days_since_last_activity}
@@ -274,10 +291,10 @@ function recommendWithRules(context: OpportunityContext): NextActionResponse {
   }
 
   // En etapa avanzada con alta probabilidad → cerrar
-  if (context.stage_probability >= 75) {
+  if (context.stage_probability >= 0.75) {
     return {
       action: `Preparar propuesta final y agendar reunión de cierre con ${context.customer_name}`,
-      reasoning: `La oportunidad está en etapa "${context.stage_name}" con ${context.stage_probability}% de probabilidad. Es momento de impulsar el cierre.`,
+      reasoning: `La oportunidad está en etapa "${context.stage_name}" con ${Math.round(context.stage_probability)}% de probabilidad. Es momento de impulsar el cierre.`,
       priority: 'high',
     };
   }
@@ -292,7 +309,7 @@ function recommendWithRules(context: OpportunityContext): NextActionResponse {
   }
 
   // Etapa temprana → discovery
-  if (context.stage_probability < 30) {
+  if (context.stage_probability < 0.3) {
     return {
       action: `Enviar información inicial y agendar llamada de presentación con ${context.customer_name}`,
       reasoning: `La oportunidad está en etapa temprana ("${context.stage_name}"). Es necesario cualificar y presentar valor.`,

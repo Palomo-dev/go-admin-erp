@@ -151,6 +151,69 @@ export interface FactusAcquirerResponse {
   email: string;
 }
 
+// ============================================================
+// Documentos Soporte (Support Documents) - Factus API v2
+// Para compras a proveedores NO responsables de IVA
+// ============================================================
+
+export interface FactusSupportProvider {
+  identification_document_code: string;
+  identification: string;
+  dv?: string;
+  trade_name?: string;
+  names: string;
+  address: string;
+  country_code: string;
+  municipality_code?: string;
+  email?: string;
+  phone?: string;
+  legal_organization_code?: string;
+}
+
+export interface FactusSupportItem {
+  code_reference: string;
+  name: string;
+  quantity: string;
+  discount_rate?: string;
+  price: string;
+  unit_measure_code: string;
+  standard_code: string;
+  note?: string;
+  withholding_taxes?: Array<{ code: string; rate: string }>;
+  taxes: Array<{ code: string; rate: string; is_excluded?: boolean }>;
+}
+
+export interface FactusSupportDocumentRequest {
+  reference_code: string;
+  numbering_range_id?: number;
+  created_time?: string;
+  observation?: string;
+  payment_details: FactusPaymentDetail[];
+  cash_rounding_amount?: string;
+  establishment?: FactusEstablishment;
+  provider: FactusSupportProvider;
+  items: FactusSupportItem[];
+}
+
+export interface FactusSupportDocumentResponse {
+  status: string;
+  message: string;
+  data?: {
+    reference_code: string;
+    number: string;
+    observation: string | null;
+    created_at: string;
+    cufe: string;
+    is_validated: boolean;
+    validated_at: string | null;
+    errors?: Record<string, string[]>;
+    provider?: Record<string, unknown>;
+    items?: Array<Record<string, unknown>>;
+    payment_details?: Array<Record<string, unknown>>;
+  };
+  errors?: Record<string, string[]>;
+}
+
 /**
  * Obtiene la URL base según el ambiente
  */
@@ -685,6 +748,218 @@ export function mapPaymentMethod(method: string | undefined): string {
   return mapping[method?.toLowerCase() || 'cash'] || '10';
 }
 
+// ============================================================
+// Documentos Soporte - Métodos de la API de Factus v2
+// ============================================================
+
+/**
+ * Crea/Valida un documento soporte electrónico
+ * POST /v2/support-documents/validate
+ */
+export async function createSupportDocument(
+  environment: 'sandbox' | 'production',
+  accessToken: string,
+  data: FactusSupportDocumentRequest
+): Promise<FactusSupportDocumentResponse> {
+  const baseUrl = getBaseUrl(environment);
+
+  const response = await fetch(`${baseUrl}/v2/support-documents/validate`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    const errorMsg = result.message || result.error || 'Error al crear documento soporte en Factus';
+    const validationErrors = result.data?.errors || result.errors || result.data?.message;
+    const fullError = validationErrors
+      ? `${errorMsg}: ${JSON.stringify(validationErrors)}`
+      : errorMsg;
+    console.error('Factus createSupportDocument error:', JSON.stringify(result));
+    throw new Error(fullError);
+  }
+
+  return result;
+}
+
+/**
+ * Consulta un documento soporte por código de referencia
+ * GET /v2/support-documents/{reference_code}/show-by-reference-code
+ */
+export async function getSupportDocumentByReference(
+  environment: 'sandbox' | 'production',
+  accessToken: string,
+  referenceCode: string
+): Promise<FactusSupportDocumentResponse> {
+  const baseUrl = getBaseUrl(environment);
+
+  const response = await fetch(
+    `${baseUrl}/v2/support-documents/${referenceCode}/show-by-reference-code`,
+    {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    const msg = errorData?.message || errorData?.error || 'Error al consultar documento soporte en Factus';
+    throw new Error(msg);
+  }
+
+  return response.json();
+}
+
+/**
+ * Lista documentos soporte con filtros opcionales
+ * GET /v2/support-documents?filter[...]=...
+ */
+export async function listSupportDocuments(
+  environment: 'sandbox' | 'production',
+  accessToken: string,
+  filters?: { page?: number; status?: string; identification?: string; number?: string }
+): Promise<{ data: Record<string, unknown>[]; meta?: Record<string, unknown> }> {
+  const baseUrl = getBaseUrl(environment);
+  const params = new URLSearchParams();
+
+  if (filters?.page) params.append('page', String(filters.page));
+  if (filters?.status) params.append('filter[status]', filters.status);
+  if (filters?.identification) params.append('filter[identification]', filters.identification);
+  if (filters?.number) params.append('filter[number]', filters.number);
+
+  const queryString = params.toString();
+  const url = `${baseUrl}/v2/support-documents${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    const msg = errorData?.message || errorData?.error || `Error ${response.status} al listar documentos soporte`;
+    throw new Error(msg);
+  }
+
+  const result = await response.json();
+  return { data: result.data || [], meta: result.meta };
+}
+
+/**
+ * Elimina un documento soporte no validado
+ * DELETE /v2/support-documents/{reference_code}
+ */
+export async function deleteSupportDocument(
+  environment: 'sandbox' | 'production',
+  accessToken: string,
+  referenceCode: string
+): Promise<{ status: string; message: string }> {
+  const baseUrl = getBaseUrl(environment);
+
+  const response = await fetch(
+    `${baseUrl}/v2/support-documents/${referenceCode}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    const msg = errorData?.message || errorData?.error || 'Error al eliminar documento soporte en Factus';
+    throw new Error(msg);
+  }
+
+  return response.json();
+}
+
+/**
+ * Descarga el PDF de un documento soporte
+ * GET /v2/support-documents/{number}/download-pdf
+ */
+export async function downloadSupportDocumentPDF(
+  environment: 'sandbox' | 'production',
+  accessToken: string,
+  documentNumber: string
+): Promise<Buffer> {
+  const baseUrl = getBaseUrl(environment);
+
+  const response = await fetch(
+    `${baseUrl}/v2/support-documents/${documentNumber}/download-pdf`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    const msg = errorData?.message || errorData?.error || 'Error al descargar PDF del documento soporte';
+    console.error('Factus downloadSupportDocumentPDF error:', errorData);
+    throw new Error(msg);
+  }
+
+  const jsonData = await response.json();
+  const base64Data = jsonData?.data?.pdf_base_64_encoded || jsonData?.pdf_base_64_encoded;
+  if (!base64Data) {
+    throw new Error('Factus no devolvió el PDF del documento soporte en base64');
+  }
+
+  return Buffer.from(base64Data, 'base64');
+}
+
+/**
+ * Descarga el XML de un documento soporte
+ * GET /v2/support-documents/{number}/download-xml
+ */
+export async function downloadSupportDocumentXML(
+  environment: 'sandbox' | 'production',
+  accessToken: string,
+  documentNumber: string
+): Promise<string> {
+  const baseUrl = getBaseUrl(environment);
+
+  const response = await fetch(
+    `${baseUrl}/v2/support-documents/${documentNumber}/download-xml`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    const msg = errorData?.message || errorData?.error || 'Error al descargar XML del documento soporte';
+    console.error('Factus downloadSupportDocumentXML error:', errorData);
+    throw new Error(msg);
+  }
+
+  const jsonData = await response.json();
+  const base64Data = jsonData?.data?.xml_base_64_encoded || jsonData?.xml_base_64_encoded;
+  if (!base64Data) {
+    throw new Error('Factus no devolvió el XML del documento soporte en base64');
+  }
+
+  return Buffer.from(base64Data, 'base64').toString('utf-8');
+}
+
 // Exportar servicio como objeto
 const factusService = {
   authenticate,
@@ -699,6 +974,12 @@ const factusService = {
   getMunicipalities,
   getUnitMeasures,
   getAcquirer,
+  createSupportDocument,
+  getSupportDocumentByReference,
+  listSupportDocuments,
+  deleteSupportDocument,
+  downloadSupportDocumentPDF,
+  downloadSupportDocumentXML,
   mapIdentificationType,
   mapDocumentType,
   mapPaymentMethod,

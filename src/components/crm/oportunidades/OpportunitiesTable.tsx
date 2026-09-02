@@ -235,7 +235,7 @@ export function OpportunitiesTable({
                 </TableCell>
                 <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                   {opportunity.stage?.probability
-                    ? `${Math.round(Number(opportunity.stage.probability) * 100)}%`
+                    ? `${Math.round(Number(opportunity.stage.probability))}%`
                     : '-'}
                 </TableCell>
                 <TableCell className="py-2 sm:py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden lg:table-cell">

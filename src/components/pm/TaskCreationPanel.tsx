@@ -82,6 +82,9 @@ interface TaskCreationPanelProps {
   onTaskCreated: () => void;
   onOpenSubtask?: (subtaskId: string) => void;
   onOpenParent?: (parentTaskId: string) => void;
+  initialCustomerId?: string;
+  initialRelatedToType?: string;
+  initialRelatedToId?: string;
 }
 
 const INITIAL_FORM = {
@@ -113,7 +116,7 @@ function getFileIcon(type: string) {
   return <File className="h-4 w-4 text-gray-500" />;
 }
 
-export default function TaskCreationPanel({ isOpen, onClose, projects, existingTasks = [], users = [], editTask, onTaskCreated, onOpenSubtask, onOpenParent }: TaskCreationPanelProps) {
+export default function TaskCreationPanel({ isOpen, onClose, projects, existingTasks = [], users = [], editTask, onTaskCreated, onOpenSubtask, onOpenParent, initialCustomerId, initialRelatedToType, initialRelatedToId }: TaskCreationPanelProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -165,24 +168,29 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         .order('sale_date', { ascending: false })
         .limit(200)
         .then(({ data }) => {
-          const posSales = (data || []).map(s => ({
+          const posSales = (data || []).map((s: any) => ({
             id: s.id,
             total: Number(s.total) || 0,
             sale_date: s.sale_date,
             customer_name: s.customers ? `${s.customers.first_name} ${s.customers.last_name}` : 'Sin cliente',
             source: s.table_session_id ? 'Mesa' : 'POS',
           }));
-          // Cargar ventas Web (web_orders)
+          // Cargar ventas Web (web_orders) — tabla opcional, puede no existir
           supabase.from('web_orders')
-            .select('id, total_amount, order_date, customer_name, status')
+            .select('id, total, created_at, customer_name, status')
             .eq('organization_id', orgId)
-            .order('order_date', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(200)
-            .then(({ data: webData }) => {
-              const webSales = (webData || []).map(w => ({
+            .then(({ data: webData, error: webErr }) => {
+              if (webErr) {
+                // Tabla no existe o sin permisos — usar solo POS
+                setSales(posSales);
+                return;
+              }
+              const webSales = (webData || []).map((w: any) => ({
                 id: w.id,
-                total: Number(w.total_amount) || 0,
-                sale_date: w.order_date,
+                total: Number(w.total) || 0,
+                sale_date: w.created_at,
                 customer_name: w.customer_name || 'Sin cliente',
                 source: 'Web',
               }));
@@ -193,14 +201,18 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
               setSales(combined);
             });
         });
-      // Verificar si el módulo PMS está activo
+      // Verificar si el módulo PMS está activo — tabla opcional
       supabase.from('organization_modules')
         .select('is_active')
         .eq('organization_id', orgId)
         .eq('module_code', 'pms_hotel')
         .eq('is_active', true)
-        .single()
-        .then(({ data }) => {
+        .maybeSingle()
+        .then(({ data, error: modErr }) => {
+          if (modErr) {
+            setPmsActive(false);
+            return;
+          }
           setPmsActive(!!data);
           if (data) {
             supabase.from('spaces')
@@ -208,7 +220,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
               .eq('organization_id', orgId)
               .limit(200)
               .then(({ data: spaceData }) => {
-                setSpaces((spaceData || []).map(s => ({
+                setSpaces((spaceData || []).map((s: any) => ({
                   id: s.id,
                   label: s.label,
                   type_name: s.space_types?.name || 'Sin tipo',
@@ -220,7 +232,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
               .order('checkin', { ascending: false })
               .limit(200)
               .then(({ data: resData }) => {
-                setReservations((resData || []).map(r => ({
+                setReservations((resData || []).map((r: any) => ({
                   id: r.id,
                   checkin: r.checkin,
                   checkout: r.checkout,
@@ -233,7 +245,12 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
   }, []);
 
   const resetForm = useCallback(() => {
-    setForm(INITIAL_FORM);
+    setForm({
+      ...INITIAL_FORM,
+      customer_id: initialCustomerId || '',
+      related_to_type: initialRelatedToType || '',
+      related_to_id: initialRelatedToId || '',
+    });
     setSubtasks([]);
     setAttachments([]);
     setDependencies([]);
@@ -241,9 +258,9 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
     setShowSubtasks(false);
     setShowAttachments(false);
     setShowDependencies(false);
-  }, []);
+  }, [initialCustomerId, initialRelatedToType, initialRelatedToId]);
 
-  // Precargar datos al editar
+  // Precargar datos al editar o resetear al abrir para crear
   useEffect(() => {
     if (editTask) {
       setForm({
@@ -266,6 +283,14 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
       resetForm();
     }
   }, [editTask, resetForm]);
+
+  // Resetear formulario cuando se abre el panel para crear (no editar)
+  useEffect(() => {
+    if (isOpen && !editTask) {
+      resetForm();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Recargar adjuntos persistidos desde el servidor
   const reloadAttachments = useCallback(async (taskId: string) => {

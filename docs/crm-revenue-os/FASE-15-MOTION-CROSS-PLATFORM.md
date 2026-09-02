@@ -18,7 +18,7 @@
 
 | Qué | Estado | Archivo:línea |
 |---|---|---|
-| `motion` (motion.dev) | ✅ instalado (F0) | `package.json` |
+| `motion` (motion.dev) | ❌ pendiente — instalar en F0: `npm install motion` | `package.json` |
 | `public/sw.js` | ✅ existe | `public/sw.js` |
 | `mobile/capacitor.config.ts` | ✅ existe | `mobile/capacitor.config.ts` |
 | `electron/src/main/index.ts` | ✅ existe | `electron/src/main/index.ts` |
@@ -26,7 +26,7 @@
 | Animaciones Motion dispersas | ✅ en varios componentes | grep `motion.` |
 | Sistema de animaciones consistente | ❌ | — |
 | Tests E2E cross-platform | ❌ | — |
-| `platformCapabilities.ts` | ✅ (F3 lo crea) | `src/lib/services/voice/platformCapabilities.ts` |
+| `platformCapabilities.ts` | ❌ a crear (F3/F15) | `src/lib/services/voice/platformCapabilities.ts` |
 
 ---
 
@@ -201,7 +201,7 @@ self.addEventListener('fetch', (event) => {
   "shortcuts": [
     { "name": "Pipeline", "url": "/app/crm/pipeline", "icons": [{ "src": "/icons/pipeline-96.png", "sizes": "96x96" }] },
     { "name": "Llamadas", "url": "/app/crm/llamadas", "icons": [{ "src": "/icons/calls-96.png", "sizes": "96x96" }] },
-    { "name": "Mi Dashboard", "url": "/app/crm/mi-dashboard", "icons": [{ "src": "/icons/dashboard-96.png", "sizes": "96x96" }] }
+    { "name": "Inicio", "url": "/app/inicio", "icons": [{ "src": "/icons/dashboard-96.png", "sizes": "96x96" }] }
   ]
 }
 ```

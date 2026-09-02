@@ -86,9 +86,9 @@ INSERT call_analyses
 
 ```sql
 CREATE TABLE call_transcripts (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  call_id bigint NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+  call_id uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
   provider text NOT NULL,
   provider_model text,
   language text NOT NULL DEFAULT 'es',
@@ -117,8 +117,8 @@ CREATE POLICY tr_update ON call_transcripts FOR UPDATE USING (organization_id = 
 CREATE POLICY tr_delete ON call_transcripts FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE call_transcript_segments (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  transcript_id bigint NOT NULL REFERENCES call_transcripts(id) ON DELETE CASCADE,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  transcript_id uuid NOT NULL REFERENCES call_transcripts(id) ON DELETE CASCADE,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   speaker_label text NOT NULL,
   speaker_role text CHECK (speaker_role IN ('agent','customer','unknown')),
@@ -140,10 +140,10 @@ CREATE POLICY seg_delete ON call_transcript_segments FOR DELETE USING (organizat
 
 ```sql
 CREATE TABLE call_analyses (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  call_id bigint NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
-  transcript_id bigint REFERENCES call_transcripts(id) ON DELETE SET NULL,
+  call_id uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+  transcript_id uuid REFERENCES call_transcripts(id) ON DELETE SET NULL,
   provider text NOT NULL,
   model text,
   summary text,
@@ -184,7 +184,7 @@ CREATE POLICY ca_delete ON call_analyses FOR DELETE USING (organization_id = cur
 
 ```sql
 CREATE TABLE call_tags (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   color text NOT NULL DEFAULT '#6366f1',
@@ -203,10 +203,10 @@ CREATE POLICY ct_update ON call_tags FOR UPDATE USING (organization_id = current
 CREATE POLICY ct_delete ON call_tags FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE call_tag_relations (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  call_id bigint NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
-  tag_id bigint NOT NULL REFERENCES call_tags(id) ON DELETE CASCADE,
+  call_id uuid NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+  tag_id uuid NOT NULL REFERENCES call_tags(id) ON DELETE CASCADE,
   source text NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','ia')),
   confidence numeric(3,2),
   created_at timestamptz NOT NULL DEFAULT now()
@@ -219,26 +219,77 @@ CREATE POLICY ctr_insert ON call_tag_relations FOR INSERT WITH CHECK (organizati
 CREATE POLICY ctr_delete ON call_tag_relations FOR DELETE USING (organization_id = current_org_id());
 ```
 
-### 3.2 Vista materializada `mv_call_quality`
+### 3.2 `fn_call_quality` — función, NO vista materializada
+
+**Por qué se descartó `mv_call_quality`.** El borrador tenía dos defectos verificados:
+
+| Defecto | Detalle |
+|---|---|
+| 🔴 **Fuga cross-tenant** | Una vista materializada de PostgreSQL **no hereda RLS**. Cualquier usuario autenticado habría podido leer las métricas de llamadas de todas las organizaciones |
+| 🔴 **`COUNT(*)` inflado** | `LEFT JOIN call_analyses` produce fan-out: una llamada con 2 análisis se contaba **2 veces** en `total_calls`. Los promedios también se sesgaban |
+
+Se usa una **función** con el mismo criterio que F11 y F14: el `org_id` viaja como
+parámetro (sin fuga) y la agregación de análisis se hace en una subconsulta previa
+al `JOIN` (sin fan-out):
 
 ```sql
-CREATE MATERIALIZED VIEW mv_call_quality AS
-SELECT
-  c.organization_id,
-  c.user_id,
-  DATE_TRUNC('day', c.started_at) AS call_date,
-  COUNT(*) AS total_calls,
-  AVG(ca.quality_score) AS avg_quality,
-  AVG(ca.talk_ratio_agent) AS avg_talk_ratio_agent,
-  AVG(c.duration_seconds) AS avg_duration
-FROM calls c
-LEFT JOIN call_analyses ca ON ca.call_id = c.id
-WHERE c.status = 'completed'
-GROUP BY c.organization_id, c.user_id, DATE_TRUNC('day', c.started_at);
+CREATE OR REPLACE FUNCTION fn_call_quality(
+  p_org_id  integer,
+  p_start   date,
+  p_end     date,
+  p_user_id uuid DEFAULT NULL          -- NULL = todos los vendedores
+) RETURNS TABLE (
+  user_id               uuid,
+  call_date             date,
+  total_calls           bigint,
+  analyzed_calls        bigint,
+  avg_quality           numeric,
+  avg_talk_ratio_agent  numeric,
+  avg_duration_seconds  numeric
+) AS $$
+  WITH analysis AS (
+    -- Una fila por llamada: colapsa N análisis antes del JOIN → sin fan-out
+    SELECT
+      ca.call_id,
+      AVG(ca.quality_score)      AS quality_score,
+      AVG(ca.talk_ratio_agent)   AS talk_ratio_agent
+    FROM call_analyses ca
+    WHERE ca.organization_id = p_org_id
+    GROUP BY ca.call_id
+  )
+  SELECT
+    c.user_id,
+    DATE_TRUNC('day', c.started_at)::date        AS call_date,
+    COUNT(DISTINCT c.id)                          AS total_calls,
+    COUNT(DISTINCT c.id) FILTER (WHERE a.call_id IS NOT NULL) AS analyzed_calls,
+    ROUND(AVG(a.quality_score), 2)                AS avg_quality,
+    ROUND(AVG(a.talk_ratio_agent), 4)             AS avg_talk_ratio_agent,
+    ROUND(AVG(c.duration_seconds), 1)             AS avg_duration_seconds
+  FROM calls c
+  LEFT JOIN analysis a ON a.call_id = c.id
+  WHERE c.organization_id = p_org_id
+    AND c.status = 'completed'
+    AND c.started_at >= p_start
+    AND c.started_at <  p_end
+    AND (p_user_id IS NULL OR c.user_id = p_user_id)
+  GROUP BY c.user_id, DATE_TRUNC('day', c.started_at)
+  ORDER BY call_date DESC, c.user_id;
+$$ LANGUAGE sql STABLE;
 
-CREATE UNIQUE INDEX idx_mv_call_quality ON mv_call_quality (organization_id, user_id, call_date);
--- Refrescar via cron: REFRESH MATERIALIZED VIEW CONCURRENTLY mv_call_quality;
+REVOKE ALL ON FUNCTION fn_call_quality(integer, date, date, uuid) FROM public;
+GRANT EXECUTE ON FUNCTION fn_call_quality(integer, date, date, uuid) TO authenticated;
+
+-- Índice que la función necesita para no hacer seq scan sobre calls
+CREATE INDEX IF NOT EXISTS idx_calls_org_started_status
+  ON calls (organization_id, started_at DESC)
+  WHERE status = 'completed';
+CREATE INDEX IF NOT EXISTS idx_call_analyses_org_call
+  ON call_analyses (organization_id, call_id);
 ```
+
+> `analyzed_calls` se añade para distinguir "llamadas totales" de "llamadas con
+> análisis": con la vista materializada anterior era imposible saber si un promedio
+> bajo venía de mala calidad o de pocas llamadas analizadas.
 
 ### 3.3 Seeds
 
@@ -261,7 +312,7 @@ SELECT relname, relrowsecurity FROM pg_class
   WHERE relname IN ('call_transcripts','call_transcript_segments','call_analyses','call_tags','call_tag_relations');
 -- Esperado: 5 filas, todas true
 
-SELECT relname FROM pg_class WHERE relname = 'mv_call_quality';
+SELECT proname FROM pg_proc WHERE proname = 'fn_call_quality';
 -- Esperado: 1 fila
 ```
 
@@ -758,7 +809,7 @@ export async function applyAnalysisActions(
 ## 10. Definition of Done
 
 - [ ] `call_transcripts`, `call_transcript_segments`, `call_analyses`, `call_tags`, `call_tag_relations` existen con RLS.
-- [ ] `mv_call_quality` existe y se refresca.
+- [ ] `fn_call_quality` existe y NO se creo `mv_call_quality` (una vista materializada no hereda RLS). `COUNT(DISTINCT c.id)` no se infla con multiples analisis por llamada.
 - [ ] Pipeline asíncrono procesa transcripciones pendientes vía cron.
 - [ ] ElevenLabs Scribe v2 funciona como default.
 - [ ] Gemini 2.5 Flash funciona como análisis default.

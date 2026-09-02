@@ -738,7 +738,7 @@ export default function PedidosOnlinePage() {
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[900px]">
+                <table className="w-full text-sm min-w-[1100px]">
                   <thead>
                     <tr className="border-b dark:border-gray-700 bg-muted/50 dark:bg-gray-800/50">
                       {['', 'Pedido', 'Cliente', 'Estado', 'Entrega', 'Items', 'Pago', 'Total', 'Tiempo', 'Acciones'].map((h, idx) => (
@@ -897,7 +897,7 @@ export default function PedidosOnlinePage() {
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[900px]">
+              <table className="w-full text-sm min-w-[1100px]">
                 <thead>
                   <tr className="border-b dark:border-gray-700 bg-muted/50 dark:bg-gray-800/50">
                     <th className="text-left p-3 w-10">
@@ -909,11 +909,11 @@ export default function PedidosOnlinePage() {
                         onCheckedChange={toggleSelectAll}
                       />
                     </th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100">Pedido</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100">Cliente</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100 min-w-[180px]">Pedido</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100 min-w-[180px]">Cliente</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Estado</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100">Entrega</th>
-                    <th className="text-left p-3 font-medium dark:text-gray-100">Items</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100 min-w-[200px]">Entrega</th>
+                    <th className="text-left p-3 font-medium dark:text-gray-100 min-w-[220px]">Items</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Pago</th>
                     <th className="text-right p-3 font-medium dark:text-gray-100">Total</th>
                     <th className="text-left p-3 font-medium dark:text-gray-100">Tiempo</th>
@@ -932,7 +932,7 @@ export default function PedidosOnlinePage() {
                           onCheckedChange={() => toggleSelectOrder(order.id)}
                         />
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 min-w-[180px]">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1 flex-wrap">
                             <CopyableId
@@ -962,7 +962,7 @@ export default function PedidosOnlinePage() {
                           )}
                         </div>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 min-w-[180px]">
                         <div className="flex flex-col gap-0.5">
                           <span className="dark:text-gray-300">{order.customer_name || order.customer?.full_name || '—'}</span>
                           {(order.customer_phone || order.customer?.phone) && (
@@ -983,7 +983,7 @@ export default function PedidosOnlinePage() {
                           {getStatusLabel(order.status)}
                         </span>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 min-w-[200px]">
                         <div className="flex flex-col gap-0.5">
                           <span className="flex items-center gap-1 text-xs dark:text-gray-300">
                             {order.delivery_type === 'pickup' && <Store className="h-3 w-3 dark:text-gray-400" />}
@@ -1006,10 +1006,10 @@ export default function PedidosOnlinePage() {
                           )}
                         </div>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 min-w-[220px]">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-medium dark:text-gray-200">{order.items?.length || 0} producto(s)</span>
-                          <div className="text-xs text-muted-foreground dark:text-gray-400 space-y-0.5 sm:max-w-[160px]">
+                          <div className="text-xs text-muted-foreground dark:text-gray-400 space-y-0.5 sm:max-w-[220px]">
                             {order.items?.slice(0, 2).map((item, idx) => (
                               <div key={idx} className="flex justify-between gap-1">
                                 <span className="break-words whitespace-normal">{item.quantity}x {item.product_name}</span>

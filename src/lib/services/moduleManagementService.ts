@@ -402,12 +402,12 @@ export const moduleManagementService = {
   async ensureCoreModulesActivated(organizationId: number, supabaseClient = supabase): Promise<void> {
     const coreModules = await this.getCoreModules(supabaseClient);
     
-    for (const module of coreModules) {
+    for (const coreModule of coreModules) {
       await supabaseClient
         .from('organization_modules')
         .upsert({
           organization_id: organizationId,
-          module_code: module.code,
+          module_code: coreModule.code,
           is_active: true,
           enabled_at: new Date().toISOString(),
           disabled_at: null
@@ -763,8 +763,8 @@ export const moduleManagementService = {
 
         if (paidActiveModules) {
           const excessModules = paidActiveModules.slice(orgStatus.max_modules_allowed);
-          for (const module of excessModules) {
-            await this.deactivateModule(organizationId, module.module_code, supabaseClient);
+          for (const excessModule of excessModules) {
+            await this.deactivateModule(organizationId, excessModule.module_code, supabaseClient);
           }
         }
       }

@@ -274,7 +274,7 @@ export class SMSService {
    */
   private static async getUserFromSMSNumber(phoneNumber: string): Promise<string | undefined> {
     // TODO: Implementar lógica para determinar usuario
-    // Por ejemplo, buscar en user_profiles por teléfono
+    // Por ejemplo, buscar en profiles por teléfono
     return undefined // Placeholder
   }
 

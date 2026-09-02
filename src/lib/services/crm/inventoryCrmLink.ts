@@ -1,8 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
-import {
-  getOrganizationId,
-  getCurrentBranchIdWithFallback,
-} from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
+import { getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
 import {
   stockMovementService,
   type SaleItemForStock,

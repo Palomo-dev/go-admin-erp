@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarIcon, User2 } from "lucide-react";
+import { motion } from "motion/react";
 import { formatCurrency } from "@/utils/Utils";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Opportunity } from "@/types/crm";
@@ -58,6 +59,12 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
   const hasRecentActivity = daysSinceCreation < 7; // Menos de 7 días
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+    >
     <Card
       className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-900/50 transition-shadow"
     >
@@ -135,5 +142,6 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
         )}
       </CardContent>
     </Card>
+    </motion.div>
   );
 }

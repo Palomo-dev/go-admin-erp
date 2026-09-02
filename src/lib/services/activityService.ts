@@ -2,19 +2,10 @@
  * Servicio para gestión de actividades CRM
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '../supabase/config';
-import { createClient } from '@supabase/supabase-js'
 import { obtenerOrganizacionActiva, getCurrentUserId } from '../hooks/useOrganization';
 
-// Cliente Service Role para bypass de RLS en operaciones del servidor
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const supabaseServiceRole = serviceRoleKey ? createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-}) : null
 import type { 
   Activity, 
   ActivityFilter, 
@@ -116,10 +107,10 @@ export async function getActivities(filters: ActivityFilter = {}): Promise<Activ
       console.log('👥 User IDs únicos encontrados:', userIds);
 
       if (userIds.length > 0) {
-        // Consultar user_profiles por separado
+        // Consultar profiles por separado
         const { data: userProfiles, error: userError } = await supabase
-          .from('user_profiles')
-          .select('id, name, email')
+          .from('profiles')
+          .select('id, first_name, last_name, email')
           .in('id', userIds);
 
         if (userError) {
@@ -130,7 +121,12 @@ export async function getActivities(filters: ActivityFilter = {}): Promise<Activ
           // Enriquecer actividades con datos de usuario
           enrichedActivities = enrichedActivities.map(activity => ({
             ...activity,
-            user_name: userProfiles?.find(user => user.id === activity.user_id)?.name || 'Usuario desconocido'
+            user_name: (() => {
+              const user = userProfiles?.find(u => u.id === activity.user_id);
+              if (!user) return 'Usuario desconocido';
+              const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+              return fullName || user.email || 'Usuario desconocido';
+            })()
           }));
         }
       }
@@ -171,10 +167,10 @@ async function enrichActivities(activities: any[]): Promise<Activity[]> {
   for (const activity of activities) {
     const enrichedActivity: Activity = {
       ...activity,
-      user_name: activity.user_profiles 
-        ? `${activity.user_profiles.first_name || ''} ${activity.user_profiles.last_name || ''}`.trim()
+      user_name: activity.profiles 
+        ? `${activity.profiles.first_name || ''} ${activity.profiles.last_name || ''}`.trim()
         : 'Sistema',
-      user_avatar: activity.user_profiles?.avatar_url,
+      user_avatar: activity.profiles?.avatar_url,
       metadata: activity.metadata || {}
     };
 
@@ -250,9 +246,14 @@ async function getRelatedEntityData(relatedType: string, relatedId: string) {
 /**
  * Crea una nueva actividad
  * @param activityData - Datos de la actividad
- * @param organizationId - ID de organización (opcional, se obtiene automáticamente si no se proporciona)
+ * @param organizationId - ID de organización (obligatorio en servidor, opcional en cliente)
+ * @param supabaseClient - Cliente Supabase opcional (usar en servidor para bypass de RLS con service role)
  */
-export async function createActivity(activityData: NewActivity, organizationId?: number): Promise<Activity> {
+export async function createActivity(
+  activityData: NewActivity,
+  organizationId?: number,
+  supabaseClient?: SupabaseClient
+): Promise<Activity> {
   try {
     console.log('🎆 === CREANDO NUEVA ACTIVIDAD ===');
     console.log('📄 Datos recibidos:', activityData);
@@ -264,16 +265,14 @@ export async function createActivity(activityData: NewActivity, organizationId?:
       orgId = organizationId;
       console.log('🏢 Usando organizationId del parámetro:', orgId);
     } else {
-      // Intentar obtenerlo del cliente
+      // Intentar obtenerlo del cliente (solo válido en browser)
       try {
         const organizacion = obtenerOrganizacionActiva();
         orgId = organizacion.id;
         console.log('🏢 Organización obtenida del cliente:', organizacion);
       } catch (error) {
-        // Si falla (porque estamos en el servidor), usar organización por defecto
-        console.warn('⚠️ No se pudo obtener organización del cliente (probablemente corriendo en servidor):', error);
-        orgId = 1; // TODO: Obtener de variable de entorno o configuración
-        console.log('🏢 Usando organización por defecto:', orgId);
+        // En servidor sin organizationId explícito, no hay fallback — lanzar error
+        throw new Error('organizationId es requerido para crear actividades en el servidor');
       }
     }
     
@@ -308,9 +307,9 @@ export async function createActivity(activityData: NewActivity, organizationId?:
     
     console.log('💾 Objeto final a insertar:', newActivity);
 
-    // Seleccionar cliente Supabase apropiado
-    const clientToUse = (organizationId && supabaseServiceRole) ? supabaseServiceRole : supabase;
-    console.log('🔑 Usando cliente:', organizationId ? 'Service Role (bypass RLS)' : 'Cliente normal');
+    // Usar el cliente proporcionado (server-side con service role) o el cliente global (client-side)
+    const clientToUse = supabaseClient || supabase;
+    console.log('🔑 Usando cliente:', supabaseClient ? 'Cliente proporcionado' : 'Cliente global');
 
     const { data, error } = await clientToUse
       .from('activities')
@@ -477,10 +476,10 @@ export async function getActivityUsers() {
       return [];
     }
 
-    // Paso 2: Consultar user_profiles por separado
+    // Paso 2: Consultar profiles por separado
     const { data: userProfiles, error: userError } = await supabase
-      .from('user_profiles')
-      .select('id, name, email')
+      .from('profiles')
+      .select('id, first_name, last_name, email')
       .in('id', uniqueUserIds);
 
     if (userError) {
@@ -493,7 +492,7 @@ export async function getActivityUsers() {
     // Formatear respuesta
     const users = userProfiles?.map(profile => ({
       id: profile.id,
-      name: profile.name || 'Usuario sin nombre'
+      name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Usuario sin nombre'
     })) || [];
 
     console.log('✅ Usuarios formateados:', users);

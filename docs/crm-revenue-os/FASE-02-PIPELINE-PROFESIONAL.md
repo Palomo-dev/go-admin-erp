@@ -60,16 +60,47 @@ ALTER TABLE opportunities
   ADD COLUMN IF NOT EXISTS last_contact_at timestamptz,
   ADD COLUMN IF NOT EXISTS contact_channel text,
   ADD COLUMN IF NOT EXISTS contact_result text,
-  ADD COLUMN IF NOT EXISTS objection_id bigint,
+  ADD COLUMN IF NOT EXISTS objection_id uuid,
   ADD COLUMN IF NOT EXISTS loss_reason_value text,
   ADD COLUMN IF NOT EXISTS competitor_name text,
   ADD COLUMN IF NOT EXISTS competitor_price numeric(14,2),
   ADD COLUMN IF NOT EXISTS missing_features text[],
   ADD COLUMN IF NOT EXISTS recontact_at date,
-  ADD COLUMN IF NOT EXISTS discovery_data jsonb NOT NULL DEFAULT '{}'::jsonb;
+  ADD COLUMN IF NOT EXISTS discovery_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  -- closed_at: fecha REAL de cierre (won/lost). No existía en el esquema y
+  -- F11 (renovaciones) y F14 (ciclo de venta, cohortes) la necesitan.
+  -- No confundir con expected_close_date (date), que es la fecha ESPERADA.
+  ADD COLUMN IF NOT EXISTS closed_at timestamptz;
+
+-- Backfill: las 3 oportunidades ya cerradas (1 won + 2 lost) toman updated_at
+-- como aproximación. Verificado: 25 oportunidades totales (22 open, 2 lost, 1 won).
+UPDATE opportunities
+   SET closed_at = updated_at
+ WHERE status IN ('won','lost') AND closed_at IS NULL;
+
+-- Trigger: mantener closed_at sincronizado con el cambio de status
+CREATE OR REPLACE FUNCTION fn_opportunities_set_closed_at()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.status IN ('won','lost') AND (OLD.status IS DISTINCT FROM NEW.status) THEN
+    NEW.closed_at := COALESCE(NEW.closed_at, now());
+  ELSIF NEW.status NOT IN ('won','lost') THEN
+    NEW.closed_at := NULL;   -- se reabre la oportunidad
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_opportunities_closed_at ON opportunities;
+CREATE TRIGGER trg_opportunities_closed_at
+  BEFORE UPDATE OF status ON opportunities
+  FOR EACH ROW EXECUTE FUNCTION fn_opportunities_set_closed_at();
 
 CREATE INDEX IF NOT EXISTS idx_opportunities_org_record_type
   ON opportunities (organization_id, record_type, status);
+CREATE INDEX IF NOT EXISTS idx_opportunities_org_closed_at
+  ON opportunities (organization_id, closed_at)
+  WHERE closed_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_opportunities_org_last_contact
   ON opportunities (organization_id, last_contact_at NULLS FIRST)
   WHERE status = 'open';
@@ -82,7 +113,7 @@ CREATE INDEX IF NOT EXISTS idx_opportunities_org_recontact
 
 ```sql
 CREATE TABLE objections (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   title text NOT NULL,
   category text NOT NULL,
@@ -105,10 +136,10 @@ CREATE POLICY objections_update ON objections FOR UPDATE USING (organization_id 
 CREATE POLICY objections_delete ON objections FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE opportunity_objections (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
-  objection_id bigint NOT NULL REFERENCES objections(id) ON DELETE CASCADE,
+  objection_id uuid NOT NULL REFERENCES objections(id) ON DELETE CASCADE,
   notes text,
   detected_by text NOT NULL DEFAULT 'manual' CHECK (detected_by IN ('manual','ia')),
   resolved boolean NOT NULL DEFAULT false,
@@ -133,7 +164,7 @@ ALTER TABLE opportunities
 
 ```sql
 CREATE TABLE discovery_templates (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   vertical_id uuid,
@@ -297,18 +328,47 @@ Ejemplo por cada una de las 10 etapas de la plantilla "Ventas B2B SaaS":
 
 ### 2.4 Catálogo de plantillas de pipeline importables
 
-No se crea tabla — se almacena como JSON en `src/lib/services/crm/pipelineTemplates.ts` (constante en código, como catálogo). La UI ofrece las plantillas y el usuario importa la que quiera con un clic, insertando `pipelines` + `stages` para su organización.
+No se crea tabla — se almacena como constante TypeScript en
+`src/lib/services/crm/pipelineTemplates.ts`. La UI ofrece las plantillas en el
+diálogo "Crear Nuevo Pipeline" de `PipelineHeader.tsx` y el usuario elige una
++ escribe un nombre personalizado. Al crear, se insertan `pipelines` + `stages`
+para su organización.
 
-Plantillas del catálogo:
+Plantillas del catálogo (implementación real, 2026-09):
 
-| ID | Nombre | Etapas | Uso |
-|---|---|---|---|
-| `b2b_saas` | Ventas B2B SaaS | 10 etapas (las del método) | Software, servicios B2B |
-| `b2b_retail` | Ventas B2B Retail | 7 etapas | Distribución, mayoreo |
-| `b2c_services` | Servicios B2C | 5 etapas | Peluquerías, gimnasios, consultorías |
-| `onboarding` | Onboarding cliente | 7 etapas | Post-venta (F11) |
-| `renewal` | Renovación | 6 etapas | Post-venta (F11) |
-| `expansion` | Expansión/Upsell | 5 etapas | Post-venta (F11) |
+| Key | Label | `pipeline_type` | Etapas | Uso |
+|---|---|---|---|---|
+| `blank` | Pipeline en blanco | `null` | 0 | Pipeline vacío, etapas manuales |
+| `sales` | Ventas | `sales` | 9 (Lead nuevo → Contactado → Calificado → Discovery → Demo → Propuesta → Negociacion → Contrato/pago → Perdido) | Pipeline comercial clásico |
+| `onboarding` | Onboarding | `onboarding` | 7 (Kickoff → Configuracion → Importacion → Capacitacion → Uso asistido → Revision 14d → Business Review 30d) | Post-venta (F11) |
+| `renewal` | Renovación | `renewal` | 6 (Renovacion pendiente → Contacto iniciado → Negociacion → Contrato enviado → Renovado → No renovado) | Post-venta (F11) |
+
+**Función `createPipelineFromTemplate(supabaseClient, orgId, templateKey, customName?)`:**
+- Reutilizable server-side (service role en `/api/modules`) y client-side (anon en `PipelineHeader`).
+- Idempotente: si ya existe un pipeline con el mismo `pipeline_type` para esa organización, retorna su ID sin duplicar.
+- Si `customName` viene vacío, usa el `label` de la plantilla como nombre.
+- Inserta el pipeline y luego las etapas en batch.
+
+**Diálogo "Crear Nuevo Pipeline" (PipelineHeader.tsx):**
+- Dos campos independientes:
+  1. **Plantilla** — selector de botones con las 4 opciones, cada una muestra descripción, badge de tipo y la secuencia de etapas.
+  2. **Nombre del Pipeline** — input de texto libre; el usuario escribe el nombre que quiera, independientemente de la plantilla.
+- Si selecciona "Pipeline en blanco" → crea solo el pipeline sin etapas.
+- Si selecciona "Ventas"/"Onboarding"/"Renovación" → crea el pipeline con el nombre ingresado + inserta las etapas preestablecidas.
+- Al cerrar el diálogo se resetean ambos campos.
+- Después de crear, se recargan los pipelines desde la BD y se selecciona el nuevo.
+
+**Provisión automática al activar CRM (`/api/modules`):**
+- Al activar el módulo `crm`, se llama `createPipelineFromTemplate` para `onboarding` y `renewal` automáticamente, de forma idempotente.
+- Así, toda organización que active CRM tiene sus pipelines de Onboarding y Renovación disponibles sin pasos manuales.
+
+> **Nota (2026-09): selector de pipeline en la UI.** `PipelineHeader.tsx` carga
+> TODOS los pipelines de la organización (sin filtrar por `pipeline_type`) y los
+> muestra en el dropdown con badges visuales: "Por defecto" (azul) para
+> `is_default=true`, "Onboarding" (morado) para `pipeline_type='onboarding'` y
+> "Renovación" (morado) para `pipeline_type='renewal'`. Así el usuario gestiona
+> onboarding y renovaciones desde el mismo `/app/crm/pipeline` sin páginas
+> separadas (ver F11 §4.1). `PipelineView` carga `is_default=true` al inicio.
 
 ### 2.5 Seeds idempotentes
 

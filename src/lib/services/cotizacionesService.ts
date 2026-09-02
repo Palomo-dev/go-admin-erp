@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { promotionEngine } from '@/lib/services/promotionEngine';
 
 export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'converted';
 
@@ -161,6 +162,35 @@ export class CotizacionesService {
     items: QuotationItem[]
   ): Promise<Quotation> {
     try {
+      // --- Evaluar promociones activas para Finanzas (cotizaciones) ---
+      let evaluatedItems = items;
+      try {
+        const promoResult = await promotionEngine.evaluate({
+          channel: 'finances',
+          items: items.map(it => ({
+            product_id: it.product_id || 0,
+            quantity: Number(it.qty) || 0,
+            unit_price: Number(it.unit_price) || 0,
+          })),
+          organization_id: quotationData.organization_id,
+          branch_id: quotationData.branch_id ?? undefined,
+        });
+
+        if (promoResult.discountTotal > 0) {
+          evaluatedItems = items.map(it => {
+            if (!it.discount_amount || it.discount_amount === 0) {
+              const promoDiscount = promoResult.itemDiscounts[it.product_id || 0] || 0;
+              if (promoDiscount > 0) {
+                return { ...it, discount_amount: promoDiscount };
+              }
+            }
+            return it;
+          });
+        }
+      } catch (promoErr) {
+        console.warn('[cotizacionesService] No se pudieron evaluar promociones:', promoErr);
+      }
+
       const { data, error } = await supabase
         .from('quotations')
         .insert(quotationData)
@@ -170,7 +200,7 @@ export class CotizacionesService {
       if (error) throw error;
 
       const quotationId = data.id;
-      const itemsToInsert = items.map((item) => ({
+      const itemsToInsert = evaluatedItems.map((item) => ({
         ...item,
         quotation_id: quotationId,
       }));

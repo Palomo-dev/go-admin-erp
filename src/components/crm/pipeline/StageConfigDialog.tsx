@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -27,7 +28,7 @@ import { supabase } from "@/lib/supabase/config";
 import { Stage } from "@/types/crm";
 import { ColorInput } from "./ColorInput";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trophy, XCircle } from "lucide-react";
 
 interface StageConfigDialogProps {
   isOpen: boolean;
@@ -38,9 +39,11 @@ interface StageConfigDialogProps {
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre de la etapa es obligatorio"),
-  probability: z.number().min(0).max(100),
+  probability: z.number().min(0).max(1),
   color: z.string().regex(/^#([0-9A-F]{6})$/i, "Color inválido"),
   description: z.string().optional(),
+  is_won: z.boolean(),
+  is_lost: z.boolean(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,9 +61,11 @@ export function StageConfigDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: stage.name || "",
-      probability: Math.round(Number(stage.probability) * 100) || 0,
+      probability: Number(stage.probability) || 0,
       color: stage.color || "#3498db",
       description: stage.description || "",
+      is_won: Boolean(stage.is_won),
+      is_lost: Boolean(stage.is_lost),
     },
   });
 
@@ -69,9 +74,11 @@ export function StageConfigDialog({
     if (isOpen) {
       form.reset({
         name: stage.name || "",
-        probability: Math.round(Number(stage.probability) * 100) || 0,
+        probability: Number(stage.probability) || 0,
         color: stage.color || "#3498db",
         description: stage.description || "",
+        is_won: Boolean(stage.is_won),
+        is_lost: Boolean(stage.is_lost),
       });
     }
   }, [stage, isOpen, form]);
@@ -84,9 +91,11 @@ export function StageConfigDialog({
         .from("stages")
         .update({
           name: values.name,
-          probability: values.probability / 100,
+          probability: values.probability,
           color: values.color,
           description: values.description,
+          is_won: values.is_won,
+          is_lost: values.is_lost,
           updated_at: new Date().toISOString(),
         })
         .eq("id", stage.id);
@@ -97,9 +106,11 @@ export function StageConfigDialog({
       const updatedStage = {
         ...stage,
         name: values.name,
-        probability: values.probability / 100,
+        probability: values.probability,
         color: values.color,
         description: values.description,
+        is_won: values.is_won,
+        is_lost: values.is_lost,
       };
 
       onStageUpdate(updatedStage);
@@ -152,12 +163,12 @@ export function StageConfigDialog({
               name="probability"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Probabilidad (%): {field.value}</FormLabel>
+                  <FormLabel>Probabilidad (%): {Math.round(field.value * 100)}</FormLabel>
                   <FormControl>
                     <Slider
                       min={0}
-                      max={100}
-                      step={1}
+                      max={1}
+                      step={0.01}
                       value={[field.value]}
                       onValueChange={(values) => field.onChange(values[0])}
                       className="mt-2"
@@ -198,6 +209,61 @@ export function StageConfigDialog({
                 </FormItem>
               )}
             />
+
+            {/* Tipo de etapa: ganada / perdida */}
+            <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Tipo de etapa
+              </p>
+
+              <FormField
+                control={form.control}
+                name="is_won"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-green-500" />
+                      <div>
+                        <FormLabel className="text-sm cursor-pointer">Etapa de cierre ganado</FormLabel>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Al mover aquí una oportunidad se abre el formulario de Closed Won
+                        </p>
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="is_lost"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      <div>
+                        <FormLabel className="text-sm cursor-pointer">Etapa de cierre perdido</FormLabel>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Al mover aquí una oportunidad se abre el dialog de razón de pérdida
+                        </p>
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={onClose} type="button">

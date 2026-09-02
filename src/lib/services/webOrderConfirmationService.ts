@@ -521,22 +521,38 @@ class WebOrderConfirmationService {
     userId: string
   ): Promise<string> {
     try {
-      // Verificar si ya existe un pago para este web_order (creado por webhook)
+      // Verificar si ya existe un pago para este web_order (creado por webhook/website).
+      // El website inserta el payment con status='paid', mientras que el ERP usa
+      // 'completed'. Aceptar ambos para evitar duplicar el pago (y la notificación
+      // que dispara el trigger trg_notify_payment_registered).
       const { data: existingPayment } = await supabase
         .from('payments')
         .select('id')
         .eq('source', 'web_order')
         .eq('source_id', order.id)
-        .eq('status', 'completed')
+        .in('status', ['paid', 'completed'])
         .limit(1)
         .maybeSingle();
 
       if (existingPayment) {
-        // Ya existe pago del webhook — vincularlo a la factura
+        // Ya existe pago del webhook/website — vincularlo a la factura.
+        // Mapear el submétodo (nequi, daviplata, pse, card) a la pasarela real
+        // (wompi) para que la notificación muestre el método correcto.
+        const mappedMethod = mapWebPaymentMethodToInvoice(order.payment_method);
         await supabase
           .from('payments')
-          .update({ source: 'invoice_sales', source_id: invoiceId })
+          .update({ source: 'invoice_sales', source_id: invoiceId, method: mappedMethod })
           .eq('id', existingPayment.id);
+
+        // El trigger trg_notify_payment_registered ya creó una notificación con
+        // el submétodo (ej: "Método: nequi") al insertarse el payment del website.
+        // Corregir el contenido para que muestre la pasarela real (wompi).
+        await this.fixPaymentNotificationMethod(
+          order.organization_id,
+          existingPayment.id,
+          mappedMethod,
+        );
+
         return existingPayment.id;
       }
 
@@ -566,6 +582,47 @@ class WebOrderConfirmationService {
     } catch (error) {
       console.error('Error en createPayment:', error);
       return '';
+    }
+  }
+
+  /**
+   * Corrige el contenido de la notificación de "pago registrado" que creó el
+   * trigger trg_notify_payment_registered al insertarse el payment del website.
+   * El trigger usa NEW.method (el submétodo: nequi, daviplata, etc.), pero el
+   * método real es la pasarela (wompi). Actualiza el payload de la notificación
+   * existente para que muestre el método correcto.
+   */
+  private async fixPaymentNotificationMethod(
+    organizationId: number,
+    paymentId: string,
+    correctMethod: string,
+  ): Promise<void> {
+    try {
+      const { data: notif, error: notifError } = await supabase
+        .from('notifications')
+        .select('id, payload')
+        .eq('organization_id', organizationId)
+        .eq('payload->>payment_id', paymentId)
+        .eq('payload->>type', 'payment_registered')
+        .limit(1)
+        .maybeSingle();
+
+      if (notifError || !notif) return;
+
+      const currentPayload = notif.payload as Record<string, unknown>;
+      const amount = currentPayload.amount as string | undefined;
+      const updatedContent = `Se registró un pago de $${amount ?? '0'} — Método: ${correctMethod}`;
+
+      await supabase
+        .from('notifications')
+        .update({
+          payload: { ...currentPayload, content: updatedContent },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', notif.id);
+    } catch (err) {
+      // No fallar la confirmación si la corrección de notificación falla
+      console.warn('No se pudo corregir la notificación de pago:', err);
     }
   }
 

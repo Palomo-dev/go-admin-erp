@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/utils/orgId';
 
 /**
  * Servicio CRM para gestión de onboarding de clientes (FASE 4 - Post-venta).
@@ -389,13 +389,14 @@ class OnboardingService {
       const usersMap = new Map<string, string>();
       if (assignedIds.length > 0) {
         const { data: users } = await supabase
-          .from('user_profiles')
-          .select('id, name')
+          .from('profiles')
+          .select('id, first_name, last_name, email')
           .in('id', assignedIds);
 
         if (users) {
-          (users as Array<{ id: string; name: string }>).forEach((u) => {
-            usersMap.set(u.id, u.name);
+          (users as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null }>).forEach((u) => {
+            const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim();
+            usersMap.set(u.id, fullName || u.email || 'Usuario sin nombre');
           });
         }
       }
@@ -487,3 +488,393 @@ class OnboardingService {
 
 export const onboardingService = new OnboardingService();
 export default onboardingService;
+
+// ─── Funciones server-side (F11) ─────────────────────────────────────────────
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+export interface OnboardingTemplateRow {
+  id: string;
+  organization_id: number;
+  name: string;
+  steps: unknown;
+  default_duration_days: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface OnboardingInstanceRow {
+  id: string;
+  organization_id: number;
+  template_id: string | null;
+  opportunity_id: string;
+  customer_id: string;
+  parent_opportunity_id: string | null;
+  status: 'active' | 'completed' | 'at_risk' | 'churned';
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface OnboardingStepRow {
+  id: string;
+  organization_id: number;
+  instance_id: string;
+  step_number: number;
+  name: string;
+  description: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  completed_by: string | null;
+  is_completed: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface OnboardingInstanceWithSteps extends OnboardingInstanceRow {
+  steps: OnboardingStepRow[];
+  template?: OnboardingTemplateRow | null;
+}
+
+export interface OnboardingInstanceFilters {
+  status?: string;
+  opportunity_id?: string;
+  customer_id?: string;
+  template_id?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface OnboardingTemplateInput {
+  name: string;
+  steps: unknown;
+  default_duration_days?: number;
+  is_active?: boolean;
+}
+
+/**
+ * Crea una instancia de onboarding desde una plantilla.
+ * Crea onboarding_instance + onboarding_steps desde template.steps.
+ */
+export async function createOnboardingInstance(
+  orgId: number,
+  opportunityId: string,
+  templateId: string,
+  supabase: SupabaseClient
+): Promise<OnboardingInstanceWithSteps | null> {
+  // 1. Obtener la plantilla
+  const { data: template, error: tplError } = await supabase
+    .from('onboarding_templates')
+    .select('*')
+    .eq('id', templateId)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+
+  if (tplError || !template) {
+    console.warn('[onboardingService.createOnboardingInstance] template not found:', templateId);
+    return null;
+  }
+
+  const tpl = template as OnboardingTemplateRow;
+
+  // 2. Obtener datos de la oportunidad (customer_id, parent_opportunity_id)
+  const { data: opp, error: oppError } = await supabase
+    .from('opportunities')
+    .select('id, customer_id, parent_opportunity_id')
+    .eq('id', opportunityId)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+
+  if (oppError || !opp) {
+    console.warn('[onboardingService.createOnboardingInstance] opportunity not found:', opportunityId);
+    return null;
+  }
+
+  const oppData = opp as { id: string; customer_id: string; parent_opportunity_id: string | null };
+
+  // 3. Crear la instancia
+  const { data: instance, error: instError } = await supabase
+    .from('onboarding_instances')
+    .insert({
+      organization_id: orgId,
+      template_id: templateId,
+      opportunity_id: opportunityId,
+      customer_id: oppData.customer_id,
+      parent_opportunity_id: oppData.parent_opportunity_id,
+      status: 'active',
+      started_at: new Date().toISOString(),
+    })
+    .select('*')
+    .single();
+
+  if (instError || !instance) {
+    console.error('[onboardingService.createOnboardingInstance] error creating instance:', instError?.message);
+    return null;
+  }
+
+  const instanceRow = instance as OnboardingInstanceRow;
+
+  // 4. Crear steps desde template.steps (jsonb)
+  const rawSteps = Array.isArray(tpl.steps) ? tpl.steps : [];
+  const now = new Date();
+  const durationDays = tpl.default_duration_days || 30;
+
+  const stepsToInsert = rawSteps.map((step: Record<string, unknown>, index: number) => {
+    const dayOffset = typeof step.day === 'number' ? step.day : Math.round((durationDays / Math.max(rawSteps.length, 1)) * (index + 1));
+    const dueDate = new Date(now);
+    dueDate.setDate(dueDate.getDate() + dayOffset);
+
+    return {
+      organization_id: orgId,
+      instance_id: instanceRow.id,
+      step_number: index + 1,
+      name: (step.title as string) || (step.name as string) || `Paso ${index + 1}`,
+      description: (step.description as string) || null,
+      due_date: dueDate.toISOString(),
+      is_completed: false,
+    };
+  });
+
+  let createdSteps: OnboardingStepRow[] = [];
+  if (stepsToInsert.length > 0) {
+    const { data: steps, error: stepsError } = await supabase
+      .from('onboarding_steps')
+      .insert(stepsToInsert)
+      .select('*')
+      .order('step_number', { ascending: true });
+
+    if (stepsError) {
+      console.warn('[onboardingService.createOnboardingInstance] error creating steps:', stepsError.message);
+    } else {
+      createdSteps = (steps || []) as OnboardingStepRow[];
+    }
+  }
+
+  return {
+    ...instanceRow,
+    steps: createdSteps,
+    template: tpl,
+  };
+}
+
+/**
+ * Lista instancias de onboarding con filtros opcionales.
+ */
+export async function getOnboardingInstances(
+  orgId: number,
+  supabase: SupabaseClient,
+  filters?: OnboardingInstanceFilters
+): Promise<{ data: OnboardingInstanceRow[]; count: number }> {
+  let query = supabase
+    .from('onboarding_instances')
+    .select('*', { count: 'exact' })
+    .eq('organization_id', orgId)
+    .order('created_at', { ascending: false });
+
+  if (filters?.status) {
+    query = query.eq('status', filters.status);
+  }
+  if (filters?.opportunity_id) {
+    query = query.eq('opportunity_id', filters.opportunity_id);
+  }
+  if (filters?.customer_id) {
+    query = query.eq('customer_id', filters.customer_id);
+  }
+  if (filters?.template_id) {
+    query = query.eq('template_id', filters.template_id);
+  }
+
+  const limit = filters?.limit ?? 50;
+  const offset = filters?.offset ?? 0;
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error('[onboardingService.getOnboardingInstances] error:', error.message);
+    return { data: [], count: 0 };
+  }
+
+  return {
+    data: (data || []) as OnboardingInstanceRow[],
+    count: count || 0,
+  };
+}
+
+/**
+ * Obtiene una instancia de onboarding con sus steps.
+ */
+export async function getOnboardingInstance(
+  id: string,
+  orgId: number,
+  supabase: SupabaseClient
+): Promise<OnboardingInstanceWithSteps | null> {
+  const { data: instance, error } = await supabase
+    .from('onboarding_instances')
+    .select('*')
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+
+  if (error || !instance) {
+    console.warn('[onboardingService.getOnboardingInstance] not found:', id);
+    return null;
+  }
+
+  const instanceRow = instance as OnboardingInstanceRow;
+
+  const { data: steps, error: stepsError } = await supabase
+    .from('onboarding_steps')
+    .select('*')
+    .eq('instance_id', id)
+    .eq('organization_id', orgId)
+    .order('step_number', { ascending: true });
+
+  if (stepsError) {
+    console.warn('[onboardingService.getOnboardingInstance] error loading steps:', stepsError.message);
+  }
+
+  // Obtener template si existe
+  let template: OnboardingTemplateRow | null = null;
+  if (instanceRow.template_id) {
+    const { data: tpl } = await supabase
+      .from('onboarding_templates')
+      .select('*')
+      .eq('id', instanceRow.template_id)
+      .maybeSingle();
+    if (tpl) template = tpl as OnboardingTemplateRow;
+  }
+
+  return {
+    ...instanceRow,
+    steps: (steps || []) as OnboardingStepRow[],
+    template,
+  };
+}
+
+/**
+ * Marca un step como completado (o actualiza sus datos).
+ */
+export async function updateOnboardingStep(
+  stepId: string,
+  orgId: number,
+  data: { is_completed?: boolean; notes?: string; completed_by?: string },
+  supabase: SupabaseClient
+): Promise<OnboardingStepRow | null> {
+  const updateData: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (data.is_completed !== undefined) {
+    updateData.is_completed = data.is_completed;
+    if (data.is_completed) {
+      updateData.completed_at = new Date().toISOString();
+      updateData.completed_by = data.completed_by || null;
+    } else {
+      updateData.completed_at = null;
+      updateData.completed_by = null;
+    }
+  }
+
+  if (data.notes !== undefined) {
+    updateData.notes = data.notes;
+  }
+
+  const { data: result, error } = await supabase
+    .from('onboarding_steps')
+    .update(updateData)
+    .eq('id', stepId)
+    .eq('organization_id', orgId)
+    .select('*')
+    .maybeSingle();
+
+  if (error || !result) {
+    console.error('[onboardingService.updateOnboardingStep] error:', error?.message);
+    return null;
+  }
+
+  return result as OnboardingStepRow;
+}
+
+/**
+ * Actualiza el estado de una instancia de onboarding.
+ */
+export async function updateOnboardingInstanceStatus(
+  id: string,
+  orgId: number,
+  status: 'active' | 'completed' | 'at_risk' | 'churned',
+  supabase: SupabaseClient
+): Promise<OnboardingInstanceRow | null> {
+  const updateData: Record<string, unknown> = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (status === 'completed') {
+    updateData.completed_at = new Date().toISOString();
+  }
+
+  const { data: result, error } = await supabase
+    .from('onboarding_instances')
+    .update(updateData)
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .select('*')
+    .maybeSingle();
+
+  if (error || !result) {
+    console.error('[onboardingService.updateOnboardingInstanceStatus] error:', error?.message);
+    return null;
+  }
+
+  return result as OnboardingInstanceRow;
+}
+
+/**
+ * Obtiene las plantillas de onboarding de una organización (tabla onboarding_templates).
+ */
+export async function getOnboardingTemplatesServer(
+  orgId: number,
+  supabase: SupabaseClient
+): Promise<OnboardingTemplateRow[]> {
+  const { data, error } = await supabase
+    .from('onboarding_templates')
+    .select('*')
+    .eq('organization_id', orgId)
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.warn('[onboardingService.getOnboardingTemplatesServer] error:', error.message);
+    return [];
+  }
+
+  return (data || []) as OnboardingTemplateRow[];
+}
+
+/**
+ * Crea una plantilla de onboarding (tabla onboarding_templates).
+ */
+export async function createOnboardingTemplateServer(
+  orgId: number,
+  data: OnboardingTemplateInput,
+  supabase: SupabaseClient
+): Promise<OnboardingTemplateRow | null> {
+  const { data: result, error } = await supabase
+    .from('onboarding_templates')
+    .insert({
+      organization_id: orgId,
+      name: data.name,
+      steps: data.steps,
+      default_duration_days: data.default_duration_days ?? 30,
+      is_active: data.is_active ?? true,
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('[onboardingService.createOnboardingTemplateServer] error:', error.message);
+    throw error;
+  }
+
+  return result as OnboardingTemplateRow;
+}

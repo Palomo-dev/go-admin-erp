@@ -20,9 +20,11 @@
 3. **Reutilizar antes de crear.** Ya existen: Kanban DnD + realtime, etapas CRUD, oportunidades con líneas, actividades/tareas/notas polimórficas, cotizaciones con PDF/email, `conversations`/`messages` omnicanal, `automations`, `templates`, `campaigns`, `segments`, `ai_settings`/`ai_credits`, ConversationRelay parcial. Cada feature se monta encima.
 4. **Migraciones solo vía MCP de Supabase** (`apply_migration`). Prohibido crear archivos `.sql` en el repo (regla del proyecto).
 5. **Honestidad técnica.** Lo que la plataforma no permite (grabar llamadas nativas de iOS, leer call log en Google Play) se documenta como imposible y se resuelve con una arquitectura alternativa real, no con humo.
-6. **Frontera de plataforma.** El CRM nunca lee `organizations`, `subscriptions`, `plans`, `sellers*`, `payout*`. Eso vive en `go-admin-super`.
-7. **Métricas se calculan** (RPC / materialized views), no se almacenan pre-agregadas.
+6. **Frontera de plataforma.** El CRM nunca lee `organizations`, `subscriptions`, `plans`, `sellers*`, `payout*`. Eso vive en `go-admin-super` y en el repositorio separado `go-admin-sellers` (portal de vendedores del SaaS: dashboard, commissions, payouts, referrals, marketing). La tabla `sellers` es del SaaS GoAdmin (gente que vende nuestro software), **no** de las organizaciones cliente. Los vendedores de cada organización son sus **miembros** (`organization_members.user_id` → `profiles.id`). El patrón canónico para seleccionar vendedor es el mismo que usa `NuevaFacturaForm.tsx`: cargar `organization_members` JOIN `profiles` y usar `user_id` como `salesperson_id`. `salesperson_id` y `payee_id` en `opportunities`, `invoice_sales`, `quotations`, `vendor_commission_rates` y `commissions` apuntan a `users.id`/`profiles.id` (miembros), no a `sellers`.
+7. **Métricas se calculan con funciones SQL (RPC), no con vistas materializadas** ni pre-agregadas. Decisión del dueño: `fn_revenue_metrics`, `fn_pipeline_funnel`, `fn_cohort_retention` calculan al momento de la consulta → datos siempre frescos, sin cron de refresco y sin el problema de que una vista materializada no hereda RLS.
 8. **Consentimiento y compliance primero.** Aviso de grabación obligatorio; opt-out de SMS/WhatsApp/email; Habeas Data; retención configurable de audio.
+9. **Tipos de FK verificados antes de migrar.** `organizations.id` y `branches.id` son `integer`; el resto del CRM es `uuid`. Toda tabla nueva usa `organization_id integer REFERENCES organizations(id)`. Ver `ANEXO-A §1.0`.
+10. **RLS con política, no solo `ENABLE`.** Activar RLS sin políticas equivale a denegar todo. Hay 6 tablas hoy en ese estado (ver `ANEXO-A §1.0-bis`); se corrigen en F0.
 
 ---
 
@@ -55,7 +57,7 @@
 | 23 | Programa de referidos | **F12** | `referral_programs`, `referrals` |
 | 24 | Programa de partners con niveles | **F12** | `partners`, `partner_tiers`, `partner_deals` |
 | 25 | Equipo comercial (Sales Manager, SDR, AE, Onboarding, CS) | **F13** | `sales_roles` + asignación + territorios |
-| 26 | Comisión por SQL/demo/venta cobrada, no por cita | **F13** | `vendor_commission_rates` (existe) + `commission_events` |
+| 26 | Comisión por SQL/demo/venta cobrada, no por cita | **F13** | `commissions` (existe, 103 registros) + `vendor_commission_rates` (existe, config de tasas) |
 | 27 | Dashboard por vendedor (actividad, conversión, revenue, calidad) | **F13** | RPC + UI dashboard |
 | 28 | KPI Revenue (MRR, ARR, CAC, LTV, churn, win rate, ciclo, ARPA) | **F14** | RPC `fn_revenue_metrics` + UI |
 | 29 | Matemática comercial inversa (cuántos SQL para N clientes) | **F14** | Calculadora de capacidad + `sales_targets` |
@@ -214,14 +216,15 @@ Todos los proveedores se resuelven por **registry configurable por organización
 | Kanban pipeline con DnD + realtime | ✅ `KanbanBoard.tsx` (`@hello-pangea/dnd`) |
 | Etapas configurables + `exit_criteria` + `is_won`/`is_lost` + `sla_days` | ✅ BD + `StageManager.tsx` + `GateWarningDialog.tsx` |
 | Oportunidades con productos/espacios/conceptos | ✅ `opportunity_products`, `opportunity_spaces`, `opportunity_custom_lines` |
-| Scoring GOC | ✅ `scoring_configs` + `scoringService` + `ScoringSection.tsx` |
-| Razones de pérdida estructuradas | ✅ `loss_reasons` + `StructuredLossDialog.tsx` |
-| Histórico de etapas | ✅ `opportunity_stage_history` + trigger |
-| Health score | ✅ `health_score_configs`/`_snapshots` + `SaludView.tsx` |
-| Página "Hoy" | ✅ `/app/crm/hoy` + `followupService` |
+| Scoring GOC | 🔴 `scoringService` + `ScoringSection.tsx` existen, pero `scoring_configs` tiene **RLS sin políticas y 0 filas** → no funciona (F0) |
+| Razones de pérdida estructuradas | 🔴 `StructuredLossDialog.tsx` existe y hay 8 `loss_reasons`, pero **RLS sin políticas** las bloquea (F0) |
+| Histórico de etapas | 🔴 Trigger existe, pero `opportunity_stage_history` tiene **RLS sin políticas** → no se puede leer (F0) |
+| Health score | 🔴 `SaludView.tsx` existe, pero `health_score_configs`/`_snapshots` tienen **RLS sin políticas** (F0) |
+| Verticales | 🔴 Tabla existe con **RLS sin políticas y 0 filas** (F0 + F1) |
+| Página "Hoy" | ✅ filtro "hoy" en actividades/tareas (página `/app/crm/hoy` eliminada — consolidada como filtro) |
 | Propuestas | ✅ `quotations.opportunity_id` + `sections_json` + `ProposalBuilderDialog.tsx` |
 | Onboarding / renovaciones / expansión / referidos (servicios) | 🟡 Servicios existen; UI mínima |
-| Métricas comerciales | 🟡 `commercialMetricsService` + `/app/crm/metricas` |
+| Métricas comerciales | 🟡 `commercialMetricsService` + tab "Métricas" en `/app/inicio` (página `/app/crm/metricas` eliminada — consolidada) |
 | Omnicanal (conversations/messages) | ✅ WhatsApp Cloud + Twilio SMS/WA + Baileys QR |
 | IA en conversaciones | ✅ `/api/chat/ai/*` (respuesta, resumen, intención, auto-respuesta) |
 | IA comercial | 🟡 `/api/crm/ia/next-action`, `/api/crm/ia/discovery-summary` (sin validación multi-tenant) |
@@ -233,7 +236,9 @@ Todos los proveedores se resuelven por **registry configurable por organización
 ### 3.2 Lo que NO existe (huecos verificados)
 
 **Base de datos — tablas que faltan:**
-`calls`, `call_recordings`, `call_transcripts`, `call_analyses`, `call_tags`, `voice_agents`, `voice_agent_calls`, `sequences`, `sequence_steps`, `sequence_enrollments`, `sequence_step_runs`, `documents`, `icp_profiles`, `icp_criteria`, `sales_roles`, `sales_teams`, `territories`, `objections`, `discovery_templates`, `demo_scripts`, `partners`, `partner_tiers`, `partner_deals`, `referral_programs`, `referrals`, `onboarding_templates`, `sales_targets`, `commission_events`, `provider_configs`, `email_domains`, `email_messages`, `email_events`, `roi_calculators`, `contract_signatures`, `call_consents`.
+`calls`, `call_recordings`, `call_transcripts`, `call_analyses`, `call_tags`, `voice_agents`, `voice_agent_calls`, `sequences`, `sequence_steps`, `sequence_enrollments`, `sequence_step_runs`, `documents`, `icp_profiles`, `icp_criteria`, `sales_roles`, `sales_teams`, `territories`, `objections`, `discovery_templates`, `demo_scripts`, `partners`, `partner_tiers`, `partner_deals`, `referral_programs`, `referrals`, `onboarding_templates`, `sales_targets`, `provider_configs`, `email_domains`, `email_messages`, `email_events`, `roi_calculators`, `contract_signatures`, `call_consents`.
+
+**Nota:** `commission_events` y `commission_rules` fueron **eliminados del plan** — reusan `commissions` y `vendor_commission_rates` existentes (ver sección 3.5).
 
 **Columnas que faltan:**
 `opportunities`: `record_type`, `last_contact_at`, `contact_channel`, `contact_result`, `objection_id`, `loss_reason_value`, `competitor_name`, `competitor_price`, `missing_features`, `recontact_at`, `discovery_data`, `icp_band`, `icp_fit_score`, `deal_type`, `owner_role`, `sequence_id`.
@@ -246,7 +251,7 @@ Todos los proveedores se resuelven por **registry configurable por organización
 Llamadas salientes (click-to-call), token de Voice SDK, TwiML app, recording callback, transcripción persistente, análisis de llamada, agente de voz saliente con propósito, motor de secuencias multicanal, Resend, editor de plantillas, subida de documentos polimórfica, RPCs de revenue, captura de Lead Ads.
 
 **UI que falta:**
-Dialer/softphone, historial de llamadas con player + transcripción, tab Documentos, editor visual de emails, editor visual de automatizaciones por etapa, panel de agentes IA de voz, biblioteca de objeciones, wizard de discovery, dashboards de vendedor, partners/referidos, `/app/crm/configuracion`, `/app/crm/leads`, `/app/crm/llamadas`, `/app/crm/conversaciones` (índice). **Cero animaciones Motion** (no está instalado).
+Dialer/softphone, historial de llamadas con player + transcripción, tab Documentos, editor visual de emails, editor visual de automatizaciones por etapa, panel de agentes IA de voz, biblioteca de objeciones, wizard de discovery, dashboards de vendedor, partners/referidos, `/app/crm/leads`, `/app/crm/llamadas`, `/app/chat/conversaciones` (índice omnicanal, movido desde CRM). **Cero animaciones Motion** (no está instalado).
 
 ### 3.3 Bugs verificados que bloquean calidad
 
@@ -259,11 +264,112 @@ Dialer/softphone, historial de llamadas con player + transcripción, tab Documen
 | G5 | Webhooks legacy `/api/webhooks/{voip,sms,email}/twilio` responden "desactivado" pero `docs/VOIP_SETUP.md` los documenta como activos | 3 routes | 🟠 medio |
 | G6 | `.env.example` no declara ninguna variable de Twilio/OpenAI/ElevenLabs/Deepgram/SendGrid/service-role | `.env.example` | 🟠 medio |
 | G7 | `stages` tiene `position` **y** `display_order` (deriva de datos) | BD | 🟠 medio |
-| G8 | `/app/crm/configuracion` linkeado en `CRMQuickNav.tsx:112` pero la ruta no existe | UI | 🟡 bajo |
+| G8 | `CRMQuickNav.tsx:112` linkea a `/app/crm/configuracion` que no existe — debe apuntar a `/app/configuracion?modulo=crm` (ya centralizado) | UI | 🟡 bajo |
 | G9 | `/app/crm/clientes/[id]` es una vista pobre que ignora la ficha 360° de `/app/clientes/[id]` | UI | 🟠 medio |
 | G10 | `AutomationsView.tsx` anuncia "configuración avanzada por etapa próximamente" | UI | 🟠 medio |
 | G11 | `elevenLabsTTS.ts`, `deepgramSTT.ts`, `realtimeSession.ts` son código muerto no cableado | 3 archivos | 🟡 bajo |
 | G12 | `verticals` en BD no tiene `slug`/`color`/`sort_order` que el plan V2 especificaba | BD | 🟡 bajo |
+| **G13** | **6 tablas con RLS activo y CERO políticas = deny-all**: `scoring_configs`, `loss_reasons`, `verticals`, `health_score_configs`, `health_score_snapshots`, `opportunity_stage_history`. Rompen scoring, razones de pérdida, health score e histórico de etapas | BD (ver `ANEXO-A §1.0-bis`) | 🔴 **crítico** |
+| **G14** | `ConfiguracionHub.tsx` linkea a 4 rutas inexistentes: `/app/crm/configuracion/{canales,etiquetas,api-keys,widget}`. Todo el árbol `/app/crm/configuracion/**` **no existe** → 4 × 404. Componente muerto | `src/components/crm/configuracion/ConfiguracionHub.tsx:32,41,50,59` | 🟠 medio |
+| **G15** | `quotations` **no tiene** `payment_link_url` ni `signature_id`; F10 los asumía existentes | BD | 🟠 medio |
+| **G16** | `opportunities` **no tiene** `closed_at`; F11 y F14 lo referencian para cohortes y ciclo de venta | BD | 🟠 medio |
+| **G17** | Tipos de FK: `organizations.id` y `branches.id` son `integer` (no `bigint`, no `uuid`). Las migraciones propuestas en F1–F15 con `bigint`/`uuid` **fallarían** | BD (ver `ANEXO-A §1.0`) | 🔴 **crítico** |
+
+> **G13 y G17 son prerrequisitos duros.** Sin ellos, F1, F2, F11 y F14 no pueden funcionar
+> ni migrar. Se resuelven completos en **F0** antes de tocar cualquier otra fase.
+
+---
+
+## 3.5 Integración CRM ↔ Finanzas (cero tablas dobles, cero migraciones innecesarias)
+
+El módulo de finanzas de GoAdmin ERP ya tiene una estructura completa y viva: contabilidad de doble partida, facturas de venta/compra, pagos, cuentas por cobrar/pagar, comisiones, presupuestos, conciliación bancaria, notas crédito, reglas contables y plan de cuentas.
+
+**El CRM no crea tablas financieras nuevas.** Reusa las existentes y las vincula mediante las FK y columnas polimórficas que ya están en producción.
+
+### Tablas financieras existentes que el CRM reusa
+
+| Tabla existente | Columna que vincula al CRM | Uso en CRM |
+|---|---|---|
+| `invoice_sales` | `opportunity_id` (FK → opportunities), `customer_id`, `salesperson_id` | Facturas generadas al ganar oportunidad |
+| `quotations` | `opportunity_id` (FK → opportunities), `customer_id`, `salesperson_id` | Cotizaciones/proposals del CRM |
+| `payments` | `source` + `source_id` (text, polimórfico) | Pagos de facturas del CRM |
+| `accounts_receivable` | `invoice_id` (FK → invoice_sales), `customer_id` | Cartera y cobranza del CRM |
+| `commissions` | `source_type` + `source_id`, `payee_id` (users.id) | Comisiones de vendedores (miembros) |
+| `vendor_commission_rates` | `salesperson_id` (users.id), `rate`, `valid_from/until` | Tasas de comisión por vendedor y general |
+| `credit_notes` | `customer_id` (FK → customers) | Notas crédito de clientes del CRM |
+| `journal_entries` + `journal_lines` | `source` + `source_id` (text) | Asientos contables generados automáticamente |
+| `accounting_rules` | `source_type` + `event_type` | Reglas que disparan asientos (60+ source_types, 5000+ reglas) |
+| `chart_of_accounts` | `organization_id` | Plan de cuentas por organización |
+| `cost_centers` | `organization_id` | Centros de costo para líneas de asiento |
+| `budgets` + `budget_lines` | `organization_id` | Presupuestos vs real |
+
+### Reglas contables existentes que el CRM dispara (sin crear reglas nuevas)
+
+| `source_type` | `event_type` | Reglas existentes | Cuándo lo dispara el CRM |
+|---|---|---|---|
+| `commission` | `accrued` | 81 | Al ganar oportunidad → devengar comisión |
+| `commission` | `paid` | 81 | Al cobrar factura → pagar comisión |
+| `invoice_sales` | (procesado) | — | Al generar factura desde oportunidad |
+| `sale_payment` | `paid` | 81 | Al registrar pago de factura del CRM |
+
+### Modelo de vendedores
+
+| Concepto | Tabla | Quién |
+|---|---|---|
+| Vendedores del SaaS GoAdmin (referidos) | `sellers` | Gente que vende nuestro software — vive en repositorio separado `go-admin-sellers` con su propia app (dashboard, commissions, payouts, referrals, marketing). NO se usa para comisiones de organizaciones. |
+| Vendedores de una organización cliente | `organization_members.user_id` → `profiles.id` | Miembros de la org. El patrón canónico de selección es el de `NuevaFacturaForm.tsx`: cargar `organization_members` JOIN `profiles`, usar `user_id` como `salesperson_id`. |
+| `salesperson_id` en opportunities, invoice_sales, quotations, vendor_commission_rates | `users.id` / `profiles.id` | Miembro de la org |
+| `payee_id` en commissions | `users.id` / `profiles.id` | Miembro de la org que recibe la comisión |
+
+#### Patrón canónico de selector de vendedor (copiar de NuevaFacturaForm.tsx)
+
+```typescript
+// Cargar miembros de la organización para selector de vendedor
+// (mismo patrón que src/components/finanzas/facturas-venta/nueva-factura/NuevaFacturaForm.tsx:237)
+const { data: members } = await supabase
+  .from('organization_members')
+  .select('user_id')
+  .eq('organization_id', organizationId);
+
+const userIds = members.map(m => m.user_id);
+const { data: profiles } = await supabase
+  .from('profiles')
+  .select('id, first_name, last_name')
+  .in('id', userIds);
+
+// salesperson_id = member.user_id (profiles.id)
+```
+
+### Fases que integran con finanzas
+
+| Fase | Qué integra | Cómo | Dónde (página existente) |
+|---|---|---|---|
+| **F9** | Tab Financiero en ficha 360° | `crmFinanceService.ts` consulta `invoice_sales`, `payments`, `accounts_receivable`, `commissions`, `credit_notes` — solo lectura | Tab nuevo en ficha 360° existente |
+| **F10** | Cierre comercial → finanzas | Al ganar: INSERT en `invoice_sales` (con `opportunity_id`), `accounts_receivable`, `commissions`. Al pagar: INSERT en `payments`, UPDATE `commissions.status='paid'`. Motor contable existente genera asientos. Cobranza: se mejora `/app/finanzas/cuentas-por-cobrar` con aging + recordatorios | `/app/finanzas/cuentas-por-cobrar` existente |
+| **F13** | Comisiones end-to-end | Reusa `commissions` + `vendor_commission_rates` existentes. NO crea `commission_events` ni `commission_rules` (tablas dobles). `payee_id`=users.id (miembros). Aprobación/pago: se mejora `/app/finanzas/comisiones` con botones aprobar/pagar/rechazar + bulk actions. Cuotas: tab "Cuotas" en `/app/organizacion/miembros` o HRM | `/app/finanzas/comisiones` + `/app/organizacion/miembros` existentes |
+| **F14** | Revenue OS | `fn_revenue_metrics` (función) con MRR/ARR desde `payments` + `invoice_sales` reales, no desde `opportunities.amount`. Comisiones desde `commissions` existente. Asientos desde `journal_entries`. Widgets en dashboard existente | `/app/inicio` existente |
+
+### Regla de oro: cero tablas dobles
+
+**Si ya existe una tabla de finanzas que cubre el concepto, el CRM la reusa.** No se crean:
+- `crm_payments` → se usa `payments` con `source='invoice_sales'`
+- `crm_commissions` → se usa `commissions` con `source_type='invoice_sale'` (**singular**, es el valor real de los 100 registros existentes) y `source_id` = id de la factura en `text`. Se llega a la oportunidad vía `invoice_sales.opportunity_id`. No se inventa un `source_type='opportunity'`: la comisión se devenga sobre la factura, que es el hecho contable.
+- `commission_events` → se usa `commissions` (ya tiene `status`, `accrued_at`, `paid_at`, `metadata`)
+- `commission_rules` → se usa `vendor_commission_rates` (ya tiene `rate`, `valid_from/until`, `metadata` para tiered/split)
+- `crm_invoices` → se usa `invoice_sales` (ya tiene `opportunity_id` FK)
+
+### Tres dominios de comisiones (NO duplican lógica)
+
+| Tabla | Repositorio | Propósito | FKs | RLS |
+|---|---|---|---|---|
+| `commissions` | `go-admin-erp` | Tabla de hechos: comisiones de vendedores de organizaciones (miembros) sobre facturas/ventas/oportunidades | ✅ organization_id, branch_id, payee_id→auth.users, created_by→auth.users | ✅ org_member_all |
+| `vendor_commission_rates` | `go-admin-erp` | Tabla de configuración: tasas de comisión por vendedor/org (con vigencia) | ✅ organization_id, salesperson_id→auth.users | ✅ org_member_all |
+| `seller_commissions` | `go-admin-sellers` | Comisiones de referidores del SaaS GoAdmin por suscripciones (dominio distinto) | ✅ seller_id→sellers, organization_id→organizations | (portal separado) |
+
+**`commissions` y `seller_commissions` son dominios distintos** — no se juntan.
+**`commissions` y `vendor_commission_rates` son complementarias** — config + hecho contable.
+
+El hook `useCommissionRate` (`src/lib/hooks/useCommissionRate.ts`) resuelve la tasa desde `vendor_commission_rates` y es usado por todos los componentes que crean comisiones: NuevaFacturaForm, CheckoutDialog (POS), pedidosService, FacturasCompraService, commissionService (CRM).
 
 ---
 
@@ -329,17 +435,17 @@ Regla de corte: **no se inicia una fase con la anterior sin calificación ≥ 9.
 | F1 | `icp_profiles`, `icp_criteria`, `sales_roles`, `sales_teams`, `sales_team_members`, `territories` | `verticals.positioning/metadata`, `customers.company_size/branches_count/current_software/lifecycle_stage`, `opportunities.icp_band/icp_fit_score` | Seeds de ICP A/B/C y 6 verticales |
 | F2 | `objections`, `discovery_templates`, `opportunity_objections` | `opportunities.record_type/last_contact_at/contact_channel/contact_result/objection_id/loss_reason_value/competitor_name/competitor_price/missing_features/recontact_at/discovery_data` | Seed pipeline 10 etapas + `exit_criteria` |
 | F3 | `calls`, `call_recordings`, `call_consents`, `phone_numbers` | `comm_settings.voice_*` | RLS + índices + trigger `calls`→`activities` |
-| F4 | `call_transcripts`, `call_transcript_segments`, `call_analyses`, `call_tags`, `call_tag_relations` | — | `mv_call_quality` |
+| F4 | `call_transcripts`, `call_transcript_segments`, `call_analyses`, `call_tags`, `call_tag_relations` | — | `fn_call_quality` (funcion, no MV) |
 | F5 | `mobile_call_bridges` | `calls.bridge_mode/agent_leg_sid/customer_leg_sid` | — |
 | F6 | `voice_agents`, `voice_agent_calls`, `voice_agent_runs`, `voice_agent_tools` | `calls.voice_agent_id` | — |
 | F7 | `email_domains`, `email_messages`, `email_events`, `email_blocks` | `templates` extendida (kind/metadata/blocks_json) | — |
 | F8 | `sequences`, `sequence_steps`, `sequence_enrollments`, `sequence_step_runs`, `automation_rules`, `automation_runs` | `opportunities.sequence_id`, `stages.automation_rule_ids` | Cron + `pg_cron` opcional |
 | F9 | `documents`, `document_folders` | `activities.channel/outcome/duration_seconds` | Storage bucket `crm-documents` |
 | F10 | `roi_calculators`, `contract_signatures`, `demo_sessions` | `quotations.payment_link_url/signature_id` | — |
-| F11 | `onboarding_templates`, `onboarding_instances`, `onboarding_steps` | `opportunities.deal_type` | `mv_customer_health` completada |
+| F11 | `onboarding_templates`, `onboarding_instances`, `onboarding_steps` | `opportunities.deal_type` | `fn_customer_health` (funcion, no MV) |
 | F12 | `partners`, `partner_tiers`, `partner_deals`, `referral_programs`, `referrals` | — | — |
-| F13 | `sales_targets`, `commission_events` | `vendor_commission_rates.commission_type/notes/created_by` | RPC `fn_seller_dashboard` |
-| F14 | — | — | RPC `fn_revenue_metrics`, `fn_funnel_real`, `fn_capacity_math`, `mv_crm_revenue` |
+| F13 | `sales_targets` (solo cuotas) | `vendor_commission_rates.metadata` (tiered/split) | RPC `fn_seller_dashboard`. **No crea `commission_events` ni `commission_rules`** — reusa `commissions` y `vendor_commission_rates` existentes. UI de aprobación en `/app/finanzas/comisiones` existente, cuotas en `/app/organizacion/miembros` o HRM |
+| F14 | — | — | `fn_revenue_metrics` (función con revenue real desde `payments` + `commissions` + `opportunities`), `fn_funnel_real`, `fn_capacity_math`. Widgets en `/app/inicio` existente — **no crea página nueva** |
 | F15 | — | — | — |
 
 ### 5.2 Backend (rutas API nuevas)
@@ -381,16 +487,34 @@ Regla de corte: **no se inicia una fase con la anterior sin calificación ≥ 9.
 /api/crm/onboarding/instantiate     F11  POST  Crear instancia desde plantilla
 /api/crm/partners                   F12  CRUD
 /api/crm/referrals                  F12  CRUD
-/api/crm/targets                    F13  CRUD  Cuotas
-/api/crm/dashboard/seller           F13  GET   Dashboard de vendedor
-/api/crm/revenue/metrics            F14  GET   MRR/ARR/CAC/LTV/churn/win-rate/ciclo/ARPA
+/api/crm/targets                    F13  CRUD  Cuotas (sales_targets)
+/api/crm/dashboard/seller           F13  GET   Dashboard de vendedor (para widget en /app/inicio)
+/api/crm/revenue/metrics            F14  GET   Ejecuta fn_revenue_metrics (MRR/ARR/CAC/LTV/churn/win-rate/ciclo/ARPA)
 /api/crm/revenue/capacity           F14  POST  Matemática comercial inversa
+/api/crm/finance/[type]/[id]        F9   GET   Vista 360 financiera (cliente u oportunidad) — alimenta FinanceTab
 ```
 
-### 5.3 UI (rutas nuevas)
+**Endpoints que NO se crean** (se usan los de finanzas existentes):
+- ~~`/api/crm/commissions`~~ → se usa `/api/finanzas/commissions` existente
+- ~~`/api/crm/commissions/[id]`~~ → se usa el endpoint existente (`commissionsService` ya tiene `markAsPaid`, `markAsCancelled`, `bulkMarkAsPaid`)
+- ~~`/api/crm/commissions/rates`~~ → se extiende el endpoint de finanzas existente o `commissionService` (CRM) ya tiene CRUD de `vendor_commission_rates`
+- ~~`/api/crm/collections`~~ → se extiende el endpoint de `/api/finanzas/cuentas-por-cobrar` existente
+
+### 5.3 UI — cero páginas nuevas para integración financiera
+
+El CRM **no crea páginas nuevas** para funciones que ya existen en otros módulos. Toda la integración CRM↔Finanzas se hace **mejorando páginas existentes**:
+
+| Función | Página existente que se mejora | Qué se le añade |
+|---|---|---|
+| Cobranza | `/app/finanzas/cuentas-por-cobrar` | Aging (días vencido, buckets 0-30/31-60/61-90/+90), acción "Enviar recordatorio", KPIs |
+| Aprobación de comisiones | `/app/finanzas/comisiones` | Botones aprobar/pagar/rechazar, bulk actions, filtros por vendedor/estado/período, resumen devengado/pagado/pendiente |
+| Cuotas del vendedor | `/app/organizacion/miembros` (tab "Cuotas" en detalle del miembro) o HRM | Editor de cuotas `sales_targets`, barra de progreso |
+| Revenue OS | `/app/inicio` (widgets en el dashboard existente) | Widgets: Revenue (MRR/ARR/cobrado), Pipeline (win rate/ciclo), Comisiones (devengado/pagado), Cuotas (progreso equipo) |
+| Tab Financiero 360° | Ficha 360° del cliente/oportunidad (tab nuevo) | `FinanceTab.tsx` — solo lectura, datos desde `crmFinanceService` |
+
+**Rutas CRM nuevas que sí se crean** (no duplican módulos existentes):
 
 ```
-/app/crm/configuracion              F0   Hub que deep-linkea a /app/configuracion?modulo=crm
 /app/crm/leads                      F2   Bandeja de leads (record_type='lead')
 /app/crm/llamadas                   F3   Historial + player + transcripción + análisis
 /app/crm/agentes-ia                 F6   Panel de agentes de voz IA + campañas
@@ -398,13 +522,24 @@ Regla de corte: **no se inicia una fase con la anterior sin calificación ≥ 9.
 /app/crm/secuencias                 F8   Editor de secuencias multicanal
 /app/crm/objeciones                 F2   Biblioteca de objeciones
 /app/crm/onboarding                 F11  Kanban de onboarding
+/app/crm/salud                     F11  Health score de clientes (icono HeartPulse en sidebar)
+/app/crm/pronostico                F14  Forecast de ventas con escenarios
+/app/crm/identidades               F0   Identidades omnicanal
 /app/crm/partners                   F12  Partners y referidos
-/app/crm/equipo                     F13  Equipo, cuotas, comisiones
-/app/crm/revenue                    F14  Dashboard Revenue OS
-/app/crm/conversaciones             F9   Índice omnicanal (reusa /app/chat/bandeja)
+/app/chat/conversaciones           F9   Índice omnicanal (reusa /app/chat/bandeja) — movido desde /app/crm/conversaciones
 ```
 
-Componentes globales nuevos de mayor impacto: `SoftphoneProvider` + `SoftphoneDock` (F3, montado en el layout de la app), `CallTranscriptViewer` (F4), `DocumentsTab` (F9), `EmailTemplateEditor` (F7), `SequenceBuilder` (F8), `MotionPrimitives` (F15).
+**Rutas que NO se crean** (se mejoran páginas existentes):
+- ~~`/app/crm/configuracion`~~ → ya existe `/app/configuracion` centralizado (solo se arregla el link en `CRMQuickNav.tsx`)
+- ~~`/app/crm/cobranza`~~ → se mejora `/app/finanzas/cuentas-por-cobrar`
+- ~~`/app/crm/equipo`~~ → comisiones en `/app/finanzas/comisiones`, cuotas en `/app/organizacion/miembros` o HRM
+- ~~`/app/crm/revenue`~~ → widgets en `/app/inicio`
+- ~~`/app/crm/hoy`~~ → eliminada; las tareas/actividades deben tener filtro de "hoy"
+- ~~`/app/crm/reportes`~~ → consolidado en `/app/inicio` tab "Reportes" del módulo CRM
+- ~~`/app/crm/metricas`~~ → consolidado en `/app/inicio` tab "Métricas" del módulo CRM
+- ~~`/app/crm/conversaciones`~~ → movido a `/app/chat/conversaciones/*` (ya existía ahí)
+
+Componentes globales nuevos de mayor impacto: `SoftphoneProvider` + `SoftphoneDock` (F3, montado en el layout de la app), `CallTranscriptViewer` (F4), `DocumentsTab` (F9), `FinanceTab` (F9, tab financiero en ficha 360), `EmailTemplateEditor` (F7), `SequenceBuilder` (F8), `MotionPrimitives` (F15).
 
 ---
 
@@ -437,6 +572,9 @@ El CRM se considera completo cuando, **con datos de una organización de prueba 
 8. El dashboard de vendedor muestra actividad, conversión por etapa, revenue y calidad; el Revenue OS muestra MRR/ARR/CAC/LTV/churn/win-rate/ciclo/ARPA y la matemática inversa de capacidad.
 9. Todo lo anterior funciona en Web, PWA, Electron y Capacitor (llamadas con SDK o con bridge).
 10. `npm run lint`, `tsc --noEmit` y `npm test` limpios; cero referencias a `organizationId = 1`; cero archivos `.sql` en el repo.
+11. Al ganar una oportunidad: factura en `invoice_sales` (con `opportunity_id`), cartera en `accounts_receivable`, comisión devengada en `commissions` (con `payee_id`=users.id), asiento contable generado por el motor existente — **cero tablas financieras nuevas creadas**.
+12. El Revenue OS muestra MRR/ARR desde `payments` reales, no desde estimaciones de `opportunities.amount`.
+13. `salesperson_id` y `payee_id` apuntan a `users.id` (miembros de la org), nunca a `sellers` (que es del SaaS GoAdmin).
 
 ---
 

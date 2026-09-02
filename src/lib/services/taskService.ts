@@ -218,8 +218,8 @@ export const getTasks = async (filter: TaskFilter = {}) => {
       if (usuariosAsignados.length > 0) {
         try {
           const { data: usuarios, error: errorUsuarios } = await supabase
-            .from('user_profiles')
-            .select('id, name')
+            .from('profiles')
+            .select('id, first_name, last_name, email')
             .in('id', usuariosAsignados);
           
           if (errorUsuarios) {
@@ -227,7 +227,8 @@ export const getTasks = async (filter: TaskFilter = {}) => {
           } else if (usuarios) {
             // Crear mapa de ID -> nombre
             usuarios.forEach((usuario: any) => {
-              usuariosMap.set(usuario.id, usuario.name);
+              const fullName = `${usuario.first_name || ''} ${usuario.last_name || ''}`.trim();
+              usuariosMap.set(usuario.id, fullName || usuario.email || 'Usuario sin nombre');
             });
             console.log(`✅ Nombres de usuarios obtenidos: ${usuarios.length}`);
           }
@@ -1004,11 +1005,11 @@ export const getTasksWithSubtasks = async (filter: TaskFilter = {}) => {
       .from('tasks')
       .select(`
         *,
-        user_profiles!assigned_to(first_name, last_name),
+        profiles!assigned_to(first_name, last_name),
         customers!customer_id(first_name, last_name, email, phone),
         subtasks:tasks!parent_task_id(
           *,
-          user_profiles!assigned_to(first_name, last_name)
+          profiles!assigned_to(first_name, last_name)
         )
       `)
       .eq('organization_id', organizationId);
@@ -1054,8 +1055,8 @@ export const getTasksWithSubtasks = async (filter: TaskFilter = {}) => {
       
       return {
         ...task,
-        assigned_to_name: task.user_profiles ? 
-          `${task.user_profiles.first_name || ''} ${task.user_profiles.last_name || ''}`.trim() : null,
+        assigned_to_name: task.profiles ? 
+          `${task.profiles.first_name || ''} ${task.profiles.last_name || ''}`.trim() : null,
         customer: task.customers ? {
           id: task.customers.id,
           first_name: task.customers.first_name,
@@ -1068,8 +1069,8 @@ export const getTasksWithSubtasks = async (filter: TaskFilter = {}) => {
         } : null,
         subtasks: subtasks.map((subtask: any) => ({
           ...subtask,
-          assigned_to_name: subtask.user_profiles ? 
-            `${subtask.user_profiles.first_name || ''} ${subtask.user_profiles.last_name || ''}`.trim() : null,
+          assigned_to_name: subtask.profiles ? 
+            `${subtask.profiles.first_name || ''} ${subtask.profiles.last_name || ''}`.trim() : null,
           depth: 1
         })),
         subtask_count: totalSubtasks,
@@ -1153,11 +1154,11 @@ export const getTaskHierarchy = async (taskId: string): Promise<TaskHierarchy | 
       .from('tasks')
       .select(`
         *,
-        user_profiles!assigned_to(first_name, last_name),
+        profiles!assigned_to(first_name, last_name),
         customers!customer_id(first_name, last_name, email, phone),
         subtasks:tasks!parent_task_id(
           *,
-          user_profiles!assigned_to(first_name, last_name)
+          profiles!assigned_to(first_name, last_name)
         )
       `)
       .eq('id', taskId)
@@ -1175,8 +1176,8 @@ export const getTaskHierarchy = async (taskId: string): Promise<TaskHierarchy | 
     const hierarchy: TaskHierarchy = {
       parent: {
         ...task,
-        assigned_to_name: task.user_profiles ? 
-          `${task.user_profiles.first_name || ''} ${task.user_profiles.last_name || ''}`.trim() : null,
+        assigned_to_name: task.profiles ? 
+          `${task.profiles.first_name || ''} ${task.profiles.last_name || ''}`.trim() : null,
         customer: task.customers ? {
           id: task.customers.id,
           first_name: task.customers.first_name,
@@ -1189,8 +1190,8 @@ export const getTaskHierarchy = async (taskId: string): Promise<TaskHierarchy | 
         } : null,
         subtasks: subtasks.map((subtask: any) => ({
           ...subtask,
-          assigned_to_name: subtask.user_profiles ? 
-            `${subtask.user_profiles.first_name || ''} ${subtask.user_profiles.last_name || ''}`.trim() : null,
+          assigned_to_name: subtask.profiles ? 
+            `${subtask.profiles.first_name || ''} ${subtask.profiles.last_name || ''}`.trim() : null,
           depth: 1
         })),
         subtask_count: totalSubtasks,
@@ -1201,8 +1202,8 @@ export const getTaskHierarchy = async (taskId: string): Promise<TaskHierarchy | 
       },
       children: subtasks.map((subtask: any) => ({
         ...subtask,
-        assigned_to_name: subtask.user_profiles ? 
-          `${subtask.user_profiles.first_name || ''} ${subtask.user_profiles.last_name || ''}`.trim() : null,
+        assigned_to_name: subtask.profiles ? 
+          `${subtask.profiles.first_name || ''} ${subtask.profiles.last_name || ''}`.trim() : null,
         depth: 1
       })),
       totalSubtasks,

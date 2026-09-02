@@ -52,6 +52,13 @@ const navItems: QuickNavItem[] = [
     color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
   },
   {
+    label: 'Equipo',
+    href: '/app/crm/equipo',
+    icon: <Users className="h-5 w-5" />,
+    description: 'Equipos y vendedores',
+    color: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400',
+  },
+  {
     label: 'Pronóstico',
     href: '/app/crm/pronostico',
     icon: <TrendingUp className="h-5 w-5" />,
@@ -88,7 +95,7 @@ const navItems: QuickNavItem[] = [
   },
   {
     label: 'Reportes',
-    href: '/app/crm/reportes',
+    href: '/app/inicio#crm',
     icon: <BarChart3 className="h-5 w-5" />,
     description: 'Análisis y métricas',
     color: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
@@ -109,7 +116,7 @@ const navItems: QuickNavItem[] = [
   },
   {
     label: 'Configuración',
-    href: '/app/crm/configuracion',
+    href: '/app/configuracion?modulo=crm',
     icon: <Settings className="h-5 w-5" />,
     description: 'Canales y reglas',
     color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',

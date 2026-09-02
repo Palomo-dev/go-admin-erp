@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase, updatePassword } from '@/lib/supabase/config';
 import { User } from '@supabase/supabase-js';
-import { ChevronRight, Lock, Edit2, Save, Users, Bell, LogOut, UserX, Globe, Shield, PhoneCall, Mail, AlertTriangle, TrendingUp, ExternalLink } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Lock, Edit2, Save, Users, Bell, LogOut, UserX, Globe, Shield, PhoneCall, Mail, AlertTriangle, TrendingUp, ExternalLink } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import toast from 'react-hot-toast';
@@ -83,6 +83,8 @@ export default function PerfilUsuarioPage() {
   const [mfaMethods, setMfaMethods] = useState<MfaMethod[]>([]);
   const [isSeller, setIsSeller] = useState<boolean>(false);
   const [currentSection, setCurrentSection] = useState<string>('datos-personales');
+  // En móvil controla si se muestra la lista de tabs o el contenido de la sección
+  const [mobileShowContent, setMobileShowContent] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -294,6 +296,12 @@ export default function PerfilUsuarioPage() {
 
   const handleSectionChange = (section: string) => {
     setCurrentSection(section);
+    // En móvil, al seleccionar una sección mostramos solo el contenido
+    setMobileShowContent(true);
+  };
+
+  const handleBackToList = () => {
+    setMobileShowContent(false);
   };
 
   // Secciones de la página de perfil
@@ -346,7 +354,7 @@ export default function PerfilUsuarioPage() {
     <div className="w-full p-3 sm:p-4 md:p-6">
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Barra lateral con opciones */}
-        <aside className="w-full lg:w-64 shrink-0">
+        <aside className={`w-full lg:w-64 shrink-0 ${mobileShowContent ? 'hidden lg:block' : 'block'}`}>
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">
             <div className="flex flex-col items-center mb-6 p-4">
               <div className="relative w-20 h-20 mb-4">
@@ -396,7 +404,16 @@ export default function PerfilUsuarioPage() {
         </aside>
 
         {/* Contenido principal */}
-        <main className="flex-grow bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+        <main className={`flex-grow bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 sm:p-6 ${mobileShowContent ? 'block' : 'hidden lg:block'}`}>
+          {/* Botón volver a la lista de secciones (solo móvil) */}
+          <button
+            onClick={handleBackToList}
+            className="lg:hidden flex items-center gap-1 mb-4 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            aria-label="Volver a la lista de secciones"
+          >
+            <ChevronLeft size={18} />
+            Volver
+          </button>
           {currentSection === 'datos-personales' && (
             <DatosPersonalesSection 
               profile={profile} 

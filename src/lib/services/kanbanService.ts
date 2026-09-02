@@ -38,16 +38,16 @@ export const getPipelineById = async (pipelineId: string): Promise<Pipeline | nu
     // Obtener etapas del pipeline
     const { data: stagesData, error: stagesError } = await supabase
       .from("stages")
-      .select("id, name, position, probability")
+      .select("id, name, position, probability, pipeline_id, color, is_won, is_lost")
       .eq("pipeline_id", pipelineId)
       .order("position");
 
     if (stagesError) throw stagesError;
 
-    // Asignar colores por defecto a las etapas
+    // Respetar el color de la BD; usar color por defecto solo si no tiene
     const stagesWithColor = (stagesData || []).map(stage => ({
       ...stage,
-      color: getDefaultColorByPosition(stage.position),
+      color: stage.color || getDefaultColorByPosition(stage.position),
       opportunities: []
     }));
 
@@ -108,12 +108,12 @@ export const getStagesWithOpportunities = async (pipelineId: string): Promise<St
     // 1. Obtener etapas del pipeline
     const { data: stagesData, error: stagesError } = await supabase
       .from("stages")
-      .select("id, name, position, probability")
+      .select("id, name, position, probability, pipeline_id, color, is_won, is_lost")
       .eq("pipeline_id", pipelineId)
       .order("position");
 
     if (stagesError) throw stagesError;
-    
+
     if (!stagesData || stagesData.length === 0) {
       return await createDefaultStages(pipelineId, organizationId);
     }
@@ -234,7 +234,7 @@ export const createDefaultStages = async (pipelineId: string, organizationId: nu
     // Obtener las etapas recién creadas
     const { data: createdStages, error } = await supabase
       .from("stages")
-      .select("id, name, position, probability")
+      .select("id, name, position, probability, pipeline_id")
       .eq("pipeline_id", pipelineId)
       .order("position");
 
@@ -361,8 +361,8 @@ export const calculateStageStatistics = async (stages: Stage[], baseCurrency?: s
     // Sumar todos los montos convertidos
     const totalAmount = convertedAmounts.reduce((sum, amount) => sum + amount, 0);
 
-    // Calcular el pronóstico basado en la probabilidad de la etapa
-    const forecast = (totalAmount * (stage.probability || 0)) / 100;
+    // Calcular el pronóstico basado en la probabilidad de la etapa (escala 0-1)
+    const forecast = (totalAmount * (stage.probability || 0));
 
     return {
       id: stage.id,

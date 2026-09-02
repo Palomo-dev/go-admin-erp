@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { promotionEngine } from '@/lib/services/promotionEngine';
 
 function getSupabaseClient(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -142,6 +143,24 @@ export async function POST(request: NextRequest) {
     // Generar número de pedido
     const orderNumber = await generateOrderNumber(body.organization_id);
 
+    // --- Evaluar promociones activas para Web ---
+    let promoDiscounts: Record<number, number> = {};
+    try {
+      const promoResult = await promotionEngine.evaluate({
+        channel: 'web',
+        items: body.items.map((item: WebOrderItemInput) => ({
+          product_id: item.product_id || 0,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        })),
+        organization_id: body.organization_id,
+        branch_id: body.branch_id,
+      });
+      promoDiscounts = promoResult.itemDiscounts;
+    } catch (promoErr) {
+      console.warn('[web-orders] No se pudieron evaluar promociones:', promoErr);
+    }
+
     // Calcular totales
     let subtotal = 0;
     let taxTotal = 0;
@@ -150,7 +169,7 @@ export async function POST(request: NextRequest) {
     const itemsWithTotals = body.items.map(item => {
       const itemTotal = item.quantity * item.unit_price;
       const taxAmount = item.tax_amount || 0;
-      const discountAmount = item.discount_amount || 0;
+      const discountAmount = item.discount_amount || promoDiscounts[item.product_id || 0] || 0;
       
       subtotal += itemTotal;
       taxTotal += taxAmount * item.quantity;

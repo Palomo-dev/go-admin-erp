@@ -532,7 +532,7 @@ export default function BulkActionsDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {stages.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name} ({Math.round(Number(s.probability) * 100)}%)</SelectItem>
+                        <SelectItem key={s.id} value={s.id}>{s.name} ({Math.round(Number(s.probability))}%)</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -846,7 +846,7 @@ export default function BulkActionsDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {stages.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name} ({Math.round(Number(s.probability) * 100)}%)</SelectItem>
+                        <SelectItem key={s.id} value={s.id}>{s.name} ({Math.round(Number(s.probability))}%)</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

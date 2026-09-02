@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { useCommissionRate } from '@/lib/hooks/useCommissionRate';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { ClienteSelector } from './ClienteSelector';
 import { ItemsFactura } from './ItemsFactura';
@@ -138,6 +139,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   const [commissionType, setCommissionType] = useState<'salesperson' | 'intermediation_sale' | 'none'>('salesperson');
   const [commissionMethod, setCommissionMethod] = useState<'percentage' | 'fixed_amount'>('percentage');
   const [organizationMembers, setOrganizationMembers] = useState<{ id: string; name: string }[]>([]);
+  const { resolveRate: resolveCommissionRate } = useCommissionRate();
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({}); // Indicador de impuestos aplicados
   const [appliedTaxTotals, setAppliedTaxTotals] = useState<{[key: string]: any}>({}); // Totales de impuestos aplicados
   const [subtotal, setSubtotal] = useState<number>(0);
@@ -518,6 +520,21 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     return undefined;
   }, [esEdicion, facturaInicial]);
 
+  // Handler que pre-llena la tasa de comisión desde vendor_commission_rates
+  // al seleccionar un vendedor. El usuario puede override después.
+  const handleSalespersonChange = async (value: string) => {
+    setSalespersonId(value);
+    if (value && value !== '__none__') {
+      const rate = await resolveCommissionRate(value);
+      if (rate > 0) {
+        setCommissionRate(rate);
+        setCommissionMethod('percentage');
+      }
+    } else {
+      setCommissionRate(0);
+    }
+  };
+
   // Función para guardar la factura
   const handleSaveInvoice = async () => {
     // Validar que se tenga el número de factura
@@ -572,6 +589,38 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       }
     }
 
+    // --- Evaluar promociones activas para Finanzas ---
+    // Aplica descuentos automáticos a items que no tengan discount_amount manual
+    let evaluatedItems = items;
+    try {
+      const { promotionEngine } = await import('@/lib/services/promotionEngine');
+      const promoResult = await promotionEngine.evaluate({
+        channel: 'finances',
+        items: items.map(it => ({
+          product_id: it.product_id || 0,
+          quantity: Number(it.qty) || 0,
+          unit_price: Number(it.unit_price) || 0,
+        })),
+        organization_id: organizationId,
+        branch_id: branchId,
+      });
+
+      if (promoResult.discountTotal > 0) {
+        evaluatedItems = items.map(it => {
+          if (!it.discount_amount || it.discount_amount === 0) {
+            const promoDiscount = promoResult.itemDiscounts[it.product_id || 0] || 0;
+            if (promoDiscount > 0) {
+              return { ...it, discount_amount: promoDiscount };
+            }
+          }
+          return it;
+        });
+        setItems(evaluatedItems);
+      }
+    } catch (promoErr) {
+      console.warn('[NuevaFacturaForm] No se pudieron evaluar promociones:', promoErr);
+    }
+
     // Totales SIEMPRE recalculados desde los items (fuente de verdad), en vez de
     // confiar en los estados subtotal/taxTotal/total que llegan de forma asíncrona
     // desde ImpuestosFactura y pueden quedar desincronizados si se guarda justo
@@ -579,8 +628,8 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     // distintos a la suma real de sus ítems).
     // total_line de cada ítem SIEMPRE es el total final de esa línea (con impuesto
     // incluido o sumado, según corresponda), por lo que su suma es el total real.
-    const itemsTotal = items.reduce((sum, it) => sum + (Number(it.total_line) || 0), 0);
-    const itemsTaxTotal = items.reduce((sum, it) => {
+    const itemsTotal = evaluatedItems.reduce((sum, it) => sum + (Number(it.total_line) || 0), 0);
+    const itemsTaxTotal = evaluatedItems.reduce((sum, it) => {
       const qty = Number(it.qty) || 0;
       const unitPrice = Number(it.unit_price) || 0;
       const discount = Number(it.discount_amount) || 0;
@@ -1319,7 +1368,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
             <SearchSelect
               options={organizationMembers.map((m) => ({ value: m.id, label: m.name }))}
               value={salespersonId}
-              onValueChange={setSalespersonId}
+              onValueChange={handleSalespersonChange}
               placeholder="Seleccionar vendedor"
               searchPlaceholder="Buscar vendedor..."
               noneLabel="Sin asignar"

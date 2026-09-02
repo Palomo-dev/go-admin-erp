@@ -320,6 +320,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
       probability: probabilityPercent,
       color: stageToEdit.color || "#3b82f6",
       description: stageToEdit.description || "",
+      is_won: Boolean(stageToEdit.is_won),
+      is_lost: Boolean(stageToEdit.is_lost),
     });
     setEditingStageId(stageToEdit.id);
     setStageDialogOpen(true);
@@ -368,6 +370,18 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
 
       if (error) throw error;
 
+      // Actualizar is_won / is_lost (no están en el RPC, se hace con update directo)
+      const { error: flagsError } = await supabase
+        .from('stages')
+        .update({
+          is_won: values.is_won,
+          is_lost: values.is_lost,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingStageId);
+
+      if (flagsError) throw flagsError;
+
       // Actualizar localmente
       setStages(prevStages =>
         prevStages.map(s =>
@@ -377,7 +391,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
                 name: values.name,
                 probability: probabilityValue ?? undefined,
                 color: values.color,
-                description: values.description || undefined
+                description: values.description || undefined,
+                is_won: values.is_won,
+                is_lost: values.is_lost
               }
             : s
         )
@@ -428,6 +444,8 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
           probability: probability,
           color: values.color || '#3b82f6',
           description: values.description || null,
+          is_won: values.is_won || false,
+          is_lost: values.is_lost || false,
         })
         .select()
         .single();
@@ -503,17 +521,17 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
     const updatedStages = reorderedStages.map((stage, index) => {
       let probability: number;
       
-      // Lógica de probabilidad:
-      // - Etapas con nombre "Ganado" o "Ganada" = 100%
-      // - Etapas con nombre "Perdido" o "Perdida" = 0%
+      // Lógica de probabilidad (escala 0-1):
+      // - Etapas con nombre "Ganado" o "Ganada" = 1.0
+      // - Etapas con nombre "Perdido" o "Perdida" = 0
       // - Resto: probabilidad progresiva basada en posición
       const stageLower = stage.name.toLowerCase();
       if (stageLower.includes('ganado') || stageLower.includes('ganada') || stageLower === 'won') {
-        probability = 100;
+        probability = 1;
       } else if (stageLower.includes('perdido') || stageLower.includes('perdida') || stageLower === 'lost') {
         probability = 0;
       } else {
-        // Probabilidad progresiva: primera etapa ~10%, última antes de Ganado/Perdido ~90%
+        // Probabilidad progresiva: primera etapa ~0.1, última antes de Ganado/Perdido ~0.9
         const normalStages = reorderedStages.filter(s => {
           const name = s.name.toLowerCase();
           return !name.includes('ganado') && !name.includes('ganada') && 
@@ -522,9 +540,9 @@ export default function PipelineStages({ pipelineId }: PipelineStagesProps) {
         });
         const posInNormal = normalStages.findIndex(s => s.id === stage.id);
         if (posInNormal >= 0 && normalStages.length > 1) {
-          probability = 10 + (posInNormal / (normalStages.length - 1)) * 80;
+          probability = 0.1 + (posInNormal / (normalStages.length - 1)) * 0.8;
         } else {
-          probability = 50; // Por defecto 50% si es la única etapa normal
+          probability = 0.5; // Por defecto 50% si es la única etapa normal
         }
       }
 

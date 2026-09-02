@@ -189,7 +189,7 @@ export function ExitGatesEditor() {
                       />
                       <CardTitle className="text-sm">{stage.name}</CardTitle>
                       <Badge variant="secondary" className="text-xs">
-                        {stage.probability != null ? `${Math.round(Number(stage.probability) * 100)}%` : 'N/A'}
+                        {stage.probability != null ? `${Math.round(Number(stage.probability))}%` : 'N/A'}
                       </Badge>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => handleEditCriteria(stage)}>

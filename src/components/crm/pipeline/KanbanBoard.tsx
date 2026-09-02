@@ -26,6 +26,14 @@ import { toast } from "@/components/ui/use-toast";
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
 import { supabase } from "@/lib/supabase/config";
 import { WonCloseModal } from "./WonCloseModal";
+import { StageManager } from "./StageManager";
+import { GateWarningDialog } from "./GateWarningDialog";
+import { StructuredLossDialog } from "@/components/crm/oportunidades/StructuredLossDialog";
+import type { LossReasonData } from "@/components/crm/oportunidades/types";
+import {
+  evaluateStageGate,
+  type GateMissing,
+} from "@/lib/services/crm/stageGateService";
 
 interface KanbanBoardProps {
   showStageManager?: boolean;
@@ -33,6 +41,26 @@ interface KanbanBoardProps {
 
 // Estado para el modal de cierre ganado
 interface WonCloseState {
+  open: boolean;
+  opportunityId: string;
+  opportunityName: string;
+  originalStageId: string;
+  destStageId: string;
+}
+
+// Estado para el modal de gate warning (soft-gate F2)
+interface GateWarningState {
+  open: boolean;
+  missing: GateMissing[];
+  stageName: string;
+  opportunityId: string;
+  sourceStageId: string;
+  destStageId: string;
+  destStageName: string;
+}
+
+// Estado para el modal de cierre perdido
+interface LostCloseState {
   open: boolean;
   opportunityId: string;
   opportunityName: string;
@@ -59,6 +87,9 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [realtimeEnabled, setRealtimeEnabled] = useState(true);
   const [wonClose, setWonClose] = useState<WonCloseState | null>(null);
+  const [gateWarning, setGateWarning] = useState<GateWarningState | null>(null);
+  const [lostClose, setLostClose] = useState<LostCloseState | null>(null);
+  const [isLostSubmitting, setIsLostSubmitting] = useState(false);
   
   // Referencias para mantener suscripciones activas
   const stagesSubscriptionRef = useRef<RealtimeSubscription | null>(null);
@@ -388,17 +419,19 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     // Si la etapa no cambió, no hacemos nada más
     if (result.source.droppableId === destination.droppableId) return;
 
-    // Verificar si la etapa destino es is_won (cierre ganado)
+    // Verificar si la etapa destino es is_won (cierre ganado) o is_lost (cierre perdido)
     let destStageIsWon = false;
+    let destStageIsLost = false;
     try {
       const { data: destStage } = await supabase
         .from('stages')
-        .select('is_won')
+        .select('is_won, is_lost')
         .eq('id', destination.droppableId)
         .maybeSingle();
       destStageIsWon = Boolean((destStage as { is_won?: boolean } | null)?.is_won);
+      destStageIsLost = Boolean((destStage as { is_lost?: boolean } | null)?.is_lost);
     } catch (err) {
-      console.warn("No se pudo verificar is_won de la etapa destino:", err);
+      console.warn("No se pudo verificar is_won/is_lost de la etapa destino:", err);
     }
 
     // Si es etapa is_won, abrir WonCloseModal en lugar de actualizar directamente
@@ -413,36 +446,90 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
       return;
     }
 
+    // Si es etapa is_lost, abrir StructuredLossDialog en lugar de actualizar directamente
+    if (destStageIsLost) {
+      setLostClose({
+        open: true,
+        opportunityId: result.draggableId,
+        opportunityName: opportunityToMove.name || 'Oportunidad',
+        originalStageId: result.source.droppableId,
+        destStageId: destination.droppableId,
+      });
+      return;
+    }
+
+    // === Gate F2: evaluar exit_criteria de la etapa destino ===
+    // Soft-gate: si faltan criterios, mostrar GateWarningDialog.
+    // El usuario puede avanzar de todos modos o cancelar.
+    const destStageName = newPipeline.stages[destStageIndex].name || 'etapa destino';
+    try {
+      const organizationId = getOrganizationId();
+      if (organizationId) {
+        const gateResult = await evaluateStageGate(supabase, organizationId, {
+          opportunityId: result.draggableId,
+          targetStageId: destination.droppableId,
+        });
+
+        if (gateResult.missing.length > 0) {
+          setGateWarning({
+            open: true,
+            missing: gateResult.missing,
+            stageName: destStageName,
+            opportunityId: result.draggableId,
+            sourceStageId: result.source.droppableId,
+            destStageId: destination.droppableId,
+            destStageName,
+          });
+          return;
+        }
+      }
+    } catch (gateErr) {
+      // Soft-gate: si falla la evaluación, no bloquear el movimiento
+      console.warn('No se pudo evaluar stage gate:', gateErr);
+    }
+
+    // Flujo normal: persistir el cambio de etapa + automatizaciones
+    await performStageMove(
+      result.draggableId,
+      result.source.droppableId,
+      destination.droppableId
+    );
+  };
+
+  /**
+   * Persiste el cambio de etapa en Supabase y ejecuta automatizaciones.
+   * Reutilizado por handleDragEnd (gate ok) y handleGateWarningConfirm (soft-gate).
+   */
+  const performStageMove = async (
+    opportunityId: string,
+    sourceStageId: string,
+    destStageId: string
+  ) => {
     // Flujo normal: actualizar en Supabase y ejecutar automatizaciones
     try {
       // Utilizamos el servicio kanban para actualizar la etapa de la oportunidad
       const updateResult = await updateOpportunityStage(
-        result.draggableId, 
-        destination.droppableId
+        opportunityId,
+        destStageId
       );
-      
+
       if (!updateResult.success) {
         throw new Error(updateResult.error || "Error al actualizar la oportunidad");
       }
 
-      // Oportunidad actualizada en la base de datos
-      const finishStage = newPipeline.stages[destStageIndex];
-      // Oportunidad movida a nueva etapa
-
       // Si hay cambios de etapa, ejecutar automatizaciones
-      if (result.source.droppableId !== destination.droppableId) {
+      if (sourceStageId !== destStageId) {
         const organizationId = getOrganizationId();
 
         if (organizationId) {
           // Indicar que las automatizaciones están en proceso
-          setProcessingAutomation(result.draggableId);
-          
+          setProcessingAutomation(opportunityId);
+
           // Ejecutar automatizaciones cuando cambia la etapa
-          // Ejecutando automatizaciones para cambio de etapa
           handleStageChangeAutomation({
-            opportunityId: result.draggableId,
-            fromStageId: result.source.droppableId,
-            toStageId: destination.droppableId,
+            opportunityId,
+            fromStageId: sourceStageId,
+            toStageId: destStageId,
             organizationId: String(organizationId) // Convertir a string para compatibilidad con la función
           }).then((result) => {
             setProcessingAutomation(null);
@@ -464,18 +551,41 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     }
   };
 
+  /**
+   * Confirmar avance a pesar de gate incompleto (soft-gate).
+   */
+  const handleGateWarningConfirm = async () => {
+    if (!gateWarning) return;
+    const { opportunityId, sourceStageId, destStageId } = gateWarning;
+    setGateWarning(null);
+    await performStageMove(opportunityId, sourceStageId, destStageId);
+  };
+
+  /**
+   * Cancelar avance cuando el gate falla: revertir el estado local.
+   */
+  const handleGateWarningCancel = () => {
+    // La oportunidad no se persistió, recargamos desde la BD para revertir el drag
+    fetchPipelineData();
+    setGateWarning(null);
+  };
+
   // Confirmar cierre ganado: persistir cambio de etapa + automatizaciones
   const handleWonCloseComplete = async () => {
     if (!wonClose) return;
     try {
-      // Persistir el cambio de etapa a la etapa is_won
-      const updateResult = await updateOpportunityStage(
-        wonClose.opportunityId,
-        wonClose.destStageId
-      );
-      if (!updateResult.success) {
-        throw new Error(updateResult.error || "Error al actualizar la oportunidad");
-      }
+      // Persistir el cambio de etapa a la etapa is_won + status='won'
+      const { error: updateError } = await supabase
+        .from('opportunities')
+        .update({
+          stage_id: wonClose.destStageId,
+          status: 'won',
+          closed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', wonClose.opportunityId);
+
+      if (updateError) throw updateError;
 
       // Ejecutar automatizaciones de cambio de etapa
       const organizationId = getOrganizationId();
@@ -524,15 +634,78 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     setWonClose(null);
   };
 
-  let StageManagerComponent: any = null;
-  if (showStageManager) {
+  // Confirmar cierre perdido: persistir cambio de etapa + status lost + datos de pérdida
+  const handleLostCloseConfirm = async (data: LossReasonData) => {
+    if (!lostClose) return;
+    setIsLostSubmitting(true);
     try {
-      // Dynamic import
-      StageManagerComponent = require("./StageManager").StageManager;
-    } catch (e) {
-      console.warn("No se pudo cargar StageManager", e);
+      // 1. Actualizar la oportunidad: stage_id + status='lost' + datos de pérdida
+      const updatePayload: Record<string, unknown> = {
+        stage_id: lostClose.destStageId,
+        status: 'lost',
+        loss_reason_value: data.lossReasonId,
+        loss_reason_notes: data.notes || null,
+        closed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      if (data.competitor) updatePayload.competitor_name = data.competitor;
+      if (data.competitorPrice !== undefined) updatePayload.competitor_price = data.competitorPrice;
+      if (data.missingFeatures) updatePayload.missing_features = data.missingFeatures;
+      if (data.recontactDate) updatePayload.recontact_at = data.recontactDate;
+
+      const { error: updateError } = await supabase
+        .from('opportunities')
+        .update(updatePayload)
+        .eq('id', lostClose.opportunityId);
+
+      if (updateError) throw updateError;
+
+      // 2. Ejecutar automatizaciones de cambio de etapa
+      const organizationId = getOrganizationId();
+      if (organizationId) {
+        setProcessingAutomation(lostClose.opportunityId);
+        handleStageChangeAutomation({
+          opportunityId: lostClose.opportunityId,
+          fromStageId: lostClose.originalStageId,
+          toStageId: lostClose.destStageId,
+          organizationId: String(organizationId),
+        }).then((result) => {
+          setProcessingAutomation(null);
+          if (!result.success) {
+            console.error("Error en automatizaciones:", result.error);
+          }
+        }).catch(error => {
+          setProcessingAutomation(null);
+          console.error("Error al ejecutar automatizaciones:", error);
+        });
+      }
+
+      toast({
+        title: "Oportunidad perdida",
+        description: "Se registró la razón de pérdida.",
+        duration: 4000,
+      });
+    } catch (err) {
+      console.error("Error al confirmar cierre perdido:", err);
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "No se pudo registrar la pérdida",
+        variant: "destructive",
+      });
+      fetchPipelineData();
+    } finally {
+      setIsLostSubmitting(false);
+      setLostClose(null);
     }
-  }
+  };
+
+  // Cancelar cierre perdido: revertir el drag
+  const handleLostCloseCancel = () => {
+    if (!lostClose) return;
+    fetchPipelineData();
+    setLostClose(null);
+  };
 
   if (!pipeline) {
     return (
@@ -543,17 +716,11 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
   }
   
   // Clasificar las etapas para la visualización
-  const classifyStageType = (stageName: string | undefined) => {
-    const name = (stageName || '').toLowerCase();
-    if (name.includes('nuevo') || name.includes('lead') || name.includes('prospecto')) {
-      return 'new';
-    } else if (name.includes('ganado') || name.includes('cerrado') && name.includes('positivo') || name.includes('won')) {
-      return 'won';
-    } else if (name.includes('perdido') || name.includes('cerrado') && name.includes('negativo') || name.includes('lost')) {
-      return 'lost';
-    } else {
-      return 'inProgress';
-    }
+  // Prioriza los flags is_won / is_lost de la BD; fallback al nombre
+  const classifyStageType = (stageName: string | undefined, stage?: { is_won?: boolean; is_lost?: boolean }) => {
+    if (stage?.is_won) return 'won';
+    if (stage?.is_lost) return 'lost';
+    return 'inProgress';
   };
 
   // Ordenar etapas por su posición
@@ -564,7 +731,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
     <div className="flex justify-between items-center mb-4">
       <div className="flex items-center gap-2">
         <h2 className="text-2xl font-bold">{pipeline?.name || "Pipeline"}</h2>
-        {showStageManager && StageManagerComponent && (
+        {showStageManager && (
           <Button
             variant="ghost"
             size="sm"
@@ -634,10 +801,10 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
         Total: {stageStats.reduce((sum, stat) => sum + (stat.totalAmount || 0), 0).toLocaleString('es-ES')} {sortedStages[0]?.opportunities?.[0]?.currency || 'COP'}
       </span>
     </div>
-    {showStageManager && StageManagerComponent && (
-      <StageManagerComponent 
-        pipeline={pipeline} 
-        onPipelineChange={setPipeline} 
+    {showStageManager && (
+      <StageManager
+        pipeline={pipeline}
+        onPipelineChange={setPipeline}
         onStagesUpdate={handleStagesUpdate}
       />
     )}
@@ -654,7 +821,7 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
           );
           
           // Clasificar el tipo de etapa
-          const stageType = classifyStageType(stage.name);
+          const stageType = classifyStageType(stage.name, stage);
           
           // Función para actualizar una etapa específica
           const handleStageUpdate = (updatedStage: Stage) => {
@@ -682,9 +849,6 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
             
             // Añadir clases específicas según el tipo de etapa
             switch(stageType) {
-              case 'new':
-                classes += "border-l-4 border-blue-500 pl-1 ";
-                break;
               case 'won':
                 classes += "border-l-4 border-green-500 pl-1 ";
                 break;
@@ -737,6 +901,29 @@ export function KanbanBoard({ showStageManager = false }: KanbanBoardProps) {
         opportunityName={wonClose.opportunityName}
         onComplete={handleWonCloseComplete}
         onCancel={handleWonCloseCancel}
+      />
+    )}
+
+    {/* Modal de gate warning (soft-gate F2) */}
+    {gateWarning && (
+      <GateWarningDialog
+        open={gateWarning.open}
+        onClose={handleGateWarningCancel}
+        onConfirm={handleGateWarningConfirm}
+        missing={gateWarning.missing.map((m) => m.detail)}
+        stageName={gateWarning.destStageName}
+      />
+    )}
+
+    {/* Modal de cierre perdido con razones estructuradas */}
+    {lostClose && (
+      <StructuredLossDialog
+        open={lostClose.open}
+        onOpenChange={(v) => {
+          if (!v) handleLostCloseCancel();
+        }}
+        onConfirm={handleLostCloseConfirm}
+        isLoading={isLostSubmitting}
       />
     )}
   </div>

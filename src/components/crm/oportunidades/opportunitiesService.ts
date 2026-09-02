@@ -149,6 +149,10 @@ class OpportunitiesService {
       query = query.ilike('name', `%${filters.search}%`);
     }
 
+    if (filters?.record_type) {
+      query = query.eq('record_type', filters.record_type);
+    }
+
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -218,6 +222,7 @@ class OpportunitiesService {
         source: input.source || null,
         vertical_id: input.vertical_id || null,
         next_contact_at: input.next_contact_at || null,
+        record_type: input.record_type || 'deal',
       })
       .select()
       .single();
@@ -286,6 +291,22 @@ class OpportunitiesService {
     if (input.source !== undefined) updateData.source = input.source;
     if (input.vertical_id !== undefined) updateData.vertical_id = input.vertical_id;
     if (input.next_contact_at !== undefined) updateData.next_contact_at = input.next_contact_at;
+    // FASE 2 — Nuevas columnas
+    if (input.record_type !== undefined) updateData.record_type = input.record_type;
+    if (input.last_contact_at !== undefined) updateData.last_contact_at = input.last_contact_at;
+    if (input.contact_channel !== undefined) updateData.contact_channel = input.contact_channel;
+    if (input.contact_result !== undefined) updateData.contact_result = input.contact_result;
+    if (input.objection_id !== undefined) updateData.objection_id = input.objection_id;
+    if (input.loss_reason_value !== undefined) updateData.loss_reason_value = input.loss_reason_value;
+    if (input.competitor_name !== undefined) updateData.competitor_name = input.competitor_name;
+    if (input.competitor_price !== undefined) updateData.competitor_price = input.competitor_price;
+    if (input.missing_features !== undefined) updateData.missing_features = input.missing_features;
+    if (input.recontact_at !== undefined) updateData.recontact_at = input.recontact_at;
+    if (input.discovery_data !== undefined) updateData.discovery_data = input.discovery_data;
+    if (input.win_data !== undefined) updateData.win_data = input.win_data;
+    if (input.next_action !== undefined) updateData.next_action = input.next_action;
+    if (input.closed_at !== undefined) updateData.closed_at = input.closed_at;
+    if (input.temperature !== undefined) updateData.temperature = input.temperature;
 
     const { data, error } = await supabase
       .from('opportunities')
@@ -384,18 +405,20 @@ class OpportunitiesService {
   }
 
   async markAsLost(id: string, data: LossReasonData): Promise<Opportunity> {
-    // Guardar etiqueta visible en loss_reason (string, mientras no haya tabla)
-    // y datos estructurados en metadata (JSONB)
-    // Nota: la columna metadata debe crearse en FASE 1; si no existe,
-    // la actualización de loss_reason se completa primero como fallback.
+    // Guardar etiqueta visible en loss_reason (string) y datos estructurados
+    // en las nuevas columnas de FASE 2.
     const lossReasonLabel = data.lossReasonLabel || data.lossReasonId;
 
-    // Primero guardar loss_reason (columna existente)
     const { data: updated, error } = await supabase
       .from('opportunities')
       .update({
         status: 'lost',
         loss_reason: lossReasonLabel,
+        loss_reason_value: data.lossReasonId || lossReasonLabel,
+        competitor_name: data.competitor || null,
+        competitor_price: data.competitorPrice || null,
+        missing_features: data.missingFeatures || null,
+        recontact_at: data.recontactDate || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -404,7 +427,7 @@ class OpportunitiesService {
 
     if (error) throw error;
 
-    // Intentar guardar metadata estructurado (best-effort: la columna puede no existir aún)
+    // Guardar también en metadata como respaldo (best-effort)
     try {
       await supabase
         .from('opportunities')
@@ -421,8 +444,7 @@ class OpportunitiesService {
         })
         .eq('id', id);
     } catch (err) {
-      // La columna metadata no existe aún (FASE 1); ignorar error
-      console.warn('No se pudo guardar metadata de pérdida (columna metadata pendiente FASE 1):', err);
+      console.warn('No se pudo guardar metadata de pérdida:', err);
     }
 
     return updated;
@@ -430,6 +452,22 @@ class OpportunitiesService {
 
   async moveToStage(id: string, stageId: string): Promise<Opportunity> {
     return this.updateOpportunity(id, { stage_id: stageId });
+  }
+
+  /**
+   * Registra un contacto con la oportunidad (tracking de último contacto).
+   * Actualiza last_contact_at, contact_channel y contact_result.
+   */
+  async registerContact(
+    id: string,
+    channel: string,
+    result: string
+  ): Promise<Opportunity> {
+    return this.updateOpportunity(id, {
+      last_contact_at: new Date().toISOString(),
+      contact_channel: channel,
+      contact_result: result,
+    });
   }
 
   async getStats(filters?: OpportunityFilters): Promise<OpportunityStats> {
@@ -441,7 +479,7 @@ class OpportunitiesService {
     const lost = opportunities.filter((o) => o.status === 'lost').length;
     const totalAmount = opportunities.reduce((sum, o) => sum + (o.amount || 0), 0);
     const weightedAmount = opportunities.reduce((sum, o) => {
-      const probability = (o.stage?.probability || 0) / 100;
+      const probability = (o.stage?.probability || 0);
       return sum + (o.amount || 0) * probability;
     }, 0);
     const avgDealSize = total > 0 ? totalAmount / total : 0;
@@ -498,12 +536,12 @@ class OpportunitiesService {
         };
       }
 
-      const probability = (opp.stage?.probability || 0) / 100;
+      const probability = (opp.stage?.probability || 0);
       const amount = opp.amount || 0;
 
       if (opp.status === 'open') {
         groupedData[periodKey].openAmount += amount;
-        groupedData[periodKey].weightedAmount += amount * probability;
+        groupedData[periodKey].weightedAmount += amount * (probability / 100);
       } else if (opp.status === 'won') {
         groupedData[periodKey].wonAmount += amount;
       } else if (opp.status === 'lost') {

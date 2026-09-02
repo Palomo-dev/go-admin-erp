@@ -4,6 +4,7 @@ import { POSService } from '@/lib/services/posService';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { promotionEngine } from '@/lib/services/promotionEngine';
 import {
   calculateItemTaxes,
   type OrganizationTax as TaxUtilOrganizationTax,
@@ -302,9 +303,29 @@ export class PedidosService {
       formattedOrgTaxes.forEach((t) => { defaultApplied[t.id] = t.is_default; });
 
       const saleItems = [];
+
+      // --- Evaluar promociones activas para POS (mesas) ---
+      let promoDiscounts: Record<number, number> = {};
+      try {
+        const promoResult = await promotionEngine.evaluate({
+          channel: 'pos',
+          items: productos.map(p => ({
+            product_id: p.product_id,
+            quantity: p.quantity,
+            unit_price: p.unit_price,
+          })),
+          organization_id: organizationId,
+          branch_id: branchId,
+        });
+        promoDiscounts = promoResult.itemDiscounts;
+      } catch (promoErr) {
+        console.warn('[pedidosService] No se pudieron evaluar promociones:', promoErr);
+      }
+
       for (const p of productos) {
         let itemTaxAmount = 0;
         let itemTotal = p.quantity * p.unit_price;
+        const itemDiscount = promoDiscounts[p.product_id] || 0;
 
         try {
           // Intentar impuestos específicos del producto
@@ -340,7 +361,7 @@ export class PedidosService {
             quantity: p.quantity,
             unit_price: p.unit_price,
             product_id: p.product_id,
-            discount_amount: (p as any).discount_amount || 0,
+            discount_amount: itemDiscount,
           };
 
           const itemTaxes = calculateItemTaxes(taxItem, effectiveApplied, effectiveOrgTaxes, effectiveTaxIncluded);
@@ -363,7 +384,7 @@ export class PedidosService {
           unit_price: p.unit_price,
           total: itemTotal,
           tax_amount: itemTaxAmount,
-          discount_amount: 0,
+          discount_amount: itemDiscount,
           notes: {
             product_name: p.product_name,
             ...(p.notes ? { extra: p.notes } : {}),

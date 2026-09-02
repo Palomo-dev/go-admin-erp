@@ -5,6 +5,7 @@ import { calculateCartTaxesComplete, getTaxIncludedSetting, formatTaxCalculation
 import { CreditNoteNumberService } from '@/lib/services/creditNoteNumberService';
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
+import { promotionEngine } from '@/lib/services/promotionEngine';
 import {
   Product,
   Customer,
@@ -1384,6 +1385,36 @@ export class POSService {
     try {
       const { cart, payments } = checkoutData;
 
+      // --- Evaluar promociones activas para POS ---
+      // Aplica descuentos automáticos a items que no tengan discount_amount manual
+      try {
+        const promoResult = await promotionEngine.evaluate({
+          channel: 'pos',
+          items: cart.items.map(i => ({
+            product_id: i.product_id,
+            category_id: i.product?.category_id,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+          })),
+          organization_id: cart.organization_id,
+          branch_id: cart.branch_id,
+          customer_id: cart.customer_id,
+        });
+
+        if (promoResult.discountTotal > 0) {
+          for (const item of cart.items) {
+            if (!item.discount_amount || item.discount_amount === 0) {
+              const promoDiscount = promoResult.itemDiscounts[item.product_id] || 0;
+              if (promoDiscount > 0) {
+                item.discount_amount = promoDiscount;
+              }
+            }
+          }
+        }
+      } catch (promoErr) {
+        console.warn('[posService] No se pudieron evaluar promociones:', promoErr);
+      }
+
       // Calcular totales por item resolviendo tax_rate desde los impuestos del producto
       // cuando el item no lo trae (fallback si calculatedTotals falló en el CheckoutDialog)
       const checkoutTaxIncluded = checkoutData.tax_included || false;
@@ -2117,6 +2148,35 @@ export class POSService {
   }
 
   private static async calculateCartTotals(cart: Cart): Promise<void> {
+    // --- Evaluar promociones activas para POS ---
+    try {
+      const promoResult = await promotionEngine.evaluate({
+        channel: 'pos',
+        items: cart.items.map(i => ({
+          product_id: i.product_id,
+          category_id: i.product?.category_id,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        })),
+        organization_id: cart.organization_id,
+        branch_id: cart.branch_id,
+        customer_id: cart.customer_id,
+      });
+
+      if (promoResult.discountTotal > 0) {
+        for (const item of cart.items) {
+          if (!item.discount_amount || item.discount_amount === 0) {
+            const promoDiscount = promoResult.itemDiscounts[item.product_id] || 0;
+            if (promoDiscount > 0) {
+              item.discount_amount = promoDiscount;
+            }
+          }
+        }
+      }
+    } catch (promoErr) {
+      console.warn('[posService] No se pudieron evaluar promociones en calculateCartTotals:', promoErr);
+    }
+
     // Recalcular impuestos para cada ítem
     for (const item of cart.items) {
       await this.calculateItemTaxes(item);

@@ -32,6 +32,9 @@ export interface CheckoutReservation {
       amount: number;
       source: string;
       created_at: string;
+      product_id?: number | null;
+      quantity?: number | null;
+      unit_price?: number | null;
     }>;
   } | null;
   deposit_payments: Array<{

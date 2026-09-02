@@ -8,6 +8,159 @@
 
 ## 1. Base de datos — estado real
 
+### 1.0 Tipos de llaves primarias — LEER ANTES DE ESCRIBIR CUALQUIER MIGRACIÓN
+
+> Verificado por `information_schema` el 2026-09-01. Esta tabla es la causa raíz de los
+> errores de FK detectados por QA en F1. **No es `bigint`: `organizations.id` es `integer`.**
+
+| Tabla | PK | Tipo real | FK que debe usarse |
+|---|---|---|---|
+| `organizations` | `id` | **`integer`** | `organization_id integer REFERENCES organizations(id)` |
+| `branches` | `id` | **`integer`** | `branch_id integer REFERENCES branches(id)` |
+| `journal_entries` | `id` | **`integer`** | `journal_entry_id integer` |
+| `organization_members` | `id` | **`bigint`** | casi nunca se referencia por `id`; usa `user_id uuid` |
+| `auth.users` / `profiles` | `id` | `uuid` | `user_id uuid REFERENCES auth.users(id)` |
+| `customers` | `id` | `uuid` | `customer_id uuid REFERENCES customers(id)` |
+| `opportunities` | `id` | `uuid` | `opportunity_id uuid` |
+| `pipelines`, `stages` | `id` | `uuid` | `stage_id uuid`, `pipeline_id uuid` |
+| `quotations`, `invoice_sales`, `payments`, `accounts_receivable` | `id` | `uuid` | `*_id uuid` |
+| `commissions`, `vendor_commission_rates` | `id` | `uuid` | `*_id uuid` |
+| `templates`, `notification_templates`, `automations`, `campaigns` | `id` | `uuid` | `*_id uuid` |
+| `tasks`, `activities`, `loss_reasons`, `scoring_configs`, `verticals` | `id` | `uuid` | `*_id uuid` |
+
+**Regla derivada, obligatoria para toda tabla nueva del CRM:**
+
+```sql
+-- ✅ CORRECTO
+organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE
+branch_id      integer     NULL REFERENCES branches(id)
+user_id        uuid        NULL REFERENCES auth.users(id)
+id             uuid    NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY
+
+-- ❌ INCORRECTO (falla la migración)
+organization_id bigint REFERENCES organizations(id)   -- tipo incompatible
+organization_id uuid   REFERENCES organizations(id)   -- tipo incompatible
+```
+
+Columnas ya verificadas que confirman el patrón: `opportunities.organization_id = integer`,
+`commissions.organization_id = integer`, `commissions.payee_id = uuid`,
+`opportunities.salesperson_id = uuid`, `commissions.source_id = text` (polimórfico).
+
+### 1.0-bis RLS activo con CERO políticas — bug crítico no documentado antes
+
+> Verificado con `pg_class.relrowsecurity` + `pg_policies` el 2026-09-01.
+
+En PostgreSQL, `ENABLE ROW LEVEL SECURITY` sin ninguna política equivale a **denegar todo**
+para roles no privilegiados. Estas tablas tienen RLS activo y **0 políticas**, por lo que
+son inaccesibles desde el cliente `authenticated`:
+
+| Tabla | RLS | Políticas | Filas | Consecuencia real |
+|---|---|---|---|---|
+| `scoring_configs` | ✅ on | **0** | 0 | El scoring GOC **no puede leerse ni escribirse** desde la app |
+| `loss_reasons` | ✅ on | **0** | 8 | Las 8 razones de pérdida **no se pueden listar** |
+| `verticals` | ✅ on | **0** | 0 | Verticales **inaccesibles** |
+| `health_score_configs` | ✅ on | **0** | — | Health score **no configurable** |
+| `health_score_snapshots` | ✅ on | **0** | — | Snapshots **no legibles** |
+| `opportunity_stage_history` | ✅ on | **0** | — | Histórico de etapas **no legible** |
+
+**Esto invalida 6 filas de la tabla "Lo que YA funciona" del `PLAN.md` §3.1.** Esas features
+solo funcionan hoy si el código usa `service_role` (lo que a su vez es una fuga cross-tenant).
+Corregir estas 6 políticas es **prerrequisito de F1, F2, F11 y F14** y se hace en **F0**.
+
+Política canónica a aplicar vía MCP (`apply_migration`) en las 6 tablas:
+
+```sql
+CREATE POLICY org_member_all ON <tabla>
+  FOR ALL TO authenticated
+  USING (organization_id IN (
+    SELECT organization_id FROM organization_members
+    WHERE user_id = auth.uid() AND is_active = true
+  ))
+  WITH CHECK (organization_id IN (
+    SELECT organization_id FROM organization_members
+    WHERE user_id = auth.uid() AND is_active = true
+  ));
+```
+
+Nota: `health_score_configs` tiene `organization_id` como PK (no hay columna `id`), y
+`opportunity_stage_history` sí tiene `organization_id`, así que la misma política aplica.
+
+### 1.0-ter Datos reales (no supuestos) — conteos verificados
+
+| Tabla | Filas | Implicación para el plan |
+|---|---|---|
+| `customers` | 31 620 | `person` 31 402 · `company` 218 · **`partner` 0** → F12 no tiene datos de partners |
+| `commissions` | 103 | **todas `status='accrued'`**; `source_type`: `invoice_sale` 100, `invoice_purchase` 2, `sale` 1 |
+| `opportunities` | 25 | `open` 22 · `lost` 2 · `won` 1 → dataset mínimo, no sirve para probar cohortes |
+| `notification_templates` | 15 | **este es el sistema de plantillas realmente en uso** |
+| `templates` | **0** | vacío → F7/F11 no tienen datos que migrar; el conflicto de `CHECK` sobre `channel` es teórico |
+| `loss_reasons` | 8 | hay datos, pero RLS los bloquea (ver §1.0-bis) |
+| `scoring_configs` | **0** | "Scoring GOC ✅" del PLAN es **falso**: no hay ninguna config |
+| `verticals` | **0** | vacío |
+| `automations` | 1 | el motor existente casi no se usa |
+
+Consecuencias directas:
+- `commissions` **nunca ha tenido** un registro `paid`/`cancelled`. Añadir `rejected`/`clawed_back` es diseño nuevo, no migración de datos.
+- `commissions.source_type` **no incluye `opportunity`**; para F10/F13 se usa `invoice_sale` y se llega a la oportunidad vía `invoice_sales.opportunity_id`.
+- No existe ningún `customer_type='partner'`: F12 arranca de cero.
+
+### 1.0-quater Vínculos polimórficos y columnas que NO existen — errores frecuentes
+
+> Verificado el 2026-09-01. Cada fila de esta tabla corresponde a un error real que
+> estaba escrito en los documentos de fase y que habría hecho fallar la migración
+> o devuelto resultados vacíos en silencio.
+
+| Suposición equivocada | Realidad verificada |
+|---|---|
+| `payments.invoice_id` | ❌ **no existe**. El vínculo es `payments.source='invoice_sales'` + `payments.source_id` |
+| `payments.customer_id` | ❌ **no existe**. Se llega al cliente vía `invoice_sales.customer_id` |
+| `payments.source_id` es uuid | ❌ es **`text`** → `p.source_id = i.id::text` |
+| `payments.source = 'invoice_sale'` | ❌ el valor real es **`'invoice_sales'`** (plural). 590 pagos, $72 551 163 |
+| `payments.status = 'paid'` | ❌ para facturas es **`'completed'`**. `'paid'`/`'failed'` son de `web_order` |
+| `payments.metadata` | ❌ **no existe**. Usar `reference` (text) para idempotencia y `processor_response` (jsonb) para el payload |
+| `commissions.amount` | ❌ **no existe**. El importe es **`commission_amount`**; `base_amount` es la base de cálculo |
+| `commissions.source_type = 'invoice_sales'` | ❌ aquí es **`'invoice_sale'`** (singular). Ojo: opuesto a `payments.source` |
+| `commissions.invoice_id` / `opportunity_id` | ❌ no existen. Es polimórfico: `source_type` + `source_id` (text) |
+| `opportunities.closed_at` | ❌ **no existe** → la crea **F2**. `expected_close_date` (date) es la fecha *esperada*, no la real |
+| `customers.lifecycle_stage` | ❌ **no existe** → la crea **F1** + backfill obligatorio |
+| `organization_members.role` | ❌ **no existe**. Es **`role_id integer`** → FK a `roles(id)` |
+| `quotations.payment_link_url` / `signature_id` | ❌ no existen → las crea **F10** |
+| `templates.metadata` | ❌ no existe → la crea **F0** |
+| `user_profiles` | ❌ **la tabla no existe**. La real es `profiles` (bug G2 en `callService.ts:262`) |
+| `referrals` | ❌ **la tabla no existe**. `referralsService.ts` usa `organization_preferences.settings` + `customers.metadata` |
+| `automation_rules` | ❌ **no existe**. Solo existe `automations` (1 fila) |
+| `provider_configs`, `sales_targets`, `documents`, `calls` | ❌ no existen |
+
+**Modelo RBAC real (no inventar roles nuevos):**
+
+| Tabla | Columnas verificadas | Uso |
+|---|---|---|
+| `roles` | `id integer, name varchar, description text, is_system boolean, created_at` | **1** Super Admin · **2** Admin de organización · **3** Cliente · **4** Empleado · **5** Manager |
+| `role_permissions` | — | Permisos granulares por rol (ya existe) |
+| `organization_members` | `id bigint, organization_id integer, user_id uuid, is_super_admin boolean, is_active boolean, role_id integer, job_position_id uuid, is_temporary boolean` | Membresía + rol de acceso |
+| `job_positions` | — | Cargo (HRM). **Distinto** del rol de acceso |
+
+Los roles comerciales (SDR, AE, CS, Preventa…) **no** son roles de acceso: van en
+`sales_roles` (F1) o `job_positions` (HRM), nunca en `roles`.
+
+**Política RLS canónica en producción** (copiada literal de `commissions`, usarla igual en toda tabla nueva):
+
+```sql
+organization_id IN (
+  SELECT om.organization_id FROM organization_members om
+   WHERE om.user_id = auth.uid() AND om.is_active = true
+)
+```
+
+**Índices faltantes detectados** (`payments` tiene **solo** el índice de su PK con 1 050 filas):
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS uq_payments_org_reference
+  ON payments (organization_id, reference) WHERE reference IS NOT NULL;   -- idempotencia
+CREATE INDEX IF NOT EXISTS idx_payments_org_source
+  ON payments (organization_id, source, source_id);                        -- JOIN de F14
+```
+
 ### 1.1 Tablas del núcleo CRM que YA existen
 
 | Tabla | Columnas relevantes (verificadas) |
@@ -72,7 +225,12 @@
 `sequences` · `sequence_steps` · `sequence_enrollments` · `sequence_step_runs` · `automation_rules` · `automation_runs`
 
 **Comercial:**
-`icp_profiles` · `icp_criteria` · `sales_roles` · `sales_teams` · `sales_team_members` · `territories` · `objections` · `opportunity_objections` · `discovery_templates` · `demo_scripts` · `roi_calculators` · `sales_targets` · `commission_events`
+`icp_profiles` · `icp_criteria` · `sales_roles` · `sales_teams` · `sales_team_members` · `territories` · `objections` · `opportunity_objections` · `discovery_templates` · `demo_scripts` · `roi_calculators` · `sales_targets`
+
+> ⛔ **`commission_events` y `commission_rules` no faltan: están PROHIBIDAS.** No se
+> crean nunca. Serían tablas dobles de `commissions` (103 filas reales, con `status`,
+> `accrued_at`, `paid_at`, `metadata`) y `vendor_commission_rates` (tasas, con
+> `metadata` para tiered/split). Tampoco se crean `crm_payments` ni `crm_commissions`.
 
 **Post-venta y canal:**
 `onboarding_templates` · `onboarding_instances` · `onboarding_steps` · `partners` · `partner_tiers` · `partner_deals` · `referral_programs` · `referrals`
@@ -125,7 +283,7 @@ quotations:     payment_link_url, signature_id
 | `/app/crm/segmentos` (+ `/nuevo`, `/[id]`) | `.../segmentos/**` | Segmentos |
 
 **Rutas linkeadas que NO existen:**
-- `/app/crm/configuracion` ← linkeada en `src/components/crm/dashboard/CRMQuickNav.tsx:112`
+- `/app/crm/configuracion` ← linkeada en `src/components/crm/dashboard/CRMQuickNav.tsx:112` — debe apuntar a `/app/configuracion?modulo=crm` (ya centralizado)
 - `/app/crm/conversaciones` (índice) ← no existe `page.tsx`; la bandeja real está en `/app/chat/bandeja`
 
 ### 2.2 Componentes por área (`src/components/crm/`)
@@ -340,7 +498,7 @@ Además: funnel visual de etapas, valor total/ponderado, probabilidad, fecha de 
 | G5 | Webhooks legacy desactivados pero documentados como activos | `src/app/api/webhooks/{voip,sms,email}/twilio/route.ts` + `docs/VOIP_SETUP.md` | 🟠 medio | F0 |
 | G6 | `.env.example` incompleto (23 variables faltantes) | `.env.example` | 🟠 medio | F0 |
 | G7 | `stages.display_order` duplica `stages.position` | BD + `src/components/crm/reportes/ReportesService.ts` | 🟠 medio | F0 |
-| G8 | `/app/crm/configuracion` linkeado sin destino | `src/components/crm/dashboard/CRMQuickNav.tsx:112` | 🟡 bajo | F0 |
+| G8 | `CRMQuickNav.tsx:112` linkea a `/app/crm/configuracion` que no existe — debe apuntar a `/app/configuracion?modulo=crm` | `src/components/crm/dashboard/CRMQuickNav.tsx:112` | 🟡 bajo | F0 |
 | G9 | `/app/crm/clientes/[id]` ignora la ficha 360° | `src/app/app/crm/clientes/[id]/page.tsx` | 🟠 medio | F9 |
 | G10 | Automatizaciones por etapa "próximamente" | `src/components/crm/pipeline/AutomationsView.tsx` | 🟠 medio | F8 |
 | G11 | `elevenLabsTTS.ts` / `deepgramSTT.ts` / `realtimeSession.ts` código muerto | 3 archivos en `voiceAgent/` | 🟡 bajo | F4/F6 |

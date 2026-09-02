@@ -273,106 +273,65 @@ async function rangoPeriodo(
   }
 }
 
-/**
- * Parsea un string de fecha (ISO o formato Postgres con espacio) a Date.
- * Supabase puede retornar timestamptz como "2026-08-28 17:21:07.306+00"
- * (con espacio en vez de 'T'), que no es válido en todos los entornos.
- */
-function parseFecha(fecha: string): Date {
-  // Reemplazar espacio por 'T' si el formato parece ISO con espacio
-  const normalized = fecha.includes(' ') && /\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(fecha)
-    ? fecha.replace(' ', 'T')
-    : fecha;
-  return new Date(normalized);
-}
 
 /**
- * Agrupa registros por hora local (0-23) de la organización.
- * Devuelve un array de 24 posiciones con el total acumulado por hora.
+ * Mapea el resultado de la RPC get_website_visits_by_day (que devuelve
+ * {fecha: 'YYYY-MM-DD', total}[] en la timezone de la org) a PuntoDiaMes[]
+ * con posición secuencial (1, 2, 3...), generando todos los días del período
+ * (incluyendo días sin datos como total=0).
+ *
+ * A diferencia de agruparPorDiaPeriodo, no necesita Intl.DateTimeFormat porque
+ * la RPC ya devuelve la fecha convertida a la timezone de la org.
  */
-function agruparPorHoraLocal(
-  registros: { total: number; fecha: string }[],
-  timezone: string,
-): PuntoHora[] {
-  const porHora: number[] = new Array(24).fill(0);
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    hour: 'numeric',
-    hour12: false,
-  });
-  for (const r of registros) {
-    const horaStr = fmt.format(parseFecha(r.fecha));
-    const hora = Number(horaStr) % 24; // '24' en en-US para medianoche → 0
-    if (hora >= 0 && hora < 24) {
-      porHora[hora] += Number(r.total || 0);
-    }
-  }
-  return porHora.map((total, hora) => ({ hora, total }));
-}
-
-/**
- * Agrupa registros por día del mes (1-31) en timezone de la org.
- * Devuelve un array con un punto por cada día que tenga datos.
- */
-function agruparPorDiaMes(
-  registros: { total: number; fecha: string }[],
-  timezone: string,
-): PuntoDiaMes[] {
-  const porDia = new Map<number, number>();
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    day: 'numeric',
-  });
-  for (const r of registros) {
-    const diaStr = fmt.format(parseFecha(r.fecha));
-    const dia = Number(diaStr);
-    if (dia >= 1 && dia <= 31) {
-      porDia.set(dia, (porDia.get(dia) || 0) + Number(r.total || 0));
-    }
-  }
-  return Array.from(porDia.entries())
-    .map(([dia, total]) => ({ dia, total }))
-    .sort((a, b) => a.dia - b.dia);
-}
-
-/**
- * Agrupa registros por día dentro de un período, usando posición secuencial (1, 2, 3...).
- * Genera todas las fechas del período (incluyendo días sin datos como total=0).
- * @param fechaInicio YYYY-MM-DD (primer día del período en timezone de la org)
- * @param fechaFin YYYY-MM-DD (último día del período en timezone de la org)
- */
-function agruparPorDiaPeriodo(
-  registros: { total: number; fecha: string }[],
-  timezone: string,
+function mapearVisitasPorDiaPeriodo(
+  visitas: { fecha: string; total: number }[],
   fechaInicio: string,
   fechaFin: string,
 ): PuntoDiaMes[] {
-  // Mapa de fechaStr → total
-  const porFecha = new Map<string, number>();
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  for (const r of registros) {
-    const parts = fmt.formatToParts(parseFecha(r.fecha));
-    const y = parts.find((p) => p.type === 'year')?.value || '';
-    const m = parts.find((p) => p.type === 'month')?.value || '';
-    const d = parts.find((p) => p.type === 'day')?.value || '';
-    const dateStr = `${y}-${m}-${d}`;
-    porFecha.set(dateStr, (porFecha.get(dateStr) || 0) + Number(r.total || 0));
+  const map = new Map<string, number>();
+  for (const v of visitas) {
+    // La RPC devuelve date que PostgREST serializa como 'YYYY-MM-DD'
+    map.set(v.fecha, (map.get(v.fecha) || 0) + Number(v.total || 0));
   }
-  // Generar todas las fechas del período con posición secuencial
   const result: PuntoDiaMes[] = [];
   let current = fechaInicio;
   let posicion = 1;
   while (current <= fechaFin) {
-    result.push({ dia: posicion, total: porFecha.get(current) || 0 });
+    result.push({ dia: posicion, total: map.get(current) || 0 });
     current = addDays(current, 1);
     posicion++;
   }
   return result;
+}
+
+// ─── Helpers para series RPC ─────────────────────────────────────────────────
+
+/** Suma todos los totales de una serie (PuntoHora[] o {fecha, total}[]). */
+function sumarSerie(data: { total: number }[] | null | undefined): number {
+  return (data || []).reduce((s, p) => s + Number(p.total || 0), 0);
+}
+
+/** Combina dos series horarias (24 entradas c/u) sumando totales por hora. */
+function combinarSeriesPorHora(a: PuntoHora[], b: PuntoHora[]): PuntoHora[] {
+  return a.map((p, i) => ({ hora: p.hora, total: p.total + (b[i]?.total ?? 0) }));
+}
+
+/** Combina dos series por fecha (longitud variable) sumando totales por fecha. */
+function combinarSeriesPorDia(
+  a: { fecha: string; total: number }[],
+  b: { fecha: string; total: number }[],
+): { fecha: string; total: number }[] {
+  const map = new Map<string, number>();
+  for (const p of a) map.set(p.fecha, (map.get(p.fecha) || 0) + Number(p.total || 0));
+  for (const p of b) map.set(p.fecha, (map.get(p.fecha) || 0) + Number(p.total || 0));
+  return Array.from(map.entries())
+    .map(([fecha, total]) => ({ fecha, total }))
+    .sort((x, y) => x.fecha.localeCompare(y.fecha));
+}
+
+/** Mapea {fecha: 'YYYY-MM-DD', total}[] a PuntoDiaMes[] (día del mes 1-31). */
+function mapearPorDiaMesDesdeRPC(data: { fecha: string; total: number }[]): PuntoDiaMes[] {
+  return data.map((p) => ({ dia: Number(p.fecha.split('-')[2]), total: p.total }));
 }
 
 // ─── Servicio ────────────────────────────────────────────────────────────────
@@ -412,18 +371,28 @@ export const inicioService = {
       organizationId, inicioMesAnteriorStr, finMesAnteriorStr, null,
     );
 
-    // Ejecutar queries en paralelo para mayor velocidad
+    // Timezone de la org (con cache en memoria) para las funciones RPC de visitas web.
+    // Se obtiene aquí (antes del Promise.all) porque las RPC la necesitan como parámetro.
+    const timezoneOrg = await getOrganizationTimezone(organizationId);
+
+    // Ejecutar queries en paralelo para mayor velocidad.
+    // Las queries que traen filas completas usan RPC (agregación en BD) para
+    // evitar el límite de 1000 filas del cliente Supabase.
+    const isHoy = periodo === 'hoy';
+    const salesFn = isHoy ? 'get_sales_by_hour' : 'get_sales_by_day';
+    const webOrdersRevFn = isHoy ? 'get_web_orders_revenue_by_hour' : 'get_web_orders_revenue_by_day';
+    const invoicesFn = isHoy ? 'get_invoice_sales_by_hour' : 'get_invoice_sales_by_day';
+    const webOrdersAllFn = isHoy ? 'get_web_orders_all_by_hour' : 'get_web_orders_all_by_day';
+    const rpcArgs = (p_start: string, p_end: string) => ({
+      p_organization_id: organizationId, p_timezone: timezoneOrg, p_start, p_end,
+    });
+
     const [
-      ventasHoyRes,
-      ventasMesRes,
-      webOrdersHoyRes,
-      webOrdersMesRes,
+      // ─── Queries seguras (head:true, limit, single) ───────────────────────────
       clientesRes,
       productosRes,
-      facturasHoyRes,
       empleadosRes,
       reservasRes,
-      cuentasRes,
       actividadVentas,
       actividadFacturasRes,
       actividadClientesRes,
@@ -434,367 +403,144 @@ export const inicioService = {
       membersRes,
       taxesRes,
       modulesRes,
-      ventasAnteriorRes,
-      webOrdersAnteriorRes,
-      facturasAnteriorRes,
-      ventasMesAnteriorRes,
-      webOrdersMesAnteriorRes,
-      // Series diarias del mes para los demás KPIs (mes actual + mes anterior)
-      clientesMesActualRes,
-      clientesMesAnteriorRes,
-      productosMesActualRes,
-      productosMesAnteriorRes,
-      empleadosMesActualRes,
-      empleadosMesAnteriorRes,
-      reservasMesActualRes,
-      reservasMesAnteriorRes,
-      cuentasMesActualRes,
-      cuentasMesAnteriorRes,
-      // Visitas web del período actual y anterior
+      // ─── Visitas web (RPC + count exacto) ──────────────────────────────────────
       visitasWebHoyRes,
       visitasWebAnteriorRes,
-      // Conteo exacto de visitas (sin límite de 1000 del cliente Supabase)
       visitasWebCountRes,
       visitasWebAnteriorCountRes,
-      // Compras web del período actual (todos los estados) y anterior
-      comprasWebTodasRes,
-      comprasWebAnteriorRes,
+      // ─── RPC: período actual (by_hour si hoy, by_day si otro) ──────────────────
+      salesPeriodoRes,
+      webOrdersRevPeriodoRes,
+      invoicesPeriodoRes,
+      webOrdersAllPeriodoRes,
+      // ─── RPC: período anterior ─────────────────────────────────────────────────
+      salesAnteriorRes,
+      webOrdersRevAnteriorRes,
+      invoicesAnteriorRes,
+      webOrdersAllAnteriorRes,
+      // ─── RPC: mes calendario actual (siempre by_day) ───────────────────────────
+      salesMesActualRes,
+      webOrdersRevMesActualRes,
+      clientesMesActualRes,
+      productosMesActualRes,
+      empleadosMesActualRes,
+      reservasMesActualRes,
+      cuentasMesActualRes,
+      // ─── RPC: mes calendario anterior (siempre by_day) ─────────────────────────
+      salesMesAnteriorRes,
+      webOrdersRevMesAnteriorRes,
+      clientesMesAnteriorRes,
+      productosMesAnteriorRes,
+      empleadosMesAnteriorRes,
+      reservasMesAnteriorRes,
+      cuentasMesAnteriorRes,
+      // ─── RPC: suma acumulada de cuentas por cobrar ─────────────────────────────
+      cuentasSumRes,
     ] = await Promise.all([
-      // Ventas POS del período seleccionado
-      supabase
-        .from('sales')
-        .select('total, sale_date')
-        .eq('organization_id', organizationId)
-        .gte('sale_date', inicioPeriodo)
-        .lt('sale_date', finPeriodo)
-        .in('status', ['paid', 'completed']),
-      // Ventas POS del mes calendario actual (del 1 del mes hasta hoy)
-      supabase
-        .from('sales')
-        .select('total, sale_date')
-        .eq('organization_id', organizationId)
-        .gte('sale_date', inicioMesActual)
-        .lt('sale_date', finPeriodo)
-        .in('status', ['paid', 'completed']),
-      // Pedidos web del período seleccionado (pagados o entregados)
-      supabase
-        .from('web_orders')
-        .select('total, created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioPeriodo)
-        .lt('created_at', finPeriodo)
-        .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")')
-        .is('sale_id', null),
-      // Pedidos web del mes calendario actual (pagados o entregados, sin sale_id para no duplicar)
-      supabase
-        .from('web_orders')
-        .select('total, created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesActual)
-        .lt('created_at', finPeriodo)
-        .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")')
-        .is('sale_id', null),
-      // Clientes activos (total global)
-      supabase
-        .from('customers')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId),
-      // Productos activos (total global)
-      supabase
-        .from('products')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .eq('status', 'active'),
-      // Facturas del período seleccionado (con issue_date para series temporales)
-      supabase
-        .from('invoice_sales')
-        .select('issue_date')
-        .eq('organization_id', organizationId)
-        .gte('issue_date', inicioPeriodo)
-        .lt('issue_date', finPeriodo),
-      // Miembros activos de la organización (total global)
-      supabase
-        .from('organization_members')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .eq('is_active', true),
-      // Reservas activas (total global)
-      supabase
-        .from('reservations')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .in('status', ['confirmed', 'checked_in']),
-      // Cuentas por cobrar (saldo actual, status reales: overdue, current, partial, paid)
-      supabase
-        .from('accounts_receivable')
-        .select('balance')
-        .eq('organization_id', organizationId)
-        .in('status', ['overdue', 'current', 'partial']),
-      // Actividad reciente (últimas ventas POS)
-      supabase
-        .from('sales')
-        .select('id, total, sale_date, status')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(5),
-      // Actividad: facturas emitidas recientes
-      supabase
-        .from('invoice_sales')
-        .select('id, total, number, issue_date, status')
-        .eq('organization_id', organizationId)
-        .order('issue_date', { ascending: false })
-        .limit(5),
-      // Actividad: clientes nuevos recientes
-      supabase
-        .from('customers')
-        .select('id, full_name, created_at')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(5),
-      // Actividad: movimientos de stock recientes
-      supabase
-        .from('stock_movements')
-        .select('id, direction, qty, source, note, created_at, products(name)')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(5),
-      // Actividad: reservas recientes
-      supabase
-        .from('reservations')
-        .select('id, status, created_at')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(5),
-      // Organización (para onboarding)
-      supabase
-        .from('organizations')
-        .select('created_at')
-        .eq('id', organizationId)
-        .single(),
-      // Sucursales (para onboarding check)
-      supabase
-        .from('branches')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId),
-      // Miembros (para onboarding check)
-      supabase
-        .from('organization_members')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId),
-      // Impuestos (para onboarding check)
-      supabase
-        .from('organization_taxes')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId),
-      // Módulos activos NO-core (para onboarding check)
-      // Excluir módulos core que se crean automáticamente (clientes, organizations, roles)
-      supabase
-        .from('organization_modules')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .not('module_code', 'in', '("clientes","organizations","roles")'),
-      // ─── Queries del período anterior (para deltas) ───────────────────────────
-      // Ventas POS período anterior
-      supabase
-        .from('sales')
-        .select('total, sale_date')
-        .eq('organization_id', organizationId)
-        .gte('sale_date', inicioAnterior)
-        .lt('sale_date', finAnterior)
-        .in('status', ['paid', 'completed']),
-      // Pedidos web período anterior (sin sale_id para no duplicar)
-      supabase
-        .from('web_orders')
-        .select('total, created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioAnterior)
-        .lt('created_at', finAnterior)
-        .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")')
-        .is('sale_id', null),
-      // Facturas período anterior (con issue_date para series temporales)
-      supabase
-        .from('invoice_sales')
-        .select('issue_date')
-        .eq('organization_id', organizationId)
-        .gte('issue_date', inicioAnterior)
-        .lt('issue_date', finAnterior),
-      // ─── Queries del mes anterior (mismos días, para sparkline mensual) ────────
-      // Ventas POS del mes anterior (mismos días transcurridos)
-      supabase
-        .from('sales')
-        .select('total, sale_date')
-        .eq('organization_id', organizationId)
-        .gte('sale_date', inicioMesAnterior)
-        .lt('sale_date', finMesAnteriorCal)
-        .in('status', ['paid', 'completed']),
-      // Pedidos web del mes anterior (mismos días transcurridos)
-      supabase
-        .from('web_orders')
-        .select('total, created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesAnterior)
-        .lt('created_at', finMesAnteriorCal)
-        .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")')
-        .is('sale_id', null),
-      // ─── Series diarias del mes para KPIs no-ventas (mes actual + anterior) ───
-      // Clientes nuevos por día — mes actual
-      supabase
-        .from('customers')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesActual)
-        .lt('created_at', finPeriodo),
-      // Clientes nuevos por día — mes anterior
-      supabase
-        .from('customers')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesAnterior)
-        .lt('created_at', finMesAnteriorCal),
-      // Productos creados por día — mes actual
-      supabase
-        .from('products')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesActual)
-        .lt('created_at', finPeriodo),
-      // Productos creados por día — mes anterior
-      supabase
-        .from('products')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesAnterior)
-        .lt('created_at', finMesAnteriorCal),
-      // Miembros añadidos por día — mes actual
-      supabase
-        .from('organization_members')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesActual)
-        .lt('created_at', finPeriodo),
-      // Miembros añadidos por día — mes anterior
-      supabase
-        .from('organization_members')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesAnterior)
-        .lt('created_at', finMesAnteriorCal),
-      // Reservas creadas por día — mes actual
-      supabase
-        .from('reservations')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesActual)
-        .lt('created_at', finPeriodo),
-      // Reservas creadas por día — mes anterior
-      supabase
-        .from('reservations')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesAnterior)
-        .lt('created_at', finMesAnteriorCal),
-      // Cuentas por cobrar nuevas por día — mes actual (suma de balance)
-      supabase
-        .from('accounts_receivable')
-        .select('balance, created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesActual)
-        .lt('created_at', finPeriodo),
-      // Cuentas por cobrar nuevas por día — mes anterior (suma de balance)
-      supabase
-        .from('accounts_receivable')
-        .select('balance, created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioMesAnterior)
-        .lt('created_at', finMesAnteriorCal),
-      // ─── Visitas web (período actual y anterior) ──────────────────────────────
-      supabase
-        .from('website_visits')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioPeriodo)
-        .lt('created_at', finPeriodo),
-      supabase
-        .from('website_visits')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioAnterior)
-        .lt('created_at', finAnterior),
-      // Conteo exacto de visitas (head:true evita el límite de 1000 filas)
-      supabase
-        .from('website_visits')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioPeriodo)
-        .lt('created_at', finPeriodo),
-      supabase
-        .from('website_visits')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioAnterior)
-        .lt('created_at', finAnterior),
-      // ─── Compras web (todos los estados) ───────────────────────────────────────
-      // Período actual: traer status y payment_status para desglose
-      supabase
-        .from('web_orders')
-        .select('status, payment_status, created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioPeriodo)
-        .lt('created_at', finPeriodo),
-      // Período anterior: contar todas para delta (con status/payment_status para desglose)
-      supabase
-        .from('web_orders')
-        .select('status, payment_status, created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', inicioAnterior)
-        .lt('created_at', finAnterior),
+      // Queries seguras (head:true, limit, single)
+      supabase.from('customers').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
+      supabase.from('products').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).eq('status', 'active'),
+      supabase.from('organization_members').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).eq('is_active', true),
+      supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).in('status', ['confirmed', 'checked_in']),
+      supabase.from('sales').select('id, total, sale_date, status').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(5),
+      supabase.from('invoice_sales').select('id, total, number, issue_date, status').eq('organization_id', organizationId).order('issue_date', { ascending: false }).limit(5),
+      supabase.from('customers').select('id, full_name, created_at').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(5),
+      supabase.from('stock_movements').select('id, direction, qty, source, note, created_at, products(name)').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(5),
+      supabase.from('reservations').select('id, status, created_at').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(5),
+      supabase.from('organizations').select('created_at').eq('id', organizationId).single(),
+      supabase.from('branches').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
+      supabase.from('organization_members').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
+      supabase.from('organization_taxes').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
+      supabase.from('organization_modules').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).eq('is_active', true).not('module_code', 'in', '("clientes","organizations","roles")'),
+      // Visitas web (RPC + count exacto)
+      isHoy
+        ? supabase.rpc('get_website_visits_by_hour', rpcArgs(inicioPeriodo, finPeriodo))
+        : supabase.rpc('get_website_visits_by_day', rpcArgs(inicioPeriodo, finPeriodo)),
+      isHoy
+        ? supabase.rpc('get_website_visits_by_hour', rpcArgs(inicioAnterior, finAnterior))
+        : supabase.rpc('get_website_visits_by_day', rpcArgs(inicioAnterior, finAnterior)),
+      supabase.from('website_visits').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).gte('created_at', inicioPeriodo).lt('created_at', finPeriodo),
+      supabase.from('website_visits').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).gte('created_at', inicioAnterior).lt('created_at', finAnterior),
+      // RPC: período actual
+      supabase.rpc(salesFn, rpcArgs(inicioPeriodo, finPeriodo)),
+      supabase.rpc(webOrdersRevFn, rpcArgs(inicioPeriodo, finPeriodo)),
+      supabase.rpc(invoicesFn, rpcArgs(inicioPeriodo, finPeriodo)),
+      supabase.rpc(webOrdersAllFn, rpcArgs(inicioPeriodo, finPeriodo)),
+      // RPC: período anterior
+      supabase.rpc(salesFn, rpcArgs(inicioAnterior, finAnterior)),
+      supabase.rpc(webOrdersRevFn, rpcArgs(inicioAnterior, finAnterior)),
+      supabase.rpc(invoicesFn, rpcArgs(inicioAnterior, finAnterior)),
+      supabase.rpc(webOrdersAllFn, rpcArgs(inicioAnterior, finAnterior)),
+      // RPC: mes calendario actual (by_day)
+      supabase.rpc('get_sales_by_day', rpcArgs(inicioMesActual, finPeriodo)),
+      supabase.rpc('get_web_orders_revenue_by_day', rpcArgs(inicioMesActual, finPeriodo)),
+      supabase.rpc('get_customers_by_day', rpcArgs(inicioMesActual, finPeriodo)),
+      supabase.rpc('get_products_by_day', rpcArgs(inicioMesActual, finPeriodo)),
+      supabase.rpc('get_org_members_by_day', rpcArgs(inicioMesActual, finPeriodo)),
+      supabase.rpc('get_reservations_by_day', rpcArgs(inicioMesActual, finPeriodo)),
+      supabase.rpc('get_accounts_receivable_by_day', rpcArgs(inicioMesActual, finPeriodo)),
+      // RPC: mes calendario anterior (by_day)
+      supabase.rpc('get_sales_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
+      supabase.rpc('get_web_orders_revenue_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
+      supabase.rpc('get_customers_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
+      supabase.rpc('get_products_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
+      supabase.rpc('get_org_members_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
+      supabase.rpc('get_reservations_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
+      supabase.rpc('get_accounts_receivable_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
+      // RPC: suma acumulada de cuentas por cobrar
+      supabase.rpc('get_accounts_receivable_sum', { p_organization_id: organizationId }),
     ]);
 
-    // KPIs — sumar ventas POS + pedidos web
-    const ventasPosHoy = (ventasHoyRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
-    const ventasPosMes = (ventasMesRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
-    const ventasWebHoy = (webOrdersHoyRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
-    const ventasWebMes = (webOrdersMesRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
-    const cuentasPorCobrar = (cuentasRes.data || []).reduce((s, c) => s + Number(c.balance || 0), 0);
+    // ─── Procesamiento de resultados RPC ────────────────────────────────────────
+    // Las RPC devuelven series agregadas en BD (by_hour: 24 filas, by_day: {fecha, total}[]).
+    // Los KPIs totales se calculan sumando las series. Las series se usan directamente.
+    type PuntoHoraRPC = { hora: number; total: number };
+    type PuntoDiaRPC = { fecha: string; total: number };
+    type PuntoComprasRPC = { pedidos: number; pendientes: number; pagados: number; cancelados: number };
 
-    // Deltas del período anterior (ventas, facturas)
-    const ventasPosAnterior = (ventasAnteriorRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
-    const ventasWebAnterior = (webOrdersAnteriorRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
+    const salesPeriodo = (salesPeriodoRes.data as PuntoHoraRPC[] | PuntoDiaRPC[] | null) ?? [];
+    const webOrdersRevPeriodo = (webOrdersRevPeriodoRes.data as PuntoHoraRPC[] | PuntoDiaRPC[] | null) ?? [];
+    const invoicesPeriodo = (invoicesPeriodoRes.data as PuntoHoraRPC[] | PuntoDiaRPC[] | null) ?? [];
+    const webOrdersAllPeriodo = (webOrdersAllPeriodoRes.data as PuntoComprasRPC[] | null) ?? [];
+    const salesAnteriorData = (salesAnteriorRes.data as PuntoHoraRPC[] | PuntoDiaRPC[] | null) ?? [];
+    const webOrdersRevAnteriorData = (webOrdersRevAnteriorRes.data as PuntoHoraRPC[] | PuntoDiaRPC[] | null) ?? [];
+    const invoicesAnteriorData = (invoicesAnteriorRes.data as PuntoHoraRPC[] | PuntoDiaRPC[] | null) ?? [];
+    const webOrdersAllAnteriorData = (webOrdersAllAnteriorRes.data as PuntoComprasRPC[] | null) ?? [];
+
+    // KPIs totales (suma de series RPC)
+    const ventasPosHoy = sumarSerie(salesPeriodo);
+    const ventasWebHoy = sumarSerie(webOrdersRevPeriodo);
+    const ventasPosMes = sumarSerie(salesMesActualRes.data as PuntoDiaRPC[] | null);
+    const ventasWebMes = sumarSerie(webOrdersRevMesActualRes.data as PuntoDiaRPC[] | null);
+    const cuentasPorCobrar = (cuentasSumRes.data as { total: number }[] | null)?.[0]?.total ?? 0;
+
+    // Deltas del período anterior
+    const ventasPosAnterior = sumarSerie(salesAnteriorData);
+    const ventasWebAnterior = sumarSerie(webOrdersRevAnteriorData);
     const ventasAnterior = ventasPosAnterior + ventasWebAnterior;
-    const facturasAnterior = (facturasAnteriorRes.data || []).length;
+    const facturasAnterior = sumarSerie(invoicesAnteriorData);
 
-    // Deltas de los 6 KPIs restantes (calculados de las series mensuales ya consultadas)
-    const ventasMesAnterior = (ventasMesAnteriorRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0)
-      + (webOrdersMesAnteriorRes.data || []).reduce((s, v) => s + Number(v.total || 0), 0);
-    const clientesAnterior = (clientesMesAnteriorRes.data || []).length;
-    const productosAnterior = (productosMesAnteriorRes.data || []).length;
-    const empleadosAnterior = (empleadosMesAnteriorRes.data || []).length;
-    const reservasAnterior = (reservasMesAnteriorRes.data || []).length;
-    const cuentasAnterior = (cuentasMesAnteriorRes.data || []).reduce((s, c) => s + Number(c.balance || 0), 0);
+    // Deltas de los 6 KPIs restantes (de las series mensuales)
+    const ventasMesAnterior = sumarSerie(salesMesAnteriorRes.data as PuntoDiaRPC[] | null)
+      + sumarSerie(webOrdersRevMesAnteriorRes.data as PuntoDiaRPC[] | null);
+    const clientesAnterior = sumarSerie(clientesMesAnteriorRes.data as PuntoDiaRPC[] | null);
+    const productosAnterior = sumarSerie(productosMesAnteriorRes.data as PuntoDiaRPC[] | null);
+    const empleadosAnterior = sumarSerie(empleadosMesAnteriorRes.data as PuntoDiaRPC[] | null);
+    const reservasAnterior = sumarSerie(reservasMesAnteriorRes.data as PuntoDiaRPC[] | null);
+    const cuentasAnterior = sumarSerie(cuentasMesAnteriorRes.data as PuntoDiaRPC[] | null);
 
-    // KPIs nuevos: visitas web y compras web por estado
-    // Usar count exacto (head:true) para evitar el límite de 1000 filas del
-    // cliente Supabase. Las queries de datos (visitasWebHoyRes) siguen
-    // limitadas a 1000 pero solo se usan para las series horarias/diarias.
+    // Visitas web (count exacto via head:true)
     const visitasWeb = visitasWebCountRes.count ?? 0;
     const visitasWebAnterior = visitasWebAnteriorCountRes.count ?? 0;
-    const comprasWebTodas = comprasWebTodasRes.data || [];
-    const comprasWeb = comprasWebTodas.length;
-    const comprasWebPendientes = comprasWebTodas.filter(
-      (o) => o.status === 'pending' || o.status === 'confirmed' || o.status === 'preparing' || o.status === 'ready' || o.status === 'in_delivery',
-    ).length;
-    const comprasWebCanceladas = comprasWebTodas.filter(
-      (o) => o.status === 'cancelled' || o.status === 'rejected',
-    ).length;
-    const comprasWebPagadas = comprasWebTodas.filter(
-      (o) => o.payment_status === 'paid',
-    ).length;
-    const comprasWebAnterior = (comprasWebAnteriorRes.data || []).length;
+
+    // Compras web (desglose desde RPC: pedidos/pendientes/pagados/cancelados)
+    const sumarCampo = (data: PuntoComprasRPC[] | null, campo: keyof PuntoComprasRPC): number =>
+      (data || []).reduce((s, p) => s + Number(p[campo] || 0), 0);
+    const comprasWeb = sumarCampo(webOrdersAllPeriodo, 'pedidos');
+    const comprasWebPendientes = sumarCampo(webOrdersAllPeriodo, 'pendientes');
+    const comprasWebPagadas = sumarCampo(webOrdersAllPeriodo, 'pagados');
+    const comprasWebCanceladas = sumarCampo(webOrdersAllPeriodo, 'cancelados');
+    const comprasWebAnterior = sumarCampo(webOrdersAllAnteriorData, 'pedidos');
 
     // Series horarias (solo para periodo 'hoy'): hoy vs ayer a esta misma hora
     let ventasPorHoraHoy: PuntoHora[] | undefined;
@@ -810,46 +556,31 @@ export const inicioService = {
     let comprasPorHoraAyerPagadas: PuntoHora[] | undefined;
     let comprasPorHoraAyerCanceladas: PuntoHora[] | undefined;
     let horaActualOrg: number | undefined;
-    if (periodo === 'hoy') {
-      const timezone = await getOrganizationTimezone(organizationId);
-      const horaFmt = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false });
+    if (isHoy) {
+      const horaFmt = new Intl.DateTimeFormat('en-US', { timeZone: timezoneOrg, hour: 'numeric', hour12: false });
       horaActualOrg = Number(horaFmt.format(new Date())) % 24;
-      const registrosHoy: { total: number; fecha: string }[] = [
-        ...((ventasHoyRes.data || []).map((v) => ({ total: Number(v.total || 0), fecha: v.sale_date }))),
-        ...((webOrdersHoyRes.data || []).map((w) => ({ total: Number(w.total || 0), fecha: w.created_at }))),
-      ];
-      const registrosAyer: { total: number; fecha: string }[] = [
-        ...((ventasAnteriorRes.data || []).map((v) => ({ total: Number(v.total || 0), fecha: v.sale_date }))),
-        ...((webOrdersAnteriorRes.data || []).map((w) => ({ total: Number(w.total || 0), fecha: w.created_at }))),
-      ];
-      ventasPorHoraHoy = agruparPorHoraLocal(registrosHoy, timezone);
-      ventasPorHoraAyer = agruparPorHoraLocal(registrosAyer, timezone);
-      // Facturas: contar por hora (cada factura = 1)
-      const facturasHoyReg = (facturasHoyRes.data || []).map((f) => ({ total: 1, fecha: f.issue_date }));
-      const facturasAyerReg = (facturasAnteriorRes.data || []).map((f) => ({ total: 1, fecha: f.issue_date }));
-      facturasPorHoraHoy = agruparPorHoraLocal(facturasHoyReg, timezone);
-      facturasPorHoraAyer = agruparPorHoraLocal(facturasAyerReg, timezone);
-      // Visitas web: contar por hora (cada visita = 1)
-      const visitasHoyReg = (visitasWebHoyRes.data || []).map((v) => ({ total: 1, fecha: v.created_at }));
-      const visitasAyerReg = (visitasWebAnteriorRes.data || []).map((v) => ({ total: 1, fecha: v.created_at }));
-      visitasPorHoraHoy = agruparPorHoraLocal(visitasHoyReg, timezone);
-      visitasPorHoraAyer = agruparPorHoraLocal(visitasAyerReg, timezone);
-      // Compras web: contar por hora (cada orden = 1)
-      const comprasHoyReg = (comprasWebTodasRes.data || []).map((o) => ({ total: 1, fecha: o.created_at }));
-      const comprasAyerReg = (comprasWebAnteriorRes.data || []).map((o) => ({ total: 1, fecha: o.created_at }));
-      comprasPorHoraHoy = agruparPorHoraLocal(comprasHoyReg, timezone);
-      comprasPorHoraAyer = agruparPorHoraLocal(comprasAyerReg, timezone);
-      // Desglose por estado: pagados (payment_status='paid') y cancelados (status cancelled/rejected)
-      const esCancelada = (o: { status?: string }) => o.status === 'cancelled' || o.status === 'rejected';
-      const esPagada = (o: { payment_status?: string }) => o.payment_status === 'paid';
-      const comprasHoyPagadasReg = (comprasWebTodasRes.data || []).filter(esPagada).map((o) => ({ total: 1, fecha: o.created_at }));
-      const comprasHoyCanceladasReg = (comprasWebTodasRes.data || []).filter(esCancelada).map((o) => ({ total: 1, fecha: o.created_at }));
-      const comprasAyerPagadasReg = (comprasWebAnteriorRes.data || []).filter(esPagada).map((o) => ({ total: 1, fecha: o.created_at }));
-      const comprasAyerCanceladasReg = (comprasWebAnteriorRes.data || []).filter(esCancelada).map((o) => ({ total: 1, fecha: o.created_at }));
-      comprasPorHoraHoyPagadas = agruparPorHoraLocal(comprasHoyPagadasReg, timezone);
-      comprasPorHoraHoyCanceladas = agruparPorHoraLocal(comprasHoyCanceladasReg, timezone);
-      comprasPorHoraAyerPagadas = agruparPorHoraLocal(comprasAyerPagadasReg, timezone);
-      comprasPorHoraAyerCanceladas = agruparPorHoraLocal(comprasAyerCanceladasReg, timezone);
+      // Las RPC by_hour ya devuelven PuntoHora[] (24 horas). Se combinan sales + web_orders.
+      ventasPorHoraHoy = combinarSeriesPorHora(
+        salesPeriodo as PuntoHora[],
+        webOrdersRevPeriodo as PuntoHora[],
+      );
+      ventasPorHoraAyer = combinarSeriesPorHora(
+        salesAnteriorData as PuntoHora[],
+        webOrdersRevAnteriorData as PuntoHora[],
+      );
+      facturasPorHoraHoy = invoicesPeriodo as PuntoHora[];
+      facturasPorHoraAyer = invoicesAnteriorData as PuntoHora[];
+      visitasPorHoraHoy = (visitasWebHoyRes.data as PuntoHora[] | null) ?? [];
+      visitasPorHoraAyer = (visitasWebAnteriorRes.data as PuntoHora[] | null) ?? [];
+      // Compras web: la RPC get_web_orders_all_by_hour devuelve {hora, pedidos, pendientes, pagados, cancelados}[]
+      const comprasPeriodoHora = webOrdersAllPeriodo as unknown as { hora: number; pedidos: number; pendientes: number; pagados: number; cancelados: number }[];
+      const comprasAnteriorHora = webOrdersAllAnteriorData as unknown as { hora: number; pedidos: number; pendientes: number; pagados: number; cancelados: number }[];
+      comprasPorHoraHoy = comprasPeriodoHora.map((p) => ({ hora: p.hora, total: p.pedidos }));
+      comprasPorHoraAyer = comprasAnteriorHora.map((p) => ({ hora: p.hora, total: p.pedidos }));
+      comprasPorHoraHoyPagadas = comprasPeriodoHora.map((p) => ({ hora: p.hora, total: p.pagados }));
+      comprasPorHoraHoyCanceladas = comprasPeriodoHora.map((p) => ({ hora: p.hora, total: p.cancelados }));
+      comprasPorHoraAyerPagadas = comprasAnteriorHora.map((p) => ({ hora: p.hora, total: p.pagados }));
+      comprasPorHoraAyerCanceladas = comprasAnteriorHora.map((p) => ({ hora: p.hora, total: p.cancelados }));
     }
 
     // Series diarias por período (7d, 30d, 90d, año): actual vs anterior por posición
@@ -859,114 +590,95 @@ export const inicioService = {
     let comprasPorDiaPeriodo: SerieDiariaKpi | undefined;
     let comprasPorDiaPeriodoPagadas: SerieDiariaKpi | undefined;
     let comprasPorDiaPeriodoCanceladas: SerieDiariaKpi | undefined;
-    if (periodo !== 'hoy') {
-      const timezone = await getOrganizationTimezone(organizationId);
-      // Calcular fechas de inicio/fin en YYYY-MM-DD (timezone de la org) para cada período
+    if (!isHoy) {
       const diasPeriodo: Record<PeriodoDashboard, number> = { hoy: 1, '7d': 7, '30d': 30, '90d': 90, año: 365 };
       const n = diasPeriodo[periodo];
       const fechaFinActual = operatingToday;
       const fechaInicioActual = addDays(operatingToday, -(n - 1));
       const fechaFinAnterior = addDays(fechaInicioActual, -1);
       const fechaInicioAnterior = addDays(fechaInicioActual, -n);
-      // Ventas: POS + web del período actual y anterior
-      const ventasPeriodoActual: { total: number; fecha: string }[] = [
-        ...((ventasHoyRes.data || []).map((v) => ({ total: Number(v.total || 0), fecha: v.sale_date }))),
-        ...((webOrdersHoyRes.data || []).map((w) => ({ total: Number(w.total || 0), fecha: w.created_at }))),
-      ];
-      const ventasPeriodoAnterior: { total: number; fecha: string }[] = [
-        ...((ventasAnteriorRes.data || []).map((v) => ({ total: Number(v.total || 0), fecha: v.sale_date }))),
-        ...((webOrdersAnteriorRes.data || []).map((w) => ({ total: Number(w.total || 0), fecha: w.created_at }))),
-      ];
+      // Ventas: combinar sales + web_orders por día
+      const ventasDiaActual = combinarSeriesPorDia(
+        salesPeriodo as PuntoDiaRPC[],
+        webOrdersRevPeriodo as PuntoDiaRPC[],
+      );
+      const ventasDiaAnterior = combinarSeriesPorDia(
+        salesAnteriorData as PuntoDiaRPC[],
+        webOrdersRevAnteriorData as PuntoDiaRPC[],
+      );
       ventasPorDiaPeriodo = {
-        actual: agruparPorDiaPeriodo(ventasPeriodoActual, timezone, fechaInicioActual, fechaFinActual),
-        anterior: agruparPorDiaPeriodo(ventasPeriodoAnterior, timezone, fechaInicioAnterior, fechaFinAnterior),
+        actual: mapearVisitasPorDiaPeriodo(ventasDiaActual, fechaInicioActual, fechaFinActual),
+        anterior: mapearVisitasPorDiaPeriodo(ventasDiaAnterior, fechaInicioAnterior, fechaFinAnterior),
       };
-      // Facturas: contar por día (cada factura = 1)
-      const facturasPeriodoActual = (facturasHoyRes.data || []).map((f) => ({ total: 1, fecha: f.issue_date }));
-      const facturasPeriodoAnterior = (facturasAnteriorRes.data || []).map((f) => ({ total: 1, fecha: f.issue_date }));
+      // Facturas
       facturasPorDiaPeriodo = {
-        actual: agruparPorDiaPeriodo(facturasPeriodoActual, timezone, fechaInicioActual, fechaFinActual),
-        anterior: agruparPorDiaPeriodo(facturasPeriodoAnterior, timezone, fechaInicioAnterior, fechaFinAnterior),
+        actual: mapearVisitasPorDiaPeriodo(invoicesPeriodo as PuntoDiaRPC[], fechaInicioActual, fechaFinActual),
+        anterior: mapearVisitasPorDiaPeriodo(invoicesAnteriorData as PuntoDiaRPC[], fechaInicioAnterior, fechaFinAnterior),
       };
-      // Visitas web: contar por día (cada visita = 1)
-      const visitasPeriodoActual = (visitasWebHoyRes.data || []).map((v) => ({ total: 1, fecha: v.created_at }));
-      const visitasPeriodoAnterior = (visitasWebAnteriorRes.data || []).map((v) => ({ total: 1, fecha: v.created_at }));
+      // Visitas web
       visitasPorDiaPeriodo = {
-        actual: agruparPorDiaPeriodo(visitasPeriodoActual, timezone, fechaInicioActual, fechaFinActual),
-        anterior: agruparPorDiaPeriodo(visitasPeriodoAnterior, timezone, fechaInicioAnterior, fechaFinAnterior),
+        actual: mapearVisitasPorDiaPeriodo(
+          (visitasWebHoyRes.data as PuntoDiaRPC[] | null) ?? [], fechaInicioActual, fechaFinActual),
+        anterior: mapearVisitasPorDiaPeriodo(
+          (visitasWebAnteriorRes.data as PuntoDiaRPC[] | null) ?? [], fechaInicioAnterior, fechaFinAnterior),
       };
-      // Compras web: contar por día (cada orden = 1)
-      const comprasPeriodoActual = (comprasWebTodasRes.data || []).map((o) => ({ total: 1, fecha: o.created_at }));
-      const comprasPeriodoAnterior = (comprasWebAnteriorRes.data || []).map((o) => ({ total: 1, fecha: o.created_at }));
+      // Compras web (con desglose)
+      const comprasDiaActual = webOrdersAllPeriodo as unknown as { fecha: string; pedidos: number; pagados: number; cancelados: number }[];
+      const comprasDiaAnterior = webOrdersAllAnteriorData as unknown as { fecha: string; pedidos: number; pagados: number; cancelados: number }[];
       comprasPorDiaPeriodo = {
-        actual: agruparPorDiaPeriodo(comprasPeriodoActual, timezone, fechaInicioActual, fechaFinActual),
-        anterior: agruparPorDiaPeriodo(comprasPeriodoAnterior, timezone, fechaInicioAnterior, fechaFinAnterior),
+        actual: mapearVisitasPorDiaPeriodo(
+          comprasDiaActual.map((p) => ({ fecha: p.fecha, total: p.pedidos })), fechaInicioActual, fechaFinActual),
+        anterior: mapearVisitasPorDiaPeriodo(
+          comprasDiaAnterior.map((p) => ({ fecha: p.fecha, total: p.pedidos })), fechaInicioAnterior, fechaFinAnterior),
       };
-      // Desglose por estado para el período
-      const esCanceladaP = (o: { status?: string }) => o.status === 'cancelled' || o.status === 'rejected';
-      const esPagadaP = (o: { payment_status?: string }) => o.payment_status === 'paid';
       comprasPorDiaPeriodoPagadas = {
-        actual: agruparPorDiaPeriodo(
-          (comprasWebTodasRes.data || []).filter(esPagadaP).map((o) => ({ total: 1, fecha: o.created_at })),
-          timezone, fechaInicioActual, fechaFinActual,
-        ),
-        anterior: agruparPorDiaPeriodo(
-          (comprasWebAnteriorRes.data || []).filter(esPagadaP).map((o) => ({ total: 1, fecha: o.created_at })),
-          timezone, fechaInicioAnterior, fechaFinAnterior,
-        ),
+        actual: mapearVisitasPorDiaPeriodo(
+          comprasDiaActual.map((p) => ({ fecha: p.fecha, total: p.pagados })), fechaInicioActual, fechaFinActual),
+        anterior: mapearVisitasPorDiaPeriodo(
+          comprasDiaAnterior.map((p) => ({ fecha: p.fecha, total: p.pagados })), fechaInicioAnterior, fechaFinAnterior),
       };
       comprasPorDiaPeriodoCanceladas = {
-        actual: agruparPorDiaPeriodo(
-          (comprasWebTodasRes.data || []).filter(esCanceladaP).map((o) => ({ total: 1, fecha: o.created_at })),
-          timezone, fechaInicioActual, fechaFinActual,
-        ),
-        anterior: agruparPorDiaPeriodo(
-          (comprasWebAnteriorRes.data || []).filter(esCanceladaP).map((o) => ({ total: 1, fecha: o.created_at })),
-          timezone, fechaInicioAnterior, fechaFinAnterior,
-        ),
+        actual: mapearVisitasPorDiaPeriodo(
+          comprasDiaActual.map((p) => ({ fecha: p.fecha, total: p.cancelados })), fechaInicioActual, fechaFinActual),
+        anterior: mapearVisitasPorDiaPeriodo(
+          comprasDiaAnterior.map((p) => ({ fecha: p.fecha, total: p.cancelados })), fechaInicioAnterior, fechaFinAnterior),
       };
     }
 
     // Series diarias del mes calendario: mes actual vs mes anterior (mismos días)
-    const timezoneMes = await getOrganizationTimezone(organizationId);
-    const registrosMesActual: { total: number; fecha: string }[] = [
-      ...((ventasMesRes.data || []).map((v) => ({ total: Number(v.total || 0), fecha: v.sale_date }))),
-      ...((webOrdersMesRes.data || []).map((w) => ({ total: Number(w.total || 0), fecha: w.created_at }))),
-    ];
-    const registrosMesAnterior: { total: number; fecha: string }[] = [
-      ...((ventasMesAnteriorRes.data || []).map((v) => ({ total: Number(v.total || 0), fecha: v.sale_date }))),
-      ...((webOrdersMesAnteriorRes.data || []).map((w) => ({ total: Number(w.total || 0), fecha: w.created_at }))),
-    ];
-    const ventasPorDiaMesActual = agruparPorDiaMes(registrosMesActual, timezoneMes);
-    const ventasPorDiaMesAnterior = agruparPorDiaMes(registrosMesAnterior, timezoneMes);
+    // Las RPC by_day devuelven {fecha, total}[]. Se mapea a PuntoDiaMes[] (día del mes).
+    const ventasMesActualCombined = combinarSeriesPorDia(
+      (salesMesActualRes.data as PuntoDiaRPC[] | null) ?? [],
+      (webOrdersRevMesActualRes.data as PuntoDiaRPC[] | null) ?? [],
+    );
+    const ventasMesAnteriorCombined = combinarSeriesPorDia(
+      (salesMesAnteriorRes.data as PuntoDiaRPC[] | null) ?? [],
+      (webOrdersRevMesAnteriorRes.data as PuntoDiaRPC[] | null) ?? [],
+    );
+    const ventasPorDiaMesActual = mapearPorDiaMesDesdeRPC(ventasMesActualCombined);
+    const ventasPorDiaMesAnterior = mapearPorDiaMesDesdeRPC(ventasMesAnteriorCombined);
 
     // Series diarias del mes para los demás KPIs (registros creados por día)
-    // Contadores: cada registro cuenta como 1. Cuentas por cobrar: suma del balance.
-    const contarRegistros = (data: { created_at: string }[] | null): { total: number; fecha: string }[] =>
-      (data || []).map((r) => ({ total: 1, fecha: r.created_at }));
-    const sumarBalance = (data: { balance: number; created_at: string }[] | null): { total: number; fecha: string }[] =>
-      (data || []).map((r) => ({ total: Number(r.balance || 0), fecha: r.created_at }));
-
     const seriesDiarias: NonNullable<DashboardKPIData['seriesDiarias']> = {
       clientesActivos: {
-        actual: agruparPorDiaMes(contarRegistros(clientesMesActualRes.data as { created_at: string }[] | null), timezoneMes),
-        anterior: agruparPorDiaMes(contarRegistros(clientesMesAnteriorRes.data as { created_at: string }[] | null), timezoneMes),
+        actual: mapearPorDiaMesDesdeRPC((clientesMesActualRes.data as PuntoDiaRPC[] | null) ?? []),
+        anterior: mapearPorDiaMesDesdeRPC((clientesMesAnteriorRes.data as PuntoDiaRPC[] | null) ?? []),
       },
       productosActivos: {
-        actual: agruparPorDiaMes(contarRegistros(productosMesActualRes.data as { created_at: string }[] | null), timezoneMes),
-        anterior: agruparPorDiaMes(contarRegistros(productosMesAnteriorRes.data as { created_at: string }[] | null), timezoneMes),
+        actual: mapearPorDiaMesDesdeRPC((productosMesActualRes.data as PuntoDiaRPC[] | null) ?? []),
+        anterior: mapearPorDiaMesDesdeRPC((productosMesAnteriorRes.data as PuntoDiaRPC[] | null) ?? []),
       },
       empleadosActivos: {
-        actual: agruparPorDiaMes(contarRegistros(empleadosMesActualRes.data as { created_at: string }[] | null), timezoneMes),
-        anterior: agruparPorDiaMes(contarRegistros(empleadosMesAnteriorRes.data as { created_at: string }[] | null), timezoneMes),
+        actual: mapearPorDiaMesDesdeRPC((empleadosMesActualRes.data as PuntoDiaRPC[] | null) ?? []),
+        anterior: mapearPorDiaMesDesdeRPC((empleadosMesAnteriorRes.data as PuntoDiaRPC[] | null) ?? []),
       },
       reservasActivas: {
-        actual: agruparPorDiaMes(contarRegistros(reservasMesActualRes.data as { created_at: string }[] | null), timezoneMes),
-        anterior: agruparPorDiaMes(contarRegistros(reservasMesAnteriorRes.data as { created_at: string }[] | null), timezoneMes),
+        actual: mapearPorDiaMesDesdeRPC((reservasMesActualRes.data as PuntoDiaRPC[] | null) ?? []),
+        anterior: mapearPorDiaMesDesdeRPC((reservasMesAnteriorRes.data as PuntoDiaRPC[] | null) ?? []),
       },
       cuentasPorCobrar: {
-        actual: agruparPorDiaMes(sumarBalance(cuentasMesActualRes.data as { balance: number; created_at: string }[] | null), timezoneMes),
-        anterior: agruparPorDiaMes(sumarBalance(cuentasMesAnteriorRes.data as { balance: number; created_at: string }[] | null), timezoneMes),
+        actual: mapearPorDiaMesDesdeRPC((cuentasMesActualRes.data as PuntoDiaRPC[] | null) ?? []),
+        anterior: mapearPorDiaMesDesdeRPC((cuentasMesAnteriorRes.data as PuntoDiaRPC[] | null) ?? []),
       },
     };
 
@@ -975,7 +687,7 @@ export const inicioService = {
       ventasMes: ventasPosMes + ventasWebMes,
       clientesActivos: clientesRes.count || 0,
       productosActivos: productosRes.count || 0,
-      facturasHoy: (facturasHoyRes.data || []).length,
+      facturasHoy: sumarSerie(invoicesPeriodo),
       empleadosActivos: empleadosRes.count || 0,
       reservasActivas: reservasRes.count || 0,
       cuentasPorCobrar,

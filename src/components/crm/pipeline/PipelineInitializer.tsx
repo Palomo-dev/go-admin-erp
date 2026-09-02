@@ -75,7 +75,7 @@ export function PipelineInitializer({ organizationId, onInitComplete }: Pipeline
         // 3. Crear etapas semilla para el pipeline
         setMessage("Configurando etapas...");
 
-        // Etapas semilla con probability en escala 0-100 (entero)
+        // Etapas semilla con probability en escala 0-100 (integer, constraint stages_probability_range)
         const defaultStages = [
           { name: "Lead nuevo", position: 0, probability: 5 },
           { name: "Contactado", position: 1, probability: 10 },

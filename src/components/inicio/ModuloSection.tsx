@@ -49,6 +49,8 @@ export interface ModuloSectionProps {
   children?: React.ReactNode;
   /** Contenido del sub-tab "Reportes" (si no se pasa, se muestra placeholder) */
   reportesContent?: React.ReactNode;
+  /** Contenido del sub-tab "Métricas" (opcional, si el módulo tiene métricas avanzadas) */
+  metricasContent?: React.ReactNode;
   /** Si la sección está cargando */
   isLoading?: boolean;
   /** Modo compacto: muestra solo header inline sin contenido expandido */
@@ -66,13 +68,14 @@ export default function ModuloSection({
   orgInfo,
   children,
   reportesContent,
+  metricasContent,
   isLoading = false,
   compacto: compactoProp = false,
 }: ModuloSectionProps) {
   // Consumir modo compacto del context si no se pasa explícitamente
   const compactoContext = React.useContext(ModoCompactoContext);
   const compacto = compactoProp || compactoContext;
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'reportes'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reportes' | 'metricas'>('dashboard');
   const [isExporting, setIsExporting] = useState<'csv' | 'pdf' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -234,6 +237,20 @@ export default function ModuloSection({
           >
             Reportes
           </button>
+          {metricasContent && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('metricas')}
+              className={cn(
+                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                activeTab === 'metricas'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+              )}
+            >
+              Métricas
+            </button>
+          )}
         </div>
       )}
 
@@ -255,6 +272,8 @@ export default function ModuloSection({
         ) : children ? (
           activeTab === 'dashboard' ? (
             children
+          ) : activeTab === 'metricas' && metricasContent ? (
+            metricasContent
           ) : reportesContent ? (
             reportesContent
           ) : (

@@ -14,26 +14,40 @@
 
 **Qué NO entra:** agente IA de voz (F6), ficha 360° (F9), propuesta/contrato (F10).
 
+### 0.1 Decisión clave — NO duplicar motores existentes
+
+El proyecto ya cuenta con dos ejecutores que F8 **refactoriza y extiende**, no reemplaza ni duplica:
+
+| Servicio existente | Ubicación | Qué hace hoy | Qué hace F8 |
+|---|---|---|---|
+| `followupEngineService` | `src/lib/services/crm/followupEngineService.ts` | Ejecuta automatizaciones de la tabla `automations` (`trigger_json`/`actions_json`): crear actividades, enviar emails, crear tareas según etapa del pipeline | **Se refactoriza** para leer de `automation_rules` (tras migración) y soportar nuevos canales (WhatsApp/SMS) y `sequence_step_runs` como cola de ejecución |
+| `CampanasService` | `src/components/crm/campanas/CampanasService.ts` | CRUD + envío de campañas multicanal (tabla `campaigns` con `segment_id`, `channel`, `statistics`) | **Se reutiliza sin tocar**: las secuencias F8 invocan `CampanasService` para envíos masivos; no se crea un segundo servicio de campañas |
+
+**`sequenceService`** (nuevo) es **solo la capa de configuración visual + inscripción** de secuencias (`sequences`, `sequence_steps`, `sequence_enrollments`). El **ejecutor** sigue siendo `followupEngineService` mejorado, que ahora consume `sequence_step_runs` además de `automation_rules`.
+
+> **Principio:** un solo motor de ejecución. `sequenceService` configura, `followupEngineService` ejecuta.
+
 ---
 
 ## 1. Estado actual verificado
 
 | Qué | Estado | Archivo:línea |
 |---|---|---|
-| `automations` tabla con `trigger_json`/`actions_json`/`active` | ✅ existe | BD |
-| `AutomationsView.tsx` | 🟡 "próximamente" (bug G10) | `src/components/crm/pipeline/AutomationsView.tsx` |
+| `automations` tabla con `trigger_json`/`actions_json`/`active` | ✅ existe (se depreca en F8) | BD |
+| `AutomationsView.tsx` | 🟡 "próximamente" (bug G10, línea 386) | `src/components/crm/pipeline/AutomationsView.tsx:386` |
 | `leadCaptureService.ts` | ✅ existe | `src/lib/services/crm/leadCaptureService.ts` |
 | `followupService.ts` | ✅ existe | `src/lib/services/crm/followupService.ts` |
-| `followupEngineService.ts` | ✅ existe | `src/lib/services/crm/followupEngineService.ts` |
+| `followupEngineService.ts` | ✅ existe (F8 lo refactoriza, NO lo duplica) | `src/lib/services/crm/followupEngineService.ts` |
+| `CampanasService.ts` | ✅ existe (F8 lo reutiliza, NO lo duplica) | `src/components/crm/campanas/CampanasService.ts` |
 | WhatsApp Cloud API | ✅ | `src/app/api/integrations/whatsapp/` |
 | Twilio SMS | ✅ | `src/app/api/integrations/twilio/send-sms` |
 | Email (SendGrid) | ✅ | `src/app/api/integrations/sendgrid/` |
 | `sequences` / `sequence_steps` / `sequence_enrollments` | ❌ | — |
 | `automation_rules` / `automation_runs` | ❌ | — |
-| Captura de Meta/Google Lead Ads | 🟡 parcial | `leadCaptureService.ts` |
+| Captura de Meta/Google Lead Ads | 🟡 stub (sin verificación de firma) | `leadCaptureService.ts` |
 | Editor visual de automatizaciones | ❌ | — |
 
-> **Decisión del PLAN.md §6:** F8 migra `automations` (viejo) a `automation_rules` (nuevo) y elimina el viejo. No coexisten.
+> **Decisión del PLAN.md §6:** F8 migra `automations` (viejo) a `automation_rules` (nuevo) y depreca la tabla vieja. El ejecutor `followupEngineService` se refactoriza para leer de `automation_rules`; no se crea un tercer motor. `CampanasService` se reutiliza para envíos multicanal.
 
 ---
 
@@ -97,7 +111,7 @@
 
 ```sql
 CREATE TABLE sequences (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   description text,
@@ -118,13 +132,13 @@ CREATE POLICY seq_update ON sequences FOR UPDATE USING (organization_id = curren
 CREATE POLICY seq_delete ON sequences FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE sequence_steps (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  sequence_id bigint NOT NULL REFERENCES sequences(id) ON DELETE CASCADE,
+  sequence_id uuid NOT NULL REFERENCES sequences(id) ON DELETE CASCADE,
   step_number integer NOT NULL,
   delay_days integer NOT NULL DEFAULT 0,
   channel text NOT NULL CHECK (channel IN ('email','whatsapp','sms','call','task','wait','condition')),
-  template_id bigint REFERENCES templates(id) ON DELETE SET NULL,
+  template_id uuid REFERENCES templates(id) ON DELETE SET NULL,
   action_config jsonb NOT NULL DEFAULT '{}'::jsonb,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -139,9 +153,9 @@ CREATE POLICY ss_update ON sequence_steps FOR UPDATE USING (organization_id = cu
 CREATE POLICY ss_delete ON sequence_steps FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE sequence_enrollments (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  sequence_id bigint NOT NULL REFERENCES sequences(id) ON DELETE CASCADE,
+  sequence_id uuid NOT NULL REFERENCES sequences(id) ON DELETE CASCADE,
   opportunity_id uuid REFERENCES opportunities(id) ON DELETE CASCADE,
   customer_id integer,
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused','completed','exited')),
@@ -160,10 +174,10 @@ CREATE POLICY se_update ON sequence_enrollments FOR UPDATE USING (organization_i
 CREATE POLICY se_delete ON sequence_enrollments FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE sequence_step_runs (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  enrollment_id bigint NOT NULL REFERENCES sequence_enrollments(id) ON DELETE CASCADE,
-  step_id bigint NOT NULL REFERENCES sequence_steps(id) ON DELETE CASCADE,
+  enrollment_id uuid NOT NULL REFERENCES sequence_enrollments(id) ON DELETE CASCADE,
+  step_id uuid NOT NULL REFERENCES sequence_steps(id) ON DELETE CASCADE,
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','completed','failed','skipped')),
   scheduled_at timestamptz NOT NULL,
   executed_at timestamptz,
@@ -184,7 +198,7 @@ CREATE POLICY ssr_update ON sequence_step_runs FOR UPDATE USING (organization_id
 
 ```sql
 CREATE TABLE automation_rules (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   description text,
@@ -206,9 +220,9 @@ CREATE POLICY ar_update ON automation_rules FOR UPDATE USING (organization_id = 
 CREATE POLICY ar_delete ON automation_rules FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE automation_runs (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  rule_id bigint NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
+  rule_id uuid NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
   trigger_data jsonb NOT NULL DEFAULT '{}'::jsonb,
   actions_executed jsonb NOT NULL DEFAULT '[]'::jsonb,
   status text NOT NULL DEFAULT 'completed' CHECK (status IN ('completed','failed','partial')),
@@ -225,10 +239,10 @@ CREATE POLICY aruns_select ON automation_runs FOR SELECT USING (organization_id 
 
 ```sql
 ALTER TABLE opportunities
-  ADD COLUMN IF NOT EXISTS sequence_id bigint REFERENCES sequences(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS sequence_id uuid REFERENCES sequences(id) ON DELETE SET NULL;
 
 ALTER TABLE stages
-  ADD COLUMN IF NOT EXISTS automation_rule_ids bigint[] NOT NULL DEFAULT '{}';
+  ADD COLUMN IF NOT EXISTS automation_rule_ids uuid[] NOT NULL DEFAULT '{}';
 ```
 
 #### Migración 4 — Migrar `automations` (viejo) a `automation_rules` y eliminar
@@ -289,11 +303,14 @@ SELECT relname FROM pg_class WHERE relname = 'automations';
 
 ### 4.2 Servicios
 
+> **Principio anti-duplicación:** `sequenceService` es la capa de configuración visual + inscripción. `followupEngineService` (existente) es el ejecutor refactorizado. `CampanasService` (existente) se reutiliza para envíos multicanal. **No se crea un tercer motor ni un segundo servicio de campañas.**
+
 | Archivo | Acción | Responsabilidad |
 |---|---|---|
-| `src/lib/services/crm/sequenceService.ts` | **crear** | CRUD + inscripción + ejecución |
-| `src/lib/services/crm/automationService.ts` | **crear** | Motor de reglas por etapa |
-| `src/lib/services/crm/leadCaptureService.ts` | modificar | Extender con Meta/Google/TikTok |
+| `src/lib/services/crm/sequenceService.ts` | **crear** | CRUD + inscripción de secuencias (solo configuración, NO ejecución) |
+| `src/lib/services/crm/followupEngineService.ts` | **refactorizar** | Ejecutor único: ahora consume `automation_rules` + `sequence_step_runs` en vez de `automations`. Añade canales WhatsApp/SMS y concurrencia con `pg_advisory_lock` |
+| `src/components/crm/campanas/CampanasService.ts` | **reutilizar (sin tocar)** | Envíos multicanal masivos; las secuencias lo invocan para blasts |
+| `src/lib/services/crm/leadCaptureService.ts` | modificar | Extender con Meta/Google/TikTok + verificación de firma + idempotencia |
 
 #### `sequenceService.ts` — firmas
 

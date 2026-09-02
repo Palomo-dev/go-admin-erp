@@ -107,7 +107,7 @@ export function ReportesEmbudo({ metrics, loading }: ReportesEmbudoProps) {
                           {formatCurrency(stage.value)}
                         </span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {Math.round(Number(stage.probability) * 100)}%
+                          {Math.round(Number(stage.probability))}%
                         </span>
                       </div>
                     </div>

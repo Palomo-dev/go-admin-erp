@@ -203,8 +203,8 @@ const ForecastChart: React.FC<ForecastChartProps> = ({ pipelineId, period = 'mon
           status: opp.status,
           stage_id: opp.stage_id,
           stage_name: opp.stages?.[0]?.name || '',
-          stage_probability: opp.stages?.[0]?.probability || 100,
-          weighted_amount: (opp.amount || 0) * (opp.stages?.[0]?.probability || 100) / 100
+          stage_probability: opp.stages?.[0]?.probability || 1,
+          weighted_amount: (opp.amount || 0) * (opp.stages?.[0]?.probability || 1)
         }));
 
         // Obtener los objetivos del pipeline

@@ -47,8 +47,8 @@ export default function PromocionDetallePage() {
   const searchParams = useSearchParams();
   const { isLoading: orgLoading } = useOrganization();
   
-  const promotionId = params.id as string;
-  const isEditMode = searchParams.get('edit') === 'true';
+  const promotionId = params?.id as string;
+  const isEditMode = searchParams?.get('edit') === 'true';
   
   const [promotion, setPromotion] = useState<Promotion | null>(null);
   const [loading, setLoading] = useState(true);
@@ -169,7 +169,7 @@ export default function PromocionDetallePage() {
 
   if (!promotion) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
+      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div className="max-w-4xl mx-auto text-center py-12">
           <Tag className="h-12 w-12 mx-auto mb-4 text-gray-400" />
           <h2 className="text-xl font-semibold dark:text-white mb-2">Promoción no encontrada</h2>
@@ -186,38 +186,35 @@ export default function PromocionDetallePage() {
 
   if (isEditMode) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
-        <div className="max-w-4xl mx-auto">
-          <PromotionWizard 
-            promotionId={promotionId}
-            initialData={{
-              name: promotion.name,
-              description: promotion.description,
-              promotion_type: promotion.promotion_type,
-              discount_value: promotion.discount_value,
-              buy_quantity: promotion.buy_quantity,
-              get_quantity: promotion.get_quantity,
-              min_purchase_amount: promotion.min_purchase_amount,
-              max_discount_amount: promotion.max_discount_amount,
-              applies_to: promotion.applies_to,
-              start_date: promotion.start_date,
-              end_date: promotion.end_date,
-              is_active: promotion.is_active,
-              usage_limit: promotion.usage_limit,
-              is_combinable: promotion.is_combinable,
-              priority: promotion.priority,
-            }}
-          />
-        </div>
+      <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <PromotionWizard
+          promotionId={promotionId}
+          initialData={{
+            name: promotion.name,
+            description: promotion.description,
+            promotion_type: promotion.promotion_type,
+            discount_value: promotion.discount_value,
+            buy_quantity: promotion.buy_quantity,
+            get_quantity: promotion.get_quantity,
+            min_purchase_amount: promotion.min_purchase_amount,
+            max_discount_amount: promotion.max_discount_amount,
+            applies_to: promotion.applies_to,
+            start_date: promotion.start_date,
+            end_date: promotion.end_date,
+            is_active: promotion.is_active,
+            usage_limit: promotion.usage_limit,
+            is_combinable: promotion.is_combinable,
+            priority: promotion.priority,
+          }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
+    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      {/* Header */}
+      <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-4">
@@ -338,8 +335,8 @@ export default function PromocionDetallePage() {
                     <div className="space-y-2">
                       {promotion.rules.map((rule) => (
                         <div key={rule.id} className="flex items-center gap-2 p-2 rounded bg-gray-50 dark:bg-gray-700">
-                          <Badge variant={rule.rule_type === 'include' ? 'default' : 'destructive'}>
-                            {rule.rule_type === 'include' ? 'Incluye' : 'Excluye'}
+                          <Badge variant={rule.rule_type.startsWith('include') ? 'default' : 'destructive'}>
+                            {rule.rule_type.startsWith('include') ? 'Incluye' : 'Excluye'}
                           </Badge>
                           {rule.product && <span className="dark:text-white">{rule.product.name}</span>}
                           {rule.category && <span className="dark:text-white">{rule.category.name}</span>}
@@ -420,7 +417,6 @@ export default function PromocionDetallePage() {
             </Card>
           </div>
         </div>
-      </div>
 
       {/* Delete Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

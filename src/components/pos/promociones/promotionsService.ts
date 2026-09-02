@@ -314,24 +314,90 @@ export class PromotionsService {
   }
 
   /**
-   * Obtener productos para selector
+   * Obtener productos para selector (con variantes agrupadas por padre)
+   * Replica el patrón de purchaseOrderService.getProducts: trae variant_data,
+   * mapea el nombre del padre y excluye productos padre y servicios.
    */
   static async getProducts(search?: string): Promise<any[]> {
     const organizationId = this.getOrganizationId();
-    
+
     let query = supabase
       .from('products')
-      .select('id, name, sku')
+      .select('id, uuid, sku, name, unit_code, is_parent, parent_product_id, variant_data, categories(name)')
       .eq('organization_id', organizationId)
-      .eq('is_active', true)
+      .eq('status', 'active')
+      .neq('product_type', 'service')
+      .neq('is_parent', true)
+      .order('name')
       .limit(50);
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
     }
 
-    const { data } = await query;
-    return data || [];
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return [];
+
+    // Mapear padres por parent_product_id para resolver parent_name
+    const parentIds = Array.from(
+      new Set(data.map((p: any) => p.parent_product_id).filter(Boolean))
+    ) as number[];
+
+    const parentMap = new Map<number, { name: string; sku: string }>();
+    if (parentIds.length > 0) {
+      const { data: parents } = await supabase
+        .from('products')
+        .select('id, name, sku')
+        .in('id', parentIds);
+      (parents || []).forEach((p: any) =>
+        parentMap.set(p.id, { name: p.name, sku: p.sku })
+      );
+    }
+
+    // Mapeo por SKU base para variantes huérfanas (sin parent_product_id)
+    const skuToParent = new Map<string, string>();
+    const orphanBaseSkus = data
+      .filter((p: any) => !p.parent_product_id && p.variant_data)
+      .map((p: any) => {
+        const m = String(p.sku).match(/^(.+)-V[A-Z0-9]+/);
+        return m ? m[1] : null;
+      })
+      .filter(Boolean) as string[];
+
+    if (orphanBaseSkus.length > 0) {
+      const { data: orphanParents } = await supabase
+        .from('products')
+        .select('sku, name')
+        .eq('organization_id', organizationId)
+        .eq('is_parent', true)
+        .in('sku', orphanBaseSkus);
+      (orphanParents || []).forEach((p: any) => skuToParent.set(p.sku, p.name));
+    }
+
+    return data.map((p: any) => {
+      let parentName: string | null = null;
+      if (p.parent_product_id && parentMap.has(p.parent_product_id)) {
+        parentName = parentMap.get(p.parent_product_id)!.name;
+      } else if (p.variant_data) {
+        const skuMatch = String(p.sku).match(/^(.+)-V[A-Z0-9]+/);
+        if (skuMatch && skuToParent.has(skuMatch[1])) {
+          parentName = skuToParent.get(skuMatch[1])!;
+        }
+      }
+
+      return {
+        id: p.id,
+        uuid: p.uuid,
+        sku: p.sku,
+        name: p.name,
+        unit_code: p.unit_code,
+        category: p.categories?.name,
+        is_parent: p.is_parent,
+        parent_product_id: p.parent_product_id,
+        variant_data: p.variant_data,
+        parent_name: parentName,
+      };
+    });
   }
 
   /**

@@ -111,27 +111,35 @@ export default function MesaDetallePage() {
   // Suscripción realtime para kitchen_ticket_items (actualizar estados de cocina)
   useEffect(() => {
     if (!session?.id) return;
-    const { supabase } = require('@/lib/supabase/config');
-    const channel = supabase
-      .channel(`kitchen-ticket-items-${session.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'kitchen_ticket_items', filter: `organization_id=eq.${session.organization_id}` },
-        () => {
-          cargarDatos(true);
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'kitchen_tickets', filter: `table_session_id=eq.${session.id}` },
-        () => {
-          cargarDatos(true);
-        }
-      )
-      .subscribe();
+    let cleanup: (() => void) | undefined;
+
+    (async () => {
+      const { supabase } = await import('@/lib/supabase/config');
+      const channel = supabase
+        .channel(`kitchen-ticket-items-${session.id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'kitchen_ticket_items', filter: `organization_id=eq.${session.organization_id}` },
+          () => {
+            cargarDatos(true);
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'kitchen_tickets', filter: `table_session_id=eq.${session.id}` },
+          () => {
+            cargarDatos(true);
+          }
+        )
+        .subscribe();
+
+      cleanup = () => {
+        supabase.removeChannel(channel);
+      };
+    })();
 
     return () => {
-      supabase.removeChannel(channel);
+      cleanup?.();
     };
   }, [session?.id]);
 

@@ -41,7 +41,7 @@ export function ScoringSection({ opportunityId }: ScoringSectionProps) {
         scoringService.getConfig(),
         supabase
           .from('opportunities')
-          .select('score_total, score_data, score_temperature')
+          .select('score_total, score_data, temperature')
           .eq('id', opportunityId)
           .maybeSingle(),
       ]);
@@ -51,13 +51,13 @@ export function ScoringSection({ opportunityId }: ScoringSectionProps) {
       const opp = oppData.data as {
         score_total?: number | null;
         score_data?: Record<string, unknown> | null;
-        score_temperature?: string | null;
+        temperature?: string | null;
       } | null;
 
       if (opp) {
         setCurrentScore(opp.score_total ?? null);
         setCurrentTemp(
-          (opp.score_temperature as Temperature) || null
+          (opp.temperature as Temperature) || null
         );
 
         // Restaurar respuestas guardadas
@@ -104,7 +104,7 @@ export function ScoringSection({ opportunityId }: ScoringSectionProps) {
         .from('opportunities')
         .update({
           score_total: result.score_total,
-          score_temperature: result.temperature,
+          temperature: result.temperature,
           score_data: {
             answers: answerList,
             details: result.details,
@@ -115,8 +115,7 @@ export function ScoringSection({ opportunityId }: ScoringSectionProps) {
         .eq('id', opportunityId);
 
       if (error) {
-        // La columna score_total/score_data/score_temperature puede no existir aún
-        // Intentar guardar solo en metadata como fallback
+        // Si falla el guardado en columnas, intentar guardar en metadata como fallback
         console.warn('Columnas de score no existen, guardando en metadata:', error.message);
         await supabase
           .from('opportunities')

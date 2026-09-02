@@ -12,14 +12,33 @@
 
 **Qué NO entra:** propuesta/contrato/pago (F10), onboarding/health/renovación (F11), partners/referidos (F12).
 
+### 0.1 Integración con finanzas (cero tablas financieras nuevas)
+
+La ficha 360° incluye un **tab Financiero** que reusa las tablas de finanzas ya existentes — **no crea tablas nuevas ni columnas**:
+
+| Dato a mostrar | Tabla existente | JOIN para llegar al CRM |
+|---|---|---|
+| Facturas del cliente | `invoice_sales` | directo por `customer_id` |
+| Facturas de la oportunidad | `invoice_sales` | directo por `opportunity_id` (FK ya existe) |
+| Cotizaciones | `quotations` | directo por `opportunity_id` (FK ya existe) |
+| Pagos | `payments` | `source_id` = `invoice_sales.id` |
+| Cartera (cuentas por cobrar) | `accounts_receivable` | `invoice_id` → `invoice_sales.opportunity_id` |
+| Notas crédito | `credit_notes` | directo por `customer_id` |
+| Comisiones del vendedor | `commissions` | `source_id` = `opportunity_id` o `invoice_sales.id` |
+| Asientos contables relacionados | `journal_entries` | `source_id` = `invoice_sales.id` o `commissions.id` |
+
+El tab es **solo lectura** en F9. La creación de facturas/pagos vive en F10; la aprobación de comisiones en F13.
+
+> **Aclaración sobre "cero tablas nuevas":** el principio "cero migraciones financieras" se refiere **exclusivamente al dominio financiero** (`invoice_sales`, `payments`, `accounts_receivable`, `commissions`, `credit_notes`, `journal_entries`). Estas tablas **no se tocan** en F9. Las únicas tablas nuevas que crea F9 — `documents` y `document_folders` — pertenecen al **dominio de documentos** (gestión de archivos adjuntos polimórficos), no al financiero, y por tanto **no contradicen** el principio de cero tablas financieras nuevas. No existe ni se crea ninguna página financiera separada (`/app/crm/finanzas` **NO se crea**); el tab Financiero vive dentro de la ficha 360° existente.
+
 ---
 
 ## 1. Estado actual verificado
 
 | Qué | Estado | Archivo:línea |
 |---|---|---|
-| `/app/clientes/[id]` | ✅ ficha 360° rica | `src/app/app/clientes/[id]/page.tsx` |
-| `/app/crm/clientes/[id]` | 🟡 vista pobre (bug G9) | `src/app/app/crm/clientes/[id]/page.tsx` |
+| `/app/clientes/[id]` | ✅ ficha 360° rica (RUTA CANONICAL) | `src/app/app/clientes/[id]/page.tsx` |
+| `/app/crm/clientes/[id]` | 🟡 vista pobre (bug G9) — REDIRIGIR a `/app/clientes/[id]` | `src/app/app/crm/clientes/[id]/page.tsx` |
 | `/app/crm/oportunidades/[id]` | ✅ existe | `src/app/app/crm/oportunidades/[id]/page.tsx` |
 | `OpportunityDrawer.tsx` | ✅ existe | `src/components/crm/pipeline/OpportunityDrawer.tsx` |
 | `activities` / `tasks` / `notes` | ✅ existen | BD |
@@ -29,6 +48,14 @@
 | `documents` (polimórfico) | ❌ | — |
 | `document_folders` | ❌ | — |
 | `activities.channel`/`outcome`/`duration_seconds` | ✅ (F2 los añade) | BD |
+| `invoice_sales.opportunity_id` (FK) | ya existe | BD |
+| `quotations.opportunity_id` (FK) | ya existe | BD |
+| `accounts_receivable.invoice_id` (FK) | ya existe | BD |
+| `payments.source` + `source_id` | ya existe | BD |
+| `commissions.source_type` + `payee_id` | ya existe | BD |
+| `credit_notes.customer_id` (FK) | ya existe | BD |
+| `journal_entries.source` + `source_id` | ya existe | BD |
+| Tab Financiero (facturas/pagos/cartera) | falta | — |
 | Tab Documentos | ❌ | — |
 | Timeline unificado | ❌ | — |
 
@@ -42,10 +69,10 @@
 
 ```sql
 CREATE TABLE document_folders (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
-  parent_id bigint REFERENCES document_folders(id) ON DELETE CASCADE,
+  parent_id uuid REFERENCES document_folders(id) ON DELETE CASCADE,
   related_type text,
   related_id text,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -60,9 +87,9 @@ CREATE POLICY df_update ON document_folders FOR UPDATE USING (organization_id = 
 CREATE POLICY df_delete ON document_folders FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE documents (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  folder_id bigint REFERENCES document_folders(id) ON DELETE SET NULL,
+  folder_id uuid REFERENCES document_folders(id) ON DELETE SET NULL,
   name text NOT NULL,
   description text,
   file_path text NOT NULL,
@@ -114,6 +141,7 @@ SELECT relname, relrowsecurity FROM pg_class WHERE relname IN ('documents','docu
 | `/api/crm/documents/[id]` | `src/app/api/crm/documents/[id]/route.ts` | crear | GET, PATCH, DELETE | |
 | `/api/crm/documents/[id]/download` | `src/app/api/crm/documents/[id]/download/route.ts` | crear | GET | URL firmada |
 | `/api/crm/timeline/[type]/[id]` | `src/app/api/crm/timeline/[type]/[id]/route.ts` | crear | GET | Timeline unificado |
+| `/api/crm/finance/[type]/[id]` | `src/app/api/crm/finance/[type]/[id]/route.ts` | crear | GET | Vista 360 financiera (cliente u oportunidad) |
 
 ### 3.2 Servicios
 
@@ -121,6 +149,7 @@ SELECT relname, relrowsecurity FROM pg_class WHERE relname IN ('documents','docu
 |---|---|---|
 | `src/lib/services/crm/documentService.ts` | **crear** | CRUD + upload a Storage |
 | `src/lib/services/crm/timelineService.ts` | **crear** | Timeline unificado |
+| `src/lib/services/crm/crmFinanceService.ts` | **crear** | Vista 360 financiera: JOINs sobre `invoice_sales`, `payments`, `accounts_receivable`, `commissions`, `credit_notes` existentes. Sin tablas nuevas. |
 
 #### `timelineService.ts` — timeline unificado
 
@@ -162,11 +191,21 @@ El timeline consulta múltiples tablas y las unifica ordenadas por timestamp:
 
 ### 4.1 Rutas
 
+> **Nota R7 (2026-09-01) — reorganización de páginas CRM:**
+> Las páginas `/app/crm/conversaciones`, `/app/crm/hoy`, `/app/crm/reportes` y
+> `/app/crm/metricas` fueron eliminadas/consolidadas:
+> - `/app/crm/conversaciones` → movido a `/app/chat/conversaciones/*` (ya existía ahí)
+> - `/app/crm/hoy` → eliminado (filtro "hoy" en actividades/tareas)
+> - `/app/crm/reportes` → tab "Reportes" en `/app/inicio` (módulo CRM)
+> - `/app/crm/metricas` → tab "Métricas" en `/app/inicio` (módulo CRM)
+> Páginas que se mantienen: `/app/crm/clientes/[id]`, `/app/crm/oportunidades/[id]`,
+> `/app/crm/salud`, `/app/crm/pronostico`, `/app/crm/identidades`, entre otras.
+
 | URL | Archivo | Acción | Qué muestra |
 |---|---|---|---|
 | `/app/crm/clientes/[id]` | ya existe | modificar | Ficha 360° completa del cliente |
 | `/app/crm/oportunidades/[id]` | ya existe | modificar | Ficha 360° de la oportunidad |
-| `/app/crm/conversaciones` | `src/app/app/crm/conversaciones/page.tsx` | crear | Índice omnicanal (reusa bandeja de chat) |
+| `/app/chat/conversaciones` | `src/app/app/chat/conversaciones/page.tsx` | ya existe | Índice omnicanal (reusa bandeja de chat) — movido desde `/app/crm/conversaciones` |
 
 ### 4.2 Componentes
 
@@ -179,6 +218,7 @@ El timeline consulta múltiples tablas y las unifica ordenadas por timestamp:
 | `src/components/crm/ficha360/CallsTab.tsx` | **crear** | `relatedType`, `relatedId` | Llamadas + player + transcripción |
 | `src/components/crm/ficha360/MessagesTab.tsx` | **crear** | `customerId` | WhatsApp/SMS/emails |
 | `src/components/crm/ficha360/DocumentsTab.tsx` | **crear** | `relatedType`, `relatedId` | Documentos + upload + folders |
+| `src/components/crm/ficha360/FinanceTab.tsx` | **crear** | `type` (`customer`/`opportunity`), `id` | Facturas, pagos, saldo, cartera, comisiones — solo lectura |
 | `src/components/crm/ficha360/QuotationsTab.tsx` | **crear** | `opportunityId` | Cotizaciones + crear |
 | `src/components/crm/ficha360/StageHistoryTab.tsx` | **crear** | `opportunityId` | Historial de etapas |
 | `src/components/crm/ficha360/AnalysisTab.tsx` | **crear** | `relatedType`, `relatedId` | Análisis IA de llamadas |
@@ -224,7 +264,88 @@ El timeline consulta múltiples tablas y las unifica ordenadas por timestamp:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.4 Animaciones Motion
+#### Tab Financiero (solo lectura — reusa tablas de finanzas existentes)
+
+```
+┌─ Tab Financiero — Cliente ──────────────────────────────────┐
+│  ┌─ Resumen ─────────────────────────────────────────────┐  │
+│  │ Facturado total: $12.5M  |  Saldo pendiente: $3.2M   │  │
+│  │ Pagado: $9.3M            |  Vencido: $1.8M (30 días) │  │
+│  │ Notas crédito: $500k     |  Comisiones: $625k        │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ┌─ Facturas ────────────────────────────────────────────┐  │
+│  │ #        Fecha     Total    Saldo   Estado   Opp.     │  │
+│  │ FACT-21  31/08     $500k   $0      Pagada   [Ver]    │  │
+│  │ FACT-20  31/08     $1.2M   $1.2M   Pendiente [Ver]   │  │
+│  │ FACT-14  30/08     $800k   $800k   Vencida  [Ver]    │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ┌─ Cartera (accounts_receivable) ───────────────────────┐  │
+│  │ Factura   Vence    Días vencido  Saldo   Últ. record. │  │
+│  │ FACT-14   15/08    16           $800k   20/08         │  │
+│  │ FACT-20   15/09    0            $1.2M   —             │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ┌─ Pagos ───────────────────────────────────────────────┐  │
+│  │ Fecha     Método    Monto    Referencia   Factura     │  │
+│  │ 31/08     Stripe    $500k   pi_123       FACT-21     │  │
+│  │ 28/08     Efectivo  $300k   REC-456      FACT-19     │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ┌─ Comisiones del vendedor ─────────────────────────────┐  │
+│  │ Vendedor    Base      Tasa    Monto    Estado         │  │
+│  │ Juan Pérez  $500k     10%     $50k     Devengada      │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                                │
+│  [Ver en módulo Finanzas →]                                  │
+└────────────────────────────────────────────────────────────────┘
+```
+
+#### `crmFinanceService.ts` — consultas sobre tablas existentes
+
+```typescript
+export interface Finance360Data {
+  resumen: {
+    facturadoTotal: number;
+    saldoPendiente: number;
+    pagado: number;
+    vencido: number;
+    notasCredito: number;
+    comisiones: number;
+  };
+  facturas: Array<{
+    id: string; number: string; issueDate: string; total: number;
+    balance: number; status: string; opportunityId: string | null;
+  }>;
+  cartera: Array<{
+    invoiceId: string; invoiceNumber: string; dueDate: string;
+    daysOverdue: number; balance: number; lastReminderDate: string | null;
+  }>;
+  pagos: Array<{
+    id: string; paymentDate: string; method: string; amount: number;
+    reference: string; status: string; invoiceId: string | null;
+  }>;
+  comisiones: Array<{
+    id: string; payeeId: string; baseAmount: number; commissionRate: number;
+    commissionAmount: number; status: string; sourceType: string;
+  }>;
+}
+
+export async function getFinance360(
+  supabase: SupabaseClient,
+  orgId: number,
+  params: { type: 'customer' | 'opportunity'; id: string }
+): Promise<Finance360Data>;
+```
+
+**Consultas (sin crear tablas — todo sobre esquema existente):**
+
+- Facturas: `invoice_sales` filtrado por `customer_id` o `opportunity_id`
+- Cartera: `accounts_receivable` JOIN `invoice_sales` (para llegar al `opportunity_id` si la ficha es de oportunidad)
+- Pagos: `payments` donde `source_id` IN (IDs de las facturas del cliente/oportunidad)
+- Comisiones: `commissions` donde `source_id` = `opportunity_id` o `source_id` IN (facturas de la oportunidad)
+- Notas crédito: `credit_notes` filtrado por `customer_id`
 
 ```tsx
 // Tabs con AnimatePresence
@@ -317,6 +438,8 @@ El timeline consulta múltiples tablas y las unifica ordenadas por timestamp:
 - [ ] `OpportunityDrawer` integra tabs de ficha 360°.
 - [ ] Timeline unificado muestra activities, tasks, notes, calls, emails, messages, quotations, stage_history, documents.
 - [ ] Tab Documentos con upload + folders + download.
+- [ ] Tab Financiero muestra facturas, pagos, cartera, comisiones del cliente/oportunidad (solo lectura, sin tablas nuevas).
+- [ ] `crmFinanceService` consulta `invoice_sales`, `payments`, `accounts_receivable`, `commissions`, `credit_notes` existentes.
 - [ ] `/app/crm/conversaciones` lista conversaciones.
 - [ ] `npm run lint` + `tsc --noEmit` + `npm test` limpios.
 - [ ] Cero archivos `.sql` en el repo.
@@ -339,8 +462,10 @@ El timeline consulta múltiples tablas y las unifica ordenadas por timestamp:
 |---|---|---|
 | `src/lib/services/crm/documentService.ts` | crear | CRUD documentos |
 | `src/lib/services/crm/timelineService.ts` | crear | Timeline unificado |
+| `src/lib/services/crm/crmFinanceService.ts` | crear | Vista 360 financiera (JOINs sobre tablas existentes) |
 | `src/app/api/crm/documents/route.ts` + `[id]` + `[id]/download` | crear | CRUD + download |
 | `src/app/api/crm/timeline/[type]/[id]/route.ts` | crear | Timeline API |
+| `src/app/api/crm/finance/[type]/[id]/route.ts` | crear | Vista 360 financiera API |
 | `src/app/app/crm/clientes/[id]/page.tsx` | modificar | Ficha 360° |
 | `src/app/app/crm/oportunidades/[id]/page.tsx` | modificar | Ficha 360° |
 | `src/app/app/crm/conversaciones/page.tsx` | crear | Índice conversaciones |
@@ -351,6 +476,7 @@ El timeline consulta múltiples tablas y las unifica ordenadas por timestamp:
 | `src/components/crm/ficha360/CallsTab.tsx` | crear | Llamadas |
 | `src/components/crm/ficha360/MessagesTab.tsx` | crear | Mensajes |
 | `src/components/crm/ficha360/DocumentsTab.tsx` | crear | Documentos |
+| `src/components/crm/ficha360/FinanceTab.tsx` | crear | Tab financiero (facturas, pagos, cartera, comisiones) |
 | `src/components/crm/ficha360/QuotationsTab.tsx` | crear | Cotizaciones |
 | `src/components/crm/ficha360/StageHistoryTab.tsx` | crear | Historial etapas |
 | `src/components/crm/ficha360/AnalysisTab.tsx` | crear | Análisis IA |

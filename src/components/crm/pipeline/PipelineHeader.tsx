@@ -6,11 +6,12 @@ import { supabase } from "@/lib/supabase/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, SlidersHorizontal, Plus, Loader2, LayoutGrid, Users } from "lucide-react";
+import { PlusCircle, SlidersHorizontal, Plus, Loader2, LayoutGrid, Users, Trash2 } from "lucide-react";
 import CreateOpportunityDialog from "./modals/CreateOpportunityDialog";
 import BulkActionsDialog from "./modals/BulkActionsDialog";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { Switch } from "@/components/ui/switch";
+import { PIPELINE_TEMPLATES, createPipelineFromTemplate, type PipelineTemplateKey } from "@/lib/services/crm/pipelineTemplates";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -26,12 +27,23 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
 
 interface Pipeline {
   id: string;
   name: string;
   is_default: boolean;
+  pipeline_type: string | null;
 }
 
 interface PipelineHeaderProps {
@@ -58,9 +70,12 @@ export default function PipelineHeader({
   const isCreatePipelineOpen = externalCreateDialogOpen ?? internalCreateOpen;
   const setIsCreatePipelineOpen = onExternalCreateDialogOpenChange ?? setInternalCreateOpen;
   const [newPipelineName, setNewPipelineName] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<PipelineTemplateKey>('blank');
   const [isCreatingPipeline, setIsCreatingPipeline] = useState(false);
   const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
   const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
+  const [deletePipelineOpen, setDeletePipelineOpen] = useState(false);
+  const [isDeletingPipeline, setIsDeletingPipeline] = useState(false);
   
   // Cargar los pipelines de la organización cuando tengamos el ID
   useEffect(() => {
@@ -69,7 +84,7 @@ export default function PipelineHeader({
       
       const { data, error } = await supabase
         .from("pipelines")
-        .select("id, name, is_default")
+        .select("id, name, is_default, pipeline_type")
         .eq("organization_id", organizationId)
         .order("is_default", { ascending: false });
         
@@ -108,7 +123,7 @@ export default function PipelineHeader({
     onPipelineChange(pipeline.id);
   };
 
-  // Crear nuevo pipeline
+  // Crear nuevo pipeline desde una plantilla preestablecida
   const handleCreatePipeline = async () => {
     if (!newPipelineName.trim() || !organizationId) {
       toast({
@@ -118,12 +133,11 @@ export default function PipelineHeader({
       });
       return;
     }
-    
+
     setIsCreatingPipeline(true);
     try {
-      // Asegurar que organizationId sea un número entero
       const orgId = typeof organizationId === 'string' ? parseInt(organizationId, 10) : organizationId;
-      
+
       // Verificar si ya existe un pipeline por defecto
       const { data: existingDefault } = await supabase
         .from("pipelines")
@@ -131,38 +145,72 @@ export default function PipelineHeader({
         .eq("organization_id", orgId)
         .eq("is_default", true)
         .maybeSingle();
-      
-      // Solo marcar como default si no existe ningún pipeline por defecto
+
       const shouldBeDefault = !existingDefault;
-      
-      // Crear el pipeline (las etapas se gestionan desde PipelineInitializer/StageManager)
-      const { data: newPipeline, error: pipelineError } = await supabase
-        .from("pipelines")
-        .insert({
-          name: newPipelineName.trim(),
-          organization_id: orgId,
-          is_default: shouldBeDefault,
-        })
-        .select()
-        .single();
-        
-      if (pipelineError) {
-        console.error("Error detallado pipeline:", JSON.stringify(pipelineError));
-        throw new Error(pipelineError.message || pipelineError.details || "Error al crear pipeline");
+
+      // Si la plantilla es "blank", crear pipeline vacío (comportamiento original)
+      if (selectedTemplate === 'blank') {
+        const { data: newPipeline, error: pipelineError } = await supabase
+          .from("pipelines")
+          .insert({
+            name: newPipelineName.trim(),
+            organization_id: orgId,
+            is_default: shouldBeDefault,
+          })
+          .select()
+          .single();
+
+        if (pipelineError) {
+          throw new Error(pipelineError.message || pipelineError.details || "Error al crear pipeline");
+        }
+
+        setPipelines([...pipelines, newPipeline]);
+        setCurrentPipeline(newPipeline);
+        onPipelineChange(newPipeline.id);
+
+        toast({
+          title: "Pipeline creado",
+          description: `El pipeline "${newPipelineName}" ha sido creado exitosamente. Configura las etapas desde el gestor de etapas.`,
+        });
+      } else {
+        // Usar plantilla preestablecida (crea pipeline + etapas)
+        const pipelineId = await createPipelineFromTemplate(
+          supabase,
+          orgId,
+          selectedTemplate,
+          newPipelineName.trim()
+        );
+
+        if (!pipelineId) {
+          throw new Error("No se pudo crear el pipeline desde la plantilla.");
+        }
+
+        // Recargar pipelines desde la BD para incluir el nuevo con sus etapas
+        const { data: refreshed } = await supabase
+          .from("pipelines")
+          .select("id, name, is_default, pipeline_type")
+          .eq("organization_id", orgId)
+          .order("is_default", { ascending: false });
+
+        if (refreshed && refreshed.length > 0) {
+          setPipelines(refreshed);
+          const created = refreshed.find((p) => p.id === pipelineId);
+          if (created) {
+            setCurrentPipeline(created);
+            onPipelineChange(created.id);
+          }
+        }
+
+        const templateLabel = PIPELINE_TEMPLATES.find((t) => t.key === selectedTemplate)?.label || '';
+        toast({
+          title: "Pipeline creado",
+          description: `El pipeline "${newPipelineName}" (${templateLabel}) ha sido creado con sus etapas preestablecidas.`,
+        });
       }
-      
-      // Actualizar lista de pipelines
-      setPipelines([...pipelines, newPipeline]);
-      setCurrentPipeline(newPipeline);
-      onPipelineChange(newPipeline.id);
-      
-      toast({
-        title: "Pipeline creado",
-        description: `El pipeline "${newPipelineName}" ha sido creado exitosamente. Configura las etapas desde el gestor de etapas.`,
-      });
-      
+
       setIsCreatePipelineOpen(false);
       setNewPipelineName("");
+      setSelectedTemplate('blank');
     } catch (error: any) {
       console.error("Error al crear pipeline:", JSON.stringify(error));
       toast({
@@ -218,7 +266,81 @@ export default function PipelineHeader({
       });
     }
   };
-  
+
+  // Eliminar pipeline actual con confirmación
+  const handleDeletePipeline = async () => {
+    if (!currentPipeline || !organizationId) return;
+    setIsDeletingPipeline(true);
+    try {
+      // Verificar si hay oportunidades asociadas
+      const { count, error: countError } = await supabase
+        .from("opportunities")
+        .select("id", { count: "exact", head: true })
+        .eq("pipeline_id", currentPipeline.id);
+
+      if (countError) throw countError;
+
+      if (count && count > 0) {
+        toast({
+          title: "No se puede eliminar",
+          description: `El pipeline tiene ${count} oportunidad(es) asociada(s). Mueve o elimina las oportunidades primero.`,
+          variant: "destructive",
+        });
+        setDeletePipelineOpen(false);
+        return;
+      }
+
+      // Eliminar etapas del pipeline
+      const { error: stagesError } = await supabase
+        .from("stages")
+        .delete()
+        .eq("pipeline_id", currentPipeline.id);
+
+      if (stagesError) throw stagesError;
+
+      // Eliminar el pipeline
+      const { error: pipelineError } = await supabase
+        .from("pipelines")
+        .delete()
+        .eq("id", currentPipeline.id);
+
+      if (pipelineError) throw pipelineError;
+
+      // Recargar pipelines y seleccionar otro
+      const { data: remaining } = await supabase
+        .from("pipelines")
+        .select("id, name, is_default, pipeline_type")
+        .eq("organization_id", organizationId)
+        .order("is_default", { ascending: false });
+
+      const updatedPipelines = (remaining || []) as Pipeline[];
+      setPipelines(updatedPipelines);
+
+      if (updatedPipelines.length > 0) {
+        const next = updatedPipelines.find((p) => p.is_default) || updatedPipelines[0];
+        setCurrentPipeline(next);
+        onPipelineChange(next.id);
+      } else {
+        setCurrentPipeline(null);
+      }
+
+      toast({
+        title: "Pipeline eliminado",
+        description: `"${currentPipeline.name}" ha sido eliminado correctamente.`,
+      });
+      setDeletePipelineOpen(false);
+    } catch (error: any) {
+      console.error("Error al eliminar pipeline:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el pipeline.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingPipeline(false);
+    }
+  };
+
   return (
     <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
       <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -263,6 +385,13 @@ export default function PipelineHeader({
                         Por defecto
                       </span>
                     )}
+                    {pipeline.pipeline_type && pipeline.pipeline_type !== 'sales' && (
+                      <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-medium capitalize">
+                        {pipeline.pipeline_type === 'onboarding' ? 'Onboarding' :
+                         pipeline.pipeline_type === 'renewal' ? 'Renovación' :
+                         pipeline.pipeline_type}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <Switch
@@ -274,13 +403,23 @@ export default function PipelineHeader({
                 </div>
               ))}
               <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setIsCreatePipelineOpen(true)}
                 className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer font-medium"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Crear Nuevo Pipeline
               </DropdownMenuItem>
+              {currentPipeline && (
+                <DropdownMenuItem
+                  onClick={() => setDeletePipelineOpen(true)}
+                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer font-medium"
+                  disabled={currentPipeline.is_default}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Eliminar Pipeline Actual
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         
@@ -324,13 +463,65 @@ export default function PipelineHeader({
       
       {/* Diálogo para crear nuevo pipeline */}
       <Dialog open={isCreatePipelineOpen} onOpenChange={setIsCreatePipelineOpen}>
-        <DialogContent className="sm:max-w-md mx-4">
+        <DialogContent className="sm:max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl text-gray-900 dark:text-gray-100">
               Crear Nuevo Pipeline
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {/* Selector de plantilla preestablecida */}
+            <div className="flex flex-col gap-2">
+              <Label className="text-gray-900 dark:text-gray-100 font-medium">
+                Plantilla <span className="text-red-600">*</span>
+              </Label>
+              <div className="grid gap-2">
+                {PIPELINE_TEMPLATES.map((tpl) => {
+                  const isSelected = selectedTemplate === tpl.key;
+                  return (
+                    <button
+                      key={tpl.key}
+                      type="button"
+                      onClick={() => setSelectedTemplate(tpl.key)}
+                      className={`text-left p-3 rounded-lg border transition-all ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                      aria-pressed={isSelected}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {tpl.label}
+                        </span>
+                        {tpl.pipeline_type && tpl.pipeline_type !== 'sales' && (
+                          <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-medium capitalize">
+                            {tpl.pipeline_type === 'onboarding' ? 'Onboarding' :
+                             tpl.pipeline_type === 'renewal' ? 'Renovación' :
+                             tpl.pipeline_type}
+                          </span>
+                        )}
+                        {tpl.pipeline_type === 'sales' && (
+                          <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
+                            Ventas
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {tpl.description}
+                      </p>
+                      {tpl.stages.length > 0 && (
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                          {tpl.stages.length} etapa{tpl.stages.length !== 1 ? 's' : ''}: {tpl.stages.map(s => s.name).join(' → ')}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Nombre del pipeline */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="pipelineName" className="text-gray-900 dark:text-gray-100 font-medium">
                 Nombre del Pipeline <span className="text-red-600">*</span>
@@ -339,21 +530,24 @@ export default function PipelineHeader({
                 id="pipelineName"
                 value={newPipelineName}
                 onChange={(e) => setNewPipelineName(e.target.value)}
-                placeholder="Ej: Ventas B2B, Marketing, etc."
+                placeholder="Ej: Ventas B2B, Onboarding Enterprise, etc."
                 className="min-h-[44px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Podrás configurar las etapas desde el gestor de etapas del pipeline.
+                {selectedTemplate === 'blank'
+                  ? 'Pipeline vacío. Podrás configurar las etapas desde el gestor de etapas.'
+                  : `Se crearán ${PIPELINE_TEMPLATES.find(t => t.key === selectedTemplate)?.stages.length ?? 0} etapas preestablecidas con esta plantilla. Podrás editarlas después.`}
               </p>
             </div>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setIsCreatePipelineOpen(false);
                 setNewPipelineName("");
-              }} 
+                setSelectedTemplate('blank');
+              }}
               disabled={isCreatingPipeline}
               className="w-full sm:w-auto min-h-[44px] dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700"
             >
@@ -379,6 +573,40 @@ export default function PipelineHeader({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmación para eliminar pipeline */}
+      <AlertDialog open={deletePipelineOpen} onOpenChange={setDeletePipelineOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar pipeline &ldquo;{currentPipeline?.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminarán todas las etapas del pipeline.
+              Las oportunidades asociadas deben moverse a otro pipeline antes de eliminar.
+              {currentPipeline?.is_default && " No se puede eliminar el pipeline por defecto."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingPipeline}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeletePipeline}
+              disabled={isDeletingPipeline || currentPipeline?.is_default}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeletingPipeline ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Eliminar
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }

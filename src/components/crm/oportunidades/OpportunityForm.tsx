@@ -556,7 +556,7 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
                             className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: stage.color }}
                           />
-                          {stage.name} ({Math.round(Number(stage.probability) * 100)}%)
+                          {stage.name} ({Math.round(Number(stage.probability))}%)
                         </div>
                       </SelectItem>
                     ))}

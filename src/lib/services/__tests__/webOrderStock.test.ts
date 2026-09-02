@@ -239,14 +239,12 @@ describe('F11 — confirmOrder usa customerId resuelto', () => {
 
 describe('F11 — webCommerceSettingsService', () => {
   it('devuelve defaults cuando no hay configuración guardada', async () => {
-    const { supabase } = require('@/lib/supabase/config');
     // El mock de from ya retorna chainable con maybeSingle → null
     const result = await webCommerceSettingsService.getSettings();
     expect(result.order_expiration_minutes).toBe(30);
   });
 
   it('guarda configuración con upsert', async () => {
-    const { supabase } = require('@/lib/supabase/config');
     await expect(
       webCommerceSettingsService.saveSettings({ order_expiration_minutes: 60 })
     ).resolves.not.toThrow();

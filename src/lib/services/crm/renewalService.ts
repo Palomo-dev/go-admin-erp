@@ -369,3 +369,277 @@ class RenewalService {
 
 export const renewalService = new RenewalService();
 export default renewalService;
+
+// ─── Funciones server-side (F11) ─────────────────────────────────────────────
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+export interface ScheduledRenewalResult {
+  renewal_opportunity_id: string;
+  parent_opportunity_id: string;
+  customer_id: string;
+  renewal_date: string;
+  tasks_created: number;
+  already_existed: boolean;
+}
+
+/**
+ * Programa una renovación para una oportunidad padre ganada.
+ * Crea UNA oportunidad de renovación (deal_type='renewal') + 6 tareas/hitos
+ * (120, 90, 60, 30, 15, 7 días antes del vencimiento).
+ *
+ * Idempotencia: si ya existe renovación para este parent_opportunity_id, no crea otra.
+ */
+export async function scheduleRenewal(
+  orgId: number,
+  parentOppId: string,
+  billingCycleMonths: number,
+  supabase: SupabaseClient
+): Promise<ScheduledRenewalResult | null> {
+  // 1. Obtener la oportunidad padre
+  const { data: parentOpp, error: parentError } = await supabase
+    .from('opportunities')
+    .select('id, customer_id, amount, currency, updated_at, created_at, salesperson_id')
+    .eq('id', parentOppId)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+
+  if (parentError || !parentOpp) {
+    console.warn('[renewalService.scheduleRenewal] parent opportunity not found:', parentOppId);
+    return null;
+  }
+
+  const parent = parentOpp as {
+    id: string;
+    customer_id: string;
+    amount: number | null;
+    currency: string | null;
+    updated_at: string;
+    created_at: string;
+    salesperson_id: string | null;
+  };
+
+  if (!parent.customer_id) {
+    console.warn('[renewalService.scheduleRenewal] parent opportunity has no customer_id');
+    return null;
+  }
+
+  // 2. Idempotencia: verificar si ya existe renovación para este parent_opportunity_id
+  const { data: existing } = await supabase
+    .from('opportunities')
+    .select('id, next_contact_at')
+    .eq('organization_id', orgId)
+    .eq('parent_opportunity_id', parentOppId)
+    .eq('deal_type', 'renewal')
+    .maybeSingle();
+
+  if (existing) {
+    const existingRow = existing as { id: string; next_contact_at: string | null };
+    // Ya existe — retornar sin crear otra
+    return {
+      renewal_opportunity_id: existingRow.id,
+      parent_opportunity_id: parentOppId,
+      customer_id: parent.customer_id,
+      renewal_date: '',
+      tasks_created: 0,
+      already_existed: true,
+    };
+  }
+
+  // 3. Calcular fecha de vencimiento
+  const wonDate = new Date(parent.updated_at || parent.created_at);
+  const renewalDate = new Date(wonDate);
+  renewalDate.setMonth(renewalDate.getMonth() + billingCycleMonths);
+
+  // 4. Obtener o crear pipeline de renovación
+  const pipelineId = await getOrCreateRenewalPipelineServer(orgId, supabase);
+  if (!pipelineId) {
+    console.error('[renewalService.scheduleRenewal] could not get/create renewal pipeline');
+    return null;
+  }
+
+  // 5. Obtener la primera etapa del pipeline
+  const { data: firstStage } = await supabase
+    .from('stages')
+    .select('id')
+    .eq('pipeline_id', pipelineId)
+    .order('position', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (!firstStage) {
+    console.error('[renewalService.scheduleRenewal] no stages in renewal pipeline');
+    return null;
+  }
+
+  const stageId = (firstStage as { id: string }).id;
+
+  // 6. Calcular próximo hito (next_contact_at)
+  const now = new Date();
+  const nextMilestone = calculateNextMilestoneServer(renewalDate, now);
+
+  // 7. Obtener nombre del cliente
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('full_name')
+    .eq('id', parent.customer_id)
+    .maybeSingle();
+
+  const customerName = (customer as { full_name: string } | null)?.full_name || 'Cliente';
+  const renewalName = `Renovacion - ${customerName} - ${renewalDate.toLocaleDateString('es-CO')}`;
+
+  // 8. Crear UNA oportunidad de renovación
+  const { data: userData } = await supabase.auth.getUser();
+  const { data: renewalOpp, error: createError } = await supabase
+    .from('opportunities')
+    .insert({
+      organization_id: orgId,
+      pipeline_id: pipelineId,
+      stage_id: stageId,
+      customer_id: parent.customer_id,
+      name: renewalName,
+      amount: parent.amount || 0,
+      currency: parent.currency || 'COP',
+      status: 'open',
+      deal_type: 'renewal',
+      parent_opportunity_id: parentOppId,
+      salesperson_id: parent.salesperson_id || null,
+      expected_close_date: renewalDate.toISOString().split('T')[0],
+      next_contact_at: nextMilestone?.toISOString() || null,
+      created_by: userData.user?.id || null,
+      metadata: {
+        type: 'renewal',
+        parent_opportunity_id: parentOppId,
+        billing_cycle_months: billingCycleMonths,
+        renewal_date: renewalDate.toISOString(),
+      },
+    })
+    .select('id')
+    .single();
+
+  if (createError || !renewalOpp) {
+    console.error('[renewalService.scheduleRenewal] error creating renewal opportunity:', createError?.message);
+    return null;
+  }
+
+  const renewalOppId = (renewalOpp as { id: string }).id;
+
+  // 9. Crear 6 tareas/hitos (120, 90, 60, 30, 15, 7 días antes)
+  const milestones = [120, 90, 60, 30, 15, 7];
+  const tasksToInsert = milestones.map((daysBefore) => {
+    const milestoneDate = new Date(renewalDate);
+    milestoneDate.setDate(milestoneDate.getDate() - daysBefore);
+
+    return {
+      organization_id: orgId,
+      title: `Hito renovacion ${daysBefore}d - ${customerName}`,
+      description: `Contactar cliente ${daysBefore} dias antes del vencimiento de la renovacion (${renewalDate.toLocaleDateString('es-CO')})`,
+      due_date: milestoneDate.toISOString(),
+      status: 'pending',
+      related_to_id: renewalOppId,
+      related_to_type: 'opportunity',
+      assigned_to: parent.salesperson_id || null,
+      created_by: userData.user?.id || null,
+      type: 'renewal_milestone',
+    };
+  });
+
+  const { data: createdTasks, error: tasksError } = await supabase
+    .from('tasks')
+    .insert(tasksToInsert)
+    .select('id');
+
+  if (tasksError) {
+    console.warn('[renewalService.scheduleRenewal] error creating milestone tasks:', tasksError.message);
+  }
+
+  const tasksCreated = createdTasks?.length || 0;
+
+  return {
+    renewal_opportunity_id: renewalOppId,
+    parent_opportunity_id: parentOppId,
+    customer_id: parent.customer_id,
+    renewal_date: renewalDate.toISOString(),
+    tasks_created: tasksCreated,
+    already_existed: false,
+  };
+}
+
+/**
+ * Obtiene o crea el pipeline de renovación (versión server-side).
+ */
+async function getOrCreateRenewalPipelineServer(
+  orgId: number,
+  supabase: SupabaseClient
+): Promise<string | null> {
+  // Buscar pipeline existente
+  const { data: existing } = await supabase
+    .from('pipelines')
+    .select('id')
+    .eq('organization_id', orgId)
+    .eq('pipeline_type', 'renewal')
+    .maybeSingle();
+
+  if (existing) {
+    return (existing as { id: string }).id;
+  }
+
+  // Crear pipeline de renovación
+  const { data: pipeline, error } = await supabase
+    .from('pipelines')
+    .insert({
+      organization_id: orgId,
+      name: 'Renovaciones',
+      pipeline_type: 'renewal',
+      is_default: false,
+    })
+    .select('id')
+    .single();
+
+  if (error || !pipeline) {
+    console.error('[renewalService.getOrCreateRenewalPipelineServer] error:', error?.message);
+    return null;
+  }
+
+  const pipelineId = (pipeline as { id: string }).id;
+
+  // Crear etapas
+  const stages = [
+    { name: 'Renovacion pendiente', position: 1, probability: 50, color: '#3b82f6', sla_days: null },
+    { name: 'Contacto iniciado', position: 2, probability: 60, color: '#6366f1', sla_days: 30 },
+    { name: 'Negociacion', position: 3, probability: 75, color: '#a855f7', sla_days: 21 },
+    { name: 'Contrato enviado', position: 4, probability: 90, color: '#ec4899', sla_days: 14 },
+    { name: 'Renovado', position: 5, probability: 100, color: '#22c55e', sla_days: null },
+    { name: 'No renovado', position: 6, probability: 0, color: '#ef4444', sla_days: null },
+  ];
+
+  const stagesToInsert = stages.map((s) => ({
+    pipeline_id: pipelineId,
+    name: s.name,
+    position: s.position,
+    probability: s.probability,
+    color: s.color,
+    sla_days: s.sla_days,
+    is_won: s.position === 5,
+    is_lost: s.position === 6,
+  }));
+
+  await supabase.from('stages').insert(stagesToInsert);
+
+  return pipelineId;
+}
+
+/**
+ * Calcula el próximo hito de renovación (versión server-side standalone).
+ */
+function calculateNextMilestoneServer(renewalDate: Date, now: Date): Date | null {
+  const milestones = [120, 90, 60, 30, 15, 7];
+  for (const daysBefore of milestones) {
+    const milestoneDate = new Date(renewalDate);
+    milestoneDate.setDate(milestoneDate.getDate() - daysBefore);
+    if (milestoneDate > now) {
+      return milestoneDate;
+    }
+  }
+  return null;
+}

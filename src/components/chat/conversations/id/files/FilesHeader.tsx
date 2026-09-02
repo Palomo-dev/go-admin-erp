@@ -53,7 +53,7 @@ export default function FilesHeader({ conversationId, stats, loading }: FilesHea
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push(`/app/chat/conversations/${conversationId}`)}
+            onClick={() => router.push(`/app/chat/conversaciones/${conversationId}`)}
             className="h-9 w-9"
           >
             <ArrowLeft className="h-5 w-5" />

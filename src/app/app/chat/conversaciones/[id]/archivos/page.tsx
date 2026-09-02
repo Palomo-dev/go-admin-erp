@@ -14,7 +14,7 @@ import {
   FilesList
 } from '@/components/chat/conversations/id/files';
 
-export default function ConversationFilesPage() {
+export default function ChatConversationFilesPage() {
   const params = useParams();
   const conversationId = params.id as string;
   const { toast } = useToast();
@@ -42,7 +42,7 @@ export default function ConversationFilesPage() {
 
       const [filesData, statsData] = await Promise.all([
         service.getConversationFiles(conversationId),
-        service.getFileStats(conversationId)
+        service.getFileStats(conversationId),
       ]);
 
       setFiles(filesData);
@@ -52,7 +52,7 @@ export default function ConversationFilesPage() {
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los archivos',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -61,7 +61,9 @@ export default function ConversationFilesPage() {
 
   const checkUserRole = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: member } = await supabase
@@ -89,7 +91,7 @@ export default function ConversationFilesPage() {
     try {
       const service = new ConversationFilesService(organizationId);
       const url = await service.getSignedUrl(file, 60);
-      
+
       const link = document.createElement('a');
       link.href = url;
       link.download = file.file_name;
@@ -99,14 +101,14 @@ export default function ConversationFilesPage() {
 
       toast({
         title: 'Descarga iniciada',
-        description: `Descargando ${file.file_name}`
+        description: `Descargando ${file.file_name}`,
       });
     } catch (error) {
       console.error('Error descargando archivo:', error);
       toast({
         title: 'Error',
         description: 'No se pudo descargar el archivo',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
@@ -117,19 +119,19 @@ export default function ConversationFilesPage() {
     try {
       const service = new ConversationFilesService(organizationId);
       const url = await service.getSignedUrl(file, 3600);
-      
+
       await navigator.clipboard.writeText(url);
 
       toast({
         title: 'Enlace copiado',
-        description: 'El enlace expira en 1 hora'
+        description: 'El enlace expira en 1 hora',
       });
     } catch (error) {
       console.error('Error copiando enlace:', error);
       toast({
         title: 'Error',
         description: 'No se pudo copiar el enlace',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
@@ -138,32 +140,34 @@ export default function ConversationFilesPage() {
     if (!organizationId) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
       const service = new ConversationFilesService(organizationId);
       await service.deleteFile(file.id, user.id);
 
-      setFiles(prev => prev.filter(f => f.id !== file.id));
-      
+      setFiles((prev) => prev.filter((f) => f.id !== file.id));
+
       if (stats) {
         setStats({
           ...stats,
           totalFiles: stats.totalFiles - 1,
-          totalSize: stats.totalSize - file.size_bytes
+          totalSize: stats.totalSize - file.size_bytes,
         });
       }
 
       toast({
         title: 'Archivo eliminado',
-        description: `${file.file_name} ha sido eliminado`
+        description: `${file.file_name} ha sido eliminado`,
       });
     } catch (error) {
       console.error('Error eliminando archivo:', error);
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el archivo',
-        variant: 'destructive'
+        variant: 'destructive',
       });
       throw error;
     }

@@ -4,6 +4,19 @@ export type PromotionType = 'percentage' | 'fixed' | 'buy_x_get_y' | 'bundle';
 export type AppliesTo = 'all' | 'products' | 'categories';
 export type RuleType = 'include' | 'exclude';
 
+// Valores de rule_type aceptados por el CHECK constraint de la BD
+// (promotion_rules_rule_type_check). El UI usa RuleType ('include'/'exclude')
+// y se mapea a RuleTypeDB según applies_to antes de insertar.
+export type RuleTypeDB =
+  | 'include_product'
+  | 'exclude_product'
+  | 'include_category'
+  | 'exclude_category'
+  | 'include_brand'
+  | 'exclude_brand';
+
+export type WeekDay = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
+
 export interface Promotion {
   id: string;
   organization_id: number;
@@ -24,6 +37,12 @@ export interface Promotion {
   is_combinable: boolean;
   priority: number;
   branches?: number[];
+  // --- Canales de aplicación ---
+  applies_to_web?: boolean;
+  applies_to_pos?: boolean;
+  applies_to_finances?: boolean;
+  // --- Días recurrentes (null = todos los días) ---
+  applicable_days?: WeekDay[] | null;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -33,7 +52,7 @@ export interface Promotion {
 export interface PromotionRule {
   id: string;
   promotion_id: string;
-  rule_type: RuleType;
+  rule_type: RuleTypeDB;
   product_id?: number;
   category_id?: number;
   created_at: string;
@@ -65,11 +84,17 @@ export interface CreatePromotionData {
   is_combinable?: boolean;
   priority?: number;
   branches?: number[];
+  // --- Canales de aplicación ---
+  applies_to_web?: boolean;
+  applies_to_pos?: boolean;
+  applies_to_finances?: boolean;
+  // --- Días recurrentes (null/vacío = todos los días) ---
+  applicable_days?: WeekDay[] | null;
   rules?: CreatePromotionRuleData[];
 }
 
 export interface CreatePromotionRuleData {
-  rule_type: RuleType;
+  rule_type: RuleTypeDB;
   product_id?: number;
   category_id?: number;
 }
@@ -95,4 +120,26 @@ export const APPLIES_TO_LABELS: Record<AppliesTo, string> = {
   all: 'Todos los productos',
   products: 'Productos específicos',
   categories: 'Categorías específicas'
+};
+
+// Días de la semana para applicable_days
+export const WEEK_DAYS: { value: WeekDay; label: string; short: string }[] = [
+  { value: 'monday', label: 'Lunes', short: 'Lun' },
+  { value: 'tuesday', label: 'Martes', short: 'Mar' },
+  { value: 'wednesday', label: 'Miércoles', short: 'Mié' },
+  { value: 'thursday', label: 'Jueves', short: 'Jue' },
+  { value: 'friday', label: 'Viernes', short: 'Vie' },
+  { value: 'saturday', label: 'Sábado', short: 'Sáb' },
+  { value: 'sunday', label: 'Domingo', short: 'Dom' },
+];
+
+// Mapeo de getDay() de JS (0=domingo) a nombre de día
+export const JS_DAY_TO_WEEKDAY: Record<number, WeekDay> = {
+  0: 'sunday',
+  1: 'monday',
+  2: 'tuesday',
+  3: 'wednesday',
+  4: 'thursday',
+  5: 'friday',
+  6: 'saturday',
 };

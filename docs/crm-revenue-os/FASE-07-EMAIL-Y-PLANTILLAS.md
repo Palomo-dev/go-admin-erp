@@ -1,8 +1,19 @@
 # FASE 07 — Email propio: Resend, React Email y editor de plantillas
 
 > Proyecto Supabase: `jgmgphmzusbluqhuqihj`
-> Depende de: F0 (registry, `resend`/`react-email` instalados)
+> Depende de: F0 (registry de proveedores)
 > Bloquea: F8 (secuencias usan plantillas de email)
+>
+> **Dependencias npm (NO instaladas aún — verificar `package.json`):** el
+> `package.json` actual NO contiene `resend`, `react-email`, `svix` ni
+> `@react-email/components`. Instalar explícitamente antes de empezar:
+> ```bash
+> npm install resend react-email @react-email/components svix juice
+> ```
+> - `resend` — SDK oficial de Resend (envío + dominios).
+> - `react-email` + `@react-email/components` — plantillas TSX de sistema.
+> - `svix` — verificación oficial de webhooks (`Webhook.verify`).
+> - `juice` — inline CSS para compatibilidad Outlook/Gmail.
 
 ---
 
@@ -22,15 +33,16 @@
 | `/api/integrations/sendgrid/send` + `/webhook` + `/bounces` + `/stats` + `/templates` + `/health-check` | ✅ completo vía fetch | `src/app/api/integrations/sendgrid/` |
 | `twilioEmailService.ts` | ✅ | `src/lib/services/twilioEmailService.ts` |
 | `EmailNotifications.tsx` | ✅ | `src/components/crm/pipeline/EmailNotifications.tsx` |
-| `templates` tabla con `kind` | ✅ existe | BD |
+| `templates` tabla con `kind` | ✅ existe (onboarding usa `kind='onboarding'`) | `src/lib/services/crm/onboardingService.ts:218` |
 | `campaigns` / `campaign_contacts` / `segments` | ✅ existen | BD |
-| `notification_templates` / `notification_channels` | ✅ existen | BD |
+| `notification_templates` / `notification_channels` | ✅ existen (`notification_templates` con `channel`, `subject`, `body_html`, `body_text`, `variables`, `version`) | `src/lib/services/notificationService.ts:182` |
+| `integration_credentials` (con `value_encrypted`, `secret_ref`, `purpose`, `connection_id`) | ✅ existe | `src/lib/services/integrationsService.ts:655` |
+| `channel_credentials` (con `credentials` jsonb) | ✅ existe | `src/lib/services/chatChannelsService.ts:88` |
 | Editor de texto enriquecido | ✅ | grep `RichTextEditor` + `docs/integraciones/editor-texto-enriquecido.md` |
 | `emailAuth.ts` | ✅ emails de auth | `src/lib/auth/emailAuth.ts` |
-| Resend | ❌ (el string "resend" del repo es re-envío de auth, no la API) | — |
+| `resend` / `react-email` / `svix` / `@react-email/components` / `juice` | ❌ NO en `package.json` (instalar en F7) | — |
 | `email_domains` / `email_messages` / `email_events` | ❌ | — |
 | Editor de bloques | ❌ | — |
-| `react-email` | ❌ (F0 lo instala) | — |
 
 ---
 
@@ -84,14 +96,18 @@
 
 #### Migración 1 — `email_domains`
 
+> **NO guarda API keys aquí.** Las API keys de Resend se almacenan en
+> `integration_credentials` (tabla existente, ver §4.4) referenciada vía
+> `credential_id`. `email_domains` solo guarda metadatos del dominio.
+
 ```sql
 CREATE TABLE email_domains (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   domain text NOT NULL,
   provider text NOT NULL DEFAULT 'resend',
   provider_domain_id text,
-  provider_api_key_encrypted text,
+  credential_id uuid REFERENCES integration_credentials(id) ON DELETE SET NULL,
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','verifying','verified','failed')),
   dns_records jsonb NOT NULL DEFAULT '[]'::jsonb,
   dmarc_configured boolean NOT NULL DEFAULT false,
@@ -117,11 +133,11 @@ CREATE POLICY ed_delete ON email_domains FOR DELETE USING (organization_id = cur
 
 ```sql
 CREATE TABLE email_messages (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   provider text NOT NULL DEFAULT 'resend',
   provider_message_id text,
-  template_id bigint REFERENCES templates(id) ON DELETE SET NULL,
+  template_id uuid REFERENCES templates(id) ON DELETE SET NULL,
   to_email text NOT NULL,
   to_customer_id integer,
   cc text[],
@@ -131,7 +147,7 @@ CREATE TABLE email_messages (
   body_html_snapshot text,
   related_type text,
   related_id text,
-  sequence_step_run_id bigint,
+  sequence_step_run_id uuid,
   status text NOT NULL DEFAULT 'pending' CHECK (status IN (
     'pending','sent','delivered','opened','clicked','bounced','complained','unsubscribed','failed'
   )),
@@ -165,9 +181,9 @@ CREATE POLICY em_update ON email_messages FOR UPDATE USING (organization_id = cu
 CREATE POLICY em_delete ON email_messages FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE email_events (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  email_message_id bigint NOT NULL REFERENCES email_messages(id) ON DELETE CASCADE,
+  email_message_id uuid NOT NULL REFERENCES email_messages(id) ON DELETE CASCADE,
   event_type text NOT NULL,
   occurred_at timestamptz NOT NULL DEFAULT now(),
   payload jsonb,
@@ -181,16 +197,52 @@ CREATE POLICY ee_select ON email_events FOR SELECT USING (organization_id = curr
 CREATE POLICY ee_insert ON email_events FOR INSERT WITH CHECK (organization_id = current_org_id());
 ```
 
-#### Migración 3 — Extender `templates` con `blocks_json`
+#### Migración 3 — Extender `templates` con `blocks_json` y `channel`
 
 ```sql
+-- F7 extiende la tabla `templates` EXISTENTE (NO crea una tabla nueva).
+-- `templates` ya tiene `kind` (usado por onboarding: kind='onboarding'),
+-- `is_active`, `body_html`, `organization_id`, `name`, `description`, `variables`.
+-- Se añade `blocks_json` para el editor visual y `channel` para multicanal.
 ALTER TABLE templates
   ADD COLUMN IF NOT EXISTS blocks_json jsonb,
-  ADD COLUMN IF NOT EXISTS channel text NOT NULL DEFAULT 'email'
-    CHECK (channel IN ('email','whatsapp','sms'));
+  ADD COLUMN IF NOT EXISTS channel text NOT NULL DEFAULT 'email';
+  -- ❌ SIN CHECK constraint en `channel`: el sistema ya usa `kind='onboarding'`
+  --    y could surgir canales nuevos (whatsapp, sms, onboarding, ...). Validar
+  --    canal en la capa de aplicación (zod enum) para nuevos canales, no en BD.
 ```
 
-> `templates.metadata` ya fue añadido en F0. `templates.kind` ya existe.
+> **Relación con `notification_templates` (NO duplicación):**
+>
+> El sistema ya tiene DOS tablas de plantillas que **coexisten** y sirven
+> propósitos distintos. F7 **NO crea ninguna tabla nueva** de plantillas:
+>
+> | Tabla | Propósito | Quién edita | Ejemplos |
+> |---|---|---|---|
+> | `notification_templates` | Notificaciones push del **sistema** (auth, alertas, recordatorios de pago). Canal fijo por plantilla. | No editable por el usuario final (configuración técnica) | "Recordatorio de pago", "Verificación de email" |
+> | `templates` | Plantillas del **CRM** (marketing + transaccionales) editables con drag & drop. Multicanal vía `channel`. | Usuario final (SDR, AE, CS, Marketing) | "Primer contacto", "Envío de propuesta" |
+>
+> **Por qué no se unifican ahora:** `notification_templates` tiene campos
+> específicos (`subject`, `body_text`, `variables`, `version`) y es consumida
+> por `notificationService.ts` con su propio flujo (`processEmailNotifications`).
+> Migrar todo a `templates` rompería las notificaciones existentes. F7 extiende
+> `templates` (que ya existía y es usada por onboarding) con `blocks_json` +
+> `channel` para el editor visual del CRM.
+>
+> **Si en el futuro se unifican:** `templates` puede absorber a
+> `notification_templates` porque ya soporta `channel` libre y `blocks_json`.
+> El plan de migración sería:
+> 1. Añadir a `templates` las columnas faltantes (`subject`, `body_text`,
+>    `version`) si no existen.
+> 2. Migrar filas de `notification_templates` a `templates` con
+>    `kind='notification'`, `channel=<canal original>`.
+> 3. Actualizar `notificationService.ts` para leer de `templates`.
+> 4. Deprecar `notification_templates` (no borrar hasta F+1).
+>
+> **Extender `notification_templates` sin duplicar:** si una notificación del
+> sistema necesita el editor de bloques, añadir `blocks_json` también a
+> `notification_templates` (misma migración) y reusar `emailRenderer.ts`. NO
+> crear una tercera tabla.
 
 ### 3.2 Schema de `templates.blocks_json`
 
@@ -319,7 +371,8 @@ SELECT column_name FROM information_schema.columns
 | `src/lib/services/email/sendgridProvider.ts` | **crear** | Adaptador SendGrid (envuelve `sendgridService.ts`) |
 | `src/lib/services/email/emailRenderer.ts` | **crear** | blocks_json → HTML + React Email → HTML |
 | `src/lib/services/email/domainService.ts` | **crear** | Gestión de dominios |
-| `src/lib/services/email/webhookService.ts` | **crear** | Procesamiento de webhooks |
+| `src/lib/services/email/webhookHandlerService.ts` | **crear** | Parsing + verificación Svix reutilizable (separado del route handler) |
+| `src/lib/services/email/suppressionService.ts` | **crear** | Bounce duro, quejas, unsubscribe, suppression list por org |
 
 #### Interfaz `EmailProvider`
 
@@ -416,20 +469,41 @@ if (verified.status === 'verified') {
 ```typescript
 // src/app/api/email/webhook/route.ts
 import { Resend } from 'resend';
+import { getProvider } from '@/lib/services/email/emailService';
 
 export async function POST(req: Request) {
-  const body = await req.text();
+  const payload = await req.text(); // body crudo (Svix firma el raw body)
   const headers = Object.fromEntries(req.headers.entries());
 
-  // 1. Verificar firma Svix
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const verified = resend.webhooks.verify(body, headers, process.env.RESEND_WEBHOOK_SECRET);
-  if (!verified) return new Response('Invalid signature', { status: 401 });
+  // 1. Verificar firma Svix con la firma correcta del SDK de Resend.
+  //    resend.webhooks.verify recibe un objeto { payload, headers, webhookSecret }
+  //    donde headers debe contener { id, timestamp, signature } (cabeceras svix-*).
+  //    Lanza si la firma es inválida → envolver en try/catch.
+  const resend = new Resend(process.env.RESEND_API_KEY!);
+  let verifiedPayload: unknown;
+  try {
+    verifiedPayload = await resend.webhooks.verify({
+      payload,
+      headers: {
+        id: headers['svix-id'],
+        timestamp: headers['svix-timestamp'],
+        signature: headers['svix-signature'],
+      },
+      webhookSecret: process.env.RESEND_WEBHOOK_SECRET!,
+    });
+  } catch (err) {
+    console.warn('Webhook Svix: firma inválida', err);
+    return new Response('Invalid signature', { status: 401 });
+  }
 
-  const events = JSON.parse(body);
+  // 2. Normalizar evento vía el adaptador del proveedor (EmailProvider.parseWebhook).
+  //    El route handler NO parsea el payload a mano: delega en parseWebhook para
+  //    que Resend y SendGrid mapeen su formato particular a WebhookEvent[].
+  const provider = getProvider('resend') as EmailProvider;
+  const events = provider.parseWebhook(verifiedPayload, headers);
 
   for (const event of events) {
-    // 2. Idempotencia por provider_event_id
+    // 3. Idempotencia por provider_event_id
     const { data: existing } = await supabase
       .from('email_events')
       .select('id')
@@ -437,15 +511,15 @@ export async function POST(req: Request) {
       .single();
     if (existing) continue;
 
-    // 3. Resolver org desde tags.organization_id o provider_message_id
+    // 4. Resolver org desde tags.organization_id o provider_message_id
     const orgId = event.tags?.organization_id || await resolveOrgFromMessageId(event.email_id);
     if (!orgId) continue; // log anomalía, no fallar
 
-    // 4. Mapear evento
+    // 5. Mapear evento
     const mapping = EVENT_MAP[event.event_type]; // ver tabla abajo
     if (!mapping) continue;
 
-    // 5. INSERT email_events + UPDATE email_messages
+    // 6. INSERT email_events + UPDATE email_messages
     await supabase.from('email_events').insert({
       organization_id: orgId, email_message_id: messageId,
       event_type: event.event_type, payload: event,
@@ -454,11 +528,11 @@ export async function POST(req: Request) {
 
     await supabase.from('email_messages').update(mapping.update).eq('id', messageId);
 
-    // 6. Bounce duro → suppression
+    // 7. Bounce duro → suppression
     if (event.event_type === 'email.bounced' && event.bounce_type === 'hard') {
       await addToSuppressionList(orgId, event.to);
     }
-    // 7. Queja → do_not_email
+    // 8. Queja → do_not_email
     if (event.event_type === 'email.complained') {
       await markDoNotEmail(orgId, event.to);
     }
@@ -467,6 +541,13 @@ export async function POST(req: Request) {
   return new Response('OK', { status: 200 });
 }
 ```
+
+> **Firma de `resend.webhooks.verify`:** el SDK de Resend expone
+> `webhooks.verify({ payload, headers: { id, timestamp, signature }, webhookSecret })`
+> — NO la forma posicional `verify(body, headers, secret)`. `payload` es el body crudo
+> como string (no parseado); `headers` son las tres cabeceras `svix-*`; `webhookSecret`
+> es el secreto configurado en el dashboard de Resend. El método **lanza** si la firma
+> no coincide, por eso va en `try/catch` y se responde 401.
 
 Mapeo de los 12 eventos de Resend:
 
@@ -482,7 +563,12 @@ Mapeo de los 12 eventos de Resend:
 
 ### 4.6 Idempotencia, rate limit y cola
 
-- `Idempotency-Key`: `org{orgId}/{contexto}/{relatedType}/{relatedId}/{timestamp}` → unique en `email_messages`.
+- `Idempotency-Key`: `org{orgId}/{contexto}/{relatedType}/{relatedId}/{messageId}` → unique en `email_messages`.
+  - `messageId` es el ID que devuelve el proveedor (Resend `message_id`), **no** un timestamp.
+  - Para envíos nuevos (aún sin `messageId` del proveedor) se usa un UUID v4 generado
+    client-side como placeholder; una vez que Resend responde, el `provider_message_id`
+    queda persistido en `email_messages` y los reintentos usan esa misma key.
+  - Esto garantiza idempotencia real: reintentos del mismo envío producen la misma key.
 - Rate limit: 10 req/s de Resend → cola simple con `setInterval` o `p-queue`.
 - `scheduled_at` para envíos programados (lo usa F8).
 

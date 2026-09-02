@@ -485,7 +485,8 @@ class HealthScoreService {
   }
 
   /**
-   * Refresca mv_customer_health y recalcula los scores de todos los clientes.
+   * Recalcula los scores de todos los clientes usando fn_customer_health RPC en batch.
+   * Actualiza customers.health_score y health_score_updated_at en una sola pasada.
    * @returns Número de clientes recalculados
    */
   async refreshAllHealthScores(organizationId?: number): Promise<number> {
@@ -493,27 +494,71 @@ class HealthScoreService {
       const orgId = this.getOrgId(organizationId);
       if (!orgId) return 0;
 
-      // Refrescar la vista materializada
-      const { error: refreshError } = await supabase.rpc('refresh_mv_customer_health');
+      // Una sola RPC calcula scores para todos los clientes con lifecycle_stage='customer'
+      const { data, error } = await supabase
+        .rpc('fn_customer_health', {
+          p_org_id: orgId,
+          p_customer_id: null as unknown as string,
+        });
 
-      if (refreshError) {
-        console.warn('Advertencia refrescando mv_customer_health:', refreshError.message);
-        // Continuar aunque el refresh falle — los datos pueden estar desactualizados pero disponibles
+      if (error || !data) {
+        console.warn('Error en fn_customer_health batch (refresh):', error?.message);
+        return 0;
       }
 
-      // Obtener todos los clientes de la organización con datos en mv_customer_health
-      const { data: healthData, error } = await supabase
-        .from('mv_customer_health')
-        .select('customer_id')
-        .eq('organization_id', orgId);
+      const rows = Array.isArray(data) ? data : [data];
+      if (!rows || rows.length === 0) return 0;
 
-      if (error || !healthData || healthData.length === 0) return 0;
+      const bandMap: Record<string, HealthBand> = {
+        healthy: 'green',
+        at_risk: 'yellow',
+        critical: 'red',
+      };
 
       let count = 0;
-      // Recalcular y snapshotear cada cliente
-      for (const row of healthData as Array<{ customer_id: string }>) {
-        const snapshot = await this.snapshotHealthScore(row.customer_id);
-        if (snapshot) count++;
+      const now = new Date().toISOString();
+
+      // Actualizar customers.health_score en lote (una update por cliente)
+      for (const row of rows as Array<Record<string, unknown>>) {
+        const customerId = row.customer_id as string;
+        const score = Number(row.score) || 0;
+        const bandStr = (row.band as string) || 'critical';
+        const band = bandMap[bandStr] || 'red';
+
+        // Actualizar customers.health_score
+        const { error: updateError } = await supabase
+          .from('customers')
+          .update({
+            health_score: score,
+            health_score_updated_at: now,
+          })
+          .eq('id', customerId)
+          .eq('organization_id', orgId);
+
+        if (updateError) {
+          console.warn(`Error actualizando health_score para ${customerId}:`, updateError.message);
+          continue;
+        }
+
+        // Guardar snapshot
+        await supabase
+          .from('health_score_snapshots')
+          .insert({
+            organization_id: orgId,
+            customer_id: customerId,
+            score,
+            band,
+            indicators: {
+              invoices_12m: Number(row.invoices_12m) || 0,
+              revenue_12m: Number(row.revenue_12m) || 0,
+              days_since_last_invoice: row.days_since_last_invoice,
+              days_since_last_activity: row.days_since_last_activity,
+              overdue_balance: Number(row.overdue_balance) || 0,
+              overdue_ratio: Number(row.overdue_ratio) || 0,
+            } as unknown as Record<string, unknown>,
+          });
+
+        count++;
       }
 
       return count;
@@ -524,8 +569,124 @@ class HealthScoreService {
   }
 
   /**
+   * Obtiene el health score de un cliente específico usando la misma RPC
+   * fn_customer_health que getAllHealthScores, garantizando consistencia
+   * entre el score mostrado en la lista y el drawer de detalle.
+   * @param customerId - ID del cliente
+   * @param organizationId - ID de la organización (opcional)
+   */
+  async getCustomerHealthScore(customerId: string, organizationId?: number): Promise<HealthScoreResult | null> {
+    try {
+      const orgId = this.getOrgId(organizationId);
+      if (!orgId) return null;
+
+      const { data, error } = await supabase
+        .rpc('fn_customer_health', {
+          p_org_id: orgId,
+          p_customer_id: customerId,
+        });
+
+      if (error || !data) {
+        console.warn('Error en fn_customer_health (single):', error?.message);
+        return null;
+      }
+
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+
+      const result = row as Record<string, unknown>;
+
+      const bandMap: Record<string, HealthBand> = {
+        healthy: 'green',
+        at_risk: 'yellow',
+        critical: 'red',
+        green: 'green',
+        yellow: 'yellow',
+        red: 'red',
+      };
+
+      const score = Number(result.score) || 0;
+      const bandStr = (result.band as string) || 'critical';
+      const band = bandMap[bandStr] || 'red';
+
+      // Obtener nombre del cliente
+      const { data: customerData } = await supabase
+        .from('customers')
+        .select('full_name')
+        .eq('id', customerId)
+        .maybeSingle();
+
+      const customerName = (customerData as { full_name?: string } | null)?.full_name || 'Sin nombre';
+
+      // Construir indicadores desde los campos de la RPC
+      const indicators: HealthScoreResult['indicators'] = [
+        {
+          key: 'invoices_12m',
+          label: 'Facturas (12m)',
+          weight: 0,
+          value: Number(result.invoices_12m) || 0,
+          score: 0,
+          weightedScore: 0,
+        },
+        {
+          key: 'revenue_12m',
+          label: 'Ingresos (12m)',
+          weight: 0,
+          value: Number(result.revenue_12m) || 0,
+          score: 0,
+          weightedScore: 0,
+        },
+        {
+          key: 'days_since_last_invoice',
+          label: 'Días última factura',
+          weight: 0,
+          value: result.days_since_last_invoice !== null ? Number(result.days_since_last_invoice) : -1,
+          score: 0,
+          weightedScore: 0,
+        },
+        {
+          key: 'days_since_last_activity',
+          label: 'Días última actividad',
+          weight: 0,
+          value: result.days_since_last_activity !== null ? Number(result.days_since_last_activity) : -1,
+          score: 0,
+          weightedScore: 0,
+        },
+        {
+          key: 'overdue_balance',
+          label: 'Saldo vencido',
+          weight: 0,
+          value: Number(result.overdue_balance) || 0,
+          score: 0,
+          weightedScore: 0,
+        },
+        {
+          key: 'overdue_ratio',
+          label: 'Ratio vencido',
+          weight: 0,
+          value: Number(result.overdue_ratio) || 0,
+          score: 0,
+          weightedScore: 0,
+        },
+      ];
+
+      return {
+        customer_id: customerId,
+        customer_name: customerName,
+        score,
+        band,
+        indicators,
+      };
+    } catch (err) {
+      console.error('Error en healthScoreService.getCustomerHealthScore:', err);
+      return null;
+    }
+  }
+
+  /**
    * Obtiene el health score actual de todos los clientes de la organización.
-   * Usa el snapshot más reciente de cada cliente.
+   * Usa fn_customer_health RPC en modo batch (p_customer_id = NULL) para calcular
+   * todos los scores en una sola consulta server-side, evitando N+1 queries.
    * @returns Lista de scores de clientes
    */
   async getAllHealthScores(organizationId?: number): Promise<HealthScoreResult[]> {
@@ -533,49 +694,51 @@ class HealthScoreService {
       const orgId = this.getOrgId(organizationId);
       if (!orgId) return [];
 
-      // Obtener todos los clientes de la organización
-      const { data: customers, error: custError } = await supabase
-        .from('customers')
-        .select('id, full_name, email, phone')
-        .eq('organization_id', orgId)
-        .order('full_name');
+      // Una sola RPC calcula scores para todos los clientes con lifecycle_stage='customer'
+      const { data, error } = await supabase
+        .rpc('fn_customer_health', {
+          p_org_id: orgId,
+          p_customer_id: null as unknown as string,
+        });
 
-      if (custError || !customers) return [];
-
-      const results: HealthScoreResult[] = [];
-
-      for (const customer of customers as Array<{
-        id: string;
-        full_name: string;
-        email?: string | null;
-        phone?: string | null;
-      }>) {
-        // Obtener snapshot más reciente
-        const { data: snapshot } = await supabase
-          .from('health_score_snapshots')
-          .select('score, band')
-          .eq('customer_id', customer.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (snapshot) {
-          const snap = snapshot as { score: number; band: HealthBand };
-          results.push({
-            customer_id: customer.id,
-            customer_name: customer.full_name,
-            score: snap.score,
-            band: snap.band,
-            indicators: [],
-          });
-        } else {
-          // Sin snapshot — calcular en vivo
-          const calculated = await this.calculateHealthScore(customer.id);
-          if (calculated) {
-            results.push(calculated);
-          }
-        }
+      if (error || !data) {
+        console.warn('Error en fn_customer_health batch:', error?.message);
+        return [];
       }
+
+      const rows = Array.isArray(data) ? data : [data];
+      if (!rows || rows.length === 0) return [];
+
+      // Mapear bandas de la RPC (healthy/at_risk/critical) a bandas del frontend (green/yellow/red)
+      const bandMap: Record<string, HealthBand> = {
+        healthy: 'green',
+        at_risk: 'yellow',
+        critical: 'red',
+      };
+
+      // Obtener nombres de clientes en una sola query
+      const customerIds = rows.map((r: Record<string, unknown>) => r.customer_id as string);
+      const { data: customersData } = await supabase
+        .from('customers')
+        .select('id, full_name')
+        .in('id', customerIds);
+
+      const nameMap = new Map<string, string>();
+      for (const c of (customersData || []) as Array<{ id: string; full_name: string }>) {
+        nameMap.set(c.id, c.full_name || 'Sin nombre');
+      }
+
+      const results: HealthScoreResult[] = rows.map((row: Record<string, unknown>) => {
+        const score = Number(row.score) || 0;
+        const bandStr = (row.band as string) || 'critical';
+        return {
+          customer_id: row.customer_id as string,
+          customer_name: nameMap.get(row.customer_id as string) || 'Sin nombre',
+          score,
+          band: bandMap[bandStr] || 'red',
+          indicators: [],
+        };
+      });
 
       // Ordenar por score ascendente (más críticos primero)
       results.sort((a, b) => a.score - b.score);
@@ -590,3 +753,235 @@ class HealthScoreService {
 
 export const healthScoreService = new HealthScoreService();
 export default healthScoreService;
+
+// ─── Funciones server-side (F11) — usa fn_customer_health RPC ────────────────
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+export interface CustomerHealthRpcResult {
+  customer_id: string;
+  invoices_12m: number;
+  revenue_12m: number;
+  days_since_last_invoice: number | null;
+  days_since_last_activity: number | null;
+  overdue_balance: number;
+  overdue_ratio: number;
+  score: number;
+  band: string;
+}
+
+export interface HealthScoreServerResult {
+  customer_id: string;
+  score: number;
+  band: HealthBand;
+  indicators: {
+    invoices_12m: number;
+    revenue_12m: number;
+    days_since_last_invoice: number | null;
+    days_since_last_activity: number | null;
+    overdue_balance: number;
+    overdue_ratio: number;
+  };
+  calculated_at: string;
+}
+
+export interface HealthSnapshotRow {
+  id: string;
+  customer_id: string;
+  score: number;
+  band: HealthBand;
+  indicators: Record<string, number>;
+  created_at: string;
+}
+
+/**
+ * Calcula el health score de un cliente usando fn_customer_health RPC.
+ * Actualiza customers.health_score y health_score_updated_at.
+ */
+export async function calculateHealthScore(
+  orgId: number,
+  customerId: string,
+  supabase: SupabaseClient
+): Promise<HealthScoreServerResult | null> {
+  const { data, error } = await supabase
+    .rpc('fn_customer_health', {
+      p_org_id: orgId,
+      p_customer_id: customerId,
+    });
+
+  if (error || !data) {
+    console.warn('[healthScoreService.calculateHealthScore] RPC error:', error?.message);
+    return null;
+  }
+
+  // fn_customer_health retorna una tabla con una fila
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+
+  const result = row as Record<string, unknown>;
+
+  const score = Number(result.score) || 0;
+  const bandStr = (result.band as string) || 'red';
+  const band: HealthBand = bandStr === 'green' ? 'green' : bandStr === 'yellow' ? 'yellow' : 'red';
+
+  // Actualizar customers.health_score y health_score_updated_at
+  await supabase
+    .from('customers')
+    .update({
+      health_score: score,
+      health_score_updated_at: new Date().toISOString(),
+    })
+    .eq('id', customerId)
+    .eq('organization_id', orgId);
+
+  return {
+    customer_id: customerId,
+    score,
+    band,
+    indicators: {
+      invoices_12m: Number(result.invoices_12m) || 0,
+      revenue_12m: Number(result.revenue_12m) || 0,
+      days_since_last_invoice: result.days_since_last_invoice !== null ? Number(result.days_since_last_invoice) : null,
+      days_since_last_activity: result.days_since_last_activity !== null ? Number(result.days_since_last_activity) : null,
+      overdue_balance: Number(result.overdue_balance) || 0,
+      overdue_ratio: Number(result.overdue_ratio) || 0,
+    },
+    calculated_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Obtiene el health score actual de un cliente (desde customers.health_score).
+ */
+export async function getHealthScore(
+  orgId: number,
+  customerId: string,
+  supabase: SupabaseClient
+): Promise<{ customer_id: string; score: number | null; band: HealthBand | null; updated_at: string | null } | null> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('id, health_score, health_score_updated_at')
+    .eq('id', customerId)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.warn('[healthScoreService.getHealthScore] customer not found:', customerId);
+    return null;
+  }
+
+  const row = data as { id: string; health_score: number | null; health_score_updated_at: string | null };
+
+  let band: HealthBand | null = null;
+  if (row.health_score !== null) {
+    const score = row.health_score;
+    band = score >= 70 ? 'green' : score >= 40 ? 'yellow' : 'red';
+  }
+
+  return {
+    customer_id: customerId,
+    score: row.health_score,
+    band,
+    updated_at: row.health_score_updated_at,
+  };
+}
+
+/**
+ * Guarda un snapshot del health score en health_score_snapshots.
+ * Primero calcula el score via RPC, luego guarda el snapshot.
+ */
+export async function saveHealthSnapshot(
+  orgId: number,
+  customerId: string,
+  supabase: SupabaseClient
+): Promise<HealthSnapshotRow | null> {
+  const result = await calculateHealthScore(orgId, customerId, supabase);
+  if (!result) return null;
+
+  const indicators: Record<string, number> = {
+    invoices_12m: result.indicators.invoices_12m,
+    revenue_12m: result.indicators.revenue_12m,
+    days_since_last_invoice: result.indicators.days_since_last_invoice ?? -1,
+    days_since_last_activity: result.indicators.days_since_last_activity ?? -1,
+    overdue_balance: result.indicators.overdue_balance,
+    overdue_ratio: result.indicators.overdue_ratio,
+  };
+
+  const { data, error } = await supabase
+    .from('health_score_snapshots')
+    .insert({
+      organization_id: orgId,
+      customer_id: customerId,
+      score: result.score,
+      band: result.band,
+      indicators: indicators as unknown as Record<string, unknown>,
+    })
+    .select('id, customer_id, score, band, indicators, created_at')
+    .single();
+
+  if (error) {
+    console.error('[healthScoreService.saveHealthSnapshot] error:', error.message);
+    return null;
+  }
+
+  const row = data as {
+    id: string;
+    customer_id: string;
+    score: number;
+    band: HealthBand;
+    indicators: Record<string, number>;
+    created_at: string;
+  };
+
+  return {
+    id: row.id,
+    customer_id: row.customer_id,
+    score: row.score,
+    band: row.band,
+    indicators: row.indicators,
+    created_at: row.created_at,
+  };
+}
+
+/**
+ * Obtiene la tendencia del health score de un cliente desde snapshots.
+ * @param months - Número de meses hacia atrás (default: 6)
+ */
+export async function getHealthTrend(
+  orgId: number,
+  customerId: string,
+  supabase: SupabaseClient,
+  months: number = 6
+): Promise<HealthSnapshotRow[]> {
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - months);
+
+  const { data, error } = await supabase
+    .from('health_score_snapshots')
+    .select('id, customer_id, score, band, indicators, created_at')
+    .eq('organization_id', orgId)
+    .eq('customer_id', customerId)
+    .gte('created_at', startDate.toISOString())
+    .order('created_at', { ascending: true });
+
+  if (error || !data) {
+    console.warn('[healthScoreService.getHealthTrend] error:', error?.message);
+    return [];
+  }
+
+  return (data as Array<{
+    id: string;
+    customer_id: string;
+    score: number;
+    band: HealthBand;
+    indicators: Record<string, number>;
+    created_at: string;
+  }>).map((row) => ({
+    id: row.id,
+    customer_id: row.customer_id,
+    score: row.score,
+    band: row.band,
+    indicators: row.indicators,
+    created_at: row.created_at,
+  }));
+}

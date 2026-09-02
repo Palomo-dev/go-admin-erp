@@ -27,6 +27,7 @@ import {
   type CRMFilters,
 } from '@/components/crm/dashboard';
 import { ReportesPage } from '@/components/crm/reportes';
+import { MetricasView } from '@/components/crm/metricas/MetricasView';
 import type {
   SectionExportData,
   SectionKPI,
@@ -217,6 +218,7 @@ export default function CrmSection() {
       orgInfo={orgInfo}
       isLoading={isLoading}
       reportesContent={<ReportesPage />}
+      metricasContent={<MetricasView />}
     >
       <div className="space-y-6">
         <CRMKPICards data={kpis} isLoading={isLoading} />

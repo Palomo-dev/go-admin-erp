@@ -233,7 +233,7 @@ export default function ConversationHeader({
               variant="ghost" 
               size="icon" 
               className="h-9 w-9"
-              onClick={() => router.push(`/app/chat/conversations/${conversation.id}/files`)}
+              onClick={() => router.push(`/app/chat/conversaciones/${conversation.id}/archivos`)}
             >
               <Paperclip className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </Button>
@@ -246,7 +246,7 @@ export default function ConversationHeader({
               variant="ghost" 
               size="icon" 
               className="h-9 w-9"
-              onClick={() => router.push(`/app/chat/conversations/${conversation.id}/activity`)}
+              onClick={() => router.push(`/app/chat/conversaciones/${conversation.id}/actividad`)}
             >
               <History className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </Button>
@@ -299,11 +299,11 @@ export default function ConversationHeader({
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push(`/app/chat/conversations/${conversation.id}/files`)}>
+            <DropdownMenuItem onClick={() => router.push(`/app/chat/conversaciones/${conversation.id}/archivos`)}>
               <Paperclip className="h-4 w-4 mr-2" />
               Ver archivos
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(`/app/chat/conversations/${conversation.id}/activity`)}>
+            <DropdownMenuItem onClick={() => router.push(`/app/chat/conversaciones/${conversation.id}/actividad`)}>
               <History className="h-4 w-4 mr-2" />
               Ver actividad
             </DropdownMenuItem>

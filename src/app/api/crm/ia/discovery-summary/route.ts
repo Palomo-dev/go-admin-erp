@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { supabase } from '@/lib/supabase/config';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 
 /**
  * API Route - Resume discovery/llamadas de una oportunidad del CRM.
@@ -33,6 +33,19 @@ interface DiscoverySummaryResponse {
 }
 
 export async function POST(request: NextRequest) {
+  let ctx;
+  try {
+    ctx = await getServerOrgContext();
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.statusCode }
+      );
+    }
+    throw err;
+  }
+
   try {
     const body = await request.json();
     const { opportunityId } = body as { opportunityId?: string };
@@ -45,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Recopilar actividades y notas
-    const context = await gatherDiscoveryContext(opportunityId);
+    const context = await gatherDiscoveryContext(ctx.supabase, ctx.organizationId, opportunityId);
     if (!context) {
       return NextResponse.json(
         { error: 'No se pudo obtener información de la oportunidad' },
@@ -93,10 +106,12 @@ interface DiscoveryContext {
 }
 
 async function gatherDiscoveryContext(
+  supabase: Awaited<ReturnType<typeof getServerOrgContext>>['supabase'],
+  organizationId: number,
   opportunityId: string
 ): Promise<DiscoveryContext | null> {
   try {
-    // Obtener la oportunidad
+    // Obtener la oportunidad — filtrar por organización
     const { data: opp, error: oppError } = await supabase
       .from('opportunities')
       .select(`
@@ -108,6 +123,7 @@ async function gatherDiscoveryContext(
         stage:stages(id, name)
       `)
       .eq('id', opportunityId)
+      .eq('organization_id', organizationId)
       .maybeSingle();
 
     if (oppError || !opp) return null;
@@ -116,12 +132,13 @@ async function gatherDiscoveryContext(
     const customer = oppData.customer as { id: string; full_name: string } | null;
     const stage = oppData.stage as { id: string; name: string } | null;
 
-    // Obtener todas las actividades
+    // Obtener todas las actividades — filtrar por organización
     const { data: activities } = await supabase
       .from('activities')
       .select('activity_type, title, description, occurred_at')
       .eq('related_id', opportunityId)
       .eq('related_type', 'opportunity')
+      .eq('organization_id', organizationId)
       .order('occurred_at', { ascending: false })
       .limit(20);
 

@@ -31,7 +31,7 @@
 
 ```sql
 CREATE TABLE referral_programs (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   reward_type text NOT NULL CHECK (reward_type IN ('credit','discount','cash','free_months')),
@@ -51,9 +51,9 @@ CREATE POLICY rp_update ON referral_programs FOR UPDATE USING (organization_id =
 CREATE POLICY rp_delete ON referral_programs FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE referrals (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  program_id bigint REFERENCES referral_programs(id) ON DELETE SET NULL,
+  program_id uuid REFERENCES referral_programs(id) ON DELETE SET NULL,
   referrer_customer_id integer NOT NULL,
   referred_customer_id integer,
   referred_name text NOT NULL,
@@ -73,13 +73,13 @@ CREATE POLICY ref_insert ON referrals FOR INSERT WITH CHECK (organization_id = c
 CREATE POLICY ref_update ON referrals FOR UPDATE USING (organization_id = current_org_id());
 
 CREATE TABLE partners (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   company_name text,
   email text NOT NULL,
   phone text,
-  tier_id bigint,
+  tier_id uuid,
   commission_rate numeric(5,2) NOT NULL DEFAULT 10.00,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
@@ -93,7 +93,7 @@ CREATE POLICY p_update ON partners FOR UPDATE USING (organization_id = current_o
 CREATE POLICY p_delete ON partners FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE partner_tiers (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name text NOT NULL,
   min_deals integer NOT NULL DEFAULT 0,
@@ -112,9 +112,9 @@ CREATE POLICY pt_update ON partner_tiers FOR UPDATE USING (organization_id = cur
 CREATE POLICY pt_delete ON partner_tiers FOR DELETE USING (organization_id = current_org_id());
 
 CREATE TABLE partner_deals (
-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   organization_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  partner_id bigint NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
+  partner_id uuid NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
   opportunity_id uuid NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
   deal_type text NOT NULL CHECK (deal_type IN ('referral','co_sell','reseller')),
   commission_amount numeric(14,2),

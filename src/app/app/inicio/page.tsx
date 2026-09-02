@@ -34,7 +34,7 @@ import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCom
 function InicioContent() {
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const error = searchParams.get('error');
-  const module = searchParams.get('module');
+  const moduleCode = searchParams.get('module');
   const { organization } = useOrganization();
   const { toast } = useToast();
   const t = useTranslations('home');
@@ -144,8 +144,8 @@ function InicioContent() {
     toast({ title: t('dashboardUpdated') });
   };
 
-  if (error === 'module_not_activated' && module) {
-    return <ModuleAccessDenied moduleCode={module} />;
+  if (error === 'module_not_activated' && moduleCode) {
+    return <ModuleAccessDenied moduleCode={moduleCode} />;
   }
 
   if (!mounted || !organization) {

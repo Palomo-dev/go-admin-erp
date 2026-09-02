@@ -86,7 +86,7 @@ const GoalCompletionWidget: React.FC<GoalCompletionWidgetProps> = ({ pipelineId,
         // Calcular montos ponderados basados en la probabilidad de cada etapa
         const forecastData = opportunitiesData?.map(opp => ({
           amount: Number(opp.amount) || 0,
-          forecast_amount: (Number(opp.amount) || 0) * (opp.stages?.[0]?.probability || 100) / 100
+          forecast_amount: (Number(opp.amount) || 0) * ((opp.stages?.[0]?.probability ?? 100) / 100)
         }));
 
         // 3. Calcular totales

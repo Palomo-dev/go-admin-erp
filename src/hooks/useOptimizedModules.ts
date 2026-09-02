@@ -31,8 +31,8 @@ export const useOptimizedModules = (organizationId?: number): OptimizedModulesRe
   const canAccessModule = useMemo(() => {
     return (moduleCode: string): boolean => {
       // Los módulos core siempre son accesibles
-      const module = activeModules.find(m => m.code === moduleCode);
-      if (module?.is_core) {
+      const foundModule = activeModules.find(m => m.code === moduleCode);
+      if (foundModule?.is_core) {
         return true;
       }
       

@@ -150,9 +150,9 @@ class ReportesService {
     for (const pipeline of pipelines) {
       const { data: stages } = await supabase
         .from('stages')
-        .select('id, name, display_order, color, probability')
+        .select('id, name, position, color, probability')
         .eq('pipeline_id', pipeline.id)
-        .order('display_order');
+        .order('position');
 
       let oppQuery = supabase
         .from('opportunities')
@@ -176,7 +176,7 @@ class ReportesService {
         return {
           stageId: stage.id,
           stageName: stage.name,
-          stageOrder: stage.display_order,
+          stageOrder: stage.position,
           color: stage.color || '#3B82F6',
           count: stageOpps.length,
           value: stageOpps.reduce((acc, o) => acc + (o.amount || 0), 0),
@@ -185,7 +185,7 @@ class ReportesService {
       });
 
       const totalValue = opps.reduce((acc, o) => acc + (o.amount || 0), 0);
-      const wonStage = stageList.find(s => s.probability === 100);
+      const wonStage = stageList.find(s => s.probability >= 0.99);
       const wonOpps = wonStage 
         ? opps.filter(o => o.stage_id === wonStage.id).length 
         : 0;

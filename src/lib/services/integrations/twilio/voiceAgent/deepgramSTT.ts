@@ -2,6 +2,9 @@
  * Deepgram STT — Speech-to-Text avanzado
  * GO Admin ERP — Voice Agent v3
  *
+ * F4: cablear — este archivo está escrito pero no importado aún en el flujo activo.
+ * Se conecta en Fase 4 (STT/Transcripción) como proveedor STT alternativo.
+ *
  * Reemplaza el STT de OpenAI Realtime por Deepgram Nova-2.
  * Mejor precisión en español, diarización, y menor latencia.
  * Requiere: DEEPGRAM_API_KEY, DEEPGRAM_MODEL

@@ -6,7 +6,8 @@ import {
   Building2,
   Users, 
   UserCog, 
-  FileText, 
+  FileText,
+  FileCheck2,
   Package, 
   ShoppingCart, 
   MessageCircle, 
@@ -78,6 +79,7 @@ import {
   Factory,
   QrCode,
   ShieldCheck,
+  HeartPulse,
 } from 'lucide-react';
 import { OrganizationSelectorWrapper } from './OrganizationSelectorWrapper';
 import { supabase } from '@/lib/supabase/config';
@@ -120,16 +122,18 @@ const getOrganizationLogoUrl = (logoPath: string) => {
 const MODULES_WITH_SUBMENU: NavItemProps[] = [
   {
     name: "CRM",
-    href: "/app/crm/clientes",
+    href: "/app/crm",
     icon: <Users size={18} />,
     submenu: [
       { name: "Clientes", href: "/app/crm/clientes", icon: <Users size={16} /> },
       { name: "Pipeline", href: "/app/crm/pipeline", icon: <Target size={16} /> },
       { name: "Oportunidades", href: "/app/crm/oportunidades", icon: <TrendingUp size={16} /> },
+      { name: "Equipo", href: "/app/crm/equipo", icon: <Users size={16} /> },
       { name: "Pronóstico", href: "/app/crm/pronostico", icon: <BarChart3 size={16} /> },
       { name: "Actividades", href: "/app/crm/actividades", icon: <Activity size={16} /> },
       { name: "Segmentos", href: "/app/crm/segmentos", icon: <Tag size={16} /> },
       { name: "Campañas", href: "/app/crm/campanas", icon: <Megaphone size={16} /> },
+      { name: "Salud Clientes", href: "/app/crm/salud", icon: <HeartPulse size={16} /> },
       { name: "Identidades", href: "/app/crm/identidades", icon: <User size={16} /> }
     ]
   },
@@ -180,6 +184,7 @@ const MODULES_WITH_SUBMENU: NavItemProps[] = [
       { name: "Activos Fijos", href: "/app/finanzas/activos-fijos", icon: <Package size={16} /> },
       { name: "Presupuestos", href: "/app/finanzas/presupuestos", icon: <Target size={16} /> },
       { name: "Facturación Electrónica", href: "/app/finanzas/facturacion-electronica", icon: <Zap size={16} /> },
+      { name: "Documentos Soporte", href: "/app/finanzas/documentos-soporte", icon: <FileCheck2 size={16} /> },
       { name: "Impuestos", href: "/app/finanzas/impuestos", icon: <Percent size={16} /> },
       { name: "Monedas", href: "/app/finanzas/monedas", icon: <Globe size={16} /> },
       { name: "Métodos de pago", href: "/app/finanzas/metodos-pago", icon: <CreditCard size={16} /> },

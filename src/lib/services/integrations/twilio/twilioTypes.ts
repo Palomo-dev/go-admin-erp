@@ -47,6 +47,9 @@ export interface CommSettings {
   whatsapp_number: string | null;
   voice_agent_enabled: boolean;
   voice_agent_config: Record<string, unknown>;
+  voice_recording_enabled: boolean;
+  voice_ring_timeout_seconds: number;
+  voice_consent_message: string;
   is_active: boolean;
   credits_reset_at: string | null;
   created_at: string;

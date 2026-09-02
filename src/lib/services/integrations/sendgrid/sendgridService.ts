@@ -3,6 +3,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import crypto from 'crypto';
 import { SENDGRID_BASE_URL, SENDGRID_CREDENTIAL_PURPOSES } from './sendgridConfig';
 import type {
   SendGridCredentials,
@@ -442,7 +443,6 @@ class SendGridService {
     }
 
     try {
-      const crypto = require('crypto');
       const payload = timestamp + rawBody;
 
       // La clave pública de SendGrid viene en formato PEM o base64 EC

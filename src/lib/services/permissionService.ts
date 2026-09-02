@@ -396,12 +396,12 @@ export const permissionService = {
     const activeModules = await moduleManagementService.getActiveModules(organizationId);
     const result = [];
 
-    for (const module of activeModules) {
-      const hasAccess = await this.canAccessModule(userId, organizationId, module.code);
-      const permissions = await this.getModulePermissions(module.code);
+    for (const activeModule of activeModules) {
+      const hasAccess = await this.canAccessModule(userId, organizationId, activeModule.code);
+      const permissions = await this.getModulePermissions(activeModule.code);
       
       result.push({
-        module,
+        module: activeModule,
         hasAccess,
         permissions
       });
@@ -424,11 +424,11 @@ export const permissionService = {
       const orgStatus = await moduleManagementService.getOrganizationModuleStatus(organizationId);
       
       // Verificar si el módulo está disponible
-      const module = [...orgStatus.available_modules].find(m => m.code === moduleCode) || 
+      const moduleData = [...orgStatus.available_modules].find(m => m.code === moduleCode) || 
                     orgStatus.active_modules.includes(moduleCode) ? 
                     (await moduleManagementService.getAllModules()).find(m => m.code === moduleCode) : null;
       
-      if (!module) {
+      if (!moduleData) {
         return {
           canAccess: false,
           reason: 'Módulo no encontrado'
@@ -441,7 +441,7 @@ export const permissionService = {
           canAccess: false,
           reason: 'Módulo no activado para esta organización',
           planInfo: orgStatus.plan,
-          moduleInfo: module
+          moduleInfo: moduleData
         };
       }
 
@@ -452,7 +452,7 @@ export const permissionService = {
         canAccess: hasPermissions,
         reason: hasPermissions ? undefined : 'Usuario sin permisos suficientes',
         planInfo: orgStatus.plan,
-        moduleInfo: module
+        moduleInfo: moduleData
       };
 
     } catch (error) {

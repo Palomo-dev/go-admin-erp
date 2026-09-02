@@ -2,6 +2,9 @@
  * Realtime Session — Conexión WebSocket con OpenAI Realtime API
  * GO Admin ERP
  *
+ * F6: cablear — este archivo está escrito pero no importado aún en el flujo activo.
+ * Se conecta en Fase 6 (Realtime Voice Agent) para orquestar la sesión de voz IA.
+ *
  * Maneja la sesión bidireccional de audio entre Twilio Media Stream
  * y OpenAI Realtime API para el Voice Agent.
  */

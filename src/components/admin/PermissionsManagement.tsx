@@ -14,15 +14,6 @@ interface PermissionsManagementProps {
   organizationId: number;
 }
 
-interface Permission {
-  id: number;
-  name: string;
-  code: string;
-  description?: string;
-  module: string;
-  category?: string;
-}
-
 interface Module {
   code: string;
   name: string;
@@ -99,11 +90,11 @@ export default function PermissionsManagement({ organizationId }: PermissionsMan
 
   // Agrupar permisos por módulo
   const permissionsByModule = filteredPermissions.reduce((acc, permission) => {
-    const module = permission.module || 'Sin módulo';
-    if (!acc[module]) {
-      acc[module] = [];
+    const moduleKey = permission.module || 'Sin módulo';
+    if (!acc[moduleKey]) {
+      acc[moduleKey] = [];
     }
-    acc[module].push(permission);
+    acc[moduleKey].push(permission);
     return acc;
   }, {} as Record<string, Permission[]>);
 

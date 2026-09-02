@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { whatsappCloudService } from '@/lib/services/integrations/whatsapp';
 
 // GET: Listar message templates de un WABA
 export async function GET(request: NextRequest) {
+  // Validar autenticación y organización
+  let ctx;
+  try {
+    ctx = await getServerOrgContext();
+  } catch (err) {
+    if (err instanceof OrgContextError) {
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.statusCode }
+      );
+    }
+    throw err;
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const channelId = searchParams.get('channel_id');
@@ -12,6 +27,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'channel_id es requerido' },
         { status: 400 }
+      );
+    }
+
+    // Verificar que el canal pertenece a la organización del usuario
+    const { data: channel, error: channelError } = await ctx.supabase
+      .from('channels')
+      .select('id')
+      .eq('id', channelId)
+      .eq('organization_id', ctx.organizationId)
+      .maybeSingle();
+
+    if (channelError || !channel) {
+      return NextResponse.json(
+        { error: 'Canal no encontrado o no pertenece a la organización' },
+        { status: 404 }
       );
     }
 

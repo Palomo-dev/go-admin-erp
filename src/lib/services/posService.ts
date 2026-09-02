@@ -176,47 +176,69 @@ export class POSService {
     try {
       const currentBranchId = await this.getBranchId();
 
-      // Query principal: SOLO products.* sin joins de categories/product_prices.
-      // Antes se usaba `.select('*, categories(...), product_prices(...)')` lo que
-      // generaba 4 LATERAL JOINs con json_agg en PostgREST, causando statement timeout
-      // (2900ms promedio, 7887ms máximo según pg_stat_statements con 17k productos).
-      // Ahora categories y product_prices se obtienen en queries separadas (Promise.all),
-      // igual que ya se hacía con product_images y stock_levels.
-      let query = supabase
-      .from('products')
-      .select('*', { count: 'exact' })
-      .eq('organization_id', this.organizationId);
+      // === Ranking vía RPC: ordena por (is_favorite DESC, sales_count_90d DESC, id ASC) ===
+      // La función pos_product_ranking devuelve los product_ids ya ordenados + total +
+      // flags de favorito y conteo de ventas de los últimos 90 días. Esto permite que
+      // los favoritos y los más vendidos aparezcan primero respetando la paginación.
+      const { data: rankingRows, error: rankingError } = await supabase
+        .rpc('pos_product_ranking', {
+          p_org_id: this.organizationId,
+          p_search: search || null,
+          p_category_id: category_id ?? null,
+          p_status: status,
+          p_include_variants: includeVariants,
+          p_page: page,
+          p_limit: limit,
+        });
 
-      // Filtrar variantes: mostrar solo productos principales y productos simples
-      // NO mostrar productos que son variantes (tienen parent_product_id)
-      if (!includeVariants) {
-        query = query.is('parent_product_id', null);
+      if (rankingError) throw rankingError;
+
+      const rankingData = (rankingRows || []) as Array<{
+        product_id: number;
+        total_count: number;
+        is_favorite: boolean;
+        sales_count_90d: number;
+      }>;
+
+      const totalCount = rankingData.length > 0 ? Number(rankingData[0].total_count) : 0;
+      const orderedIds = rankingData.map(r => r.product_id);
+
+      // Mapas de ranking para mergear después
+      const favoriteMap: Record<number, boolean> = {};
+      const salesCountMap: Record<number, number> = {};
+      rankingData.forEach(r => {
+        favoriteMap[r.product_id] = r.is_favorite;
+        salesCountMap[r.product_id] = Number(r.sales_count_90d) || 0;
+      });
+
+      // Si no hay productos en esta página, devolver vacío
+      if (orderedIds.length === 0) {
+        return {
+          data: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        };
       }
 
-      if (status !== 'all') {
-        query = query.eq('status', status);
-      }
-
-      if (search) {
-        query = query.or(
-          `sku.ilike.%${search}%,name.ilike.%${search}%,description.ilike.%${search}%,barcode.eq.${search}`
-        );
-      }
-
-      if (category_id) {
-        query = query.eq('category_id', category_id);
-      }
-
-      const offset = (page - 1) * limit;
-      const { data, error, count } = await query
-        .order('name')
-        .range(offset, offset + limit - 1);
+      // Fetch de los productos por IDs (preservando el orden del ranking)
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .in('id', orderedIds);
 
       if (error) throw error;
 
-      // Obtener las imágenes de los productos
-      const productIds = data?.map(p => p.id) || [];
-      const parentIds = data?.filter(p => p.is_parent).map(p => p.id) || [];
+      // Reordenar los productos según el orden del ranking (el .in() no garantiza orden)
+      const productsById: Record<number, any> = {};
+      (data || []).forEach((p: any) => { productsById[p.id] = p; });
+      const orderedProducts = orderedIds
+        .map(id => productsById[id])
+        .filter(Boolean);
+
+      const productIds = orderedProducts.map(p => p.id) || [];
+      const parentIds = orderedProducts.filter(p => p.is_parent).map(p => p.id) || [];
       // Category IDs únicos para obtener las categorías en una query separada
       const categoryIds = [...new Set(data?.map(p => p.category_id).filter(Boolean))] as number[];
 
@@ -228,6 +250,7 @@ export class POSService {
       let variantToParent: Record<number, number> = {};
       let categoriesMap: Record<number, any> = {};
       let pricesMap: Record<number, any[]> = {};
+      const recipeMap: Record<number, { id: number; name: string | null }> = {};
 
       // === Paralelizar todas las queries secundarias para reducir latencia ===
       // Antes se ejecutaban 5 queries secuenciales (N+1), ahora van en paralelo.
@@ -241,6 +264,7 @@ export class POSService {
         stockDataResult,
         categoriesResult,
         pricesResult,
+        recipesResult,
       ] = await Promise.all([
         // 1. Imágenes de los productos de la página actual
         productIds.length > 0
@@ -301,6 +325,16 @@ export class POSService {
               .select('product_id, price, compare_price, effective_from')
               .in('product_id', productIds)
           : Promise.resolve({ data: [] as any[], error: null as any }),
+
+        // 8. Recetas activas vinculadas a los productos de la página actual
+        // (para mostrar badge/acción de "ver receta" en el grid del POS)
+        productIds.length > 0
+          ? supabase
+              .from('product_recipes')
+              .select('id, product_id, name')
+              .in('product_id', productIds)
+              .eq('is_active', true)
+          : Promise.resolve({ data: [] as any[], error: null as any }),
       ]);
 
       // Procesar imágenes
@@ -350,6 +384,13 @@ export class POSService {
         pricesMap[price.product_id].push(price);
       });
 
+      // Procesar recetas: mapear product_id -> { id, name } (receta activa)
+      (recipesResult.data || []).forEach((r: any) => {
+        if (!recipeMap[r.product_id]) {
+          recipeMap[r.product_id] = { id: r.id, name: r.name };
+        }
+      });
+
       // Consultar stock de las variantes hijas (query adicional, solo si hay variantes)
       // Se hace después de Promise.all porque depende de variantIds calculado arriba.
       if (variantIds.length > 0 && currentBranchId) {
@@ -369,14 +410,17 @@ export class POSService {
         });
       }
 
-      const products = data?.map((product: any) => {
+      const products = orderedProducts.map((product: any) => {
         const stock = stockMap[product.id];
         const variantStock = variantStockMap[product.id];
         // Sumar stock propio + stock de variantes hijas
         const stockQty = (stock?.qty_on_hand ?? 0) + (variantStock?.qty_on_hand ?? 0);
         const reservedQty = (stock?.qty_reserved ?? 0) + (variantStock?.qty_reserved ?? 0);
-        const hasStockData = stock !== undefined || variantStock !== undefined;
-        const isOutOfStock = product.track_stock === true && hasStockData && stockQty <= 0;
+        // Si track_stock es true y el stock disponible (propio + variantes) es <= 0,
+        // el producto está agotado, aunque no exista registro en stock_levels para
+        // la branch actual. Antes se requería hasStockData, pero eso hacía que
+        // productos sin registro de stock aparecieran como disponibles.
+        const isOutOfStock = product.track_stock === true && stockQty <= 0;
         // Ordenar precios por effective_from descendente para tomar el mas reciente
         const sortedPrices = (pricesMap[product.id] || []).sort(
           (a: any, b: any) => new Date(b.effective_from).getTime() - new Date(a.effective_from).getTime()
@@ -396,18 +440,25 @@ export class POSService {
           stock_quantity: stockQty,
           qty_reserved: reservedQty,
           is_out_of_stock: isOutOfStock,
+          // Favorito y ranking de ventas (últimos 90 días) desde la RPC de ranking
+          is_favorite: favoriteMap[product.id] ?? false,
+          sales_count_90d: salesCountMap[product.id] ?? 0,
+          // Receta vinculada (activa) para mostrar badge/acción de "ver receta"
+          has_recipe: recipeMap[product.id] !== undefined,
+          recipe_id: recipeMap[product.id]?.id ?? null,
+          recipe_name: recipeMap[product.id]?.name ?? null,
           // Mantener compatibilidad con código que use 'image'
           image: productImagesMap[product.id]?.[0]?.storage_path ? 
             getStorageImageUrl(productImagesMap[product.id][0].storage_path) : null
         };
-      }) || [];
+      });
 
       return {
         data: products,
-        total: count || 0,
+        total: totalCount,
         page,
         limit,
-        totalPages: Math.ceil((count || 0) / limit)
+        totalPages: Math.ceil(totalCount / limit)
       };
     } catch (error) {
       console.error('Error getting products paginated:', error);
@@ -529,6 +580,46 @@ export class POSService {
   }
 
   // getProductById is implemented later with proper price and tax integration
+
+  // ===============================
+  // FAVORITOS DE PRODUCTOS (por organización)
+  // ===============================
+  static async toggleProductFavorite(productId: number): Promise<boolean> {
+    try {
+      // Verificar si ya existe
+      const { data: existing, error: findError } = await supabase
+        .from('product_favorites')
+        .select('id')
+        .eq('organization_id', this.organizationId)
+        .eq('product_id', productId)
+        .maybeSingle();
+
+      if (findError) throw findError;
+
+      if (existing) {
+        // Quitar favorito
+        const { error: delError } = await supabase
+          .from('product_favorites')
+          .delete()
+          .eq('id', existing.id);
+        if (delError) throw delError;
+        return false;
+      }
+
+      // Agregar favorito
+      const { error: insertError } = await supabase
+        .from('product_favorites')
+        .insert({
+          organization_id: this.organizationId,
+          product_id: productId,
+        });
+      if (insertError) throw insertError;
+      return true;
+    } catch (error) {
+      console.error('Error toggling product favorite:', error);
+      throw error;
+    }
+  }
 
   // ===============================
   // CLIENTES

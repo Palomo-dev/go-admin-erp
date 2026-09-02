@@ -26,6 +26,7 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState<string>('');
+  const [cashMode, setCashMode] = useState<'branch' | 'user'>('branch');
   const { organization } = useOrganization();
   const { branches, selectedBranchId } = useBranch();
   const [formData, setFormData] = useState<OpenCashSessionData>({
@@ -36,27 +37,33 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
 
   const branchName = branches.find(b => b.id === selectedBranchId)?.name || 'Sucursal no seleccionada';
 
-  // Cargar nombre del usuario actual
+  // Cargar nombre del usuario actual y modo de cajas al abrir el diálogo
   useEffect(() => {
-    if (open && !userName) {
-      const loadUserName = async () => {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', user.id)
-              .single();
-            if (profile) {
-              setUserName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Usuario');
+    if (open) {
+      if (!userName) {
+        const loadUserName = async () => {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('first_name, last_name')
+                .eq('id', user.id)
+                .single();
+              if (profile) {
+                setUserName(`${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Usuario');
+              }
             }
+          } catch (err) {
+            console.warn('Error loading user name:', err);
           }
-        } catch (err) {
-          console.warn('Error loading user name:', err);
-        }
-      };
-      loadUserName();
+        };
+        loadUserName();
+      }
+      // Cargar modo de cajas para decidir si se muestra el alcance global
+      CajasService.getCashSessionMode()
+        .then(setCashMode)
+        .catch(() => setCashMode('branch'));
     }
   }, [open, userName]);
 
@@ -154,7 +161,8 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
 
           <Separator />
 
-          {/* Selector de alcance */}
+          {/* Selector de alcance (oculto en modo 'user': la caja siempre es de la sucursal actual) */}
+          {cashMode !== 'user' && (
           <div className="space-y-2">
             <Label className="dark:text-gray-200 text-gray-700">Alcance de la Caja</Label>
             <div className="grid grid-cols-2 gap-3">
@@ -195,6 +203,26 @@ export function AperturaCajaDialog({ onSessionOpened, disabled }: AperturaCajaDi
               </p>
             )}
           </div>
+          )}
+
+          {/* Aviso en modo 'user': cada cajero gestiona su propia caja */}
+          {cashMode === 'user' && (
+            <div className="space-y-2">
+              <Label className="dark:text-gray-200 text-gray-700">Alcance de la Caja</Label>
+              <div className="flex items-center gap-2 p-3 rounded-lg border-2 border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600">
+                <UserCircle className="h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="text-sm font-medium dark:text-white text-gray-900">Mi caja en {branchName}</p>
+                  <p className="text-xs dark:text-gray-400 text-gray-500">
+                    Cada cajero abre y gestiona su propia caja de forma independiente.
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-green-600 dark:text-green-400">
+                Esta caja registrará únicamente tus ventas y movimientos. Otros cajeros de la sucursal tendrán sus propias cajas.
+              </p>
+            </div>
+          )}
 
           <Separator />
 

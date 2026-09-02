@@ -445,12 +445,19 @@ export default function CajasPage() {
                       <span className="font-medium dark:text-white">{formatCurrency(session.initial_amount)}</span>
                     </div>
                     <Separator className="dark:bg-gray-700 bg-gray-200" />
-                    <Button variant="outline" size="sm" className="w-full" asChild>
-                      <Link href={`/app/pos/cajas/${session.uuid}`}>
-                        <Eye className="h-4 w-4 mr-1" />
+                    {showExpected ? (
+                      <Button variant="outline" size="sm" className="w-full" asChild>
+                        <Link href={`/app/pos/cajas/${session.uuid}`}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver detalle
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="w-full" disabled title="Cierre ciego activo: no puedes ver el detalle de esta caja">
+                        <Lock className="h-4 w-4 mr-1" />
                         Ver detalle
-                      </Link>
-                    </Button>
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -486,8 +493,8 @@ export default function CajasPage() {
                         <TableHead>Cierre</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead className="text-right">Inicial</TableHead>
-                        {showExpected && <TableHead className="text-right">Final</TableHead>}
-                        {showExpected && <TableHead className="text-right">Diferencia</TableHead>}
+                        <TableHead className="text-right">Final</TableHead>
+                        <TableHead className="text-right">Diferencia</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -516,29 +523,37 @@ export default function CajasPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">{formatCurrency(session.initial_amount)}</TableCell>
-                          {showExpected && (
-                            <TableCell className="text-right">
-                              {session.final_amount ? formatCurrency(session.final_amount) : '-'}
-                            </TableCell>
-                          )}
-                          {showExpected && (
-                            <TableCell className={cn(
-                              'text-right font-medium',
-                              (session.difference || 0) >= 0
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-red-600 dark:text-red-400'
-                            )}>
-                              {session.difference !== null && session.difference !== undefined
+                          <TableCell className="text-right">
+                            {showExpected
+                              ? (session.final_amount ? formatCurrency(session.final_amount) : '-')
+                              : '***'}
+                          </TableCell>
+                          <TableCell className={cn(
+                            'text-right font-medium',
+                            showExpected && (session.difference || 0) >= 0
+                              ? 'text-green-600 dark:text-green-400'
+                              : showExpected
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-gray-400 dark:text-gray-500'
+                          )}>
+                            {showExpected
+                              ? (session.difference !== null && session.difference !== undefined
                                 ? formatCurrency(session.difference)
-                                : '-'}
-                            </TableCell>
-                          )}
+                                : '-')
+                              : '***'}
+                          </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/app/pos/cajas/${session.uuid}`}>
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                            {showExpected ? (
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link href={`/app/pos/cajas/${session.uuid}`}>
+                                  <Eye className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="sm" disabled title="Cierre ciego activo: no puedes ver el detalle de esta caja">
+                                <Lock className="h-4 w-4" />
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

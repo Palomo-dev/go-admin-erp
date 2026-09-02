@@ -9,6 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { POSService } from '@/lib/services/posService';
@@ -144,6 +154,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   // Estados para pago QR
   const [showQrDialog, setShowQrDialog] = useState(false);
+  // Confirmación diferida de stock insuficiente (reemplaza window.confirm nativo)
+  const [stockConfirm, setStockConfirm] = useState<{
+    message: string;
+    resolve: (ok: boolean) => void;
+  } | null>(null);
   const [qrData, setQrData] = useState<string | undefined>();
   const [qrImageUrl, setQrImageUrl] = useState<string | undefined>();
   const [qrReference, setQrReference] = useState<string>('');
@@ -802,9 +817,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           branchId
         );
         if (!stockCheck.ok && stockCheck.message) {
-          const proceed = confirm(
-            `${stockCheck.message}\n\n¿Deseas continuar con la venta de todos modos?`
-          );
+          // Reemplazo de window.confirm por AlertDialog controlado.
+          // Se pausa el flujo con una promesa que se resuelve al confirmar/cancelar.
+          const proceed = await new Promise<boolean>((resolve) => {
+            setStockConfirm({ message: stockCheck.message!, resolve });
+          });
           if (!proceed) {
             setIsProcessing(false);
             return;
@@ -2225,6 +2242,45 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           }}
         />
       )}
+      <AlertDialog
+        open={!!stockConfirm}
+        onOpenChange={(open) => {
+          // Si se cierra sin acción explícita (Escape / click fuera), se cancela.
+          if (!open && stockConfirm) {
+            stockConfirm.resolve(false);
+            setStockConfirm(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Stock insuficiente de ingredientes</AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-line">
+              {stockConfirm?.message}
+              {'\n\n'}
+              ¿Deseas continuar con la venta de todos modos?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                stockConfirm?.resolve(false);
+                setStockConfirm(null);
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                stockConfirm?.resolve(true);
+                setStockConfirm(null);
+              }}
+            >
+              Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </DialogContent>
     </Dialog>
   );

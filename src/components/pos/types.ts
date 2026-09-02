@@ -41,6 +41,12 @@ export interface Product {
   tag_id?: number;
   parent_product_id?: number;
   track_serial?: boolean;
+  // Campos extendidos para POS (favoritos, ranking de ventas y receta vinculada)
+  is_favorite?: boolean;
+  sales_count_90d?: number;
+  has_recipe?: boolean;
+  recipe_id?: number | null;
+  recipe_name?: string | null;
 }
 
 export interface Customer {

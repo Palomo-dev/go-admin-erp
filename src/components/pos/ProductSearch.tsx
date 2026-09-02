@@ -5,10 +5,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Product, Category, PaginatedResponse } from './types';
 import { POSService } from '@/lib/services/posService';
-import { 
-  Search, 
-  Package, 
-  ShoppingCart, 
+import {
+  Search,
+  Package,
+  ShoppingCart,
   Filter,
   X,
   ChevronLeft,
@@ -19,7 +19,10 @@ import {
   ChevronDown,
   Scan,
   Tag,
-  Percent
+  Percent,
+  Star,
+  Flame,
+  ChefHat
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,6 +35,14 @@ import { BarcodeScanner } from '@/components/ui/barcode-scanner';
 import { VariantSelectorDialog, type SelectedModifier } from './VariantSelectorDialog';
 import { CategoryFilterBar } from './CategoryFilterBar';
 import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from './configuracion/configuracionService';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
 
 interface ProductSearchProps {
   onProductSelect: (product: Product, modifiers?: SelectedModifier[]) => void;
@@ -58,6 +69,11 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
   const [error, setError] = useState<string | null>(null);
   const [gridSize, setGridSize] = useState<'small' | 'large'>('large');
   const [showScanner, setShowScanner] = useState(false);
+  // Productos cuyo toggle de favorito está en curso (para deshabilitar el botón)
+  const [togglingFavorites, setTogglingFavorites] = useState<Set<number>>(new Set());
+  // Diálogo de detalle de receta vinculada a un producto
+  const [recipeView, setRecipeView] = useState<ProductRecipe | null>(null);
+  const [recipeViewLoading, setRecipeViewLoading] = useState(false);
   
   // Límites dinámicos por tipo de grid
   const smallGridLimits = [12, 18, 24];
@@ -209,6 +225,84 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     setSelectedParentProduct(null);
   };
 
+  // Ver la receta vinculada a un producto (abre un diálogo con ingredientes y rendimiento).
+  // No agrega el producto al carrito: es solo consulta desde el grid del POS.
+  const handleViewRecipe = async (product: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!product.recipe_id) return;
+    try {
+      setRecipeViewLoading(true);
+      setRecipeView(null);
+      const recipe = await recipeService.getRecipeById(product.recipe_id);
+      setRecipeView(recipe);
+    } catch (error) {
+      console.error('Error cargando receta:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo cargar la receta del producto',
+        variant: 'destructive',
+      });
+    } finally {
+      setRecipeViewLoading(false);
+    }
+  };
+
+  // Toggle de favorito: marca/desmarca el producto como favorito de la organización.
+  // Optimistic update en el estado local para feedback inmediato; si falla, revierte.
+  const handleToggleFavorite = async (productId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (togglingFavorites.has(productId)) return;
+
+    // Optimistic: invertir is_favorite en el estado local
+    const prevData = productsData.data;
+    const product = prevData.find((p: any) => p.id === productId);
+    const wasFavorite = product?.is_favorite ?? false;
+    setProductsData(prev => ({
+      ...prev,
+      data: prev.data.map((p: any) =>
+        p.id === productId ? { ...p, is_favorite: !wasFavorite } : p
+      ),
+    }));
+    setTogglingFavorites(prev => new Set(prev).add(productId));
+
+    try {
+      const isNowFavorite = await POSService.toggleProductFavorite(productId);
+      // Sincronizar con el valor real devuelto por el service (por si hubo race condition)
+      setProductsData(prev => ({
+        ...prev,
+        data: prev.data.map((p: any) =>
+          p.id === productId ? { ...p, is_favorite: isNowFavorite } : p
+        ),
+      }));
+      toast({
+        title: isNowFavorite ? 'Agregado a favoritos' : 'Quitado de favoritos',
+        description: isNowFavorite
+          ? 'El producto aparecerá primero en el POS.'
+          : 'El producto ya no se priorizará.',
+        duration: 1800,
+      });
+    } catch (error) {
+      // Revertir optimistic update
+      setProductsData(prev => ({
+        ...prev,
+        data: prev.data.map((p: any) =>
+          p.id === productId ? { ...p, is_favorite: wasFavorite } : p
+        ),
+      }));
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el favorito.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTogglingFavorites(prev => {
+        const next = new Set(prev);
+        next.delete(productId);
+        return next;
+      });
+    }
+  };
+
   const hasFilters = searchTerm || selectedCategory;
 
   return (
@@ -221,7 +315,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 dark:text-blue-400 h-4 w-4 sm:h-5 sm:w-5" />
             <Input
               type="text"
-              placeholder="Buscar productos, SKU o código de barras..."
+              placeholder="Buscar por nombre, SKU, código de barras, variantes o modificadores..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 sm:pl-11 pr-20 sm:pr-24 h-11 sm:h-10 bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-sm sm:text-sm ring-1 ring-blue-100 dark:ring-blue-900/50 focus:ring-2 focus:ring-blue-400 rounded-xl"
@@ -494,7 +588,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 
                       {/* Badge de personalización (producto simple con modificadores) */}
                       {(!product.has_variants || product.variant_count === 0) && product.has_modifiers && (
-                        <Badge 
+                        <Badge
                           className={cn(
                             "absolute right-2 bg-amber-600 text-white hover:bg-amber-700 text-[0.6rem] sm:text-xs z-10",
                             product.compare_price && Number(product.compare_price) > Number(product.price) ? "top-8 sm:top-9" : "top-2"
@@ -503,6 +597,39 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                           Personalizable
                         </Badge>
                       )}
+
+                      {/* Badge Top: más vendidos en los últimos 90 días (bottom-left) */}
+                      {Number(product.sales_count_90d) > 0 && (
+                        <Badge
+                          className="absolute bottom-2 left-2 bg-orange-500 text-white hover:bg-orange-600 text-[0.6rem] sm:text-xs px-1.5 py-0.5 rounded-full z-10 flex items-center gap-0.5"
+                          title={`${Math.round(Number(product.sales_count_90d))} unidades vendidas en los últimos 90 días`}
+                        >
+                          <Flame className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          Top
+                        </Badge>
+                      )}
+
+                      {/* Botón estrella favorito (bottom-right) */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleFavorite(product.id, e)}
+                        disabled={togglingFavorites.has(product.id)}
+                        aria-label={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                        title={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                        className={cn(
+                          "absolute bottom-2 right-2 z-20 rounded-full p-1 sm:p-1.5 transition-all duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed",
+                          product.is_favorite
+                            ? "bg-amber-400 text-white hover:bg-amber-500"
+                            : "bg-white/90 text-gray-400 hover:text-amber-500 hover:bg-white"
+                        )}
+                      >
+                        <Star
+                          className={cn(
+                            "h-3.5 w-3.5 sm:h-4 sm:w-4",
+                            product.is_favorite && "fill-current"
+                          )}
+                        />
+                      </button>
                     </div>
                     
                     {/* Información del producto - RESPONSIVE */}
@@ -544,6 +671,17 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                         <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded truncate">
                           {product.sku}
                         </span>
+                        {product.has_recipe && product.recipe_id && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleViewRecipe(product, e)}
+                            aria-label="Ver receta de producción"
+                            title="Ver receta de producción"
+                            className="shrink-0 rounded-full p-1 text-orange-600 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-900/40 transition-colors"
+                          >
+                            <ChefHat className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          </button>
+                        )}
                       </div>
                       
                       <Button 
@@ -675,6 +813,116 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
           onSelectVariant={handleVariantSelect}
         />
       )}
+
+      {/* Diálogo de detalle de receta vinculada */}
+      <Dialog open={!!recipeView || recipeViewLoading} onOpenChange={(open) => { if (!open) { setRecipeView(null); setRecipeViewLoading(false); } }}>
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-gray-900 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="dark:text-white flex items-center gap-2">
+              <ChefHat className="h-5 w-5 text-orange-600" />
+              Receta de producción
+            </DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
+              {recipeView?.product?.name ?? recipeView?.name ?? ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          {recipeViewLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Skeleton className="h-6 w-8" />
+            </div>
+          ) : recipeView ? (
+            <div className="space-y-4">
+              {/* Info general */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-lg">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Producto</p>
+                  <p className="font-medium dark:text-white">
+                    {recipeView.product?.name ?? `#${recipeView.product_id}`}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                    SKU: {recipeView.product?.sku ?? 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Rendimiento</p>
+                  <p className="font-medium dark:text-white font-mono">
+                    {recipeView.yield_qty} {recipeView.yield_unit_code ?? ''}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Estado</p>
+                  <Badge
+                    className={
+                      recipeView.is_active
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        : ''
+                    }
+                    variant={recipeView.is_active ? 'default' : 'secondary'}
+                  >
+                    {recipeView.is_active ? 'Activa' : 'Inactiva'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Versión</p>
+                  <p className="font-medium dark:text-white font-mono">v{recipeView.version}</p>
+                </div>
+              </div>
+
+              {/* Notas */}
+              {recipeView.notes && (
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notas</p>
+                  <p className="text-sm dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg whitespace-pre-wrap">
+                    {recipeView.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Ingredientes */}
+              <div>
+                <p className="text-sm font-medium dark:text-gray-300 mb-2">
+                  Ingredientes ({recipeView.ingredients?.length ?? 0})
+                </p>
+                <div className="space-y-2">
+                  {recipeView.ingredients?.length ? (
+                    recipeView.ingredients.map((ing, i) => (
+                      <div
+                        key={ing.id}
+                        className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400 font-mono w-6">#{i + 1}</span>
+                          <div>
+                            <p className="font-medium text-sm dark:text-white">
+                              {ing.ingredient_product?.name ?? `#${ing.ingredient_product_id}`}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                              {ing.ingredient_product?.sku ?? 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm dark:text-gray-200">
+                            {ing.quantity} {ing.unit_code}
+                          </span>
+                          {ing.is_optional && (
+                            <Badge variant="secondary" className="text-[0.6rem]">Opcional</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Esta receta no tiene ingredientes definidos.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

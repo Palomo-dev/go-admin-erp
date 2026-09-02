@@ -60,14 +60,14 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
   });
   // Estado para conteo por método de pago
   const [methodCounts, setMethodCounts] = useState<Record<string, number>>({});
-  const { showExpected: showExpectedBlind, isBlindMode, isOrgAdmin } = useBlindCloseMode();
+  const { showExpected: showExpectedBlind, loading: blindModeLoading } = useBlindCloseMode();
 
-  // Cargar resumen cuando se abre el modal
+  // Cargar resumen cuando se abre el modal y ya se resolvió el modo ciego
   useEffect(() => {
-    if (open) {
+    if (open && !blindModeLoading) {
       loadCashSummary();
     }
-  }, [open]);
+  }, [open, blindModeLoading]);
 
   const loadCashSummary = async () => {
     setLoadingSummary(true);
@@ -79,23 +79,41 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
       setSummary(cashSummary);
       setMovements(sessionMovements);
       // Pre-llenar conteo por método con los valores esperados del sistema
+      // Solo en modo no-ciego (admin o cierre ciego desactivado).
+      // En cierre ciego, los inputs arrancan vacíos para que el cajero cuente físico.
       const initialCounts: Record<string, number> = {};
-      // Efectivo: usar expected_amount del sistema
-      initialCounts['cash'] = cashSummary.expected_amount;
-  		// Otros métodos: usar income_by_method
-      if (cashSummary.income_by_method) {
-        for (const [method, amount] of Object.entries(cashSummary.income_by_method)) {
-          if (method !== 'cash') {
-            initialCounts[method] = amount;
+      if (showExpectedBlind) {
+        // Efectivo: usar expected_amount del sistema
+        initialCounts['cash'] = cashSummary.expected_amount;
+        // Otros métodos: usar income_by_method
+        if (cashSummary.income_by_method) {
+          for (const [method, amount] of Object.entries(cashSummary.income_by_method)) {
+            if (method !== 'cash') {
+              initialCounts[method] = amount;
+            }
           }
         }
+        // Pre-llenar con el monto esperado en efectivo
+        setFormData(prev => ({
+          ...prev,
+          final_amount: cashSummary.expected_amount
+        }));
+      } else {
+        // Cierre ciego: arrancar en 0 para forzar conteo físico real
+        initialCounts['cash'] = 0;
+        if (cashSummary.income_by_method) {
+          for (const [method] of Object.entries(cashSummary.income_by_method)) {
+            if (method !== 'cash') {
+              initialCounts[method] = 0;
+            }
+          }
+        }
+        setFormData(prev => ({
+          ...prev,
+          final_amount: 0
+        }));
       }
       setMethodCounts(initialCounts);
-      // Pre-llenar con el monto esperado en efectivo
-      setFormData(prev => ({
-        ...prev,
-        final_amount: cashSummary.expected_amount
-      }));
     } catch (error) {
       console.error('Error loading cash summary:', error);
       toast.error('Error al cargar resumen de caja');
@@ -393,23 +411,19 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
 
                 <Separator className="dark:bg-gray-600 bg-gray-300" />
                 
-                {showExpectedBlind ? (
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium dark:text-gray-200 text-gray-800">
-                      Monto esperado:
-                    </span>
-                    <span className="text-lg font-bold text-blue-600">
-                      {summary ? formatCurrency(summary.expected_amount) : '-'}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
-                    <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                    <p className="text-xs text-purple-700 dark:text-purple-400">
-                      Cierre ciego activo. No puedes ver los montos esperados ni las diferencias.
-                    </p>
-                  </div>
-                )}
+                <div className="flex justify-between items-center">
+                  <span className="font-medium dark:text-gray-200 text-gray-800 flex items-center gap-1.5">
+                    {!showExpectedBlind && (
+                      <EyeOff className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                    )}
+                    Monto esperado:
+                  </span>
+                  <span className="text-lg font-bold text-blue-600">
+                    {showExpectedBlind
+                      ? (summary ? formatCurrency(summary.expected_amount) : '-')
+                      : '****'}
+                  </span>
+                </div>
               </CardContent>
             </Card>
 
@@ -479,11 +493,11 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                             {METHOD_ICONS[method] || <Wallet className="h-4 w-4" />}
                             {METHOD_LABELS(method)}
                           </span>
-                          {showExpectedBlind && (
-                            <span className="text-xs dark:text-gray-400 text-gray-500">
-                              Esperado: <span className="font-medium">{formatCurrency(expected)}</span>
+                          <span className="text-xs dark:text-gray-400 text-gray-500">
+                            Esperado: <span className="font-medium">
+                              {showExpectedBlind ? formatCurrency(expected) : '****'}
                             </span>
-                          )}
+                          </span>
                         </div>
                         <div className="grid grid-cols-2 gap-3 items-center">
                           <div>
@@ -500,25 +514,23 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                             />
                           </div>
                           <div className="text-right">
+                            <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
+                              Diferencia
+                            </Label>
                             {showExpectedBlind ? (
-                              <>
-                                <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
-                                  Diferencia
-                                </Label>
-                                <span className={`text-sm font-bold ${
-                                  diff === 0
-                                    ? 'text-gray-600 dark:text-gray-400'
-                                    : diff > 0
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-red-600 dark:text-red-400'
-                                }`}>
-                                  {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
-                                </span>
-                              </>
+                              <span className={`text-sm font-bold ${
+                                diff === 0
+                                  ? 'text-gray-600 dark:text-gray-400'
+                                  : diff > 0
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                              </span>
                             ) : (
-                              <Label className="text-xs dark:text-gray-400 text-gray-500 mb-1 block">
-                                &nbsp;
-                              </Label>
+                              <span className="text-sm font-bold text-gray-400 dark:text-gray-500">
+                                ****
+                              </span>
                             )}
                           </div>
                         </div>
@@ -531,19 +543,24 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
 
                 {/* Totales */}
                 <div className="space-y-2">
-                  {showExpectedBlind && (
-                    <div className="flex justify-between text-sm">
-                      <span className="dark:text-gray-300 text-gray-700">Total esperado (todos los métodos):</span>
-                      <span className="font-medium dark:text-white">{formatCurrency(getTotalExpected())}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="dark:text-gray-300 text-gray-700">Total esperado (todos los métodos):</span>
+                    <span className="font-medium dark:text-white">
+                      {showExpectedBlind ? formatCurrency(getTotalExpected()) : '****'}
+                    </span>
+                  </div>
                   <div className="flex justify-between text-sm">
                     <span className="dark:text-gray-300 text-gray-700">Total contado (todos los métodos):</span>
                     <span className="font-medium dark:text-white">{formatCurrency(getTotalCounted())}</span>
                   </div>
-                  {showExpectedBlind ? (
-                    <div className="flex justify-between items-center p-3 rounded-lg dark:bg-gray-600/50 bg-gray-100">
-                      <span className="font-semibold dark:text-white text-gray-900">Diferencia total:</span>
+                  <div className="flex justify-between items-center p-3 rounded-lg dark:bg-gray-600/50 bg-gray-100">
+                    <span className="font-semibold dark:text-white text-gray-900 flex items-center gap-1.5">
+                      {!showExpectedBlind && (
+                        <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      )}
+                      Diferencia total:
+                    </span>
+                    {showExpectedBlind ? (
                       <span className={`text-lg font-bold ${
                         getTotalDifference() === 0
                           ? 'text-gray-600 dark:text-gray-400'
@@ -553,15 +570,12 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
                       }`}>
                         {getTotalDifference() >= 0 ? '+' : ''}{formatCurrency(getTotalDifference())}
                       </span>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg flex items-center gap-2">
-                      <EyeOff className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                      <p className="text-xs text-purple-700 dark:text-purple-400">
-                        Cierre ciego: las diferencias son visibles solo para administradores.
-                      </p>
-                    </div>
-                  )}
+                    ) : (
+                      <span className="text-lg font-bold text-gray-400 dark:text-gray-500">
+                        ****
+                      </span>
+                    )}
+                  </div>
                   {showExpectedBlind && getTotalDifference() !== 0 && (
                     <p className="text-xs dark:text-gray-400 text-gray-500">
                       {getTotalDifference() > 0 ? 'Sobrante' : 'Faltante'} en el arqueo total

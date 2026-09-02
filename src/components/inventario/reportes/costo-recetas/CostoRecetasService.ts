@@ -1,6 +1,38 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
+interface ConversionEntry {
+  from_unit_code: string;
+  to_unit_code: string;
+  factor: number;
+  organization_id: number | null;
+}
+
+/**
+ * Convierte una cantidad de `fromUnit` a `toUnit` usando la tabla de
+ * conversiones cargada en memoria. Devuelve la cantidad original si no
+ * hay conversión disponible (mismo comportamiento que unitConversionService
+ * pero sin N+1 queries).
+ */
+function convertQty(
+  qty: number,
+  fromUnit: string | null | undefined,
+  toUnit: string | null | undefined,
+  orgId: number,
+  conversions: ConversionEntry[]
+): number {
+  if (!fromUnit || !toUnit || fromUnit === toUnit) return qty;
+  // Preferir conversión de la org sobre la global
+  const match = conversions.find(
+    (c) =>
+      c.from_unit_code === fromUnit &&
+      c.to_unit_code === toUnit &&
+      (c.organization_id === orgId || c.organization_id === null)
+  );
+  if (!match || !match.factor || match.factor <= 0) return qty;
+  return qty * match.factor;
+}
+
 export interface RecetaCostoEntry {
   recipe_id: number;
   recipe_name: string;
@@ -53,7 +85,8 @@ export class CostoRecetasService {
           ingredient_product:products (
             id,
             name,
-            sku
+            sku,
+            unit_code
           )
         )
       `
@@ -89,9 +122,26 @@ export class CostoRecetasService {
       }
     }
 
+    // Cargar conversiones de unidades relevantes (globales + de la org)
+    const { data: convData } = await supabase
+      .from('unit_conversions')
+      .select('from_unit_code, to_unit_code, factor, organization_id')
+      .or(`organization_id.is.null,organization_id.eq.${orgId}`);
+    const conversions: ConversionEntry[] = (convData || []) as ConversionEntry[];
+
     return (recetas || []).map((receta: any) => {
       const ingredients: RecetaIngrediente[] = (receta.recipe_ingredients || []).map((ri: any) => {
         const avgCost = costosMap[ri.ingredient_product_id] || 0;
+        // Convertir la cantidad de la receta a la unidad base del ingrediente
+        // (la unidad en la que está expresado avg_cost en stock_levels).
+        const ingredientUnit = ri.ingredient_product?.unit_code;
+        const convertedQty = convertQty(
+          Number(ri.quantity),
+          ri.unit_code,
+          ingredientUnit,
+          orgId,
+          conversions
+        );
         return {
           ingredient_product_id: ri.ingredient_product_id,
           ingredient_name: ri.ingredient_product?.name || 'N/A',
@@ -99,7 +149,7 @@ export class CostoRecetasService {
           quantity: ri.quantity,
           unit_code: ri.unit_code,
           avg_cost: avgCost,
-          line_cost: avgCost * ri.quantity,
+          line_cost: avgCost * convertedQty,
         };
       });
 

@@ -26,6 +26,20 @@ export type UnifiedProduct = {
   has_variants?: boolean;
   variant_count?: number;
   has_modifiers?: boolean;
+  // Favorito de la organización y ranking de ventas (últimos 90 días)
+  is_favorite?: boolean;
+  sales_count_90d?: number;
+  /**
+   * Términos de búsqueda adicionales concatenados (SKUs/nombres de variantes
+   * hijas, nombres de grupos y opciones de modificadores). Permite que al
+   * buscar un SKU de variante o el nombre de un modificador, el producto padre
+   * aparezca en los resultados del filtro client-side.
+   */
+  search_terms?: string;
+  // Receta vinculada (activa) para mostrar badge/botón de "ver receta"
+  has_recipe?: boolean;
+  recipe_id?: number | null;
+  recipe_name?: string | null;
 };
 
 /** Modo de uso del diálogo de búsqueda */

@@ -26,9 +26,48 @@ export class CajasService {
   }
 
   /**
+   * Modo de asignación de cajas configurado por la organización.
+   * - 'branch': una sola caja compartida por sucursal (default).
+   * - 'user':   cada cajero gestiona su propia caja dentro de la sucursal.
+   * Cacheado en memoria por 30s para no consultar organization_settings en cada llamada.
+   */
+  private static cashModeCache: { orgId: number | null; mode: 'branch' | 'user'; expiresAt: number } | null = null;
+
+  static async getCashSessionMode(): Promise<'branch' | 'user'> {
+    const orgId = this.organizationId;
+    if (!orgId) return 'branch';
+
+    const now = Date.now();
+    if (this.cashModeCache && this.cashModeCache.orgId === orgId && this.cashModeCache.expiresAt > now) {
+      return this.cashModeCache.mode;
+    }
+
+    try {
+      const { ConfiguracionService } = await import('@/components/pos/configuracion/configuracionService');
+      const config = await ConfiguracionService.getCashSessionModeConfig();
+      const mode = config.mode;
+      this.cashModeCache = { orgId, mode, expiresAt: now + 30_000 };
+      return mode;
+    } catch (error) {
+      console.warn('Error leyendo modo de cajas, usando default (branch):', error);
+      return 'branch';
+    }
+  }
+
+  /** Invalida el cache del modo de cajas (útil tras cambiar la configuración). */
+  static invalidateCashSessionModeCache(): void {
+    this.cashModeCache = null;
+  }
+
+  /**
    * Obtiene la sesión de caja activa para la sucursal actual.
-   * Busca primero una caja de la sucursal, si no hay, busca una caja global (branch_id = null).
-   * No filtra por usuario: la caja es de la sucursal, todos los usuarios la comparten.
+   *
+   * - Modo 'branch' (default): busca primero una caja de la sucursal; si no hay,
+   *   busca una caja global (branch_id = null). No filtra por usuario: la caja es
+   *   de la sucursal y todos los usuarios la comparten.
+   * - Modo 'user': cada cajero gestiona su propia caja. Busca la caja abierta del
+   *   usuario actual dentro de la sucursal actual (filtra por opened_by). No cae
+   *   a caja global ni a cajas de otros cajeros.
    */
   static async getActiveSession(): Promise<CashSession | null> {
     try {
@@ -36,7 +75,35 @@ export class CajasService {
         return null;
       }
 
-      // 1. Buscar caja abierta de la sucursal actual
+      const mode = await this.getCashSessionMode();
+
+      // Modo 'user': la caja activa es la del usuario actual en la sucursal actual
+      if (mode === 'user' && this.branchId) {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+          return null;
+        }
+        const { data: userSession, error: userError } = await supabase
+          .from('cash_sessions')
+          .select('*')
+          .eq('organization_id', this.organizationId)
+          .eq('branch_id', this.branchId)
+          .eq('opened_by', userId)
+          .eq('status', 'open')
+          .order('opened_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (userError && userError.code !== 'PGRST116') {
+          throw userError;
+        }
+        if (userSession) {
+          return this.enrichSession(userSession);
+        }
+        return null;
+      }
+
+      // Modo 'branch': 1. Buscar caja abierta de la sucursal actual
       if (this.branchId) {
         const { data: branchSession, error: branchError } = await supabase
           .from('cash_sessions')
@@ -57,7 +124,7 @@ export class CajasService {
         }
       }
 
-      // 2. Buscar caja global (branch_id = null)
+      // Modo 'branch': 2. Buscar caja global (branch_id = null)
       const { data: globalSession, error: globalError } = await supabase
         .from('cash_sessions')
         .select('*')
@@ -282,6 +349,10 @@ export class CajasService {
   /**
    * Abre una nueva sesión de caja
    * scope: 'branch' (default) = caja de la sucursal actual, 'global' = caja para todas las sucursales
+   *
+   * En modo 'user', se ignora el alcance 'global' (no aplica) y se valida que el
+   * cajero no tenga ya una caja abierta en la sucursal actual, permitiendo que
+   * otros cajeros tengan sus propias cajas simultáneamente.
    */
   static async openSession(data: OpenCashSessionData): Promise<CashSession> {
     try {
@@ -290,7 +361,10 @@ export class CajasService {
         throw new Error('Usuario no autenticado');
       }
 
-      const scope = data.scope || 'branch';
+      const mode = await this.getCashSessionMode();
+
+      // En modo 'user' el alcance siempre es la sucursal actual (no hay caja global)
+      const scope = mode === 'user' ? 'branch' : (data.scope || 'branch');
       const targetBranchId = scope === 'global' ? null : this.branchId;
 
       if (scope === 'branch' && !this.branchId) {
@@ -308,6 +382,10 @@ export class CajasService {
         checkQuery = checkQuery.is('branch_id', null);
       } else {
         checkQuery = checkQuery.eq('branch_id', this.branchId);
+        // En modo 'user' la unicidad es por cajero dentro de la sucursal
+        if (mode === 'user') {
+          checkQuery = checkQuery.eq('opened_by', userId);
+        }
       }
 
       const { data: existingSession } = await checkQuery.maybeSingle();
@@ -315,7 +393,9 @@ export class CajasService {
       if (existingSession) {
         throw new Error(scope === 'global'
           ? 'Ya hay una caja global abierta. Ciérrala antes de abrir otra.'
-          : 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.');
+          : (mode === 'user'
+            ? 'Ya tienes una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'
+            : 'Ya hay una caja abierta en esta sucursal. Ciérrala antes de abrir otra.'));
       }
 
       const { data: session, error } = await supabase
@@ -451,6 +531,11 @@ export class CajasService {
       const session = await this.getSessionById(sessionId);
       const movements = await this.getSessionMovements(sessionId);
 
+      // En modo 'user' el resumen solo incluye los pagos/devoluciones del cajero
+      // que abrió esta caja, para no mezclar ventas de otros cajeros de la sucursal.
+      const cashMode = await this.getCashSessionMode();
+      const filterByCashier = cashMode === 'user' && !!session.opened_by;
+
       // Calcular pagos en efectivo del período (ventas vs compras a proveedores)
       let cashPaymentsQuery = supabase
         .from('payments')
@@ -462,6 +547,9 @@ export class CajasService {
         .lte('created_at', session.closed_at || new Date().toISOString());
       if (session.branch_id) {
         cashPaymentsQuery = cashPaymentsQuery.eq('branch_id', session.branch_id);
+      }
+      if (filterByCashier) {
+        cashPaymentsQuery = cashPaymentsQuery.eq('created_by', session.opened_by);
       }
       const { data: cashPayments, error: paymentsError } = await cashPaymentsQuery;
 
@@ -495,6 +583,9 @@ export class CajasService {
         .lte('created_at', session.closed_at || new Date().toISOString());
       if (session.branch_id) {
         returnsQuery = returnsQuery.eq('branch_id', session.branch_id);
+      }
+      if (filterByCashier) {
+        returnsQuery = returnsQuery.eq('user_id', session.opened_by);
       }
       const { data: returnsData, error: returnsError } = await returnsQuery;
 
@@ -535,6 +626,9 @@ export class CajasService {
         .lte('created_at', session.closed_at || new Date().toISOString());
       if (session.branch_id) {
         allPaymentsQuery = allPaymentsQuery.eq('branch_id', session.branch_id);
+      }
+      if (filterByCashier) {
+        allPaymentsQuery = allPaymentsQuery.eq('created_by', session.opened_by);
       }
       const { data: allPayments, error: allPaymentsError } = await allPaymentsQuery;
 
@@ -754,6 +848,10 @@ export class CajasService {
       const movements = await this.getSessionMovements(sessionId);
       const summary = await this.getCashSummary(sessionId);
 
+      // En modo 'user' el reporte solo incluye las ventas del cajero de esta caja
+      const reportCashMode = await this.getCashSessionMode();
+      const reportFilterByCashier = reportCashMode === 'user' && !!session.opened_by;
+
       // Obtener resumen de ventas con change_amount
       let salesQuery = supabase
         .from('payments')
@@ -764,6 +862,9 @@ export class CajasService {
         .lte('created_at', session.closed_at || new Date().toISOString());
       if (session.branch_id) {
         salesQuery = salesQuery.eq('branch_id', session.branch_id);
+      }
+      if (reportFilterByCashier) {
+        salesQuery = salesQuery.eq('created_by', session.opened_by);
       }
       const { data: salesData, error: salesError } = await salesQuery;
 
@@ -980,7 +1081,11 @@ export class CajasService {
     try {
       const session = await this.getSessionById(sessionId);
 
-      const { data, error } = await supabase
+      // En modo 'user' solo se incluyen las ventas registradas por el cajero de esta caja
+      const salesCashMode = await this.getCashSessionMode();
+      const salesFilterByCashier = salesCashMode === 'user' && !!session.opened_by;
+
+      let salesQuery = supabase
         .from('sales')
         .select('id, total, status, payment_status, created_at, customer_id, source')
         .eq('organization_id', this.organizationId)
@@ -988,7 +1093,11 @@ export class CajasService {
         .eq('include_in_cash_register', true)
         .neq('payment_status', 'pending')
         .gte('created_at', session.opened_at)
-        .lte('created_at', session.closed_at || new Date().toISOString())
+        .lte('created_at', session.closed_at || new Date().toISOString());
+      if (salesFilterByCashier) {
+        salesQuery = salesQuery.eq('user_id', session.opened_by);
+      }
+      const { data, error } = await salesQuery
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -1008,14 +1117,22 @@ export class CajasService {
     try {
       const session = await this.getSessionById(sessionId);
 
-      const { data: payments, error } = await supabase
+      // En modo 'user' solo se incluyen los pagos registrados por el cajero de esta caja
+      const detailCashMode = await this.getCashSessionMode();
+      const detailFilterByCashier = detailCashMode === 'user' && !!session.opened_by;
+
+      let paymentsQuery = supabase
         .from('payments')
         .select('id, amount, method, source, source_id, created_at, reference')
         .eq('organization_id', this.organizationId)
         .eq('branch_id', session.branch_id)
         .eq('status', 'completed')
         .gte('created_at', session.opened_at)
-        .lte('created_at', session.closed_at || new Date().toISOString())
+        .lte('created_at', session.closed_at || new Date().toISOString());
+      if (detailFilterByCashier) {
+        paymentsQuery = paymentsQuery.eq('created_by', session.opened_by);
+      }
+      const { data: payments, error } = await paymentsQuery
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -1167,7 +1284,11 @@ export class CajasService {
     try {
       const session = await this.getSessionById(sessionId);
 
-      const { data, error } = await supabase
+      // En modo 'user' solo se incluyen los pagos del cajero de esta caja
+      const pbmCashMode = await this.getCashSessionMode();
+      const pbmFilterByCashier = pbmCashMode === 'user' && !!session.opened_by;
+
+      let paymentsByMethodQuery = supabase
         .from('payments')
         .select('method, amount')
         .eq('organization_id', this.organizationId)
@@ -1175,6 +1296,10 @@ export class CajasService {
         .eq('status', 'completed')
         .gte('created_at', session.opened_at)
         .lte('created_at', session.closed_at || new Date().toISOString());
+      if (pbmFilterByCashier) {
+        paymentsByMethodQuery = paymentsByMethodQuery.eq('created_by', session.opened_by);
+      }
+      const { data, error } = await paymentsByMethodQuery;
 
       if (error) throw error;
 

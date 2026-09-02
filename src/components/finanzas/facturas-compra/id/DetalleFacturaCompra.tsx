@@ -75,7 +75,7 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
   }, [factura?.salesperson_id, factura?.salesperson_name, salespersonName]);
   
   // Detectar si estamos en inventario o finanzas
-  const basePath = pathname.includes('/inventario/') 
+  const basePath = pathname?.includes('/inventario/') 
     ? '/app/inventario/facturas-compra' 
     : '/app/finanzas/facturas-compra';
   const [loading, setLoading] = useState(true);
@@ -235,12 +235,13 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         unit_price: item.unit_price,
         tax_rate: item.tax_rate,
         total_line: item.total_line,
-        sku: item.products?.sku
+        sku: item.products?.sku,
+        serial_numbers: (item as any).serial_numbers || null
       }))
     };
     PDFService.printPurchaseInvoiceHTML(pdfData);
   };
-  
+
   const handleDescargarPDF = () => {
     if (!factura) return;
     const pdfData: InvoiceDataForPDF = {
@@ -269,7 +270,8 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
         unit_price: item.unit_price,
         tax_rate: item.tax_rate,
         total_line: item.total_line,
-        sku: item.products?.sku
+        sku: item.products?.sku,
+        serial_numbers: (item as any).serial_numbers || null
       }))
     };
     PDFService.downloadPurchaseInvoicePDF(pdfData);
@@ -612,15 +614,28 @@ export function DetalleFacturaCompra({ facturaId }: DetalleFacturaCompraProps) {
                       <TableCell className="text-xs sm:text-sm text-gray-900 dark:text-gray-300 py-2 sm:py-3">
                         {(() => {
                           const sku = item.products?.sku;
-                          if (sku) {
-                            return (
-                              <div className="flex flex-col">
-                                <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
+                          const serials = (item as any).serial_numbers as string[] | null | undefined;
+                          return (
+                            <div className="flex flex-col gap-1">
+                              {sku ? (
+                                <>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
+                                  <span className="break-words whitespace-normal min-w-0">{item.description}</span>
+                                </>
+                              ) : (
                                 <span className="break-words whitespace-normal min-w-0">{item.description}</span>
-                              </div>
-                            );
-                          }
-                          return <span className="break-words whitespace-normal min-w-0">{item.description}</span>;
+                              )}
+                              {serials && serials.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {serials.map((s, i) => (
+                                    <Badge key={i} variant="outline" className="text-[10px] font-mono px-1.5 py-0 dark:border-gray-600 dark:text-gray-300">
+                                      {s}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
                         })()}
                       </TableCell>
                       <TableCell className="text-xs sm:text-sm text-right text-gray-900 dark:text-gray-300 py-2 sm:py-3 whitespace-nowrap">

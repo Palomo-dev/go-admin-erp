@@ -42,6 +42,7 @@ export interface InvoiceDataForPDF {
     discount_amount?: number;
     total_line: number;
     sku?: string;
+    serial_numbers?: string[] | null;
   }[];
   // Monto de notas de crédito / saldo a favor aplicado a esta factura (informativo)
   credit_applied?: number;
@@ -267,7 +268,7 @@ export class PDFService {
             <tbody>
               ${data.items.map(item => `
                 <tr>
-                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}</td>
+                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}${item.serial_numbers && item.serial_numbers.length > 0 ? `<br/><span style="font-size:10px;color:#6b7280;">Seriales: ${item.serial_numbers.join(', ')}</span>` : ''}</td>
                   <td>${item.qty}</td>
                   <td>${formatCurrency(item.unit_price)}</td>
                   <td>${item.discount_amount && item.discount_amount > 0 ? `<span class="item-discount">- ${formatCurrency(item.discount_amount)}</span>` : '-'}</td>
@@ -504,7 +505,7 @@ export class PDFService {
             <tbody>
               ${data.items.map(item => `
                 <tr>
-                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}</td>
+                  <td>${item.sku ? `<span style="color:#6b7280;font-size:11px;">SKU: ${item.sku}</span><br/>` : ''}${item.description}${item.serial_numbers && item.serial_numbers.length > 0 ? `<br/><span style="font-size:10px;color:#6b7280;">Seriales: ${item.serial_numbers.join(', ')}</span>` : ''}</td>
                   <td>${item.qty}</td>
                   <td>${formatCurrency(item.unit_price)}</td>
                   <td>${item.discount_amount && item.discount_amount > 0 ? `<span class="item-discount">- ${formatCurrency(item.discount_amount)}</span>` : '-'}</td>

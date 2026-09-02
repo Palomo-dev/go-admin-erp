@@ -17,6 +17,7 @@ interface Item {
   total_line: number;
   discount_amount?: number | null;
   code_reference?: string | null;
+  serial_numbers?: string[] | null;
   products?: {
     id: number;
     name: string;
@@ -88,15 +89,28 @@ export function ItemsDetalle({ items, taxIncluded = false, organizationTaxes = [
                   <div className="max-w-[200px] sm:max-w-none">
                     {(() => {
                       const sku = item.products?.sku || item.code_reference;
-                      if (sku) {
-                        return (
-                          <div className="flex flex-col">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
+                      const serials = item.serial_numbers;
+                      return (
+                        <div className="flex flex-col gap-1">
+                          {sku ? (
+                            <>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">SKU: {sku}</span>
+                              <HtmlContentRenderer html={item.description} className="break-words whitespace-normal min-w-0" />
+                            </>
+                          ) : (
                             <HtmlContentRenderer html={item.description} className="break-words whitespace-normal min-w-0" />
-                          </div>
-                        );
-                      }
-                      return <HtmlContentRenderer html={item.description} className="break-words whitespace-normal min-w-0" />;
+                          )}
+                          {serials && serials.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {serials.map((s, i) => (
+                                <span key={i} className="inline-block text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400">
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
                     })()}
                   </div>
                 </TableCell>

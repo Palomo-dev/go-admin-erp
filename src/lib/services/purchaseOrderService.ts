@@ -816,7 +816,7 @@ class PurchaseOrderService {
     const { data: items, error: itemsError } = await supabase
       .from('purchase_order_items')
       .select(`
-        id, product_id, quantity, unit_cost, subtotal,
+        id, product_id, quantity, unit_cost, subtotal, serials_received,
         products(id, name, sku)
       `)
       .eq('purchase_order_id', orderId);
@@ -874,7 +874,7 @@ class PurchaseOrderService {
       throw new Error(`Error creando factura automática: ${facturaError?.message}`);
     }
 
-    // Crear items de la factura
+    // Crear items de la factura (incluyendo seriales recibidos en la OC)
     const invoiceItems = items.map((item: any) => ({
       invoice_id: factura.id,
       invoice_type: 'purchase',
@@ -888,6 +888,7 @@ class PurchaseOrderService {
       total_line: Number(item.subtotal || item.quantity * item.unit_cost),
       discount_amount: 0,
       tax_included: false,
+      serial_numbers: item.serials_received && item.serials_received.length > 0 ? item.serials_received : null,
     }));
 
     const { error: invItemsError } = await supabase
@@ -896,6 +897,20 @@ class PurchaseOrderService {
 
     if (invItemsError) {
       console.warn('⚠️ Error creando items de factura automática:', invItemsError);
+    }
+
+    // Vincular los seriales ya creados (con purchase_order_id) a la nueva factura
+    // para mantener la trazabilidad completa: OC -> Factura -> Seriales
+    try {
+      const { error: serialLinkError } = await supabase
+        .from('serial_numbers')
+        .update({ purchase_invoice_id: factura.id })
+        .eq('purchase_order_id', orderId);
+      if (serialLinkError) {
+        console.warn('⚠️ Error vinculando seriales a factura automática:', serialLinkError);
+      }
+    } catch (serialLinkErr) {
+      console.warn('⚠️ Error vinculando seriales a factura automática:', serialLinkErr);
     }
 
     // Crear cuenta por pagar

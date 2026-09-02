@@ -89,6 +89,7 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/facebook-feed', // <-- Excluir feed de Facebook (autenticación propia via token en query param)
     '/api/cron/', // <-- Excluir cron jobs de Vercel (autenticación propia via Authorization: Bearer CRON_SECRET)
     '/api/web-orders/', // <-- Excluir webhooks de pedidos web (autenticación propia via x-webhook-secret header)
+    '/api/auth/invite/resend', // <-- Reenvío de magic link para invitaciones (usuario no autenticado, valida contra tabla invitations)
     '/auth/v1/',
     '/auth/callback', // <-- Excluir callback de OAuth para no interferir con PKCE
     '/.well-known/',

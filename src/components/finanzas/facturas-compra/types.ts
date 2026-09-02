@@ -70,6 +70,7 @@ export interface InvoiceItem {
   tax_rate?: number;
   tax_amount?: number;
   discount_amount?: number;
+  serial_numbers?: string[] | null;
   created_at?: string;
   updated_at?: string;
   // Relación joinada desde products (opcional, vía select de Supabase)
@@ -77,6 +78,7 @@ export interface InvoiceItem {
     id?: number;
     sku?: string;
     name?: string;
+    track_serial?: boolean;
   };
 }
 

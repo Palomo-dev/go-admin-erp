@@ -7,12 +7,15 @@ import { toastSuccess, toastError } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { purchaseOrderService, type PurchaseOrderItemInput } from '@/lib/services/purchaseOrderService';
 import { supplierService } from '@/lib/services/supplierService';
+import type { Supplier } from '@/lib/services/supplierService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QuickCreateDialog } from '@/components/inventario/productos/nuevo/QuickCreateDialog';
+import { NuevoProveedorForm } from '@/components/inventario/proveedores/nuevo';
 
 import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
 import { SearchSelectCombobox, type SearchSelectOption } from '../SearchSelectCombobox';
@@ -72,6 +75,20 @@ export function NuevaOrdenCompraForm() {
   const [supplierProductIds, setSupplierProductIds] = useState<Set<number>>(new Set());
   const [supplierCosts, setSupplierCosts] = useState<Map<number, number>>(new Map());
   const [showAllProducts, setShowAllProducts] = useState(false);
+  const [showSupplierDialog, setShowSupplierDialog] = useState(false);
+
+  // Recargar proveedores tras crear uno nuevo desde el diálogo
+  const reloadSuppliers = async () => {
+    const organizationId = getOrganizationId();
+    const suppliersData = await purchaseOrderService.getSuppliers(organizationId);
+    setSuppliers(suppliersData);
+  };
+
+  const handleSupplierCreated = (supplier: Supplier) => {
+    setShowSupplierDialog(false);
+    reloadSuppliers();
+    if (supplier?.id) setSupplierId(supplier.id.toString());
+  };
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -134,7 +151,7 @@ export function NuevaOrdenCompraForm() {
     let displayName = product.name;
     if ((product as any).parent_name && (product as any).variant_data) {
       const entries = Object.entries((product as any).variant_data)
-        .filter(([, v]) => v && v.trim() !== '');
+        .filter(([, v]) => v && String(v).trim() !== '');
       if (entries.length > 0) {
         const attrs = entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
         displayName = `${(product as any).parent_name} · ${attrs}`;
@@ -279,7 +296,20 @@ export function NuevaOrdenCompraForm() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="dark:text-gray-300">Proveedor *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="dark:text-gray-300">Proveedor *</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSupplierDialog(true)}
+                      className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 gap-1"
+                      title="Crear nuevo proveedor"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Nuevo
+                    </Button>
+                  </div>
                   <SearchSelectCombobox
                     options={suppliers}
                     value={supplierId}
@@ -542,6 +572,21 @@ export function NuevaOrdenCompraForm() {
           </Card>
         </div>
       </div>
+
+      {/* Diálogo: crear proveedor rápido */}
+      <QuickCreateDialog
+        open={showSupplierDialog}
+        onOpenChange={setShowSupplierDialog}
+        title="Nuevo Proveedor"
+        description="Crea un proveedor y se seleccionará automáticamente para esta orden."
+        maxWidth="max-w-4xl"
+      >
+        <NuevoProveedorForm
+          embedded
+          onSuccess={handleSupplierCreated}
+          onCancel={() => setShowSupplierDialog(false)}
+        />
+      </QuickCreateDialog>
     </div>
   );
 }

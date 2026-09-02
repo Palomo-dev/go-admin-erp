@@ -480,6 +480,68 @@ export const webOrderServerConfirmation = {
       }
     }
 
+    // ── 4.1. Vender seriales reservados para este pedido web ──
+    // Los seriales se reservaron en POST /api/web-orders (reserveSerials).
+    // Al confirmar el pago, cambiamos su estado de 'reserved' a 'sold' y los
+    // vinculamos a la venta creada. Sin este paso los seriales quedan
+    // reservados indefinidamente y no se reflejan como vendidos.
+    try {
+      const { data: reservedSerials, error: serialLoadError } = await supabase
+        .from('serial_numbers')
+        .select('id, product_id, serial')
+        .eq('organization_id', order.organization_id)
+        .eq('web_order_id', order.id)
+        .eq('status', 'reserved');
+
+      if (!serialLoadError && reservedSerials && reservedSerials.length > 0) {
+        // Mapear product_id -> unit_price desde los items del pedido
+        const priceMap = new Map<number, number>();
+        for (const item of order.items || []) {
+          if (item.product_id) {
+            priceMap.set(item.product_id, Number(item.unit_price) || 0);
+          }
+        }
+
+        const nowIso = new Date().toISOString();
+        for (const serial of reservedSerials) {
+          await supabase
+            .from('serial_numbers')
+            .update({
+              status: 'sold',
+              sale_id: saleId,
+              invoice_sale_id: null, // se actualiza después de crear la factura
+              sold_to_customer_id: order.customer_id || null,
+              sold_by_user_id: userId,
+              sale_channel: 'web',
+              sale_date: nowIso,
+              price_at_sale: priceMap.get(serial.product_id) || null,
+              web_order_id: order.id,
+              updated_at: nowIso,
+              updated_by: userId,
+            })
+            .eq('id', serial.id);
+
+          // Registrar evento de venta en el tracking
+          await supabase
+            .from('serial_tracking_events')
+            .insert({
+              serial_id: serial.id,
+              event_type: 'sold',
+              from_status: 'reserved',
+              to_status: 'sold',
+              source_table: 'sales',
+              source_id: saleId,
+              notes: `Venta automática desde pedido web ${order.order_number}`,
+              performed_by: userId,
+              created_at: nowIso,
+            });
+        }
+        console.log(`✅ ${reservedSerials.length} seriales vendidos desde pedido web ${order.order_number}`);
+      }
+    } catch (serialError: any) {
+      console.warn('⚠️ Error vendiendo seriales reservados (no bloquea confirmación):', serialError?.message);
+    }
+
     // ── 5. Crear factura de venta (invoice_sales + invoice_items) ──
     let invoiceId: string | undefined;
     let invoiceNumber: string | undefined;
@@ -564,6 +626,18 @@ export const webOrderServerConfirmation = {
           if (invItemsError) {
             console.error('Error creando invoice_items:', invItemsError);
           }
+        }
+
+        // Vincular los seriales vendidos en el paso 4.1 con la factura recién creada
+        try {
+          await supabase
+            .from('serial_numbers')
+            .update({ invoice_sale_id: invoice.id, updated_at: new Date().toISOString() })
+            .eq('sale_id', saleId)
+            .eq('status', 'sold')
+            .eq('web_order_id', order.id);
+        } catch (serialLinkErr) {
+          console.warn('⚠️ Error vinculando seriales a factura web:', serialLinkErr);
         }
       }
     } catch (invError) {

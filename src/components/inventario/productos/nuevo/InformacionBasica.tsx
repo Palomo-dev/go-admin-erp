@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { SearchSelect } from '@/components/ui/search-select'
 import { RichTextEditor } from '@/components/shared/RichTextEditor'
-import { Package, Sparkles, Loader2, RefreshCw } from 'lucide-react'
+import { Package, Sparkles, Loader2, RefreshCw, Plus } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,6 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { STATION_LABELS, type PrinterStation } from '@/components/pos/configuracion/printersService'
+import { QuickCreateDialog } from './QuickCreateDialog'
+import { QuickCategoryForm } from './QuickCategoryForm'
+import { NuevoProveedorForm } from '@/components/inventario/proveedores/nuevo'
 
 interface InformacionBasicaProps {
   formData: any
@@ -54,6 +57,44 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
   const [units, setUnits] = useState<Unit[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isImprovingDescription, setIsImprovingDescription] = useState(false)
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false)
+  const [showSupplierDialog, setShowSupplierDialog] = useState(false)
+
+  // Recargar categorías desde Supabase (usado tras crear categoría en diálogo)
+  const reloadCategories = async () => {
+    if (!organization?.id) return
+    const { data } = await supabase
+      .from('categories')
+      .select('id, name, station')
+      .eq('organization_id', organization.id)
+      .order('name')
+    if (data) setCategories(data)
+  }
+
+  // Recargar proveedores desde Supabase (usado tras crear proveedor en diálogo)
+  const reloadSuppliers = async () => {
+    if (!organization?.id) return
+    const { data } = await supabase
+      .from('suppliers')
+      .select('id, name')
+      .eq('organization_id', organization.id)
+      .order('name')
+    if (data) setSuppliers(data)
+  }
+
+  // Handler cuando se crea una categoría desde el diálogo
+  const handleCategoryCreated = (category: { id: number }) => {
+    setShowCategoryDialog(false)
+    reloadCategories()
+    updateFormData('category_id', category.id)
+  }
+
+  // Handler cuando se crea un proveedor desde el diálogo
+  const handleSupplierCreated = (supplier: { id: number }) => {
+    setShowSupplierDialog(false)
+    reloadSuppliers()
+    if (supplier?.id) updateFormData('supplier_id', supplier.id)
+  }
 
   useEffect(() => {
     if (organization?.id) {
@@ -318,9 +359,22 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
 
         {/* Categoría */}
         <div className="space-y-2">
-          <Label htmlFor="category" className="text-gray-700 dark:text-gray-300">
-            Categoría
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="category" className="text-gray-700 dark:text-gray-300">
+              Categoría
+            </Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCategoryDialog(true)}
+              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 gap-1"
+              title="Crear nueva categoría"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Nueva
+            </Button>
+          </div>
           {isLoadingData ? (
             <Skeleton className="h-10 w-full" />
           ) : (
@@ -378,9 +432,22 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
 
         {/* Proveedor Principal */}
         <div className="space-y-2">
-          <Label htmlFor="supplier" className="text-gray-700 dark:text-gray-300">
-            Proveedor Principal
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="supplier" className="text-gray-700 dark:text-gray-300">
+              Proveedor Principal
+            </Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSupplierDialog(true)}
+              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 gap-1"
+              title="Crear nuevo proveedor"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Nuevo
+            </Button>
+          </div>
           {isLoadingData ? (
             <Skeleton className="h-10 w-full" />
           ) : (
@@ -453,6 +520,34 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
           </p>
         </div>
       </div>
+
+      {/* Diálogo: crear categoría rápida */}
+      <QuickCreateDialog
+        open={showCategoryDialog}
+        onOpenChange={setShowCategoryDialog}
+        title="Nueva Categoría"
+        description="Crea una categoría y se seleccionará automáticamente para este producto."
+      >
+        <QuickCategoryForm
+          onSuccess={handleCategoryCreated}
+          onCancel={() => setShowCategoryDialog(false)}
+        />
+      </QuickCreateDialog>
+
+      {/* Diálogo: crear proveedor rápido */}
+      <QuickCreateDialog
+        open={showSupplierDialog}
+        onOpenChange={setShowSupplierDialog}
+        title="Nuevo Proveedor"
+        description="Crea un proveedor y se seleccionará automáticamente para este producto."
+        maxWidth="max-w-4xl"
+      >
+        <NuevoProveedorForm
+          embedded
+          onSuccess={handleSupplierCreated}
+          onCancel={() => setShowSupplierDialog(false)}
+        />
+      </QuickCreateDialog>
     </div>
   )
 }

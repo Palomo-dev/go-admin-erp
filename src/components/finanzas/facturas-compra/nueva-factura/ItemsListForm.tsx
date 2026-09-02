@@ -39,7 +39,7 @@ export function ItemsListForm({
     // Convertir items existentes a productos seleccionados si es necesario
     if (items.length > 0 && selectedProducts.length === 0) {
       const convertedProducts: SelectedProduct[] = items.map((item, index) => ({
-        id: Date.now() + index, // ID temporal
+        id: item.product_id || (Date.now() + index), // ID real del producto si existe
         name: item.description.split(' (')[0] || item.description,
         sku: item.description.match(/\(([^)]+)\)$/)?.[1] || `ITEM-${index + 1}`,
         description: item.description,
@@ -49,7 +49,9 @@ export function ItemsListForm({
         quantity: item.qty,
         unit_cost: item.unit_price,
         discount_amount: item.discount_amount || 0,
-        description_override: item.description
+        description_override: item.description,
+        track_serial: (item as any).track_serial || false,
+        serials: (item as any).serial_numbers || [],
       }));
       setSelectedProducts(convertedProducts);
     }

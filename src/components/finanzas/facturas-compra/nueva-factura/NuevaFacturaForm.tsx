@@ -105,7 +105,9 @@ export function NuevaFacturaForm({
           qty: item.qty,
           unit_price: item.unit_price,
           tax_rate: item.tax_rate || 19,
-          discount_amount: item.discount_amount || 0
+          discount_amount: item.discount_amount || 0,
+          serial_numbers: item.serial_numbers || [],
+          track_serial: item.products?.track_serial || false
         })) || [],
         salesperson_id: facturaInicial.salesperson_id || '',
         commission_rate: Number(facturaInicial.commission_rate) || 0,

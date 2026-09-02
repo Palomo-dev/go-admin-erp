@@ -471,7 +471,8 @@ export default function DetalleFactura({ factura }: { factura: any }) {
         tax_included: item.tax_included,
         discount_amount: item.discount_amount || 0,
         total_line: item.total_line,
-        sku: item.products?.sku || item.code_reference
+        sku: item.products?.sku || item.code_reference,
+        serial_numbers: item.serial_numbers || null
       })) || []
     };
 

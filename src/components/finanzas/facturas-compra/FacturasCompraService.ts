@@ -141,7 +141,8 @@ export class FacturasCompraService {
           total_line,
           tax_rate,
           discount_amount,
-          products(id, name, sku)
+          serial_numbers,
+          products(id, name, sku, track_serial)
         `)
         .eq('invoice_purchase_id', id);
         
@@ -279,7 +280,8 @@ export class FacturasCompraService {
           tax_rate: item.tax_rate || 0,
           total_line: lineSubtotal(item),
           discount_amount: item.discount_amount || 0,
-          tax_included: formData.tax_included || false // Campo requerido
+          tax_included: formData.tax_included || false, // Campo requerido
+          serial_numbers: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : null,
         }));
         
         console.log('Items a insertar:', items);
@@ -539,7 +541,8 @@ export class FacturasCompraService {
           tax_rate: item.tax_rate || 0,
           total_line: lineSubtotal(item),
           discount_amount: item.discount_amount || 0,
-          tax_included: formData.tax_included || false
+          tax_included: formData.tax_included || false,
+          serial_numbers: item.serial_numbers && item.serial_numbers.length > 0 ? item.serial_numbers : null,
         }));
         
         console.log('Nuevos items a insertar:', items);
@@ -552,6 +555,44 @@ export class FacturasCompraService {
           console.error('Error creando nuevos items:', itemsError);
           throw itemsError;
         }
+      }
+
+      // Sincronizar seriales: eliminar los seriales in_stock vinculados a la factura
+      // anterior y crear los nuevos desde el formulario. Solo se editan facturas en
+      // draft/pending, por lo que los seriales no deberían estar vendidos aún.
+      try {
+        await supabase
+          .from('serial_numbers')
+          .delete()
+          .eq('purchase_invoice_id', facturaId)
+          .eq('status', 'in_stock');
+
+        const itemsWithSerials = formData.items.filter(item => item.serial_numbers && item.serial_numbers.length > 0);
+        if (itemsWithSerials.length > 0) {
+          const serialInputs: import('@/lib/services/serialTrackingService').SerialInput[] = [];
+          for (const item of itemsWithSerials) {
+            if (!item.product_id) continue;
+            for (const serial of item.serial_numbers!) {
+              serialInputs.push({
+                product_id: item.product_id,
+                organization_id: this.organizationId,
+                branch_id: this.branchId!,
+                serial,
+                supplier_id: formData.supplier_id ?? undefined,
+                purchase_invoice_id: factura.id,
+                cost_at_purchase: item.unit_price,
+              });
+            }
+          }
+          if (serialInputs.length > 0) {
+            const { errors: serialErrors } = await serialTrackingService.createSerials(serialInputs);
+            if (serialErrors.length > 0) {
+              console.warn('Algunos seriales no se pudieron crear al editar:', serialErrors);
+            }
+          }
+        }
+      } catch (serialErr) {
+        console.error('Error sincronizando seriales al editar factura:', serialErr);
       }
 
       // Guardar impuestos aplicados (reemplazar los anteriores)

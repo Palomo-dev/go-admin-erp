@@ -93,7 +93,20 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
         .from('product_suppliers')
         .select('id, product_id, cost, is_preferred, supplier_sku, lead_time_days, min_order_qty, product:products(id, uuid, name, sku, is_active)')
         .eq('supplier_id', data.id);
-      if (prodData) setProducts(prodData as ProductSupplierRelation[]);
+      if (prodData) {
+        // Supabase devuelve 'product' como array (relación); aplanar a objeto.
+        const normalized: ProductSupplierRelation[] = prodData.map((row: any) => ({
+          id: row.id,
+          product_id: row.product_id,
+          cost: Number(row.cost) || 0,
+          is_preferred: row.is_preferred,
+          supplier_sku: row.supplier_sku,
+          lead_time_days: row.lead_time_days,
+          min_order_qty: row.min_order_qty,
+          product: Array.isArray(row.product) ? row.product[0] : row.product,
+        }));
+        setProducts(normalized);
+      }
     } catch (error: unknown) {
       console.error('Error cargando proveedor:', error);
       toast({ variant: 'destructive', title: 'Error', description: error instanceof Error ? error.message : 'No se pudo cargar el proveedor' });
@@ -266,6 +279,27 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                   {supplier.tax_regime && <InfoItem icon={<FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />} iconBg="bg-amber-100 dark:bg-amber-900/30" label="Régimen Tributario" value={taxRegimeLabel(supplier.tax_regime)} />}
                   {supplier.payment_terms && <InfoItem icon={<CreditCard className="h-4 w-4 text-violet-600 dark:text-violet-400" />} iconBg="bg-violet-100 dark:bg-violet-900/30" label="Condiciones de Pago" value={paymentTermsLabel(supplier.payment_terms)} />}
                   {supplier.credit_days !== undefined && supplier.credit_days !== null && <InfoItem icon={<Calendar className="h-4 w-4 text-rose-600 dark:text-rose-400" />} iconBg="bg-rose-100 dark:bg-rose-900/30" label="Días de Crédito" value={`${supplier.credit_days} días`} />}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Datos fiscales DIAN / Factus */}
+          {(supplier.dv || supplier.municipality_code || supplier.identification_document_code || supplier.trade_name || supplier.country_code || supplier.legal_organization_code) && (
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-lg dark:text-white flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-blue-600" />Datos Fiscales DIAN
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {supplier.identification_document_code && <InfoItem icon={<FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />} iconBg="bg-amber-100 dark:bg-amber-900/30" label="Tipo Doc. DIAN" value={supplier.identification_document_code} />}
+                  {supplier.dv && <InfoItem icon={<FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />} iconBg="bg-amber-100 dark:bg-amber-900/30" label="Dígito Verificación" value={supplier.dv} />}
+                  {supplier.legal_organization_code && <InfoItem icon={<Building2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />} iconBg="bg-violet-100 dark:bg-violet-900/30" label="Tipo Organización" value={supplier.legal_organization_code === '1' ? 'Empresa' : 'Persona Natural'} />}
+                  {supplier.country_code && <InfoItem icon={<Globe className="h-4 w-4 text-sky-600 dark:text-sky-400" />} iconBg="bg-sky-100 dark:bg-sky-900/30" label="Código País" value={supplier.country_code} />}
+                  {supplier.municipality_code && <InfoItem icon={<MapPin className="h-4 w-4 text-rose-600 dark:text-rose-400" />} iconBg="bg-rose-100 dark:bg-rose-900/30" label="Código Municipio" value={supplier.municipality_code} />}
+                  {supplier.trade_name && <InfoItem icon={<Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />} iconBg="bg-emerald-100 dark:bg-emerald-900/30" label="Nombre Comercial" value={supplier.trade_name} />}
                 </div>
               </CardContent>
             </Card>

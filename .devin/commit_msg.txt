@@ -1,10 +1,9 @@
-feat(pos): cierre ciego - ocultar montos con *** y deshabilitar detalle para no-admin
+fix(inventario): selector de productos en recetas con imagen y variantes + mejoras en proveedores y documentos de soporte
 
-- CierreCajaDialog: mostrar *** en montos esperados/diferencias en modo ciego,
-  inputs arrancan en 0 para forzar conteo fisico real
-- page.tsx (cajas): deshabilitar boton Ver detalle cuando !showExpected,
-  columnas Final/Diferencia muestran *** en historial
-- Cambios adicionales en inventario, finanzas, pos, shared y lib/services
+- recetas: reemplazar carga limit(200) por ProductSearchCombobox reutilizado de ordenes-compra (imagen, agrupacion por padre, variantes, paginado completo)
+- proveedores: mejoras en formularios nuevo/editar y detalle
+- finanzas: documentos de soporte y selector de proveedor
+- servicios: supplierService y webOrderConfirmation
 
 Generated with [Devin](https://devin.ai)
 

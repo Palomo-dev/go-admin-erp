@@ -25,11 +25,12 @@ import {
   Plus,
   Trash2,
   Loader2,
-  Search,
   GripVertical,
   Package,
 } from 'lucide-react';
 import { recipeService, type ProductRecipe, type CreateRecipeData } from '@/lib/services/recipeService';
+import { purchaseOrderService } from '@/lib/services/purchaseOrderService';
+import { ProductSearchCombobox, type ProductOption } from '@/components/inventario/ordenes-compra/ProductSearchCombobox';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -40,37 +41,6 @@ interface IngredientRow {
   is_optional: boolean;
   notes: string;
   sort_order: number;
-}
-
-interface ProductOption {
-  id: number;
-  name: string;
-  sku: string;
-  unit_code: string | null;
-  is_parent?: boolean;
-  parent_product_id?: number | null;
-  variant_data?: Record<string, string> | null;
-  parent_name?: string | null;
-}
-
-function formatProductDisplayName(product: ProductOption): string {
-  if (product.parent_name && product.variant_data) {
-    const attrs = Object.entries(product.variant_data)
-      .filter(([, v]) => v && String(v).trim() !== '')
-      .map(([k, v]) => `${k}: ${v}`);
-    if (attrs.length > 0) {
-      return `${product.parent_name} · ${attrs.join(' · ')}`;
-    }
-  }
-  return product.name;
-}
-
-function hasEmptyVariantData(p: ProductOption): boolean {
-  if (p.variant_data && typeof p.variant_data === 'object') {
-    const hasValues = Object.values(p.variant_data).some((v: any) => v && String(v).trim() !== '');
-    if (!hasValues && Object.keys(p.variant_data).length > 0) return true;
-  }
-  return false;
 }
 
 interface RecipeDialogProps {
@@ -90,14 +60,12 @@ export function RecipeDialog({
 }: RecipeDialogProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [units, setUnits] = useState<{ code: string; name: string }[]>([]);
-  const [productSearch, setProductSearch] = useState('');
-  const [showProductDropdown, setShowProductDropdown] = useState(false);
 
   const [formData, setFormData] = useState({
-    product_id: 0,
-    product_name: '',
+    product_id: '',
     name: '',
     yield_qty: 1,
     yield_unit_code: '',
@@ -106,106 +74,63 @@ export function RecipeDialog({
 
   const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
 
+  // Cargar productos (con imagen + variantes + parent) y unidades al abrir.
+  // Se reutiliza purchaseOrderService.getProducts para mantener paridad exacta
+  // con el selector de órdenes-compra: paginado completo, parentMap, imágenes.
   useEffect(() => {
-    if (open) {
-      cargarProductos();
-      cargarUnidades();
-      if (recipe) {
-        setFormData({
-          product_id: recipe.product_id,
-          product_name: recipe.product?.name ?? '',
-          name: recipe.name ?? '',
-          yield_qty: recipe.yield_qty,
-          yield_unit_code: recipe.yield_unit_code ?? '',
-          notes: recipe.notes ?? '',
-        });
-        setIngredients(
-          (recipe.ingredients ?? []).map((ing, i) => ({
-            ingredient_product_id: ing.ingredient_product_id,
-            quantity: ing.quantity,
-            unit_code: ing.unit_code,
-            is_optional: ing.is_optional,
-            notes: ing.notes ?? '',
-            sort_order: ing.sort_order ?? i,
-          }))
-        );
-      } else {
-        setFormData({
-          product_id: 0,
-          product_name: '',
-          name: '',
-          yield_qty: 1,
-          yield_unit_code: '',
-          notes: '',
-        });
-        setIngredients([]);
-      }
+    if (!open) return;
+    setLoadingProducts(true);
+    Promise.all([
+      purchaseOrderService.getProducts(organizationId),
+      cargarUnidades(),
+    ])
+      .then(([productsData]) => {
+        setProducts(productsData as ProductOption[]);
+      })
+      .finally(() => setLoadingProducts(false));
+
+    if (recipe) {
+      setFormData({
+        product_id: recipe.product_id.toString(),
+        name: recipe.name ?? '',
+        yield_qty: recipe.yield_qty,
+        yield_unit_code: recipe.yield_unit_code ?? '',
+        notes: recipe.notes ?? '',
+      });
+      setIngredients(
+        (recipe.ingredients ?? []).map((ing, i) => ({
+          ingredient_product_id: ing.ingredient_product_id,
+          quantity: ing.quantity,
+          unit_code: ing.unit_code,
+          is_optional: ing.is_optional,
+          notes: ing.notes ?? '',
+          sort_order: ing.sort_order ?? i,
+        }))
+      );
+    } else {
+      setFormData({ product_id: '', name: '', yield_qty: 1, yield_unit_code: '', notes: '' });
+      setIngredients([]);
     }
-  }, [open, recipe]);
-
-  const cargarProductos = async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id, name, sku, unit_code, is_parent, parent_product_id, variant_data')
-      .eq('organization_id', organizationId)
-      .order('name', { ascending: true })
-      .limit(200);
-
-    if (error) {
-      console.error('Error cargando productos:', error);
-      return;
-    }
-
-    const allProducts = (data || []) as ProductOption[];
-
-    const parentMap = new Map<number, string>();
-    allProducts.forEach((p) => {
-      if (p.is_parent) parentMap.set(p.id, p.name);
-    });
-
-    allProducts.forEach((p) => {
-      if (p.parent_product_id && parentMap.has(p.parent_product_id)) {
-        p.parent_name = parentMap.get(p.parent_product_id)!;
-      }
-    });
-
-    setProducts(allProducts);
-  };
+  }, [open, recipe, organizationId]);
 
   const cargarUnidades = async () => {
     const { data, error } = await supabase
       .from('units')
       .select('code, name')
       .order('name', { ascending: true });
-
     if (error) {
       console.error('Error cargando unidades:', error);
       return;
     }
-
     setUnits(data || []);
   };
 
-  const filteredProducts = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(productSearch.toLowerCase()) ||
-      (p.parent_name && p.parent_name.toLowerCase().includes(productSearch.toLowerCase()))
-  );
-
-  const ingredientProducts = products.filter(
-    (p) => !p.is_parent && !hasEmptyVariantData(p)
-  );
-
-  const handleSelectProduct = (product: ProductOption) => {
+  const handleSelectProduct = (product: ProductOption | null) => {
     setFormData((prev) => ({
       ...prev,
-      product_id: product.id,
-      product_name: formatProductDisplayName(product),
-      yield_unit_code: product.unit_code ?? prev.yield_unit_code,
+      product_id: product ? product.id.toString() : '',
+      yield_unit_code: product?.unit_code ?? prev.yield_unit_code,
     }));
-    setShowProductDropdown(false);
-    setProductSearch('');
   };
 
   const handleAddIngredient = () => {
@@ -232,18 +157,22 @@ export function RecipeDialog({
     );
   };
 
-  const handleIngredientProductSelect = (index: number, product: ProductOption) => {
+  const handleIngredientProductSelect = (index: number, product: ProductOption | null) => {
     setIngredients((prev) =>
       prev.map((ing, i) =>
         i === index
-          ? { ...ing, ingredient_product_id: product.id, unit_code: product.unit_code ?? ing.unit_code }
+          ? {
+              ...ing,
+              ingredient_product_id: product ? product.id : 0,
+              unit_code: product?.unit_code ?? ing.unit_code,
+            }
           : ing
       )
     );
   };
 
   const handleSave = async () => {
-    if (formData.product_id === 0) {
+    if (!formData.product_id) {
       toast({ title: 'Error', description: 'Selecciona un producto', variant: 'destructive' });
       return;
     }
@@ -264,7 +193,7 @@ export function RecipeDialog({
 
       const payload: CreateRecipeData = {
         organization_id: organizationId,
-        product_id: formData.product_id,
+        product_id: parseInt(formData.product_id),
         name: formData.name || undefined,
         yield_qty: formData.yield_qty,
         yield_unit_code: formData.yield_unit_code || undefined,
@@ -314,58 +243,21 @@ export function RecipeDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Producto */}
+          {/* Producto (resultado de la receta) */}
           <div className="space-y-2">
             <Label className="dark:text-gray-300">Producto *</Label>
-            {formData.product_id !== 0 ? (
-              <div className="flex items-center justify-between p-3 border rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-gray-600">
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium dark:text-white">{formData.product_name}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setFormData((prev) => ({ ...prev, product_id: 0, product_name: '' }));
-                    setShowProductDropdown(true);
-                  }}
-                >
-                  Cambiar
-                </Button>
+            {loadingProducts ? (
+              <div className="flex items-center gap-2 p-3 border rounded-lg dark:border-gray-600 text-sm text-gray-500 dark:text-gray-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Cargando productos...
               </div>
             ) : (
-              <div className="relative">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar producto por nombre o SKU..."
-                    value={productSearch}
-                    onChange={(e) => {
-                      setProductSearch(e.target.value);
-                      setShowProductDropdown(true);
-                    }}
-                    onFocus={() => setShowProductDropdown(true)}
-                    className="pl-10 dark:bg-gray-900 dark:border-gray-600"
-                  />
-                </div>
-                {showProductDropdown && filteredProducts.length > 0 && (
-                  <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
-                    {filteredProducts.slice(0, 20).map((product) => (
-                      <button
-                        key={product.id}
-                        onClick={() => handleSelectProduct(product)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
-                      >
-                        <div className="font-medium text-sm dark:text-white">{formatProductDisplayName(product)}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          SKU: {product.sku || 'N/A'} {product.unit_code ? `· ${product.unit_code}` : ''}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ProductSearchCombobox
+                products={products}
+                value={formData.product_id}
+                onSelect={handleSelectProduct}
+                placeholder="Buscar producto por nombre o SKU..."
+              />
             )}
           </div>
 
@@ -451,10 +343,10 @@ export function RecipeDialog({
                 {ingredients.map((ing, index) => (
                   <IngredientRowCard
                     key={index}
-                    index={index}
                     ingredient={ing}
-                    products={ingredientProducts}
+                    products={products}
                     units={units}
+                    loadingProducts={loadingProducts}
                     onRemove={() => handleRemoveIngredient(index)}
                     onChange={(field, value) => handleIngredientChange(index, field, value)}
                     onProductSelect={(product) => handleIngredientProductSelect(index, product)}
@@ -494,33 +386,22 @@ export function RecipeDialog({
 }
 
 function IngredientRowCard({
-  index,
   ingredient,
   products,
   units,
+  loadingProducts,
   onRemove,
   onChange,
   onProductSelect,
 }: {
-  index: number;
   ingredient: IngredientRow;
   products: ProductOption[];
   units: { code: string; name: string }[];
+  loadingProducts: boolean;
   onRemove: () => void;
   onChange: (field: keyof IngredientRow, value: unknown) => void;
-  onProductSelect: (product: ProductOption) => void;
+  onProductSelect: (product: ProductOption | null) => void;
 }) {
-  const [search, setSearch] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  const selectedProduct = products.find((p) => p.id === ingredient.ingredient_product_id);
-
-  const filtered = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
     <div className="flex flex-col gap-2 p-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
       <div className="flex items-start gap-2">
@@ -530,55 +411,19 @@ function IngredientRowCard({
 
         <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-2">
           {/* Producto */}
-          <div className="md:col-span-5 relative">
-            {selectedProduct ? (
-              <div className="flex items-center justify-between p-2 border rounded bg-white dark:bg-gray-900 dark:border-gray-600">
-                <span className="text-sm font-medium dark:text-white break-words whitespace-normal">
-                  {formatProductDisplayName(selectedProduct)}
-                </span>
-                <button
-                  onClick={() => {
-                    onChange('ingredient_product_id', 0);
-                    setShowDropdown(true);
-                  }}
-                  className="text-xs text-blue-600 hover:underline ml-2 shrink-0"
-                >
-                  Cambiar
-                </button>
+          <div className="md:col-span-5">
+            {loadingProducts ? (
+              <div className="flex items-center gap-2 h-9 px-3 border rounded bg-white dark:bg-gray-900 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Cargando...
               </div>
             ) : (
-              <div className="relative">
-                <Input
-                  placeholder="Buscar producto..."
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  className="h-9 dark:bg-gray-900 dark:border-gray-600 text-sm"
-                />
-                {showDropdown && filtered.length > 0 && (
-                  <div className="absolute z-50 mt-1 w-full max-h-40 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
-                    {filtered.slice(0, 10).map((product) => (
-                      <button
-                        key={product.id}
-                        onClick={() => {
-                          onProductSelect(product);
-                          setShowDropdown(false);
-                          setSearch('');
-                        }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
-                      >
-                        <div className="text-sm font-medium dark:text-white">{formatProductDisplayName(product)}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {product.sku || 'N/A'}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ProductSearchCombobox
+                products={products}
+                value={ingredient.ingredient_product_id.toString()}
+                onSelect={onProductSelect}
+                placeholder="Buscar ingrediente..."
+              />
             )}
           </div>
 

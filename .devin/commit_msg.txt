@@ -1,15 +1,16 @@
-fix(responsive): headers y formularios responsive en móvil para categorías, PM y ColorPicker
+fix(responsive): restaurar texto en headers de categorías + arreglar overflow real de date inputs en drawers PM
 
-- Categorías: header de lista y detalle con grid 2 columnas en móvil, botones con icono-only en móvil
-- CategoryForm: botones finales apilados en móvil
-- CategoryChildrenCard: nombre con truncate para evitar overflow del badge
-- CategoryInfoCard: fechas e info grid apilados en móvil, break-words
-- ImportCategoriesDialog: overflow-x-auto en tabla de previsualización
-- ColorPicker: sección "Color personalizado" apilada verticalmente en móvil
-- PM (proyectos/metas/tareas): todos los grid-cols-2/3 pasan a grid-cols-1 sm:grid-cols-N
-  para que inputs de fecha no se compriman ni desborden en móvil
-- NotificationsMenu: incluir notificaciones de organización con recipient_user_id=null
-  (ej: pagos Wompi) en vista "Mías" y conteos de no leídas
+Headers de categorías (CategoriesPageHeader, CategoryDetailHeader):
+- Restaurar TODO el texto de los botones en móvil (no ocultar labels)
+- Mantener grid 2 columnas en móvil con texto completo + icono
+- "Nueva Categoría" y "Eliminar" ocupan 2 columnas en móvil
+
+Drawers PM (ProjectCreationPanel, GoalCreationPanel, TaskCreationPanel):
+- Añadir overflow-x-hidden al SheetContent y body para prevenir scroll horizontal
+- Añadir min-w-0 y overflow-x-hidden al contenedor raíz flex flex-col
+- Añadir [&>*]:min-w-0 a los grids de fechas para que los input[type=date]
+  puedan contraerse dentro de su celda grid en móvil
+- Añadir w-full explícito a los inputs de fecha
 
 Generated with [Devin](https://devin.ai)
 

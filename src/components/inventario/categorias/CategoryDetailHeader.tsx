@@ -67,7 +67,7 @@ export default function CategoryDetailHeader({ category, onToggleActive, onDupli
             </div>
           </div>
 
-          {/* Acciones: grid 2 columnas en móvil, fila en sm+ */}
+          {/* Acciones: grid 2 columnas en móvil con texto completo, fila en sm+ */}
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:justify-end">
             <Button
               variant="outline"
@@ -75,9 +75,8 @@ export default function CategoryDetailHeader({ category, onToggleActive, onDupli
               onClick={onToggleActive}
               className="border-gray-300 dark:border-gray-700 w-full sm:w-auto justify-center"
             >
-              <ToggleLeft className="h-4 w-4 sm:mr-2 flex-shrink-0" />
-              <span className="hidden sm:inline">{category.is_active ? 'Desactivar' : 'Activar'}</span>
-              <span className="sm:hidden">{category.is_active ? 'Desact.' : 'Activar'}</span>
+              <ToggleLeft className="h-4 w-4 mr-1.5 flex-shrink-0" />
+              {category.is_active ? 'Desactivar' : 'Activar'}
             </Button>
             <Button
               variant="outline"
@@ -85,28 +84,25 @@ export default function CategoryDetailHeader({ category, onToggleActive, onDupli
               onClick={onDuplicate}
               className="border-gray-300 dark:border-gray-700 w-full sm:w-auto justify-center"
             >
-              <Copy className="h-4 w-4 sm:mr-2 flex-shrink-0" />
-              <span className="hidden sm:inline">Duplicar</span>
-              <span className="sm:hidden">Duplicar</span>
+              <Copy className="h-4 w-4 mr-1.5 flex-shrink-0" />
+              Duplicar
             </Button>
             <Button
               size="sm"
               onClick={() => router.push(`/app/inventario/categorias/${category.uuid}/editar`)}
               className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto justify-center"
             >
-              <Edit className="h-4 w-4 sm:mr-2 flex-shrink-0" />
-              <span className="hidden sm:inline">Editar</span>
-              <span className="sm:hidden">Editar</span>
+              <Edit className="h-4 w-4 mr-1.5 flex-shrink-0" />
+              Editar
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={onDelete}
-              className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 w-full sm:w-auto justify-center"
-              aria-label="Eliminar categoría"
+              className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 w-full sm:w-auto justify-center col-span-2 sm:col-span-1"
             >
-              <Trash2 className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline ml-2">Eliminar</span>
+              <Trash2 className="h-4 w-4 mr-1.5 flex-shrink-0" />
+              Eliminar
             </Button>
           </div>
         </div>

@@ -56,9 +56,8 @@ export function CategoriesPageHeader({
             </div>
           </div>
 
-          {/* Acciones: en móvil grid 2 columnas, en sm+ fila */}
+          {/* Acciones: en móvil grid 2 columnas con texto completo, en sm+ fila */}
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:justify-end">
-            {/* Exportar (dropdown) */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -66,9 +65,9 @@ export function CategoriesPageHeader({
                   size="sm"
                   className="border-gray-300 dark:border-gray-700 w-full sm:w-auto justify-center"
                 >
-                  <Download className="h-4 w-4 sm:mr-2 flex-shrink-0" />
-                  <span className="hidden sm:inline">Exportar</span>
-                  <ChevronDown className="h-3 w-3 ml-1 hidden sm:inline" />
+                  <Download className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                  Exportar
+                  <ChevronDown className="h-3 w-3 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -87,18 +86,16 @@ export function CategoriesPageHeader({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Importar */}
             <Button
               variant="outline"
               size="sm"
               onClick={onImport}
               className="border-gray-300 dark:border-gray-700 w-full sm:w-auto justify-center"
             >
-              <Upload className="h-4 w-4 sm:mr-2 flex-shrink-0" />
-              <span className="hidden sm:inline">Importar</span>
+              <Upload className="h-4 w-4 mr-1.5 flex-shrink-0" />
+              Importar
             </Button>
 
-            {/* Actualizar */}
             <Button
               variant="outline"
               size="sm"
@@ -106,19 +103,17 @@ export function CategoriesPageHeader({
               disabled={isRefreshing}
               className="border-gray-300 dark:border-gray-700 w-full sm:w-auto justify-center"
             >
-              <RefreshCw className={cn('h-4 w-4 sm:mr-2 flex-shrink-0', isRefreshing && 'animate-spin')} />
-              <span className="hidden sm:inline">Actualizar</span>
+              <RefreshCw className={cn('h-4 w-4 mr-1.5 flex-shrink-0', isRefreshing && 'animate-spin')} />
+              Actualizar
             </Button>
 
-            {/* Nueva Categoría (botón principal, ocupa las 2 columnas en móvil) */}
             <Button
               size="sm"
               onClick={() => router.push('/app/inventario/categorias/nuevo')}
               className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto justify-center col-span-2 sm:col-span-1"
             >
-              <Plus className="h-4 w-4 sm:mr-2 flex-shrink-0" />
-              <span className="hidden sm:inline">Nueva Categoría</span>
-              <span className="sm:hidden">Nueva</span>
+              <Plus className="h-4 w-4 mr-1.5 flex-shrink-0" />
+              Nueva Categoría
             </Button>
           </div>
         </div>

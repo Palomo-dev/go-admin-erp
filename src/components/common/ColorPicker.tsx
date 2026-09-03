@@ -62,24 +62,24 @@ export default function ColorPicker({
         </div>
 
         {/* Color personalizado */}
-        <div className="flex items-center gap-3">
-          <Label htmlFor="customColor" className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <Label htmlFor="customColor" className="text-sm text-gray-600 dark:text-gray-400 sm:whitespace-nowrap">
             Color personalizado:
           </Label>
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <input
               id="customColor"
               type="color"
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              className="w-16 h-10 rounded border border-gray-300 dark:border-gray-700 cursor-pointer"
+              className="w-12 h-9 sm:w-16 sm:h-10 rounded border border-gray-300 dark:border-gray-700 cursor-pointer flex-shrink-0"
             />
             <input
               type="text"
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder="#000000"
-              className="flex-1 h-10 px-3 rounded-md border border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-sm"
+              className="flex-1 min-w-0 h-9 sm:h-10 px-3 rounded-md border border-gray-300 dark:border-gray-700 dark:bg-gray-800 text-sm"
             />
           </div>
         </div>

@@ -43,12 +43,12 @@ export default function CategoryInfoCard({ category, parent }: CategoryInfoCardP
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Categoría Padre</p>
             {parent ? (
               <Link
                 href={`/app/inventario/categorias/${parent.uuid}`}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-words"
               >
                 {parent.name}
               </Link>
@@ -56,49 +56,53 @@ export default function CategoryInfoCard({ category, parent }: CategoryInfoCardP
               <p className="text-sm text-gray-700 dark:text-gray-300">Raíz (sin padre)</p>
             )}
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Orden</p>
             <p className="text-sm text-gray-700 dark:text-gray-300">{category.display_order}</p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Rank</p>
             <p className="text-sm text-gray-700 dark:text-gray-300">{category.rank}</p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Estación</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300">
+            <p className="text-sm text-gray-700 dark:text-gray-300 break-words">
               {category.station ? STATION_LABELS[category.station as PrinterStation] : 'Sin estación asignada'}
             </p>
           </div>
-          <div>
+          <div className="min-w-0 col-span-2 sm:col-span-1">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Preparación</p>
             {category.requires_preparation ? (
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium">
-                <ChefHat className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium break-words">
+                <ChefHat className="h-3.5 w-3.5 flex-shrink-0" />
                 Requiere preparación
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-medium">
-                <Utensils className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-medium break-words">
+                <Utensils className="h-3.5 w-3.5 flex-shrink-0" />
                 Sin preparación
               </span>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <div className="min-w-0">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Creada</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300">{formatDate(category.created_at)}</p>
+              <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-words">
+                {formatDate(category.created_at)}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <div>
+          <div className="flex items-center gap-2 min-w-0">
+            <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <div className="min-w-0">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Actualizada</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300">{formatDate(category.updated_at)}</p>
+              <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-words">
+                {formatDate(category.updated_at)}
+              </p>
             </div>
           </div>
         </div>

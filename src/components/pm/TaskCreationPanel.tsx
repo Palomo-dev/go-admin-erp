@@ -724,7 +724,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         </div>
 
         {/* Tipo + Prioridad */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Tipo de tarea</Label>
             <Select value={form.type || 'none'} onValueChange={(v) => setForm(f => ({ ...f, type: v === 'none' ? '' : v }))}>
@@ -751,7 +751,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         </div>
 
         {/* Proyecto + Cliente */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Proyecto</Label>
             <Select value={form.project_id || 'none'} onValueChange={(v) => setForm(f => ({ ...f, project_id: v === 'none' ? '' : v }))}>
@@ -779,7 +779,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         </div>
 
         {/* Relacionado con (espacio/habitación) - solo mostrar espacio/reserva si PMS activo */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Relacionado con</Label>
             <Select value={form.related_to_type || 'none'} onValueChange={(v) => setForm(f => ({ ...f, related_to_type: v === 'none' ? '' : v, related_to_id: '' }))}>
@@ -858,7 +858,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         </div>
 
         {/* Fecha + Horas */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" />Fecha límite</Label>
             <Input
@@ -898,7 +898,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         )}
 
         {/* Responsable + Estado (edición) */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Responsable</Label>
             <Select value={form.assigned_to || 'none'} onValueChange={(v) => setForm(f => ({ ...f, assigned_to: v === 'none' ? '' : v }))}>
@@ -1023,7 +1023,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
                   </div>
                   {expandedSubtasks.has(st.id) && (
                     <div className="px-3 pb-3 pt-1 space-y-2 border-t border-gray-100 dark:border-gray-700">
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <Label className="text-[11px] text-gray-500 flex items-center gap-1"><CalendarIcon className="h-3 w-3" />Fecha límite</Label>
                           <Input

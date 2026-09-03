@@ -297,7 +297,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         </div>
 
         {/* Estado + Prioridad */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Estado</Label>
             <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v }))}>
@@ -328,7 +328,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         </div>
 
         {/* Fechas */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" />Fecha inicio</Label>
             <Input
@@ -350,7 +350,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         </div>
 
         {/* Presupuesto + Responsable */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" />Presupuesto</Label>
             <Input
@@ -377,7 +377,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         </div>
 
         {/* Clave + Categoría */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><Hash className="h-3.5 w-3.5" />Clave</Label>
             <Input
@@ -399,7 +399,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         </div>
 
         {/* Salud + Progreso */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><Activity className="h-3.5 w-3.5" />Salud</Label>
             <Select value={form.health} onValueChange={(v) => setForm(f => ({ ...f, health: v }))}>

@@ -28,6 +28,7 @@ import {
   CategoryVisualCard,
   CategoryStatsCard,
   CategoryProductsCard,
+  CategoryRulesCard,
 } from '@/components/inventario/categorias';
 
 interface PageProps {
@@ -135,7 +136,7 @@ export default function CategoriaDetallePage({ params }: PageProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <CategoryDetailHeader
         category={category}
         onToggleActive={handleToggleActive}
@@ -143,7 +144,7 @@ export default function CategoriaDetallePage({ params }: PageProps) {
         onDelete={() => setDeleteOpen(true)}
       />
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Columna principal */}
           <div className="lg:col-span-2 space-y-6">
@@ -152,6 +153,13 @@ export default function CategoriaDetallePage({ params }: PageProps) {
             <CategoryChildrenCard subcategories={children} />
             {category && organization?.id && (
               <CategoryProductsCard categoryId={category.id} organizationId={organization.id} />
+            )}
+            {category && organization?.id && (
+              <CategoryRulesCard
+                categoryId={category.id}
+                organizationId={organization.id}
+                onProductsAssigned={() => loadData()}
+              />
             )}
           </div>
 

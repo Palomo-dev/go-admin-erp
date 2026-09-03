@@ -1,16 +1,29 @@
-fix(responsive): restaurar texto en headers de categorías + arreglar overflow real de date inputs en drawers PM
+feat(inventario): reglas de auto-asignación de productos a categorías + multi-categoría N:M + fixes UI
 
-Headers de categorías (CategoriesPageHeader, CategoryDetailHeader):
-- Restaurar TODO el texto de los botones en móvil (no ocultar labels)
-- Mantener grid 2 columnas en móvil con texto completo + icono
-- "Nueva Categoría" y "Eliminar" ocupan 2 columnas en móvil
+## Reglas de auto-asignación (category_rules)
+- Nueva tabla category_rules en Supabase con RLS (campo, operador, valor, AND/OR)
+- Servicio categoryRulesService.ts: CRUD, evaluación con AND/OR, asignación
+- API route /api/categorias/reglas (save, evaluate, apply)
+- CategoryRulesCard: constructor visual de reglas con vista previa y asignación
+- Integrado en página de detalle de categoría
 
-Drawers PM (ProjectCreationPanel, GoalCreationPanel, TaskCreationPanel):
-- Añadir overflow-x-hidden al SheetContent y body para prevenir scroll horizontal
-- Añadir min-w-0 y overflow-x-hidden al contenedor raíz flex flex-col
-- Añadir [&>*]:min-w-0 a los grids de fechas para que los input[type=date]
-  puedan contraerse dentro de su celda grid en móvil
-- Añadir w-full explícito a los inputs de fecha
+## Multi-categoría N:M (product_category_relations)
+- Nueva tabla product_category_relations con assigned_by_rule
+- Un producto puede pertenecer a múltiples categorías
+- category_id se mantiene como categoría principal
+- Las reglas asignan relaciones adicionales sin sobrescribir la principal
+- Asignaciones manuales y por regla coexisten sin conflictos
+
+## Ajustes en formularios de producto
+- NuevoProductoForm + InformacionBasica: multi-select de categorías adicionales
+- DetallesTab: cargar, mostrar y sincronizar categorías adicionales
+- FormularioEdicionProducto: cargar y sincronizar relaciones N:M al guardar
+
+## Fixes UI
+- Recetas: cambiar colores naranja a azul
+- Headers de categorías: quitar sticky (scroll natural, no doble scroll)
+- CategoryRulesCard: fix tipo implícito any en .map()
+- categoryRulesService: fix tipo en filter de intersección
 
 Generated with [Devin](https://devin.ai)
 

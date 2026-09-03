@@ -113,7 +113,7 @@ export default function CategoriasPage() {
   }, [searchTerm]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <CategoriesPageHeader
         isRefreshing={isRefreshing}
         onRefresh={() => loadData(true)}
@@ -123,7 +123,7 @@ export default function CategoriasPage() {
         onImport={() => setImportOpen(true)}
       />
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         {isLoading ? (
           <CategoriesLoadingSkeleton />
         ) : (

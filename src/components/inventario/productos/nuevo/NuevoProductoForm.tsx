@@ -76,6 +76,9 @@ interface ProductFormData {
   notes: string
   tags: number[]
 
+  // Categorías adicionales (multi-categoría N:M)
+  category_ids: number[]
+
   // Trazabilidad de seriales
   track_serial: boolean
   serial_pattern: string | null
@@ -121,6 +124,7 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
     variants: [],
     notes: '',
     tags: [],
+    category_ids: [],
     track_serial: false,
     serial_pattern: null,
     auto_generate_serial: false,
@@ -424,6 +428,26 @@ export default function NuevoProductoForm({ onSuccess, onCancel, embedded = fals
           .insert(tagRelations)
         
         if (tagsError) throw tagsError
+      }
+
+      // 10b. Guardar categorías adicionales (multi-categoría N:M)
+      if (formData.category_ids.length > 0) {
+        const categoryRelations = formData.category_ids
+          .filter(catId => catId !== formData.category_id) // no duplicar la categoría principal
+          .map(catId => ({
+            product_id: product.id,
+            category_id: catId,
+            organization_id: organization.id,
+            assigned_by_rule: false,
+          }))
+
+        if (categoryRelations.length > 0) {
+          const { error: catRelError } = await supabase
+            .from('product_category_relations')
+            .insert(categoryRelations)
+
+          if (catRelError) throw catRelError
+        }
       }
 
       // 11. Crear variantes si existen

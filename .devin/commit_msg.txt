@@ -1,29 +1,11 @@
-feat(inventario): reglas de auto-asignación de productos a categorías + multi-categoría N:M + fixes UI
+feat(categorias): autocompletado en reglas + consultas directas Supabase
 
-## Reglas de auto-asignación (category_rules)
-- Nueva tabla category_rules en Supabase con RLS (campo, operador, valor, AND/OR)
-- Servicio categoryRulesService.ts: CRUD, evaluación con AND/OR, asignación
-- API route /api/categorias/reglas (save, evaluate, apply)
-- CategoryRulesCard: constructor visual de reglas con vista previa y asignación
-- Integrado en página de detalle de categoría
-
-## Multi-categoría N:M (product_category_relations)
-- Nueva tabla product_category_relations con assigned_by_rule
-- Un producto puede pertenecer a múltiples categorías
-- category_id se mantiene como categoría principal
-- Las reglas asignan relaciones adicionales sin sobrescribir la principal
-- Asignaciones manuales y por regla coexisten sin conflictos
-
-## Ajustes en formularios de producto
-- NuevoProductoForm + InformacionBasica: multi-select de categorías adicionales
-- DetallesTab: cargar, mostrar y sincronizar categorías adicionales
-- FormularioEdicionProducto: cargar y sincronizar relaciones N:M al guardar
-
-## Fixes UI
-- Recetas: cambiar colores naranja a azul
-- Headers de categorías: quitar sticky (scroll natural, no doble scroll)
-- CategoryRulesCard: fix tipo implícito any en .map()
-- categoryRulesService: fix tipo en filter de intersección
+- CategoryRulesCard: reemplazar fetch al API route por consultas directas
+  a Supabase (carga inmediata, sin latencia serverless)
+- Autocompletado con datalist nativo para campos de texto (marca, referencia,
+  estacion): sugiere valores existentes mientras escribes pero permite
+  escribir libremente cualquier valor
+- Carga de sugerencias en paralelo con reglas, proveedores y etiquetas
 
 Generated with [Devin](https://devin.ai)
 

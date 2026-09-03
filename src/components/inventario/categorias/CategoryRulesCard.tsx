@@ -37,6 +37,7 @@ import {
   OPERATOR_LABELS,
   OPERATORS_BY_TYPE,
 } from '@/lib/services/categoryRulesService';
+import { supabase } from '@/lib/supabase/config';
 
 interface CategoryRulesCardProps {
   categoryId: number;
@@ -66,6 +67,7 @@ export default function CategoryRulesCard({
   const [suppliers, setSuppliers] = useState<SelectOption[]>([]);
   const [tags, setTags] = useState<SelectOption[]>([]);
   const [dirty, setDirty] = useState(false);
+  const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
 
   // Cargar reglas existentes y opciones
   useEffect(() => {
@@ -75,26 +77,83 @@ export default function CategoryRulesCard({
   const loadRules = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/categorias/reglas?categoryId=${categoryId}&organizationId=${organizationId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setExistingRules(data.rules || []);
-        setRules((data.rules || []).map((r: CategoryRule) => ({
-          field: r.field,
-          operator: r.operator,
-          value: r.value,
-          value_array: r.value_array || [],
-          logic_combiner: r.logic_combiner,
-          display_order: r.display_order,
-          is_active: r.is_active,
-        })));
-        setSuppliers(data.suppliers || []);
-        setTags(data.tags || []);
-      }
+      // Cargar reglas, proveedores y etiquetas en paralelo directo a Supabase
+      const [rulesRes, suppliersRes, tagsRes] = await Promise.all([
+        supabase
+          .from('category_rules')
+          .select('*')
+          .eq('category_id', categoryId)
+          .order('display_order', { ascending: true }),
+        supabase
+          .from('suppliers')
+          .select('id, name')
+          .eq('organization_id', organizationId)
+          .order('name'),
+        supabase
+          .from('product_tags')
+          .select('id, name')
+          .eq('organization_id', organizationId)
+          .order('name'),
+      ]);
+
+      const rulesData = (rulesRes.data || []) as CategoryRule[];
+      setExistingRules(rulesData);
+      setRules(rulesData.map((r: CategoryRule) => ({
+        field: r.field,
+        operator: r.operator,
+        value: r.value,
+        value_array: r.value_array || [],
+        logic_combiner: r.logic_combiner,
+        display_order: r.display_order,
+        is_active: r.is_active,
+      })));
+      setSuppliers(suppliersRes.data || []);
+      setTags(tagsRes.data || []);
+
+      // Cargar sugerencias para campos de texto (marcas, referencias, estaciones)
+      loadSuggestions();
     } catch (err) {
       console.error('Error cargando reglas:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSuggestions = async () => {
+    try {
+      // Cargar marcas, referencias y estaciones distintas de los productos de la org
+      const [brandsRes, refsRes, stationsRes] = await Promise.all([
+        supabase
+          .from('products')
+          .select('brand')
+          .eq('organization_id', organizationId)
+          .not('brand', 'is', null)
+          .neq('brand', ''),
+        supabase
+          .from('products')
+          .select('reference')
+          .eq('organization_id', organizationId)
+          .not('reference', 'is', null)
+          .neq('reference', ''),
+        supabase
+          .from('products')
+          .select('station')
+          .eq('organization_id', organizationId)
+          .not('station', 'is', null)
+          .neq('station', ''),
+      ]);
+
+      const uniqueBrands = [...new Set((brandsRes.data || []).map((r: { brand: string }) => r.brand))].sort();
+      const uniqueRefs = [...new Set((refsRes.data || []).map((r: { reference: string }) => r.reference))].sort();
+      const uniqueStations = [...new Set((stationsRes.data || []).map((r: { station: string }) => r.station))].sort();
+
+      setSuggestions({
+        brand: uniqueBrands,
+        reference: uniqueRefs,
+        station: uniqueStations,
+      });
+    } catch (err) {
+      console.error('Error cargando sugerencias:', err);
     }
   };
 
@@ -140,21 +199,27 @@ export default function CategoryRulesCard({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/categorias/reglas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save',
-          categoryId,
-          organizationId,
-          rules,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setExistingRules(data.rules || []);
-        setDirty(false);
+      // Eliminar reglas existentes
+      await supabase.from('category_rules').delete().eq('category_id', categoryId);
+
+      if (rules.length > 0) {
+        const rows = rules.map((r, i) => ({
+          category_id: categoryId,
+          organization_id: organizationId,
+          field: r.field,
+          operator: r.operator,
+          value: r.value,
+          value_array: r.value_array || [],
+          logic_combiner: i === 0 ? 'AND' : r.logic_combiner,
+          display_order: i,
+          is_active: r.is_active ?? true,
+        }));
+        const { data } = await supabase.from('category_rules').insert(rows).select('*');
+        setExistingRules((data || []) as CategoryRule[]);
+      } else {
+        setExistingRules([]);
       }
+      setDirty(false);
     } catch (err) {
       console.error('Error guardando reglas:', err);
     } finally {
@@ -166,21 +231,26 @@ export default function CategoryRulesCard({
     setEvaluating(true);
     setShowPreview(true);
     try {
-      const res = await fetch('/api/categorias/reglas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'evaluate',
-          categoryId,
-          organizationId,
-          rules,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPreviewProducts(data.products || []);
-        setPreviewCount(data.count || 0);
-      }
+      // Construir reglas temporales para evaluación
+      const tempRules = rules.map((r, i) => ({
+        id: 0,
+        category_id: categoryId,
+        organization_id: organizationId,
+        field: r.field,
+        operator: r.operator,
+        value: r.value,
+        value_array: r.value_array || [],
+        logic_combiner: (i === 0 ? 'AND' : r.logic_combiner) as LogicCombiner,
+        display_order: i,
+        is_active: true,
+        created_at: '',
+        updated_at: '',
+      })) as CategoryRule[];
+
+      const { evaluateRules } = await import('@/lib/services/categoryRulesService');
+      const products = await evaluateRules(organizationId, tempRules);
+      setPreviewProducts(products);
+      setPreviewCount(products.length);
     } catch (err) {
       console.error('Error evaluando reglas:', err);
     } finally {
@@ -193,19 +263,17 @@ export default function CategoryRulesCard({
     try {
       // Primero guardar las reglas
       await handleSave();
-      // Luego aplicar
-      const res = await fetch('/api/categorias/reglas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'apply',
-          categoryId,
-          organizationId,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        onProductsAssigned?.(data.assigned);
+      // Luego aplicar usando el servicio directo
+      const { applyRules } = await import('@/lib/services/categoryRulesService');
+      const savedRules = await supabase
+        .from('category_rules')
+        .select('*')
+        .eq('category_id', categoryId)
+        .order('display_order', { ascending: true });
+
+      if (savedRules.data && savedRules.data.length > 0) {
+        const result = await applyRules(categoryId, organizationId, savedRules.data as CategoryRule[]);
+        onProductsAssigned?.(result.assigned);
       }
     } catch (err) {
       console.error('Error aplicando reglas:', err);
@@ -354,13 +422,23 @@ export default function CategoryRulesCard({
                           </SelectContent>
                         </Select>
                       ) : (
-                        <Input
-                          type={fieldType === 'number' ? 'number' : 'text'}
-                          value={rule.value || ''}
-                          onChange={(e) => updateRule(index, { value: e.target.value })}
-                          placeholder={fieldType === 'number' ? '0' : 'Valor...'}
-                          className="h-8 text-xs"
-                        />
+                        <>
+                          <Input
+                            type={fieldType === 'number' ? 'number' : 'text'}
+                            value={rule.value || ''}
+                            onChange={(e) => updateRule(index, { value: e.target.value })}
+                            placeholder={fieldType === 'number' ? '0' : 'Escribir o seleccionar...'}
+                            className="h-8 text-xs"
+                            list={`suggestions-${rule.field}-${index}`}
+                          />
+                          {suggestions[rule.field] && suggestions[rule.field].length > 0 && (
+                            <datalist id={`suggestions-${rule.field}-${index}`}>
+                              {suggestions[rule.field].slice(0, 50).map((s, i) => (
+                                <option key={i} value={s} />
+                              ))}
+                            </datalist>
+                          )}
+                        </>
                       )}
                     </div>
 

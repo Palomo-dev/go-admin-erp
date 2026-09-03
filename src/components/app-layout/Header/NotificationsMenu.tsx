@@ -73,6 +73,11 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
   
   // Hook para recordatorios de tareas
   const { taskReminders, loading: taskRemindersLoading } = useTaskReminders(organizationId);
+
+  // Ref para mantener la versión más reciente de fetchNotifications accesible
+  // desde el callback de Realtime sin que el useEffect de suscripción dependa
+  // de isPmActive (lo que cancelaría la suscripción en cada cambio de módulo).
+  const fetchNotificationsRef = useRef<(silent?: boolean) => Promise<void>>(async () => {});
   
   useEffect(() => {
     // Obtener el usuario actual
@@ -88,10 +93,13 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
 
   // Cargar notificaciones
   useEffect(() => {
-    const fetchNotifications = async () => {
+    // `silent` evita el flash de "Cargando..." cuando el refetch lo dispara
+    // Realtime (insert de notificación nueva). Solo la carga inicial muestra
+    // el spinner; los refetchs en vivo actualizan la lista en su lugar.
+    const fetchNotifications = async (silent = false) => {
       if (!organizationId || !userId) return;
-      
-      setLoading(true);
+
+      if (!silent) setLoading(true);
       try {
         // Si el módulo PM no está activo, excluir notificaciones de tareas en la
         // query (no en el cliente) para que el limit aplique solo sobre las que
@@ -200,28 +208,54 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
       }
     };
 
+    // Mantener el ref actualizado para que el callback de Realtime use siempre
+    // la versión más reciente de fetchNotifications (con los filtros de PM correctos).
+    fetchNotificationsRef.current = fetchNotifications;
+
     if (organizationId && userId) {
       fetchNotifications();
-
-      // Suscripción a cambios en notificaciones de la organización
-      const notificationsSubscription = supabase
-        .channel('notifications-changes')
-        .on('postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notifications',
-            filter: `organization_id=eq.${organizationId}`
-          },
-          () => fetchNotifications()
-        )
-        .subscribe();
-
-      return () => {
-        notificationsSubscription.unsubscribe();
-      };
     }
   }, [organizationId, userId, isPmActive]);  // Incluimos isPmActive para recalcular conteos si cambia el módulo PM
+
+  // ── Suscripción a Realtime (separada del useEffect de carga) ──
+  // Si se deja dentro del useEffect anterior, cualquier cambio en
+  // `isPmActive` desuscribe y vuelve a suscribir antes de que la conexión
+  // WebSocket se estabilice, haciendo que las notificaciones en vivo nunca
+  // lleguen al cliente. Separándola, la suscripción solo se recrea si cambian
+  // `organizationId` o `userId` (eventos que sí requieren una nueva suscripción).
+  useEffect(() => {
+    if (!organizationId || !userId) return;
+
+    let isActive = true;
+
+    const channel = supabase
+      .channel('notifications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        () => {
+          if (!isActive) return;
+          // Refetch silencioso: actualiza la lista sin flash de "Cargando..."
+          fetchNotificationsRef.current(true);
+        }
+      )
+      .subscribe((status) => {
+        if (!isActive) return;
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[NotificationsMenu] Realtime error:', status);
+        }
+      });
+
+    return () => {
+      isActive = false;
+      supabase.removeChannel(channel);
+    };
+  }, [organizationId, userId]);
 
   // Cerrar el menú cuando se hace clic fuera
   useEffect(() => {

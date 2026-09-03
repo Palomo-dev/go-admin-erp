@@ -37,10 +37,12 @@ export default function CategoryChildrenCard({ subcategories }: CategoryChildren
                 className="w-3 h-3 rounded-full flex-shrink-0"
                 style={{ backgroundColor: child.color || '#3B82F6' }}
               />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{child.name}</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white truncate min-w-0">
+                {child.name}
+              </span>
               <Badge
                 variant={child.is_active ? 'secondary' : 'outline'}
-                className="text-xs ml-auto"
+                className="text-xs ml-auto flex-shrink-0"
               >
                 {child.is_active ? 'Activa' : 'Inactiva'}
               </Badge>

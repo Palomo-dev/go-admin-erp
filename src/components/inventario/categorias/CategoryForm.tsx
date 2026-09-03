@@ -479,19 +479,19 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
           </Card>
 
           {/* Botones */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.back()}
-              className="border-gray-300 dark:border-gray-700"
+              className="border-gray-300 dark:border-gray-700 w-full sm:w-auto"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
             >
               {saving ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Guardando...</>

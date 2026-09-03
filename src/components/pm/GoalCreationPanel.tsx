@@ -356,7 +356,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
         </div>
 
         {/* Tipo + Estado */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Tipo</Label>
             <Select value={form.type} onValueChange={(v) => setForm(f => ({ ...f, type: v }))}>
@@ -385,7 +385,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
         </div>
 
         {/* Fecha + Responsable */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" />Fecha objetivo</Label>
             <Input
@@ -409,7 +409,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
         </div>
 
         {/* Fecha inicio + Complejidad + Prioridad */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" />Inicio</Label>
             <Input

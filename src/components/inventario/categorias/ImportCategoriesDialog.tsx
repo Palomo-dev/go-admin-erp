@@ -283,7 +283,7 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
                 <span className="text-gray-500 dark:text-gray-400">{rows.length} total</span>
               </div>
 
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden max-h-64 overflow-y-auto overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
                     <tr>

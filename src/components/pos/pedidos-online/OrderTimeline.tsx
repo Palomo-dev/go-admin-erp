@@ -116,7 +116,7 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
     if (isCancelled) {
       baseSteps.push({
         key: 'cancelled',
-        label: order.status === 'rejected' ? 'Rechazado' : order.status === 'expired' ? 'Expirado' : 'Cancelado',
+        label: order.status === 'rejected' ? 'Rechazado' : 'Cancelado',
         icon: <XCircle className="h-4 w-4" />,
         timestamp: order.cancelled_at,
         isCompleted: true,

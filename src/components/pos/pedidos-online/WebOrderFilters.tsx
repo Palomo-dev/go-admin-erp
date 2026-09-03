@@ -56,6 +56,7 @@ const STATUS_OPTIONS: { value: WebOrderStatus; label: string; icon: React.ReactN
   { value: 'in_delivery', label: 'En camino', icon: <Truck className="h-4 w-4 text-purple-500 dark:text-purple-400" /> },
   { value: 'delivered', label: 'Entregados', icon: <CheckCircle className="h-4 w-4 text-emerald-500 dark:text-emerald-400" /> },
   { value: 'cancelled', label: 'Cancelados', icon: <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" /> },
+  { value: 'expired', label: 'Expirados', icon: <Clock className="h-4 w-4 text-gray-400 dark:text-gray-500" /> },
 ];
 
 const PAYMENT_STATUS_OPTIONS: { value: PaymentStatus; label: string; icon: React.ReactNode }[] = [

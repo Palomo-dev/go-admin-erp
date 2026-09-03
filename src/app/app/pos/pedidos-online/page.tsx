@@ -536,6 +536,7 @@ export default function PedidosOnlinePage() {
       delivered: 'Entregado',
       cancelled: 'Cancelado',
       rejected: 'Rechazado',
+      expired: 'Expirado',
     };
     return labels[status];
   };
@@ -550,6 +551,7 @@ export default function PedidosOnlinePage() {
       delivered: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
       cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       rejected: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+      expired: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
     };
     return colors[status];
   };

@@ -87,7 +87,9 @@ export async function POST(request: NextRequest) {
       external_event_id: transactionId,
       payload: event as unknown as Record<string, unknown>,
       status: 'received',
-      event_time: event.sent_at || new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at) en integration_events,
+      // no se puede insertar manualmente. El timestamp del evento se guarda en
+      // payload si se necesita el original.
     });
 
     // Procesar según tipo de evento

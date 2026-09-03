@@ -303,9 +303,9 @@ export async function POST(
       .from('web_orders')
       .update({
         payment_status: 'refunded',
-        status: 'refunded',
+        status: 'cancelled',
         cancelled_at: now,
-        cancellation_reason: reason,
+        cancellation_reason: `Reembolso: ${reason}`,
         updated_at: now,
       })
       .eq('id', order.id);

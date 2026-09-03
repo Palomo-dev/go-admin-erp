@@ -238,7 +238,8 @@ export async function logWebhookEvent(
       event_type: event,
       payload,
       status: statusMap[status] ?? 'received',
-      event_time: new Date().toISOString(),
+      // event_time es GENERATED ALWAYS AS (created_at) en integration_events,
+      // no se puede insertar manualmente.
       error_message: status === 'failed' || status === 'invalid'
         ? `Webhook marcado como ${status}`
         : null,

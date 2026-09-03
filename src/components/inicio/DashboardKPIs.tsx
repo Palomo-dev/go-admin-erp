@@ -955,7 +955,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
           </div>
         );
 
-        const spanClass = kpi.span2 ? 'sm:col-span-2' : '';
+        const spanClass = kpi.span2 ? 'col-span-2 sm:col-span-2' : '';
 
         if (kpi.href) {
           return (

@@ -120,6 +120,12 @@ export function VentasTable({
             Reembolsado
           </Badge>
         );
+      case 'failed':
+        return (
+          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">
+            Fallido
+          </Badge>
+        );
       default:
         return (
           <Badge variant="outline">{status || 'N/A'}</Badge>

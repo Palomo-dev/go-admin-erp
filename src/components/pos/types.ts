@@ -134,7 +134,7 @@ export interface Sale {
   tax_total: number;
   discount_total: number;
   balance: number;
-  status: 'pending' | 'completed' | 'cancelled';
+  status: 'pending' | 'completed' | 'cancelled' | 'expired';
   payment_status: 'pending' | 'paid' | 'partial' | 'refunded';
   sale_date: string;
   invoice_number?: string;

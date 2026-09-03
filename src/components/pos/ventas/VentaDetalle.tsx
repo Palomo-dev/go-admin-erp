@@ -132,7 +132,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
       const { enqueued } = await PrintJobsService.enqueueSaleTicket(sale.branch_id, {
         saleId: sale.id,
         saleNumber: sale.sale_number,
-        customerName: sale.customer?.name,
+        customerName: sale.customer?.full_name,
         createdAt: sale.created_at,
         total: sale.total,
         items: (sale.items || []).map((item: any) => ({

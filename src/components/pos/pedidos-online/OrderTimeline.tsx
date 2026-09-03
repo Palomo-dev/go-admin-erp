@@ -46,7 +46,7 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
     });
   };
 
-  const isCancelled = ['cancelled', 'rejected'].includes(order.status);
+  const isCancelled = ['cancelled', 'rejected', 'expired'].includes(order.status);
   const isPickup = order.delivery_type === 'pickup';
 
   const getSteps = (): TimelineStep[] => {
@@ -116,7 +116,7 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
     if (isCancelled) {
       baseSteps.push({
         key: 'cancelled',
-        label: order.status === 'rejected' ? 'Rechazado' : 'Cancelado',
+        label: order.status === 'rejected' ? 'Rechazado' : order.status === 'expired' ? 'Expirado' : 'Cancelado',
         icon: <XCircle className="h-4 w-4" />,
         timestamp: order.cancelled_at,
         isCompleted: true,

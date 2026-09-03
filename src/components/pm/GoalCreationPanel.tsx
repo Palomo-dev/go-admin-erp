@@ -304,7 +304,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
   };
 
   const renderContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
         <div className="flex items-center gap-2.5">
@@ -322,7 +322,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 min-h-0">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 space-y-5 min-h-0">
         {/* Título */}
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">Título *</Label>
@@ -385,14 +385,14 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
         </div>
 
         {/* Fecha + Responsable */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" />Fecha objetivo</Label>
             <Input
               type="date"
               value={form.target_date}
               onChange={(e) => setForm(f => ({ ...f, target_date: e.target.value }))}
-              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-full"
             />
           </div>
           <div className="space-y-1.5">
@@ -409,14 +409,14 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
         </div>
 
         {/* Fecha inicio + Complejidad + Prioridad */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" />Inicio</Label>
             <Input
               type="date"
               value={form.start_date}
               onChange={(e) => setForm(f => ({ ...f, start_date: e.target.value }))}
-              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-full"
             />
           </div>
           <div className="space-y-1.5">
@@ -603,7 +603,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); onClose(); } }}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl lg:max-w-3xl p-0 border-0 bg-white dark:bg-gray-900 [&>button:last-child]:hidden"
+        className="w-full sm:max-w-2xl lg:max-w-3xl p-0 border-0 bg-white dark:bg-gray-900 overflow-x-hidden [&>button:last-child]:hidden"
       >
         <VisuallyHidden.Root>
           <SheetTitle>{isEdit ? 'Editar Meta' : 'Nueva Meta'}</SheetTitle>

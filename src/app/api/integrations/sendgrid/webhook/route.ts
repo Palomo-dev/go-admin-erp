@@ -85,9 +85,9 @@ export async function POST(request: NextRequest) {
         external_event_id: event.sg_event_id || event.sg_message_id || null,
         payload: event as unknown as Record<string, unknown>,
         status: 'received',
-        event_time: event.timestamp
-          ? new Date(event.timestamp * 1000).toISOString()
-          : new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at) en integration_events,
+        // no se puede insertar manualmente. El timestamp original de SendGrid
+        // se conserva dentro de payload.event.timestamp.
       });
 
       // Procesar eventos específicos

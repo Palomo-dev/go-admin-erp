@@ -63,6 +63,7 @@ const productoSchema = z.object({
   images: z.array(z.any()).optional(),
   notes: z.string().optional(),
   tags: z.array(z.number()).optional(),
+  category_ids: z.array(z.number()).optional(),
   has_variants: z.boolean().optional(),
   variants: z.array(z.any()).optional(),
 
@@ -124,6 +125,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
       compare_price: 0,
       notes: '',
       tags: [],
+      category_ids: [],
       has_variants: false,
       variants: [],
       track_serial: false,
@@ -255,6 +257,14 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         
         const tagIds = tagsData?.map((t: any) => t.tag_id) || [];
 
+        // 7b. Cargar categorías adicionales (N:M)
+        const { data: catRelData } = await supabase
+          .from('product_category_relations')
+          .select('category_id')
+          .eq('product_id', producto.id);
+
+        const additionalCatIds = (catRelData || []).map((r: any) => r.category_id);
+
         // 8. Cargar proveedor principal del producto
         const { data: supplierData } = await supabase
           .from('product_suppliers')
@@ -358,6 +368,7 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           images,
           notes: notesData?.note || '',
           tags: tagIds,
+          category_ids: additionalCatIds,
           has_variants: hasVariants,
           variants: existingVariants,
           track_serial: producto.track_serial || false,
@@ -903,7 +914,37 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
           .update({ is_parent: false })
           .eq('id', productoId);
       }
-      
+
+      // Sincronizar categorías adicionales (N:M)
+      const desiredCatIds = (data.category_ids || []).filter(id => id !== data.category_id);
+      const { data: currentCatRels } = await supabase
+        .from('product_category_relations')
+        .select('category_id, assigned_by_rule')
+        .eq('product_id', productoId);
+
+      const currentManualCats = (currentCatRels || []).filter((r: any) => !r.assigned_by_rule).map((r: any) => r.category_id);
+      const catsToRemove = currentManualCats.filter((id: number) => !desiredCatIds.includes(id));
+      const catsToAdd = desiredCatIds.filter((id: number) => !currentManualCats.includes(id));
+
+      if (catsToRemove.length > 0) {
+        await supabase
+          .from('product_category_relations')
+          .delete()
+          .eq('product_id', productoId)
+          .in('category_id', catsToRemove)
+          .eq('assigned_by_rule', false);
+      }
+      if (catsToAdd.length > 0) {
+        await supabase
+          .from('product_category_relations')
+          .insert(catsToAdd.map((catId: number) => ({
+            product_id: productoId,
+            category_id: catId,
+            organization_id,
+            assigned_by_rule: false,
+          })));
+      }
+
       // Mostrar mensaje de éxito
       loadingToast.dismiss();
       toastSuccess("Éxito", "Producto actualizado correctamente");

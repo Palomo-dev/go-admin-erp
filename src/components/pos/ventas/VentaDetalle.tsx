@@ -202,10 +202,15 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
         text: 'text-yellow-700 dark:text-yellow-400',
         icon: <Clock className="h-4 w-4" />
       },
-      cancelled: { 
-        bg: 'bg-red-100 dark:bg-red-900/30', 
+      cancelled: {
+        bg: 'bg-red-100 dark:bg-red-900/30',
         text: 'text-red-700 dark:text-red-400',
         icon: <XCircle className="h-4 w-4" />
+      },
+      expired: {
+        bg: 'bg-gray-100 dark:bg-gray-800/30',
+        text: 'text-gray-600 dark:text-gray-400',
+        icon: <Clock className="h-4 w-4" />
       }
     };
 
@@ -215,6 +220,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
       status === 'completed' || status === 'paid' ? 'Completada'
       : status === 'pending' ? 'Pendiente'
       : status === 'cancelled' ? 'Anulada'
+      : status === 'expired' ? 'Expirada'
       : status;
 
     return (

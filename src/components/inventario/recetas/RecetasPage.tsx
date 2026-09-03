@@ -175,8 +175,8 @@ export function RecetasPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-xl">
-                <ChefHat className="h-6 w-6 text-orange-600" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               Recetas de Producción
             </h1>
@@ -197,7 +197,7 @@ export function RecetasPage() {
           </Button>
           <Button
             onClick={handleNuevo}
-            className="bg-orange-600 hover:bg-orange-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nueva Receta
@@ -214,7 +214,7 @@ export function RecetasPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total recetas</p>
                 <p className="text-2xl font-bold dark:text-white">{recetas.length}</p>
               </div>
-              <ChefHat className="h-8 w-8 text-orange-500 opacity-50" />
+              <ChefHat className="h-8 w-8 text-blue-500 opacity-50" />
             </div>
           </CardContent>
         </Card>
@@ -318,8 +318,8 @@ export function RecetasPage() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                          <Package className="h-4 w-4 text-orange-600" />
+                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <span className="font-medium dark:text-white">
                           {recipe.product?.name ?? `Producto #${recipe.product_id}`}
@@ -423,7 +423,7 @@ export function RecetasPage() {
         <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader>
             <DialogTitle className="dark:text-white flex items-center gap-2">
-              <ChefHat className="h-5 w-5 text-orange-600" />
+              <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               Detalle de Receta
             </DialogTitle>
             <DialogDescription className="dark:text-gray-400">

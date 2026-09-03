@@ -1,15 +1,11 @@
-fix(responsive): headers y formularios responsive en móvil para categorías, PM y ColorPicker
+feat(categorias): autocompletado en reglas + consultas directas Supabase
 
-- Categorías: header de lista y detalle con grid 2 columnas en móvil, botones con icono-only en móvil
-- CategoryForm: botones finales apilados en móvil
-- CategoryChildrenCard: nombre con truncate para evitar overflow del badge
-- CategoryInfoCard: fechas e info grid apilados en móvil, break-words
-- ImportCategoriesDialog: overflow-x-auto en tabla de previsualización
-- ColorPicker: sección "Color personalizado" apilada verticalmente en móvil
-- PM (proyectos/metas/tareas): todos los grid-cols-2/3 pasan a grid-cols-1 sm:grid-cols-N
-  para que inputs de fecha no se compriman ni desborden en móvil
-- NotificationsMenu: incluir notificaciones de organización con recipient_user_id=null
-  (ej: pagos Wompi) en vista "Mías" y conteos de no leídas
+- CategoryRulesCard: reemplazar fetch al API route por consultas directas
+  a Supabase (carga inmediata, sin latencia serverless)
+- Autocompletado con datalist nativo para campos de texto (marca, referencia,
+  estacion): sugiere valores existentes mientras escribes pero permite
+  escribir libremente cualquier valor
+- Carga de sugerencias en paralelo con reglas, proveedores y etiquetas
 
 Generated with [Devin](https://devin.ai)
 

@@ -42,6 +42,7 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
   const [categorias, setCategorias] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [proveedores, setProveedores] = useState<any[]>([]);
+  const [additionalCategoryIds, setAdditionalCategoryIds] = useState<number[]>([]);
   
   // Obtener el proveedor preferido desde product_suppliers
   const preferredSupplier = producto.product_suppliers?.find((ps: any) => ps.is_preferred);
@@ -96,6 +97,16 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
           .order('name');
         
         if (proveedoresData) setProveedores(proveedoresData);
+
+        // Cargar categorías adicionales (N:M)
+        const { data: relData } = await supabase
+          .from('product_category_relations')
+          .select('category_id')
+          .eq('product_id', producto.id);
+
+        if (relData) {
+          setAdditionalCategoryIds(relData.map(r => r.category_id));
+        }
         
       } catch (error) {
         console.error('Error al cargar datos complementarios:', error);
@@ -165,6 +176,40 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
         .eq('organization_id', organization?.id);
       
       if (error) throw error;
+
+      // Sincronizar categorías adicionales (N:M)
+      const mainCatId = formData.category_id ? parseInt(formData.category_id) : null;
+      const desiredIds = additionalCategoryIds.filter(id => id !== mainCatId);
+
+      // Eliminar relaciones que ya no están seleccionadas (solo manuales, no las de reglas)
+      const { data: currentRels } = await supabase
+        .from('product_category_relations')
+        .select('category_id, assigned_by_rule')
+        .eq('product_id', producto.id);
+
+      const currentManual = (currentRels || []).filter(r => !r.assigned_by_rule).map(r => r.category_id);
+      const toRemove = currentManual.filter(id => !desiredIds.includes(id));
+      const toAdd = desiredIds.filter(id => !currentManual.includes(id));
+
+      if (toRemove.length > 0) {
+        await supabase
+          .from('product_category_relations')
+          .delete()
+          .eq('product_id', producto.id)
+          .in('category_id', toRemove)
+          .eq('assigned_by_rule', false);
+      }
+
+      if (toAdd.length > 0 && organization?.id) {
+        await supabase
+          .from('product_category_relations')
+          .insert(toAdd.map(catId => ({
+            product_id: producto.id,
+            category_id: catId,
+            organization_id: organization.id,
+            assigned_by_rule: false,
+          })));
+      }
 
       // Propagar track_stock a las variantes hijas
       await supabase
@@ -289,6 +334,42 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
               noneLabel="Sin categoría"
               className="dark:bg-gray-800 dark:border-gray-700"
             />
+          </div>
+
+          {/* Categorías adicionales (multi-categoría N:M) */}
+          <div className="space-y-2 sm:col-span-2">
+            <Label className="text-gray-700 dark:text-gray-300">Categorías adicionales</Label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+              Categorías secundarias asignadas a este producto
+            </p>
+            <div className="flex flex-wrap gap-2 p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 min-h-[42px]">
+              {categorias.map(cat => {
+                const mainCatId = formData.category_id ? parseInt(formData.category_id) : null;
+                if (cat.id === mainCatId) return null;
+                const isSelected = additionalCategoryIds.includes(cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setAdditionalCategoryIds(prev =>
+                        isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                      );
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-blue-400'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
+              {categorias.length <= 1 && (
+                <span className="text-xs text-gray-400 italic">No hay categorías disponibles</span>
+              )}
+            </div>
           </div>
           
           <div className="space-y-2">

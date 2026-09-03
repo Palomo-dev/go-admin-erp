@@ -4,7 +4,7 @@ import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 
-export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected';
+export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected' | 'expired';
 export type DeliveryType = 'pickup' | 'delivery_own' | 'delivery_third_party';
 export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'refunded' | 'failed';
 export type OrderSource = 'website' | 'mobile_app' | 'whatsapp' | 'phone';
@@ -706,7 +706,7 @@ class WebOrdersService {
           stats.pending_orders++;
         } else if (order.status === 'delivered') {
           stats.completed_orders++;
-        } else if (['cancelled', 'rejected'].includes(order.status)) {
+        } else if (['cancelled', 'rejected', 'expired'].includes(order.status)) {
           stats.cancelled_orders++;
         }
 

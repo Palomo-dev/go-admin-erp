@@ -649,7 +649,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
   };
 
   const renderContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
         <div className="flex items-center gap-2.5">
@@ -667,7 +667,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
       </div>
 
       {/* Body - scrollable */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 min-h-0">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 space-y-5 min-h-0">
         {/* Título */}
         <div className="space-y-1.5">
           <Label htmlFor="panel-title" className="text-sm font-medium">Título *</Label>
@@ -858,14 +858,14 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         </div>
 
         {/* Fecha + Horas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0">
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" />Fecha límite</Label>
             <Input
               type="date"
               value={form.due_date}
               onChange={(e) => setForm(f => ({ ...f, due_date: e.target.value }))}
-              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+              className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 w-full"
             />
           </div>
           <div className="space-y-1.5">
@@ -1023,14 +1023,14 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
                   </div>
                   {expandedSubtasks.has(st.id) && (
                     <div className="px-3 pb-3 pt-1 space-y-2 border-t border-gray-100 dark:border-gray-700">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 [&>*]:min-w-0">
                         <div className="space-y-1">
                           <Label className="text-[11px] text-gray-500 flex items-center gap-1"><CalendarIcon className="h-3 w-3" />Fecha límite</Label>
                           <Input
                             type="date"
                             value={st.due_date ? st.due_date.split('T')[0] : ''}
                             onChange={(e) => updateSubtaskField(st.id, { due_date: e.target.value || null })}
-                            className="h-8 text-xs bg-white dark:bg-gray-900"
+                            className="h-8 text-xs bg-white dark:bg-gray-900 w-full"
                           />
                         </div>
                         <div className="space-y-1">
@@ -1215,7 +1215,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); onClose(); } }}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl lg:max-w-3xl p-0 border-0 bg-white dark:bg-gray-900 [&>button:last-child]:hidden"
+        className="w-full sm:max-w-2xl lg:max-w-3xl p-0 border-0 bg-white dark:bg-gray-900 overflow-x-hidden [&>button:last-child]:hidden"
       >
         <VisuallyHidden.Root>
           <SheetTitle>{isEdit ? 'Editar Tarea' : 'Nueva Tarea'}</SheetTitle>

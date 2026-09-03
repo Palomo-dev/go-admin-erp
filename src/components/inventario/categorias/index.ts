@@ -6,6 +6,7 @@ export { default as CategoryChildrenCard } from './CategoryChildrenCard';
 export { default as CategoryVisualCard } from './CategoryVisualCard';
 export { default as CategoryStatsCard } from './CategoryStatsCard';
 export { default as CategoryProductsCard } from './CategoryProductsCard';
+export { default as CategoryRulesCard } from './CategoryRulesCard';
 export { useCategories } from './useCategories';
 export { CategoriesPageHeader } from './CategoriesPageHeader';
 export { CategoriesStatsCards } from './CategoriesStatsCards';

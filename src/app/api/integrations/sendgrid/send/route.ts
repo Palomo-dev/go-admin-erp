@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
         },
         status: result.success ? 'processed' : 'failed',
         error_message: result.error || null,
-        event_time: new Date().toISOString(),
+        // event_time es GENERATED ALWAYS AS (created_at) en integration_events,
+        // no se puede insertar manualmente.
       });
 
       // Actualizar last_activity_at

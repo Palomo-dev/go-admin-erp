@@ -251,7 +251,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
     if (type === 'purchase_invoice_created' && p.invoice_id) {
       const { data: inv, error: invErr } = await supabase
         .from('invoice_purchase')
-        .select('id, invoice_number, total, status, due_date, supplier_id')
+        .select('id, number_ext, total, status, due_date, supplier_id')
         .eq('id', p.invoice_id)
         .maybeSingle();
 
@@ -269,7 +269,7 @@ async function fetchRelatedData(notif: NotificationForSheet): Promise<RelatedDat
         return {
           label: 'Factura de Compra',
           fields: [
-            { icon: Hash, label: 'Número', value: inv.invoice_number || inv.id.substring(0, 8) },
+            { icon: Hash, label: 'Número', value: inv.number_ext || inv.id.substring(0, 8) },
             { icon: Building2, label: 'Proveedor', value: sup?.name || '—' },
             { icon: DollarSign, label: 'Total', value: inv.total ? `$${Number(inv.total).toLocaleString('es')}` : '—' },
             { icon: Calendar, label: 'Vencimiento', value: inv.due_date ? new Date(inv.due_date).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' }) : '—' },

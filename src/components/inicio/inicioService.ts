@@ -899,7 +899,7 @@ export const inicioService = {
         .eq('organization_id', organizationId)
         .gte('created_at', desde)
         .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")')
+        .not('status', 'in', '("cancelled","rejected","expired")')
         .is('sale_id', null),
     ]);
 

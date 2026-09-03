@@ -80,6 +80,13 @@ export function VentasTable({
             Anulada
           </Badge>
         );
+      case 'expired':
+        return (
+          <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400 border-0">
+            <Clock className="h-3 w-3 mr-1" />
+            Expirada
+          </Badge>
+        );
       default:
         return (
           <Badge variant="outline">{status}</Badge>
@@ -262,7 +269,7 @@ export function VentasTable({
                         Crear Devolución
                       </DropdownMenuItem>
                     )}
-                    {sale.status !== 'cancelled' && (
+                    {sale.status !== 'cancelled' && sale.status !== 'expired' && (
                       <DropdownMenuItem 
                         onClick={() => onCancel(sale)}
                         className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"

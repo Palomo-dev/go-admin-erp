@@ -46,6 +46,7 @@ import type { KpiConfigItem } from './DashboardKPIs';
 
 const periodoLabel: Record<PeriodoDashboard, string> = {
   hoy: 'Hoy',
+  ayer: 'Ayer',
   '7d': '7 días',
   '30d': '30 días',
   '90d': '90 días',
@@ -221,11 +222,12 @@ export function KpiDetailDialog({
   const isLiveVisits = kpi.key === 'visitasWeb' && periodo === 'hoy';
 
   // Determinar el modo de gráfica (igual que la card):
-  // - horaria: KPIs dinámicos (no useMonthLabel) con período 'hoy'
-  // - periodo: KPIs dinámicos (no useMonthLabel) con período != 'hoy'
+  // - horaria: KPIs dinámicos (no useMonthLabel) con período 'hoy' o 'ayer'
+  // - periodo: KPIs dinámicos (no useMonthLabel) con período != 'hoy'/'ayer'
   // - mensual: KPIs no dinámicos o useMonthLabel (ventasMes) — siempre serie del mes
+  const isHorario = periodo === 'hoy' || periodo === 'ayer';
   const chartMode: 'horaria' | 'periodo' | 'mensual' = kpi.dynamicLabel && !kpi.useMonthLabel
-    ? (periodo === 'hoy' ? 'horaria' : 'periodo')
+    ? (isHorario ? 'horaria' : 'periodo')
     : 'mensual';
 
   // Etiqueta dinámica
@@ -253,7 +255,11 @@ export function KpiDetailDialog({
   }
   const hasDelta = deltaPct !== null;
   const isPositive = hasDelta && deltaPct! >= 0;
-  const fmtVal = kpi.isCurrency ? formatCurrency : (n: number) => n.toLocaleString(locale);
+  const fmtVal = kpi.isCurrency
+    ? formatCurrency
+    : kpi.isPercentage
+      ? (n: number) => `${n.toFixed(1)}%`
+      : (n: number) => n.toLocaleString(locale);
 
   // ─── Datos para la gráfica grande ──────────────────────────────────────────
   const chartData = buildChartData(kpi, data, periodo);
@@ -308,7 +314,11 @@ export function KpiDetailDialog({
         <div className="flex flex-wrap items-center gap-4 py-2">
           <div>
             <p className={cn('text-3xl font-bold', colors.text)}>
-              {kpi.isCurrency ? formatCurrency(value) : value.toLocaleString(locale)}
+              {kpi.isCurrency
+                ? formatCurrency(value)
+                : kpi.isPercentage
+                  ? `${value.toFixed(1)}%`
+                  : value.toLocaleString(locale)}
             </p>
           </div>
           {isLiveVisits && (
@@ -345,7 +355,7 @@ export function KpiDetailDialog({
         </div>
 
         {/* Desglose de compras web por estado — clicable para filtrar la gráfica */}
-        {kpi.hasDesglose && data && (
+        {kpi.hasDesglose && kpi.key === 'comprasWeb' && data && (
           <div className="flex items-center gap-1.5 text-sm flex-wrap">
             <button
               type="button"
@@ -400,10 +410,45 @@ export function KpiDetailDialog({
             </button>
           </div>
         )}
+        {/* Desglose de tasas de conversión web */}
+        {kpi.hasDesglose && kpi.key === 'conversionWeb' && data && (
+          <div className="flex items-center gap-3 text-sm flex-wrap py-1">
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">Visita → Pedido</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">{data.tasaVisitaPedido.toFixed(1)}%</span>
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">Pedido → Completado</span>
+              <span className="font-semibold text-green-600 dark:text-green-400">{data.tasaPedidoCompletado.toFixed(1)}%</span>
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">Abandono</span>
+              <span className="font-semibold text-red-500 dark:text-red-400">{data.tasaAbandono.toFixed(1)}%</span>
+            </div>
+            <div className="flex flex-col items-start ml-auto">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">Completados</span>
+              <span className="font-semibold text-gray-700 dark:text-gray-200">{data.comprasWebCompletadas} / {data.comprasWeb}</span>
+            </div>
+          </div>
+        )}
 
         {/* Gráfica ampliada */}
         <div className="mt-2">
-          {chartData && chartData.length > 0 ? (
+          {/* Funnel de conversión web — reemplaza el line chart para este KPI */}
+          {kpi.key === 'conversionWeb' && data ? (
+            <WebConversionFunnel
+              visitas={data.visitasWeb}
+              pedidos={data.comprasWeb}
+              completados={data.comprasWebCompletadas}
+              cancelados={data.comprasWebCanceladas}
+              tasaVisitaPedido={data.tasaVisitaPedido}
+              tasaPedidoCompletado={data.tasaPedidoCompletado}
+              tasaAbandono={data.tasaAbandono}
+              visitasAnterior={data.visitasWebAnterior}
+              pedidosAnterior={data.comprasWebAnterior}
+              completadosAnterior={data.comprasWebCompletadasAnterior ?? 0}
+            />
+          ) : chartData && chartData.length > 0 ? (
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
@@ -488,6 +533,198 @@ export function KpiDetailDialog({
   );
 }
 
+// ─── Funnel de conversión web ────────────────────────────────────────────────
+
+interface WebConversionFunnelProps {
+  visitas: number;
+  pedidos: number;
+  completados: number;
+  cancelados: number;
+  tasaVisitaPedido: number;
+  tasaPedidoCompletado: number;
+  tasaAbandono: number;
+  visitasAnterior?: number;
+  pedidosAnterior?: number;
+  completadosAnterior?: number;
+}
+
+function FunnelStage({
+  label,
+  value,
+  maxValue,
+  color,
+  subtitle,
+  delta,
+  tooltip,
+}: {
+  label: string;
+  value: number;
+  maxValue: number;
+  color: string;
+  subtitle?: string;
+  delta?: string;
+  tooltip?: { items: { label: string; value: string; color?: string }[] };
+}) {
+  const rawRatio = maxValue > 0 ? value / maxValue : 0;
+  const scaledRatio = Math.sqrt(rawRatio);
+  const widthPercent = Math.max(scaledRatio * 100, 15);
+
+  return (
+    <div className="group relative flex items-center gap-3">
+      <div className="w-28 text-right shrink-0">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
+        {subtitle && (
+          <span className="block text-[10px] text-gray-400 dark:text-gray-500">{subtitle}</span>
+        )}
+      </div>
+      <div className="flex-1 relative">
+        <div
+          className="h-12 rounded-r-lg transition-all duration-500 flex items-center px-3 cursor-default"
+          style={{ width: `${widthPercent}%`, backgroundColor: color, opacity: 0.9 }}
+        >
+          <span className="text-white text-sm font-bold whitespace-nowrap">{value.toLocaleString()}</span>
+        </div>
+      </div>
+      {delta && (
+        <span className="text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap shrink-0 w-24">
+          {delta}
+        </span>
+      )}
+      {/* Tooltip al hacer hover */}
+      {tooltip && tooltip.items.length > 0 && (
+        <div className="absolute z-20 left-32 top-1/2 -translate-y-1/2 ml-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-xs rounded-md shadow-sm px-3 py-2 space-y-1 min-w-[160px]">
+            {tooltip.items.map((item, i) => (
+              <div key={i} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                  {item.color && (
+                    <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                  )}
+                  {item.label}
+                </span>
+                <span className="font-semibold">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FunnelArrow({ rate, label, color }: { rate: number; label: string; color: string }) {
+  return (
+    <div className="flex items-center gap-2 pl-28 py-0.5">
+      <svg width="16" height="20" viewBox="0 0 16 20" className="text-gray-300 dark:text-gray-600">
+        <path d="M8 0 L8 18 M4 14 L8 18 L12 14" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      </svg>
+      <span className="text-[11px] text-gray-500 dark:text-gray-400">
+        {label}: <span className="font-semibold" style={{ color }}>{rate.toFixed(1)}%</span>
+      </span>
+    </div>
+  );
+}
+
+function WebConversionFunnel({
+  visitas,
+  pedidos,
+  completados,
+  cancelados,
+  tasaVisitaPedido,
+  tasaPedidoCompletado,
+  tasaAbandono,
+  visitasAnterior,
+  pedidosAnterior,
+  completadosAnterior,
+}: WebConversionFunnelProps) {
+  const maxValue = Math.max(visitas, 1);
+
+  const fmtDelta = (actual: number, anterior: number): string | undefined => {
+    if (!anterior || anterior === 0) return undefined;
+    const diff = actual - anterior;
+    const pct = (diff / anterior) * 100;
+    const sign = pct >= 0 ? '+' : '';
+    return `${sign}${pct.toFixed(0)}% vs anterior`;
+  };
+
+  return (
+    <div className="space-y-1 py-2">
+      {/* Etapa 1: Visitantes */}
+      <FunnelStage
+        label="Visitantes"
+        value={visitas}
+        maxValue={maxValue}
+        color="#3b82f6"
+        subtitle={visitasAnterior ? `${visitasAnterior.toLocaleString()} período anterior` : undefined}
+        delta={fmtDelta(visitas, visitasAnterior ?? 0)}
+        tooltip={{
+          items: [
+            { label: 'Visitantes', value: visitas.toLocaleString(), color: '#3b82f6' },
+            ...(visitasAnterior ? [{ label: 'Período anterior', value: visitasAnterior.toLocaleString() }] : []),
+            { label: 'Tasa visita→pedido', value: `${tasaVisitaPedido.toFixed(1)}%` },
+          ],
+        }}
+      />
+
+      {/* Flecha 1: Visita → Pedido */}
+      <FunnelArrow rate={tasaVisitaPedido} label="Visita → Pedido" color="#3b82f6" />
+
+      {/* Etapa 2: Pedidos */}
+      <FunnelStage
+        label="Pedidos"
+        value={pedidos}
+        maxValue={maxValue}
+        color="#f59e0b"
+        subtitle={pedidosAnterior ? `${pedidosAnterior.toLocaleString()} período anterior` : undefined}
+        delta={fmtDelta(pedidos, pedidosAnterior ?? 0)}
+        tooltip={{
+          items: [
+            { label: 'Pedidos', value: pedidos.toLocaleString(), color: '#f59e0b' },
+            ...(pedidosAnterior ? [{ label: 'Período anterior', value: pedidosAnterior.toLocaleString() }] : []),
+            { label: 'Tasa visita→pedido', value: `${tasaVisitaPedido.toFixed(1)}%` },
+            { label: 'Tasa pedido→completado', value: `${tasaPedidoCompletado.toFixed(1)}%` },
+            { label: 'Tasa abandono', value: `${tasaAbandono.toFixed(1)}%` },
+          ],
+        }}
+      />
+
+      {/* Flecha 2: Pedido → Completado */}
+      <FunnelArrow rate={tasaPedidoCompletado} label="Pedido → Completado" color="#22c55e" />
+
+      {/* Etapa 3: Completados */}
+      <FunnelStage
+        label="Completados"
+        value={completados}
+        maxValue={maxValue}
+        color="#22c55e"
+        subtitle={completadosAnterior ? `${completadosAnterior.toLocaleString()} período anterior` : undefined}
+        delta={fmtDelta(completados, completadosAnterior ?? 0)}
+        tooltip={{
+          items: [
+            { label: 'Completados', value: completados.toLocaleString(), color: '#22c55e' },
+            ...(completadosAnterior ? [{ label: 'Período anterior', value: completadosAnterior.toLocaleString() }] : []),
+            { label: 'Tasa pedido→completado', value: `${tasaPedidoCompletado.toFixed(1)}%` },
+            { label: 'De pedidos', value: `${completados} / ${pedidos}` },
+          ],
+        }}
+      />
+
+      {/* Resumen de abandono */}
+      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+          <span className="text-gray-500 dark:text-gray-400">
+            Abandono: <span className="font-semibold text-red-500 dark:text-red-400">{tasaAbandono.toFixed(1)}%</span>
+          </span>
+        </div>
+        <span className="text-gray-400 dark:text-gray-500 text-xs">
+          ({cancelados.toLocaleString()} cancelados/expirados de {pedidos.toLocaleString()} pedidos)
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Helpers para construir los datos de la gráfica grande ───────────────────
 
 /**
@@ -502,15 +739,16 @@ function buildChartData(
   if (!data) return null;
 
   const isComprasWeb = kpi.key === 'comprasWeb';
+  const isConversionWeb = kpi.key === 'conversionWeb';
   const isDynamic = kpi.dynamicLabel;
   // ventasMes (useMonthLabel): siempre muestra la serie mensual del mes calendario,
   // ignora el filtro de período (hoy/7d/30d/etc.) porque representa el mes actual.
   const isMensualFijo = !!kpi.useMonthLabel;
 
-  // ── Caso 1: período 'hoy' con series horarias ──
+  // ── Caso 1: períodos 'hoy' y 'ayer' con series horarias ──
   // Generamos TODAS las horas de 0 hasta la hora actual de la organización,
   // aunque no haya datos para algunas → la línea se muestra plana en 0.
-  if (isDynamic && !isMensualFijo && periodo === 'hoy') {
+  if (isDynamic && !isMensualFijo && (periodo === 'hoy' || periodo === 'ayer')) {
     const hoy = getHoraSerie(kpi.key, data, true) ?? [];
     const ayer = getHoraSerie(kpi.key, data, false) ?? [];
     if (data.horaActualOrg === undefined) return null;
@@ -524,6 +762,16 @@ function buildChartData(
         row['Pagados ayer'] = data.comprasPorHoraAyerPagadas?.find((a) => a.hora === h)?.total ?? 0;
         row['Cancelados hoy'] = data.comprasPorHoraHoyCanceladas?.find((a) => a.hora === h)?.total ?? 0;
         row['Cancelados ayer'] = data.comprasPorHoraAyerCanceladas?.find((a) => a.hora === h)?.total ?? 0;
+      } else if (isConversionWeb) {
+        const pedidosHoy = hoy.find((p) => p.hora === h)?.total ?? 0;
+        const completadosHoy = data.comprasPorHoraHoyCompletadas?.find((a) => a.hora === h)?.total ?? 0;
+        const pedidosAyer = ayer.find((a) => a.hora === h)?.total ?? 0;
+        const completadosAyer = data.comprasPorHoraAyerCompletadas?.find((a) => a.hora === h)?.total ?? 0;
+        row['Completados hoy'] = completadosHoy;
+        row['Completados ayer'] = completadosAyer;
+        row['Pedidos hoy'] = pedidosHoy;
+        row['Tasa hoy'] = pedidosHoy > 0 ? (completadosHoy / pedidosHoy) * 100 : 0;
+        row['Tasa ayer'] = pedidosAyer > 0 ? (completadosAyer / pedidosAyer) * 100 : 0;
       } else {
         row['Hoy'] = hoy.find((p) => p.hora === h)?.total ?? 0;
         row['Ayer'] = ayer.find((a) => a.hora === h)?.total ?? 0;
@@ -533,8 +781,8 @@ function buildChartData(
     return result;
   }
 
-  // ── Caso 2: período != 'hoy' con series por día ──
-  if (isDynamic && !isMensualFijo && periodo !== 'hoy') {
+  // ── Caso 2: período != 'hoy'/'ayer' con series por día ──
+  if (isDynamic && !isMensualFijo && periodo !== 'hoy' && periodo !== 'ayer') {
     const serie = getPeriodoSerie(kpi.key, data);
     if (!serie) return null;
 
@@ -545,6 +793,15 @@ function buildChartData(
         row['Pedidos actual'] = serie.actual[idx]?.total ?? 0;
         row['Pagados actual'] = data.comprasPorDiaPeriodoPagadas?.actual[idx]?.total ?? 0;
         row['Cancelados actual'] = data.comprasPorDiaPeriodoCanceladas?.actual[idx]?.total ?? 0;
+      } else if (isConversionWeb) {
+        const pedidosActual = serie.actual[idx]?.total ?? 0;
+        const completadosActual = data.comprasPorDiaPeriodoCompletadas?.actual[idx]?.total ?? 0;
+        const pedidosAnterior = serie.anterior[idx]?.total ?? 0;
+        const completadosAnterior = data.comprasPorDiaPeriodoCompletadas?.anterior[idx]?.total ?? 0;
+        row['Completados actual'] = completadosActual;
+        row['Pedidos actual'] = pedidosActual;
+        row['Tasa actual'] = pedidosActual > 0 ? (completadosActual / pedidosActual) * 100 : 0;
+        row['Tasa anterior'] = pedidosAnterior > 0 ? (completadosAnterior / pedidosAnterior) * 100 : 0;
       } else {
         row['Período actual'] = serie.actual[idx]?.total ?? 0;
         row['Período anterior'] = serie.anterior[idx]?.total ?? 0;
@@ -588,6 +845,7 @@ function getHoraSerie(
     facturasHoy: hoy ? data.facturasPorHoraHoy : data.facturasPorHoraAyer,
     visitasWeb: hoy ? data.visitasPorHoraHoy : data.visitasPorHoraAyer,
     comprasWeb: hoy ? data.comprasPorHoraHoy : data.comprasPorHoraAyer,
+    conversionWeb: hoy ? data.comprasPorHoraHoy : data.comprasPorHoraAyer,
   };
   return map[key] ?? undefined;
 }
@@ -601,14 +859,16 @@ function getPeriodoSerie(
     facturasHoy: data.facturasPorDiaPeriodo,
     visitasWeb: data.visitasPorDiaPeriodo,
     comprasWeb: data.comprasPorDiaPeriodo,
+    conversionWeb: data.comprasPorDiaPeriodo,
   };
   return map[key] ?? null;
 }
 
 function getSeriesLabels(kpi: KpiConfigItem, periodo: PeriodoDashboard): Record<string, string> {
   const isComprasWeb = kpi.key === 'comprasWeb';
+  const isConversionWeb = kpi.key === 'conversionWeb';
   if (isComprasWeb) {
-    if (periodo === 'hoy') {
+    if (periodo === 'hoy' || periodo === 'ayer') {
       return {
         'Pedidos hoy': 'Pedidos hoy',
         'Pedidos ayer': 'Pedidos ayer',
@@ -624,11 +884,27 @@ function getSeriesLabels(kpi: KpiConfigItem, periodo: PeriodoDashboard): Record<
       'Cancelados actual': 'Cancelados actual',
     };
   }
+  if (isConversionWeb) {
+    if (periodo === 'hoy' || periodo === 'ayer') {
+      return {
+        'Tasa hoy': 'Tasa de conversión hoy',
+        'Tasa ayer': 'Tasa de conversión ayer',
+        'Completados hoy': 'Completados hoy',
+        'Pedidos hoy': 'Pedidos hoy',
+      };
+    }
+    return {
+      'Tasa actual': 'Tasa de conversión actual',
+      'Tasa anterior': 'Tasa de conversión anterior',
+      'Completados actual': 'Completados actual',
+      'Pedidos actual': 'Pedidos actual',
+    };
+  }
   // KPIs mensuales fijos (ventasMes) y no dinámicos: siempre serie del mes
   if (!kpi.dynamicLabel || kpi.useMonthLabel) {
     return { 'Mes actual': 'Mes actual', 'Mes anterior': 'Mes anterior' };
   }
-  if (periodo === 'hoy') {
+  if (periodo === 'hoy' || periodo === 'ayer') {
     return { Hoy: 'Hoy', Ayer: 'Ayer' };
   }
   return { 'Período actual': 'Período actual', 'Período anterior': 'Período anterior' };
@@ -637,8 +913,9 @@ function getSeriesLabels(kpi: KpiConfigItem, periodo: PeriodoDashboard): Record<
 function getSeriesColors(kpi: KpiConfigItem, periodo: PeriodoDashboard): Record<string, string> {
   const stroke = colorStrokeMap[kpi.color] || '#3b82f6';
   const isComprasWeb = kpi.key === 'comprasWeb';
+  const isConversionWeb = kpi.key === 'conversionWeb';
   if (isComprasWeb) {
-    if (periodo === 'hoy') {
+    if (periodo === 'hoy' || periodo === 'ayer') {
       return {
         'Pedidos hoy': '#f59e0b',
         'Pedidos ayer': '#fcd34d',
@@ -654,10 +931,26 @@ function getSeriesColors(kpi: KpiConfigItem, periodo: PeriodoDashboard): Record<
       'Cancelados actual': '#ef4444',
     };
   }
+  if (isConversionWeb) {
+    if (periodo === 'hoy' || periodo === 'ayer') {
+      return {
+        'Tasa hoy': '#22c55e',
+        'Tasa ayer': '#86efac',
+        'Completados hoy': '#3b82f6',
+        'Pedidos hoy': '#f59e0b',
+      };
+    }
+    return {
+      'Tasa actual': '#22c55e',
+      'Tasa anterior': '#86efac',
+      'Completados actual': '#3b82f6',
+      'Pedidos actual': '#f59e0b',
+    };
+  }
   // KPIs mensuales fijos (ventasMes) y no dinámicos: siempre serie del mes
   if (!kpi.dynamicLabel || kpi.useMonthLabel) {
     return { 'Mes actual': stroke, 'Mes anterior': '#9ca3af' };
   }
-  if (periodo === 'hoy') return { Hoy: stroke, Ayer: '#9ca3af' };
+  if (periodo === 'hoy' || periodo === 'ayer') return { Hoy: stroke, Ayer: '#9ca3af' };
   return { 'Período actual': stroke, 'Período anterior': '#9ca3af' };
 }

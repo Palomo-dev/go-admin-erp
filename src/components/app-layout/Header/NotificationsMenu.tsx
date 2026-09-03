@@ -223,13 +223,23 @@ export const NotificationsMenu = ({ organizationId }: NotificationsMenuProps) =>
   // WebSocket se estabilice, haciendo que las notificaciones en vivo nunca
   // lleguen al cliente. Separándola, la suscripción solo se recrea si cambian
   // `organizationId` o `userId` (eventos que sí requieren una nueva suscripción).
+  //
+  // El nombre del canal incluye organizationId para evitar colisiones cuando
+  // el usuario cambia de organización: si se reusa el mismo nombre, el canal
+  // anterior puede seguir vivo y entregar eventos de la org equivocada.
+  //
+  // NO limpiar el estado (setNotifications([])) aquí: este useEffect se
+  // ejecuta cuando userId pasa de null → uuid (al cargar la sesión), lo que
+  // vaciaría las notificaciones DESPUÉS de que el useEffect de carga las
+  // llenó. El canal único por org + el refetch silencioso son suficientes
+  // para evitar datos stale sin necesidad de limpiar manualmente.
   useEffect(() => {
     if (!organizationId || !userId) return;
 
     let isActive = true;
 
     const channel = supabase
-      .channel('notifications-changes')
+      .channel(`notifications-changes-${organizationId}`)
       .on(
         'postgres_changes',
         {

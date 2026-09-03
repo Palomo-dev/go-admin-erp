@@ -12,7 +12,7 @@ import type { WebOrder } from './webOrdersService';
  */
 const WOMPI_SUB_METHODS = new Set([
   'nequi', 'card', 'pse', 'bancolombia_transfer',
-  'bancolombia_collect', 'daviplata', 'wompi',
+  'bancolombia_collect', 'daviplata', 'wompi', 'wompi_co',
 ]);
 
 function mapWebPaymentMethodToInvoice(method: string | null | undefined): string {

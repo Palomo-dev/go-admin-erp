@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, CalendarDays, CalendarRange, CalendarClock, CalendarHeart, Clock } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, CalendarClock, CalendarHeart, Clock, CalendarMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HorasPresets } from './HorasPresets';
 import type { PeriodoDashboard, HorasDashboard } from './inicioService';
@@ -16,6 +16,7 @@ interface PeriodoSelectorProps {
 
 const OPCIONES: { value: PeriodoDashboard; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'hoy', label: 'Hoy', icon: CalendarClock },
+  { value: 'ayer', label: 'Ayer', icon: CalendarMinus },
   { value: '7d', label: '7 días', icon: Calendar },
   { value: '30d', label: '30 días', icon: CalendarDays },
   { value: '90d', label: '90 días', icon: CalendarRange },

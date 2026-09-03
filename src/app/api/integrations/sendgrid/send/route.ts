@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       await getSupabaseAdmin().from('integration_events').insert({
         connection_id: connectionId,
         organization_id: organization_id || null,
-        source: 'api',
+        source: 'system',
         direction: 'outbound',
         event_type: 'email.send',
         external_event_id: result.messageId || null,

@@ -132,7 +132,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
       const { enqueued } = await PrintJobsService.enqueueSaleTicket(sale.branch_id, {
         saleId: sale.id,
         saleNumber: sale.sale_number,
-        customerName: sale.customer?.full_name,
+        customerName: sale.customer?.name,
         createdAt: sale.created_at,
         total: sale.total,
         items: (sale.items || []).map((item: any) => ({
@@ -208,9 +208,9 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
         icon: <XCircle className="h-4 w-4" />
       },
       expired: {
-        bg: 'bg-red-100 dark:bg-red-900/30',
-        text: 'text-red-700 dark:text-red-400',
-        icon: <XCircle className="h-4 w-4" />
+        bg: 'bg-gray-100 dark:bg-gray-800/30',
+        text: 'text-gray-600 dark:text-gray-400',
+        icon: <Clock className="h-4 w-4" />
       }
     };
 
@@ -220,7 +220,7 @@ export function VentaDetalle({ saleId }: VentaDetalleProps) {
       status === 'completed' || status === 'paid' ? 'Completada'
       : status === 'pending' ? 'Pendiente'
       : status === 'cancelled' ? 'Anulada'
-      : status === 'expired' ? 'Anulada'
+      : status === 'expired' ? 'Expirada'
       : status;
 
     return (

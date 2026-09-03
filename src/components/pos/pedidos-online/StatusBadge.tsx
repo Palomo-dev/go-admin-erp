@@ -63,9 +63,9 @@ const STATUS_CONFIG: Record<WebOrderStatus, {
     icon: <XCircle className="h-3 w-3" />
   },
   expired: {
-    label: 'Cancelado',
-    color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    icon: <XCircle className="h-3 w-3" />
+    label: 'Expirado',
+    color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    icon: <Clock className="h-3 w-3" />
   },
 };
 

@@ -39,7 +39,7 @@ const STATUS_CONFIG: Record<WebOrderStatus, { label: string; color: string; icon
   delivered: { label: 'Entregado', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200', icon: <CheckCircle className="h-3 w-3 dark:text-emerald-200" /> },
   cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <XCircle className="h-3 w-3 dark:text-red-200" /> },
   rejected: { label: 'Rechazado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', icon: <XCircle className="h-3 w-3 dark:text-gray-200" /> },
-  expired: { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <XCircle className="h-3 w-3 dark:text-red-200" /> },
+  expired: { label: 'Expirado', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', icon: <Clock className="h-3 w-3 dark:text-gray-400" /> },
 };
 
 const DELIVERY_TYPE_CONFIG: Record<DeliveryType, { label: string; icon: React.ReactNode }> = {

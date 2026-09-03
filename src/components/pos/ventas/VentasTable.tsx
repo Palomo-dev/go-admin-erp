@@ -82,9 +82,9 @@ export function VentasTable({
         );
       case 'expired':
         return (
-          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-0">
-            <XCircle className="h-3 w-3 mr-1" />
-            Anulada
+          <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800/30 dark:text-gray-400 border-0">
+            <Clock className="h-3 w-3 mr-1" />
+            Expirada
           </Badge>
         );
       default:

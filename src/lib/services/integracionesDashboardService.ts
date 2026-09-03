@@ -127,7 +127,7 @@ class IntegracionesDashboardService {
   async getEventosDisponibles(): Promise<number> {
     const { count, error } = await supabase
       .from('event_catalog')
-      .select('id', { count: 'exact', head: true });
+      .select('code', { count: 'exact', head: true });
 
     if (error) {
       // Tabla event_catalog puede no existir o no tener acceso RLS.

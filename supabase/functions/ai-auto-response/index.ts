@@ -1,5 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// @ts-ignore: Deno URL import (resolves at runtime in Supabase Edge Functions)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// @ts-ignore: Deno URL import (resolves at runtime in Supabase Edge Functions)
 import OpenAI from "https://esm.sh/openai@4";
 
 const corsHeaders = {
@@ -272,12 +274,12 @@ async function searchProducts(organizationId: number, keywords: string[]): Promi
       supabase.from('stock_levels').select('product_id, qty_on_hand').in('product_id', productIds),
     ]);
 
-    const priceMap = new Map((pricesRes.data || []).map(p => [p.product_id, p]));
-    const imageMap = new Map((imagesRes.data || []).map(i => [i.product_id, i.storage_path]));
-    const stockMap = new Map((stockRes.data || []).map(s => [s.product_id, s.qty_on_hand]));
+    const priceMap = new Map((pricesRes.data || []).map((p: any) => [p.product_id, p]));
+    const imageMap = new Map((imagesRes.data || []).map((i: any) => [i.product_id, i.storage_path]));
+    const stockMap = new Map((stockRes.data || []).map((s: any) => [s.product_id, s.qty_on_hand]));
 
     const enrichedProducts = unique.map(p => {
-      const priceData = priceMap.get(p.id);
+      const priceData = priceMap.get(p.id) as any;
       const storagePath = imageMap.get(p.id);
       const stock = stockMap.get(p.id);
       return {
@@ -342,7 +344,7 @@ async function getCustomerOrders(organizationId: number, email: string | null, c
     
     const { data: orders } = await supabase
       .from('invoice_sales')
-      .select('invoice_number, total, status, created_at')
+      .select('number, total, status, created_at')
       .eq('organization_id', organizationId)
       .eq('customer_id', customerIdToSearch)
       .order('created_at', { ascending: false })
@@ -353,7 +355,7 @@ async function getCustomerOrders(organizationId: number, email: string | null, c
     let text = '';
     for (const o of orders) {
       const date = new Date(o.created_at).toLocaleDateString('es-CO');
-      text += `- Pedido #${o.invoice_number} | $${Number(o.total).toLocaleString('es-CO')} | Estado: ${o.status} | Fecha: ${date}\n`;
+      text += `- Pedido #${o.number} | $${Number(o.total).toLocaleString('es-CO')} | Estado: ${o.status} | Fecha: ${date}\n`;
     }
     return text;
   } catch {

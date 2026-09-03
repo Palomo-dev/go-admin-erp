@@ -449,7 +449,7 @@ class PMSDashboardService {
       .from('maintenance_orders')
       .select('id, description, created_at, spaces(label)')
       .in('branch_id', maintenanceBranchIds)
-      .in('status', ['pending', 'in_progress']);
+      .in('status', ['reported', 'in_progress']);
 
     maintenanceOrders?.forEach((m: MaintenanceOrderRow) => {
       events.push({

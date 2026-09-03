@@ -50,6 +50,7 @@ export interface KpiConfigItem {
   useMonthLabel?: boolean;
   hasDesglose?: boolean;
   span2?: boolean; // ocupar 2 columnas en desktop (sm+)
+  mobileFullWidth?: boolean; // ocupar 2 columnas solo en móvil (grid-cols-2)
   isPercentage?: boolean; // mostrar valor como porcentaje (conversionWeb)
 }
 
@@ -155,7 +156,8 @@ export const kpiConfig: KpiConfigItem[] = [
     deltaKey: 'comprasWebAnterior' as const,
     dynamicLabel: true,
     hasDesglose: true, // mostrar desglose de pendientes/canceladas/pagadas
-    span2: true,
+    span2: true, // 2 columnas en desktop, 1 en móvil
+    mobileFullWidth: false,
   },
   {
     key: 'conversionWeb' as const,
@@ -168,6 +170,7 @@ export const kpiConfig: KpiConfigItem[] = [
     dynamicLabel: true,
     hasDesglose: true, // mostrar desglose de las 3 tasas
     isPercentage: true,
+    mobileFullWidth: true, // ocupa 2 columnas solo en móvil
   },
 ];
 
@@ -955,7 +958,11 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
           </div>
         );
 
-        const spanClass = kpi.span2 ? 'col-span-2 sm:col-span-2' : '';
+        const spanClass = kpi.span2
+          ? 'sm:col-span-2'
+          : kpi.mobileFullWidth
+            ? 'col-span-2 sm:col-span-1'
+            : '';
 
         if (kpi.href) {
           return (

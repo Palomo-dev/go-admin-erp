@@ -1,7 +1,8 @@
-fix(inicio): card Conversión Web ocupa 2 columnas en móvil + funnel tooltip
+fix(inicio): conversionWeb ocupa 2 columnas solo en móvil, comprasWeb 1 en móvil
 
-- span2 ahora aplica col-span-2 en móvil (no solo sm:col-span-2)
-- La card de Conversión Web ocupa todo el ancho en grid de 2 columnas móvil
+- conversionWeb: mobileFullWidth (col-span-2 en móvil, sm:col-span-1 en desktop)
+- comprasWeb: span2 solo en desktop (sm:col-span-2), 1 columna en móvil
+- Nuevo campo mobileFullWidth en KpiConfigItem
 
 Generated with [Devin](https://devin.ai)
 

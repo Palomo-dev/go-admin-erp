@@ -102,7 +102,7 @@ export class NotificationService {
     if (!organizationId || !userId) return null;
     
     return supabase
-      .channel('notifications-changes')
+      .channel(`notifications-changes-${organizationId}`)
       .on('postgres_changes', 
         { 
           event: '*', 

@@ -202,9 +202,14 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
     if (organizationId) {
       fetchTaskReminders();
 
-      // Configurar suscripción a cambios en tareas
+      // Configurar suscripción a cambios en tareas.
+      // El nombre del canal incluye organizationId para evitar colisiones
+      // cuando el usuario cambia de organización: si se reusa el mismo nombre,
+      // el canal anterior puede seguir vivo y entregar eventos de la org
+      // equivocada. No limpiar el estado aquí para no vaciar las tareas
+      // cuando el componente se re-monta al navegar entre páginas.
       const tasksSubscription = supabase
-        .channel('task-reminders-changes')
+        .channel(`task-reminders-changes-${organizationId}`)
         .on('postgres_changes', 
           { 
             event: '*', 
@@ -220,9 +225,10 @@ export const useTaskReminders = (organizationId: string | null): UseTaskReminder
         .subscribe();
 
       return () => {
-        tasksSubscription.unsubscribe();
+        supabase.removeChannel(tasksSubscription);
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId]);
 
   return {

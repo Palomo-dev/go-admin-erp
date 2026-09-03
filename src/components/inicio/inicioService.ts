@@ -10,7 +10,7 @@ import { getOperatingHours } from '@/lib/services/organizationOperatingHoursServ
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-export type PeriodoDashboard = 'hoy' | '7d' | '30d' | '90d' | 'año';
+export type PeriodoDashboard = 'hoy' | 'ayer' | '7d' | '30d' | '90d' | 'año';
 
 /** Horas opcionales para filtrar el dashboard (formato HH:mm) */
 export interface HorasDashboard {
@@ -49,6 +49,13 @@ export interface DashboardKPIData {
   comprasWebPendientes: number;
   comprasWebCanceladas: number;
   comprasWebPagadas: number;
+  comprasWebCompletadas: number;
+  comprasWebCompletadasAnterior?: number;
+  // Tasas de conversión de comercio web
+  tasaVisitaPedido: number;
+  tasaPedidoCompletado: number;
+  tasaAbandono: number;
+  conversionWeb: number; // = tasaPedidoCompletado (valor principal de la card)
   // Deltas vs período anterior
   ventasAnterior?: number;
   facturasAnterior?: number;
@@ -60,6 +67,9 @@ export interface DashboardKPIData {
   reservasAnterior?: number;
   visitasWebAnterior?: number;
   comprasWebAnterior?: number;
+  tasaVisitaPedidoAnterior?: number;
+  tasaPedidoCompletadoAnterior?: number;
+  conversionWebAnterior?: number;
   // Series horarias (solo para periodo 'hoy'): hoy vs ayer a esta misma hora
   ventasPorHoraHoy?: PuntoHora[];
   ventasPorHoraAyer?: PuntoHora[];
@@ -74,6 +84,9 @@ export interface DashboardKPIData {
   comprasPorHoraHoyCanceladas?: PuntoHora[];
   comprasPorHoraAyerPagadas?: PuntoHora[];
   comprasPorHoraAyerCanceladas?: PuntoHora[];
+  // Desglose horario: completados (pagados online + manuales confirmados)
+  comprasPorHoraHoyCompletadas?: PuntoHora[];
+  comprasPorHoraAyerCompletadas?: PuntoHora[];
   // Hora actual (0-23) en timezone de la org (para recortar el sparkline)
   horaActualOrg?: number;
   // Series diarias del mes calendario: mes actual vs mes anterior (mismos días)
@@ -87,6 +100,7 @@ export interface DashboardKPIData {
   // Desglose por período (7d, 30d, 90d, año) por estado
   comprasPorDiaPeriodoPagadas?: SerieDiariaKpi;
   comprasPorDiaPeriodoCanceladas?: SerieDiariaKpi;
+  comprasPorDiaPeriodoCompletadas?: SerieDiariaKpi;
   // Series diarias para los demás KPIs (creados por día, mes actual vs anterior)
   seriesDiarias?: {
     clientesActivos?: SerieDiariaKpi;
@@ -224,6 +238,25 @@ async function rangoPeriodo(
       const ahora = new Date();
       const finAnterior = new Date(ahora.getTime() - 24 * 60 * 60 * 1000).toISOString();
       return { inicio, fin: ahora.toISOString(), inicioAnterior, finAnterior, operatingToday };
+    }
+    case 'ayer': {
+      const yesterday = addDays(operatingToday, -1);
+      let inicio: string;
+      let fin: string;
+      if (overrideHours) {
+        const timezone = await getOrganizationTimezone(organizationId);
+        const range = getDayRange(yesterday, timezone, overrideHours);
+        inicio = range.start;
+        fin = range.end;
+      } else {
+        const range = await getOrgDayRange(organizationId, yesterday);
+        inicio = range.start;
+        fin = range.end;
+      }
+      // Período anterior = anteayer (mismo día completo)
+      const twoDaysAgo = addDays(operatingToday, -2);
+      const { start: inicioAnterior, end: finAnterior } = await getOrgDayRange(organizationId, twoDaysAgo);
+      return { inicio, fin, inicioAnterior, finAnterior, operatingToday };
     }
     case '7d': {
       const start7d = addDays(operatingToday, -7);
@@ -378,11 +411,11 @@ export const inicioService = {
     // Ejecutar queries en paralelo para mayor velocidad.
     // Las queries que traen filas completas usan RPC (agregación en BD) para
     // evitar el límite de 1000 filas del cliente Supabase.
-    const isHoy = periodo === 'hoy';
-    const salesFn = isHoy ? 'get_sales_by_hour' : 'get_sales_by_day';
-    const webOrdersRevFn = isHoy ? 'get_web_orders_revenue_by_hour' : 'get_web_orders_revenue_by_day';
-    const invoicesFn = isHoy ? 'get_invoice_sales_by_hour' : 'get_invoice_sales_by_day';
-    const webOrdersAllFn = isHoy ? 'get_web_orders_all_by_hour' : 'get_web_orders_all_by_day';
+    const isHorario = periodo === 'hoy' || periodo === 'ayer';
+    const salesFn = isHorario ? 'get_sales_by_hour' : 'get_sales_by_day';
+    const webOrdersRevFn = isHorario ? 'get_web_orders_revenue_by_hour' : 'get_web_orders_revenue_by_day';
+    const invoicesFn = isHorario ? 'get_invoice_sales_by_hour' : 'get_invoice_sales_by_day';
+    const webOrdersAllFn = isHorario ? 'get_web_orders_all_by_hour' : 'get_web_orders_all_by_day';
     const rpcArgs = (p_start: string, p_end: string) => ({
       p_organization_id: organizationId, p_timezone: timezoneOrg, p_start, p_end,
     });
@@ -453,10 +486,10 @@ export const inicioService = {
       supabase.from('organization_taxes').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
       supabase.from('organization_modules').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).eq('is_active', true).not('module_code', 'in', '("clientes","organizations","roles")'),
       // Visitas web (RPC + count exacto)
-      isHoy
+      isHorario
         ? supabase.rpc('get_website_visits_by_hour', rpcArgs(inicioPeriodo, finPeriodo))
         : supabase.rpc('get_website_visits_by_day', rpcArgs(inicioPeriodo, finPeriodo)),
-      isHoy
+      isHorario
         ? supabase.rpc('get_website_visits_by_hour', rpcArgs(inicioAnterior, finAnterior))
         : supabase.rpc('get_website_visits_by_day', rpcArgs(inicioAnterior, finAnterior)),
       supabase.from('website_visits').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).gte('created_at', inicioPeriodo).lt('created_at', finPeriodo),
@@ -496,7 +529,7 @@ export const inicioService = {
     // Los KPIs totales se calculan sumando las series. Las series se usan directamente.
     type PuntoHoraRPC = { hora: number; total: number };
     type PuntoDiaRPC = { fecha: string; total: number };
-    type PuntoComprasRPC = { pedidos: number; pendientes: number; pagados: number; cancelados: number };
+    type PuntoComprasRPC = { pedidos: number; pendientes: number; pagados: number; cancelados: number; completados: number };
 
     const salesPeriodo = (salesPeriodoRes.data as PuntoHoraRPC[] | PuntoDiaRPC[] | null) ?? [];
     const webOrdersRevPeriodo = (webOrdersRevPeriodoRes.data as PuntoHoraRPC[] | PuntoDiaRPC[] | null) ?? [];
@@ -540,7 +573,17 @@ export const inicioService = {
     const comprasWebPendientes = sumarCampo(webOrdersAllPeriodo, 'pendientes');
     const comprasWebPagadas = sumarCampo(webOrdersAllPeriodo, 'pagados');
     const comprasWebCanceladas = sumarCampo(webOrdersAllPeriodo, 'cancelados');
+    const comprasWebCompletadas = sumarCampo(webOrdersAllPeriodo, 'completados');
     const comprasWebAnterior = sumarCampo(webOrdersAllAnteriorData, 'pedidos');
+    const comprasWebCompletadasAnterior = sumarCampo(webOrdersAllAnteriorData, 'completados');
+
+    // ── Tasas de conversión de comercio web ──
+    const tasaVisitaPedido = visitasWeb > 0 ? (comprasWeb / visitasWeb) * 100 : 0;
+    const tasaPedidoCompletado = comprasWeb > 0 ? (comprasWebCompletadas / comprasWeb) * 100 : 0;
+    const tasaAbandono = comprasWeb > 0 ? (comprasWebCanceladas / comprasWeb) * 100 : 0;
+    const tasaVisitaPedidoAnterior = visitasWebAnterior > 0 ? (comprasWebAnterior / visitasWebAnterior) * 100 : 0;
+    const tasaPedidoCompletadoAnterior = comprasWebAnterior > 0 ? (comprasWebCompletadasAnterior / comprasWebAnterior) * 100 : 0;
+    const conversionWebAnterior = tasaPedidoCompletadoAnterior;
 
     // Series horarias (solo para periodo 'hoy'): hoy vs ayer a esta misma hora
     let ventasPorHoraHoy: PuntoHora[] | undefined;
@@ -555,8 +598,10 @@ export const inicioService = {
     let comprasPorHoraHoyCanceladas: PuntoHora[] | undefined;
     let comprasPorHoraAyerPagadas: PuntoHora[] | undefined;
     let comprasPorHoraAyerCanceladas: PuntoHora[] | undefined;
+    let comprasPorHoraHoyCompletadas: PuntoHora[] | undefined;
+    let comprasPorHoraAyerCompletadas: PuntoHora[] | undefined;
     let horaActualOrg: number | undefined;
-    if (isHoy) {
+    if (isHorario) {
       const horaFmt = new Intl.DateTimeFormat('en-US', { timeZone: timezoneOrg, hour: 'numeric', hour12: false });
       horaActualOrg = Number(horaFmt.format(new Date())) % 24;
       // Las RPC by_hour ya devuelven PuntoHora[] (24 horas). Se combinan sales + web_orders.
@@ -573,14 +618,16 @@ export const inicioService = {
       visitasPorHoraHoy = (visitasWebHoyRes.data as PuntoHora[] | null) ?? [];
       visitasPorHoraAyer = (visitasWebAnteriorRes.data as PuntoHora[] | null) ?? [];
       // Compras web: la RPC get_web_orders_all_by_hour devuelve {hora, pedidos, pendientes, pagados, cancelados}[]
-      const comprasPeriodoHora = webOrdersAllPeriodo as unknown as { hora: number; pedidos: number; pendientes: number; pagados: number; cancelados: number }[];
-      const comprasAnteriorHora = webOrdersAllAnteriorData as unknown as { hora: number; pedidos: number; pendientes: number; pagados: number; cancelados: number }[];
+      const comprasPeriodoHora = webOrdersAllPeriodo as unknown as { hora: number; pedidos: number; pendientes: number; pagados: number; cancelados: number; completados: number }[];
+      const comprasAnteriorHora = webOrdersAllAnteriorData as unknown as { hora: number; pedidos: number; pendientes: number; pagados: number; cancelados: number; completados: number }[];
       comprasPorHoraHoy = comprasPeriodoHora.map((p) => ({ hora: p.hora, total: p.pedidos }));
       comprasPorHoraAyer = comprasAnteriorHora.map((p) => ({ hora: p.hora, total: p.pedidos }));
       comprasPorHoraHoyPagadas = comprasPeriodoHora.map((p) => ({ hora: p.hora, total: p.pagados }));
       comprasPorHoraHoyCanceladas = comprasPeriodoHora.map((p) => ({ hora: p.hora, total: p.cancelados }));
+      comprasPorHoraHoyCompletadas = comprasPeriodoHora.map((p) => ({ hora: p.hora, total: p.completados }));
       comprasPorHoraAyerPagadas = comprasAnteriorHora.map((p) => ({ hora: p.hora, total: p.pagados }));
       comprasPorHoraAyerCanceladas = comprasAnteriorHora.map((p) => ({ hora: p.hora, total: p.cancelados }));
+      comprasPorHoraAyerCompletadas = comprasAnteriorHora.map((p) => ({ hora: p.hora, total: p.completados }));
     }
 
     // Series diarias por período (7d, 30d, 90d, año): actual vs anterior por posición
@@ -590,8 +637,9 @@ export const inicioService = {
     let comprasPorDiaPeriodo: SerieDiariaKpi | undefined;
     let comprasPorDiaPeriodoPagadas: SerieDiariaKpi | undefined;
     let comprasPorDiaPeriodoCanceladas: SerieDiariaKpi | undefined;
-    if (!isHoy) {
-      const diasPeriodo: Record<PeriodoDashboard, number> = { hoy: 1, '7d': 7, '30d': 30, '90d': 90, año: 365 };
+    let comprasPorDiaPeriodoCompletadas: SerieDiariaKpi | undefined;
+    if (!isHorario) {
+      const diasPeriodo: Record<PeriodoDashboard, number> = { hoy: 1, ayer: 1, '7d': 7, '30d': 30, '90d': 90, año: 365 };
       const n = diasPeriodo[periodo];
       const fechaFinActual = operatingToday;
       const fechaInicioActual = addDays(operatingToday, -(n - 1));
@@ -623,8 +671,8 @@ export const inicioService = {
           (visitasWebAnteriorRes.data as PuntoDiaRPC[] | null) ?? [], fechaInicioAnterior, fechaFinAnterior),
       };
       // Compras web (con desglose)
-      const comprasDiaActual = webOrdersAllPeriodo as unknown as { fecha: string; pedidos: number; pagados: number; cancelados: number }[];
-      const comprasDiaAnterior = webOrdersAllAnteriorData as unknown as { fecha: string; pedidos: number; pagados: number; cancelados: number }[];
+      const comprasDiaActual = webOrdersAllPeriodo as unknown as { fecha: string; pedidos: number; pagados: number; cancelados: number; completados: number }[];
+      const comprasDiaAnterior = webOrdersAllAnteriorData as unknown as { fecha: string; pedidos: number; pagados: number; cancelados: number; completados: number }[];
       comprasPorDiaPeriodo = {
         actual: mapearVisitasPorDiaPeriodo(
           comprasDiaActual.map((p) => ({ fecha: p.fecha, total: p.pedidos })), fechaInicioActual, fechaFinActual),
@@ -642,6 +690,12 @@ export const inicioService = {
           comprasDiaActual.map((p) => ({ fecha: p.fecha, total: p.cancelados })), fechaInicioActual, fechaFinActual),
         anterior: mapearVisitasPorDiaPeriodo(
           comprasDiaAnterior.map((p) => ({ fecha: p.fecha, total: p.cancelados })), fechaInicioAnterior, fechaFinAnterior),
+      };
+      comprasPorDiaPeriodoCompletadas = {
+        actual: mapearVisitasPorDiaPeriodo(
+          comprasDiaActual.map((p) => ({ fecha: p.fecha, total: p.completados })), fechaInicioActual, fechaFinActual),
+        anterior: mapearVisitasPorDiaPeriodo(
+          comprasDiaAnterior.map((p) => ({ fecha: p.fecha, total: p.completados })), fechaInicioAnterior, fechaFinAnterior),
       };
     }
 
@@ -697,6 +751,13 @@ export const inicioService = {
       comprasWebPendientes,
       comprasWebCanceladas,
       comprasWebPagadas,
+      comprasWebCompletadas,
+      comprasWebCompletadasAnterior,
+      // Tasas de conversión
+      tasaVisitaPedido,
+      tasaPedidoCompletado,
+      tasaAbandono,
+      conversionWeb: tasaPedidoCompletado,
       // Deltas
       ventasAnterior,
       facturasAnterior,
@@ -708,6 +769,9 @@ export const inicioService = {
       reservasAnterior,
       visitasWebAnterior,
       comprasWebAnterior,
+      tasaVisitaPedidoAnterior,
+      tasaPedidoCompletadoAnterior,
+      conversionWebAnterior,
       // Series horarias
       ventasPorHoraHoy,
       ventasPorHoraAyer,
@@ -721,6 +785,8 @@ export const inicioService = {
       comprasPorHoraHoyCanceladas,
       comprasPorHoraAyerPagadas,
       comprasPorHoraAyerCanceladas,
+      comprasPorHoraHoyCompletadas,
+      comprasPorHoraAyerCompletadas,
       horaActualOrg,
       ventasPorDiaMesActual,
       ventasPorDiaMesAnterior,
@@ -730,6 +796,7 @@ export const inicioService = {
       comprasPorDiaPeriodo,
       comprasPorDiaPeriodoPagadas,
       comprasPorDiaPeriodoCanceladas,
+      comprasPorDiaPeriodoCompletadas,
       seriesDiarias,
       diaActualMes,
       mesActualNumero,

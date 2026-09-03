@@ -1,11 +1,8 @@
-feat(categorias): autocompletado en reglas + consultas directas Supabase
+fix(ventas): corregir tipos TS - Sale.status incluye expired + customer.full_name
 
-- CategoryRulesCard: reemplazar fetch al API route por consultas directas
-  a Supabase (carga inmediata, sin latencia serverless)
-- Autocompletado con datalist nativo para campos de texto (marca, referencia,
-  estacion): sugiere valores existentes mientras escribes pero permite
-  escribir libremente cualquier valor
-- Carga de sugerencias en paralelo con reglas, proveedores y etiquetas
+- Sale.status: agrega 'expired' al tipo para que VentasTable no de error TS
+- VentaDetalle: corrige customer.name -> customer.full_name (error TS preexistente)
+- Revert de etiquetas: expired vuelve a mostrarse como "Expirada" con color gris
 
 Generated with [Devin](https://devin.ai)
 

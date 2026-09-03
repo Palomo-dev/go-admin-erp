@@ -50,6 +50,7 @@ export interface KpiConfigItem {
   useMonthLabel?: boolean;
   hasDesglose?: boolean;
   span2?: boolean; // ocupar 2 columnas en desktop (sm+)
+  isPercentage?: boolean; // mostrar valor como porcentaje (conversionWeb)
 }
 
 export const kpiConfig: KpiConfigItem[] = [
@@ -73,7 +74,6 @@ export const kpiConfig: KpiConfigItem[] = [
     deltaKey: 'ventasMesAnterior' as const,
     dynamicLabel: true,
     useMonthLabel: true, // etiqueta muestra nombre del mes, no el período
-    span2: true,
   },
   {
     key: 'clientesActivos' as const,
@@ -157,6 +157,18 @@ export const kpiConfig: KpiConfigItem[] = [
     hasDesglose: true, // mostrar desglose de pendientes/canceladas/pagadas
     span2: true,
   },
+  {
+    key: 'conversionWeb' as const,
+    labelKey: 'webConversion' as const,
+    icon: TrendingUp,
+    color: 'green',
+    isCurrency: false,
+    href: '/app/pos/pedidos-online',
+    deltaKey: 'conversionWebAnterior' as const,
+    dynamicLabel: true,
+    hasDesglose: true, // mostrar desglose de las 3 tasas
+    isPercentage: true,
+  },
 ];
 
 const colorMap: Record<string, { bg: string; icon: string; text: string; stroke: string }> = {
@@ -175,6 +187,7 @@ const colorMap: Record<string, { bg: string; icon: string; text: string; stroke:
 // Etiqueta dinámica según período
 const periodoLabel: Record<PeriodoDashboard, string> = {
   hoy: 'Hoy',
+  ayer: 'Ayer',
   '7d': '7 días',
   '30d': '30 días',
   '90d': '90 días',
@@ -377,6 +390,98 @@ function MensualSparkline({
           />
         </LineChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+// Mini-funnel de conversión web para la card (versión compacta con tooltip)
+function MiniConversionFunnel({
+  visitas,
+  pedidos,
+  completados,
+  cancelados,
+  tasaVisitaPedido,
+  tasaPedidoCompletado,
+  tasaAbandono,
+  visitasAnterior,
+  pedidosAnterior,
+  completadosAnterior,
+}: {
+  visitas: number;
+  pedidos: number;
+  completados: number;
+  cancelados: number;
+  tasaVisitaPedido: number;
+  tasaPedidoCompletado: number;
+  tasaAbandono: number;
+  visitasAnterior?: number;
+  pedidosAnterior?: number;
+  completadosAnterior?: number;
+}) {
+  const max = Math.max(visitas, 1);
+  const stages = [
+    {
+      label: 'Visitas', value: visitas, color: '#3b82f6',
+      items: [
+        { label: 'Visitantes', value: visitas.toLocaleString(), color: '#3b82f6' },
+        ...(visitasAnterior ? [{ label: 'Período anterior', value: visitasAnterior.toLocaleString() }] : []),
+        { label: 'Tasa visita→pedido', value: `${tasaVisitaPedido.toFixed(1)}%` },
+      ],
+    },
+    {
+      label: 'Pedidos', value: pedidos, color: '#f59e0b',
+      items: [
+        { label: 'Pedidos', value: pedidos.toLocaleString(), color: '#f59e0b' },
+        ...(pedidosAnterior ? [{ label: 'Período anterior', value: pedidosAnterior.toLocaleString() }] : []),
+        { label: 'Tasa visita→pedido', value: `${tasaVisitaPedido.toFixed(1)}%` },
+        { label: 'Tasa pedido→completado', value: `${tasaPedidoCompletado.toFixed(1)}%` },
+        { label: 'Tasa abandono', value: `${tasaAbandono.toFixed(1)}%` },
+      ],
+    },
+    {
+      label: 'Comple.', value: completados, color: '#22c55e',
+      items: [
+        { label: 'Completados', value: completados.toLocaleString(), color: '#22c55e' },
+        ...(completadosAnterior ? [{ label: 'Período anterior', value: completadosAnterior.toLocaleString() }] : []),
+        { label: 'Tasa pedido→completado', value: `${tasaPedidoCompletado.toFixed(1)}%` },
+        { label: 'De pedidos', value: `${completados} / ${pedidos}` },
+      ],
+    },
+  ];
+  return (
+    <div className="mt-2 space-y-0.5">
+      {stages.map((s) => {
+        const ratio = max > 0 ? s.value / max : 0;
+        const w = Math.max(Math.sqrt(ratio) * 100, 20);
+        return (
+          <div key={s.label} className="group relative flex items-center gap-1.5">
+            <span className="text-[9px] text-gray-400 dark:text-gray-500 w-10 text-right shrink-0">{s.label}</span>
+            <div className="flex-1 h-3 bg-gray-100 dark:bg-gray-800 rounded-sm overflow-hidden">
+              <div
+                className="h-full rounded-sm transition-all duration-500"
+                style={{ width: `${w}%`, backgroundColor: s.color, opacity: 0.85 }}
+              />
+            </div>
+            <span className="text-[9px] font-medium text-gray-600 dark:text-gray-300 w-8 shrink-0">{s.value.toLocaleString()}</span>
+            {/* Tooltip al hacer hover */}
+            <div className="absolute z-20 right-10 top-1/2 -translate-y-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-[10px] rounded-md shadow-sm px-2 py-1.5 space-y-0.5 min-w-[150px]">
+                {s.items.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                      {item.color && (
+                        <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }} />
+                      )}
+                      {item.label}
+                    </span>
+                    <span className="font-semibold">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -648,7 +753,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
               : kpi.key === 'comprasWeb'
                 ? data?.comprasPorHoraAyer
                 : undefined;
-        const hasHoraria = isDynamicKpi && periodo === 'hoy' && horaHoy && horaAyer && data?.horaActualOrg !== undefined;
+        const hasHoraria = isDynamicKpi && (periodo === 'hoy' || periodo === 'ayer') && horaHoy && horaAyer && data?.horaActualOrg !== undefined;
 
         // Series por período (periodo!='hoy'): ventasHoy, facturasHoy, visitasWeb, comprasWeb
         const periodoSerie = kpi.key === 'ventasHoy'
@@ -660,7 +765,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
               : kpi.key === 'comprasWeb'
                 ? data?.comprasPorDiaPeriodo
                 : undefined;
-        const hasPeriodo = isDynamicKpi && periodo !== 'hoy' && periodoSerie;
+        const hasPeriodo = isDynamicKpi && periodo !== 'hoy' && periodo !== 'ayer' && periodoSerie;
 
         // Desglose de compras web por estado (pedidos/pagados/cancelados) para sparkline
         const isComprasWeb = kpi.key === 'comprasWeb';
@@ -696,7 +801,9 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
               <p className={`text-lg font-bold ${colors.text}`}>
                 {kpi.isCurrency
                   ? formatCurrency(value)
-                  : value.toLocaleString(locale)}
+                  : kpi.isPercentage
+                    ? `${value.toFixed(1)}%`
+                    : value.toLocaleString(locale)}
               </p>
               {isLiveVisits && (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
@@ -713,7 +820,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
               )}
             </div>
             {/* Desglose de compras web por estado */}
-            {kpi.hasDesglose && data && (
+            {kpi.hasDesglose && kpi.key === 'comprasWeb' && data && (
               <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
                 <span className="inline-flex items-center gap-0.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
@@ -726,6 +833,20 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
                 <span className="inline-flex items-center gap-0.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
                   {data.comprasWebCanceladas} {t('cancelled')}
+                </span>
+              </div>
+            )}
+            {/* Desglose de tasas de conversión web */}
+            {kpi.hasDesglose && kpi.key === 'conversionWeb' && data && (
+              <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+                <span title="Visitantes que hicieron pedido">
+                  Visita→Pedido: <span className="font-semibold text-gray-700 dark:text-gray-200">{data.tasaVisitaPedido.toFixed(1)}%</span>
+                </span>
+                <span title="Pedidos que se completaron (pagados online o confirmados manuales)">
+                  Conv.: <span className="font-semibold text-green-600 dark:text-green-400">{data.tasaPedidoCompletado.toFixed(1)}%</span>
+                </span>
+                <span title="Pedidos expirados o cancelados">
+                  Abandono: <span className="font-semibold text-red-500 dark:text-red-400">{data.tasaAbandono.toFixed(1)}%</span>
                 </span>
               </div>
             )}
@@ -750,12 +871,26 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
               </span>
             </div>
             {/* Mini-sparkline:
+                - conversionWeb: mini-funnel Visitas → Pedidos → Completados
                 - comprasWeb con desglose por estado: pedidos/pagados/cancelados (hoy vs ayer)
                 - KPIs dinámicos (ventasHoy, facturasHoy) con periodo='hoy': horario (hoy vs ayer a esta hora)
                 - KPIs dinámicos con periodo!='hoy': diario por posición del período (actual vs anterior)
                 - KPIs no dinámicos con serie mensual: diario del mes (mes actual vs anterior)
                 - fallback: sintético */}
-            {hasComprasHoraria ? (
+            {kpi.key === 'conversionWeb' && data ? (
+              <MiniConversionFunnel
+                visitas={data.visitasWeb}
+                pedidos={data.comprasWeb}
+                completados={data.comprasWebCompletadas}
+                cancelados={data.comprasWebCanceladas}
+                tasaVisitaPedido={data.tasaVisitaPedido}
+                tasaPedidoCompletado={data.tasaPedidoCompletado}
+                tasaAbandono={data.tasaAbandono}
+                visitasAnterior={data.visitasWebAnterior}
+                pedidosAnterior={data.comprasWebAnterior}
+                completadosAnterior={data.comprasWebCompletadasAnterior}
+              />
+            ) : hasComprasHoraria ? (
               <ComprasWebHorariasSparkline
                 hoy={horaHoy!}
                 ayer={horaAyer!}

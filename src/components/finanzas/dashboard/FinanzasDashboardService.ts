@@ -100,8 +100,8 @@ interface InvoiceSequenceRow {
   id: string;
   prefix: string;
   current_number: number;
-  max_number: number;
-  resolution_end_date: string;
+  range_end: number;
+  valid_until: string;
 }
 
 class FinanzasDashboardService {
@@ -605,13 +605,13 @@ class FinanzasDashboardService {
     // Resolución DIAN por agotarse
     const { data: secuencias } = await supabase
       .from('invoice_sequences')
-      .select('id, prefix, current_number, max_number, resolution_end_date')
+      .select('id, prefix, current_number, range_end, valid_until')
       .eq('organization_id', organizationId)
       .eq('is_active', true);
     
     secuencias?.forEach((seq: InvoiceSequenceRow) => {
-      const porcentajeUsado = (seq.current_number / seq.max_number) * 100;
-      const fechaVence = new Date(seq.resolution_end_date);
+      const porcentajeUsado = (seq.current_number / seq.range_end) * 100;
+      const fechaVence = new Date(seq.valid_until);
       const diasRestantes = Math.floor((fechaVence.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
       
       if (porcentajeUsado >= 80) {
@@ -619,7 +619,7 @@ class FinanzasDashboardService {
           id: `resolucion-cantidad-${seq.id}`,
           tipo: 'resolucion_dian',
           titulo: `Resolución ${seq.prefix} casi agotada`,
-          descripcion: `Usados ${seq.current_number} de ${seq.max_number} (${porcentajeUsado.toFixed(0)}%)`,
+          descripcion: `Usados ${seq.current_number} de ${seq.range_end} (${porcentajeUsado.toFixed(0)}%)`,
           prioridad: porcentajeUsado >= 95 ? 'alta' : 'media',
           enlace: '/app/finanzas/configuracion/secuencias'
         });

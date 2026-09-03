@@ -17,6 +17,7 @@ const WOMPI_SUB_METHODS = new Set([
   'bancolombia_collect',
   'daviplata',
   'wompi',
+  'wompi_co',
 ]);
 
 function mapWebPaymentMethodToInvoice(method: string | null | undefined): string {

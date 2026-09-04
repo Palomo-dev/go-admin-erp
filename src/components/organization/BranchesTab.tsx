@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { BRANCHES_UPDATED_EVENT } from '@/lib/context/BranchContext';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 // Cargar el mapa dinámicamente para evitar problemas de SSR
 const DynamicBranchesMap = dynamic(() => import('@/components/maps/BranchesMap'), {
@@ -186,6 +187,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
   }, [orgId]);
 
   const [autoBranchCode, setAutoBranchCode] = useState<string>('');
+  const [branchToDelete, setBranchToDelete] = useState<number | null>(null);
 
   const handleCreate = async () => {
     if (maxBranches !== null && branches.length >= maxBranches) {
@@ -209,17 +211,22 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
     setShowForm(true);
   };
 
-  const handleDelete = async (branchId: number) => {
-    if (!window.confirm(t('confirmDelete'))) return;
+  const handleDelete = (branchId: number) => {
+    setBranchToDelete(branchId);
+  };
+
+  const confirmDeleteBranch = async () => {
+    if (branchToDelete === null) return;
     setFormLoading(true);
     try {
-      await branchService.deleteBranch(branchId);
+      await branchService.deleteBranch(branchToDelete);
       await fetchBranches();
       window.dispatchEvent(new CustomEvent(BRANCHES_UPDATED_EVENT));
     } catch (err: any) {
       setError(err.message || t('errorDeleting'));
     } finally {
       setFormLoading(false);
+      setBranchToDelete(null);
     }
   };
 
@@ -904,6 +911,19 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
         onClose={handleCloseMapModal}
         onBranchSelect={handleBranchSelectFromMap}
         onBranchesUpdate={handleBranchesUpdateFromMap}
+      />
+
+      {/* Confirmación de eliminación (reemplaza window.confirm nativo) */}
+      <ConfirmDialog
+        open={branchToDelete !== null}
+        onOpenChange={(open) => !open && setBranchToDelete(null)}
+        title={t('confirmDelete')}
+        description={t('errorDeleting')}
+        confirmLabel={t('confirmDelete')}
+        cancelLabel={t('cancel')}
+        variant="destructive"
+        loading={formLoading}
+        onConfirm={confirmDeleteBranch}
       />
     </div>
   );

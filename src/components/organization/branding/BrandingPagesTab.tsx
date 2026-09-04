@@ -42,6 +42,7 @@ import {
   type MenuGroup,
 } from '@/lib/services/websiteMenuGroupService';
 import { MenuGroupManager } from './editor';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface BrandingPagesTabProps {
   organizationId: number;
@@ -66,6 +67,13 @@ export default function BrandingPagesTab({ organizationId, typeId, branchId }: B
   const [isLoadingMenus, setIsLoadingMenus] = useState(true);
   const [showMenuManager, setShowMenuManager] = useState(false);
   const [expandedMenuId, setExpandedMenuId] = useState<string | null>(null);
+  const [pageToDelete, setPageToDelete] = useState<string | null>(null);
+  const [menuToDelete, setMenuToDelete] = useState<string | null>(null);
+  const [menuToRename, setMenuToRename] = useState<{ id: string; name: string } | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [deletingPage, setDeletingPage] = useState(false);
+  const [deletingMenu, setDeletingMenu] = useState(false);
+  const [renamingMenu, setRenamingMenu] = useState(false);
 
   useEffect(() => {
     loadPages();
@@ -136,15 +144,21 @@ export default function BrandingPagesTab({ organizationId, typeId, branchId }: B
     }
   };
 
-  const handleDeletePage = async (pageId: string) => {
-    const confirm = window.confirm(t('deleteConfirm'));
-    if (!confirm) return;
+  const handleDeletePage = (pageId: string) => {
+    setPageToDelete(pageId);
+  };
 
+  const confirmDeletePage = async () => {
+    if (!pageToDelete) return;
     try {
-      await websitePageBuilderService.deletePage(pageId);
+      setDeletingPage(true);
+      await websitePageBuilderService.deletePage(pageToDelete);
       await loadPages();
     } catch (error) {
       console.error('Error deleting page:', error);
+    } finally {
+      setDeletingPage(false);
+      setPageToDelete(null);
     }
   };
 
@@ -171,25 +185,45 @@ export default function BrandingPagesTab({ organizationId, typeId, branchId }: B
     }
   };
 
-  const handleDeleteMenu = async (menuId: string) => {
-    const confirm = window.confirm(tm('deleteConfirm'));
-    if (!confirm) return;
+  const handleDeleteMenu = (menuId: string) => {
+    setMenuToDelete(menuId);
+  };
+
+  const confirmDeleteMenu = async () => {
+    if (!menuToDelete) return;
     try {
-      await websiteMenuGroupService.deleteMenu(menuId);
+      setDeletingMenu(true);
+      await websiteMenuGroupService.deleteMenu(menuToDelete);
       await loadMenus();
     } catch (error) {
       console.error('Error deleting menu:', error);
+    } finally {
+      setDeletingMenu(false);
+      setMenuToDelete(null);
     }
   };
 
-  const handleRenameMenu = async (menuId: string, currentName: string) => {
-    const newName = window.prompt(tm('renamePrompt'), currentName);
-    if (!newName?.trim() || newName === currentName) return;
+  const handleRenameMenu = (menuId: string, currentName: string) => {
+    setMenuToRename({ id: menuId, name: currentName });
+    setRenameValue(currentName);
+  };
+
+  const confirmRenameMenu = async () => {
+    if (!menuToRename) return;
+    const newName = renameValue.trim();
+    if (!newName || newName === menuToRename.name) {
+      setMenuToRename(null);
+      return;
+    }
     try {
-      await websiteMenuGroupService.updateMenu(menuId, { name: newName });
+      setRenamingMenu(true);
+      await websiteMenuGroupService.updateMenu(menuToRename.id, { name: newName });
       await loadMenus();
     } catch (error) {
       console.error('Error renaming menu:', error);
+    } finally {
+      setRenamingMenu(false);
+      setMenuToRename(null);
     }
   };
 
@@ -572,6 +606,66 @@ export default function BrandingPagesTab({ organizationId, typeId, branchId }: B
               }}
             >
               {t('cancel')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmación de eliminación de página (reemplaza window.confirm) */}
+      <ConfirmDialog
+        open={pageToDelete !== null}
+        onOpenChange={(open) => !open && setPageToDelete(null)}
+        title={t('deletePage')}
+        description={t('deleteConfirm')}
+        confirmLabel={t('deletePage')}
+        cancelLabel={t('cancel')}
+        variant="destructive"
+        loading={deletingPage}
+        onConfirm={confirmDeletePage}
+      />
+
+      {/* Confirmación de eliminación de menú (reemplaza window.confirm) */}
+      <ConfirmDialog
+        open={menuToDelete !== null}
+        onOpenChange={(open) => !open && setMenuToDelete(null)}
+        title={tm('delete')}
+        description={tm('deleteConfirm')}
+        confirmLabel={tm('delete')}
+        cancelLabel={t('cancel')}
+        variant="destructive"
+        loading={deletingMenu}
+        onConfirm={confirmDeleteMenu}
+      />
+
+      {/* Diálogo de renombrar menú (reemplaza window.prompt) */}
+      <Dialog open={menuToRename !== null} onOpenChange={(open) => !open && setMenuToRename(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tm('rename')}</DialogTitle>
+            <DialogDescription>{tm('renamePrompt')}</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder={tm('rename')}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmRenameMenu();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMenuToRename(null)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              onClick={confirmRenameMenu}
+              disabled={renamingMenu || !renameValue.trim() || renameValue.trim() === menuToRename?.name}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {renamingMenu && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {tm('rename')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -43,6 +43,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { TaskTimer } from '@/components/pm/TaskTimer';
 import { cn } from '@/utils/Utils';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface SubtaskItem {
   id: string;
@@ -122,6 +123,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
   const [isMobile, setIsMobile] = useState(false);
   const isEdit = !!editTask;
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -330,9 +332,13 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
     }
   }, [editTask, reloadAttachments, reloadDependencies]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!editTask) return;
-    if (!window.confirm(`¿Eliminar la tarea "${editTask.title}"? Esta acción no se puede deshacer.`)) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!editTask) return;
     setDeleting(true);
     try {
       await pmService.deleteTask(editTask.id);
@@ -344,6 +350,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
       toast({ title: 'Error al eliminar', description: error.message, variant: 'destructive' });
     } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -1212,6 +1219,7 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
   );
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); onClose(); } }}>
       <SheetContent
         side="right"
@@ -1223,5 +1231,18 @@ export default function TaskCreationPanel({ isOpen, onClose, projects, existingT
         {renderContent()}
       </SheetContent>
     </Sheet>
+
+    {/* Confirmación de eliminación (reemplaza window.confirm) */}
+    <ConfirmDialog
+      open={showDeleteConfirm}
+      onOpenChange={setShowDeleteConfirm}
+      title="Eliminar tarea"
+      description={`¿Eliminar la tarea "${editTask?.title}"? Esta acción no se puede deshacer.`}
+      confirmLabel="Eliminar"
+      variant="destructive"
+      loading={deleting}
+      onConfirm={confirmDelete}
+    />
+    </>
   );
 }

@@ -28,6 +28,7 @@ export interface ShippingRate {
   show_on_website: boolean;
   show_on_pos: boolean;
   free_shipping_threshold?: number;
+  estimated_transit_days?: number | null;
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -83,6 +84,7 @@ export interface CreateShippingRateData {
   valid_until?: string;
   is_active?: boolean;
   show_on_pos?: boolean;
+  estimated_transit_days?: number | null;
 }
 
 export interface ShippingRateFilters {

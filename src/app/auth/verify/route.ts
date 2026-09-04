@@ -24,7 +24,15 @@ export async function GET(request: NextRequest) {
 
   // Crear cliente Supabase para server-side
   const cookieStore = await cookies();
-  
+
+  // Almacenar cookies pendientes para aplicar al redirect response.
+  // CRÍTICO: En Next.js App Router, cookieStore.set() modifica la respuesta
+  // subyacente, pero si retornamos NextResponse.redirect() se crea una NUEVA
+  // respuesta que NO incluye esas cookies. Esto causaba que las sesiones
+  // establecidas por verifyOtp se perdieran en el redirect a /auth/invite,
+  // rompiendo el flujo de invitaciones. Patrón tomado de callback/route.ts.
+  const pendingCookies = new Map<string, string | null>();
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -33,6 +41,10 @@ export async function GET(request: NextRequest) {
         flowType: 'pkce',
         storage: {
           getItem: (key: string) => {
+            // Primero buscar en cookies pendientes (guardadas por verifyOtp)
+            if (pendingCookies.has(key)) {
+              return pendingCookies.get(key) ?? null;
+            }
             return cookieStore.get(key)?.value ?? null;
           },
           setItem: (key: string, value: string) => {
@@ -41,16 +53,10 @@ export async function GET(request: NextRequest) {
             // cliente no puede parsear cookies seteadas por el servidor porque
             // split('=') rompe si el JSON contiene '=' y decodeURIComponent
             // corrompe '%' literales del JSON raw.
-            cookieStore.set(key, encodeURIComponent(value), {
-              httpOnly: false,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              path: '/',
-              maxAge: 604800
-            });
+            pendingCookies.set(key, encodeURIComponent(value));
           },
           removeItem: (key: string) => {
-            cookieStore.delete(key);
+            pendingCookies.set(key, null);
           }
         },
         persistSession: true,
@@ -59,6 +65,27 @@ export async function GET(request: NextRequest) {
       }
     }
   );
+
+  // Helper: crear redirect con cookies de sesión aplicadas.
+  // Sin esto, las cookies seteadas por verifyOtp se pierden al retornar
+  // un NextResponse.redirect() que es una respuesta nueva.
+  function redirectWithCookies(url: string) {
+    const response = NextResponse.redirect(new URL(url, request.url));
+    pendingCookies.forEach((value, name) => {
+      if (value !== null) {
+        response.cookies.set(name, value, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 604800
+        });
+      } else {
+        response.cookies.delete(name);
+      }
+    });
+    return response;
+  }
 
   // Tipos de OTP soportados por verifyOtp para links de email (sin PKCE, funcionan cross-device)
   const supportedTypes = ['signup', 'recovery', 'email_change', 'invite', 'magiclink'];
@@ -87,9 +114,7 @@ export async function GET(request: NextRequest) {
             const resendResult = await tryResendMagicLink(emailParam, requestUrl.origin);
             if (resendResult.success) {
               // Setear cookie anti-bucle (10 min de expiración)
-              const response = NextResponse.redirect(
-                new URL(`/auth/verify/resent?email=${encodeURIComponent(emailParam)}`, request.url)
-              );
+              const response = redirectWithCookies(`/auth/verify/resent?email=${encodeURIComponent(emailParam)}`);
               response.cookies.set(resendCookieName, '1', {
                 httpOnly: false,
                 secure: process.env.NODE_ENV === 'production',
@@ -103,30 +128,24 @@ export async function GET(request: NextRequest) {
             console.log('Reenvío automático ya realizado recientemente para', emailParam, '→ fallback a failed');
           }
           // Si el reenvío falló o ya se reenvió recientemente, caer al fallback.
-          return NextResponse.redirect(
-            new URL(`/auth/verify/failed?type=${type}`, request.url)
-          );
+          return redirectWithCookies(`/auth/verify/failed?type=${type}`);
         }
 
         // Para otros tipos (signup, recovery, email_change) o sin email en URL,
         // redirigir a la página que pide el email si es magiclink/invite,
         // o al login con error si es otro tipo.
         if (type === 'magiclink' || type === 'invite') {
-          return NextResponse.redirect(
-            new URL(`/auth/verify/failed?type=${type}`, request.url)
-          );
+          return redirectWithCookies(`/auth/verify/failed?type=${type}`);
         }
 
-        return NextResponse.redirect(
-          new URL('/auth/login?error=email-verification-failed&details=' + encodeURIComponent(verifyError.message), request.url)
+        return redirectWithCookies(
+          '/auth/login?error=email-verification-failed&details=' + encodeURIComponent(verifyError.message)
         );
       }
       
       if (!data.user || !data.session) {
         console.error('Verification did not return user or session');
-        return NextResponse.redirect(
-          new URL('/auth/login?error=verification-failed', request.url)
-        );
+        return redirectWithCookies('/auth/login?error=verification-failed');
       }
 
       const user = data.user;
@@ -142,16 +161,16 @@ export async function GET(request: NextRequest) {
             // El perfil ya existía (signup con sesión inmediata, sin bloqueo por
             // confirmación). Este correo solo confirma el email; la sesión sigue
             // activa, así que se manda directo a la app sin re-loguear.
-            return NextResponse.redirect(new URL('/app/inicio?email_confirmed=true', request.url));
+            return redirectWithCookies('/app/inicio?email_confirmed=true');
           }
 
           // Caso legado: el perfil se creó apenas ahora, se pide login limpio.
           await supabase.auth.signOut();
-          return NextResponse.redirect(
-            new URL('/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.'), request.url)
+          return redirectWithCookies(
+            '/auth/login?success=email-confirmed&message=' + encodeURIComponent('Tu cuenta ha sido confirmada exitosamente. Por favor, inicia sesión con tu email y contraseña.')
           );
         }
-        return NextResponse.redirect(new URL('/app/inicio', request.url));
+        return redirectWithCookies('/app/inicio');
       }
 
       // recovery: la sesión ya queda establecida (cookies); redirigir a reset-password
@@ -170,11 +189,9 @@ export async function GET(request: NextRequest) {
           .maybeSingle();
 
         if (pendingInvite?.code) {
-          return NextResponse.redirect(
-            new URL(`/auth/invite?invite_code=${pendingInvite.code}`, request.url)
-          );
+          return redirectWithCookies(`/auth/invite?invite_code=${pendingInvite.code}`);
         }
-        return NextResponse.redirect(new URL('/auth/reset-password', request.url));
+        return redirectWithCookies('/auth/reset-password');
       }
 
       // email_change: el correo ya fue actualizado por verifyOtp en auth.users.
@@ -214,8 +231,8 @@ export async function GET(request: NextRequest) {
         }
 
         await supabase.auth.signOut();
-        return NextResponse.redirect(
-          new URL('/auth/login?success=email-changed&message=' + encodeURIComponent('Tu correo electrónico ha sido actualizado exitosamente. Por favor, inicia sesión con tu nuevo correo.'), request.url)
+        return redirectWithCookies(
+          '/auth/login?success=email-changed&message=' + encodeURIComponent('Tu correo electrónico ha sido actualizado exitosamente. Por favor, inicia sesión con tu nuevo correo.')
         );
       }
 
@@ -232,11 +249,9 @@ export async function GET(request: NextRequest) {
           .maybeSingle();
 
         if (pendingInvite?.code) {
-          return NextResponse.redirect(
-            new URL(`/auth/invite?invite_code=${pendingInvite.code}`, request.url)
-          );
+          return redirectWithCookies(`/auth/invite?invite_code=${pendingInvite.code}`);
         }
-        return NextResponse.redirect(new URL('/app/inicio', request.url));
+        return redirectWithCookies('/app/inicio');
       }
 
       // invite: verifyOtp establece sesión; redirigir a /auth/invite con el código
@@ -244,24 +259,22 @@ export async function GET(request: NextRequest) {
       if (type === 'invite') {
         const inviteCode = user.user_metadata?.invitation_code;
         if (inviteCode) {
-          return NextResponse.redirect(
-            new URL(`/auth/invite?invite_code=${inviteCode}`, request.url)
-          );
+          return redirectWithCookies(`/auth/invite?invite_code=${inviteCode}`);
         }
         // Si no hay código de invitación en metadata, redirigir a reset-password
-        return NextResponse.redirect(new URL('/auth/reset-password', request.url));
+        return redirectWithCookies('/auth/reset-password');
       }
     } catch (error: any) {
       console.error('Email verification error:', error);
-      return NextResponse.redirect(
-        new URL('/auth/login?error=email-verification-error&details=' + encodeURIComponent(error.message || 'Unknown error'), request.url)
+      return redirectWithCookies(
+        '/auth/login?error=email-verification-error&details=' + encodeURIComponent(error.message || 'Unknown error')
       );
     }
   }
 
   // Si no hay token válido, redirigir a login
   console.log('No valid token found, redirecting to login');
-  return NextResponse.redirect(new URL('/auth/login?error=invalid-verification-link', request.url));
+  return redirectWithCookies('/auth/login?error=invalid-verification-link');
 }
 
 /**

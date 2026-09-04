@@ -5,7 +5,16 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Users, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   MembershipCard, 
   MembershipFilters, 
@@ -31,10 +40,13 @@ export default function GymMembresiasPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('filter') === 'expiring' ? 'active' : 'all');
+  const [statusFilter, setStatusFilter] = useState(searchParams?.get('filter') === 'expiring' ? 'active' : 'all');
   const [showDialog, setShowDialog] = useState(false);
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [selectedMembership, setSelectedMembership] = useState<Membership | null>(null);
+  const [showFreezeDialog, setShowFreezeDialog] = useState(false);
+  const [freezeReason, setFreezeReason] = useState('');
+  const [membershipToFreeze, setMembershipToFreeze] = useState<Membership | null>(null);
 
   const loadMemberships = useCallback(async () => {
     try {
@@ -65,13 +77,17 @@ export default function GymMembresiasPage() {
     setShowQRDialog(true);
   };
 
-  const handleFreeze = async (membership: Membership) => {
-    const reason = window.prompt('Motivo del congelamiento:');
-    if (!reason) return;
+  const handleFreeze = (membership: Membership) => {
+    setMembershipToFreeze(membership);
+    setFreezeReason('');
+    setShowFreezeDialog(true);
+  };
 
+  const confirmFreeze = async () => {
+    if (!membershipToFreeze) return;
     try {
       setIsProcessing(true);
-      await freezeMembership(membership.id, reason);
+      await freezeMembership(membershipToFreeze.id, freezeReason);
       toast({
         title: 'Membresía congelada',
         description: 'La membresía ha sido congelada exitosamente'
@@ -86,6 +102,8 @@ export default function GymMembresiasPage() {
       });
     } finally {
       setIsProcessing(false);
+      setShowFreezeDialog(false);
+      setMembershipToFreeze(null);
     }
   };
 
@@ -222,6 +240,32 @@ export default function GymMembresiasPage() {
           </div>
         </div>
       )}
+
+      {/* Diálogo para motivo de congelamiento (reemplaza window.prompt) */}
+      <Dialog open={showFreezeDialog} onOpenChange={setShowFreezeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Congelar membresía</DialogTitle>
+            <DialogDescription>Ingrese el motivo del congelamiento.</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              value={freezeReason}
+              onChange={(e) => setFreezeReason(e.target.value)}
+              placeholder="Motivo del congelamiento..."
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFreezeDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmFreeze} disabled={isProcessing}>
+              {isProcessing ? 'Procesando...' : 'Congelar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

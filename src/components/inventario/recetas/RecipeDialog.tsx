@@ -182,9 +182,15 @@ export function RecipeDialog({
       return;
     }
 
-    const invalidIngredient = ingredients.find((ing) => ing.ingredient_product_id === 0 || ing.quantity <= 0);
+    const invalidIngredient = ingredients.find(
+      (ing) => ing.ingredient_product_id === 0 || ing.quantity <= 0 || !ing.unit_code
+    );
     if (invalidIngredient) {
-      toast({ title: 'Error', description: 'Todos los ingredientes deben tener producto y cantidad', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Todos los ingredientes deben tener producto, cantidad y unidad',
+        variant: 'destructive',
+      });
       return;
     }
 

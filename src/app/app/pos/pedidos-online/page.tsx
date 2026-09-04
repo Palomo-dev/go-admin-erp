@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import {
   Dialog,
   DialogContent,
@@ -89,6 +90,15 @@ const ITEMS_PER_PAGE = 20;
 export default function PedidosOnlinePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { organization } = useOrganization();
+  const orgTypeId = organization?.type_id ?? 3; // default retail
+
+  // Defaults de tiempo según tipo de organización:
+  // - Restaurante (1): 30 min preparación, 30 min traslado
+  // - Retail (3): 1 día empacado, 5 días entrega (nacional Colombia)
+  // - Otros: 30 min / 60 min
+  const isRestaurant = orgTypeId === 1;
+  const isRetail = orgTypeId === 3;
   
   const [orders, setOrders] = useState<WebOrder[]>([]);
   const [stats, setStats] = useState({
@@ -130,8 +140,12 @@ export default function PedidosOnlinePage() {
     orderId: null
   });
   const [markAsPaid, setMarkAsPaid] = useState(false);
-  const [prepTime, setPrepTime] = useState<EstimatedTime>({ value: 30, unit: 'minutes' });
-  const [transitTime, setTransitTime] = useState<EstimatedTime>({ value: 30, unit: 'minutes' });
+  const [prepTime, setPrepTime] = useState<EstimatedTime>(
+    isRetail ? { value: 1, unit: 'days' } : { value: 30, unit: 'minutes' }
+  );
+  const [transitTime, setTransitTime] = useState<EstimatedTime>(
+    isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' }
+  );
   const [actionLoading, setActionLoading] = useState(false);
 
   // Calcular rango de fecha según preset

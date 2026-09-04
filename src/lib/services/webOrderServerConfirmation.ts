@@ -838,9 +838,75 @@ export const webOrderServerConfirmation = {
     }
 
     // ── 9. Actualizar web_orders ──
-    const estimatedDeliveryAt = order.delivery_type !== 'pickup'
-      ? new Date(Date.now() + 60 * 60000).toISOString()
-      : null;
+    // Tiempos estimados dependen del tipo de organización:
+    // - Restaurant (type_id=1): 30 min listo, 60 min entrega (mismo ciudad)
+    // - Retail (type_id=3): 1 día empacado, N días entrega (según shipping_rates)
+    // - Otros: defaults razonables
+    const { data: orgForType } = await supabase
+      .from('organizations')
+      .select('type_id')
+      .eq('id', order.organization_id)
+      .maybeSingle();
+    const orgTypeId = orgForType?.type_id ?? 3;
+
+    let estimatedReadyAt: string;
+    let estimatedDeliveryAt: string | null = null;
+
+    if (orgTypeId === 1) {
+      // Restaurante: minutos
+      estimatedReadyAt = new Date(Date.now() + 30 * 60000).toISOString();
+      if (order.delivery_type !== 'pickup') {
+        estimatedDeliveryAt = new Date(Date.now() + 60 * 60000).toISOString();
+      }
+    } else {
+      // Retail y otros: días
+      // Empacado: 1 día por defecto
+      estimatedReadyAt = new Date(Date.now() + 24 * 60 * 60000).toISOString();
+
+      if (order.delivery_type !== 'pickup') {
+        // Buscar tarifa de envío con estimated_transit_days
+        let transitDays = 5; // default Colombia nacional
+        try {
+          const addr = (order.delivery_address || {}) as Record<string, unknown>;
+          const destCity = (addr.city || '') as string;
+
+          // Intentar match por destination_city primero
+          let rateQuery = supabase
+            .from('shipping_rates')
+            .select('estimated_transit_days')
+            .eq('organization_id', order.organization_id)
+            .eq('is_active', true)
+            .not('estimated_transit_days', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (destCity) {
+            const { data: cityRate } = await rateQuery
+              .eq('destination_city', destCity)
+              .maybeSingle();
+
+            if (cityRate?.estimated_transit_days) {
+              transitDays = cityRate.estimated_transit_days;
+            } else {
+              // Fallback: cualquier tarifa activa con días configurados
+              const { data: anyRate } = await rateQuery.maybeSingle();
+              if (anyRate?.estimated_transit_days) {
+                transitDays = anyRate.estimated_transit_days;
+              }
+            }
+          } else {
+            const { data: anyRate } = await rateQuery.maybeSingle();
+            if (anyRate?.estimated_transit_days) {
+              transitDays = anyRate.estimated_transit_days;
+            }
+          }
+        } catch (rateErr) {
+          console.warn('[webOrderServerConfirmation] No se pudo obtener transit days de shipping_rates:', rateErr);
+        }
+
+        estimatedDeliveryAt = new Date(Date.now() + transitDays * 24 * 60 * 60000).toISOString();
+      }
+    }
 
     const { error: updateError } = await supabase
       .from('web_orders')
@@ -848,7 +914,7 @@ export const webOrderServerConfirmation = {
         sale_id: saleId,
         status: 'confirmed',
         confirmed_at: now,
-        estimated_ready_at: new Date(Date.now() + 30 * 60000).toISOString(),
+        estimated_ready_at: estimatedReadyAt,
         ...(estimatedDeliveryAt ? { estimated_delivery_at: estimatedDeliveryAt } : {}),
       })
       .eq('id', order.id);

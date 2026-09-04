@@ -71,7 +71,102 @@ const CatalogoProductos: React.FC = () => {
   const [isFacebookFeedOpen, setIsFacebookFeedOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const lastFetchKey = useRef<string>('');
+  // Carga híbrida: primera página rápida vía RPC + carga completa en background
+  const [backgroundLoading, setBackgroundLoading] = useState<boolean>(false);
+  const [fastTotalCount, setFastTotalCount] = useState<number | null>(null);
+  const backgroundAbortRef = useRef<{ cancelled: boolean } | null>(null);
 
+
+  // Carga híbrida — Primera carga rápida vía RPC server-side
+  // Trae 50 productos ya calculados (precio/costo/stock vigentes) en 1 request.
+  // Mientras tanto, fetchProductos() corre en background para traer TODO.
+  const fetchProductosFast = useCallback(async () => {
+    if (!organization?.id) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Mapear filtros UI → parámetros RPC
+      const p_status = filters.mostrarEliminados
+        ? 'todos'
+        : (filters.estado && filters.estado !== 'todos' ? filters.estado : null);
+
+      const { data, error } = await supabase.rpc('get_catalogo_productos', {
+        p_organization_id: organization.id,
+        p_page: 1,
+        p_page_size: 50,
+        p_search: filters.busqueda || null,
+        p_category_id: filters.categoria || null,
+        p_status,
+        p_branch_id: branch_id || null,
+        p_sort_by: filters.ordenarPor || 'name',
+        p_sort_dir: 'asc',
+      });
+
+      if (error) {
+        console.error('Error en RPC get_catalogo_productos:', error);
+        // Si falla el RPC, caer al flujo completo
+        return false;
+      }
+
+      if (!data || !data.items || data.items.length === 0) {
+        setProductos([]);
+        setFastTotalCount(0);
+        setLoading(false);
+        return true;
+      }
+
+      // Mapear items del RPC al tipo Producto
+      const fastProducts: Producto[] = data.items.map((item: any) => ({
+        id: item.id,
+        uuid: item.uuid,
+        organization_id: item.organization_id,
+        sku: item.sku,
+        name: item.name,
+        description: item.description,
+        category_id: item.category_id,
+        category: item.category_id ? { id: item.category_id, name: item.category_name } : undefined,
+        unit_code: item.unit_code,
+        barcode: item.barcode,
+        status: item.status,
+        track_stock: item.track_stock,
+        parent_product_id: item.parent_product_id,
+        is_parent: item.is_parent,
+        product_type: item.product_type,
+        brand: item.brand,
+        reference: item.reference,
+        variant_data: item.variant_data,
+        station: item.station,
+        tax_id: item.tax_id,
+        is_composite: item.is_composite,
+        production_type: item.production_type,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        price: Number(item.out_price) || 0,
+        compare_price: Number(item.out_compare_price) || 0,
+        cost: Number(item.out_cost) || 0,
+        stock: item.out_stock !== null ? Number(item.out_stock) : undefined,
+        stock_branch: item.out_stock_branch !== null ? Number(item.out_stock_branch) : undefined,
+        // Las relaciones detalladas se cargan en background
+        product_prices: [],
+        product_costs: [],
+        stock_levels: [],
+        product_images: [],
+        children: [],
+        variants: [],
+        modifier_groups_count: 0,
+      }));
+
+      setProductos(fastProducts);
+      setFastTotalCount(data.total || 0);
+      setLoading(false);
+      return true;
+    } catch (error: any) {
+      console.error('Error en fetchProductosFast:', error);
+      return false;
+    }
+  }, [organization?.id, branch_id, filters]);
 
   // Cargar productos desde Supabase con una sola consulta eficiente
   // silent=true: no muestra skeleton (usado después de acciones masivas)
@@ -160,13 +255,28 @@ const CatalogoProductos: React.FC = () => {
         const productIds = mainProductsData.map((p: any) => p.id);
         const BATCH_SIZE = 200;
 
+        // PostgREST limita cada respuesta a 1000 filas (config "Max Rows").
+        // Un batch de 200 productos puede tener más de 1000 filas relacionadas
+        // (ej. product_prices con historial), por lo que paginamos con .range()
+        // dentro de cada batch hasta traer todas las filas. Sin esto, los
+        // productos cuyas filas caen después del límite quedan sin precio/costo/
+        // stock en la lista y muestran "-" en la tabla.
+        const ROWS_PER_PAGE = 1000;
         const batchedFetch = async (table: string, select: string, column: string) => {
           const allData: any[] = [];
           for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
             const batch = productIds.slice(i, i + BATCH_SIZE);
-            const { data, error } = await supabase.from(table).select(select).in(column, batch);
-            if (error) throw error;
-            if (data) allData.push(...data);
+            for (let from = 0; ; from += ROWS_PER_PAGE) {
+              const to = from + ROWS_PER_PAGE - 1;
+              const { data, error } = await supabase
+                .from(table)
+                .select(select)
+                .in(column, batch)
+                .range(from, to);
+              if (error) throw error;
+              if (data && data.length > 0) allData.push(...data);
+              if (!data || data.length < ROWS_PER_PAGE) break; // última página
+            }
           }
           return allData;
         };
@@ -361,14 +471,36 @@ const CatalogoProductos: React.FC = () => {
       }
     }, [organization?.id, branch_id, filters]);
 
-  // Cargar al montar y cuando cambian filtros/organización
+  // Carga híbrida al montar y cuando cambian filtros/organización
+  // 1. fetchProductosFast() → 50 productos vía RPC en < 1s (quita skeleton)
+  // 2. fetchProductos(true) → carga completa en background (sin skeleton)
+  //    Cuando termina, reemplaza la lista y habilita filtros/acciones masivas
   useEffect(() => {
     // Evitar doble ejecución en React Strict Mode (desarrollo)
     const fetchKey = JSON.stringify([organization?.id, branch_id, filters, refreshKey]);
     if (lastFetchKey.current === fetchKey) return;
     lastFetchKey.current = fetchKey;
-    fetchProductos(false);
-  }, [organization?.id, branch_id, filters, refreshKey]);
+
+    // Cancelar carga en background anterior si aún está corriendo
+    if (backgroundAbortRef.current) {
+      backgroundAbortRef.current.cancelled = true;
+    }
+    const abortToken = { cancelled: false };
+    backgroundAbortRef.current = abortToken;
+
+    (async () => {
+      setLoading(true);
+      // 1. Carga rápida vía RPC
+      const ok = await fetchProductosFast();
+      // 2. Carga completa en background (silent=true para no mostrar skeleton)
+      setBackgroundLoading(true);
+      await fetchProductos(true);
+      if (!abortToken.cancelled) {
+        setBackgroundLoading(false);
+        setFastTotalCount(null); // ya tenemos todos, no necesitamos el total parcial
+      }
+    })();
+  }, [organization?.id, branch_id, filters, refreshKey, fetchProductosFast, fetchProductos]);
 
   // Suscripción en tiempo real a cambios en products, stock_levels, product_prices
   // y product_costs para que la lista se actualice sin recargar manualmente.
@@ -925,8 +1057,10 @@ const CatalogoProductos: React.FC = () => {
           setLoading(true);
           setRefreshKey(k => k + 1);
         }}
-        isRefreshing={loading || actionLoading}
+        isRefreshing={loading || actionLoading || backgroundLoading}
         totalProducts={productos.length}
+        backgroundLoading={backgroundLoading}
+        fastTotalCount={fastTotalCount}
       />
       
       {/* Filtros de búsqueda */}

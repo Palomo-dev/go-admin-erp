@@ -40,6 +40,8 @@ export interface WebsitePage {
   menu_badge: string | null;
   // F9.3 — Ajustes de layout a nivel de página (columns, gallery_width, sticky_column)
   page_settings?: Record<string, any> | null;
+  // Fase 0/4 — multi-outlet: outlet al que pertenece la página (null = global)
+  branch_id?: number | null;
   // FASE 12 — borradores y versionado
   draft_content?: { sections: WebsitePageSection[] } | null;
   has_unpublished_changes?: boolean;
@@ -87,6 +89,8 @@ export interface WebsitePageSection {
   is_visible: boolean;
   created_at: string;
   updated_at: string;
+  // Fase 0/4 — multi-outlet: hereda branch_id de la página padre
+  branch_id?: number | null;
 }
 
 export interface WebsitePageWithSections extends WebsitePage {
@@ -1013,6 +1017,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'list', label: 'Lista' },
         { value: 'carousel', label: 'Carrusel' },
       ]},
+      { key: 'list_scroll', label: 'Lista con scroll horizontal', type: 'boolean', group: 'layout', defaultValue: false, helpText: 'Convierte la lista en un carrusel con scroll horizontal y flechas', showIf: { field: 'desktop_layout', in: ['list'] } },
       // Reemplaza CategorySelectorEditor ad-hoc
       {
         key: 'selected_category_ids',
@@ -2693,18 +2698,32 @@ export function getSectionDefinition(sectionType: string): SectionTypeDefinition
 class WebsitePageBuilderService {
   // ---- PAGES ----
 
-  async getPages(organizationId: number): Promise<WebsitePage[]> {
-    const { data, error } = await supabase
+  async getPages(organizationId: number, branchId?: number | null): Promise<WebsitePage[]> {
+    let query = supabase
       .from('website_pages')
       .select('*')
-      .eq('organization_id', organizationId)
-      .order('header_order', { ascending: true });
+      .eq('organization_id', organizationId);
+
+    if (branchId === null) {
+      // Global explícito: SOLO páginas globales (branch_id IS NULL)
+      query = query.is('branch_id', null);
+    } else if (branchId !== undefined) {
+      // Outlet concreto: páginas del outlet + páginas globales (herencia)
+      query = query.or(`branch_id.eq.${branchId},branch_id.is.null`);
+    }
+    // branchId === undefined (legacy) → sin filtro por branch_id (backward compat)
+
+    const { data, error } = await query.order('header_order', { ascending: true });
 
     if (error) throw error;
     return (data || []) as WebsitePage[];
   }
 
-  async getPageWithSections(pageId: string): Promise<WebsitePageWithSections | null> {
+  async getPageWithSections(
+    pageId: string,
+    organizationId?: number,
+    selectedBranchId?: number | null,
+  ): Promise<WebsitePageWithSections | null> {
     const { data: page, error: pageError } = await supabase
       .from('website_pages')
       .select('*')
@@ -2714,6 +2733,20 @@ class WebsitePageBuilderService {
     if (pageError) {
       if (pageError.code === 'PGRST116') return null;
       throw pageError;
+    }
+
+    // Validar que la página pertenece a la organización del usuario
+    if (organizationId !== undefined && (page as WebsitePage).organization_id !== organizationId) {
+      throw new Error('Esta página no pertenece a tu organización.');
+    }
+
+    // Validar pertenencia al outlet seleccionado (solo si hay outlet concreto)
+    if (
+      typeof selectedBranchId === 'number' &&
+      typeof (page as WebsitePage).branch_id === 'number' &&
+      (page as WebsitePage).branch_id !== selectedBranchId
+    ) {
+      throw new Error('Esta página pertenece a otro outlet.');
     }
 
     const { data: sections, error: sectionsError } = await supabase
@@ -2744,11 +2777,32 @@ class WebsitePageBuilderService {
     menu_icon?: string | null;
     menu_badge?: string | null;
     page_settings?: Record<string, any> | null;
+    branch_id?: number | null;
   }): Promise<WebsitePage> {
+    const branch = page.branch_id ?? null;
+
+    // Validar slug único por (organization_id, branch_id) antes de insertar
+    let dupQuery = supabase
+      .from('website_pages')
+      .select('id')
+      .eq('organization_id', page.organization_id)
+      .eq('slug', page.slug);
+    if (branch === null) {
+      dupQuery = dupQuery.is('branch_id', null);
+    } else {
+      dupQuery = dupQuery.eq('branch_id', branch);
+    }
+    const { data: existing } = await dupQuery.maybeSingle();
+    if (existing) {
+      const scope = branch === null ? 'global de la organización' : `del outlet ${branch}`;
+      throw new Error(`Ya existe una página con el slug "${page.slug}" en el ámbito ${scope}. Elige otro slug.`);
+    }
+
     const { data, error } = await supabase
       .from('website_pages')
       .insert({
         ...page,
+        branch_id: branch,
         page_type: page.page_type || 'builtin',
         is_published: true,
       })
@@ -2759,10 +2813,99 @@ class WebsitePageBuilderService {
     return data as WebsitePage;
   }
 
+  /**
+   * Duplica una página existente. La copia mantiene el `branch_id` de la
+   * original y genera un slug único dentro del ámbito (org, branch) con
+   * sufijo `-copy` (o `-copy-2`, `-copy-3`, ...). Tope de 99 intentos.
+   */
+  async duplicatePage(pageId: string): Promise<WebsitePage> {
+    const { data: src, error: srcErr } = await supabase
+      .from('website_pages')
+      .select('*')
+      .eq('id', pageId)
+      .single();
+    if (srcErr) throw srcErr;
+
+    const branch = (src as WebsitePage).branch_id ?? null;
+    let candidate = `${src.slug}-copy`;
+    let suffix = 1;
+    const MAX_DUP_ATTEMPTS = 99;
+    let attempt = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      if (++attempt > MAX_DUP_ATTEMPTS) {
+        throw new Error(
+          `No se pudo generar un slug único tras ${MAX_DUP_ATTEMPTS} intentos ` +
+          `(base "${src.slug}-copy" en ámbito ${branch === null ? 'global' : `outlet ${branch}`}). ` +
+          'Elige un slug manualmente.',
+        );
+      }
+      let q = supabase
+        .from('website_pages')
+        .select('id')
+        .eq('organization_id', src.organization_id)
+        .eq('slug', candidate);
+      if (branch === null) q = q.is('branch_id', null);
+      else q = q.eq('branch_id', branch);
+
+      const { data: clash } = await q.maybeSingle();
+      if (!clash) break;
+      candidate = `${src.slug}-copy-${++suffix}`;
+    }
+
+    const { data, error } = await supabase
+      .from('website_pages')
+      .insert({
+        organization_id: src.organization_id,
+        slug: candidate,
+        title: `${src.title} (copia)`,
+        page_type: src.page_type,
+        show_in_header: false,
+        show_in_footer: false,
+        page_settings: src.page_settings,
+        branch_id: branch,
+        is_published: false,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as WebsitePage;
+  }
+
   async updatePage(
     pageId: string,
     updates: Partial<Pick<WebsitePage, 'title' | 'slug' | 'show_in_header' | 'show_in_footer' | 'header_order' | 'footer_order' | 'is_published' | 'meta_title' | 'meta_description' | 'og_image_url' | 'parent_page_id' | 'linked_category_id' | 'menu_icon' | 'menu_badge' | 'page_settings'>>
   ): Promise<WebsitePage> {
+    // Validar slug único por (organization_id, branch_id) si se está cambiando
+    if (updates.slug !== undefined) {
+      const { data: current } = await supabase
+        .from('website_pages')
+        .select('organization_id, branch_id, slug')
+        .eq('id', pageId)
+        .single();
+      if (!current) throw new Error('Página no encontrada.');
+
+      if (current.slug !== updates.slug) {
+        const branch = (current as WebsitePage).branch_id ?? null;
+        let dupQuery = supabase
+          .from('website_pages')
+          .select('id')
+          .eq('organization_id', current.organization_id)
+          .eq('slug', updates.slug)
+          .neq('id', pageId);
+        if (branch === null) {
+          dupQuery = dupQuery.is('branch_id', null);
+        } else {
+          dupQuery = dupQuery.eq('branch_id', branch);
+        }
+        const { data: existing } = await dupQuery.maybeSingle();
+        if (existing) {
+          const scope = branch === null ? 'global de la organización' : `del outlet ${branch}`;
+          throw new Error(`Ya existe una página con el slug "${updates.slug}" en el ámbito ${scope}. Elige otro slug.`);
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('website_pages')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -2800,6 +2943,13 @@ class WebsitePageBuilderService {
     settings?: Record<string, any>;
     sort_order: number;
   }): Promise<WebsitePageSection> {
+    // Resolver branch_id de la página padre para sincronizar sections.branch_id
+    const { data: page } = await supabase
+      .from('website_pages')
+      .select('branch_id')
+      .eq('id', section.page_id)
+      .single();
+
     const { data, error } = await supabase
       .from('website_page_sections')
       .insert({
@@ -2807,6 +2957,7 @@ class WebsitePageBuilderService {
         content: section.content || {},
         settings: section.settings || {},
         is_visible: true,
+        branch_id: (page as WebsitePage | null)?.branch_id ?? null,
       })
       .select()
       .single();
@@ -2902,6 +3053,15 @@ class WebsitePageBuilderService {
       return [];
     }
 
+    // F4 R2 — Obtener branch_id de la página para propagarlo a las secciones
+    const { data: page, error: pageError } = await supabase
+      .from('website_pages')
+      .select('branch_id')
+      .eq('id', pageId)
+      .single();
+    if (pageError) throw pageError;
+    const pageBranchId = page?.branch_id ?? null;
+
     // Insertar todas las secciones por defecto
     const rows = defaultSections.map((def, index) => ({
       page_id: pageId,
@@ -2912,6 +3072,7 @@ class WebsitePageBuilderService {
       settings: {},
       sort_order: index,
       is_visible: true,
+      branch_id: pageBranchId,
     }));
 
     const { data, error } = await supabase
@@ -3053,8 +3214,9 @@ class WebsitePageBuilderService {
    * Crea las páginas estándar según el tipo de negocio con la estructura correcta:
    * Hero (minimal) + sección de contenido (sin título duplicado).
    * @param typeId - ID del tipo de organización (1=restaurant, 2=hotel, 3=retail, 4=services, 5=gym, 6=parking, 7=transport)
+   * @param branchId - F4 R3 — outlet al que asignar las páginas (null/undefined = global)
    */
-  async seedDefaultPages(organizationId: number, typeId?: number): Promise<void> {
+  async seedDefaultPages(organizationId: number, typeId?: number, branchId?: number | null): Promise<void> {
     const pages = this.getDefaultPagesForType(typeId || 3);
     const contactPage = {
       title: 'Contacto',
@@ -3072,12 +3234,19 @@ class WebsitePageBuilderService {
 
     for (const pageDef of allPages) {
       // Verificar si la página ya existe
-      const { data: existing } = await supabase
+      // F4 R4 (Issue 1) — Filtrar por branch_id para evitar falsos duplicados
+      // entre ámbitos (global vs outlet, o entre outlets distintos).
+      let query = supabase
         .from('website_pages')
         .select('id')
         .eq('organization_id', organizationId)
-        .eq('slug', pageDef.slug)
-        .maybeSingle();
+        .eq('slug', pageDef.slug);
+      if (typeof branchId === 'number') {
+        query = query.eq('branch_id', branchId);
+      } else {
+        query = query.is('branch_id', null);
+      }
+      const { data: existing } = await query.maybeSingle();
 
       if (existing) continue; // No duplicar
 
@@ -3092,6 +3261,8 @@ class WebsitePageBuilderService {
           show_in_header: pageDef.show_in_header,
           header_order: pageDef.header_order,
           is_published: true,
+          // F4 R3 — asignar branch_id si hay outlet seleccionado
+          ...(branchId != null ? { branch_id: branchId } : {}),
         })
         .select()
         .single();
@@ -3328,6 +3499,27 @@ class WebsitePageBuilderService {
     draftSections: WebsitePageSection[],
     note?: string,
   ): Promise<WebsitePageVersion> {
+    // 0. Validar branch_type si la página pertenece a un outlet (Fase 4 §4.5)
+    const { data: pageRow } = await supabase
+      .from('website_pages')
+      .select('branch_id')
+      .eq('id', pageId)
+      .single();
+    const pageBranchId = (pageRow as WebsitePage | null)?.branch_id ?? null;
+    if (typeof pageBranchId === 'number') {
+      const { data: branchRow } = await supabase
+        .from('branches')
+        .select('branch_type')
+        .eq('id', pageBranchId)
+        .single();
+      if (!branchRow?.branch_type) {
+        throw new Error(
+          'No se puede publicar la página: el outlet no tiene branch_type definido. ' +
+          'Defínelo en Sucursales antes de publicar.',
+        );
+      }
+    }
+
     // 1. Snapshot de las secciones publicadas actuales (antes de pisar)
     const { data: currentSections } = await supabase
       .from('website_page_sections')
@@ -3476,6 +3668,17 @@ class WebsitePageBuilderService {
 
     if (error || !section) throw new Error('No se pudo cargar la sección a duplicar.');
 
+    // F4 R2 — Obtener branch_id de la página padre si la sección no lo tiene
+    let branchId = (section as any).branch_id ?? null;
+    if (branchId === null) {
+      const { data: page } = await supabase
+        .from('website_pages')
+        .select('branch_id')
+        .eq('id', section.page_id)
+        .single();
+      branchId = page?.branch_id ?? null;
+    }
+
     const { data: newSection, error: insertError } = await supabase
       .from('website_page_sections')
       .insert({
@@ -3487,6 +3690,7 @@ class WebsitePageBuilderService {
         settings: section.settings,
         sort_order: (section.sort_order || 0) + 1,
         is_visible: section.is_visible,
+        branch_id: branchId,
       })
       .select()
       .single();

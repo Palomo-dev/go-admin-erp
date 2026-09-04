@@ -31,6 +31,10 @@ interface ProductosPageHeaderProps {
   onScrapingClick?: () => void;
   isRefreshing?: boolean;
   totalProducts?: number;
+  /** Indica que la carga completa en background está en progreso */
+  backgroundLoading?: boolean;
+  /** Total de productos según el RPC (mientras carga el resto en background) */
+  fastTotalCount?: number | null;
 }
 
 /**
@@ -45,7 +49,9 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
   onRefreshClick,
   onScrapingClick,
   isRefreshing = false,
-  totalProducts
+  totalProducts,
+  backgroundLoading = false,
+  fastTotalCount = null
 }) => {
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -60,7 +66,15 @@ const ProductosPageHeader: React.FC<ProductosPageHeaderProps> = ({
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {totalProducts !== undefined ? (
-              <>{totalProducts} productos en el catálogo</>
+              <>
+                {totalProducts} productos en el catálogo
+                {backgroundLoading && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-blue-500 dark:text-blue-400">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Cargando {fastTotalCount !== null ? `de ${fastTotalCount}` : 'resto'}...
+                  </span>
+                )}
+              </>
             ) : (
               <>Gestiona tu inventario de productos</>
             )}

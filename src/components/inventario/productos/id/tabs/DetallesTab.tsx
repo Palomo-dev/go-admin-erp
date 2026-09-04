@@ -43,6 +43,8 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
   const [unidades, setUnidades] = useState<any[]>([]);
   const [proveedores, setProveedores] = useState<any[]>([]);
   const [additionalCategoryIds, setAdditionalCategoryIds] = useState<number[]>([]);
+  const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
+  const CATEGORY_PREVIEW_COUNT = 20;
   
   // Obtener el proveedor preferido desde product_suppliers
   const preferredSupplier = producto.product_suppliers?.find((ps: any) => ps.is_preferred);
@@ -343,31 +345,46 @@ const DetallesTab: React.FC<DetallesTabProps> = ({ producto }) => {
               Categorías secundarias asignadas a este producto
             </p>
             <div className="flex flex-wrap gap-2 p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 min-h-[42px]">
-              {categorias.map(cat => {
-                const mainCatId = formData.category_id ? parseInt(formData.category_id) : null;
-                if (cat.id === mainCatId) return null;
-                const isSelected = additionalCategoryIds.includes(cat.id);
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      setAdditionalCategoryIds(prev =>
-                        isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
-                      );
-                    }}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      isSelected
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-blue-400'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                );
-              })}
+              {categorias
+                .filter(cat => {
+                  const mainCatId = formData.category_id ? parseInt(formData.category_id) : null;
+                  return cat.id !== mainCatId;
+                })
+                .slice(0, showAllCategories ? undefined : CATEGORY_PREVIEW_COUNT)
+                .map(cat => {
+                  const isSelected = additionalCategoryIds.includes(cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setAdditionalCategoryIds(prev =>
+                          isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                        );
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-blue-400'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  );
+                })}
               {categorias.length <= 1 && (
                 <span className="text-xs text-gray-400 italic">No hay categorías disponibles</span>
+              )}
+              {categorias.length > CATEGORY_PREVIEW_COUNT + 1 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories(prev => !prev)}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  {showAllCategories
+                    ? 'Ver menos'
+                    : `Ver más (${categorias.length - CATEGORY_PREVIEW_COUNT - 1} categorías)`}
+                </button>
               )}
             </div>
           </div>

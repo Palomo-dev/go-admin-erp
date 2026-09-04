@@ -59,6 +59,8 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
   const [isImprovingDescription, setIsImprovingDescription] = useState(false)
   const [showCategoryDialog, setShowCategoryDialog] = useState(false)
   const [showSupplierDialog, setShowSupplierDialog] = useState(false)
+  const [showAllCategories, setShowAllCategories] = useState(false)
+  const CATEGORY_PREVIEW_COUNT = 20
 
   // Recargar categorías desde Supabase (usado tras crear categoría en diálogo)
   const reloadCategories = async () => {
@@ -402,33 +404,45 @@ export default function InformacionBasica({ formData, updateFormData }: Informac
             <Skeleton className="h-10 w-full" />
           ) : (
             <div className="flex flex-wrap gap-2 p-3 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 min-h-[42px]">
-              {categories.map(cat => {
-                const isSelected = (formData.category_ids || []).includes(cat.id)
-                const isMain = formData.category_id === cat.id
-                if (isMain) return null // no mostrar la categoría principal aquí
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      const current: number[] = formData.category_ids || []
-                      const next = isSelected
-                        ? current.filter(id => id !== cat.id)
-                        : [...current, cat.id]
-                      updateFormData('category_ids', next)
-                    }}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      isSelected
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-blue-400'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                )
-              })}
+              {categories
+                .filter(cat => formData.category_id !== cat.id)
+                .slice(0, showAllCategories ? undefined : CATEGORY_PREVIEW_COUNT)
+                .map(cat => {
+                  const isSelected = (formData.category_ids || []).includes(cat.id)
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        const current: number[] = formData.category_ids || []
+                        const next = isSelected
+                          ? current.filter(id => id !== cat.id)
+                          : [...current, cat.id]
+                        updateFormData('category_ids', next)
+                      }}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-blue-400'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  )
+                })}
               {categories.length <= 1 && (
                 <span className="text-xs text-gray-400 italic">No hay categorías disponibles</span>
+              )}
+              {categories.length > CATEGORY_PREVIEW_COUNT && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories(prev => !prev)}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  {showAllCategories
+                    ? 'Ver menos'
+                    : `Ver más (${categories.length - CATEGORY_PREVIEW_COUNT} categorías)`}
+                </button>
               )}
             </div>
           )}

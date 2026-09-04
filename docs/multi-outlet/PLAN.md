@@ -36,13 +36,25 @@ El bloqueo es la **capa pública**: website_settings, website_pages, categories 
 
 | Constraint | Tabla | Definición | Por qué choca |
 |---|---|---|---|
-| `unique_website_per_org` | `website_settings` | `UNIQUE (organization_id)` | Prohíbe múltiples settings por org (bloquea theme override por outlet) |
+| `website_settings_organization_id_key` | `website_settings` | `UNIQUE (organization_id)` | Prohíbe múltiples settings por org (bloquea theme override por outlet) |
 | `website_pages_organization_id_slug_key` | `website_pages` | `UNIQUE (organization_id, slug)` | Prohíbe mismo slug en distintos outlets (ej. "menu" en hotel y restaurante-1) |
 | `categories_organization_id_slug_key` | `categories` | `UNIQUE (organization_id, slug)` | Prohíbe mismo slug en distintos outlets (ej. "bebidas" en restaurante-1 y restaurante-2) |
 
-**F0 debe DROP estos 3 constraints antes de crear los nuevos índices con `COALESCE(branch_id, -1)`.**
-El comportamiento para sitios 1:1 existentes (branch_id=NULL) es idéntico: sigue habiendo
-exactamente 1 settings, 1 página por slug, 1 categoría por slug por organización.
+> **🚨 LECCIÓN CRÍTICA (2026-09-03)**: estos constraints NO se pueden dropear
+> hasta que el código de la aplicación se actualice. **PostgREST** detecta
+> relaciones 1:1 buscando constraints UNIQUE en `pg_constraint`, no índices
+> únicos en `pg_indexes`. Dropear los constraints sin actualizar el código
+> hace que PostgREST devuelva **arrays** en lugar de objetos para
+> `organization.website_settings`, rompiendo colores, header y footer
+> en TODAS las organizaciones existentes.
+>
+> **Orden correcto**:
+> 1. F0: añadir columnas `branch_id` + índices branch-aware (HECHO ✅)
+> 2. F1-F3: actualizar código para query directa por `(org, branch_id)` (PENDIENTE)
+> 3. Solo después: DROP de los 3 constraints UNIQUE originales
+>
+> Los constraints fueron **restaurados** el 2026-09-03 tras detectar el bug.
+> Ver FASE-0-FUNDACIONES-BD.md §2.0 para el detalle completo.
 
 ### Hallazgos del audit de código (2026-09-01)
 

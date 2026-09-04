@@ -431,7 +431,7 @@ const ProductoHeader: React.FC<ProductoHeaderProps> = ({ producto }) => {
                   Descripción
                 </h3>
                 <div className="text-sm rounded-md p-2 bg-gray-50 dark:bg-gray-800 dark:text-gray-300">
-                  <HtmlContentRenderer html={producto.description} />
+                  <HtmlContentRenderer html={producto.description} collapsible />
                 </div>
               </div>
             )}

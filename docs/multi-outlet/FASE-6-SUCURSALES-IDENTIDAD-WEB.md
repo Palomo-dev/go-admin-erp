@@ -110,7 +110,8 @@ export interface Branch {
   opening_hours?: OpeningHours;
   features?: BranchFeatures;
   capacity?: number;
-  branch_type?: string;
+  // Corrección QA Ronda 2: usar BranchType en vez de string para consistencia
+  branch_type?: BranchType;
   zone?: string;
   branch_code: string;
   is_active?: boolean;
@@ -141,6 +142,26 @@ export const BRANCH_TYPES: { value: BranchType; label: string }[] = [
 `BranchFormData` hereda automáticamente los nuevos campos vía
 `extends Omit<Branch, 'opening_hours' | 'features'>`.
 
+> **Corrección QA Ronda 3 (tipado de `branch_type` en estado inicial)**:
+> `BranchType` es una unión sin `''`, pero el estado inicial del formulario
+> usa `branch_type: initialData.branch_type || ''` (sección 4.1). Para que
+> TypeScript no se queje, **sobrescribir** el tipo de `branch_type` en
+> `BranchFormData`:
+>
+> ```typescript
+> export interface BranchFormData extends Omit<Branch, 'opening_hours' | 'features'> {
+>   // El estado inicial usa '' como valor vacío (option "Sin especificar").
+>   // El select debe hacer value={form.branch_type || ''}.
+>   // Al guardar, si branch_type === '', tratar como null.
+>   branch_type?: BranchType | '';
+> }
+> ```
+>
+> **Nota**: El estado inicial usa `''` como valor vacío. El `<select>` debe
+> hacer `value={form.branch_type || ''}`. Al guardar (en `handleSubmit` o en
+> `branchService`), si `branch_type === ''`, tratar como `null` para no
+> persistir un string vacío en la columna `branch_type` (que es nullable).
+
 ---
 
 ## 4. Cambios en `BranchForm.tsx`
@@ -153,6 +174,8 @@ En el `useState` del formulario (línea ~79), añadir los campos nuevos:
 const [form, setForm] = useState<BranchFormData>({
   // ... campos existentes ...
   branch_type: initialData.branch_type || '',
+  // Corrección QA Ronda 2: branch_code debe inicializarse explícitamente
+  branch_code: initialData.branch_code || '',
   // --- Identidad Web ---
   slug: initialData.slug || '',
   subdomain: initialData.subdomain || '',
@@ -170,15 +193,27 @@ Añadir fuera del componente:
 
 ```typescript
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// Slugs reservados del router público — no pueden usarse como slug de outlet
+const RESERVED_SLUGS = [
+  'menu', 'categorias', 'productos', 'checkout', 'espacios',
+  'servicios', 'contacto', 'nosotros', 'agendar', 'cotizar',
+];
 // Subdomain: único label DNS (sin puntos), max 63 chars, no empieza/termina en guion
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
-const DOMAIN_REGEX = /^(?!:\/\/)([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+// Dominio: labels DNS separados por puntos, cada label minúsculas, no empieza/termina en guion
+// Corrección QA: la regex anterior aceptaba mayúsculas y labels que empezaban/terminaban en guion
+const DNS_LABEL_REGEX = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+const DOMAIN_REGEX = /^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
 
 function validateSlug(slug: string): string | null {
   if (!slug) return null; // opcional salvo is_web_published
   if (slug.length < 2) return 'El slug debe tener al menos 2 caracteres';
   if (slug.length > 60) return 'El slug no puede exceder 60 caracteres';
-  if (!SLUG_REGEX.test(slug)) return 'Solo minúsculas, números y guiones. Sin espacios.';
+  if (!SLUG_REGEX.test(slug)) return 'Solo minúsculas, números y guiones (no consecutivos, ni al inicio/final). Sin espacios.';
+  // Corrección QA: validar slugs reservados del router público
+  if (RESERVED_SLUGS.includes(slug)) {
+    return `El slug "${slug}" está reservado para el router público. Usa otro slug.`;
+  }
   return null;
 }
 
@@ -194,8 +229,19 @@ function validateSubdomain(subdomain: string): string | null {
 
 function validateDomain(domain: string, field: string): string | null {
   if (!domain) return null;
-  if (domain.length > 253) return `${field} no puede exceder 253 caracteres`;
-  if (!DOMAIN_REGEX.test(domain)) return `${field} no es un dominio válido`;
+  // Corrección QA: forzar minúsculas antes de validar
+  const normalized = domain.toLowerCase().trim();
+  if (normalized.length > 253) return `${field} no puede exceder 253 caracteres`;
+  // Validar estructura global del dominio
+  if (!DOMAIN_REGEX.test(normalized)) {
+    return `${field} no es un dominio válido (solo minúsculas, sin guiones al inicio/final de cada label)`;
+  }
+  // Corrección QA Ronda 2: validar cada label DNS individualmente con DNS_LABEL_REGEX
+  // (antes la regex DNS_LABEL_REGEX estaba declarada pero sin usar)
+  const labelsValid = normalized.split('.').every(label => DNS_LABEL_REGEX.test(label));
+  if (!labelsValid) {
+    return `${field} tiene un label inválido (cada label: minúsculas, 1-63 chars, sin guion al inicio/final)`;
+  }
   return null;
 }
 
@@ -213,6 +259,35 @@ function validateUrl(url: string, field: string): string | null {
 }
 ```
 
+> **Corrección QA Ronda 2 (normalización en onChange)**: `subdomain` y
+> `custom_domain` deben normalizarse a minúsculas y sin espacios al ingresar,
+> igual que `slug`. En vez de usar `handleChange` genérico para estos dos
+> campos, definir un handler específico dentro del componente:
+
+```typescript
+// Dentro del componente BranchForm
+const handleDomainChange = (field: 'subdomain' | 'custom_domain', value: string) => {
+  // Corrección QA R7: normalizar a minúsculas, trim y eliminar espacios internos
+  const normalized = value.toLowerCase().trim().replace(/\s+/g, '');
+  setForm(prev => ({ ...prev, [field]: normalized }));
+};
+```
+
+> **Corrección QA Ronda 3 (espacios internos en `handleDomainChange`)**:
+> `handleDomainChange` solo hace `toLowerCase().trim()`, lo que elimina
+> espacios al inicio/final pero **no** los espacios internos. Si el usuario
+> pega `"mi hotel.com"` (con espacio interno), la validación de formato
+> (`validateDomain` / `validateSubdomain`) lo rechazará en submit, pero el
+> valor quedará visible en el input con el espacio hasta que el usuario lo
+> corrija manualmente.
+>
+> **Recomendación obligatoria**: aplicar `.replace(/\s+/g, '')` en
+> `handleDomainChange` para eliminar espacios internos. No es opcional:
+>
+> ```typescript
+> const normalized = value.toLowerCase().trim().replace(/\s+/g, '');
+> ```
+
 ### 4.3 Validación antes de submit
 
 Dentro de `handleSubmit`, antes de llamar `onSubmit`.
@@ -224,44 +299,61 @@ Dentro de `handleSubmit`, antes de llamar `onSubmit`.
 > corregido y usarla tanto para `onSubmit` como para el JSON.
 
 ```typescript
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+// Corrección QA Ronda 2: e es opcional porque submitForm() invoca sin evento
+const handleSubmit = async (e?: React.FormEvent) => {
+  e?.preventDefault();
   setError(null);
 
+  // --- Construir formWithPublished PRIMERO (auto-publish por subdomain/custom_domain) ---
+  // Corrección QA Ronda 2: si el usuario ingresa subdomain/custom_domain sin
+  // marcar el toggle, formWithPublished fuerza is_web_published=true. La
+  // validación de slug obligatorio debe hacerse sobre formWithPublished, no
+  // sobre form, para que el auto-publish también exija slug.
+  const formWithPublished = {
+    ...form,
+    is_web_published: form.is_web_published || !!(form.subdomain || form.custom_domain),
+  };
+
+  // Validar branch_type obligatorio al publicar
+  if (formWithPublished.is_web_published && !formWithPublished.branch_type) {
+    setError('El tipo de negocio (branch_type) es obligatorio para publicar el outlet en la web')
+    return
+  }
+
+  // Validar slug obligatorio al publicar
+  if (formWithPublished.is_web_published && !formWithPublished.slug) {
+    setError('El slug es obligatorio para publicar el outlet en la web')
+    return
+  }
+
   // --- Validaciones identidad web ---
-  const slugError = validateSlug(form.slug);
+  const slugError = validateSlug(formWithPublished.slug);
   if (slugError) { setError(slugError); return; }
 
-  const subdomainError = validateSubdomain(form.subdomain);
+  const subdomainError = validateSubdomain(formWithPublished.subdomain);
   if (subdomainError) { setError(subdomainError); return; }
 
-  const customDomainError = validateDomain(form.custom_domain, 'El dominio personalizado');
+  const customDomainError = validateDomain(formWithPublished.custom_domain, 'El dominio personalizado');
   if (customDomainError) { setError(customDomainError); return; }
 
   // Validar URLs de logo y cover (no fiarse solo del type="url" del input)
-  const logoUrlError = validateUrl(form.website_logo_url, 'La URL del logo');
+  const logoUrlError = validateUrl(formWithPublished.website_logo_url, 'La URL del logo');
   if (logoUrlError) { setError(logoUrlError); return; }
 
-  const coverUrlError = validateUrl(form.website_cover_url, 'La URL de portada');
+  const coverUrlError = validateUrl(formWithPublished.website_cover_url, 'La URL de portada');
   if (coverUrlError) { setError(coverUrlError); return; }
 
-  // Si is_web_published=true, slug es obligatorio (resolución por path fallback)
-  if (form.is_web_published && !form.slug) {
-    setError('Si el sitio web está publicado, el slug es obligatorio.');
-    return;
-  }
+  // Corrección QA R9: la validación de slug obligatorio al publicar ya se hizo
+  // arriba (antes de las validaciones de formato). No duplicar — el segundo
+  // bloque era código muerto con mensaje distinto.
 
-  // Si hay subdomain o custom_domain, forzar is_web_published=true
-  // Usar variable local, NO setForm + leer form (evita closure stale)
-  const shouldPublish = !!(form.subdomain || form.custom_domain);
-  const formWithPublished = {
-    ...form,
-    is_web_published: form.is_web_published || shouldPublish,
-  };
+  // Corrección QA R9: normalizar branch_type vacío a null antes de construir el payload
+  const normalizedBranchType = formWithPublished.branch_type || null;
 
   try {
     const formWithJson = {
       ...formWithPublished,
+      branch_type: normalizedBranchType, // Corrección QA R9: '' → null
       opening_hours: JSON.stringify(openingHoursObj),
       features: JSON.stringify(featuresObj),
     };
@@ -272,10 +364,40 @@ const handleSubmit = async (e: React.FormEvent) => {
 };
 ```
 
+> **Corrección QA (dual submit path)**: `BranchForm` expone `submitForm` vía
+> `ref` (con `useImperativeHandle`). En el flujo de signup, `BranchStep.tsx`
+> invoca `formRef.current.submitForm()`. Si `submitForm` llama `onSubmit`
+> directamente, **se saltan todas las validaciones** de `handleSubmit`.
+>
+> **Solución**: `submitForm` debe llamar `handleSubmit` internamente (que
+> ejecuta las validaciones antes de invocar `onSubmit`), no `onSubmit` directo:
+
+```typescript
+// Corrección QA Ronda 2: handleSubmit acepta evento opcional, por lo que
+// submitForm puede invocarlo sin argumento sin que preventDefault() crashee.
+const submitForm = () => {
+  handleSubmit(); // sin evento, preventDefault es opcional (e?.preventDefault())
+};
+```
+
+> Alternativamente, extraer las validaciones de identidad web a una función
+> separada (`validateWebIdentity`) que ambos caminos (`handleSubmit` y
+> `submitForm`) invoquen antes de llamar `onSubmit`. Lo importante es que
+> **ningún camino de submit puede saltarse las validaciones**.
+
 ### 4.4 Sección "Identidad Web" en el JSX
 
-Insertar **después** de la sección "Características" (línea ~511) y **antes**
-de la sección "Estado" (línea ~514).
+Insertar **antes del cierre** del `<div className="p-4 sm:p-6 space-y-8">`
+(línea ~511), es decir, como último hijo de ese container — **no después**
+del cierre del div.
+
+> **Corrección QA (container nesting)**: La sección "Identidad Web" debe
+> insertarse **DENTRO** del `<div className="p-4 sm:p-6 space-y-8">`, antes
+> de su cierre (línea 511), no después. Si se inserta después del cierre,
+> queda fuera del container de padding y se rompe el layout. Verificar la
+> estructura de divs anidados antes de implementar — el cierre del
+> `space-y-8` es seguido por el cierre del `<form>` y luego del wrapper
+> del modal/panel.
 
 > **Corrección QA (signup flow)**: La sección debe envolverse en
 > `{!hideStatusSection && (...)}` para que **no se muestre** durante el flujo
@@ -328,11 +450,15 @@ de la sección "Estado" (línea ~514).
         value={form.slug || ''}
         onChange={(e) => {
           // Auto-normalizar: lowercase, sin espacios
+          // Corrección QA R10: comprimir guiones consecutivos y limpiar
+          // guiones al inicio/final para cumplir SLUG_REGEX.
           const normalized = e.target.value
             .toLowerCase()
             .trim()
             .replace(/\s+/g, '-')
-            .replace(/[^a-z0-9-]/g, '');
+            .replace(/[^a-z0-9-]/g, '')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
           setForm(prev => ({ ...prev, slug: normalized }));
         }}
         placeholder="hotel, restaurante-1"
@@ -341,6 +467,14 @@ de la sección "Estado" (línea ~514).
       <p className="text-xs text-gray-400 mt-1">
         Solo minúsculas, números y guiones. Único por organización.
       </p>
+      {/* Warning: slug reservado del router público */}
+      {form.slug && RESERVED_SLUGS.includes(form.slug) && (
+        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-200">
+          ⚠️ El slug "{form.slug}" está reservado para el router público
+          (menu, categorias, productos, checkout, etc.). Si lo usas, el
+          outlet no será accesible por path.
+        </div>
+      )}
       {/* Advertencia al editar slug de un outlet ya publicado */}
       {initialData.id && initialData.slug && initialData.slug !== form.slug && (
         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-200">
@@ -361,7 +495,7 @@ de la sección "Estado" (línea ~514).
           type="text"
           name="subdomain"
           value={form.subdomain || ''}
-          onChange={handleChange}
+          onChange={(e) => handleDomainChange('subdomain', e.target.value)}
           placeholder="hotel"
           className="input input-bordered flex-1 bg-gray-50 dark:bg-gray-700 dark:text-gray-100"
         />
@@ -381,7 +515,7 @@ de la sección "Estado" (línea ~514).
         type="text"
         name="custom_domain"
         value={form.custom_domain || ''}
-        onChange={handleChange}
+        onChange={(e) => handleDomainChange('custom_domain', e.target.value)}
         placeholder="tugranhotel.com"
         className="input input-bordered w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-100"
       />
@@ -455,12 +589,20 @@ de la sección "Estado" (línea ~514).
         URL pública del outlet:
       </p>
       <code className="text-sm text-blue-800 dark:text-blue-200 break-all">
+        {/* Corrección QA: preferir custom_domain de la org si existe */}
+        {/* Corrección QA R10: guarda — si no hay subdomain ni custom_domain
+            (ni de la branch ni de la org), no hay URL pública hasta
+            configurar dominio o subdominio de la organización. */}
         {form.custom_domain
           ? `https://${form.custom_domain}`
           : form.subdomain
             ? `https://${form.subdomain}.goadmin.io`
             : form.slug
-              ? `https://{org-subdomain}.goadmin.io/${form.slug}`
+              ? (orgCustomDomain
+                  ? `https://${orgCustomDomain}/${form.slug}`
+                  : orgSubdomain
+                    ? `https://${orgSubdomain}.goadmin.io/${form.slug}`
+                    : 'Configura un dominio o subdominio de organización para tener URL pública')
               : '— configura slug, subdominio o dominio para ver la URL'}
       </code>
     </div>
@@ -473,6 +615,47 @@ de la sección "Estado" (línea ~514).
 
 ```typescript
 import { BRANCH_TYPES } from '@/types/branch';
+```
+
+### 4.6 Estado `orgCustomDomain` y `orgSubdomain` para preview de URL
+
+> **Corrección QA**: El preview de URL por path debe preferir `custom_domain`
+> de la organización si existe, en vez de usar siempre el subdominio. Añadir
+> ambos al estado del `BranchForm`:
+
+```typescript
+const [orgSubdomain, setOrgSubdomain] = useState<string>('');
+const [orgCustomDomain, setOrgCustomDomain] = useState<string>('');
+```
+
+Y en el `useEffect` que carga `initialData`, consultar ambos campos de la org:
+
+```typescript
+useEffect(() => {
+  if (initialData.organization_id) {
+    supabase
+      .from('organizations')
+      .select('subdomain, custom_domain')
+      .eq('id', initialData.organization_id)
+      .single()
+      .then(({ data }) => {
+        if (data?.subdomain) setOrgSubdomain(data.subdomain);
+        if (data?.custom_domain) setOrgCustomDomain(data.custom_domain);
+      });
+  }
+}, [initialData.organization_id]);
+```
+
+El preview de URL (sección 4.4) usa entonces:
+
+```typescript
+// Corrección QA R10: si la org no tiene custom_domain ni subdomain, no hay
+// URL pública por path hasta configurarlos. Devolver null y mostrar mensaje.
+const publicUrl = orgCustomDomain
+  ? `https://${orgCustomDomain}/${slug}`
+  : orgSubdomain
+    ? `https://${orgSubdomain}.goadmin.io/${slug}`
+    : null; // sin URL pública hasta configurar dominio/subdominio de la org
 ```
 
 ---
@@ -504,23 +687,36 @@ de estado, línea ~608):
           Publicado
         </span>
         <div className="text-xs text-gray-500 dark:text-gray-400 break-all">
+          {/* Corrección QA R10: guarda — si no hay subdomain ni custom_domain
+              (ni de la branch ni de la org), mostrar mensaje en vez de URL
+              inválida. */}
           {branch.custom_domain
             ? `https://${branch.custom_domain}`
             : branch.subdomain
               ? `https://${branch.subdomain}.goadmin.io`
               : branch.slug
-                ? `/{branch.slug}`
+                ? (orgCustomDomain
+                    ? `https://${orgCustomDomain}/${branch.slug}`
+                    : orgSubdomain
+                      ? `https://${orgSubdomain}.goadmin.io/${branch.slug}`
+                      : 'Configura un dominio o subdominio de organización')
                 : 'Sin URL'}
         </div>
         {/* Botón Ver sitio */}
-        {(branch.custom_domain || branch.subdomain || branch.slug) && (
+        {/* Corrección QA R10: solo mostrar el botón si hay URL pública real
+            (no si falta dominio/subdominio de la org para resolución por path). */}
+        {(branch.custom_domain || branch.subdomain || (branch.slug && (orgCustomDomain || orgSubdomain))) && (
           <a
             href={
               branch.custom_domain
                 ? `https://${branch.custom_domain}`
                 : branch.subdomain
                   ? `https://${branch.subdomain}.goadmin.io`
-                  : `https://${orgSubdomain}.goadmin.io/${branch.slug}`
+                  : orgCustomDomain
+                    ? `https://${orgCustomDomain}/${branch.slug}`
+                    : orgSubdomain
+                      ? `https://${orgSubdomain}.goadmin.io/${branch.slug}`
+                      : '#' // sin URL pública hasta configurar dominio/subdominio de la org
             }
             target="_blank"
             rel="noopener noreferrer"
@@ -567,67 +763,80 @@ Añadir en la columna de acciones (línea ~623), antes del botón de editar:
 
 Handler en el componente:
 
+> **Corrección QA R8**: el toggle de publicación del tab debe usar
+> `branchService.setWebPublished` (definido en F4 §2.7), no
+> `updateBranch`. `setWebPublished` valida que `branch_type` esté definido
+> antes de publicar. Si se llama `updateBranch` directamente, se salta esta
+> validación y permite publicar un outlet sin `branch_type`, violando la
+> regla de F4.
+>
+> **Corrección QA R9**: `setWebPublished` (F4 §2.7) valida tanto
+> `branch_type` como `slug` antes de activar `is_web_published=true`. Si el
+> branch no tiene slug, la publicación falla con error.
+
 ```typescript
 const handleToggleWebPublished = async (branch: Branch) => {
-  // Si va a publicar y no tiene slug, advertir
-  if (!branch.is_web_published && !branch.slug) {
-    setError('Para publicar el sitio, primero edita la sucursal y asigna un slug.');
-    return;
-  }
   setFormLoading(true);
   setError(null);
   try {
-    await branchService.updateBranch(branch.id!, {
-      is_web_published: !branch.is_web_published,
-    });
-    await fetchBranches();
-    setSuccessMessage(
-      !branch.is_web_published ? 'Sitio web publicado' : 'Sitio web despublicado'
-    );
-    setTimeout(() => setSuccessMessage(null), 3000);
+    // Usar setWebPublished (F4 §2.7) que valida branch_type antes de publicar
+    await branchService.setWebPublished(branch.id!, !branch.is_web_published, orgId)
+    // Recargar lista
+    await loadBranches()
   } catch (err: any) {
-    setError(err.message || 'Error al cambiar estado de publicación');
+    setError(err.message || 'Error al cambiar publicación')
   } finally {
     setFormLoading(false);
   }
 };
 ```
 
-### 5.3 Variable `orgSubdomain`
+### 5.3 Variables `orgSubdomain` y `orgCustomDomain`
 
-Para construir la URL de preview por path se necesita el subdominio de la
-organización. Añadir al estado del componente:
+Para construir la URL de preview por path se necesita el subdominio y el
+dominio personalizado de la organización. Añadir al estado del componente:
 
 ```typescript
 const [orgSubdomain, setOrgSubdomain] = useState<string>('');
+const [orgCustomDomain, setOrgCustomDomain] = useState<string>('');
 ```
 
-Y en el `useEffect` inicial, consultar el subdominio de la org:
+Y en el `useEffect` inicial, consultar ambos campos de la org:
 
 ```typescript
 useEffect(() => {
   if (orgId) {
     fetchBranches();
     fetchBranchLimit();
-    // Fetch org subdomain for URL preview
+    // Fetch org subdomain + custom_domain for URL preview
     supabase
       .from('organizations')
-      .select('subdomain')
+      .select('subdomain, custom_domain')
       .eq('id', orgId)
       .single()
       .then(({ data }) => {
         if (data?.subdomain) setOrgSubdomain(data.subdomain);
+        if (data?.custom_domain) setOrgCustomDomain(data.custom_domain);
       });
   }
 }, [orgId]);
 ```
 
-> **Nota**: asume que `organizations` tiene columna `subdomain`. Si no existe
-> aún, el preview por path usará un placeholder hasta que se implemente.
+> **Nota**: asume que `organizations` tiene columnas `subdomain` y
+> `custom_domain`. Si no existen aún, el preview por path usará un
+> placeholder hasta que se implemente.
 
 ---
 
 ## 6. Cambios en `branchService.ts`
+
+> **Corrección QA R10**: añadir al inicio del archivo el import de
+> `validateWebIdentityFormat` (función síncrona exportada desde
+> `src/lib/utils/webIdentityValidation.ts`):
+>
+> ```typescript
+> import { validateWebIdentityFormat } from '@/lib/utils/webIdentityValidation';
+> ```
 
 ### 6.1 `createBranch` — aceptar nuevos campos
 
@@ -637,6 +846,8 @@ En el objeto `formattedBranch` (línea ~161), añadir:
 const formattedBranch = {
   // ... campos existentes ...
   is_web_stock_source: branch.is_web_stock_source ?? false,
+  // Corrección QA R9: normalizar branch_type '' a null
+  branch_type: branch.branch_type || null,
   // --- Identidad Web ---
   slug: branch.slug || null,
   subdomain: branch.subdomain || null,
@@ -653,6 +864,8 @@ En el bloque de `if (campo !== undefined)` (línea ~222), añadir:
 
 ```typescript
 if (branch.slug !== undefined) formattedBranch.slug = branch.slug || null;
+// Corrección QA R9: normalizar branch_type '' a null
+if (branch.branch_type !== undefined) formattedBranch.branch_type = branch.branch_type || null;
 if (branch.subdomain !== undefined) formattedBranch.subdomain = branch.subdomain || null;
 if (branch.custom_domain !== undefined) formattedBranch.custom_domain = branch.custom_domain || null;
 if (branch.website_logo_url !== undefined) formattedBranch.website_logo_url = branch.website_logo_url || null;
@@ -681,7 +894,7 @@ async validateWebIdentity(
       .select('id, name')
       .eq('organization_id', organizationId)
       .eq('slug', data.slug);
-    if (excludeBranchId) query = query.neq('id', excludeBranchId);
+    if (typeof excludeBranchId === 'number') query = query.neq('id', excludeBranchId);
     const { data: existing } = await query.maybeSingle();
     if (existing) {
       throw new Error(`El slug "${data.slug}" ya lo usa otra sucursal de esta organización: ${existing.name}`);
@@ -694,7 +907,7 @@ async validateWebIdentity(
       .from('branches')
       .select('id, name, organization_id')
       .eq('subdomain', data.subdomain);
-    if (excludeBranchId) query = query.neq('id', excludeBranchId);
+    if (typeof excludeBranchId === 'number') query = query.neq('id', excludeBranchId);
     const { data: existing } = await query.maybeSingle();
     if (existing) {
       throw new Error(`El subdominio "${data.subdomain}" ya está en uso por otra sucursal: ${existing.name}`);
@@ -707,7 +920,7 @@ async validateWebIdentity(
       .from('branches')
       .select('id, name, organization_id')
       .eq('custom_domain', data.custom_domain);
-    if (excludeBranchId) query = query.neq('id', excludeBranchId);
+    if (typeof excludeBranchId === 'number') query = query.neq('id', excludeBranchId);
     const { data: existing } = await query.maybeSingle();
     if (existing) {
       throw new Error(`El dominio "${data.custom_domain}" ya está en uso por otra sucursal: ${existing.name}`);
@@ -720,7 +933,99 @@ Llamar la validación dentro de `createBranch` antes del `insert`:
 
 ```typescript
 await this.validateWebIdentity(branch, branch.organization_id);
+// Corrección QA R10: validateWebIdentityFormat es una función síncrona
+// exportada (no un método async del service). Sin await y sin this.
+const formatErrors = validateWebIdentityFormat({ slug: branch.slug, subdomain: branch.subdomain, custom_domain: branch.custom_domain });
+if (formatErrors.length > 0) {
+  throw new Error(formatErrors.join(', '));
+}
 ```
+
+> **Corrección QA Ronda 2 (formato)**: `validateWebIdentity` valida
+> **unicidad** de slug/subdomain/custom_domain, pero **no** valida formato.
+> La validación de formato se hace en el frontend con `validateSlug`,
+> `validateSubdomain`, `validateDomain` (sección 4.2). Para evitar que un
+> bypass directo al service guarde datos mal formateados, considerar añadir
+> validación de formato también dentro de `validateWebIdentity` (o en un
+> helper `validateWebIdentityFormat` previo) como defensa en profundidad.
+
+> **Corrección QA Ronda 3 (defensa en profundidad — formato + unicidad)**:
+> Añadir un helper `validateWebIdentityFormat` que valide **formato** además
+> de unicidad. `validateWebIdentity` (unicidad) y `validateWebIdentityFormat`
+> (formato) deben llamarse **juntos** antes de guardar, para defensa en
+> profundidad: el frontend valida formato en onChange/submit, pero el service
+> no debe confiar en el frontend — un bypass directo al service (p.ej. desde
+> otro consumidor o un script) podría enviar datos mal formateados que pasen
+> la validación de unicidad pero rompan la resolución de URL en
+> `goadmin-websites`.
+>
+> ```typescript
+> /**
+>  * Valida FORMATO de slug, subdomain y custom_domain.
+>  * A diferencia de validateWebIdentity (que valida unicidad contra la BD),
+>  * este helper solo verifica que los valores cumplan las regex de formato.
+>  * Debe llamarse junto con validateWebIdentity para defensa en profundidad.
+>  */
+> export function validateWebIdentityFormat(data: {
+>   slug?: string | null;
+>   subdomain?: string | null;
+>   custom_domain?: string | null;
+> }): string[] {
+>   const errors: string[] = [];
+>
+>   if (data.slug) {
+>     const err = validateSlug(data.slug);
+>     if (err) errors.push(`slug: ${err}`);
+>   }
+>   if (data.subdomain) {
+>     const err = validateSubdomain(data.subdomain);
+>     if (err) errors.push(`subdomain: ${err}`);
+>   }
+>   if (data.custom_domain) {
+>     const err = validateDomain(data.custom_domain, 'custom_domain');
+>     if (err) errors.push(err); // Corrección QA R9: validateDomain ya incluye el nombre del campo en el mensaje
+>   }
+>
+>   return errors;
+> }
+> ```
+>
+> **Corrección QA R7 (lógica invertida)**: el snippet anterior usaba
+> `if (data.slug && !validateSlug(data.slug))`, pero `validateSlug` retorna
+> `string | null` (el mensaje de error si inválido, `null` si válido).
+> `!validateSlug()` es `true` cuando el resultado es `null` (válido) →
+> rechazaba los slugs **válidos** en vez de los inválidos. La versión
+> corregida usa `const err = validateSlug(...)` y `if (err)` para detectar
+> correctamente los inválidos.
+>
+> **Nota**: `validateSlug`/`validateSubdomain`/`validateDomain` retornan
+> `string` (mensaje de error) si inválido, `null` si válido. Por eso se usa
+> `if (err)` no `if (!validateX())`.
+>
+> **Uso recomendado** dentro de `createBranch` y `updateBranch`, antes del
+> `insert`/`update`:
+>
+> ```typescript
+> // 1. Validar formato (defensa en profundidad — no confiar solo en el frontend)
+> const formatErrors = validateWebIdentityFormat(branch);
+> if (formatErrors.length > 0) {
+>   throw new Error(`Formato inválido: ${formatErrors.join(', ')}`);
+> }
+> // 2. Validar unicidad contra la BD
+> await this.validateWebIdentity(branch, organizationId, excludeBranchId);
+> ```
+>
+> **Decisión F6**: extraer `validateSlug`, `validateSubdomain`, `validateDomain`
+> a `src/lib/utils/webIdentityValidation.ts`. Importar desde `BranchForm.tsx`
+> (frontend) y `branchService.ts` (backend). Ambas capas validan formato; el
+> service también valida unicidad.
+>
+> **Integración**: `validateWebIdentityFormat` se llama **dentro del service**
+> (`createBranch`/`updateBranch`) como defensa en profundidad, además de en el
+> frontend. Ambas capas validan formato; el service también valida unicidad via
+> `validateWebIdentity`. Así, un bypass directo al service (script, otro
+> consumidor) no puede guardar datos mal formateados que rompan la resolución de
+> URL en `goadmin-websites`.
 
 Y dentro de `updateBranch` antes del `update`:
 
@@ -730,6 +1035,12 @@ await this.validateWebIdentity(
   /* organizationId se obtiene del branch existente o se pasa como param */,
   branchId
 );
+// Corrección QA R10: validateWebIdentityFormat es síncrona y exportada, no
+// un método async del service. Sin await y sin this.
+const formatErrors = validateWebIdentityFormat({ slug: branch.slug, subdomain: branch.subdomain, custom_domain: branch.custom_domain });
+if (formatErrors.length > 0) {
+  throw new Error(formatErrors.join(', '));
+}
 ```
 
 > **Nota**: `updateBranch` recibe `Partial<Branch>` que no incluye
@@ -819,25 +1130,40 @@ const handleFormSubmit = async (formData: any) => {
   setError(null);
   try {
     let savedBranch: Branch;
+    // Corrección QA R10: usar variable local para el mensaje base, reutilizarla
+    // en el enriquecimiento con URL pública (antes hardcodeaba t('branchUpdated')
+    // incluso en creación).
+    let message: string;
     if (editingBranch) {
       savedBranch = await branchService.updateBranch(editingBranch.id!, formData, orgId);
-      setSuccessMessage(t('branchUpdated'));
+      message = t('branchUpdated');
     } else {
       savedBranch = await branchService.createBranch({ ...formData, organization_id: orgId });
-      setSuccessMessage(t('branchCreated'));
+      message = t('branchCreated');
     }
+    setSuccessMessage(message);
 
     // Si quedó publicado, mostrar URL
     if (savedBranch.is_web_published) {
+      // Corrección QA: preferir custom_domain de la org si existe
+      // Corrección QA R10: guarda — si no hay subdomain ni custom_domain (ni
+      // de la branch ni de la org), no hay URL pública hasta configurar dominio
+      // o subdominio de la organización.
       const publicUrl = savedBranch.custom_domain
         ? `https://${savedBranch.custom_domain}`
         : savedBranch.subdomain
           ? `https://${savedBranch.subdomain}.goadmin.io`
           : savedBranch.slug
-            ? `https://${orgSubdomain}.goadmin.io/${savedBranch.slug}`
+            ? (orgCustomDomain
+                ? `https://${orgCustomDomain}/${savedBranch.slug}`
+                : orgSubdomain
+                  ? `https://${orgSubdomain}.goadmin.io/${savedBranch.slug}`
+                  : null) // sin URL pública hasta configurar dominio/subdominio de la org
             : null;
       if (publicUrl) {
-        setSuccessMessage(`${t('branchUpdated')} — URL pública: ${publicUrl}`);
+        setSuccessMessage(`${message} — URL pública: ${publicUrl}`);
+      } else if (savedBranch.slug) {
+        setSuccessMessage(`${message} — Configura un dominio o subdominio de organización para tener URL pública.`);
       }
     }
 
@@ -865,50 +1191,123 @@ URL pública del outlet en una pestaña nueva.
 
 | Campo | Regla | Cuándo |
 |---|---|---|
-| `slug` | Solo `[a-z0-9-]`, min 2, max 60. Sin espacios. | Frontend (onChange + submit) |
+| `slug` | Solo `[a-z0-9-]`, min 2, max 60. Sin espacios. Sin guiones consecutivos, ni al inicio/final. | Frontend (onChange + submit) |
 | `slug` | Único por `organization_id` | `branchService.validateWebIdentity` |
 | `subdomain` | Único label DNS (sin puntos), max 63 chars. Regex `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`. Único global. | Frontend (`validateSubdomain`) + service |
-| `custom_domain` | Formato de dominio válido. Único global. | Frontend (`validateDomain`) + service |
+| `custom_domain` | Formato de dominio válido (solo minúsculas, sin guiones al inicio/final de cada label). Regex `^([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$`. Único global. | Frontend (`validateDomain`) + service |
 | `website_logo_url` | URL válida `http(s)://` (no solo `type="url"` del input) | Frontend (`validateUrl` en submit) |
 | `website_cover_url` | URL válida `http(s)://` (no solo `type="url"` del input) | Frontend (`validateUrl` en submit) |
 | `is_web_published=true` | `slug` obligatorio | Frontend (submit) |
+| `slug` | No debe ser un slug reservado del router público (`menu`, `categorias`, `productos`, `checkout`, `espacios`, `servicios`, `contacto`, `nosotros`, `agendar`, `cotizar`) | Frontend (`validateSlug` + warning en UI) |
 | `subdomain` o `custom_domain` seteados | `is_web_published` debe ser `true` | Frontend (auto-forzar vía variable local, no `setForm`) |
 | `branch_type` | Enum: hotel, restaurant, retail, gym, transport, parking, services | Frontend (select) |
 
 ---
 
-## 9. Definition of Done
+## 9. Plan de pruebas
 
-- [ ] `Branch` interface tiene los 6 campos nuevos (`slug`, `subdomain`, `custom_domain`, `website_logo_url`, `website_cover_url`, `is_web_published`)
-- [ ] `BranchForm` tiene sección "Identidad Web" con todos los campos
-- [ ] `branch_type` tiene `<select>` en el UI con los 7 valores (no solo en BD)
-- [ ] Validación de formato de `slug` (regex) funciona en tiempo real
-- [ ] Validación de `subdomain` como label DNS único (sin puntos, max 63, regex `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`) funciona en submit
-- [ ] Validación de formato de `custom_domain` funciona en submit
-- [ ] Validación de `website_logo_url` y `website_cover_url` como URLs `http(s)://` válidas en submit (no solo `type="url"`)
-- [ ] `handleSubmit` usa variable local (`formWithPublished`) en vez de `setForm` + leer `form` (sin closure stale)
-- [ ] Validación de unicidad de `slug` por org funciona en `branchService`
-- [ ] Validación de unicidad global de `subdomain` y `custom_domain` funciona
-- [ ] `is_web_published=true` requiere `slug` (bloquea submit si falta)
-- [ ] `subdomain` o `custom_domain` seteados auto-forzan `is_web_published=true` (vía variable local)
-- [ ] Sección "Identidad Web" oculta en flujo signup (`hideStatusSection=true` en `BranchStep.tsx`)
-- [ ] Única llamada productiva a `updateBranch` (`BranchesTab.tsx:210`) actualizada para pasar `orgId`
-- [ ] `BranchesTab` muestra columna "Sitio Web" con estado publicado/no publicado
-- [ ] `BranchesTab` muestra slug y URL pública calculada
-- [ ] Toggle `is_web_published` funciona desde la tabla (acción rápida)
-- [ ] Botón "Ver sitio" abre la URL pública en pestaña nueva
-- [ ] Preview de URL visible dentro del formulario al editar
-- [ ] Advertencia visible al cambiar `slug` de un outlet ya publicado
-- [ ] `branchService.createBranch` acepta y persiste los nuevos campos
-- [ ] `branchService.updateBranch` acepta y persiste los nuevos campos
-- [ ] `branchService.validateWebIdentity` ejecuta antes de guardar
-- [ ] `npm run lint` limpio
-- [ ] `tsc --noEmit` limpio
-- [ ] Cero archivos `.sql` en el repo (esquema vía MCP de Supabase)
+> **Corrección QA Ronda 2**: añadir plan de pruebas explícito para validar
+> las correcciones de esta ronda y el comportamiento general de la identidad
+> web en `BranchForm` / `branchService`.
+
+### Casos de prueba
+
+| # | Escenario | Pasos | Resultado esperado |
+|---|---|---|---|
+| 1 | Crear branch con slug válido | Llenar nombre + slug `hotel-central` → submit | Branch creada, sin error. Slug persiste en BD. |
+| 2 | Crear branch con slug duplicado | Crear branch A con slug `hotel`. Crear branch B en la misma org con slug `hotel` → submit | Error: "El slug 'hotel' ya lo usa otra sucursal de esta organización". |
+| 3 | Crear branch con slug reservado | Llenar slug `menu` (reservado del router público) → submit | Error de `validateSlug`: "El slug 'menu' está reservado para el router público". Warning visible en UI. |
+| 4 | Subdomain con mayúsculas se normaliza | Escribir `HoTeL` en campo subdomain | `handleDomainChange` normaliza a `hotel` (minúsculas, trim). Valor guardado en BD es `hotel`. |
+| 5 | Custom_domain inválido | Llenar custom_domain `-invalid..com` → submit | Error de `validateDomain`: dominio inválido (label con guion al inicio / label vacío). |
+| 6 | Publicar branch sin slug | Marcar toggle `is_web_published` sin llenar slug → submit | Error: "El slug es obligatorio para publicar el outlet en la web". |
+| 7 | Publicar branch con subdomain pero sin slug | Llenar subdomain `hotel` sin marcar toggle y sin slug → submit | Error: auto-publish fuerza `is_web_published=true` y exige slug. Mensaje: "El slug es obligatorio para publicar el outlet en la web". |
+| 8 | Signup flow: submitForm() sin evento | En `BranchStep.tsx`, invocar `formRef.current.submitForm()` | `handleSubmit()` se ejecuta con `e=undefined`; `e?.preventDefault()` NO crashea. Validaciones se ejecutan normalmente. |
+| 9 | Editar slug de outlet publicado | Editar branch con slug existente, cambiarlo → guardar | Warning visible en UI sobre URLs rotas. Guarda correctamente si el nuevo slug pasa validaciones. |
+| 10 | Toggle rápido desde la tabla (sin branch_type) | En `BranchesTab`, click "Publicar" en branch sin `branch_type` | `setWebPublished` (F4 §2.7) rechaza con error de validación de `branch_type`. El toggle usa `setWebPublished`, no `updateBranch`. |
+| 11 | Subdomain duplicado global | Crear branch con subdomain usado por otra org → submit | Error: "El subdominio 'X' ya está en uso por otra sucursal". |
+| 12 | Custom_domain duplicado global | Crear branch con custom_domain usado por otra org → submit | Error: "El dominio 'X' ya está en uso por otra sucursal". |
+| 13 | validateWebIdentityFormat llamado desde service | Crear branch con slug inválido (ej. 'slug con espacios') vía service directo (sin frontend) | Service rechaza con error de formato, sin llegar a la BD. |
+| 14 | Publicar sin branch_type desde el formulario | Marcar toggle `is_web_published` sin seleccionar `branch_type` → submit | Error: "El tipo de negocio (branch_type) es obligatorio para publicar el outlet en la web". |
+| 15 | validateDomain con nombre de campo | Crear branch con custom_domain inválido vía service directo | Error de `validateDomain` incluye el nombre del campo `custom_domain` (no "undefined"). |
+| 16 | Slug con guiones consecutivos se comprime | Escribir `hotel--central` en campo slug | `onChange` normaliza a `hotel-central` (guiones consecutivos comprimidos, sin guion al inicio/final). |
+| 17 | Preview URL sin dominio de org | Branch publicada con slug pero org sin `subdomain` ni `custom_domain` | Preview muestra "Configura un dominio o subdominio de organización" en vez de URL inválida (`https://.goadmin.io/slug`). Botón "Ver sitio" no se renderiza. |
+| 18 | Toast de creación usa mensaje correcto | Crear branch nueva (no editar) que queda publicada con URL | Toast muestra `t('branchCreated')` (no `t('branchUpdated')`) + URL pública. |
+| 19 | validateWebIdentityFormat síncrono desde service | Llamar `createBranch` con slug inválido | `validateWebIdentityFormat` (función exportada, sin `this.` ni `await`) rechaza con error de formato antes del insert. |
+
+### Notas de ejecución
+
+- Los casos 1-8 cubren las correcciones de QA Ronda 2 (especialmente #7
+  auto-publish y #8 `submitForm` sin evento).
+- Los casos 2, 11, 12 dependen de `branchService.validateWebIdentity`
+  (sección 6.3) — requieren datos preexistentes en BD.
+- El caso 8 es específico del flujo signup (`BranchStep.tsx`), donde la
+  sección "Identidad Web" está oculta (`hideStatusSection=true`) pero
+  `submitForm` debe seguir funcionando sin crashear.
 
 ---
 
-## 10. Riesgos y mitigaciones
+## 10. Definition of Done
+
+- [x] `Branch` interface tiene los 6 campos nuevos (`slug`, `subdomain`, `custom_domain`, `website_logo_url`, `website_cover_url`, `is_web_published`)
+- [x] `src/types/branch.ts` actualizado con los 6 campos nuevos (ver snippet en sección 3)
+- [x] `BranchForm` tiene sección "Identidad Web" con todos los campos
+- [x] `branch_type` tiene `<select>` en el UI con los 7 valores (no solo en BD)
+- [x] Validación de formato de `slug` (regex) funciona en tiempo real
+- [x] Validación de slugs reservados del router público (`menu`, `categorias`, `productos`, `checkout`, `espacios`, `servicios`, `contacto`, `nosotros`, `agendar`, `cotizar`) bloquea el submit y muestra warning
+- [x] Validación de `subdomain` como label DNS único (sin puntos, max 63, regex `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`) funciona en submit
+- [x] Validación de formato de `custom_domain` funciona en submit (regex corregida: solo minúsculas, sin guiones al inicio/final de cada label)
+- [x] Validación de `website_logo_url` y `website_cover_url` como URLs `http(s)://` válidas en submit (no solo `type="url"`)
+- [x] `handleSubmit` usa variable local (`formWithPublished`) en vez de `setForm` + leer `form` (sin closure stale)
+- [x] `submitForm` (expuesto vía ref) llama `handleSubmit` internamente, no `onSubmit` directo — ambos caminos ejecutan validaciones
+- [x] **QA Ronda 2**: `handleSubmit` acepta `e?: React.FormEvent` y usa `e?.preventDefault()` — `submitForm()` no crashea sin evento
+- [x] **QA Ronda 2**: `formWithPublished` se construye **antes** de las validaciones; la validación de slug obligatorio se hace sobre `formWithPublished` (auto-publish por subdomain/custom_domain exige slug)
+- [x] **QA Ronda 2**: `DNS_LABEL_REGEX` integrada en `validateDomain` (valida cada label DNS individualmente)
+- [x] **QA Ronda 2**: `handleDomainChange` normaliza `subdomain` y `custom_domain` a minúsculas + trim en onChange
+- [x] **QA Ronda 2**: `branch_code: ''` inicializado explícitamente en `useState` del formulario
+- [x] **QA Ronda 2**: `branch_type?: BranchType` (no `string`) en la interfaz `Branch`
+- [x] **QA Ronda 2**: Nota sobre `validateWebIdentity` (valida unicidad, no formato) documentada
+- [x] **QA Ronda 2**: Plan de pruebas (sección 9) ejecutado: 12 casos pasan
+- [x] **QA Ronda 3**: `BranchFormData` sobrescribe `branch_type?: BranchType | ''` (estado inicial usa `''`, al guardar tratar como `null`)
+- [x] **QA Ronda 3**: Preview de URL por path en `BranchesTab.tsx` usa template literal `/${branch.slug}` (no string literal `/{branch.slug}`)
+- [x] **QA Ronda 3**: `handleDomainChange` aplica `.replace(/\s+/g, '')` para eliminar espacios internos (recomendación obligatoria, no opcional — ver §4.2)
+- [x] **QA Ronda 3**: Helper `validateWebIdentityFormat` (formato) implementado y llamado junto con `validateWebIdentity` (unicidad) para defensa en profundidad
+- [x] Sección "Identidad Web" insertada DENTRO del `<div className="p-4 sm:p-6 space-y-8">` antes de su cierre (no después)
+- [x] Validación de unicidad de `slug` por org funciona en `branchService`
+- [x] Validación de unicidad global de `subdomain` y `custom_domain` funciona
+- [x] `is_web_published=true` requiere `slug` (bloquea submit si falta)
+- [x] `subdomain` o `custom_domain` seteados auto-forzan `is_web_published=true` (vía variable local)
+- [x] Sección "Identidad Web" oculta en flujo signup (`hideStatusSection=true` en `BranchStep.tsx`)
+- [x] Única llamada productiva a `updateBranch` (`BranchesTab.tsx:210`) actualizada para pasar `orgId`
+- [x] `BranchesTab` muestra columna "Sitio Web" con estado publicado/no publicado y preview de URL
+- [x] `BranchesTab` muestra slug y URL pública calculada (preferir `custom_domain` de la org sobre `subdomain`)
+- [x] Toggle `is_web_published` funciona desde la tabla (acción rápida)
+- [x] Botón "Ver sitio" abre la URL pública en pestaña nueva
+- [x] Preview de URL visible dentro del formulario al editar (preferir `custom_domain` de la org si existe)
+- [x] Advertencia visible al cambiar `slug` de un outlet ya publicado
+- [x] `branchService.createBranch` incluye los 6 campos nuevos en el insert (ver snippet en sección 6.1)
+- [x] `branchService.updateBranch` incluye los 6 campos nuevos en el update (ver snippet en sección 6.2)
+- [x] `branchService.validateWebIdentity` ejecuta antes de guardar
+- [x] **QA R8**: `handleSubmit` valida `branch_type` obligatorio cuando `is_web_published === true` (F4 exige branch_type para publicar)
+- [x] **QA R8**: `handleSubmit` valida `slug` obligatorio cuando `is_web_published === true` (mensaje consistente con F4)
+- [x] **QA R8**: `BranchesTab.handleToggleWebPublished` usa `branchService.setWebPublished` (F4 §2.7), no `updateBranch` — no se salta la validación de `branch_type`
+- [x] **QA R8**: `validateWebIdentityFormat` llama `validateDomain(data.custom_domain, 'custom_domain')` con el argumento `field` — los mensajes de error no contienen "undefined"
+- [x] **QA R9**: `handleSubmit` tiene una sola validación de slug obligatorio al publicar (sin duplicar — el segundo bloque era código muerto)
+- [x] **QA R9**: `handleSubmit` normaliza `branch_type` vacío (`''`) a `null` antes de construir el payload (`normalizedBranchType`)
+- [x] **QA R9**: `createBranch` y `updateBranch` incluyen `branch_type` en `formattedBranch` normalizado a `null` si es `''`
+- [x] **QA R9**: `handleToggleWebPublished` documenta que `setWebPublished` (F4 §2.7) valida tanto `branch_type` como `slug` antes de publicar
+- [x] **QA R9**: `validateWebIdentityFormat` no duplica el prefijo `custom_domain:` en el mensaje de error (validateDomain ya lo incluye)
+- [x] **QA R10**: `handleFormSubmit` usa variable local `message` para el toast de éxito y la reutiliza al enriquecer con URL pública (no hardcodea `t('branchUpdated')` en creación)
+- [x] **QA R10**: `validateWebIdentityFormat` se invoca como función síncrona exportada (sin `await`, sin `this.`) en `createBranch` y `updateBranch`; import añadido al inicio de `branchService.ts`
+- [x] **QA R10**: `onChange` de slug comprime guiones consecutivos (`.replace(/-+/g, '-')`) y limpia guiones al inicio/final (`.replace(/^-|-$/g, '')`)
+- [x] **QA R10**: Preview de URL pública (§4.4 y §5.1) tiene guarda cuando la org no tiene `subdomain` ni `custom_domain` — muestra mensaje "Configura un dominio o subdominio de organización" en vez de URL inválida
+- [x] **QA R10**: Mensaje de `validateSlug` precisa "no consecutivos, ni al inicio/final" para reflejar las reglas de `SLUG_REGEX`
+- [ ] `npm run lint` limpio
+- [ ] `tsc --noEmit` limpio
+- [x] Cero archivos `.sql` en el repo (esquema vía MCP de Supabase)
+
+---
+
+## 11. Riesgos y mitigaciones
 
 ### Riesgo 1: Cambiar el slug de un outlet publicado rompe URLs existentes
 
@@ -951,7 +1350,7 @@ fallback de la org.
 
 ---
 
-## 11. Archivos modificados (resumen)
+## 12. Archivos modificados (resumen)
 
 | Archivo | Cambio |
 |---|---|

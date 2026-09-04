@@ -16,4 +16,6 @@ export { default as FooterPreviewMockup } from './FooterPreviewMockup';
 export { default as MenuGroupManager } from './MenuGroupManager';
 export { default as MenuGroupEditor } from './MenuGroupEditor';
 export { PageLayoutPanel } from './PageLayoutPanel';
+export { OutletSelector } from './OutletSelector';
+export type { OutletOption } from './OutletSelector';
 export type { DevicePreview } from './EditorHeader';

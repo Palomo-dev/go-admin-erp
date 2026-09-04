@@ -33,6 +33,7 @@ import {
   MobileFooterPanel,
   FooterPreviewMockup,
   MenuGroupManager,
+  type OutletOption,
   type DevicePreview,
 } from '@/components/organization/branding/editor';
 import { useHistory } from '@/components/organization/branding/editor/useHistory';
@@ -40,6 +41,9 @@ import { extractStyle, applyStyle } from '@/components/organization/branding/edi
 import { websiteMenuGroupService, type MenuGroup } from '@/lib/services/websiteMenuGroupService';
 import type { SectionManifest } from '@/lib/services/website/sectionContract';
 import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
+import { getAllowedSectionTypes } from '@/lib/services/website/sectionsByBranchType';
+import { branchService } from '@/lib/services/branchService';
+import type { Branch } from '@/types/branch';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export default function PageEditorPage() {
@@ -78,6 +82,15 @@ export default function PageEditorPage() {
   const [previewEntityId, setPreviewEntityId] = useState<string | null>(null);
   const [previewEntities, setPreviewEntities] = useState<Array<{ id: string; label: string }>>([]);
 
+  // Fase 4 — Editor multi-outlet
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  const [outletOptions, setOutletOptions] = useState<OutletOption[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+  const [publishedBranches, setPublishedBranches] = useState<Branch[]>([]);
+  const [pendingOutletChange, setPendingOutletChange] = useState<number | null | undefined>(undefined);
+  // F4 R2 — Track si el outlet tiene fila propia en website_settings
+  const [outletSettingsExists, setOutletSettingsExists] = useState<boolean>(true);
+
   // F12.3 — Undo/Redo sobre el estado de secciones (límite 50 pasos)
   const {
     state: sectionsState,
@@ -111,17 +124,71 @@ export default function PageEditorPage() {
     try {
       setIsLoading(true);
 
-      const [pagesData, pageData, settingsData, preview] = await Promise.all([
-        websitePageBuilderService.getPages(organizationId),
-        websitePageBuilderService.getPageWithSections(pageId),
-        websiteSettingsService.getSettings(organizationId),
+      // Fase 4 §2.2 — Cargar la página actual PRIMERO para resolver el outlet
+      const pageData = await websitePageBuilderService.getPageWithSections(pageId);
+      setCurrentPage(pageData);
+
+      // Resolver el outlet desde la página (no asumir Global)
+      const initialBranchId = (pageData as WebsitePage | null)?.branch_id ?? null;
+      setSelectedBranchId(initialBranchId);
+
+      // Ahora cargar pages y settings con el branchId resuelto
+      const [pagesData, settingsDataRaw, preview] = await Promise.all([
+        websitePageBuilderService.getPages(organizationId, initialBranchId),
+        websiteSettingsService.getSettings(organizationId, initialBranchId),
         websitePageBuilderService.getPreviewUrl(organizationId),
       ]);
 
+      // F4 R2 — Si el outlet no tiene settings propios, cargar globales como base
+      let settingsData = settingsDataRaw;
+      let outletHasSettings = true;
+      if (!settingsData && initialBranchId !== null) {
+        settingsData = await websiteSettingsService.getSettings(organizationId, null);
+        outletHasSettings = false;
+      }
+      setOutletSettingsExists(outletHasSettings);
+
       setPages(pagesData);
-      setCurrentPage(pageData);
       setSettings(settingsData);
       setPreviewUrl(preview);
+
+      // Fase 4 §2.3 — Cargar outlets publicables (branches con is_web_published=true Y branch_type válido)
+      try {
+        const allBranches = await branchService.getBranches(organizationId);
+        const validPublished = allBranches.filter(
+          (b) => b.is_web_published === true && !!b.branch_type,
+        );
+        setPublishedBranches(validPublished);
+
+        // Avisar de outlets publicados pero incompletos (sin branch_type)
+        const invalid = allBranches.filter(
+          (b) => b.is_web_published === true && !b.branch_type,
+        );
+        if (invalid.length > 0) {
+          toast({
+            title: 'Outlet(s) incompleto(s)',
+            description: `${invalid.map((b) => b.name).join(', ')} está publicado pero no tiene branch_type. Corrígelo en Sucursales antes de editar su branding.`,
+            variant: 'destructive',
+          });
+        }
+
+        const options: OutletOption[] = [
+          { value: null, label: 'Global (organización)', branchType: null },
+          ...validPublished.map((b) => ({
+            value: b.id!,
+            label: b.name,
+            branchType: b.branch_type ?? null,
+          })),
+        ];
+        setOutletOptions(options);
+
+        // Resolver la branch seleccionada
+        const resolved = validPublished.find((b) => b.id === initialBranchId) ?? null;
+        setSelectedBranch(resolved);
+      } catch {
+        // Si falla, fallback a Global
+        setOutletOptions([{ value: null, label: 'Global (organización)', branchType: null }]);
+      }
 
       // Cargar menús nombrados para selectores
       if (organizationId) {
@@ -286,7 +353,11 @@ export default function PageEditorPage() {
     setShowGlobalSettings(false);
 
     try {
-      const pageData = await websitePageBuilderService.getPageWithSections(newPageId);
+      const pageData = await websitePageBuilderService.getPageWithSections(
+        newPageId,
+        organizationId,
+        selectedBranchId,
+      );
       setCurrentPage(pageData);
       setPreviewRefreshKey((k) => k + 1);
       // Update URL without re-mounting the component
@@ -298,6 +369,66 @@ export default function PageEditorPage() {
         description: 'No se pudo cargar la página seleccionada',
         variant: 'destructive',
       });
+    }
+  };
+
+  // ---- Fase 4 — CAMBIO DE OUTLET ----
+  const handleOutletChange = async (branchId: number | null) => {
+    if (hasChanges) {
+      setPendingOutletChange(branchId);
+      return;
+    }
+    await doOutletChange(branchId);
+  };
+
+  const doOutletChange = async (branchId: number | null) => {
+    setSelectedBranchId(branchId);
+    // Reset pending changes
+    pendingSectionUpdates.current.clear();
+    pendingSettingsUpdates.current = {};
+    setHasChanges(false);
+    setActiveSectionId(null);
+
+    // Recargar páginas y settings del outlet
+    try {
+      setIsLoading(true);
+      const [pagesData, settingsDataRaw] = await Promise.all([
+        websitePageBuilderService.getPages(organizationId!, branchId),
+        websiteSettingsService.getSettings(organizationId!, branchId),
+      ]);
+
+      // F4 R2 — Si el outlet no tiene settings propios, cargar globales como base
+      let settingsData = settingsDataRaw;
+      let outletHasSettings = true;
+      if (!settingsData && branchId !== null) {
+        settingsData = await websiteSettingsService.getSettings(organizationId!, null);
+        outletHasSettings = false;
+      }
+      setOutletSettingsExists(outletHasSettings);
+
+      setPages(pagesData);
+      setSettings(settingsData);
+
+      // Resolver branch_type para filtrado de secciones
+      const branch = publishedBranches.find((b) => b.id === branchId) ?? null;
+      setSelectedBranch(branch);
+
+      // Si la página actual no pertenece al outlet seleccionado, cambiar a la primera
+      if (currentPage && pagesData.length > 0) {
+        const stillExists = pagesData.some((p) => p.id === currentPage.id);
+        if (!stillExists) {
+          await doPageChange(pagesData[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error changing outlet:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los datos del outlet',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -436,6 +567,8 @@ export default function PageEditorPage() {
       setCurrentPage((prev) => (prev ? { ...prev, sections: newSections } : prev));
       setSectionsState(newSections);
       setActiveSectionId(newSection.id);
+      // F4 R3 (Issue 4) — Marcar hasChanges para que el reorden se persista al guardar
+      setHasChanges(true);
       toast({ title: 'Sección duplicada' });
     } catch (error: any) {
       toast({ title: 'Error', description: error?.message || 'No se pudo duplicar', variant: 'destructive' });
@@ -519,7 +652,11 @@ export default function PageEditorPage() {
         return;
       }
       // Recargar la página para reflejar las nuevas secciones
-      const pageData = await websitePageBuilderService.getPageWithSections(currentPage.id);
+      const pageData = await websitePageBuilderService.getPageWithSections(
+        currentPage.id,
+        organizationId,
+        selectedBranchId,
+      );
       setCurrentPage(pageData);
       if (pageData?.sections) resetSections(pageData.sections);
       setPreviewRefreshKey((k) => k + 1);
@@ -608,6 +745,17 @@ export default function PageEditorPage() {
 
       // 4. Save global settings
       if (Object.keys(pendingSettingsUpdates.current).length > 0) {
+        // F4 R2 — Si el outlet no tiene fila propia, usar upsert (updateSettings)
+        // para crear la fila del outlet en vez de UPDATE directo que no afectaría filas
+        if (selectedBranchId !== null && !outletSettingsExists) {
+          const upserted = await websiteSettingsService.updateSettings(
+            organizationId,
+            pendingSettingsUpdates.current as any,
+            selectedBranchId,
+          );
+          setSettings(upserted);
+          setOutletSettingsExists(true);
+        } else {
         // Separar campos de tema (colores, fuentes, etc.) de campos del header
         const headerConfigKeys = [
           'header_style', 'footer_style', 'logo_position', 'header_cta_text', 'header_cta_url',
@@ -646,7 +794,8 @@ export default function PageEditorPage() {
         if (Object.keys(themeUpdates).length > 0) {
           updatedSettings = await websiteSettingsService.updateTheme(
             organizationId,
-            themeUpdates as any
+            themeUpdates as any,
+            selectedBranchId,
           );
         }
         if (Object.keys(headerUpdates).length > 0) {
@@ -672,17 +821,20 @@ export default function PageEditorPage() {
           if (Object.keys(pureHeaderUpdates).length > 0) {
             updatedSettings = await websiteSettingsService.updateHeaderConfig(
               organizationId,
-              pureHeaderUpdates as any
+              pureHeaderUpdates as any,
+              selectedBranchId,
             );
           }
           if (Object.keys(footerUpdates).length > 0) {
             updatedSettings = await websiteSettingsService.updateFooterConfig(
               organizationId,
-              footerUpdates as any
+              footerUpdates as any,
+              selectedBranchId,
             );
           }
         }
         if (updatedSettings) setSettings(updatedSettings);
+        } // fin else (outlet tiene fila propia o es global)
       }
 
       // 5. Sync gallery/testimonials/FAQ items to website_settings
@@ -702,11 +854,14 @@ export default function PageEditorPage() {
         }
       }
       if (Object.keys(contentSync).length > 0) {
-        const synced = await websiteSettingsService.updateContent(
-          organizationId,
-          contentSync
-        );
+        // F4 R2 — Si el outlet no tiene fila propia, usar upsert para contentSync
+        const synced = selectedBranchId !== null && !outletSettingsExists
+          ? await websiteSettingsService.updateSettings(organizationId, contentSync, selectedBranchId)
+          : await websiteSettingsService.updateContent(organizationId, contentSync, selectedBranchId);
         setSettings(synced);
+        if (selectedBranchId !== null && !outletSettingsExists) {
+          setOutletSettingsExists(true);
+        }
       }
 
       // 6. Save menu tree updates (header_order, menu_icon, menu_badge, etc.)
@@ -767,6 +922,9 @@ export default function PageEditorPage() {
         : `${previewUrl}/${currentPage?.slug || ''}`
     : null;
 
+  // Fase 4 §3.3 — Secciones permitidas según branch_type del outlet seleccionado
+  const allowedSectionTypes = getAllowedSectionTypes(selectedBranch?.branch_type);
+
   // ---- LOADING STATE ----
   if (isLoading || !organization) {
     return (
@@ -808,6 +966,11 @@ export default function PageEditorPage() {
         previewEntities={previewEntities}
         previewEntityId={previewEntityId}
         onPreviewEntityChange={setPreviewEntityId}
+        outletOptions={outletOptions}
+        selectedBranchId={selectedBranchId}
+        onOutletChange={handleOutletChange}
+        selectedBranch={selectedBranch}
+        currentPageIsGlobal={currentPage.branch_id === null || currentPage.branch_id === undefined}
       />
 
       {/* Main Content: Sidebar + Preview */}
@@ -1052,6 +1215,7 @@ export default function PageEditorPage() {
         onOpenChange={setShowAddDialog}
         onAdd={handleAddSection}
         existingSectionTypes={currentPage.sections.map((s) => s.section_type)}
+        allowedSectionTypes={allowedSectionTypes}
       />
 
       {/* Confirmar descartar cambios al cambiar de página */}
@@ -1077,6 +1241,23 @@ export default function PageEditorPage() {
         confirmLabel="Eliminar"
         variant="destructive"
         onConfirm={async () => { await doDeleteSection(); }}
+      />
+
+      {/* Fase 4 §6.5 — Confirmar cambio de outlet con cambios sin guardar */}
+      <ConfirmDialog
+        open={pendingOutletChange !== undefined}
+        onOpenChange={(open) => { if (!open) setPendingOutletChange(undefined); }}
+        title="Cambiar de outlet"
+        description="Tienes cambios sin guardar. Si cambias de outlet, se perderán. ¿Deseas continuar?"
+        confirmLabel="Cambiar outlet"
+        variant="destructive"
+        onConfirm={async () => {
+          const branchId = pendingOutletChange;
+          setPendingOutletChange(undefined);
+          if (branchId !== undefined) {
+            await doOutletChange(branchId);
+          }
+        }}
       />
     </div>
   );

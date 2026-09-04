@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Branch, OpeningHours, DayHours } from '@/types/branch';
+import React, { useEffect, useRef, useState } from 'react';
+import { Branch, BranchFormData, OpeningHours, DayHours } from '@/types/branch';
 import { branchService } from '@/lib/services/branchService';
 import { supabase } from '@/lib/supabase/config';
-import { BranchForm } from '@/components/branches/BranchForm';
+import { BranchForm, BranchFormRef } from '@/components/branches/BranchForm';
 import { AssignManagerModal } from '@/components/branches/AssignManagerModal';
 import BranchesMap from '@/components/maps/BranchesMap';
 import BranchMapModal from '@/components/maps/BranchMapModal';
@@ -107,6 +107,13 @@ const formatOpeningHours = (openingHours?: OpeningHours): string => {
 
 const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) => {
   const t = useTranslations('org.branchesTab');
+  // Corrección QA R3 (Issue 3): ref al BranchForm para invocar submitForm()
+  // desde el botón del footer. Con noFormWrapper=true el form se renderiza
+  // como <div id="branch-form">, por lo que type="submit" form="branch-form"
+  // no dispara el envío (un div no es un formulario asociable). Usamos el ref
+  // expuesto vía useImperativeHandle para ejecutar handleSubmit con todas sus
+  // validaciones de identidad web.
+  const formRef = useRef<BranchFormRef>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -120,6 +127,10 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
   const [selectedBranchForMap, setSelectedBranchForMap] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
   const [maxBranches, setMaxBranches] = useState<number | null>(null);
+  // Subdominio y dominio propio de la organización, para construir la URL
+  // pública por path en la columna "Sitio Web".
+  const [orgSubdomain, setOrgSubdomain] = useState<string>('');
+  const [orgCustomDomain, setOrgCustomDomain] = useState<string>('');
 
   const fetchBranchLimit = async () => {
     try {
@@ -161,6 +172,16 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
     if (orgId) {
       fetchBranches();
       fetchBranchLimit();
+      // Fetch org subdomain + custom_domain for URL preview por path
+      supabase
+        .from('organizations')
+        .select('subdomain, custom_domain')
+        .eq('id', orgId)
+        .single()
+        .then(({ data }) => {
+          if (data?.subdomain) setOrgSubdomain(data.subdomain);
+          if (data?.custom_domain) setOrgCustomDomain(data.custom_domain);
+        });
     }
   }, [orgId]);
 
@@ -202,24 +223,75 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
     }
   };
 
-  const handleFormSubmit = async (formData: any) => {
+  // F6 R4 (Issue 3) — Tipar formData como BranchFormData en vez de any.
+  const handleFormSubmit = async (formData: BranchFormData) => {
     setFormLoading(true);
     setError(null);
     try {
+      let savedBranch: Branch;
+      let message: string;
       if (editingBranch) {
-        await branchService.updateBranch(editingBranch.id!, formData);
-        setSuccessMessage(t('branchUpdated'));
+        // BranchFormData tiene opening_hours/features como string (JSON);
+        // updateBranch los parsea internamente via normalizeOpeningHours.
+        savedBranch = await branchService.updateBranch(
+          editingBranch.id!,
+          formData as Partial<Branch>,
+          orgId,
+        );
+        message = t('branchUpdated');
       } else {
-        await branchService.createBranch({ ...formData, organization_id: orgId });
-        setSuccessMessage(t('branchCreated'));
+        savedBranch = await branchService.createBranch({
+          ...formData,
+          organization_id: orgId,
+        } as Branch);
+        message = t('branchCreated');
       }
+      setSuccessMessage(message);
+
+      // Si quedó publicado, enriquecer el mensaje con la URL pública
+      if (savedBranch.is_web_published) {
+        const publicUrl = savedBranch.custom_domain
+          ? `https://${savedBranch.custom_domain}`
+          : savedBranch.subdomain
+            ? `https://${savedBranch.subdomain}.goadmin.io`
+            : savedBranch.slug
+              ? (orgCustomDomain
+                  ? `https://${orgCustomDomain}/${savedBranch.slug}`
+                  : orgSubdomain
+                    ? `https://${orgSubdomain}.goadmin.io/${savedBranch.slug}`
+                    : null)
+              : null;
+        if (publicUrl) {
+          setSuccessMessage(`${message} — URL pública: ${publicUrl}`);
+        } else if (savedBranch.slug) {
+          setSuccessMessage(`${message} — Configura un dominio o subdominio de organización para tener URL pública.`);
+        }
+      }
+
       setShowForm(false);
       setEditingBranch(null);
       await fetchBranches();
       window.dispatchEvent(new CustomEvent(BRANCHES_UPDATED_EVENT));
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
       setError(err.message || t('errorSaving'));
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  // Toggle rápido de publicación web desde la tabla.
+  // Usa setWebPublished (no updateBranch) para que se validen branch_type y
+  // slug antes de activar is_web_published=true (reglas de F4/F6).
+  const handleToggleWebPublished = async (branch: Branch) => {
+    setFormLoading(true);
+    setError(null);
+    try {
+      await branchService.setWebPublished(branch.id!, !branch.is_web_published, orgId);
+      await fetchBranches();
+      window.dispatchEvent(new CustomEvent(BRANCHES_UPDATED_EVENT));
+    } catch (err: any) {
+      setError(err.message || 'Error al cambiar publicación');
     } finally {
       setFormLoading(false);
     }
@@ -444,7 +516,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
             </div>
           ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] table-auto">
+            <table className="w-full min-w-[1300px] table-auto">
               <thead className="bg-gray-50 text-gray-700 dark:bg-gray-900 dark:text-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t('thBranch')}</th>
@@ -453,6 +525,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t('thManager')}</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t('thSchedule')}</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t('thStatus')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Sitio Web</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">{t('thAssignment')}</th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">{t('thActions')}</th>
                 </tr>
@@ -607,6 +680,59 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                       )}
                     </td>
                     <td className="px-6 py-4">
+                      <div className="text-sm">
+                        {branch.is_web_published ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-100">
+                              <svg className="mr-1.5 h-2 w-2 text-green-500 dark:text-green-400" fill="currentColor" viewBox="0 0 8 8">
+                                <circle cx="4" cy="4" r="3" />
+                              </svg>
+                              Publicado
+                            </span>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 break-all">
+                              {branch.custom_domain
+                                ? `https://${branch.custom_domain}`
+                                : branch.subdomain
+                                  ? `https://${branch.subdomain}.goadmin.io`
+                                  : branch.slug
+                                    ? (orgCustomDomain
+                                        ? `https://${orgCustomDomain}/${branch.slug}`
+                                        : orgSubdomain
+                                          ? `https://${orgSubdomain}.goadmin.io/${branch.slug}`
+                                          : 'Configura un dominio o subdominio de organización')
+                                    : 'Sin URL'}
+                            </div>
+                            {/* Botón Ver sitio — solo si hay URL pública real */}
+                            {(branch.custom_domain || branch.subdomain || (branch.slug && (orgCustomDomain || orgSubdomain))) && (
+                              <a
+                                href={
+                                  branch.custom_domain
+                                    ? `https://${branch.custom_domain}`
+                                    : branch.subdomain
+                                      ? `https://${branch.subdomain}.goadmin.io`
+                                      : orgCustomDomain
+                                        ? `https://${orgCustomDomain}/${branch.slug}`
+                                        : `https://${orgSubdomain}.goadmin.io/${branch.slug}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-100"
+                              >
+                                <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                Ver sitio
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                            No publicado
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
                       {userBranches?.some(ub => ub.branch_id === branch.id) || branch.manager_id ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-100">
                           <svg className="mr-1.5 h-2 w-2 text-blue-500 dark:text-blue-400" fill="currentColor" viewBox="0 0 8 8">
@@ -622,6 +748,22 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
+                        {/* Toggle publicación web */}
+                        <button
+                          className={`inline-flex items-center px-2.5 py-1.5 border text-xs font-medium rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${
+                            branch.is_web_published
+                              ? 'border-green-300 text-green-700 bg-green-50 hover:bg-green-100 dark:border-green-600 dark:text-green-200 dark:bg-green-900/30'
+                              : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900'
+                          }`}
+                          onClick={() => handleToggleWebPublished(branch)}
+                          disabled={formLoading}
+                          title={branch.is_web_published ? 'Despublicar sitio' : 'Publicar sitio'}
+                        >
+                          <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                          </svg>
+                          {branch.is_web_published ? 'Despublicar' : 'Publicar'}
+                        </button>
                         <button 
                           className="inline-flex items-center px-2.5 py-1.5 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:border-blue-600 dark:text-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/30 dark:focus:ring-blue-400"
                           onClick={() => handleAssignManager(branch)}
@@ -702,6 +844,7 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
               {/* Form Content */}
               <div className="overflow-y-auto max-h-[calc(90vh-80px)] pb-24">
                 <BranchForm
+                  ref={formRef}
                   initialData={editingBranch ? editingBranch : { organization_id: orgId, branch_code: autoBranchCode }}
                   onSubmit={handleFormSubmit}
                   isLoading={formLoading}
@@ -728,8 +871,8 @@ const BranchesTab: React.FC<BranchesTabProps> = ({ orgId, userBranches = [] }) =
                     </div>
                   )}
                   <button
-                    type="submit"
-                    form="branch-form"
+                    type="button"
+                    onClick={() => formRef.current?.submitForm()}
                     className="px-6 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors dark:focus:ring-blue-400"
                     disabled={formLoading}
                   >

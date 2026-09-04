@@ -104,24 +104,39 @@ branch con `custom_domain='tugranhotel.com'`. El middleware resuelve el
 dominio custom → outlet hotel directamente. No hay landing corporativa
 separada — el hotel ES el sitio principal.
 
+> **Corrección QA R7 (custom-org vs custom-outlet)**: el hotel usa el custom
+> domain de la **organización** (`tugranhotel.com`), NO un custom domain de
+> branch. El middleware clasifica `tugranhotel.com` como `custom-org` y setea
+> `x-custom-domain: tugranhotel`. La resolución del hotel como outlet principal
+> se hace por **path prefix vacío** — el hotel es la página global (sin path de
+> outlet). Los restaurantes se resuelven por path prefix (`/restaurante-1/`,
+> `/restaurante-2/`). El hotel NO necesita `branches.custom_domain` — vive en
+> el root de la org.
+
 ```
-tugranhotel.com/               → outlet = hotel (custom_domain match)
-tugranhotel.com/habitaciones   → outlet = hotel, página = habitaciones
+tugranhotel.com/               → outlet = null (global = hotel, custom-org)
+tugranhotel.com/habitaciones   → outlet = null (global = hotel), página = habitaciones
 tugranhotel.com/restaurante-1  → outlet = restaurante-1 (path prefix)
 tugranhotel.com/restaurante-2  → outlet = restaurante-2 (path prefix)
 ```
 
 **Configuración de branches para este caso:**
 
+> **Corrección QA R7**: el hotel NO tiene `branches.custom_domain` — vive en
+> el root de la org. El dominio `tugranhotel.com` pertenece a la **organización**
+> (`organization_domains.host`), no a un branch. El hotel se resuelve como
+> outlet principal porque su `slug` matchea el path prefix vacío (es la página
+> global). Los restaurantes sí usan `branches.slug` para path prefix.
+
 | Branch | custom_domain | slug | branch_type | is_web_published |
 |---|---|---|---|---|
-| hotel | `tugranhotel.com` | (sin slug, no necesita path) | hotel | true |
+| hotel | (null — vive en el root de la org) | (sin slug, no necesita path) | hotel | true |
 | restaurante-1 | (null) | `restaurante-1` | restaurant | true |
 | restaurante-2 | (null) | `restaurante-2` | restaurant | true |
 
 **Prioridad de resolución en el middleware**:
-1. Si el host matchea `branches.custom_domain` → resolver outlet por custom_domain (caso hotel).
-2. Si el host matchea `organization_domains.host` → resolver org, luego outlet por path prefix.
+1. Si el host matchea `organization_domains.host` → resolver org (`custom-org`), luego outlet por path prefix (caso hotel en root: path vacío = global = hotel).
+2. Si el host matchea `branches.custom_domain` → resolver outlet por custom_domain de branch (caso `restaurante1.tugranhotel.com`).
 3. Si el host es sub-subdomain → resolver outlet por subdomain.
 4. Si no hay outlet → sitio global de la org.
 
@@ -202,7 +217,7 @@ type HostResolution =
   | { kind: 'unknown' }
 
 function resolveHost(hostname: string): HostResolution {
-  const isLocalhost = hostname.includes('localhost')
+  const isLocalhost = hostname === 'localhost' || hostname.startsWith('localhost:')
 
   if (isLocalhost) {
     // subdomain.localhost o outlet.subdomain.localhost (dev)
@@ -238,6 +253,20 @@ function resolveHost(hostname: string): HostResolution {
   // get-org-context lo resuelve consultando organization_domains y branches.
   // Heurística: si tiene exactamente 2 etiquetas (tugranhotel.com) → org;
   // si tiene 3+ (hotel.tugranhotel.com) → podría ser outlet.
+  //
+  // IMPORTANTE: esta heurística es solo una primera clasificación para decidir
+  // qué headers setear. El middleware NO confía ciegamente en "3+ etiquetas =
+  // outlet". Cuando clasifica como 'custom-outlet', hace un lookup REAL en BD
+  // (resolveBranchOrgByCustomDomain) consultando branches.custom_domain. Si el
+  // lookup no encuentra el host en branches.custom_domain, el middleware no
+  // setea x-custom-outlet-domain y el request cae al flujo de org custom domain
+  // (getOrgContext probará organization_domains.host).
+  //
+  // Orden de lookup real en el middleware para dominios custom:
+  //   1. organization_domains.host = hostname → es org (custom-org)
+  //   2. branches.custom_domain = hostname → es outlet (custom-outlet)
+  //   3. Si ninguno matchea → fallback a org custom domain (getOrgContext
+  //      intentará getOrganizationByHost con el hostname crudo)
   //
   // Manejo de `www`: si el primer segmento es `www`, se ignora y se toma el
   // siguiente como candidato a outlet (o como org si no hay más etiquetas).
@@ -296,11 +325,22 @@ async function resolveBranchOrgByCustomDomain(
 
 ### 3.4 Código — bloque de middleware modificado
 
+> **QA — almacenamiento sin `www`**: los campos `branches.custom_domain` y
+> `branches.subdomain` deben almacenarse **SIEMPRE** sin prefijo `www.`. La
+> validación en F6 (BranchForm) debe hacer
+> `toLowerCase().trim().replace(/^www\./, '')` antes de guardar. Esto garantiza
+> que el lookup `branches.custom_domain = effectiveHost` (donde `effectiveHost`
+> ya viene sin `www` por el middleware) matchee correctamente.
+
 Reemplazar el bloque de líneas 52-96 por:
 
 ```typescript
   // --- Lógica de subdominios / dominios personalizados / outlets ---
   const resolved = resolveHost(hostname)
+
+  // Host efectivo sin www (para lookups en BD y headers).
+  // branches.custom_domain y organization_domains.host se almacenan sin www.
+  const effectiveHost = hostname.replace(/^www\./, '')
 
   let subdomain: string | null = null
   let outletSubdomain: string | null = null
@@ -322,16 +362,17 @@ Reemplazar el bloque de líneas 52-96 por:
       break
     case 'custom-outlet':
       isCustomDomain = true
-      isCustomOutletDomain = true
-      // Lookup de org desde branches.custom_domain (Opción A, ver §2.3).
-      // El middleware hace 2 queries: branches.custom_domain → organization_id
-      // → organizations.subdomain. Setea x-custom-domain con el identificador
-      // de la org para que get-org-context pueda resolverla.
-      // En F2/F3 se reemplaza por cache en edge (Opción B).
-      const branchRow = await resolveBranchOrgByCustomDomain(supabase, hostname)
+      // Lookup REAL en BD: branches.custom_domain → organization_id
+      // → organizations.subdomain. Si el host no está en branches.custom_domain,
+      // no es un outlet — caer a custom-org (getOrgContext intentará
+      // organization_domains.host). Se usa effectiveHost (sin www) porque
+      // branches.custom_domain se almacena sin www.
+      const branchRow = await resolveBranchOrgByCustomDomain(supabase, effectiveHost)
       if (branchRow?.orgIdentifier) {
+        isCustomOutletDomain = true
         subdomain = branchRow.orgIdentifier // identificador de la org
       }
+      // Si branchRow es null, isCustomOutletDomain queda false → flujo custom-org
       break
     case 'unknown':
     default:
@@ -350,11 +391,22 @@ Reemplazar el bloque de líneas 52-96 por:
   if (outletSubdomain) {
     supabaseResponse.headers.set('x-outlet-subdomain', outletSubdomain)
   }
-  if (isCustomDomain) {
-    supabaseResponse.headers.set('x-custom-domain', hostname)
-  }
   if (isCustomOutletDomain) {
-    supabaseResponse.headers.set('x-custom-outlet-domain', hostname)
+    // Dominio custom de BRANCH: x-custom-domain lleva el identificador de la
+    // org (resuelto vía lookup en resolveBranchOrgByCustomDomain), NO el
+    // hostname del branch. El hostname del branch va en x-custom-outlet-domain.
+    // Esto es crítico: getOrgContext usa `customDomain || subdomain` para
+    // resolver la org con getOrganizationByHost. Si x-custom-domain llevara el
+    // hostname del branch, getOrganizationByHost no encontraría la org (a
+    // menos que consulte branches.custom_domain, que no lo hace).
+    // Aquí `subdomain` ya contiene el orgIdentifier (subdomain de la org).
+    // x-custom-outlet-domain usa effectiveHost (sin www) para que el lookup
+    // en getOutletByCustomDomain matchee branches.custom_domain.
+    supabaseResponse.headers.set('x-custom-domain', subdomain!)
+    supabaseResponse.headers.set('x-custom-outlet-domain', effectiveHost)
+  } else if (isCustomDomain) {
+    // Dominio custom de ORG: x-custom-domain lleva el hostname (sin www).
+    supabaseResponse.headers.set('x-custom-domain', effectiveHost)
   }
 
   return supabaseResponse
@@ -362,13 +414,16 @@ Reemplazar el bloque de líneas 52-96 por:
 
 > **Nota**: para outlets por sub-subdomain del sistema
 > (`hotel.tugranhotel.goadmin.io`), el middleware no consulta BD — solo
-> separa etiquetas del host. Para dominios personalizados de **branch**
-> (`restaurante1.tugranhotel.com`), el middleware sí hace un lookup de
-> `branches.custom_domain` → `organization_id` → `organizations.subdomain`
-> para setear **ambos** headers (`x-custom-outlet-domain` + `x-custom-domain`
-> con el identificador de la org). Esto agrega 2 queries por request con
-> dominio custom de branch (aceptable; ver §2.3 para la ruta de cache en F2).
-> `get-org-context` recibe ambos headers y resuelve org + branch sin
+> separa etiquetas del host. Para dominios personalizados, el middleware hace
+> un lookup real: primero intenta `branches.custom_domain = hostname` (vía
+> `resolveBranchOrgByCustomDomain`). Si matchea, setea **ambos** headers:
+> `x-custom-outlet-domain` = hostname del branch, y `x-custom-domain` =
+> identificador de la org (subdomain resuelto). Si no matchea
+> `branches.custom_domain`, cae al flujo de `custom-org` (setea solo
+> `x-custom-domain` = hostname, y `getOrgContext` lo resuelve vía
+> `organization_domains.host`). Esto agrega hasta 2 queries por request con
+> dominio custom (aceptable; ver §2.3 para la ruta de cache en F2).
+> `get-org-context` recibe los headers y resuelve org + branch sin
 > ambigüedad.
 
 ---
@@ -391,7 +446,10 @@ la organización y devuelve navegación/menús. **No** resuelve outlet ni pasa
    - Si `x-custom-outlet-domain` existe → `getOutletByCustomDomain(orgId, host)`
    - Si no, intentar el **primer segmento del path** contra `branches.slug`
      (esto requiere recibir el path; ver §6 para `[[...slug]]/page.tsx`).
-3. Devolver `outlet` (branch object o `null`) además de `organization`.
+3. Devolver `outlet` (branch object o `null`) y `branchId` (`number | undefined`)
+   además de `organization`. **`page.tsx` debe consumir `outlet` y `branchId`
+   del return de `getOrgContext`**, no volver a resolverlos con `resolveOutlet`
+   (ver §6.3 para el patrón anti-duplicación).
 4. Pasar `branchId` a `getWebsiteHeaderNav`, `getWebsiteFooterNav`, etc.
 
 > **QA — Unificación con `resolveOutlet` (§6.3)**:
@@ -451,7 +509,10 @@ la organización y devuelve navegación/menús. **No** resuelve outlet ni pasa
 ### 4.3 Código — `getOrgContext` modificado
 
 ```typescript
+import { headers } from 'next/headers'
 import { getOutletBySubdomain, getOutletByCustomDomain, getOutletBySlug } from '@/lib/supabase/queries'
+import type { OrganizationWithDetails } from '@/types/organization';
+import type { Branch } from '@/types/branch';
 
 export async function getOrgContext(pathFirstSegment?: string) {
   const headersList = await headers()
@@ -467,7 +528,7 @@ export async function getOrgContext(pathFirstSegment?: string) {
   if (!organization) return null
 
   // --- Resolver outlet (branch) ---
-  let outlet: any | null = null
+  let outlet: Branch | null = null
 
   if (outletSubdomain) {
     // Sub-subdomain: hotel.tugranhotel.goadmin.io
@@ -492,6 +553,13 @@ export async function getOrgContext(pathFirstSegment?: string) {
 
   // ... resto igual (menús nombrados, mega-menú, frozen status) ...
   // (sin cambios en la lógica de namedHeaderMenu / namedMegaMenu / footerMenus)
+  //
+  // QA — getOrgContext debe pasar `branchId` a `getMenuCategories` y
+  // `getMegaMenuItems` para que la navegación del header/footer refleje el
+  // outlet activo. Sin esto, las categorías y items del mega-menú mostrarían
+  // contenido de toda la org en lugar del outlet + globales.
+  const menuCategories = await getMenuCategories(organization.id, branchId)
+  const megaMenuItems = await getMegaMenuItems(organization.id, branchId)
 
   return {
     organization,
@@ -500,7 +568,7 @@ export async function getOrgContext(pathFirstSegment?: string) {
     primaryColor,
     template,
     headerNav,
-    headerNavTree: effectiveHeaderNavTree,
+    headerNavTree,
     footerNav,
     footerNavTree,
     menuCategories,
@@ -514,8 +582,9 @@ export async function getOrgContext(pathFirstSegment?: string) {
 ```
 
 > **Si no hay outlet** → `outlet = null`, `branchId = undefined`. Las queries
-> reciben `undefined` y no filtran por branch (backward compat: contenido global
-> de la org).
+> reciben `undefined` y **no filtran** por branch (backward compat: traen todo
+> el contenido de la org sin distinción de branch). Ver §5.0 para la regla
+> completa de los tres estados de `branchId`.
 
 ---
 
@@ -523,23 +592,57 @@ export async function getOrgContext(pathFirstSegment?: string) {
 
 > Archivo: `C:\Users\USUARIO\goadmin-websites\lib\supabase\queries.ts`
 
-Para cada función listada, añadir parámetro opcional `branchId?: number`. Cuando
-esté presente, filtrar `branch_id = branchId OR branch_id IS NULL` (páginas del
-outlet + globales de la org). Excepción: `getWebsitePageBySlug` usa estrategia
-de fallback con `.maybeSingle()` (ver §5.1).
+Para cada función listada, añadir parámetro opcional `branchId?: number | null`.
+La semántica del filtro depende del valor de `branchId`:
+
+### 5.0 Regla de filtro `branch_id`
+
+| Valor de `branchId` | Filtro SQL | Significado |
+|---|---|---|
+| `undefined` | **NINGUNO** (no filtrar por `branch_id`) | Backward compat: sitio global sin outlet awareness. Trae TODO incluyendo outlets. Para sitios legacy que no saben de outlets. |
+| `null` | `branch_id IS NULL` | Solo contenido global de la org (sin outlets). |
+| `X` (number) | `branch_id = X OR branch_id IS NULL` | Contenido del outlet X + globales de la org. |
+
+> **Por qué `undefined` no filtra**: los sitios que aún no participan de
+> multi-outlet pasan `branchId = undefined` (o no lo pasan). Esos sitios deben
+> comportarse exactamente como antes: traer todo el contenido de la org sin
+> distinción de branch. Si filtráramos `branch_id IS NULL` para `undefined`,
+> los sitios legacy que tienen filas con `branch_id = NULL` y filas con
+> `branch_id` seteado perderían contenido sin haber migrado.
+
+> **Patrón de código** para todas las queries (excepto `getWebsitePageBySlug`
+> que usa fallback, ver §5.1):
+> ```typescript
+> if (branchId === null) {
+>   query = query.is('branch_id', null)
+> } else if (branchId !== undefined) {
+>   query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
+> }
+> // branchId === undefined → no se añade ningún filtro de branch_id
+> ```
 
 ### 5.1 `getWebsitePageBySlug` (línea 1027)
 
 > **QA**: el uso de `.single()` lanza error cuando hay múltiples resultados
 > (página del outlet + página global con el mismo slug). Se reemplaza por
-> una estrategia de fallback con `.maybeSingle()`: buscar primero la página
-> del outlet, y si no existe, buscar la global.
+> una estrategia de **dos búsquedas secuenciales** con `.maybeSingle()`: buscar
+> primero la página del outlet, y si no existe, buscar la global.
+>
+> **Corrección QA R7**: el snippet anterior usaba
+> `.or('branch_id.eq.X,branch_id.is.null').maybeSingle()`, que puede devolver
+> **2 filas** (la del outlet + la global) cuando ambas existen con el mismo
+> slug. Aunque `.maybeSingle()` no lanza error con múltiples filas (devuelve
+> `null` en ese caso), el resultado es incorrecto: la página no se encuentra
+> aunque existe. La solución es hacer **dos queries separadas**: primero la del
+> outlet (`.eq('branch_id', branchId).maybeSingle()`), y si no existe, la
+> global (`.is('branch_id', null).maybeSingle()`). Cada query devuelve como
+> máximo 1 fila, evitando la ambigüedad.
 
 ```typescript
 export async function getWebsitePageBySlug(
   organizationId: number,
   slug: string,
-  branchId?: number
+  branchId?: number | null
 ): Promise<WebsitePageWithSections | null> {
   const supabase = getSupabaseForPublicRead()
 
@@ -550,39 +653,21 @@ export async function getWebsitePageBySlug(
     )
   `
 
-  // 1. Si hay branchId, buscar primero la página del outlet (branch_id.eq.X)
-  if (branchId !== undefined) {
-    const { data: branchPage } = await supabase
+  // 1. Si hay outlet activo, buscar primero la página del outlet
+  if (typeof branchId === 'number') {
+    const { data: outletPage } = await supabase
       .from('website_pages')
       .select(select)
       .eq('organization_id', organizationId)
       .eq('slug', slug)
       .eq('is_published', true)
       .eq('branch_id', branchId)
-      .maybeSingle() // 0 o 1 resultado (branch_id es único por slug dentro de un branch)
-
-    if (branchPage) {
-      return normalizePage(branchPage)
-    }
-
-    // 2. Fallback: página global (branch_id IS NULL)
-    const { data: globalPage } = await supabase
-      .from('website_pages')
-      .select(select)
-      .eq('organization_id', organizationId)
-      .eq('slug', slug)
-      .eq('is_published', true)
-      .is('branch_id', null)
       .maybeSingle()
-
-    if (globalPage) {
-      return normalizePage(globalPage)
-    }
-
-    return null
+    if (outletPage) return normalizePage(outletPage)
+    // Fallback: buscar página global si no hay del outlet
   }
 
-  // 3. Sin branchId: solo páginas globales (backward compat)
+  // 2. Buscar página global (branch_id IS NULL)
   const { data, error } = await supabase
     .from('website_pages')
     .select(select)
@@ -597,6 +682,10 @@ export async function getWebsitePageBySlug(
 }
 
 // Helper para normalizar la página (extraído para reutilizar en los 3 caminos)
+// Nota: se mantiene `any` porque el tipo de retorno de `.select()` de Supabase
+// es complejo y varía según la query (joins anidados, selects con alias, etc.).
+// Un tipado estricto requeriría generics que añadirían complejidad sin beneficio
+// real aquí, ya que el cast a WebsitePageWithSections se hace inmediatamente.
 function normalizePage(data: any): WebsitePageWithSections {
   const page = data as WebsitePageWithSections
   page.website_page_sections = (page.website_page_sections || [])
@@ -605,6 +694,20 @@ function normalizePage(data: any): WebsitePageWithSections {
   return page
 }
 ```
+
+> **Nota crítica (QA R6)**: para queries de fila única (como
+> `getWebsitePageBySlug`), `undefined` y `null` se tratan igual: solo página
+> global. La regla §5.0 de "undefined trae TODO" aplica solo a queries de
+> **lista** (múltiples filas), no a `.maybeSingle()`. Si `branchId === undefined`
+> no se filtrara por `branch_id IS NULL`, y existieran múltiples outlets con
+> el mismo slug + una global, `.maybeSingle()` devolvería error (más de 1
+> fila) en lugar de la página global esperada.
+>
+> **Corrección QA R7**: con la implementación de dos búsquedas secuenciales
+> (outlet primero, global como fallback), cada query individual devuelve como
+> máximo 1 fila, por lo que `.maybeSingle()` nunca recibe múltiples resultados.
+> El caso `undefined` y `null` saltan directamente al paso 2 (global), que
+> filtra `.is('branch_id', null)` — siempre 1 fila como máximo.
 
 > **Prioridad**: página del outlet > página global. Si un outlet tiene su
 > propia página `/menu`, esa prevalece sobre la global `/menu` de la org.
@@ -616,19 +719,30 @@ function normalizePage(data: any): WebsitePageWithSections {
 export async function getOrganizationProducts(
   organizationId: number,
   limit = 12,
-  branchId?: number
+  branchId?: number | null
 ) {
   const supabase = getSupabaseForPublicRead()
 
-  // Si hay branchId, obtener las categorías del branch + globales y filtrar
+  // Filtrar categorías según la regla de branch_id (ver §5.0)
   let categoryIds: number[] | null = null
   if (branchId !== undefined) {
-    const { data: cats } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .or(`branch_id.eq.${branchId},branch_id.is.null`)
-    categoryIds = (cats || []).map((c: any) => c.id)
+    if (branchId === null) {
+      // Solo categorías globales
+      const { data: globalCats } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .is('branch_id', null)
+      categoryIds = (globalCats || []).map((c: any) => c.id)
+    } else {
+      // Categorías del outlet + globales
+      const { data: cats } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .or(`branch_id.eq.${branchId},branch_id.is.null`)
+      categoryIds = (cats || []).map((c: any) => c.id)
+    }
     if (categoryIds.length === 0) return []
   }
 
@@ -651,6 +765,12 @@ export async function getOrganizationProducts(
   if (error) return []
 
   // ... resto igual (variantes, filterStockByBranches) ...
+  // NOTA STOCK: cuando branchId esté activo (número), filterStockByBranches
+  // debe recibir [branchId] en lugar de getWebStockBranchIds(orgId) (todas las
+  // sucursales web). Así el stock mostrado corresponde solo al outlet activo.
+  // Ver §5.4 para el patrón completo.
+  const products = data || []
+  return products as Product[]
 }
 ```
 
@@ -659,7 +779,7 @@ export async function getOrganizationProducts(
 ```typescript
 export async function getOrganizationCategories(
   organizationId: number,
-  branchId?: number
+  branchId?: number | null
 ) {
   const supabase = getSupabaseForPublicRead()
 
@@ -668,9 +788,13 @@ export async function getOrganizationCategories(
     .select('*')
     .eq('organization_id', organizationId)
 
-  if (branchId !== undefined) {
+  // Regla de filtro branch_id (ver §5.0)
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
     query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
   }
+  // branchId === undefined → no filtrar (backward compat)
 
   const { data, error } = await query.order('rank', { ascending: true })
 
@@ -685,19 +809,28 @@ export async function getOrganizationCategories(
 export async function getMenuProducts(
   organizationId: number,
   limit = 100,
-  branchId?: number
+  branchId?: number | null
 ) {
   const supabase = getSupabaseForPublicRead()
 
-  // Filtrar por categorías del branch + globales (igual que getOrganizationProducts)
+  // Filtrar por categorías según la regla de branch_id (ver §5.0)
   let categoryIds: number[] | null = null
   if (branchId !== undefined) {
-    const { data: cats } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .or(`branch_id.eq.${branchId},branch_id.is.null`)
-    categoryIds = (cats || []).map((c: any) => c.id)
+    if (branchId === null) {
+      const { data: globalCats } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .is('branch_id', null)
+      categoryIds = (globalCats || []).map((c: any) => c.id)
+    } else {
+      const { data: cats } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .or(`branch_id.eq.${branchId},branch_id.is.null`)
+      categoryIds = (cats || []).map((c: any) => c.id)
+    }
     if (categoryIds.length === 0) return []
   }
 
@@ -716,8 +849,14 @@ export async function getMenuProducts(
   const { data, error } = await query.order('name', { ascending: true }).limit(limit)
 
   if (error) return []
-  const webBranchIds = await getWebStockBranchIds(organizationId)
-  return filterStockByBranches(normalizeProductPrices(data || []), webBranchIds)
+
+  // NOTA STOCK: cuando branchId sea un número (outlet activo), pasar [branchId]
+  // a filterStockByBranches en lugar de getWebStockBranchIds(orgId) (que trae
+  // TODAS las sucursales web). Así el stock del menú refleja solo el outlet.
+  const stockBranchIds = (branchId !== undefined && branchId !== null)
+    ? [branchId]
+    : await getWebStockBranchIds(organizationId)
+  return filterStockByBranches(normalizeProductPrices(data || []), stockBranchIds)
 }
 ```
 
@@ -729,29 +868,31 @@ cuando se pasa:
 ```typescript
 export async function getOrganizationSpaces(
   organizationId: number,
-  branchId?: number
+  branchId?: number | null
 ) {
   const supabase = getSupabaseForPublicRead()
 
-  // Si hay branchId, usar solo ese branch; si no, todos los branches de la org
-  let branchIds: number[]
-  if (branchId !== undefined) {
-    branchIds = [branchId]
+  // Regla de filtro branch_id (ver §5.0):
+  // - undefined → todos los branches de la org (sin filtro de branch_id, backward compat)
+  // - null → solo espacios globales (branch_id IS NULL)
+  // - X → espacios del outlet X + globales (branch_id = X OR branch_id IS NULL)
+  let query = supabase
+    .from('spaces')
+    .select('id, name, description, branch_id, capacity, is_active, status, label, organization_id')
+    .eq('organization_id', organizationId)
+    .eq('status', 'available')
+
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
+    // Outlet + globales: espacios del branch específico + espacios globales
+    // que aplican a todos los outlets (branch_id IS NULL)
+    query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
   } else {
-    const { data: branches } = await supabase
-      .from('branches')
-      .select('id')
-      .eq('organization_id', organizationId)
-    if (!branches || branches.length === 0) return []
-    branchIds = branches.map((b: any) => b.id)
+    // undefined: sin filtro de branch_id (backward compat, trae TODO)
   }
 
-  const { data: spaces, error } = await supabase
-    .from('spaces')
-    .select(`...`)
-    .in('branch_id', branchIds)
-    .eq('status', 'available')
-    .order('label', { ascending: true })
+  const { data: spaces, error } = await query.order('label', { ascending: true })
 
   // ... resto igual (imágenes, servicios) ...
 }
@@ -762,7 +903,7 @@ export async function getOrganizationSpaces(
 ```typescript
 export async function getWebsiteHeaderNav(
   organizationId: number,
-  branchId?: number
+  branchId?: number | null
 ): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
@@ -773,9 +914,13 @@ export async function getWebsiteHeaderNav(
     .eq('is_published', true)
     .eq('show_in_header', true)
 
-  if (branchId !== undefined) {
+  // Regla de filtro branch_id (ver §5.0)
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
     query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
   }
+  // branchId === undefined → no filtrar (backward compat)
 
   const { data, error } = await query.order('header_order', { ascending: true })
 
@@ -789,7 +934,7 @@ export async function getWebsiteHeaderNav(
 ```typescript
 export async function getWebsiteFooterNav(
   organizationId: number,
-  branchId?: number
+  branchId?: number | null
 ): Promise<WebsitePage[]> {
   const supabase = getSupabaseForPublicRead()
 
@@ -800,9 +945,13 @@ export async function getWebsiteFooterNav(
     .eq('is_published', true)
     .eq('show_in_footer', true)
 
-  if (branchId !== undefined) {
+  // Regla de filtro branch_id (ver §5.0)
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
     query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
   }
+  // branchId === undefined → no filtrar (backward compat)
 
   const { data, error } = await query.order('footer_order', { ascending: true })
 
@@ -817,7 +966,7 @@ export async function getWebsiteFooterNav(
 ```typescript
 export async function getWebsiteHeaderNavTree(
   organizationId: number,
-  branchId?: number
+  branchId?: number | null
 ): Promise<WebsitePageWithChildren[]> {
   const flat = await getWebsiteHeaderNav(organizationId, branchId)
   return buildMenuTree(flat)
@@ -825,7 +974,7 @@ export async function getWebsiteHeaderNavTree(
 
 export async function getWebsiteFooterNavTree(
   organizationId: number,
-  branchId?: number
+  branchId?: number | null
 ): Promise<WebsitePageWithChildren[]> {
   const flat = await getWebsiteFooterNav(organizationId, branchId)
   return buildMenuTree(flat)
@@ -842,7 +991,7 @@ export async function getWebsiteFooterNavTree(
 ```typescript
 export async function getMenuCategories(
   organizationId: number,
-  branchId?: number
+  branchId?: number | null
 ) {
   const supabase = getSupabaseForPublicRead()
 
@@ -851,9 +1000,13 @@ export async function getMenuCategories(
     .select('*')
     .eq('organization_id', organizationId)
 
-  if (branchId !== undefined) {
+  // Regla de filtro branch_id (ver §5.0)
+  if (branchId === null) {
+    query = query.is('branch_id', null)
+  } else if (branchId !== undefined) {
     query = query.or(`branch_id.eq.${branchId},branch_id.is.null`)
   }
+  // branchId === undefined → no filtrar (backward compat)
 
   const { data, error } = await query.order('rank', { ascending: true })
 
@@ -892,6 +1045,8 @@ primer segmento pueda ser el slug de un outlet.
 
 ```typescript
 import { getOutletBySlug, getOutletBySubdomain, getOutletByCustomDomain } from '@/lib/supabase/queries'
+import type { OrganizationWithDetails } from '@/types/organization';
+import type { Branch } from '@/types/branch';
 
 async function getOrganizationFromHeaders() {
   const headersList = await headers()
@@ -913,9 +1068,9 @@ async function getOrganizationFromHeaders() {
  * del outlet removido si se resolvió por path prefix.
  */
 async function resolveOutlet(
-  organization: any,
+  organization: OrganizationWithDetails,
   slug: string[] | undefined
-): Promise<{ outlet: any | null; pathSegments: string[] }> {
+): Promise<{ outlet: Branch | null; pathSegments: string[] }> {
   const headersList = await headers()
   const outletSubdomain = headersList.get('x-outlet-subdomain')
   const customOutletDomain = headersList.get('x-custom-outlet-domain')
@@ -948,39 +1103,98 @@ async function resolveOutlet(
 }
 ```
 
+> **QA — No duplicar queries de headers/footer**: `getOrgContext` (§4.3) ya
+> resuelve `outlet` y `branchId`, y ya consulta `getWebsiteHeaderNav`,
+> `getWebsiteHeaderNavTree`, `getWebsiteFooterNav`, `getWebsiteFooterNavTree`.
+> `page.tsx` **no debe volver a resolver el outlet ni re-consultar esos
+> headers/footer**. En su lugar, `page.tsx` debe:
+>
+> 1. Llamar a `getOrgContext(slug?.[0])` que devuelve `{ organization, outlet,
+>    branchId, headerNav, headerNavTree, footerNav, footerNavTree, ... }`.
+> 2. Consumir `outlet` y `branchId` directamente del return de `getOrgContext`.
+> 3. Reutilizar `headerNav`, `headerNavTree`, `footerNav`, `footerNavTree` del
+>    return — no volver a llamar a esas queries.
+> 4. Solo llamar a `resolveOutlet` como **fallback** si `getOrgContext` no
+>    encontró outlet por headers Y se necesita resolver por path prefix.
+>    `resolveOutlet` debe recibir el `outlet` ya resuelto (si lo hay) para no
+>    re-hacer el lookup.
+>
+> **Patrón en `page.tsx`**:
+> ```typescript
+> const ctx = await getOrgContext(slug?.[0])
+> if (!ctx) return <NotFoundPage />
+> const { organization, outlet, branchId, headerNav, headerNavTree,
+>         footerNav, footerNavTree, menuCategories, ... } = ctx
+>
+> // Solo si getOrgContext no resolvió outlet por headers, intentar path prefix
+> let pathSegments = slug || []
+> if (!outlet && slug?.[0]) {
+>   const resolved = await resolveOutlet(organization, slug)
+>   // usar resolved.outlet y resolved.pathSegments si encontró branch
+> }
+> ```
+>
+> Esto evita que `page.tsx` haga queries duplicadas de headers/footer que
+> `getOrgContext` ya resolvió.
+
 ### 6.4 Uso en `CatchAllPage`
 
 ```typescript
 export default async function CatchAllPage({ params, searchParams }: { ... }) {
-  const headersList = await headers()
-  const subdomain = headersList.get('x-subdomain')
-  const customDomain = headersList.get('x-custom-domain')
-  const identifier = customDomain || subdomain
-
-  if (!identifier) return <NotFoundPage />
-
-  const organization = await getOrganizationByHost(identifier)
-  if (!organization) return <NotFoundPage subdomain={identifier} />
-
   const { slug } = await params
 
-  // --- NUEVO: resolver outlet ---
-  const { outlet, pathSegments } = await resolveOutlet(organization, slug)
-  const branchId = outlet?.id ?? undefined
+  // --- getOrgContext resuelve org + outlet + navegación en una sola llamada ---
+  // No duplicar queries: getOrgContext ya consulta headers, footer, menús.
+  // page.tsx consume outlet y branchId de aquí.
+  const ctx = await getOrgContext(slug?.[0])
+  if (!ctx) return <NotFoundPage />
+
+  const {
+    organization, primaryColor, template,
+    headerNav, headerNavTree, footerNav, footerNavTree,
+    menuCategories, megaMenuItems, websiteMenus: footerMenus,
+    frozenReason, showCurrencyCode, currencyPosition
+  } = ctx
+  // --- Guard anti-doble resolución de outlet ---
+  // Si getOrgContext ya intentó resolver el outlet por path prefix (pasando
+  // slug?.[0] como pathFirstSegment) y devolvió `outlet`, page.tsx NO debe
+  // llamar resolveOutlet nuevamente. resolveOutlet solo se llama como fallback
+  // cuando getOrgContext no pudo resolver el outlet (caso de subdomain o
+  // custom domain que el middleware ya resolvió via headers, o cuando
+  // getOrgContext no recibió pathFirstSegment).
+  //
+  // Guard canónico:
+  //   const outlet = ctx.outlet ?? (ctx.branchId ? null : await resolveOutlet(organization, slug))
+  // Forma expandida (para manejar también pathSegments):
+  let outlet = ctx.outlet
+  let branchId = ctx.branchId
+
+  // --- Ajustar pathSegments: remover el segmento del outlet si aplica ---
+  // Si getOrgContext resolvió el outlet por headers (sub-subdomain /
+  // custom-domain), el path NO incluye el segmento del outlet → usar slug tal cual.
+  // Si getOrgContext resolvió por path prefix (slug?.[0] = outlet.slug), o si
+  // resolveOutlet lo resolvió por path prefix, hay que remover el primer segmento.
+  let pathSegments = slug || []
+  if (!outlet && slug?.[0]) {
+    // getOrgContext no encontró outlet — intentar path prefix como fallback.
+    // resolveOutlet solo se llama aquí, nunca cuando ctx.outlet ya existe.
+    const resolved = await resolveOutlet(organization, slug)
+    if (resolved.outlet) {
+      outlet = resolved.outlet
+      branchId = resolved.outlet.id
+      pathSegments = resolved.pathSegments
+    }
+  } else if (outlet && slug?.[0] && slug[0] === outlet.slug) {
+    // getOrgContext resolvió por path prefix — remover el segmento del outlet
+    pathSegments = slug.slice(1)
+  }
 
   // El slug de la página es el primer segmento DESPUÉS del outlet (o 'home')
   const currentSlug = pathSegments[0] || 'home'
 
-  // --- Queries con branchId ---
-  const [headerNav, headerNavTree, footerNav, footerNavTree, menuCategories, ...] = await Promise.all([
-    getWebsiteHeaderNav(organization.id, branchId),
-    getWebsiteHeaderNavTree(organization.id, branchId),
-    getWebsiteFooterNav(organization.id, branchId),
-    getWebsiteFooterNavTree(organization.id, branchId),
-    showCategoriesInHeader ? getMenuCategories(organization.id, branchId) : Promise.resolve([]),
-    // ...
-  ])
-
+  // --- Queries de contenido específico de la página (con branchId) ---
+  // headerNav, headerNavTree, footerNav, footerNavTree, menuCategories ya
+  // vienen de getOrgContext (ctx) — no re-consultarlos aquí.
   const page = await getWebsitePageBySlug(organization.id, currentSlug, branchId)
 
   if (page && page.website_page_sections.length > 0) {
@@ -1003,7 +1217,7 @@ export default async function CatchAllPage({ params, searchParams }: { ... }) {
         template={template}
         primaryColor={primaryColor}
         headerNav={headerNav}
-        headerNavTree={effectiveHeaderNavTree}
+        headerNavTree={headerNavTree}
         // ...
       >
         {/* ... */}
@@ -1014,7 +1228,7 @@ export default async function CatchAllPage({ params, searchParams }: { ... }) {
   // Fallbacks (menu, productos, espacios) también con branchId
   const fallback = await renderSlugFallback(
     currentSlug, organization, outlet, branchId, primaryColor, template,
-    headerNav, effectiveHeaderNavTree, menuCategories, megaMenuItems,
+    headerNav, headerNavTree, menuCategories, megaMenuItems,
     footerMenus, footerNav, footerNavTree, metaPixelId, googleAdsConfig,
     resolvedSearchParams, taxSettings, frozenReason
   )
@@ -1193,8 +1407,11 @@ const effectiveSettings = branchSettings
       personalizado podría ser de un branch.
 - [ ] `middleware.ts` hace lookup de `branches.custom_domain` →
       `organization_id` → `organizations.subdomain` para setear
-      `x-custom-domain` con el identificador de la org cuando el dominio
-      custom pertenece a un branch (Opción A, §2.3).
+      `x-custom-domain` con el **identificador de la org** (NO el hostname del
+      branch) cuando el dominio custom pertenece a un branch (Opción A, §2.3).
+      `x-custom-outlet-domain` lleva el hostname del branch.
+- [ ] `middleware.ts` no setea `x-custom-outlet-domain` si el lookup de
+      `branches.custom_domain` no matchea (cae a flujo `custom-org`).
 - [ ] `middleware.ts` ignora el segmento `www` en `resolveHost` y toma el
       siguiente como candidato a outlet (§3.3).
 - [ ] `middleware.ts` usa `matchSystemDomain` (comparación contra lista de
@@ -1202,7 +1419,19 @@ const effectiveSettings = branchSettings
       múltiples partes como `goadmin.co.uk` (§3.3).
 - [ ] `getWebsitePageBySlug` usa `.maybeSingle()` con fallback
       outlet → global (no `.single()`).
-- [ ] `getMenuCategories` acepta `branchId?` y filtra por outlet + globales.
+- [ ] **Regla de filtro `branch_id`** (§5.0): `undefined` → no filtrar;
+      `null` → `IS NULL`; `X` → `= X OR IS NULL`. Todas las queries de
+      contenido siguen esta regla consistentemente.
+- [ ] `page.tsx` consume `outlet`, `branchId`, `headerNav`, `headerNavTree`,
+      `footerNav`, `footerNavTree` del return de `getOrgContext` — no vuelve
+      a resolverlos ni duplica queries (§6.3).
+- [ ] `filterStockByBranches` recibe `[branchId]` cuando hay outlet activo,
+      no `getWebStockBranchIds(orgId)` (§5.2, §5.4).
+- [ ] `getOrganizationSpaces` incluye espacios globales (`OR branch_id IS NULL`)
+      cuando `branchId` es un número (§5.5).
+- [ ] `getMenuCategories` acepta `branchId?: number | null` y filtra según
+      la regla de §5.0 (outlet + globales cuando es número, solo globales
+      cuando es null, sin filtro cuando es undefined).
 - [ ] `get-org-context.ts` resuelve `outlet` (por sub-subdomain, dominio custom
       de branch, o path prefix) y lo devuelve junto a `branchId`.
 - [ ] `queries.ts` acepta `branchId?` en: `getWebsitePageBySlug`,
@@ -1280,3 +1509,124 @@ outlet `menu` (incorrecto). **Mitigación**: `getOutletBySlug` solo matchea
 branches con `is_web_published = true`; los slugs de outlet deben ser únicos y
 no coincidir con slugs de páginas globales. Validar en FASE-6 (editor de
 sucursales) que el slug del branch no colisione con páginas existentes.
+
+---
+
+## 11. Verificación post-implementación
+
+> **QA R2**: esta sección define los checks que deben ejecutarse después de
+> implementar F1 para validar que la resolución de outlet funciona end-to-end
+> en todos los mecanismos (path prefix, sub-subdomain, custom domain de org,
+> custom domain de branch).
+
+### 11.1 Checks de middleware (inyección de headers)
+
+Para cada caso, verificar que el middleware inyecta los headers correctos:
+
+| URL | Headers esperados | Verificación |
+|---|---|---|
+| `tugranhotel.goadmin.io/` | `x-subdomain: tugranhotel` (sin outlet headers) | `console.log(request.headers.get('x-subdomain'))` en middleware |
+| `tugranhotel.goadmin.io/restaurante-1/menu` | `x-subdomain: tugranhotel` (sin outlet headers — el outlet se resuelve por path en getOrgContext) | Confirmar que NO hay `x-outlet-subdomain` ni `x-custom-outlet-domain` |
+| `hotel.tugranhotel.goadmin.io/` | `x-subdomain: tugranhotel`, `x-outlet-subdomain: hotel` | Verificar ambos headers presentes |
+| `restaurante1.tugranhotel.goadmin.io/` (sub-subdomain) | `x-subdomain: tugranhotel`, `x-outlet-subdomain: restaurante1` | Verificar ambos headers presentes |
+| `tugranhotel.com/` (custom domain de org) | `x-custom-domain: tugranhotel.com` | Sin `x-custom-outlet-domain` |
+| `restaurante1.tugranhotel.com/` (custom domain de branch) | `x-custom-domain: <org-subdomain>`, `x-custom-outlet-domain: restaurante1.tugranhotel.com` | Ambos headers; `x-custom-domain` lleva el identificador de la org, NO el hostname del branch |
+
+**Query SQL para validar el lookup del middleware** (custom domain de branch):
+
+```sql
+-- Verificar que branches.custom_domain existe y está sin www
+SELECT id, organization_id, slug, subdomain, custom_domain, is_web_published
+FROM branches
+WHERE custom_domain IS NOT NULL;
+```
+
+### 11.2 Checks de `getOrgContext`
+
+Verificar que `getOrgContext` devuelve `outlet` y `branchId` correctamente:
+
+```typescript
+// Test manual en un Server Component temporal:
+const ctx = await getOrgContext(slug?.[0])
+console.log({
+  hasOrg: !!ctx?.organization,
+  hasOutlet: !!ctx?.outlet,
+  branchId: ctx?.branchId,
+  outletSlug: ctx?.outlet?.slug,
+  navCount: ctx?.headerNav?.length,
+})
+```
+
+| URL | `ctx.outlet` | `ctx.branchId` | `ctx.headerNav` |
+|---|---|---|---|
+| `tugranhotel.goadmin.io/` | `null` | `undefined` | páginas globales de la org |
+| `tugranhotel.goadmin.io/restaurante-1/menu` | branch restaurante-1 | ID del branch | páginas del branch + globales |
+| `hotel.tugranhotel.goadmin.io/` | branch hotel | ID del branch | páginas del branch + globales |
+| `tugranhotel.com/` (custom domain de org) | `null` (global = hotel) | `undefined` | páginas globales (= hotel en root) |
+| `restaurante1.tugranhotel.com/` (custom domain de branch) | branch restaurante1 | ID del branch | páginas del branch + globales |
+
+### 11.3 Checks de `page.tsx` (consumo de outlet de getOrgContext)
+
+Verificar que `page.tsx` **no llama `resolveOutlet`** cuando `getOrgContext` ya
+resolvió el outlet:
+
+```typescript
+// Instrumentación temporal en CatchAllPage:
+const ctx = await getOrgContext(slug?.[0])
+console.log('ctx.outlet:', ctx?.outlet?.slug ?? 'null')
+// Si ctx.outlet existe, resolveOutlet NO debe ejecutarse.
+// Si ctx.outlet es null y hay slug[0], resolveOutlet se llama como fallback.
+```
+
+**Anti-patrón a detectar**: si los logs muestran que `getOutletBySlug` se
+ejecuta dos veces para la misma URL (una en `getOrgContext` por
+`pathFirstSegment` y otra en `resolveOutlet`), el guard de §6.4 no está
+funcionando. Revisar que `page.tsx` usa el patrón:
+
+```typescript
+const outlet = ctx.outlet ?? (ctx.branchId ? null : await resolveOutlet(organization, slug))
+```
+
+### 11.4 Matriz de URLs de prueba end-to-end
+
+Ejecutar cada URL y verificar el contenido renderizado (outlet correcto,
+páginas correctas, navegación correcta):
+
+| # | URL | Outlet esperado | Página esperada | Mecanismo | Notas |
+|---|---|---|---|---|---|
+| 1 | `tugranhotel.com/` | hotel (global, sin path prefix) | home del hotel | `custom-org` (dominio de la organización, NO de branch). Outlet: hotel = página global (sin path prefix) | El hotel vive en el root de la org |
+| 2 | `tugranhotel.com/restaurante-1/menu` | restaurante-1 (path prefix) | menu del restaurante-1 | path prefix | Segmento `restaurante-1` removido del path |
+| 3 | `tugranhotel.com/habitaciones` | hotel (global, sin path prefix) | habitaciones del hotel | `custom-org` + path. Outlet: hotel (global, sin segmento de outlet en path) | Sin segmento de outlet en el path |
+| 4 | `hotel.tugranhotel.goadmin.io/` | hotel (sub-subdomain) | home del hotel | sub-subdomain del sistema | `x-outlet-subdomain: hotel` |
+| 5 | `restaurante1.tugranhotel.goadmin.io/` | restaurante-1 (sub-subdomain) | home del restaurante-1 | sub-subdomain del sistema | `x-outlet-subdomain: restaurante1` |
+| 6 | `restaurante1.tugranhotel.com/` | restaurante-1 (custom domain) | home del restaurante-1 | `custom-outlet` (3 etiquetas, `branches.custom_domain`) | Outlet: restaurante-1 |
+
+**Para cada URL, verificar**:
+
+1. **Outlet resuelto**: el `OrganizationLayout` recibe el `outlet` correcto
+   (puede loguearse o verificarse con un data-attribute temporal
+   `data-outlet-slug={outlet?.slug}`).
+2. **Página correcta**: `getWebsitePageBySlug` devuelve la página del outlet
+   (no la global si el outlet tiene su propia página con ese slug).
+3. **Navegación correcta**: `headerNav` y `footerNav` contienen páginas del
+   outlet + globales (no páginas de otros outlets).
+4. **Categorías/menú correctos**: `getMenuCategories` y `getMegaMenuItems`
+   reflejan el outlet activo (ver §4.3 — `getOrgContext` pasa `branchId`).
+5. **Stock correcto**: `filterStockByBranches` recibe `[branchId]` cuando hay
+   outlet activo (no `getWebStockBranchIds(orgId)` que trae todas las
+   sucursales web).
+6. **Sin doble query**: `getOutletBySlug` se ejecuta máximo 1 vez por request
+   (ver §11.3).
+
+### 11.5 Verificación de backward compat
+
+| URL | Comportamiento esperado | Verificación |
+|---|---|---|
+| `tugranhotel.goadmin.io/` (org sin outlets) | `outlet = null`, `branchId = undefined`, contenido global | Las queries no filtran por `branch_id` (traen todo) |
+| `tugranhotel.goadmin.io/menu` (org sin outlets) | Página global `menu` | `getWebsitePageBySlug` sin filtro de branch |
+| Org con outlets pero URL sin outlet | `outlet = null`, `branchId = undefined` | Solo contenido global (`branch_id IS NULL` o sin filtro) |
+
+> **Check crítico**: una org que NO tiene branches configurados debe
+> comportarse **idéntico** a antes de F1. Si algo cambia (contenido
+> desaparece, navegación rota), el filtro de `branchId` está mal aplicado —
+> revisar que `undefined` no filtra (§5.0).

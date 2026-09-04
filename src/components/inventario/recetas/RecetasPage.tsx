@@ -42,6 +42,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { RecipeDialog } from './RecipeDialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 export function RecetasPage() {
   const { organization } = useOrganization();
@@ -56,6 +57,8 @@ export function RecetasPage() {
   const [editingRecipe, setEditingRecipe] = useState<ProductRecipe | null>(null);
   const [viewRecipe, setViewRecipe] = useState<ProductRecipe | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const [recipeToDelete, setRecipeToDelete] = useState<ProductRecipe | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (organizationId) {
@@ -108,11 +111,15 @@ export function RecetasPage() {
     }
   };
 
-  const handleEliminar = async (recipe: ProductRecipe) => {
-    if (!confirm(`¿Eliminar la receta de "${recipe.product?.name ?? 'producto'}"?`)) return;
+  const handleEliminar = (recipe: ProductRecipe) => {
+    setRecipeToDelete(recipe);
+  };
 
+  const confirmEliminar = async () => {
+    if (!recipeToDelete) return;
     try {
-      await recipeService.deleteRecipe(recipe.id);
+      setDeleting(true);
+      await recipeService.deleteRecipe(recipeToDelete.id);
       toast({ title: 'Receta eliminada' });
       cargarRecetas();
     } catch (error) {
@@ -122,6 +129,9 @@ export function RecetasPage() {
         description: 'No se pudo eliminar la receta',
         variant: 'destructive',
       });
+    } finally {
+      setDeleting(false);
+      setRecipeToDelete(null);
     }
   };
 
@@ -522,6 +532,18 @@ export function RecetasPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {/* Confirmación de eliminación (reemplaza confirm nativo) */}
+      <ConfirmDialog
+        open={recipeToDelete !== null}
+        onOpenChange={(open) => !open && setRecipeToDelete(null)}
+        title="Eliminar receta"
+        description={`¿Eliminar la receta de "${recipeToDelete?.product?.name ?? 'producto'}"?`}
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={deleting}
+        onConfirm={confirmEliminar}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
 // Interfaces
 export interface WebsiteSettings {
@@ -140,6 +141,8 @@ export interface WebsiteSettings {
   cta_margin_bottom: number;
   show_currency_code: boolean;
   currency_position: 'left' | 'right';
+  // Fase 0/4 — multi-outlet: outlet al que aplican estos settings (null = global)
+  branch_id?: number | null;
 }
 
 export interface GalleryImage {
@@ -306,15 +309,47 @@ export const DEFAULT_COLORS = {
   text: '#1F2937',
 };
 
+/**
+ * F4 R3 — Helper: aplica el filtro de branch_id a una query de Supabase.
+ * Normaliza undefined → null (global) para evitar multi-fila.
+ * Centraliza el patrón repetido `if (branchId != null) .eq() else .is()`.
+ *
+ * F4 R4 (Issue 2) — Tipado sin `any`: usamos un genérico `T` que extiende
+ * PostgrestFilterBuilder. Como el cliente Supabase de este proyecto no usa
+ * tipos generados de Database, los parámetros de tipo del builder son
+ * `any` (Schema, Row, Result, ...), pero el genérico `T` preserva el tipo
+ * concreto del caller y `.eq()`/`.is()` devuelven `this`, manteniendo la
+ * cadena de tipos en el callsite.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseFilterBuilder = PostgrestFilterBuilder<any, any, any, any, any>;
+
+function applyBranchFilter<T extends SupabaseFilterBuilder>(
+  query: T,
+  branchId?: number | null,
+): T {
+  if (branchId != null) {
+    return query.eq('branch_id', branchId);
+  }
+  return query.is('branch_id', null);
+}
+
 class WebsiteSettingsService {
   // Obtener configuración de website
-  async getSettings(organizationId: number): Promise<WebsiteSettings | null> {
+  async getSettings(
+    organizationId: number,
+    branchId?: number | null,
+  ): Promise<WebsiteSettings | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .select('*')
-        .eq('organization_id', organizationId)
-        .single();
+        .eq('organization_id', organizationId);
+
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+
+      const { data, error } = await query.limit(1).maybeSingle();
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -324,11 +359,83 @@ class WebsiteSettingsService {
         throw error;
       }
 
-      return data as WebsiteSettings;
+      return data as WebsiteSettings | null;
     } catch (error) {
       console.error('Error fetching website settings:', error);
       throw error;
     }
+  }
+
+  /**
+   * Upsert manual de settings por (organization_id, branch_id).
+   * Si existen settings para el ámbito, los actualiza; si no, los crea.
+   * No usa onConflict porque el índice único usa COALESCE(branch_id, -1),
+   * que el cliente JS de Supabase no soporta.
+   */
+  async updateSettings(
+    organizationId: number,
+    updates: Partial<WebsiteSettings>,
+    branchId?: number | null,
+  ): Promise<WebsiteSettings> {
+    const branch = branchId ?? null;
+
+    let query = supabase
+      .from('website_settings')
+      .select('id')
+      .eq('organization_id', organizationId);
+    // F4 R3 — Filtrar por ámbito (outlet o global)
+    query = applyBranchFilter(query, branch);
+
+    const { data: existing } = await query.maybeSingle();
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('website_settings')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as WebsiteSettings;
+    }
+
+    // F4 R3 (Issue 1) — Al crear fila de outlet, sembrar valores globales
+    // como base para que los campos no modificados no queden nulos.
+    // F4 R4 (Issue 2) — Tipar como Partial<WebsiteSettings> en vez de
+    // Record<string, any> para eliminar el `any`.
+    let baseSettings: Partial<WebsiteSettings> = {};
+    if (branch !== null) {
+      const { data: globalSettings } = await supabase
+        .from('website_settings')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .is('branch_id', null)
+        .maybeSingle();
+
+      if (globalSettings) {
+        baseSettings = { ...(globalSettings as WebsiteSettings) };
+        // Eliminar campos que no deben copiarse de la fila base
+        delete baseSettings.id;
+        delete baseSettings.created_at;
+        delete baseSettings.updated_at;
+      }
+    }
+
+    // Merge: global como base + updates del outlet
+    const mergedInsert = {
+      ...baseSettings,
+      ...updates,
+      organization_id: organizationId,
+      branch_id: branch,
+    };
+
+    const { data, error } = await supabase
+      .from('website_settings')
+      .insert(mergedInsert)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as WebsiteSettings;
   }
 
   // Crear configuración inicial
@@ -416,13 +523,17 @@ class WebsiteSettingsService {
    * Aplica un preset completo a una organización, incluyendo header config.
    * Busca el preset en TEMPLATE_PRESETS y aplica todos los campos.
    */
-  async applyPreset(organizationId: number, presetId: string): Promise<{ success: boolean; error?: string }> {
+  async applyPreset(
+    organizationId: number,
+    presetId: string,
+    branchId?: number | null,
+  ): Promise<{ success: boolean; error?: string }> {
     const preset = TEMPLATE_PRESETS.find(p => p.id === presetId);
     if (!preset) {
       return { success: false, error: `Preset no encontrado: ${presetId}` };
     }
 
-    const { error } = await supabase
+    let query = supabase
       .from('website_settings')
       .update({
         template_id: presetId,
@@ -435,6 +546,10 @@ class WebsiteSettingsService {
         footer_style: preset.footer_style,
       })
       .eq('organization_id', organizationId);
+    // F4 R3 — Filtrar por ámbito (outlet o global)
+    query = applyBranchFilter(query, branchId);
+
+    const { error } = await query;
 
     if (error) {
       return { success: false, error: error.message };
@@ -459,14 +574,17 @@ class WebsiteSettingsService {
       logo_height?: number;
       show_currency_code?: boolean;
       currency_position?: 'left' | 'right';
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
-    const { data, error } = await supabase
+    let query = supabase
       .from('website_settings')
       .update({ ...theme, updated_at: new Date().toISOString() })
-      .eq('organization_id', organizationId)
-      .select()
-      .maybeSingle();
+      .eq('organization_id', organizationId);
+    // F4 R3 — Filtrar por ámbito (outlet o global)
+    query = applyBranchFilter(query, branchId);
+
+    const { data, error } = await query.select().maybeSingle();
 
     if (error) {
       console.error('Supabase updateTheme error:', error.message, error.code);
@@ -488,15 +606,17 @@ class WebsiteSettingsService {
       hero_video_url?: string;
       hero_cta_text?: string;
       hero_cta_url?: string;
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({ ...hero, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -520,15 +640,17 @@ class WebsiteSettingsService {
       show_contact?: boolean;
       show_map?: boolean;
       show_social_links?: boolean;
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({ ...sections, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -548,15 +670,17 @@ class WebsiteSettingsService {
       enable_memberships?: boolean;
       enable_tickets?: boolean;
       enable_parking_booking?: boolean;
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({ ...features, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -578,15 +702,17 @@ class WebsiteSettingsService {
       canonical_url?: string;
       google_site_verification?: string;
       bing_site_verification?: string;
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({ ...seo, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -608,15 +734,17 @@ class WebsiteSettingsService {
       footer_text?: string;
       footer_links?: FooterLink[];
       show_powered_by?: boolean;
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({ ...content, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -633,15 +761,17 @@ class WebsiteSettingsService {
       custom_css?: string;
       custom_scripts?: string;
       analytics_id?: string;
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({ ...advanced, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -652,18 +782,23 @@ class WebsiteSettingsService {
   }
 
   // Publicar/Despublicar sitio
-  async togglePublish(organizationId: number, publish: boolean): Promise<WebsiteSettings> {
+  async togglePublish(
+    organizationId: number,
+    publish: boolean,
+    branchId?: number | null,
+  ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({
           is_published: publish,
           published_at: publish ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -722,15 +857,17 @@ class WebsiteSettingsService {
       cta_text_color?: string | null;
       cta_margin_top?: number;
       cta_margin_bottom?: number;
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({ ...config, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .select()
-        .maybeSingle();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) {
         console.error('Supabase updateHeaderConfig error:', error.message, error.code);
@@ -770,15 +907,17 @@ class WebsiteSettingsService {
       show_powered_by?: boolean;
       header_menu_id?: string | null;
       header_mega_menu_id?: string | null;
-    }
+    },
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({ ...config, updated_at: new Date().toISOString() })
-        .eq('organization_id', organizationId)
-        .select()
-        .maybeSingle();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) {
         console.error('Supabase updateFooterConfig error:', error.message, error.code);
@@ -795,9 +934,13 @@ class WebsiteSettingsService {
   }
 
   // Restablecer a plantilla predeterminada
-  async resetToTemplate(organizationId: number, templateId: string): Promise<WebsiteSettings> {
+  async resetToTemplate(
+    organizationId: number,
+    templateId: string,
+    branchId?: number | null,
+  ): Promise<WebsiteSettings> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({
           template_id: templateId,
@@ -810,9 +953,10 @@ class WebsiteSettingsService {
           font_body: 'Inter',
           updated_at: new Date().toISOString(),
         })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -851,7 +995,11 @@ class WebsiteSettingsService {
   }
 
   // Importar FAQ desde JSON
-  async importFAQ(organizationId: number, faqItems: Omit<FAQItem, 'id'>[]): Promise<WebsiteSettings> {
+  async importFAQ(
+    organizationId: number,
+    faqItems: Omit<FAQItem, 'id'>[],
+    branchId?: number | null,
+  ): Promise<WebsiteSettings> {
     try {
       const itemsWithIds = faqItems.map((item, index) => ({
         ...item,
@@ -859,15 +1007,16 @@ class WebsiteSettingsService {
         order: index,
       }));
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({
           faq_items: itemsWithIds,
           updated_at: new Date().toISOString(),
         })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;
@@ -880,7 +1029,8 @@ class WebsiteSettingsService {
   // Importar testimonios desde JSON
   async importTestimonials(
     organizationId: number,
-    testimonials: Omit<Testimonial, 'id'>[]
+    testimonials: Omit<Testimonial, 'id'>[],
+    branchId?: number | null,
   ): Promise<WebsiteSettings> {
     try {
       const itemsWithIds = testimonials.map((item) => ({
@@ -888,15 +1038,16 @@ class WebsiteSettingsService {
         id: crypto.randomUUID(),
       }));
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('website_settings')
         .update({
           testimonials: itemsWithIds,
           updated_at: new Date().toISOString(),
         })
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
+        .eq('organization_id', organizationId);
+      // F4 R3 — Filtrar por ámbito (outlet o global)
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
       return data as WebsiteSettings;

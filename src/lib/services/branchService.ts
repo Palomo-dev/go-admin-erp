@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { Branch, OpeningHours, DayHours } from '@/types/branch';
 import { GeocodingService } from './geocodingService';
+import { validateWebIdentityFormat } from '@/lib/utils/webIdentityValidation';
 
 // Helper function to normalize opening hours format
 const normalizeOpeningHours = (openingHours: any): OpeningHours | null => {
@@ -157,6 +158,22 @@ export const branchService = {
    */
   async createBranch(branch: Branch): Promise<Branch> {
     try {
+      // --- Validación de identidad web (Fase 6) ---
+      // 1. Formato (defensa en profundidad — no confiar solo en el frontend)
+      const formatErrors = validateWebIdentityFormat({
+        slug: branch.slug,
+        subdomain: branch.subdomain,
+        custom_domain: branch.custom_domain,
+      });
+      if (formatErrors.length > 0) {
+        throw new Error(`Formato inválido: ${formatErrors.join(', ')}`);
+      }
+      // 2. Unicidad contra la BD
+      await this.validateWebIdentity(
+        { slug: branch.slug, subdomain: branch.subdomain, custom_domain: branch.custom_domain },
+        branch.organization_id
+      );
+
       // Clean and format the branch data - only include columns that exist in DB
       const formattedBranch = {
         organization_id: branch.organization_id,
@@ -183,12 +200,33 @@ export const branchService = {
           ? JSON.parse(branch.features)
           : branch.features || null,
         capacity: branch.capacity || null,
+        // Corrección QA R9: normalizar branch_type '' a null
         branch_type: branch.branch_type || null,
         zone: branch.zone || null,
         branch_code: branch.branch_code,
         is_active: branch.is_active ?? true,
-        is_web_stock_source: branch.is_web_stock_source ?? false
+        is_web_stock_source: branch.is_web_stock_source ?? false,
+        // --- Identidad Web (Fase 6) ---
+        slug: branch.slug || null,
+        subdomain: branch.subdomain || null,
+        custom_domain: branch.custom_domain || null,
+        website_logo_url: branch.website_logo_url || null,
+        website_cover_url: branch.website_cover_url || null,
+        is_web_published: branch.is_web_published ?? false,
       };
+
+      // Corrección QA R2: validar que publicar requiera branch_type + slug.
+      // Defensa en profundidad — el frontend también valida, pero un bypass
+      // directo al service (script, otro consumidor) no debe poder persistir
+      // un outlet publicado sin identidad resoluble.
+      if (formattedBranch.is_web_published === true) {
+        if (!formattedBranch.branch_type) {
+          throw new Error('El tipo de negocio (branch_type) es obligatorio para publicar el outlet en la web');
+        }
+        if (!formattedBranch.slug) {
+          throw new Error('El slug es obligatorio para publicar el outlet en la web');
+        }
+      }
 
       const { data, error } = await supabase
         .from('branches')
@@ -212,9 +250,40 @@ export const branchService = {
   },
 
   /**
-   * Update an existing branch
+   * Update an existing branch.
+   * `organizationId` es opcional: se usa para validar unicidad del slug por
+   * org. Si no se pasa y hay campos web, se hace un getBranchById previo para
+   * inferirlo.
    */
-  async updateBranch(branchId: number, branch: Partial<Branch>): Promise<Branch> {
+  async updateBranch(
+    branchId: number,
+    branch: Partial<Branch>,
+    organizationId?: number
+  ): Promise<Branch> {
+    // --- Validación de identidad web (Fase 6) ---
+    if (branch.slug !== undefined || branch.subdomain !== undefined || branch.custom_domain !== undefined) {
+      // 1. Formato (defensa en profundidad)
+      const formatErrors = validateWebIdentityFormat({
+        slug: branch.slug,
+        subdomain: branch.subdomain,
+        custom_domain: branch.custom_domain,
+      });
+      if (formatErrors.length > 0) {
+        throw new Error(`Formato inválido: ${formatErrors.join(', ')}`);
+      }
+      // 2. Unicidad contra la BD
+      let orgId = organizationId;
+      if (!orgId) {
+        const existing = await this.getBranchById(branchId);
+        orgId = existing.organization_id;
+      }
+      await this.validateWebIdentity(
+        { slug: branch.slug, subdomain: branch.subdomain, custom_domain: branch.custom_domain },
+        orgId,
+        branchId
+      );
+    }
+
     // Format branch data - only include columns that exist in DB
     const formattedBranch: any = {};
     
@@ -233,12 +302,66 @@ export const branchService = {
     if (branch.is_main !== undefined) formattedBranch.is_main = branch.is_main;
     if (branch.tax_identification !== undefined) formattedBranch.tax_identification = branch.tax_identification;
     if (branch.capacity !== undefined) formattedBranch.capacity = branch.capacity;
-    if (branch.branch_type !== undefined) formattedBranch.branch_type = branch.branch_type;
+    // Corrección QA R9: normalizar branch_type '' a null
+    if (branch.branch_type !== undefined) formattedBranch.branch_type = branch.branch_type || null;
     if (branch.zone !== undefined) formattedBranch.zone = branch.zone;
     if (branch.branch_code !== undefined) formattedBranch.branch_code = branch.branch_code;
     if (branch.is_active !== undefined) formattedBranch.is_active = branch.is_active;
     if (branch.is_web_stock_source !== undefined) formattedBranch.is_web_stock_source = branch.is_web_stock_source;
-    
+    // --- Identidad Web (Fase 6) ---
+    if (branch.slug !== undefined) formattedBranch.slug = branch.slug || null;
+    if (branch.subdomain !== undefined) formattedBranch.subdomain = branch.subdomain || null;
+    if (branch.custom_domain !== undefined) formattedBranch.custom_domain = branch.custom_domain || null;
+    if (branch.website_logo_url !== undefined) formattedBranch.website_logo_url = branch.website_logo_url || null;
+    if (branch.website_cover_url !== undefined) formattedBranch.website_cover_url = branch.website_cover_url || null;
+    if (branch.is_web_published !== undefined) formattedBranch.is_web_published = branch.is_web_published;
+
+    // Corrección QA R2: validar que publicar requiera branch_type + slug.
+    // Corrección QA R3 (Issue 2): resolver el valor efectivo de
+    // is_web_published desde el payload o la branch existente, de modo que la
+    // invariante se mantenga incluso cuando el caller no envía el flag en un
+    // update parcial (la branch ya estaba publicada y se edita otro campo).
+    // Corrección QA R3 (Issue 5): si se publica, re-validar el FORMATO de los
+    // campos de identidad web existentes (no solo los que vienen en el payload).
+    const needExistingForPublish =
+      formattedBranch.is_web_published === undefined ||
+      formattedBranch.branch_type === undefined ||
+      formattedBranch.slug === undefined;
+    let existingForPublish: Branch | null = null;
+    if (needExistingForPublish) {
+      existingForPublish = await this.getBranchById(branchId);
+    }
+    const effectiveIsWebPublished =
+      formattedBranch.is_web_published ?? existingForPublish?.is_web_published ?? false;
+    if (effectiveIsWebPublished === true) {
+      const effectiveBranchType =
+        formattedBranch.branch_type !== undefined
+          ? formattedBranch.branch_type
+          : existingForPublish?.branch_type;
+      const effectiveSlug =
+        formattedBranch.slug !== undefined
+          ? formattedBranch.slug
+          : existingForPublish?.slug;
+      if (!effectiveBranchType) {
+        throw new Error('El tipo de negocio (branch_type) es obligatorio para publicar el outlet en la web');
+      }
+      if (!effectiveSlug) {
+        throw new Error('El slug es obligatorio para publicar el outlet en la web');
+      }
+      // Re-validar formato de los campos existentes cuando la publicación se
+      // activa sin cambiar slug/subdomain/domain (defensa en profundidad).
+      if (formattedBranch.is_web_published === true && existingForPublish) {
+        const formatErrors = validateWebIdentityFormat({
+          slug: existingForPublish.slug,
+          subdomain: existingForPublish.subdomain,
+          custom_domain: existingForPublish.custom_domain,
+        });
+        if (formatErrors.length > 0) {
+          throw new Error(formatErrors.join(', '));
+        }
+      }
+    }
+
     // Handle JSON fields - normalize opening hours
     if (branch.opening_hours !== undefined) {
       const parsedHours = typeof branch.opening_hours === 'string' 
@@ -261,6 +384,125 @@ export const branchService = {
 
     if (error) {
       console.error('Error updating branch:', error);
+      throw new Error(error.message);
+    }
+
+    return data;
+  },
+
+  /**
+   * Valida unicidad de slug (por org), subdomain y custom_domain (globales).
+   * Lanza Error si hay conflicto. Solo valida los campos presentes (no vacíos).
+   * `excludeBranchId` permite excluir la propia branch al editar.
+   *
+   * Nota: esta función valida UNICIDAD. La validación de FORMATO se hace con
+   * `validateWebIdentityFormat` (importada de webIdentityValidation.ts), que
+   * debe llamarse junto con esta para defensa en profundidad.
+   */
+  async validateWebIdentity(
+    data: { slug?: string | null; subdomain?: string | null; custom_domain?: string | null },
+    organizationId: number,
+    excludeBranchId?: number
+  ): Promise<void> {
+    // F6 R4 (Issue 2) — Normalizar subdomain y custom_domain a minúsculas
+    // antes de validar unicidad, para que "MiSub" y "misub" se detecten como
+    // duplicados (DNS es case-insensitive). El slug ya se valida en minúsculas
+    // por regex, pero lo normalizamos por consistencia.
+    const normalizedSlug = data.slug?.toLowerCase().trim();
+    const normalizedSubdomain = data.subdomain?.toLowerCase().trim();
+    const normalizedCustomDomain = data.custom_domain?.toLowerCase().trim();
+
+    // Validar slug único por organización
+    if (normalizedSlug) {
+      let query = supabase
+        .from('branches')
+        .select('id, name')
+        .eq('organization_id', organizationId)
+        .eq('slug', normalizedSlug);
+      if (typeof excludeBranchId === 'number') query = query.neq('id', excludeBranchId);
+      const { data: existing } = await query.maybeSingle();
+      if (existing) {
+        throw new Error(`El slug "${normalizedSlug}" ya lo usa otra sucursal de esta organización: ${existing.name}`);
+      }
+    }
+
+    // Validar subdomain único global
+    if (normalizedSubdomain) {
+      let query = supabase
+        .from('branches')
+        .select('id, name, organization_id')
+        .eq('subdomain', normalizedSubdomain);
+      if (typeof excludeBranchId === 'number') query = query.neq('id', excludeBranchId);
+      const { data: existing } = await query.maybeSingle();
+      if (existing) {
+        throw new Error(`El subdominio "${normalizedSubdomain}" ya está en uso por otra sucursal: ${existing.name}`);
+      }
+    }
+
+    // Validar custom_domain único global
+    if (normalizedCustomDomain) {
+      let query = supabase
+        .from('branches')
+        .select('id, name, organization_id')
+        .eq('custom_domain', normalizedCustomDomain);
+      if (typeof excludeBranchId === 'number') query = query.neq('id', excludeBranchId);
+      const { data: existing } = await query.maybeSingle();
+      if (existing) {
+        throw new Error(`El dominio "${normalizedCustomDomain}" ya está en uso por otra sucursal: ${existing.name}`);
+      }
+    }
+  },
+
+  /**
+   * Activa/desactiva la publicación web de una sucursal (Fase 6).
+   *
+   * Antes de activar `is_web_published=true` valida que la branch tenga
+   * `branch_type` y `slug` definidos (reglas de F4/F6): un outlet sin tipo de
+   * negocio ni slug no es resoluble por el router público.
+   *
+   * `organizationId` es opcional (se infiere via getBranchById si no se pasa).
+   */
+  async setWebPublished(
+    branchId: number,
+    published: boolean,
+    organizationId?: number
+  ): Promise<Branch> {
+    if (published) {
+      // Si pasan organizationId podríamos validar unicidad, pero aquí solo
+      // necesitamos la branch para verificar branch_type + slug.
+      const branch = await this.getBranchById(branchId);
+      if (!branch.branch_type) {
+        throw new Error('El tipo de negocio (branch_type) es obligatorio para publicar el outlet en la web');
+      }
+      if (!branch.slug) {
+        throw new Error('El slug es obligatorio para publicar el outlet en la web');
+      }
+      // F6 R4 (Issue 1) — Re-validar formato de identidad web antes de
+      // activar is_web_published=true. Defensa en profundidad: un outlet
+      // cuyo slug/subdomain/custom_domain fue guardado con formato inválido
+      // (via bypass del service) no debe poder publicarse.
+      const formatErrors = validateWebIdentityFormat({
+        slug: branch.slug,
+        subdomain: branch.subdomain,
+        custom_domain: branch.custom_domain,
+      });
+      if (formatErrors.length > 0) {
+        throw new Error(formatErrors.join(', '));
+      }
+      // organizationId se acepta para compatibilidad futura (validación de
+      // unicidad al publicar); por ahora no se requiere una query extra.
+      void organizationId;
+    }
+
+    const { data, error } = await supabase
+      .from('branches')
+      .update({ is_web_published: published })
+      .eq('id', branchId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error setting web published:', error);
       throw new Error(error.message);
     }
 
@@ -485,5 +727,6 @@ export const branchService = {
       console.error('Error getting branches location status:', error);
       throw error;
     }
-  }
+  },
+
 };

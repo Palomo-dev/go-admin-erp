@@ -17,11 +17,15 @@ import {
   Tablet,
   Smartphone,
   Eye,
+  Globe,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
+import { Badge } from '@/components/ui/badge';
 import type { WebsitePage } from '@/lib/services/websitePageBuilderService';
+import { OutletSelector, type OutletOption } from './OutletSelector';
+import type { Branch } from '@/types/branch';
 
 export type DevicePreview = 'desktop' | 'laptop' | 'tablet' | 'mobile';
 
@@ -43,6 +47,13 @@ interface EditorHeaderProps {
   previewEntities?: Array<{ id: string; label: string }>;
   previewEntityId?: string | null;
   onPreviewEntityChange?: (id: string) => void;
+  // Fase 4 — Selector de outlet multi-outlet
+  outletOptions?: OutletOption[];
+  selectedBranchId?: number | null;
+  onOutletChange?: (branchId: number | null) => void;
+  selectedBranch?: Branch | null;
+  // Indica si la página actual es global (para advertencia al editar desde outlet)
+  currentPageIsGlobal?: boolean;
 }
 
 export default function EditorHeader({
@@ -58,6 +69,11 @@ export default function EditorHeader({
   previewEntities,
   previewEntityId,
   onPreviewEntityChange,
+  outletOptions,
+  selectedBranchId,
+  onOutletChange,
+  selectedBranch,
+  currentPageIsGlobal,
 }: EditorHeaderProps) {
   const t = useTranslations('branding.editor.header');
   const currentPage = pages.find((p) => p.id === currentPageId);
@@ -126,6 +142,23 @@ export default function EditorHeader({
           </Select>
         </div>
 
+        {/* Fase 4 — Indicador visual del outlet activo */}
+        {selectedBranch ? (
+          <Badge variant="outline" className="gap-1 bg-white/10 border-white/20 text-white dark:bg-gray-800/10 dark:border-gray-700/20 dark:text-gray-200">
+            {selectedBranch.name}
+            {selectedBranch.branch_type && (
+              <span className="text-[10px] text-blue-100 dark:text-blue-300">
+                · {selectedBranch.branch_type}
+              </span>
+            )}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="gap-1 bg-white/10 border-white/20 text-white dark:bg-gray-800/10 dark:border-gray-700/20 dark:text-gray-200">
+            <Globe className="h-3 w-3" />
+            Global
+          </Badge>
+        )}
+
         {/* F9.4 — Selector de contexto para plantillas de detalle */}
         {previewEntities && previewEntities.length > 0 && onPreviewEntityChange && (
           <Select value={previewEntityId || undefined} onValueChange={onPreviewEntityChange}>
@@ -167,6 +200,15 @@ export default function EditorHeader({
 
       {/* Right: Preview + Save */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* Fase 4 — Selector de outlet */}
+        {outletOptions && onOutletChange && selectedBranchId !== undefined && (
+          <OutletSelector
+            options={outletOptions}
+            value={selectedBranchId}
+            onChange={onOutletChange}
+          />
+        )}
+
         {previewUrl && (
           <a
             href={previewUrl}
@@ -198,6 +240,14 @@ export default function EditorHeader({
           {t('save')}
         </Button>
       </div>
+
+      {/* Fase 4 §6.3 — Advertencia al editar página global desde un outlet */}
+      {currentPageIsGlobal && selectedBranchId !== null && selectedBranchId !== undefined && (
+        <div className="w-full bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800 px-4 py-2 text-xs text-amber-800 dark:text-amber-200">
+          ⚠ Estás editando una página <strong>global</strong>. Los cambios afectan a
+          todos los outlets de la organización.
+        </div>
+      )}
     </div>
   );
 }

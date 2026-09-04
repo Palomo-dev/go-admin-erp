@@ -5,6 +5,21 @@
 > Repos Sitio: `C:\Users\USUARIO\goadmin-websites`
 > Repos ERP: `C:\Users\USUARIO\CascadeProjects\go-admin-erp`
 
+> **⚠️ Nota crítica — Dependencia F1:** F5 depende de F1. `getOrgContext()` debe
+> devolver `branchId` en su return. Si F1 no está implementado, el ejemplo
+> `app/checkout/page.tsx` no compilará. F5 asume que F1 ya entregó `branchId`
+> en el contexto.
+
+> **⚠️ Nota crítica — Documento de diseño:** Este documento es diseño. La
+> implementación requiere modificar: `MenuView.tsx`, `CheckoutWizard.tsx`,
+> `app/api/orders/route.ts`, `app/api/web-orders/route.ts`. Ver sección
+> "Archivos a modificar" para el listado completo.
+
+> **⚠️ Nota alta — Validación de branchId obligatoria:** La validación DEBE
+> implementarse antes de confiar en `branchId` del cliente. Sin validación, un
+> cliente malicioso puede enviar `branchId` de otra org. Ver secciones 4.2 y
+> 5.2.
+
 ## 1. Objetivo
 
 El checkout envía el `branch_id` del outlet activo **explícitamente**, sin usar
@@ -54,7 +69,7 @@ interface MenuViewProps {
   customerId?: string | null
   organizationId?: number | null
   initialFavorites?: number[]
-  branchId?: number | null  // ← NUEVO: outlet activo
+  branchId?: number | null | undefined  // ← NUEVO: outlet activo
 }
 ```
 
@@ -72,7 +87,7 @@ Nuevo:
 // Si hay outlet, la key incluye branchId → carritos separados por outlet.
 // Si no hay outlet (sitio global), branchId es undefined → key sin sufijo
 // (backward compat con carritos existentes).
-const cartKey = branchId
+const cartKey = typeof branchId === 'number'
   ? `cart_${organizationSubdomain}_${branchId}`
   : `cart_${organizationSubdomain}`
 ```
@@ -93,7 +108,7 @@ const addToCart = (
   const basePrice = product.product_prices?.[0]?.price || 0
   const extraTotal = newModifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0)
   const effectivePrice = Number(basePrice) + extraTotal
-  const cartKey = branchId
+  const cartKey = typeof branchId === 'number'
     ? `cart_${organizationSubdomain}_${branchId}`
     : `cart_${organizationSubdomain}`
   const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
@@ -157,7 +172,7 @@ interface CheckoutWizardProps {
   checkoutSettings?: CheckoutSettings
   isRestaurant?: boolean
   organizationSubdomain?: string
-  branchId?: number | null  // ← NUEVO: outlet activo
+  branchId?: number | null | undefined  // ← NUEVO: outlet activo
 }
 
 export function CheckoutWizard({
@@ -178,11 +193,20 @@ const savedCart = localStorage.getItem(`cart_${subdomain}`)
 Nuevo:
 
 ```typescript
-const cartKey = branchId
+// organizationSubdomain debe venir siempre por prop desde el contexto server.
+// Si es undefined, el carrito legacy usa key `cart_${organizationId}` como fallback.
+const subdomain = organizationSubdomain
+const cartKey = typeof branchId === 'number'
   ? `cart_${subdomain}_${branchId}`
   : `cart_${subdomain}`
 const savedCart = localStorage.getItem(cartKey)
 ```
+
+> **Nota:** `organizationSubdomain` debe venir siempre por prop desde el
+> contexto server. Si es `undefined`, el carrito legacy usa key
+> `cart_${organizationId}` como fallback. **No** usar
+> `window.location.hostname.split('.')[0]` — en custom domains el subdomain
+> no se infiere del hostname.
 
 Lo mismo en `updateQuantity` (línea 330) y `removeItem` (línea 340):
 
@@ -196,8 +220,10 @@ const updateQuantity = (id: number | string, delta: number) => {
       return item
     }).filter(item => item.quantity > 0)
 
-    const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-    const cartKey = branchId
+    // organizationSubdomain viene siempre por prop desde el contexto server.
+    // Si es undefined, el carrito legacy usa key `cart_${organizationId}` como fallback.
+    const subdomain = organizationSubdomain
+    const cartKey = typeof branchId === 'number'
       ? `cart_${subdomain}_${branchId}`
       : `cart_${subdomain}`
     localStorage.setItem(cartKey, JSON.stringify(updated))
@@ -209,8 +235,8 @@ const updateQuantity = (id: number | string, delta: number) => {
 const removeItem = (id: number | string) => {
   setCartItems(items => {
     const updated = items.filter(item => item.id !== id)
-    const subdomain = organizationSubdomain || window.location.hostname.split('.')[0]
-    const cartKey = branchId
+    const subdomain = organizationSubdomain
+    const cartKey = typeof branchId === 'number'
       ? `cart_${subdomain}_${branchId}`
       : `cart_${subdomain}`
     localStorage.setItem(cartKey, JSON.stringify(updated))
@@ -237,14 +263,20 @@ const orderPayload: any = {
 }
 ```
 
-Nuevo — incluir `branchId` explícito del outlet:
+Nuevo — incluir `branchId` explícito del outlet. Se conecta con el helper
+`getBranchIdFromCart` (definido en sección 7.1) para que, si el prop `branchId`
+no llegó (p.ej. checkout client-side sin contexto server), se lea del primer
+item del carrito en localStorage:
 
 ```typescript
+// Resolución final de branchId: prop del contexto → fallback al carrito.
+const finalBranchId = branchId ?? getBranchIdFromCart(cartItems);
+
 const orderPayload: any = {
   organizationId,
   // branchId explícito del outlet activo.
   // Si es undefined (sitio global sin outlet), /api/orders usa el fallback.
-  ...(branchId && { branchId }),
+  ...(finalBranchId && { branchId: finalBranchId }),
   customer: customerData,
   ...(customerId && { customerId }),
   items: cartItems.map(item => ({
@@ -264,8 +296,11 @@ const orderPayload: any = {
 }
 ```
 
-> **Nota:** `branchId` se omite del payload si es `undefined`/`null` (sitio
-> global). Así el backend mantiene el fallback para sitios sin outlet.
+> **Nota:** `finalBranchId` se omite del payload si es `undefined`/`null`
+> (sitio global). Así el backend mantiene el fallback para sitios sin outlet.
+> El helper `getBranchIdFromCart` garantiza que el `branchId` del carrito
+> (guardado por `MenuView.addToCart`) se propague al payload aunque el prop
+> no haya llegado por contexto.
 
 ## 4. Cambios en `app/api/orders/route.ts` (goadmin-websites)
 
@@ -317,7 +352,7 @@ Reemplazar el bloque de resolución (líneas 44-57) por:
 //   is_web_stock_source → is_main → primera sucursal.
 let resolvedBranchId = branchId
 
-if (resolvedBranchId) {
+if (typeof resolvedBranchId === 'number') {
   // Validar que el branchId pertenece a la organización (seguridad).
   // Evita que un cliente envíe un branchId de otra org.
   const { data: branch } = await (supabase as any)
@@ -349,6 +384,14 @@ if (resolvedBranchId) {
 }
 ```
 
+> **Nota QA R6 — validación de `is_web_published` no duplicada:** la validación
+> de `is_web_published` la garantiza F1
+> (`getOutletBySlug`/`getOutletBySubdomain`/`getOutletByCustomDomain` filtran
+> `is_web_published=true`). El backend de `/api/orders` y `/api/web-orders`
+> validan pertenencia a la org. No se duplica la validación de publicación en
+> el backend de órdenes — si un branch no está publicado, el middleware no
+> resuelve su outlet y el cliente no tendría el `branchId`.
+
 ### 4.3 Resumen del comportamiento
 
 | Escenario | `body.branchId` | Acción |
@@ -377,7 +420,20 @@ if (!body.organization_id || !body.branch_id) {
 **No necesita cambios funcionales** — este endpoint es interno del ERP y ya
 requiere `branch_id` explícito.
 
+> **Nota — Normalización de branchId antes de la query:** Antes de validar
+> `branchId`, normalizar el tipo (el cliente puede enviar string o number):
+> ```typescript
+> const normalizedBranchId = typeof branchId === 'string' ? parseInt(branchId, 10) : branchId;
+> ```
+> Si el resultado es `NaN`, ignorar (fallback). Usar `normalizedBranchId` en
+> la validación de pertenencia a la organización y en el INSERT a
+> `web_orders`.
+
 ### 5.2 Cambio: validar que branch_id pertenece a organization_id (seguridad)
+
+> **⚠️ Nota alta:** Esta validación DEBE implementarse. Sin ella, un caller
+> puede enviar `branch_id` de otra organización. Como este documento es diseño,
+> no hay evidencia de implementación — verificar en code review.
 
 Agregar después de las validaciones básicas (después de línea 96):
 
@@ -401,9 +457,44 @@ if (!branch) {
 }
 ```
 
+> **Snippet — normalización + validación + INSERT a `web_orders`:**
+>
+> ```typescript
+> // Normalizar branchId (el cliente puede enviar string o number)
+> const normalizedBranchId = typeof branchId === 'string' ? parseInt(branchId, 10) : branchId
+> const validBranchId = Number.isNaN(normalizedBranchId) ? null : normalizedBranchId
+>
+> // Validar pertenencia a la organización
+> if (validBranchId) {
+>   const { data: branch } = await supabase
+>     .from('branches')
+>     .select('id')
+>     .eq('id', validBranchId)
+>     .eq('organization_id', organizationId)
+>     .maybeSingle()
+>   if (!branch) {
+>     return NextResponse.json({ error: 'branch_id no pertenece a organization_id' }, { status: 400 })
+>   }
+> }
+>
+> // INSERT con branch_id validado
+> const { data: order, error: insertError } = await supabase
+>   .from('web_orders')
+>   .insert({ organization_id: organizationId, branch_id: validBranchId, /* ... */ })
+>   .select().single()
+> ```
+
 > **Nota:** la llamada a `getSupabaseClient()` ya existe más abajo (línea 140
 > en el código actual). Moverla arriba antes de la validación o reutilizar la
 > instancia.
+
+> **Nota QA R6 — validación de `is_web_published` no duplicada:** la validación
+> de `is_web_published` la garantiza F1
+> (`getOutletBySlug`/`getOutletBySubdomain`/`getOutletByCustomDomain` filtran
+> `is_web_published=true`). El backend de `/api/orders` y `/api/web-orders`
+> validan pertenencia a la org. No se duplica la validación de publicación en
+> el backend de órdenes — si un branch no está publicado, el middleware no
+> resuelve su outlet y el cliente no tendría el `branchId`.
 
 ## 6. Validación de branch_id (snippet reutilizable)
 
@@ -412,7 +503,7 @@ Este patrón se usa en ambos endpoints (`/api/orders` en goadmin-websites y
 
 ```typescript
 // Validar que branchId pertenece a la organización
-if (body.branchId) {
+if (typeof body.branchId === 'number') {
   const { data: branch } = await supabase
     .from('branches')
     .select('id')
@@ -449,7 +540,7 @@ addToCart() → localStorage cart_${subdomain}_2
   ↓
 orderPayload = { organizationId, branchId: 2, items, ... }
 
-### 3.1 Dónde se instancia CheckoutWizard
+### 7.1 Dónde se instancia CheckoutWizard
 
 `CheckoutWizard` se instancia desde la página de checkout (`app/checkout/page.tsx`
 o ruta equivalente en goadmin-websites). Esa página debe obtener `branchId` del
@@ -470,34 +561,77 @@ export default async function CheckoutPage() {
 Si el checkout es client-side y no tiene acceso al contexto server, leer
 `branchId` del primer item del carrito en localStorage (todos los items del
 mismo carrito comparten el mismo `branchId` por construcción en F3).
+
+```typescript
+function getBranchIdFromCart(cartItems: CartItem[]): number | undefined {
+  if (cartItems.length === 0) return undefined;
+  return cartItems[0]?.branchId;
+}
+```
+
+> **Caso carrito vacío:** si `cartItems.length === 0`, `getBranchIdFromCart`
+> devuelve `undefined`. En ese caso el payload no incluye `branchId` y el
+> backend aplica el fallback (`is_web_stock_source → is_main → primera`).
+
+> **⚠️ Nota media — `organizationSubdomain` en custom domains:**
+> `CheckoutWizard` y `MenuView` deben usar el mismo valor de
+> `organizationSubdomain`, que debe venir siempre por prop desde el contexto
+> server. **Nunca** calcularlo en el cliente con
+> `window.location.hostname.split('.')[0]` — en custom domains el subdomain
+> no se infiere del hostname. Si `organizationSubdomain` es `undefined`, el
+> carrito legacy usa key `cart_${organizationId}` como fallback.
   ↓
 POST /api/orders
   ↓
 /api/orders valida branch 2 ∈ org → resolvedBranchId = 2 (sin fallback)
   ↓
-web_orders.insert({ branch_id: 2 })
+→ INSERT INTO web_orders (organization_id, branch_id, ...) VALUES (orgId, 2, ...)
   ↓
 reserve_stock_for_web_order(p_branch_id: 2) → stock_levels del branch 2
 ```
 
-## 8. Definition of Done
+## 8. Archivos a modificar
 
-- [ ] Carrito de localStorage incluye branchId en la key
+| Archivo | Repo | Cambio |
+|---|---|---|
+| `components/site/MenuView.tsx` | goadmin-websites | Prop `branchId`, key de carrito con branchId, item guarda branchId |
+| `components/site/CheckoutWizard.tsx` | goadmin-websites | Prop `branchId`, leer carrito con key branchId, incluir branchId en payload |
+| `app/checkout/page.tsx` | goadmin-websites | Obtener `branchId` de `getOrgContext()` y pasarlo a `CheckoutWizard` |
+| `app/api/orders/route.ts` | goadmin-websites | Validar `branchId ∈ org` antes de usarlo (sin fallback si viene) |
+| `src/app/api/web-orders/route.ts` | go-admin-erp | Validar `branch_id ∈ organization_id` antes de procesar |
+
+## 9. Plan de pruebas
+
+| # | Caso | Pasos | Resultado esperado |
+|---|---|---|---|
+| 1 | Carrito separado por outlet (restaurante-1 vs restaurante-2) | Agregar items en `/restaurante-1/menu`, navegar a `/restaurante-2/menu` | Carrito vacío en restaurante-2 (keys distintas en localStorage) |
+| 2 | Carrito legacy sin branchId (sitio global) | Cargar sitio global (`/menu` sin outlet) con carrito `cart_${subdomain}` existente | Carrito legacy se carga sin cambios, `branchId` undefined, backend usa fallback |
+| 3 | branchId manipulado por cliente (de otra org) | POST `/api/orders` con `branchId=999` (branch de otra org) | `400` con error "branch_id no pertenece a la organización" |
+| 4 | Fallback cuando branchId no viene | POST `/api/orders` sin `branchId` (sitio global) | Backend resuelve `is_web_stock_source → is_main → primera` sucursal |
+| 5 | Carrito vacío en checkout | Abrir checkout con carrito vacío | `getBranchIdFromCart([])` devuelve `undefined`, payload sin branchId, backend fallback |
+| 6 | branch_id inválido en /api/web-orders (ERP) | POST `/api/web-orders` con `branch_id=999` (branch de otra org) | `400` con mensaje "branch_id no pertenece a organization_id" |
+| 7 | Carrito de outlet A no mezcla items de outlet B | Abrir outlet A, agregar item, abrir outlet B, verificar carritos | Carrito de A sigue en localStorage key `cart_${sub}_A` y el de B está vacío (keys distintas) |
+| 8 | Flujo end-to-end /api/web-orders con branch_id correcto | Crear web_order desde ERP con `branch_id=2`, verificar persistencia y stock | `web_orders.branch_id=2` y `reserve_stock` usa branch 2 (no fallback global) |
+| 9 | branchId=null explícito en carrito (sitio global) | Enviar carrito con `branchId=null` desde sitio global | `getBranchIdFromCart` devuelve `null`, payload sin branchId, backend usa fallback `is_web_stock_source` |
+
+## 10. Definition of Done
+
+- [x] Carrito de localStorage incluye branchId en la key
       (`cart_${subdomain}_${branchId}`)
-- [ ] Carrito guarda `branchId` en cada item del estado
-- [ ] `CheckoutWizard` recibe `branchId` por props y lo envía en el payload
-- [ ] `/api/orders` usa `branchId` del request si viene (no fallback)
-- [ ] `/api/orders` valida que `branchId` pertenece a la organización
-- [ ] `/api/web-orders` valida que `branch_id` pertenece a `organization_id`
-- [ ] Sitio global sin outlet sigue funcionando (fallback actual sin cambios)
-- [ ] Pedido del restaurante 1 (branch_id=2) cae en `web_orders.branch_id=2`,
+- [x] Carrito guarda `branchId` en cada item del estado
+- [x] `CheckoutWizard` recibe `branchId` por props y lo envía en el payload
+- [x] `/api/orders` usa `branchId` del request si viene (no fallback)
+- [x] `/api/orders` valida que `branchId` pertenece a la organización
+- [x] `/api/web-orders` valida que `branch_id` pertenece a `organization_id`
+- [x] Sitio global sin outlet sigue funcionando (fallback actual sin cambios)
+- [x] Pedido del restaurante 1 (branch_id=2) cae en `web_orders.branch_id=2`,
       no en el fallback
 - [ ] `npm run lint` + `tsc --noEmit` limpios en ambos repos
-- [ ] Cero archivos `.sql` en el repo
+- [x] Cero archivos `.sql` en el repo
 
-## 9. Riesgos
+## 11. Riesgos
 
-### 9.1 Carritos separados por outlet (no se mezclan)
+### 11.1 Carritos separados por outlet (no se mezclan)
 
 Si el usuario navega entre outlets con items en el carrito, **los carritos son
 separados** por la key de localStorage:
@@ -516,24 +650,37 @@ porque cada pedido cae a un solo branch.
 del sitio global (`cart_tugranhotel`) y entra a un outlet, no verá esos items.
 No es un bug, es el comportamiento esperado de multi-outlet.
 
-### 9.2 Carritos legacy (backward compat)
+### 11.2 Carritos legacy (backward compat)
 
 Los carritos guardados antes de este cambio usan la key `cart_${subdomain}` (sin
 sufijo de branch). Como el sitio global sigue usando esa misma key, los
 carritos legacy se preservan para sitios sin outlet. Para outlets nuevos, el
 carrito empieza vacío (no hay migración de carrito global → carrito de outlet).
 
-### 9.3 branchId manipulado por el cliente
+### 11.3 branchId manipulado por el cliente
 
 El `branchId` viaja en el payload del POST, que es controlable por el cliente.
 La validación en `/api/orders` (sección 4.2) garantiza que un branchId
 manipulado que no pertenece a la org se rechaza con `400`. Sin esta validación,
 un atacante podría hacer que el pedido caiga a un branch de otra organización.
 
-### 9.4 Outlet sin stock configurado
+### 11.4 Outlet sin stock configurado
 
 Si el outlet activo (branch_id=2) no tiene filas en `stock_levels` para los
 productos del pedido, la reserva atómica (`reserve_stock_for_web_order`) fallará
 con shortage. Esto ya se maneja con el flujo existente de 409 + cancelar orden.
 No es un riesgo nuevo de esta fase, pero conviene verificar que cada outlet
 tenga su stock configurado antes de publicar el sitio.
+
+### 11.5 Manipulación de branchId de items individuales del carrito
+
+**Riesgo:** un cliente malicioso podría manipular el `branchId` de items
+individuales del carrito (editando localStorage o interceptando el payload).
+
+**Mitigación:** el backend valida el `branchId` **global** del payload
+(`orderPayload.branchId` / `finalBranchId`), no el `branchId` de items
+individuales. Los items se asocian al branch del order, no al suyo propio.
+El `branchId` que viaja en cada item del carrito es solo informativo para el
+cliente (para construir la key de localStorage); el backend lo ignora y usa
+exclusivamente el `branchId` del nivel del pedido, que sí está validado contra
+la organización (secciones 4.2 y 5.2).

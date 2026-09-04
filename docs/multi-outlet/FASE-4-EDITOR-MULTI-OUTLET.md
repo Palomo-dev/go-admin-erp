@@ -55,6 +55,44 @@ const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
 const [publishedBranches, setPublishedBranches] = useState<Branch[]>([]);
 ```
 
+> **Corrección QA (resolución inicial de `selectedBranchId`)**: al cargar el
+> editor, `loadData` debe resolver el outlet inicial desde la página que se está
+> editando, no asumir "Global" por defecto. El orden de carga es:
+>
+> 1. Cargar `currentPage` primero (sin `branchId`, por `pageId`).
+> 2. Setear `selectedBranchId = currentPage.branch_id ?? null`.
+> 3. Luego cargar `pages` y `settings` con ese `selectedBranchId`.
+>
+> ```typescript
+> // Dentro de loadData — cargar la página actual PRIMERO para resolver el outlet
+> const { data: page } = await websitePageBuilderService.getPageWithSections(pageId, organizationId, selectedBranchId);
+> setCurrentPage(page);
+>
+> // Resolver el outlet desde la página (no asumir Global)
+> const initialBranchId = page?.branch_id ?? null;
+> setSelectedBranchId(initialBranchId);
+>
+> // Ahora cargar pages y settings con el branchId resuelto
+> const [pagesData, settingsData] = await Promise.all([
+>   websitePageBuilderService.getPages(organizationId!, initialBranchId),
+>   websiteSettingsService.getSettings(organizationId!, initialBranchId),
+> ]);
+> setPages(pagesData);
+> setSettings(settingsData);
+> ```
+>
+> Si se cargan `pages` y `settings` antes de resolver `selectedBranchId`, el
+> editor muestra datos del outlet equivocado (siempre Global) hasta que el
+> usuario cambie manualmente el selector.
+>
+> **Corrección QA R7 (primera llamada a getPageWithSections)**: la primera
+> llamada a `getPageWithSections` se hace con `selectedBranchId = null` (aún
+> no se ha cargado la página). La validación de outlet se aplica cuando el
+> usuario cambia de outlet activamente, no en la carga inicial. Por eso la
+> validación en §4.4 usa `typeof selectedBranchId === 'number'` — con `null`
+> (carga inicial) la validación de outlet se omite, permitiendo cargar
+> cualquier página de la org al abrir el editor.
+
 ### 2.3 Carga de outlets publicables
 
 Dentro de `loadData` (o un `useEffect` dedicado), cargar las branches
@@ -108,13 +146,14 @@ if (organizationId) {
 
 > **Corrección QA R2 (unificación `published`/`publishedBranches`)**: antes
 > existía una variable temporal `published` en `loadData` que se guardaba con
-> `setPublishedBranches` **sin** filtrar `branch_type`, y luego §2.7 volvía a
-> filtrar en un bloque separado con otra variable `validPublished`. Eso
-> duplicaba lógica y dejaba `publishedBranches` con branches inválidas hasta
-> que §2.7 las purgaba. Ahora `loadData` filtra `branch_type` **al cargar** y
-> guarda directamente con `setPublishedBranches`, de modo que
-> `publishedBranches` solo contiene branches válidas en todo el ciclo de vida
-> del estado. La parte A de §2.7 se elimina (su lógica se integró aquí).
+> `setPublishedBranches` **sin** filtrar `branch_type`, y luego un bloque
+> separado (antigua §2.7 parte A, ahora integrada en §2.3) volvía a filtrar con
+> otra variable `validPublished`. Eso duplicaba lógica y dejaba
+> `publishedBranches` con branches inválidas hasta que ese bloque las purgaba.
+> Ahora `loadData` filtra `branch_type` **al cargar** y guarda directamente con
+> `setPublishedBranches`, de modo que `publishedBranches` solo contiene branches
+> válidas en todo el ciclo de vida del estado. La parte A de la antigua §2.7 se
+> elimina (su lógica se integró aquí, en §2.3).
 
 ### 2.4 Comportamiento al cambiar outlet
 
@@ -201,10 +240,6 @@ const handleCreatePage = async (slug: string, title: string) => {
 };
 ```
 
----
-
-## 3. Filtrado de secciones por `branch_type`
-
 ### 2.7 Validación de `branch_type` obligatorio al publicar un outlet
 
 > **Corrección QA**: un outlet con `is_web_published = true` pero
@@ -264,6 +299,8 @@ async setWebPublished(branchId: number, published: boolean): Promise<Branch> {
 
 ---
 
+## 3. Filtrado de secciones por `branch_type`
+
 ### 3.1 Mapa `branch_type → secciones permitidas`
 
 El `SECTION_MAP` de `goadmin-websites` ya tiene secciones separadas por tipo de
@@ -271,6 +308,8 @@ negocio. Creamos un mapa en el ERP que espeja esa segmentación:
 
 ```typescript
 // src/lib/services/website/sectionsByBranchType.ts
+
+import type { BranchType } from '@/types/branch';
 
 /**
  * Secciones universales — disponibles para todos los branch_type y para
@@ -391,7 +430,7 @@ export const SECTIONS_BY_BRANCH_TYPE: Record<string, string[]> = {
  * Si branchType es null/undefined (Global) → devuelve null, lo que indica
  * "sin filtro" (todas las secciones del catálogo).
  */
-export function getAllowedSectionTypes(branchType: string | null | undefined): string[] | null {
+export function getAllowedSectionTypes(branchType: BranchType | null | undefined): string[] | null {
   if (!branchType) return null; // Global = todas
   return SECTIONS_BY_BRANCH_TYPE[branchType] ?? UNIVERSAL_SECTIONS;
 }
@@ -438,6 +477,50 @@ export default function AddSectionDialog({
   // ... resto del componente sin cambios
 }
 ```
+
+> **Corrección QA (extender `ICON_MAP`)**: el `ICON_MAP` del `AddSectionDialog`
+> está limitado a los iconos de las secciones universales y hotel/restaurant.
+> Extenderlo con iconos para los `branch_type` nuevos:
+>
+> ```typescript
+> import {
+>   // ... iconos existentes ...
+>   Bus,            // transport
+>   Dumbbell,       // gym
+>   SquareParking,  // parking
+>   Plug,           // services
+> } from 'lucide-react';
+>
+> const ICON_MAP: Record<string, LucideIcon> = {
+>   // ... entradas existentes ...
+>   routes: Bus,
+>   fleet_showcase: Bus,
+>   trip_search: Bus,
+>   booking_transport: Bus,
+>   coverage_map: Bus,
+>   membership_plans: Dumbbell,
+>   class_schedule: Dumbbell,
+>   trainers: Dumbbell,
+>   gym_features: Dumbbell,
+>   transformation: Dumbbell,
+>   parking_zones: SquareParking,
+>   parking_pricing: SquareParking,
+>   parking_pass_plans: SquareParking,
+>   parking_features: SquareParking,
+>   parking_availability: SquareParking,
+>   features_grid: Plug,
+>   how_it_works: Plug,
+>   pricing_table: Plug,
+>   demo_cta: Plug,
+>   integrations: Plug,
+> };
+> ```
+>
+> Si no se extiende `ICON_MAP`, las secciones sin icono mapeado muestran un
+> icono fallback genérico (ej. `LayoutTemplate`). No es bloqueante, pero
+> degrada la UX. **Deuda técnica**: ver item del DoD (§9) — "Extender ICON_MAP
+> con Bus, Dumbbell, SquareParking, Plug para secciones de
+> transporte/gym/parking/servicios".
 
 ### 3.3 Conexión desde el editor
 
@@ -650,6 +733,73 @@ ser `${originalSlug}-copy`. Se aplica la misma validación de unicidad por
   }
 ```
 
+### 4.2.2 `updatePage(pageId, updates)` — validar slug único al editar
+
+> **Corrección QA**: `updatePage` debe validar que el slug sea único por
+> `(organization_id, branch_id)` antes de guardar. Si el slug ya existe para
+> otro `branch_id` (o para otra página en el mismo ámbito), lanzar un error
+> claro. Esto evita que al renombrar el slug de una página se genere un
+> conflicto silencioso con la constraint de BD.
+
+```typescript
+  async updatePage(
+    pageId: string,
+    updates: Partial<Pick<WebsitePage, 'slug' | 'title' | 'show_in_header' | 'show_in_footer' | 'header_order' | 'footer_order' | 'page_settings'>>,
+  ): Promise<WebsitePage> {
+    // Solo validar slug si se está cambiando
+    if (updates.slug !== undefined) {
+      // Cargar la página actual para obtener org y branch
+      const { data: current } = await supabase
+        .from('website_pages')
+        .select('organization_id, branch_id, slug')
+        .eq('id', pageId)
+        .single();
+      if (!current) throw new Error('Página no encontrada.');
+
+      // Si el slug no cambió, no validar
+      if (current.slug === updates.slug) {
+        // Continuar con el update normal
+      } else {
+        const branch = current.branch_id ?? null;
+
+        // Buscar si ya existe OTRA página con ese slug en el mismo ámbito
+        let dupQuery = supabase
+          .from('website_pages')
+          .select('id')
+          .eq('organization_id', current.organization_id)
+          .eq('slug', updates.slug)
+          .neq('id', pageId); // excluir la propia página
+
+        if (branch === null) {
+          dupQuery = dupQuery.is('branch_id', null);
+        } else {
+          dupQuery = dupQuery.eq('branch_id', branch);
+        }
+
+        const { data: existing } = await dupQuery.maybeSingle();
+        if (existing) {
+          const scope = branch === null
+            ? 'global de la organización'
+            : `del outlet ${branch}`;
+          throw new Error(
+            `Ya existe una página con el slug "${updates.slug}" en el ámbito ${scope}. Elige otro slug.`,
+          );
+        }
+      }
+    }
+
+    // Proceder con el update
+    const { data, error } = await supabase
+      .from('website_pages')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', pageId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as WebsitePage;
+  }
+```
+
 ### 4.3 `addSection` — propagar `branch_id` de la página
 
 La sección hereda `branch_id` de la página a la que pertenece. Para mantener
@@ -696,16 +846,56 @@ Las secciones ya se obtienen vía `getPageWithSections(pageId)` que filtra por
 `page_id`. No se necesita cambio: las secciones heredan el `branch_id` de la
 página.
 
+> **Corrección QA (validación de pertenencia en `getPageWithSections`)**:
+> `getPageWithSections(pageId)` debe validar que la página pertenece a la org
+> del usuario autenticado. Opcionalmente, si `selectedBranchId` está seteado,
+> validar que `page.branch_id === selectedBranchId`. Si no coincide, mostrar
+> error "Esta página pertenece a otro outlet".
+>
+> **Corrección QA R7**: la validación anterior usaba
+> `if (selectedBranchId !== undefined)`, pero `loadData` inicializa
+> `selectedBranchId` en `null` (no `undefined`). Con `null`, la condición
+> `!== undefined` es `true`, y al comparar `pageBranch !== selectedBranchId`
+> (ej. `X !== null`), lanzaría error al abrir una página de outlet válida.
+> Se cambia a `typeof selectedBranchId === 'number'` para que la validación
+> solo aplique cuando hay un outlet concreto seleccionado (número), no cuando
+> es `null` (Global) o `undefined` (carga inicial).
+>
+> ```typescript
+> async getPageWithSections(
+>   pageId: string,
+>   organizationId?: number,
+>   selectedBranchId?: number | null,
+> ): Promise<WebsitePage> {
+>   const { data, error } = await supabase
+>     .from('website_pages')
+>     .select('*, sections:website_page_sections(*)')
+>     .eq('id', pageId)
+>     .single();
+>   if (error) throw error;
+>
+>   // Validar que la página pertenece a la org del usuario
+>   if (organizationId && data.organization_id !== organizationId) {
+>     throw new Error('Esta página no pertenece a tu organización.');
+>   }
+>
+>   // Validar pertenencia al outlet seleccionado (solo si hay outlet seleccionado)
+>   if (typeof selectedBranchId === 'number' && typeof data.branch_id === 'number' && data.branch_id !== selectedBranchId) {
+>     throw new Error('Esta página pertenece a otro outlet.');
+>   }
+>
+>   // Si la página es global (branch_id IS NULL) y hay outlet seleccionado, permitir (fallback a global)
+>   // Si la página es del outlet y no hay outlet seleccionado, permitir (carga inicial)
+>   return data as WebsitePage;
+> }
+> ```
+
 ### 4.5 Interfaz `WebsitePage` — añadir `branch_id`
 
-```typescript
-export interface WebsitePage {
-  id: string;
-  organization_id: number;
-  // ... campos existentes ...
-  branch_id?: number | null; // ← NUEVO (Fase 0)
-}
-```
+> Ver §8.2 para la interfaz completa de `WebsitePage` con `branch_id`. La
+> definición canónica vive en §8.2 para evitar duplicación; este punto solo
+> referencia que `WebsitePage` debe incluir el campo `branch_id?: number | null`
+> añadido en la Fase 0.
 
 ---
 
@@ -841,12 +1031,24 @@ tiene, se actualizan.
 
 ### 5.3 Alternativa con `onConflict` (no usar por defecto)
 
-> **No es la implementación por defecto**. Se documenta solo como referencia.
-> El índice único `idx_website_settings_org_branch` (Fase 0 §2.2) usa
-> `COALESCE(branch_id, -1)`, y el cliente JS de Supabase **no soporta**
-> `onConflict` sobre una expresión `COALESCE`. Si en el futuro se reemplaza
-> el índice por columnas simples (`organization_id, branch_id` con
-> `NULLS NOT DISTINCT` en PG 15+), esta versión pasa a ser válida:
+> **Corrección QA R7 (undefined vs null en getSettings/updateSettings)**:
+> `getSettings` con `undefined` = legacy (sin filtro `branch_id`,
+> `.limit(1).maybeSingle()`). `updateSettings` con `undefined` se normaliza a
+> `null` (global). Esta diferencia es **intencional**: `getSettings` preserva
+> backward compat (sitios legacy que no conocen el parámetro), mientras que
+> `updateSettings` siempre escribe explícitamente (`branch_id = null` para
+> global, `branch_id = X` para outlet). Nunca se debe pasar `undefined` a
+> `updateSettings` en código nuevo — siempre pasar `null` (Global) o un número
+> (outlet concreto).
+
+> **No usar** `onConflict` para multi-outlet. El upsert manual (select + insert/update)
+> de §5.2 es el enfoque correcto porque maneja el caso de settings globales vs outlet
+> de forma explícita y predecible. La alternativa con `onConflict` se muestra solo
+> como referencia de lo que **NO** hacer — el índice único
+> `idx_website_settings_org_branch` usa `COALESCE(branch_id, -1)`, y el cliente JS
+> de Supabase **no soporta** `onConflict` sobre una expresión `COALESCE`. Si en el
+> futuro se reemplaza el índice por columnas simples (`organization_id, branch_id`
+> con `NULLS NOT DISTINCT` en PG 15+), esta versión pasa a ser válida:
 
 ```typescript
   // ⚠ NO usar por defecto — ver nota arriba.
@@ -944,11 +1146,12 @@ import {
 } from '@/components/ui/select';
 import { Building2, Globe, Hotel, UtensilsCrossed, ShoppingBag, Dumbbell, Bus, ParkingCircle, Wrench } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import type { BranchType } from '@/types/branch';
 
 export interface OutletOption {
   value: number | null; // null = Global
   label: string;
-  branchType: string | null;
+  branchType: BranchType | null;
 }
 
 interface OutletSelectorProps {
@@ -1060,34 +1263,294 @@ Al cambiar el outlet (`handleOutletChange`), se recargan:
 4. Si la página actual no pertenece al outlet → cambiar a la primera página
    disponible.
 
+### 6.5 ConfirmDialog para `pendingOutletChange`
+
+> **Corrección QA**: `pendingOutletChange` (definido en §2.4) no tenía un
+> `ConfirmDialog` asociado, a diferencia de `pendingPageChange` y
+> `pendingDeleteSection`. Añadir el diálogo para que el usuario confirme antes
+> de descartar cambios sin guardar al cambiar de outlet.
+
+```tsx
+{/* Confirmar cambio de outlet con cambios sin guardar */}
+<ConfirmDialog
+  open={pendingOutletChange !== undefined}
+  onOpenChange={(open) => {
+    if (!open) setPendingOutletChange(undefined);
+  }}
+  title="Cambiar de outlet"
+  description="Tienes cambios sin guardar. Si cambias de outlet, se perderán. ¿Deseas continuar?"
+  confirmText="Cambiar outlet"
+  cancelText="Cancelar"
+  onConfirm={async () => {
+    const branchId = pendingOutletChange;
+    setPendingOutletChange(undefined);
+    if (branchId !== undefined) {
+      await doOutletChange(branchId);
+    }
+  }}
+/>
+```
+
+> El patrón es idéntico al de `pendingPageChange` y `pendingDeleteSection`:
+> `handleOutletChange` setea `pendingOutletChange` si `hasChanges` es true, y
+> el `ConfirmDialog` llama a `doOutletChange` al confirmar.
+
 ---
 
-## 7. Definition of Done
+## 7. Actualización de `handleSave`
 
-- [ ] Selector de outlet (`OutletSelector`) en el editor de branding
-- [ ] Opciones del selector: "Global" + branches con `is_web_published=true` **y `branch_type` válido**
-- [ ] Páginas se filtran por `branch_id` del outlet seleccionado (outlet + globales)
-- [ ] "Global" lista **solo** páginas globales (`branch_id IS NULL`), no todas
-- [ ] Secciones se filtran por `branch_type` del outlet en `AddSectionDialog`
-- [ ] `SECTIONS_BY_BRANCH_TYPE` cubre hotel, restaurant, retail, gym, transport, parking, services
-- [ ] "Global" muestra todas las secciones (backward compat)
-- [ ] Settings se cargan por `branch_id` (`getSettings(orgId, branchId)`)
-- [ ] Settings se guardan por `branch_id` (`updateSettings` con upsert **manual**, no `onConflict`)
-- [ ] Crear página asigna `branch_id` del outlet seleccionado
-- [ ] Crear/duplicar página valida slug único por `(organization_id, branch_id)` antes de insertar
-- [ ] `duplicatePage` tiene tope máximo de iteraciones (99) para evitar loop infinito
-- [ ] `publishedBranches` solo contiene branches con `branch_type` válido (filtrado al cargar en `loadData`)
-- [ ] `getSettings` con `branchId === undefined` usa `.limit(1).maybeSingle()` (caso legacy deprecado)
-- [ ] `addSection` propaga `branch_id` de la página a la sección
-- [ ] Validación de `branch_type` obligatorio al publicar un outlet (`is_web_published=true`)
-- [ ] Advertencia visible al editar página global desde un outlet
-- [ ] Indicador visual del outlet activo en el `EditorHeader`
+> **Corrección QA (crítico)**: el `handleSave` del editor seguía llamando a
+> `websiteSettingsService.updateTheme(organizationId, ...)` **sin**
+> `selectedBranchId`, lo que hace que los cambios se guarden siempre en la
+> settings global (`branch_id IS NULL`) en vez de en el outlet seleccionado.
+> Todos los métodos de guardado deben recibir `selectedBranchId` como último
+> parámetro.
+
+### 7.1 Recomendación: alternativa simple (mantener métodos existentes)
+
+> **Corrección QA (crítico)**: existe la tentación de crear un `updateSettings`
+> genérico que reciba un payload unificado y lo enrute internamente. Sin
+> embargo, **se recomienda la alternativa simple**: mantener los métodos
+> existentes (`updateTheme`, `updateHeaderConfig`, `updateFooterConfig`,
+> `updateContent`, `updateSEO`, `togglePublish`) y añadir `selectedBranchId`
+> como **último parámetro** a cada llamada en `handleSave`.
+>
+> **Razones**:
+> - Minimiza cambios: no se refactoriza la firma ni el cuerpo de los métodos
+>   del servicio (que ya aceptan `branchId?` según §5.4).
+> - Evita introducir un `updateSettings` genérico que habría que conectar a
+>   `handleSave` reescribiendo toda la lógica de guardado.
+> - El riesgo de bug es menor: cada método ya sabe qué campos actualizar.
+>
+> Si en el futuro se quiere consolidar, se puede crear un `updateSettings`
+> genérico que internamente llame a los métodos existentes, pero **no es
+> necesario para esta fase**.
+
+### 7.2 Snippet de `handleSave` modificado
+
+```typescript
+const handleSave = async () => {
+  if (!organizationId) return;
+  setIsSaving(true);
+  try {
+    // Pasar selectedBranchId a CADA llamada de guardado
+    if (pendingSettingsUpdates.theme) {
+      await websiteSettingsService.updateTheme(
+        organizationId,
+        pendingSettingsUpdates.theme,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    if (pendingSettingsUpdates.headerConfig) {
+      await websiteSettingsService.updateHeaderConfig(
+        organizationId,
+        pendingSettingsUpdates.headerConfig,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    if (pendingSettingsUpdates.footerConfig) {
+      await websiteSettingsService.updateFooterConfig(
+        organizationId,
+        pendingSettingsUpdates.footerConfig,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    if (pendingSettingsUpdates.content) {
+      await websiteSettingsService.updateContent(
+        organizationId,
+        pendingSettingsUpdates.content,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    if (pendingSettingsUpdates.seo) {
+      await websiteSettingsService.updateSEO(
+        organizationId,
+        pendingSettingsUpdates.seo,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    if (pendingSettingsUpdates.hero) {
+      await websiteSettingsService.updateHero(
+        organizationId,
+        pendingSettingsUpdates.hero,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    if (pendingSettingsUpdates.features) {
+      await websiteSettingsService.updateFeatures(
+        organizationId,
+        pendingSettingsUpdates.features,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    if (pendingSettingsUpdates.sections) {
+      await websiteSettingsService.updateSections(
+        organizationId,
+        pendingSettingsUpdates.sections,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    if (pendingSettingsUpdates.publish !== undefined) {
+      await websiteSettingsService.togglePublish(
+        organizationId,
+        pendingSettingsUpdates.publish,
+        selectedBranchId, // ← NUEVO
+      );
+    }
+
+    // Guardar secciones pendientes (sin cambios — ya usan pageId)
+    for (const [sectionId, updates] of pendingSectionUpdates.current.entries()) {
+      await websitePageBuilderService.updateSection(sectionId, updates);
+    }
+
+    pendingSectionUpdates.current.clear();
+    pendingSettingsUpdates.current = {};
+    setHasChanges(false);
+    toast({ title: 'Cambios guardados', description: 'El branding del outlet se actualizó correctamente.' });
+  } catch (error) {
+    console.error('Error saving:', error);
+    toast({ title: 'Error', description: 'No se pudieron guardar los cambios.', variant: 'destructive' });
+  } finally {
+    setIsSaving(false);
+  }
+};
+```
+
+> **Nota**: si `selectedBranchId` es `null` (Global), los métodos del servicio
+> filtran por `branch_id IS NULL` (§5.4), lo que corresponde a los settings
+> globales de la organización — comportamiento correcto para "Global".
+
+> **Corrección QA R2 (cobertura de métodos)**: el snippet anterior cubre
+> `updateTheme`, `updateHeaderConfig`, `updateFooterConfig`, `updateContent`,
+> `updateSEO`, `togglePublish`, `updateHero`, `updateFeatures` y
+> `updateSections`. **Todos los métodos de `websiteSettingsService` que guardan
+> settings deben recibir `selectedBranchId` como último parámetro.** Revisar los
+> 17 métodos del servicio y asegurar que TODOS lo reciben. Si existe algún
+> método de guardado que no aparece en el snippet (ej. `updateAdvanced`,
+> `updateCustomCss`), añadirle `selectedBranchId` con el mismo patrón.
+
+> **Nota QA R6 (lista completa de 17 métodos)**: los 17 métodos de
+> `websiteSettingsService` son: `updateTheme`, `updateHeaderConfig`,
+> `updateFooterConfig`, `updateContent`, `updateSEO`, `togglePublish`,
+> `updateHero`, `updateFeatures`, `updateSections`, `updateAdvanced`,
+> `updateCustomCss`, `updateLayout`, `updateNavigation`,
+> `updateSocialLinks`, `updateBusinessHours`, `updateGallery`,
+> `updateTestimonials`. Todos deben recibir `selectedBranchId` como último
+> parámetro.
+
+---
+
+## 8. Actualización de tipos TypeScript
+
+> **Corrección QA (medio)**: los tipos `Branch`, `WebsitePage` y
+> `WebsitePageSection` están desactualizados: no reflejan las columnas
+> añadidas en la Fase 0 (`branch_id`, `slug`, `subdomain`, etc.). Sin
+> actualizar los tipos, el compilador de TypeScript no reconoce los campos
+> nuevos y el editor no compila.
+
+### 8.1 `src/types/branch.ts` — añadir campos web
+
+```typescript
+import type { BranchType } from '@/types/branch';
+
+export interface Branch {
+  id: number;
+  organization_id: number;
+  name: string;
+  branch_type?: BranchType | null;
+  // ... campos existentes ...
+
+  // ← NUEVOS (Fase 0 — columns para multi-outlet web)
+  slug?: string | null;
+  subdomain?: string | null;
+  custom_domain?: string | null;
+  website_logo_url?: string | null;
+  website_cover_url?: string | null;
+  is_web_published?: boolean | null;
+}
+```
+
+### 8.2 `websitePageBuilderService.ts` — añadir `branch_id` a interfaces
+
+```typescript
+export interface WebsitePage {
+  id: string;
+  organization_id: number;
+  // ... campos existentes ...
+  branch_id?: number | null; // ← NUEVO (Fase 0)
+}
+
+export interface WebsitePageSection {
+  id: string;
+  page_id: string;
+  organization_id: number;
+  // ... campos existentes ...
+  branch_id?: number | null; // ← NUEVO (Fase 0)
+}
+```
+
+### 8.3 Regenerar tipos de Supabase
+
+Después de aplicar las migraciones de la Fase 0, regenerar los tipos
+autogenerados de Supabase para que reflejen las columnas nuevas:
+
+```bash
+npx supabase gen types typescript --project-id jgmgphmzusbluqhuqihj \
+  > src/types/supabase-generated.ts
+```
+
+> **Nota**: los tipos manuales (`Branch`, `WebsitePage`,
+> `WebsitePageSection`) se mantienen como interfaces de dominio. Los tipos
+> autogenerados sirven como referencia y para validar que las columnas
+> existen en BD. Si se usa el cliente tipado de Supabase, los tipos
+> autogenerados deben estar al día.
+
+---
+
+## 9. Definition of Done
+
+- [x] Selector de outlet (`OutletSelector`) en el editor de branding
+- [x] Opciones del selector: "Global" + branches con `is_web_published=true` **y `branch_type` válido**
+- [x] Páginas se filtran por `branch_id` del outlet seleccionado (outlet + globales)
+- [x] "Global" lista **solo** páginas globales (`branch_id IS NULL`), no todas
+- [x] Secciones se filtran por `branch_type` del outlet en `AddSectionDialog`
+- [x] `SECTIONS_BY_BRANCH_TYPE` cubre hotel, restaurant, retail, gym, transport, parking, services
+- [x] "Global" muestra todas las secciones (backward compat)
+- [x] Settings se cargan por `branch_id` (`getSettings(orgId, branchId)`)
+- [x] Settings se guardan por `branch_id` (`updateSettings` con upsert **manual**, no `onConflict`)
+- [x] Crear página asigna `branch_id` del outlet seleccionado
+- [x] Crear/duplicar página valida slug único por `(organization_id, branch_id)` antes de insertar
+- [x] `duplicatePage` tiene tope máximo de iteraciones (99) para evitar loop infinito
+- [x] `publishedBranches` solo contiene branches con `branch_type` válido (filtrado al cargar en `loadData`)
+- [x] `getSettings` con `branchId === undefined` usa `.limit(1).maybeSingle()` (caso legacy deprecado)
+- [x] `addSection` propaga `branch_id` de la página a la sección
+- [x] `getPageWithSections` valida que la página pertenece a la org (y opcionalmente al outlet seleccionado)
+- [x] `updatePage` valida slug único por `(organization_id, branch_id)` antes de guardar
+- [x] `handleSave` pasa `selectedBranchId` a cada llamada (`updateTheme`, `updateHeaderConfig`, `updateFooterConfig`, `updateContent`, `updateSEO`, `togglePublish`, `updateHero`, `updateFeatures`, `updateSections`)
+- [x] Todos los métodos de `websiteSettingsService` que guardan settings reciben `selectedBranchId` como último parámetro (17 métodos)
+- [x] `selectedBranchId` se resuelve desde `currentPage.branch_id` al cargar el editor (no se asume Global)
+- [x] `ConfirmDialog` para `pendingOutletChange` (cambiar outlet con cambios sin guardar)
+- [x] Validación de `branch_type` obligatorio al publicar un outlet (`is_web_published=true`)
+- [x] Advertencia visible al editar página global desde un outlet
+- [x] Indicador visual del outlet activo en el `EditorHeader`
+- [x] Extender `ICON_MAP` con `Bus`, `Dumbbell`, `SquareParking`, `Plug` para secciones de transporte/gym/parking/servicios
+- [x] Tipos `Branch`, `WebsitePage`, `WebsitePageSection` actualizados con campos de la Fase 0
+- [x] Tipos de Supabase regenerados con `npx supabase gen types`
 - [ ] `npm run lint` + `tsc --noEmit` limpios en el ERP
-- [ ] Cero archivos `.sql` en el repo
+- [ ] Tests del plan de pruebas (§11) pasan
+- [x] Cero archivos `.sql` en el repo
 
 ---
 
-## 8. Riesgos
+## 10. Riesgos
 
 - **Página global editada desde un outlet**: si una página global
   (`branch_id = null`) se edita, afecta a todos los outlets. **Mitigación**:
@@ -1101,8 +1564,9 @@ Al cambiar el outlet (`handleOutletChange`), se recargan:
 - **`branch_type` vacío o desconocido**: si una branch tiene `branch_type =
   null` o un valor no mapeado, `getAllowedSectionTypes` retorna solo las
   universales. No rompe el editor, pero el usuario no verá secciones
-  específicas. **Mitigación**: la validación de §2.7 bloquea la publicación de
-  outlets sin `branch_type`, y la Fase 6 (BranchForm) debe marcarlo obligatorio
+  específicas. **Mitigación**: la validación de §2.7 (parte B,
+  `branchService.setWebPublished`) bloquea la publicación de outlets sin
+  `branch_type`, y la Fase 6 (BranchForm) debe marcarlo obligatorio
   cuando `is_web_published = true`.
 - **Slug duplicado al crear/duplicar página**: el slug debe ser único por
   `(organization_id, branch_id)`. El índice `idx_website_pages_org_branch_slug`
@@ -1123,3 +1587,130 @@ Al cambiar el outlet (`handleOutletChange`), se recargan:
 - **Performance**: `getPages` con `or(branch_id.eq.X,branch_id.is.null)` es
   una query simple sobre el índice `idx_website_pages_org_branch_slug`. No
   hay impacto medible con 1046 filas.
+
+---
+
+## 11. Plan de pruebas
+
+Casos de prueba que validan el comportamiento multi-outlet del editor. Deben
+pasar antes de marcar el DoD como completo (ver §9, item "Tests del plan de
+pruebas (§11) pasan").
+
+### 11.1 Editor en modo Global: cambios se guardan en fila global
+
+- **Precondición**: outlet seleccionado = "Global (organización)"
+  (`selectedBranchId = null`).
+- **Acción**: editar theme/header/footer y pulsar Guardar.
+- **Resultado esperado**: `websiteSettingsService.updateTheme(orgId, data,
+  null)` filtra por `branch_id IS NULL`. La fila global de
+  `website_settings` se actualiza. Ninguna fila de outlet se modifica.
+- **Verificación BD**: `SELECT branch_id, updated_at FROM website_settings
+  WHERE organization_id = <org> ORDER BY branch_id;` → solo la fila con
+  `branch_id IS NULL` tiene `updated_at` reciente.
+
+### 11.2 Editor en modo Outlet X: cambios se guardan en fila del outlet
+
+- **Precondición**: outlet seleccionado = "Outlet X"
+  (`selectedBranchId = X`, branch con `is_web_published = true` y
+  `branch_type` válido).
+- **Acción**: editar theme y pulsar Guardar.
+- **Resultado esperado**: `websiteSettingsService.updateTheme(orgId, data,
+  X)` filtra por `branch_id = X`. La fila del outlet X se actualiza (o se
+  crea vía upsert manual si no existía). La fila global no se modifica.
+- **Verificación BD**: `SELECT branch_id, updated_at FROM website_settings
+  WHERE organization_id = <org>;` → solo la fila con `branch_id = X` tiene
+  `updated_at` reciente.
+
+### 11.3 Cambiar de outlet con cambios pendientes → ConfirmDialog
+
+- **Precondición**: outlet = "Outlet X", `hasChanges = true` (se editó una
+  sección o settings sin guardar).
+- **Acción**: cambiar el selector a "Outlet Y".
+- **Resultado esperado**: `handleOutletChange` detecta `hasChanges` y setea
+  `pendingOutletChange = Y`. Se abre el `ConfirmDialog` (§6.5) con mensaje
+  "Tienes cambios sin guardar. Si cambias de outlet, se perderán. ¿Deseas
+  continuar?".
+- **Sub-caso A (confirmar)**: al confirmar, `doOutletChange(Y)` recarga
+  páginas y settings del outlet Y. Los cambios pendientes se descartan.
+- **Sub-caso B (cancelar)**: al cancelar, `pendingOutletChange = undefined`,
+  el selector vuelve a "Outlet X", los cambios pendientes se conservan.
+
+### 11.4 Editar página global desde outlet → warning
+
+- **Precondición**: outlet seleccionado = "Outlet X"
+  (`selectedBranchId = X`). La página actual es global
+  (`currentPage.branch_id = null`), lo cual es posible porque `getPages`
+  incluye páginas globales al listar un outlet concreto (§2.5).
+- **Resultado esperado**: el `EditorHeader` muestra la advertencia visible
+  (§6.3): "⚠ Estás editando una página global. Los cambios afectan a
+  todos los outlets de la organización."
+- **Acción**: editar una sección de la página global y guardar.
+- **Resultado esperado**: los cambios se guardan en la página global
+  (`branch_id = null`), afectando a todos los outlets. El warning debe
+  seguir visible mientras `currentPage.branch_id === null && selectedBranchId
+  !== null`.
+
+### 11.5 Duplicar página de outlet → nueva página en mismo outlet
+
+- **Precondición**: outlet = "Outlet X", página actual pertenece al outlet
+  (`currentPage.branch_id = X`).
+- **Acción**: duplicar la página (`duplicatePage(pageId)`).
+- **Resultado esperado**: la nueva página se crea con `branch_id = X` (mismo
+  outlet que la original), slug único dentro del ámbito `(org, X)` con
+  sufijo `-copy` (o `-copy-2`, `-copy-3`, etc. si ya existe).
+- **Verificación BD**: `SELECT branch_id, slug FROM website_pages WHERE id =
+  <newPageId>;` → `branch_id = X`, `slug` termina en `-copy` o variante.
+- **Edge case**: si se alcanzan 99 intentos sin slug libre, se lanza error
+  claro (§4.2.1, `MAX_DUP_ATTEMPTS`).
+
+### 11.6 Slug duplicado en mismo outlet → error
+
+- **Precondición**: outlet = "Outlet X". Ya existe una página con slug
+  `"home"` y `branch_id = X`.
+- **Acción**: crear una nueva página con slug `"home"` en el mismo outlet X.
+- **Resultado esperado**: `createPage` detecta el duplicado con el `select`
+  previo (§4.2) y lanza: `Ya existe una página con el slug "home" en el
+  ámbito del outlet X. Elige otro slug.` La página no se inserta.
+- **Verificación**: no hay nueva fila en `website_pages` con ese slug y
+  branch.
+
+### 11.7 Slug duplicado en distinto outlet → ok
+
+- **Precondición**: existe una página con slug `"home"` y `branch_id = X`
+  (Outlet X).
+- **Acción**: crear una nueva página con slug `"home"` en el Outlet Y
+  (`branch_id = Y`, `Y ≠ X`).
+- **Resultado esperado**: `createPage` no encuentra duplicado en el ámbito
+  `(org, Y)` y la página se crea correctamente. El slug `"home"` coexiste en
+  dos outlets distintos — la unicidad es por `(organization_id, branch_id)`,
+  no global.
+- **Verificación BD**: `SELECT branch_id, slug FROM website_pages WHERE
+  organization_id = <org> AND slug = 'home';` → dos filas, una con
+  `branch_id = X` y otra con `branch_id = Y`.
+
+### 11.8 selectedBranchId inicial desde currentPage.branch_id
+
+- **Precondición**: abrir el editor directamente sobre una página que
+  pertenece al Outlet X (`page.branch_id = X`) vía URL
+  `/organizacion/branding/editor/<pageId>`.
+- **Resultado esperado**: `loadData` (§2.2) carga `currentPage` primero,
+  resuelve `selectedBranchId = page.branch_id = X`, y luego carga `pages` y
+  `settings` con ese `branchId`. El selector muestra "Outlet X" seleccionado
+  al renderizar, no "Global".
+- **Sub-caso página global**: si `page.branch_id = null`, el selector
+  muestra "Global (organización)" al cargar.
+- **Verificación UI**: el `OutletSelector` refleja el outlet correcto desde
+  el primer render, sin parpadeo ni cambio asíncrono posterior.
+
+### 11.9 Editor en modo legacy (branchId undefined)
+
+- **Precondición**: una llamada interna o legacy invoca
+  `getSettings(organizationId)` sin pasar `branchId` (es `undefined`).
+- **Acción**: cargar el editor sin resolver el outlet (caso deprecado pero
+  funcional).
+- **Resultado esperado**: `getSettings` usa `.limit(1).maybeSingle()` sin
+  filtro `branch_id` — comportamiento deprecado pero funcional. Devuelve la
+  primera fila de `website_settings` de la org (puede ser global o de un
+  outlet). No lanza `PGRST116`. **Recomendación**: deprecar este caso y
+  siempre pasar `null` explícito para Global, o el `branchId` concreto del
+  outlet.

@@ -46,9 +46,11 @@ import { MenuGroupManager } from './editor';
 interface BrandingPagesTabProps {
   organizationId: number;
   typeId?: number;
+  /** F4 R2 — outlet seleccionado (null = global). Si se pasa, las páginas se crean con branch_id. */
+  branchId?: number | null;
 }
 
-export default function BrandingPagesTab({ organizationId, typeId }: BrandingPagesTabProps) {
+export default function BrandingPagesTab({ organizationId, typeId, branchId }: BrandingPagesTabProps) {
   const router = useRouter();
   const t = useTranslations('branding.pages');
   const tm = useTranslations('branding.menus');
@@ -68,12 +70,14 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
   useEffect(() => {
     loadPages();
     loadMenus();
-  }, [organizationId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, branchId]);
 
   const loadPages = async () => {
     try {
       setIsLoading(true);
-      const data = await websitePageBuilderService.getPages(organizationId);
+      // F4 R3 — Filtrar páginas por ámbito (outlet o global)
+      const data = await websitePageBuilderService.getPages(organizationId, branchId ?? null);
       setPages(data);
     } catch (error) {
       console.error('Error loading pages:', error);
@@ -85,7 +89,8 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
   const handleSeedDefaultPages = async () => {
     setIsSeeding(true);
     try {
-      await websitePageBuilderService.seedDefaultPages(organizationId, typeId);
+      // F4 R3 — Pasar branchId para crear páginas en el ámbito correcto
+      await websitePageBuilderService.seedDefaultPages(organizationId, typeId, branchId ?? null);
       await loadPages();
     } catch (error) {
       console.error('Error seeding default pages:', error);
@@ -101,7 +106,11 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
     try {
       const showInHeader = newPageLocation === 'header' || newPageLocation === 'both';
       const showInFooter = newPageLocation === 'footer' || newPageLocation === 'both';
-      const footerCount = pages.filter(p => p.show_in_footer).length;
+      // F4 R3 — Filtrar header_order/footer_order por ámbito (solo páginas del mismo branch_id)
+      // F4 R4 (Issue 3) — Usar p.branch_id directamente (WebsitePage ya lo tipa).
+      const scopedBranchId = typeof branchId === 'number' ? branchId : null;
+      const scopedPages = pages.filter(p => p.branch_id === scopedBranchId);
+      const footerCount = scopedPages.filter(p => p.show_in_footer).length;
 
       await websitePageBuilderService.createPage({
         organization_id: organizationId,
@@ -109,8 +118,11 @@ export default function BrandingPagesTab({ organizationId, typeId }: BrandingPag
         slug: newPageSlug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
         show_in_header: showInHeader,
         show_in_footer: showInFooter,
-        header_order: showInHeader ? pages.filter(p => p.show_in_header).length : 0,
+        header_order: showInHeader ? scopedPages.filter(p => p.show_in_header).length : 0,
         footer_order: showInFooter ? footerCount : 0,
+        // F4 R2 — asignar branch_id si hay outlet seleccionado
+        // F4 R4 (Issue 3) — Sin `as any`: createPage acepta branch_id opcional.
+        ...(typeof branchId === 'number' ? { branch_id: branchId } : {}),
       });
       setShowCreateDialog(false);
       setNewPageTitle('');

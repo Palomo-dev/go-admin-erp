@@ -21,7 +21,7 @@ interface AddCustomDomainDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   organizationId: number;
-  onDomainAdded: () => void;
+  onDomainAdded: (domain?: string) => void;
 }
 
 export function AddCustomDomainDialog({
@@ -130,7 +130,7 @@ export function AddCustomDomainDialog({
 
       if (insertError) throw insertError;
 
-      onDomainAdded();
+      onDomainAdded(domain);
       handleClose();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : t('errorSaving');

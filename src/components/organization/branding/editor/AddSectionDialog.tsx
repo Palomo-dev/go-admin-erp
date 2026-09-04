@@ -32,6 +32,35 @@ import {
   UtensilsCrossed,
   CreditCard,
   Layout,
+  Bus,
+  Dumbbell,
+  SquareParking,
+  Plug,
+  Route,
+  Truck,
+  CalendarDays,
+  Gauge,
+  LayoutGrid,
+  ListChecks,
+  MonitorPlay,
+  Table,
+  // F4 R3 — iconos adicionales para secciones nuevas
+  Flame,
+  Megaphone,
+  Award,
+  Bike,
+  Handshake,
+  BadgeCheck,
+  TrendingUp,
+  Map,
+  ClipboardList,
+  ChefHat,
+  Shield,
+  List,
+  FolderOpen,
+  Filter,
+  FolderTree,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
@@ -60,6 +89,55 @@ const ICON_MAP: Record<string, any> = {
   LayoutPanelLeft,
   UtensilsCrossed,
   CreditCard,
+  // Fase 4 — iconos para branch_type nuevos (transport, gym, parking, services)
+  Route,
+  Truck,
+  Dumbbell,
+  SquareParking,
+  Plug,
+  CalendarDays,
+  Gauge,
+  LayoutGrid,
+  ListChecks,
+  MonitorPlay,
+  Table,
+  routes: Bus,
+  fleet_showcase: Bus,
+  trip_search: Bus,
+  booking_transport: Bus,
+  coverage_map: Bus,
+  membership_plans: Dumbbell,
+  class_schedule: Dumbbell,
+  trainers: Dumbbell,
+  gym_features: Dumbbell,
+  transformation: Dumbbell,
+  parking_zones: SquareParking,
+  parking_pricing: SquareParking,
+  parking_pass_plans: SquareParking,
+  parking_features: SquareParking,
+  parking_availability: SquareParking,
+  features_grid: Plug,
+  how_it_works: Plug,
+  pricing_table: Plug,
+  demo_cta: Plug,
+  integrations: Plug,
+  // F4 R3 — iconos adicionales para secciones nuevas
+  Flame,
+  Megaphone,
+  Award,
+  Bike,
+  Handshake,
+  BadgeCheck,
+  TrendingUp,
+  Map,
+  ClipboardList,
+  ChefHat,
+  Shield,
+  List,
+  FolderOpen,
+  Filter,
+  FolderTree,
+  FileText,
 };
 
 interface AddSectionDialogProps {
@@ -67,6 +145,8 @@ interface AddSectionDialogProps {
   onOpenChange: (open: boolean) => void;
   onAdd: (sectionType: string, sectionVariant: string) => void;
   existingSectionTypes: string[];
+  /** null = todas las secciones (Global). string[] = solo esas. */
+  allowedSectionTypes?: string[] | null;
 }
 
 export default function AddSectionDialog({
@@ -74,17 +154,22 @@ export default function AddSectionDialog({
   onOpenChange,
   onAdd,
   existingSectionTypes,
+  allowedSectionTypes,
 }: AddSectionDialogProps) {
   const t = useTranslations('branding.editor.addSection');
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<SectionTypeDefinition | null>(null);
 
-  const filtered = SECTION_CATALOG.filter(
-    (s) =>
+  const filtered = SECTION_CATALOG.filter((s) => {
+    // Filtro por branch_type (Fase 4 §3.2)
+    if (allowedSectionTypes && !allowedSectionTypes.includes(s.type)) return false;
+    // Filtro por búsqueda
+    return (
       s.label.toLowerCase().includes(search.toLowerCase()) ||
       s.type.toLowerCase().includes(search.toLowerCase()) ||
       s.description.toLowerCase().includes(search.toLowerCase())
-  );
+    );
+  });
 
   const handleSelectType = (def: SectionTypeDefinition) => {
     if (def.variants.length === 1) {

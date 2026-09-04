@@ -34,6 +34,8 @@ export default function Etiquetas({ formData, updateFormData }: EtiquetasProps) 
   const [newTagName, setNewTagName] = useState('')
   const [newTagColor, setNewTagColor] = useState('#6366f1')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showAllTags, setShowAllTags] = useState(false)
+  const TAG_PREVIEW_COUNT = 20
 
   const predefinedColors = [
     '#6366f1', // Indigo
@@ -224,7 +226,9 @@ export default function Etiquetas({ formData, updateFormData }: EtiquetasProps) 
                   Etiquetas Disponibles ({filteredTags.length})
                 </Label>
                 <div className="flex flex-wrap gap-2">
-                  {filteredTags.map((tag) => (
+                  {filteredTags
+                    .slice(0, showAllTags ? undefined : TAG_PREVIEW_COUNT)
+                    .map((tag) => (
                     <Badge
                       key={tag.id}
                       onClick={() => toggleTag(tag.id)}
@@ -241,6 +245,17 @@ export default function Etiquetas({ formData, updateFormData }: EtiquetasProps) 
                       )}
                     </Badge>
                   ))}
+                  {filteredTags.length > TAG_PREVIEW_COUNT && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllTags(prev => !prev)}
+                      className="px-3 py-1.5 rounded-full text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                    >
+                      {showAllTags
+                        ? 'Ver menos'
+                        : `Ver más (${filteredTags.length - TAG_PREVIEW_COUNT} etiquetas)`}
+                    </button>
+                  )}
                 </div>
               </div>
 

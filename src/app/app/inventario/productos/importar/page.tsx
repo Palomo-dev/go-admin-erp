@@ -423,6 +423,156 @@ export default function ImportarProductosPage() {
   };
 
   /**
+   * Detecta si el archivo tiene el formato "Sistema/Vivor":
+   * 3 columnas (Nombre | Valor Compra | Valor Venta), sin SKU, sin columna
+   * de categoría explícita. Las categorías son filas separadoras de 1 sola
+   * columna (ej: "SUPLEMENTOS", "VITAMINAS", "BEBIDAS") que rigen hasta la
+   * siguiente separadora.
+   *
+   * Encabezado típico (fila 0): ["SUPLEMENTOS", "VALOR COMPRA", "VALOR VENTA"]
+   * Retorna la fila de encabezado o -1 si no coincide.
+   */
+  const detectSistemaFormat = (rawData: Array<Array<string | number | null>>): number => {
+    for (let i = 0; i < Math.min(10, rawData.length); i++) {
+      const row = rawData[i];
+      if (!row) continue;
+      const cells = row.map(c => String(c || '').toLowerCase().trim());
+      // Necesita al menos 3 columnas
+      if (row.length < 3) continue;
+      const hasCompra = cells.some(c => c.includes('compra'));
+      const hasVenta = cells.some(c => c.includes('venta'));
+      // La primera celda NO debe ser 'código'/'sku'/'producto'/'nombre'
+      // (es el nombre de la primera sección, ej: "SUPLEMENTOS")
+      const first = cells[0];
+      const isGenericHeader = ['código', 'codigo', 'sku', 'producto', 'nombre', 'name', 'tipo', 'type']
+        .includes(first);
+      if (hasCompra && hasVenta && !isGenericHeader) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  /**
+   * Normaliza un valor numérico del archivo Sistema/Vivor.
+   * - Coma = separador de miles (se elimina): "1,191" → 1191
+   * - Punto = separador decimal (se mantiene): "143.5" → 143.5
+   * Retorna undefined si no es un número válido.
+   */
+  const parseSistemaNumber = (val: string | number | null | undefined): number | undefined => {
+    if (val === null || val === undefined || val === '') return undefined;
+    const s = String(val).trim().replace(/,/g, '');
+    const n = Number(s);
+    return isNaN(n) ? undefined : n;
+  };
+
+  /**
+   * Parsea archivo con formato "Sistema/Vivor".
+   * - Autogenera SKUs con prefijo VE- + slug del nombre
+   * - Asigna la categoría vigente (última fila separadora de 1 columna vista)
+   * - Mapea Valor Compra → cost, Valor Venta → price
+   * - Si cost > price (presunto error de tipeo) → intercambia los valores y
+   *   deja un warning en la fila para revisión posterior
+   * - Omite secciones vacías (separadoras sin productos debajo)
+   * - Omite filas vacías
+   */
+  const parseSistemaFormat = (rawData: Array<Array<string | number | null>>, headerRow: number): ImportRow[] => {
+    const rows: ImportRow[] = [];
+    const seenSkus = new Set<string>();
+
+    // Generar SKU único con prefijo VE-
+    const generateSku = (name: string, rowNum: number): string => {
+      let baseSku = `VE-${slugify(name).substring(0, 40)}`;
+      if (!baseSku || baseSku === 'VE-') {
+        baseSku = `VE-${String(rowNum).padStart(3, '0')}`;
+      }
+      let sku = baseSku;
+      let suffix = 1;
+      while (seenSkus.has(sku)) {
+        suffix++;
+        sku = `${baseSku}-${suffix}`;
+      }
+      seenSkus.add(sku);
+      return sku;
+    };
+
+    // La primera categoría vigente es el encabezado mismo (col 0 del headerRow)
+    let currentCategory: string | undefined = String(rawData[headerRow][0] || '').trim() || undefined;
+
+    let swappedCount = 0;
+
+    for (let i = headerRow + 1; i < rawData.length; i++) {
+      const row = rawData[i];
+      if (!row) continue;
+
+      // Contar celdas no vacías
+      const nonEmpty = row.filter(c => c !== null && c !== undefined && String(c).trim() !== '');
+      if (nonEmpty.length === 0) continue; // fila vacía → skip
+
+      // Fila separadora de sección: 1 sola celda con contenido → actualiza categoría
+      if (nonEmpty.length === 1) {
+        const sectionName = String(nonEmpty[0]).trim();
+        if (sectionName) currentCategory = sectionName;
+        continue;
+      }
+
+      // Fila de producto: 2-3 columnas (nombre, [compra], venta)
+      const name = String(row[0] || '').trim();
+      if (!name) continue;
+
+      const rawCost = parseSistemaNumber(row[1]);
+      const rawPrice = parseSistemaNumber(row[2]);
+
+      // Si solo hay 2 columnas, la 2da podría ser precio (compra ausente)
+      let cost = rawCost;
+      let price = rawPrice;
+      if (rawPrice === undefined && rawCost !== undefined && row[2] === undefined) {
+        // Caso: [nombre, precio] sin columna de compra → precio en col 1
+        price = rawCost;
+        cost = undefined;
+      }
+
+      // Intercambiar si costo > precio (presunto error de tipeo)
+      const warnings: string[] = [];
+      if (cost !== undefined && price !== undefined && cost > price) {
+        const tmp = cost;
+        cost = price;
+        price = tmp;
+        warnings.push(`Costo > precio intercambiados automáticamente (revisar)`);
+        swappedCount++;
+      }
+
+      const sku = generateSku(name, i + 1);
+
+      rows.push({
+        row: i + 1,
+        sku,
+        name,
+        type: 'Producto',
+        category: currentCategory || undefined,
+        unit: 'Unidad',
+        cost,
+        price,
+        stock: 0,
+        status: 'pending',
+        warnings: warnings.length > 0 ? warnings : undefined,
+      });
+    }
+
+    // Ordenar por fila original para preview ordenado
+    rows.sort((a, b) => a.row - b.row);
+
+    if (swappedCount > 0) {
+      toast({
+        title: 'Costo > precio detectado',
+        description: `Se intercambiaron automáticamente ${swappedCount} productos donde el costo era mayor al precio de venta. Revisa las advertencias en la preview.`,
+      });
+    }
+
+    return rows;
+  };
+
+  /**
    * Parsea archivo XLSX/CSV de "Gestión de productos y servicios" (Siigo)
    * Columnas: Tipo, Código, Nombre, Unidad, Precios, Impuestos, Stock, Estado
    * Header en fila 4 (0-indexed), datos desde fila 5
@@ -433,6 +583,31 @@ export default function ImportarProductosPage() {
       const wb = XLSX.read(buffer, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rawData: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+      // Detectar formato "Sistema/Vivor" (Nombre | Valor Compra | Valor Venta,
+      // sin SKU, con secciones como filas separadoras de 1 columna)
+      const sistemaHeaderRow = detectSistemaFormat(rawData);
+      if (sistemaHeaderRow !== -1) {
+        const rows = parseSistemaFormat(rawData, sistemaHeaderRow);
+        if (rows.length === 0) {
+          toast({
+            title: 'Sin datos',
+            description: 'No se encontraron productos válidos en el archivo',
+            variant: 'destructive',
+          });
+          return;
+        }
+        const categoryCount = new Set(rows.map(r => r.category).filter(Boolean)).size;
+        const swappedCount = rows.filter(r => r.warnings && r.warnings.some(w => w.includes('intercambiados'))).length;
+        setPreviewData(rows);
+        setStats({ total: rows.length, success: 0, errors: 0, pending: rows.length });
+        toast({
+          title: 'Formato Sistema/Vivor detectado',
+          description: `${rows.length} productos cargados en ${categoryCount} categorías${swappedCount > 0 ? `, ${swappedCount} con costo/precio intercambiados (revisar advertencias)` : ''}. SKUs autogenerados con prefijo VE-.`,
+        });
+        setStep('preview');
+        return;
+      }
 
       // Detectar formato "Space" (listado simple sin SKU, con promo 2x)
       const spaceHeaderRow = detectSpaceFormat(rawData);

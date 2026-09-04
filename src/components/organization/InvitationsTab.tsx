@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 import { InvitationsSkeleton } from './OrganizationSkeletons';
@@ -28,6 +29,7 @@ interface InvitationProps {
   job_position_name: string;
   created_at: string;
   expires_at: string | null;
+  expires_at_raw: string | null;
   used: boolean;
   revoked: boolean;
   status?: 'pending' | 'used' | 'revoked';
@@ -49,6 +51,8 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [branchId, setBranchId] = useState<string>('');
   const [jobPositionId, setJobPositionId] = useState<string>('');
   const [sendingInvitation, setSendingInvitation] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   // Límite de usuarios del plan
   const [maxUsers, setMaxUsers] = useState<number | null>(null);
@@ -74,6 +78,12 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       fetchJobPositions();
     }
   }, [orgId]);
+
+  // Reloj para recalcular estados de expiración sin recargar la página
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchBranches = async () => {
     try {
@@ -203,6 +213,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           job_position_name: invite.job_position_id ? (positionMap[invite.job_position_id] || '-') : '-',
           created_at: new Date(invite.created_at).toLocaleDateString(),
           expires_at: invite.expires_at ? new Date(invite.expires_at).toLocaleDateString() : t('noExpires'),
+          expires_at_raw: invite.expires_at ?? null,
           status: invite.status,
           used: invite.status === 'used',
           revoked: invite.status === 'revoked'
@@ -454,7 +465,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   // Resend invitation
   const resendInvitation = async (id: string, email: string) => {
     try {
-      setLoading(true);
+      setResendingId(id);
       
       // Set a new expiration date (30 days from now)
       const expiresAt = new Date();
@@ -528,7 +539,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       console.error('Error al reenviar invitación:', err);
       setError(err.message || t('errorResending'));
     } finally {
-      setLoading(false);
+      setResendingId(null);
     }
   };
   const getStatusBadge = (invitation: InvitationProps) => {
@@ -544,7 +555,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
           {t('statusAccepted')}
         </span>
       );
-    } else if (new Date(invitation.expires_at || '') < new Date()) {
+    } else if (invitation.expires_at_raw && new Date(invitation.expires_at_raw).getTime() < now) {
       return (
         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
           {t('statusExpired')}
@@ -1031,9 +1042,17 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                         <>
                           <button
                             onClick={() => resendInvitation(invitation.id, invitation.email)}
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-4"
+                            disabled={resendingId === invitation.id}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-4 inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {t('resend')}
+                            {resendingId === invitation.id ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                {t('resending')}
+                              </>
+                            ) : (
+                              t('resend')
+                            )}
                           </button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>

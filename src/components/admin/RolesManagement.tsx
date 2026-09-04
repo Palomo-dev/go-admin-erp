@@ -18,6 +18,7 @@ import {
   Unlock
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import PermissionsMatrix from './PermissionsMatrix';
 import { RolesListSkeleton } from './RolesSkeleton';
 
@@ -42,6 +43,7 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleWithPermissions | null>(null);
   const [selectedRole, setSelectedRole] = useState<RoleWithPermissions | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<RoleWithPermissions | null>(null);
 
   // Filtrar roles según búsqueda y filtros
   const filteredRoles = roles.filter(role => {
@@ -80,9 +82,13 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
       return;
     }
 
-    if (window.confirm(`¿Estás seguro de eliminar el rol "${role.name}"?`)) {
-      await deleteRole(role.id);
-    }
+    setRoleToDelete(role);
+  };
+
+  const confirmDeleteRole = async () => {
+    if (!roleToDelete) return;
+    await deleteRole(roleToDelete.id);
+    setRoleToDelete(null);
   };
 
   const handleCloneRole = async (role: RoleWithPermissions) => {
@@ -232,6 +238,17 @@ export default function RolesManagement({ organizationId }: RolesManagementProps
           onPermissionsUpdated={refreshRoles}
         />
       )}
+
+      {/* Confirmación de eliminación (reemplaza window.confirm) */}
+      <ConfirmDialog
+        open={roleToDelete !== null}
+        onOpenChange={(open) => !open && setRoleToDelete(null)}
+        title="Eliminar rol"
+        description={`¿Estás seguro de eliminar el rol "${roleToDelete?.name}"?`}
+        confirmLabel="Eliminar"
+        variant="destructive"
+        onConfirm={confirmDeleteRole}
+      />
     </div>
   );
 }

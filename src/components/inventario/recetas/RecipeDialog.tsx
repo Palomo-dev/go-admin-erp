@@ -129,7 +129,7 @@ export function RecipeDialog({
     setFormData((prev) => ({
       ...prev,
       product_id: product ? product.id.toString() : '',
-      yield_unit_code: product?.unit_code ?? prev.yield_unit_code,
+      yield_unit_code: product?.unit_code ?? (prev.yield_unit_code || 'UN  '),
     }));
   };
 
@@ -164,7 +164,7 @@ export function RecipeDialog({
           ? {
               ...ing,
               ingredient_product_id: product ? product.id : 0,
-              unit_code: product?.unit_code ?? ing.unit_code,
+              unit_code: product?.unit_code ?? (ing.unit_code || 'UN  '),
             }
           : ing
       )
@@ -182,9 +182,15 @@ export function RecipeDialog({
       return;
     }
 
-    const invalidIngredient = ingredients.find((ing) => ing.ingredient_product_id === 0 || ing.quantity <= 0);
+    const invalidIngredient = ingredients.find(
+      (ing) => ing.ingredient_product_id === 0 || ing.quantity <= 0 || !ing.unit_code
+    );
     if (invalidIngredient) {
-      toast({ title: 'Error', description: 'Todos los ingredientes deben tener producto y cantidad', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Todos los ingredientes deben tener producto, cantidad y unidad',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -297,7 +303,7 @@ export function RecipeDialog({
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
                   {units.map((unit) => (
                     <SelectItem key={unit.code} value={unit.code}>
-                      {unit.code} - {unit.name}
+                      {unit.code.trim()} - {unit.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -452,7 +458,7 @@ function IngredientRowCard({
               <SelectContent className="dark:bg-gray-800 dark:border-gray-600">
                 {units.map((unit) => (
                   <SelectItem key={unit.code} value={unit.code} className="text-sm">
-                    {unit.code}
+                    {unit.code.trim()} - {unit.name}
                   </SelectItem>
                 ))}
               </SelectContent>

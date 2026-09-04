@@ -38,6 +38,7 @@ import { pmService, type Project, type PMTask } from '@/lib/services/pmService';
 import { RelatedTasksList } from '@/components/pm/RelatedTasksList';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { cn } from '@/utils/Utils';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface MemberItem {
   userId: string;
@@ -92,6 +93,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
   const [form, setForm] = useState(INITIAL_FORM);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [distributing, setDistributing] = useState(false);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [showMembers, setShowMembers] = useState(false);
@@ -138,9 +140,13 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
     }
   }, [editProject, users, resetForm]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!editProject) return;
-    if (!window.confirm(`¿Eliminar el proyecto "${editProject.name}"? Esta acción no se puede deshacer.`)) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!editProject) return;
     setDeleting(true);
     try {
       await pmService.deleteProject(editProject.id);
@@ -152,6 +158,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
       toast({ title: 'Error al eliminar', description: error.message, variant: 'destructive' });
     } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -554,6 +561,7 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
   );
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); onClose(); } }}>
       <SheetContent
         side="right"
@@ -565,5 +573,18 @@ export default function ProjectCreationPanel({ isOpen, onClose, users, onProject
         {renderContent()}
       </SheetContent>
     </Sheet>
+
+    {/* Confirmación de eliminación (reemplaza window.confirm) */}
+    <ConfirmDialog
+      open={showDeleteConfirm}
+      onOpenChange={setShowDeleteConfirm}
+      title="Eliminar proyecto"
+      description={`¿Eliminar el proyecto "${editProject?.name}"? Esta acción no se puede deshacer.`}
+      confirmLabel="Eliminar"
+      variant="destructive"
+      loading={deleting}
+      onConfirm={confirmDelete}
+    />
+    </>
   );
 }

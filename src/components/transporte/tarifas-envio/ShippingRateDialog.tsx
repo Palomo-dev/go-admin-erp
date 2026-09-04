@@ -82,6 +82,7 @@ const initialFormData: Partial<CreateShippingRateData> & { show_on_website?: boo
   show_on_website: true,
   show_on_pos: false,
   free_shipping_threshold: 0,
+  estimated_transit_days: null,
 };
 
 export function ShippingRateDialog({
@@ -122,6 +123,7 @@ export function ShippingRateDialog({
         show_on_website: rate.show_on_website !== false,
         show_on_pos: rate.show_on_pos !== false,
         free_shipping_threshold: rate.free_shipping_threshold || 0,
+        estimated_transit_days: (rate as any).estimated_transit_days ?? null,
       });
     } else {
       setFormData(initialFormData);
@@ -339,6 +341,20 @@ export function ShippingRateDialog({
               </div>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Deja los campos vacíos para aplicar a cualquier origen/destino.</p>
+            <div className="space-y-2 pt-2">
+              <Label htmlFor="estimated_transit_days">Días estimados de tránsito</Label>
+              <Input
+                id="estimated_transit_days"
+                type="number"
+                min={0}
+                value={(formData as any).estimated_transit_days ?? ''}
+                onChange={(e) => handleChange('estimated_transit_days' as any, e.target.value ? parseInt(e.target.value, 10) : null)}
+                placeholder="Ej: 3 (dejar vacío = sin estimación)"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Días que toma la entrega desde el despacho. Usado para calcular la fecha estimada de entrega en pedidos web de retail.
+              </p>
+            </div>
           </div>
 
           {/* Sección: Vigencia */}

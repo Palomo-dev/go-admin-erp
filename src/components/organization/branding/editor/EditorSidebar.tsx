@@ -46,6 +46,15 @@ import {
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import type {
   WebsitePageSection,
   SectionTypeDefinition,
@@ -521,6 +530,9 @@ function SectionListItem({
 
   // Diálogo de confirmación para aplicar estilo a todas las secciones
   const [showApplyAllConfirm, setShowApplyAllConfirm] = useState(false);
+  // Diálogo para pedir nombre de plantilla (reemplaza window.prompt)
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
+  const [presetName, setPresetName] = useState('');
 
   // Agrupar campos por `field.group` respetando el orden de GROUP_ORDER.
   const fields = definition?.contentFields || [];
@@ -729,8 +741,8 @@ function SectionListItem({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const name = window.prompt('Nombre de la plantilla:');
-                  if (name) onSaveAsPreset(name);
+                  setPresetName('');
+                  setShowPresetDialog(true);
                 }}
                 className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
                 title="Guardar como plantilla"
@@ -760,6 +772,46 @@ function SectionListItem({
         confirmLabel="Aplicar a todas"
         onConfirm={() => { onApplyStyleToAll?.(); }}
       />
+
+      {/* Diálogo para nombre de plantilla (reemplaza window.prompt) */}
+      <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Guardar como plantilla</DialogTitle>
+            <DialogDescription>Ingresa un nombre para esta plantilla de sección.</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              placeholder="Nombre de la plantilla"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && presetName.trim()) {
+                  onSaveAsPreset?.(presetName.trim());
+                  setShowPresetDialog(false);
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPresetDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (presetName.trim()) {
+                  onSaveAsPreset?.(presetName.trim());
+                  setShowPresetDialog(false);
+                }
+              }}
+              disabled={!presetName.trim()}
+            >
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

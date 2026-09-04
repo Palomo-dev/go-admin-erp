@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
 import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
@@ -48,6 +48,9 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   const router = useRouter();
   const { toast } = useToast();
   const organizationId = getOrganizationId();
+  const { organization } = useOrganization();
+  const orgTypeId = organization?.type_id ?? 3;
+  const isRetail = orgTypeId === 3;
 
   const [order, setOrder] = useState<WebOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,8 +61,12 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [assignDeliveryOpen, setAssignDeliveryOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [prepTime, setPrepTime] = useState<EstimatedTime>({ value: 30, unit: 'minutes' });
-  const [transitTime, setTransitTime] = useState<EstimatedTime>({ value: 30, unit: 'minutes' });
+  const [prepTime, setPrepTime] = useState<EstimatedTime>(
+    isRetail ? { value: 1, unit: 'days' } : { value: 30, unit: 'minutes' }
+  );
+  const [transitTime, setTransitTime] = useState<EstimatedTime>(
+    isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' }
+  );
   const [markAsPaid, setMarkAsPaid] = useState(false);
 
   const loadOrder = useCallback(async () => {
@@ -205,8 +212,14 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   const handleStartDelivery = async () => {
     setActionLoading(true);
     try {
-      const estimatedDeliveryAt = new Date(Date.now() + 30 * 60000).toISOString();
-      await updateOrderStatus('in_delivery', { estimated_delivery_at: estimatedDeliveryAt });
+      // Para retail, el tiempo de entrega se calcula en días, no minutos.
+      // Usar el estimated_delivery_at que ya se calculó al confirmar el pedido.
+      // Si no existe, dejar que el ERP lo calcule después (no hardcodear 30 min).
+      const extraData: Record<string, any> = {};
+      if (order?.estimated_delivery_at) {
+        extraData.estimated_delivery_at = order.estimated_delivery_at;
+      }
+      await updateOrderStatus('in_delivery', extraData);
       toast({ title: 'Pedido en camino' });
       loadOrder();
     } catch (error) {

@@ -1,7 +1,17 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Bold, Italic, Link as LinkIcon } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { BaseFieldProps } from './types';
 
 /**
@@ -16,6 +26,9 @@ import type { BaseFieldProps } from './types';
  */
 export default function RichTextField({ field, value, onChange }: BaseFieldProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('https://');
+  const [pendingSelection, setPendingSelection] = useState<{ start: number; end: number } | null>(null);
 
   const wrapSelection = (openTag: string, closeTag: string) => {
     const el = textareaRef.current;
@@ -40,15 +53,20 @@ export default function RichTextField({ field, value, onChange }: BaseFieldProps
   const handleLink = () => {
     const el = textareaRef.current;
     if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
+    setPendingSelection({ start: el.selectionStart, end: el.selectionEnd });
+    setLinkUrl('https://');
+    setShowLinkDialog(true);
+  };
+
+  const confirmLink = () => {
+    if (!pendingSelection || !linkUrl.trim()) return;
     const current = typeof value === 'string' ? value : '';
-    const selected = current.slice(start, end);
-    const url = window.prompt('URL del enlace:', 'https://');
-    if (!url) return;
-    const tag = `<a href="${url}">${selected || url}</a>`;
-    const newValue = current.slice(0, start) + tag + current.slice(end);
+    const selected = current.slice(pendingSelection.start, pendingSelection.end);
+    const tag = `<a href="${linkUrl.trim()}">${selected || linkUrl.trim()}</a>`;
+    const newValue = current.slice(0, pendingSelection.start) + tag + current.slice(pendingSelection.end);
     onChange(newValue);
+    setShowLinkDialog(false);
+    setPendingSelection(null);
   };
 
   const text = typeof value === 'string' ? value : '';
@@ -98,6 +116,35 @@ export default function RichTextField({ field, value, onChange }: BaseFieldProps
       {field.helpText && (
         <p className="text-[10px] text-gray-400 dark:text-gray-500">{field.helpText}</p>
       )}
+
+      {/* Diálogo para URL del enlace (reemplaza window.prompt) */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Insertar enlace</DialogTitle>
+            <DialogDescription>Ingresa la URL del enlace.</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="https://"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmLink();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLinkDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmLink} disabled={!linkUrl.trim()}>
+              Insertar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -33,6 +33,7 @@ import { RelatedTasksList } from '@/components/pm/RelatedTasksList';
 import { KeyResultTasks } from '@/components/pm/KeyResultTasks';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { cn } from '@/utils/Utils';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface KRItem {
   id: string;
@@ -82,6 +83,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
   const [form, setForm] = useState(INITIAL_FORM);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [keyResults, setKeyResults] = useState<KRItem[]>([]);
   const [showKeyResults, setShowKeyResults] = useState(false);
   const [newKR, setNewKR] = useState('');
@@ -143,9 +145,13 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
     }
   }, [editGoal, resetForm]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!editGoal) return;
-    if (!window.confirm(`¿Eliminar "${editGoal.title}"? Esta acción no se puede deshacer.`)) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!editGoal) return;
     setDeleting(true);
     try {
       await pmService.deleteGoal(editGoal.id);
@@ -157,6 +163,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
       toast({ title: 'Error al eliminar', description: error.message, variant: 'destructive' });
     } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -600,6 +607,7 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
   );
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); onClose(); } }}>
       <SheetContent
         side="right"
@@ -611,5 +619,18 @@ export default function GoalCreationPanel({ isOpen, onClose, projects, users, on
         {renderContent()}
       </SheetContent>
     </Sheet>
+
+    {/* Confirmación de eliminación (reemplaza window.confirm) */}
+    <ConfirmDialog
+      open={showDeleteConfirm}
+      onOpenChange={setShowDeleteConfirm}
+      title="Eliminar meta"
+      description={`¿Eliminar "${editGoal?.title}"? Esta acción no se puede deshacer.`}
+      confirmLabel="Eliminar"
+      variant="destructive"
+      loading={deleting}
+      onConfirm={confirmDelete}
+    />
+    </>
   );
 }

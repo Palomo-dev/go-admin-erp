@@ -775,6 +775,6 @@ export const config = {
      * - api/stripe (Stripe API endpoints - handle their own auth)
      * - api/sessions (Session API endpoints - handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/web-orders).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/test|api/stripe|api/sessions|api/integrations/twilio|api/super-admin-access|api/super-admin-cleanup|api/factus|api/facebook-feed|api/cron|api/web-orders|api/auth).*)',
   ],
 };

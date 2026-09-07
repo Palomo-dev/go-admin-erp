@@ -239,6 +239,14 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
           }),
         });
 
+        // Verificar que la respuesta sea JSON, no HTML (puede pasar si
+        // el middleware redirige o si la ruta no existe en el deploy)
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          console.error('❌ Respuesta no es JSON:', res.status, contentType);
+          throw new Error('Error del servidor. Intenta recargar la página.');
+        }
+
         const result = await res.json();
 
         if (!res.ok || result.error) {

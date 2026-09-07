@@ -72,51 +72,60 @@ export async function GET(request: NextRequest) {
   // a ~4096 bytes. Si la sesión es grande (ej. user_metadata con signup_data),
   // una sola cookie excede el límite y el navegador la descarta silenciosamente.
   // El cliente (config.ts) ya lee cookies chunked (name.0, name.1, ...).
+  //
+  // IMPORTANTE: Next.js ResponseCookies hace encodeURIComponent del valor al
+  // serializar el Set-Cookie header. Si dividimos el valor RAW en chunks y
+  // dejamos que Next.js los codifique, cada chunk de 3500 raw chars se convierte
+  // en ~7000+ bytes codificados (JSON tiene muchos chars especiales que se
+  // expanden 3x: { → %7B, " → %22, etc.), excediendo el límite de 4096 bytes.
+  // Por eso codificamos nosotros mismos y dividimos el valor YA CODIFICADO,
+  // seteando los Set-Cookie headers directamente para evitar la doble
+  // codificación de Next.js.
   function redirectWithCookies(url: string) {
     const response = NextResponse.redirect(new URL(url, request.url));
-    const cookieOpts = {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
-      path: '/',
-      maxAge: 604800
-    };
+    const isProduction = process.env.NODE_ENV === 'production';
+    const flags = `Path=/; Max-Age=604800; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+    const deleteFlags = `Path=/; Max-Age=0; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+
     pendingCookies.forEach((value, name) => {
       if (value !== null) {
-        // Limpiar chunks anteriores si existían
-        for (let i = 0; i < 20; i++) {
-          response.cookies.delete(`${name}.${i}`);
+        // Primero, borrar cookie simple y chunks anteriores (en orden,
+        // antes de setear los nuevos, para que el browser los procese primero)
+        response.headers.append('Set-Cookie', `${name}=; ${deleteFlags}`);
+        for (let i = 0; i < 10; i++) {
+          response.headers.append('Set-Cookie', `${name}.${i}=; ${deleteFlags}`);
         }
-        // Next.js ResponseCookies hace encodeURIComponent del valor al serializar.
-        // Estimar el tamaño codificado: los chars especiales del JSON ({, }, ", :, ,, space)
-        // se expanden a 3 bytes cada uno. Aproximadamente 1.3x el tamaño raw.
-        const estimatedEncodedSize = Math.ceil(value.length * 1.4);
-        if (estimatedEncodedSize < 3600) {
-          response.cookies.set(name, value, cookieOpts);
+
+        // Codificar el valor nosotros mismos
+        const encodedValue = encodeURIComponent(value);
+
+        if (encodedValue.length < 3600) {
+          // Cookie simple: setear directamente (ya codificado, sin doble codificación)
+          response.headers.append('Set-Cookie', `${name}=${encodedValue}; ${flags}`);
         } else {
-          // Dividir el valor raw en chunks y setear name.0, name.1, etc.
-          // Next.js codificará cada chunk individualmente con encodeURIComponent.
-          // El cliente (config.ts) concatena los chunks raw y luego decodifica.
-          // IMPORTANTE: no dividir una secuencia %XX (aunque aquí el valor es raw
-          // y no tiene %XX, el encodeURIComponent del cliente podría haberlos añadido
-          // si el valor viene de getItem — pero en setItem el valor es raw JSON).
+          // Dividir el valor CODIFICADO en chunks de 3500 bytes.
+          // Cuidar no dividir una secuencia %XX (3 chars) entre chunks.
           const CHUNK_SIZE = 3500;
           let chunkIndex = 0;
           let offset = 0;
-          while (offset < value.length) {
-            const end = Math.min(offset + CHUNK_SIZE, value.length);
-            const chunk = value.substring(offset, end);
-            response.cookies.set(`${name}.${chunkIndex}`, chunk, cookieOpts);
+          while (offset < encodedValue.length) {
+            let end = Math.min(offset + CHUNK_SIZE, encodedValue.length);
+            if (end < encodedValue.length) {
+              if (encodedValue[end - 2] === '%') end -= 2;
+              else if (encodedValue[end - 1] === '%') end -= 1;
+            }
+            const chunk = encodedValue.substring(offset, end);
+            response.headers.append('Set-Cookie', `${name}.${chunkIndex}=${chunk}; ${flags}`);
             offset = end;
             chunkIndex++;
           }
-          console.log(`🍪 [VERIFY] Cookie chunked: ${name} (${chunkIndex} chunks, ${value.length} bytes raw)`);
+          console.log(`🍪 [VERIFY] Cookie chunked: ${name} (${chunkIndex} chunks, ${encodedValue.length} bytes encoded)`);
         }
       } else {
-        response.cookies.delete(name);
-        // Limpiar chunks también
-        for (let i = 0; i < 20; i++) {
-          response.cookies.delete(`${name}.${i}`);
+        // Borrar cookie simple y chunks
+        response.headers.append('Set-Cookie', `${name}=; ${deleteFlags}`);
+        for (let i = 0; i < 10; i++) {
+          response.headers.append('Set-Cookie', `${name}.${i}=; ${deleteFlags}`);
         }
       }
     });

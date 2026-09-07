@@ -79,7 +79,7 @@ class ReportesFinancierosService {
   /**
    * Obtener reporte de Pérdidas y Ganancias (P&G)
    */
-  async getPnLReport(dateRange: DateRange): Promise<PnLReport> {
+  async getPnLReport(dateRange: DateRange, branchId?: number | null): Promise<PnLReport> {
     const organizationId = getOrganizationId();
     if (!organizationId) {
       return this.getEmptyPnL();
@@ -87,22 +87,26 @@ class ReportesFinancierosService {
 
     try {
       // Obtener ingresos (facturas de venta)
-      const { data: ventas } = await supabase
+      let ventasQuery = supabase
         .from('invoice_sales')
         .select('total, subtotal, tax_total')
         .eq('organization_id', organizationId)
         .gte('issue_date', dateRange.from)
         .lte('issue_date', dateRange.to)
         .neq('status', 'void');
+      if (branchId != null) ventasQuery = ventasQuery.eq('branch_id', branchId);
+      const { data: ventas } = await ventasQuery;
 
       // Obtener costos (facturas de compra)
-      const { data: compras } = await supabase
+      let comprasQuery = supabase
         .from('invoice_purchase')
         .select('total, subtotal, tax_total')
         .eq('organization_id', organizationId)
         .gte('issue_date', dateRange.from)
         .lte('issue_date', dateRange.to)
         .neq('status', 'void');
+      if (branchId != null) comprasQuery = comprasQuery.eq('branch_id', branchId);
+      const { data: compras } = await comprasQuery;
 
       const ingresos = ventas?.reduce((sum, v) => sum + Number(v.total || 0), 0) || 0;
       const costos = compras?.reduce((sum, c) => sum + Number(c.total || 0), 0) || 0;
@@ -128,7 +132,7 @@ class ReportesFinancierosService {
   /**
    * Obtener reporte de Flujo de Caja
    */
-  async getCashFlowReport(dateRange: DateRange): Promise<CashFlowReport> {
+  async getCashFlowReport(dateRange: DateRange, branchId?: number | null): Promise<CashFlowReport> {
     const organizationId = getOrganizationId();
     if (!organizationId) {
       return this.getEmptyCashFlow();
@@ -136,20 +140,24 @@ class ReportesFinancierosService {
 
     try {
       // Movimientos de caja
-      const { data: movimientos } = await supabase
+      let movimientosQuery = supabase
         .from('cash_movements')
         .select('type, amount')
         .eq('organization_id', organizationId)
         .gte('created_at', dateRange.from)
         .lte('created_at', dateRange.to);
+      if (branchId != null) movimientosQuery = movimientosQuery.eq('branch_id', branchId);
+      const { data: movimientos } = await movimientosQuery;
 
       // Transacciones bancarias
-      const { data: transacciones } = await supabase
+      let transaccionesQuery = supabase
         .from('bank_transactions')
         .select('amount, transaction_type')
         .eq('organization_id', organizationId)
         .gte('trans_date', dateRange.from)
         .lte('trans_date', dateRange.to);
+      if (branchId != null) transaccionesQuery = transaccionesQuery.eq('branch_id', branchId);
+      const { data: transacciones } = await transaccionesQuery;
 
       const ingresosCaja = movimientos?.filter(m => m.type === 'income').reduce((sum, m) => sum + Number(m.amount), 0) || 0;
       const egresosCaja = movimientos?.filter(m => m.type === 'expense').reduce((sum, m) => sum + Number(m.amount), 0) || 0;
@@ -177,7 +185,7 @@ class ReportesFinancierosService {
   /**
    * Obtener reporte de Cartera
    */
-  async getCarteraReport(): Promise<CarteraReport> {
+  async getCarteraReport(branchId?: number | null): Promise<CarteraReport> {
     const organizationId = getOrganizationId();
     if (!organizationId) {
       return this.getEmptyCartera();
@@ -187,18 +195,22 @@ class ReportesFinancierosService {
       const today = new Date().toISOString();
 
       // Cuentas por cobrar
-      const { data: cxc } = await supabase
+      let cxcQuery = supabase
         .from('accounts_receivable')
         .select('balance, due_date, customer_id')
         .eq('organization_id', organizationId)
         .gt('balance', 0);
+      if (branchId != null) cxcQuery = cxcQuery.eq('branch_id', branchId);
+      const { data: cxc } = await cxcQuery;
 
       // Cuentas por pagar
-      const { data: cxp } = await supabase
+      let cxpQuery = supabase
         .from('accounts_payable')
         .select('balance, due_date, supplier_id')
         .eq('organization_id', organizationId)
         .gt('balance', 0);
+      if (branchId != null) cxpQuery = cxpQuery.eq('branch_id', branchId);
+      const { data: cxp } = await cxpQuery;
 
       const totalPorCobrar = cxc?.reduce((sum, c) => sum + Number(c.balance), 0) || 0;
       const totalPorPagar = cxp?.reduce((sum, c) => sum + Number(c.balance), 0) || 0;
@@ -227,7 +239,7 @@ class ReportesFinancierosService {
   /**
    * Obtener reporte de Impuestos
    */
-  async getTaxReport(dateRange: DateRange): Promise<TaxReport> {
+  async getTaxReport(dateRange: DateRange, branchId?: number | null): Promise<TaxReport> {
     const organizationId = getOrganizationId();
     if (!organizationId) {
       return this.getEmptyTax();
@@ -235,22 +247,26 @@ class ReportesFinancierosService {
 
     try {
       // IVA de ventas
-      const { data: ventas } = await supabase
+      let ventasQuery = supabase
         .from('invoice_sales')
         .select('tax_total')
         .eq('organization_id', organizationId)
         .gte('issue_date', dateRange.from)
         .lte('issue_date', dateRange.to)
         .neq('status', 'void');
+      if (branchId != null) ventasQuery = ventasQuery.eq('branch_id', branchId);
+      const { data: ventas } = await ventasQuery;
 
       // IVA de compras
-      const { data: compras } = await supabase
+      let comprasQuery = supabase
         .from('invoice_purchase')
         .select('tax_total')
         .eq('organization_id', organizationId)
         .gte('issue_date', dateRange.from)
         .lte('issue_date', dateRange.to)
         .neq('status', 'void');
+      if (branchId != null) comprasQuery = comprasQuery.eq('branch_id', branchId);
+      const { data: compras } = await comprasQuery;
 
       const ivaRecaudado = ventas?.reduce((sum, v) => sum + Number(v.tax_total || 0), 0) || 0;
       const ivaPagado = compras?.reduce((sum, c) => sum + Number(c.tax_total || 0), 0) || 0;
@@ -272,7 +288,7 @@ class ReportesFinancierosService {
   /**
    * Obtener reporte de Caja
    */
-  async getCashReport(): Promise<CashReport> {
+  async getCashReport(branchId?: number | null): Promise<CashReport> {
     const organizationId = getOrganizationId();
     if (!organizationId) {
       return this.getEmptyCash();
@@ -283,26 +299,32 @@ class ReportesFinancierosService {
       today.setHours(0, 0, 0, 0);
 
       // Sesiones abiertas
-      const { data: sesiones } = await supabase
+      let sesionesQuery = supabase
         .from('cash_sessions')
         .select('id, initial_amount, final_amount, status')
         .eq('organization_id', organizationId)
         .eq('status', 'open');
+      if (branchId != null) sesionesQuery = sesionesQuery.eq('branch_id', branchId);
+      const { data: sesiones } = await sesionesQuery;
 
       // Movimientos de hoy
-      const { data: movimientosHoy } = await supabase
+      let movimientosHoyQuery = supabase
         .from('cash_movements')
         .select('type, amount')
         .eq('organization_id', organizationId)
         .gte('created_at', today.toISOString());
+      if (branchId != null) movimientosHoyQuery = movimientosHoyQuery.eq('branch_id', branchId);
+      const { data: movimientosHoy } = await movimientosHoyQuery;
 
       // Último arqueo
-      const { data: arqueos } = await supabase
+      let arqueosQuery = supabase
         .from('cash_counts')
         .select('created_at, difference')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(1);
+      if (branchId != null) arqueosQuery = arqueosQuery.eq('branch_id', branchId);
+      const { data: arqueos } = await arqueosQuery;
 
       const totalEnCaja = sesiones?.reduce((sum, s) => sum + Number(s.initial_amount || 0), 0) || 0;
       const ingresosCaja = movimientosHoy?.filter(m => m.type === 'income').reduce((sum, m) => sum + Number(m.amount), 0) || 0;
@@ -328,7 +350,7 @@ class ReportesFinancierosService {
   /**
    * Obtener reporte de Bancos
    */
-  async getBankReport(dateRange: DateRange): Promise<BankReport> {
+  async getBankReport(dateRange: DateRange, branchId?: number | null): Promise<BankReport> {
     const organizationId = getOrganizationId();
     if (!organizationId) {
       return this.getEmptyBank();
@@ -336,21 +358,25 @@ class ReportesFinancierosService {
 
     try {
       // Cuentas bancarias
-      const { data: cuentas } = await supabase
+      let cuentasQuery = supabase
         .from('bank_accounts')
         .select('id, balance')
         .eq('organization_id', organizationId)
         .eq('is_active', true);
+      if (branchId != null) cuentasQuery = cuentasQuery.eq('branch_id', branchId);
+      const { data: cuentas } = await cuentasQuery;
 
       // Transacciones del periodo
-      const { data: transacciones } = await supabase
+      let transaccionesQuery = supabase
         .from('bank_transactions')
         .select('amount')
         .eq('organization_id', organizationId)
         .gte('trans_date', dateRange.from)
         .lte('trans_date', dateRange.to);
+      if (branchId != null) transaccionesQuery = transaccionesQuery.eq('branch_id', branchId);
+      const { data: transacciones } = await transaccionesQuery;
 
-      // Reconciliaciones pendientes
+      // Reconciliaciones pendientes (tabla sin branch_id: queda a nivel organización)
       const { data: reconciliaciones } = await supabase
         .from('bank_reconciliations')
         .select('id')
@@ -378,14 +404,14 @@ class ReportesFinancierosService {
   /**
    * Obtener resumen completo de reportes
    */
-  async getReportSummary(dateRange: DateRange): Promise<ReportSummary> {
+  async getReportSummary(dateRange: DateRange, branchId?: number | null): Promise<ReportSummary> {
     const [pnl, cashFlow, cartera, taxes, cash, bank] = await Promise.all([
-      this.getPnLReport(dateRange),
-      this.getCashFlowReport(dateRange),
-      this.getCarteraReport(),
-      this.getTaxReport(dateRange),
-      this.getCashReport(),
-      this.getBankReport(dateRange),
+      this.getPnLReport(dateRange, branchId),
+      this.getCashFlowReport(dateRange, branchId),
+      this.getCarteraReport(branchId),
+      this.getTaxReport(dateRange, branchId),
+      this.getCashReport(branchId),
+      this.getBankReport(dateRange, branchId),
     ]);
 
     return { pnl, cashFlow, cartera, taxes, cash, bank };

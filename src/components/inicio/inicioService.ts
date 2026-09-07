@@ -8,6 +8,14 @@ import {
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { getOperatingHours } from '@/lib/services/organizationOperatingHoursService';
 
+// ─── Helper: filtro de sucursal para queries Supabase ────────────────────────
+// Aplica .eq('branch_id', branchIdNum) solo cuando branchIdNum no es null.
+// Cuando es null (modo "todas las sucursales"), no filtra y retorna la query original.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function branchFilterQuery(query: any, branchIdNum: number | null): any {
+  return branchIdNum != null ? query.eq('branch_id', branchIdNum) : query;
+}
+
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 export type PeriodoDashboard = 'hoy' | 'ayer' | '7d' | '30d' | '90d' | 'año' | 'personalizado';
@@ -410,7 +418,11 @@ export const inicioService = {
     periodo: PeriodoDashboard = 'hoy',
     horas?: HorasDashboard | null,
     fechasCustom?: FechasCustomDashboard | null,
+    branchFilter?: number | 'all' | null,
   ): Promise<DashboardData> {
+    // Branch filter: si es 'all' o null, no filtrar (consolidado). Si es number, filtrar por branch_id.
+    const branchIdNum = typeof branchFilter === 'number' ? branchFilter : null;
+
     const {
       inicio: inicioPeriodo,
       fin: finPeriodo,
@@ -454,6 +466,7 @@ export const inicioService = {
     const webOrdersAllFn = isHorario ? 'get_web_orders_all_by_hour' : 'get_web_orders_all_by_day';
     const rpcArgs = (p_start: string, p_end: string) => ({
       p_organization_id: organizationId, p_timezone: timezoneOrg, p_start, p_end,
+      p_branch_id: branchIdNum,
     });
 
     const [
@@ -507,15 +520,16 @@ export const inicioService = {
       cuentasSumRes,
     ] = await Promise.all([
       // Queries seguras (head:true, limit, single)
-      supabase.from('customers').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
+      // Aplicar filtro de sucursal solo cuando branchIdNum no es null
+      branchFilterQuery(supabase.from('customers').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId), branchIdNum),
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).eq('status', 'active'),
       supabase.from('organization_members').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).eq('is_active', true),
-      supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).in('status', ['confirmed', 'checked_in']),
-      supabase.from('sales').select('id, total, sale_date, status').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(5),
-      supabase.from('invoice_sales').select('id, total, number, issue_date, status').eq('organization_id', organizationId).order('issue_date', { ascending: false }).limit(5),
-      supabase.from('customers').select('id, full_name, created_at').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(5),
-      supabase.from('stock_movements').select('id, direction, qty, source, note, created_at, products(name)').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(5),
-      supabase.from('reservations').select('id, status, created_at').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(5),
+      branchFilterQuery(supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).in('status', ['confirmed', 'checked_in']), branchIdNum),
+      branchFilterQuery(supabase.from('sales').select('id, total, sale_date, status').eq('organization_id', organizationId), branchIdNum).order('created_at', { ascending: false }).limit(5),
+      branchFilterQuery(supabase.from('invoice_sales').select('id, total, number, issue_date, status').eq('organization_id', organizationId), branchIdNum).order('issue_date', { ascending: false }).limit(5),
+      branchFilterQuery(supabase.from('customers').select('id, full_name, created_at').eq('organization_id', organizationId), branchIdNum).order('created_at', { ascending: false }).limit(5),
+      branchFilterQuery(supabase.from('stock_movements').select('id, direction, qty, source, note, created_at, products(name)').eq('organization_id', organizationId), branchIdNum).order('created_at', { ascending: false }).limit(5),
+      branchFilterQuery(supabase.from('reservations').select('id, status, created_at').eq('organization_id', organizationId), branchIdNum).order('created_at', { ascending: false }).limit(5),
       supabase.from('organizations').select('created_at').eq('id', organizationId).single(),
       supabase.from('branches').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
       supabase.from('organization_members').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
@@ -557,7 +571,7 @@ export const inicioService = {
       supabase.rpc('get_reservations_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
       supabase.rpc('get_accounts_receivable_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
       // RPC: suma acumulada de cuentas por cobrar
-      supabase.rpc('get_accounts_receivable_sum', { p_organization_id: organizationId }),
+      supabase.rpc('get_accounts_receivable_sum', { p_organization_id: organizationId, p_branch_id: branchIdNum }),
     ]);
 
     // ─── Procesamiento de resultados RPC ────────────────────────────────────────
@@ -852,7 +866,7 @@ export const inicioService = {
     const actividad: ActividadReciente[] = [];
 
     // Ventas POS
-    (actividadVentas.data || []).forEach((v) => {
+    (actividadVentas.data || []).forEach((v: { id: string; total: number; sale_date: string; status: string }) => {
       actividad.push({
         id: `venta-${v.id}`,
         tipo: 'venta',
@@ -864,7 +878,7 @@ export const inicioService = {
     });
 
     // Facturas emitidas
-    (actividadFacturasRes.data || []).forEach((f) => {
+    (actividadFacturasRes.data || []).forEach((f: { id: string; total: number; number: string; issue_date: string; status: string }) => {
       actividad.push({
         id: `factura-${f.id}`,
         tipo: 'factura',
@@ -876,7 +890,7 @@ export const inicioService = {
     });
 
     // Clientes nuevos
-    (actividadClientesRes.data || []).forEach((c) => {
+    (actividadClientesRes.data || []).forEach((c: { id: string; full_name: string; created_at: string }) => {
       actividad.push({
         id: `cliente-${c.id}`,
         tipo: 'cliente',
@@ -887,7 +901,7 @@ export const inicioService = {
     });
 
     // Movimientos de stock
-    (actividadStockRes.data || []).forEach((s) => {
+    (actividadStockRes.data || []).forEach((s: { id: string; direction: string; qty: number; source: string; note: string; created_at: string; products: { name?: string } | null }) => {
       const productName = (s.products as { name?: string } | null)?.name || 'Producto';
       const dirLabel = s.direction === 'in' ? 'Entrada' : 'Salida';
       actividad.push({
@@ -900,7 +914,7 @@ export const inicioService = {
     });
 
     // Reservas
-    (actividadReservasRes.data || []).forEach((r) => {
+    (actividadReservasRes.data || []).forEach((r: { id: string; status: string; created_at: string }) => {
       actividad.push({
         id: `reserva-${r.id}`,
         tipo: 'reserva',

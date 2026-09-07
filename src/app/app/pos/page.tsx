@@ -13,6 +13,7 @@ import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { POSService } from '@/lib/services/posService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { Product, Customer, Cart, Sale, CartItemModifier } from '@/components/pos/types';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { StatsSkeleton, CardListSkeleton, PageHeaderSkeleton } from '@/components/common/PageSkeletons';
@@ -30,7 +31,7 @@ import type { CashSession } from '@/components/pos/cajas/types';
 
 export default function POSPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
-  const { branchFilter, isLoading: branchLoading, selectedBranchId, isAllSelected, branches } = useBranch();
+  const { branchFilter, isLoading: branchLoading, selectedBranchId } = useBranch();
   const [carts, setCarts] = useState<Cart[]>([]);
   const [activeCartId, setActiveCartId] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | undefined>();
@@ -479,21 +480,12 @@ export default function POSPage() {
                   <CardTitle className="text-base sm:text-lg md:text-xl dark:text-white text-gray-900 break-words whitespace-normal">
                     Sistema POS
                   </CardTitle>
-                  <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 break-words whitespace-normal">
-                    {organization?.name || 'Caja rápida / Venta'}
-                    {!isAllSelected && selectedBranchId && (
-                      <span className="ml-1.5 inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
-                        <span className="hidden sm:inline">·</span>
-                        {branches.find(b => b.id === selectedBranchId)?.name || 'Sucursal'}
-                      </span>
-                    )}
-                    {isAllSelected && (
-                      <span className="ml-1.5 text-gray-500 dark:text-gray-500 font-medium">
-                        <span className="hidden sm:inline">·</span>
-                        Todas las sucursales
-                      </span>
-                    )}
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-xs sm:text-sm dark:text-gray-400 text-gray-600 break-words whitespace-normal">
+                      {organization?.name || 'Caja rápida / Venta'}
+                    </p>
+                    <BranchBadge className="" />
+                  </div>
                 </div>
               </div>
               

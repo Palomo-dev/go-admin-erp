@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, memo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Building,
   Store,
@@ -91,7 +91,7 @@ function getBranchIcon(id: number | null | undefined): LucideIcon {
   return BRANCH_ICONS[Math.abs(id) % BRANCH_ICONS.length];
 }
 
-const BranchSelector = memo(({ className = '' }: BranchSelectorProps) => {
+const BranchSelector = ({ className = '' }: BranchSelectorProps) => {
   const { branches, selectedBranchId, isAllSelected, setSelectedBranch, isLoading, canSelectAll } = useBranch();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -285,7 +285,7 @@ const BranchSelector = memo(({ className = '' }: BranchSelectorProps) => {
       )}
     </div>
   );
-});
+};
 
 BranchSelector.displayName = 'BranchSelector';
 

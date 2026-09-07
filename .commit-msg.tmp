@@ -1,0 +1,18 @@
+feat(branch-isolation): filtros por sucursal en reportes de finanzas/CRM + badge en todos los tabs
+
+- ModuloSection: BranchBadge visible en tab Reportes (no solo Dashboard)
+- Finanzas ReportesPage: usa useBranch y filtra todas las queries por branch_id
+  (invoice_sales, invoice_purchase, cash_movements, bank_transactions,
+   accounts_receivable, accounts_payable, cash_sessions, cash_counts, bank_accounts)
+- CRM ReportesPage + ReportesService: filtra conversations, messages y
+  opportunities por branch_id (tablas con la columna); channels/pipelines/
+  campaigns quedan a nivel organizacion
+- BranchSelector/BranchSelectorWrapper: ajustes de render y memoizacion
+- Secciones org-wide (Calendario, Chat, Integraciones, Notificaciones, PM,
+  Timeline): showBranchBadge=false explicito
+- POS header y ProductSearch: consolidacion del BranchBadge reutilizable
+- inicioService: propagacion de branchFilter a RPCs y queries directas
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

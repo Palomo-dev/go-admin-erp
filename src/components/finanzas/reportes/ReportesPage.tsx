@@ -38,6 +38,7 @@ import {
   DateRange,
 } from '@/lib/services/reportesFinancierosService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { useBranch } from '@/lib/context/BranchContext';
 
 type RangeOption = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
@@ -80,6 +81,7 @@ function getDateRange(option: RangeOption): DateRange {
 }
 
 export function ReportesPage() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [rangeOption, setRangeOption] = useState<RangeOption>('month');
   const [reports, setReports] = useState<ReportSummary | null>(null);
@@ -88,7 +90,7 @@ export function ReportesPage() {
     setIsLoading(true);
     try {
       const dateRange = getDateRange(rangeOption);
-      const data = await reportesFinancierosService.getReportSummary(dateRange);
+      const data = await reportesFinancierosService.getReportSummary(dateRange, branchFilter);
       setReports(data);
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -100,7 +102,7 @@ export function ReportesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [rangeOption]);
+  }, [rangeOption, branchFilter]);
 
   useEffect(() => {
     loadReports();

@@ -30,12 +30,15 @@ import { useDashboardRealtime } from '@/components/inicio/useDashboardRealtime';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { supabase } from '@/lib/supabase/config';
 import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useBranch } from '@/lib/context/BranchContext';
 
 function InicioContent() {
   const searchParams = useSearchParams() ?? new URLSearchParams();
   const error = searchParams.get('error');
   const moduleCode = searchParams.get('module');
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
   const t = useTranslations('home');
   const locale = useLocale();
@@ -90,7 +93,7 @@ function InicioContent() {
     if (!silent) setIsLoading(true);
     try {
       const [data, modules] = await Promise.all([
-        inicioService.getDashboardData(organization.id, periodo, horas, fechasCustom),
+        inicioService.getDashboardData(organization.id, periodo, horas, fechasCustom, branchFilter),
         moduleManagementService.getActiveModules(organization.id).catch(() => null),
       ]);
       setDashboardData(data);
@@ -118,7 +121,7 @@ function InicioContent() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [organization?.id, toast, t, periodo, horas, fechasCustom]);
+  }, [organization?.id, toast, t, periodo, horas, fechasCustom, branchFilter]);
 
   useEffect(() => {
     loadData();
@@ -196,6 +199,7 @@ function InicioContent() {
             <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
               {fechaHoy}
             </p>
+            <BranchBadge className="mt-1.5" />
           </div>
         </div>
 
@@ -243,7 +247,7 @@ function InicioContent() {
       <DashboardAtajos activeModuleCodes={activeModuleCodes} />
 
       {/* KPIs */}
-      <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} />
+      <DashboardKPIs data={dashboardData?.kpis ?? null} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} />
 
       {/* Alertas consolidadas de módulos */}
       <DashboardAlertas

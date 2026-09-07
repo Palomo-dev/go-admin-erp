@@ -51,7 +51,7 @@ interface ProductSearchProps {
 }
 
 export function ProductSearch({ onProductSelect }: ProductSearchProps) {
-  const { branchFilter, branches, isAllSelected, selectedBranchId } = useBranch();
+  const { branchFilter } = useBranch();
   const [productsData, setProductsData] = useState<PaginatedResponse<Product>>({
     data: [],
     total: 0,
@@ -444,17 +444,6 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
             <span className="hidden md:inline text-xs text-gray-500 dark:text-gray-400 ml-1">
               {productsData.total} prod.
             </span>
-
-            {/* Badge de sucursal activa */}
-            {isAllSelected ? (
-              <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs">
-                Todas las sucursales
-              </Badge>
-            ) : selectedBranchId ? (
-              <Badge className="bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-700 dark:text-fuchsia-300 border border-fuchsia-200 dark:border-fuchsia-800 text-xs">
-                {branches.find(b => b.id === selectedBranchId)?.name || 'Sucursal'}
-              </Badge>
-            ) : null}
           </div>
         </CardHeader>
       </Card>

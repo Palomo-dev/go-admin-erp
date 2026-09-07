@@ -224,9 +224,9 @@ const CatalogoProductos: React.FC = () => {
 
         // ── Streaming: paginar productos base y procesar cada página con sus relaciones ──
         // En vez de traer TODOS los productos y luego TODAS las relaciones para hacer
-        // un único setProductos al final, traemos de a 200 productos + sus relaciones
+        // un único setProductos al final, traemos de a 1000 productos + sus relaciones
         // y vamos actualizando la UI incrementalmente. El usuario ve productos antes.
-        const PAGE_SIZE = 200;
+        const PAGE_SIZE = 1000;
         const ROWS_PER_PAGE = 1000;
         let accumulated: any[] = [];
 

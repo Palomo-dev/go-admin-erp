@@ -37,11 +37,75 @@ export async function POST(request: Request) {
 
     const inviteUrl = `${origin}/auth/invite?invite_code=${encodeURIComponent(invitationCode)}`;
 
-    // Si el usuario ya existe en auth.users, inviteUserByEmail genera un token
-    // type=invite que falla en verifyOtp porque el usuario ya está confirmado.
-    // Solución: usar signInWithOtp que envía un email con template "Magic Link".
-    // El verify route busca invitation_code en la tabla invitations por email.
+    // Si el usuario ya existe en auth.users, puede ser:
+    // A) Un usuario real con perfil y membresía → usar signInWithOtp (magiclink)
+    // B) Un usuario huérfano creado por inviteUserByEmail de una invitación anterior
+    //    que nunca completó (sin perfil, sin membresía) → eliminarlo y re-invitar
+    //    con inviteUserByEmail para que reciba type=invite y pueda completar su registro.
     if (existsInAuth) {
+      // Buscar el usuario en auth.users para verificar si es huérfano
+      const { data: userList } = await admin.auth.admin.listUsers();
+      const existingUser = userList?.users?.find(
+        (u) => u.email?.toLowerCase() === normalizedEmail
+      );
+
+      const isOrphan = existingUser && (
+        // Creado por invitación previa (is_invitation en metadata)
+        (existingUser.user_metadata as any)?.is_invitation === true
+      ) && existingUser.id;
+
+      if (isOrphan && existingUser) {
+        // Verificar que NO tenga perfil ni membresía (confirmar que es huérfano)
+        const { data: profile } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('id', existingUser.id)
+          .maybeSingle();
+
+        const { data: membership } = await admin
+          .from('organization_members')
+          .select('id')
+          .eq('user_id', existingUser.id)
+          .maybeSingle();
+
+        if (!profile && !membership) {
+          // Es un usuario huérfano: eliminarlo y re-invitar con inviteUserByEmail
+          console.log('🗑️ Eliminando usuario huérfano:', existingUser.id, normalizedEmail);
+          const { error: deleteError } = await admin.auth.admin.deleteUser(existingUser.id);
+          if (deleteError) {
+            console.error('Error eliminando usuario huérfano:', deleteError);
+            // Si falla la eliminación, caer al flujo de magiclink como fallback
+          } else {
+            console.log('✅ Usuario huérfano eliminado, re-invitando con inviteUserByEmail...');
+            // Re-invitar con inviteUserByEmail (type=invite)
+            const { error: reinviteError } = await admin.auth.admin.inviteUserByEmail(
+              normalizedEmail,
+              {
+                redirectTo: inviteUrl,
+                data: {
+                  organization_id: organizationId,
+                  organization_name: organizationName,
+                  role_id: roleId,
+                  invitation_code: invitationCode,
+                  is_invitation: true,
+                  invited_by: invitedBy,
+                },
+              }
+            );
+            if (reinviteError) {
+              console.error('Error re-invitando usuario huérfano:', reinviteError);
+              return NextResponse.json(
+                { error: reinviteError.message, inviteUrl },
+                { status: 400 }
+              );
+            }
+            console.log('📧 Invitación re-enviada a usuario huérfano:', normalizedEmail);
+            return NextResponse.json({ success: true, inviteUrl });
+          }
+        }
+      }
+
+      // Usuario real (con perfil/membresía) o no se pudo eliminar: usar magiclink
       const { createClient } = await import('@supabase/supabase-js');
       const anonClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,

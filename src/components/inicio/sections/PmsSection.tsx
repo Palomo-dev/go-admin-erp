@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Hotel } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
 import {
@@ -77,6 +78,7 @@ function buildExportData(
 }
 
 export default function PmsSection() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<PmsStats | null>(null);
   const [arrivals, setArrivals] = useState<TodayArrival[]>([]);
@@ -105,11 +107,11 @@ export default function PmsSection() {
           eventsData,
           orgData,
         ] = await Promise.all([
-          PMSDashboardService.getDashboardStats(organizationId),
-          PMSDashboardService.getArrivals(organizationId),
-          PMSDashboardService.getDepartures(organizationId),
-          PMSDashboardService.getAlerts(organizationId),
-          PMSDashboardService.getWeekCalendarEvents(organizationId),
+          PMSDashboardService.getDashboardStats(organizationId, undefined, branchFilter),
+          PMSDashboardService.getArrivals(organizationId, undefined, branchFilter),
+          PMSDashboardService.getDepartures(organizationId, undefined, branchFilter),
+          PMSDashboardService.getAlerts(organizationId, branchFilter),
+          PMSDashboardService.getWeekCalendarEvents(organizationId, branchFilter),
           supabase
             .from('organizations')
             .select('name, legal_name, tax_id, city, address, phone, email, logo_url')
@@ -151,7 +153,7 @@ export default function PmsSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [branchFilter]);
 
   const exportData = useMemo(
     () => buildExportData(stats, arrivals, departures),

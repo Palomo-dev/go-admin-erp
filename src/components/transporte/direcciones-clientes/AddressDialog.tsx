@@ -25,6 +25,8 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2, MapPin, Navigation, Search as SearchIcon, User, Mail, Phone, X } from 'lucide-react';
 import { CustomerAddress, CustomerAddressInput, customerAddressesService } from '@/lib/services/customerAddressesService';
 import { googleMapsService } from '@/lib/services/googleMapsService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface Customer {
   id: string;
@@ -56,6 +58,9 @@ export function AddressDialog({
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   
   // Google Places states
   const [placeSearch, setPlaceSearch] = useState('');
@@ -242,7 +247,7 @@ export function AddressDialog({
 
     setIsSubmitting(true);
     try {
-      await onSave(formData);
+      await onSave({ ...formData, branch_id: branchId || undefined } as CustomerAddressInput);
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving address:', error);
@@ -271,6 +276,13 @@ export function AddressDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Cliente - Selector estilo POS */}
           <div className="space-y-2">
             <Label>Cliente *</Label>

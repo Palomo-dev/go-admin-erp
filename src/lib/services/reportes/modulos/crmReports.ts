@@ -22,7 +22,7 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Oportunidades por etapa, conversión entre etapas y forecast',
     categoria: 'comercial',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
@@ -55,7 +55,7 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Proyección de ingresos por probabilidad de cierre',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
@@ -97,7 +97,7 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Performance de vendedores por oportunidades y monto cerrado',
     categoria: 'comercial',
     periodosSugeridos: ['quincenal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_crm_ranking_vendedores', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
@@ -130,7 +130,7 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Llamadas, reuniones, emails y visitas del período',
     categoria: 'comercial',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('activities')
         .select('activity_type, created_at')
@@ -170,7 +170,7 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Performance de campañas: contactos, conversión, ROI',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('campaigns')
         .select('id, name, status, channel, created_at')
@@ -203,7 +203,7 @@ export const crmReports: ReportDefinition[] = [
     descripcion: 'Crecimiento, segmentación y valor por cliente',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_clientes_crecimiento', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,

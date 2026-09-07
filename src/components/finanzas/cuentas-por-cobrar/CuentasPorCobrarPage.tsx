@@ -14,8 +14,11 @@ import { CuentasPorCobrarTable } from './CuentasPorCobrarTable';
 import { AgingReport } from './AgingReport';
 import { RecordatoriosPanel } from './RecordatoriosPanel';
 import { toast } from 'sonner';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export function CuentasPorCobrarPage() {
+  const { branchFilter } = useBranch();
   const [resultadoCuentas, setResultadoCuentas] = useState<ResultadoPaginado<CuentaPorCobrar>>({
     data: [],
     total_count: 0,
@@ -48,13 +51,13 @@ export function CuentasPorCobrarPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [branchFilter]);
 
   useEffect(() => {
     if (!isLoading) {
       loadCuentas();
     }
-  }, [filtros]);
+  }, [filtros, branchFilter]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -73,7 +76,7 @@ export function CuentasPorCobrarPage() {
 
   const loadCuentas = async () => {
     try {
-      const data = await CuentasPorCobrarService.obtenerCuentasPorCobrarPaginadas(filtros);
+      const data = await CuentasPorCobrarService.obtenerCuentasPorCobrarPaginadas({ ...filtros, branchId: branchFilter });
       setResultadoCuentas(data);
     } catch (error) {
       console.error('Error al cargar cuentas:', error);
@@ -83,7 +86,7 @@ export function CuentasPorCobrarPage() {
 
   const loadEstadisticas = async () => {
     try {
-      const data = await CuentasPorCobrarService.obtenerEstadisticasOptimizadas();
+      const data = await CuentasPorCobrarService.obtenerEstadisticasOptimizadas(branchFilter);
       setEstadisticas(data);
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);
@@ -158,6 +161,8 @@ export function CuentasPorCobrarPage() {
             </Button>
           </div>
         </div>
+
+        <BranchBadge className="mb-3" />
 
         {/* Estadísticas */}
         <EstadisticasCards estadisticas={estadisticas} isLoading={isLoading} />

@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import { 
   adjustmentService,
@@ -15,6 +16,7 @@ import { AjustesHeader,
   AjustesStats,
   AjustesFilters,
   AjustesTable } from '@/components/inventario/ajustes';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import {
@@ -33,22 +35,29 @@ export default function AjustesPage() {
 
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
+  const { branchFilter: globalBranchFilter, selectedBranchId } = useBranch();
 
   // Estados de datos
   const [adjustments, setAdjustments] = useState<InventoryAdjustment[]>([]);
   const [stats, setStats] = useState<AdjustmentStatsType>({
     total: 0,
     draft: 0,
-    applied: 0,
-    cancelled: 0
+    posted: 0
   });
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Estados de filtros
-  const [branchId, setBranchId] = useState('all');
+  // Estados de filtros — branchId se sincroniza con el contexto global
+  const [branchId, setBranchId] = useState<string>(
+    globalBranchFilter != null ? String(globalBranchFilter) : 'all'
+  );
   const [type, setType] = useState('all');
   const [status, setStatus] = useState('all');
+
+  // Sincronizar filtro local cuando cambia el contexto global
+  useEffect(() => {
+    setBranchId(globalBranchFilter != null ? String(globalBranchFilter) : 'all');
+  }, [globalBranchFilter, selectedBranchId]);
 
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -272,6 +281,9 @@ export default function AjustesPage() {
         onRefresh={refreshData}
         isLoading={isRefreshing}
       />
+
+      {/* Badge de sucursal activa */}
+      <BranchBadge />
 
       {/* Estadísticas */}
       <AjustesStats stats={stats} isLoading={isRefreshing} />

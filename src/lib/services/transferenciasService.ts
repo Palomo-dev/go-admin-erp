@@ -36,6 +36,7 @@ export interface TransferFormData {
   transfer_date: string;
   reference?: string;
   notes?: string;
+  branch_id?: number | null;
 }
 
 export interface BankAccount {
@@ -147,6 +148,7 @@ class TransferenciasService {
       .from('bank_transfers')
       .insert({
         organization_id: organizationId,
+        branch_id: data.branch_id ?? undefined,
         from_account_id: data.from_account_id,
         to_account_id: data.to_account_id,
         amount: data.amount,

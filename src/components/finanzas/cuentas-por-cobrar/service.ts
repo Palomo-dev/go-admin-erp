@@ -44,7 +44,8 @@ export class CuentasPorCobrarService {
           date_from: filtros.fechaDesde || null,
           date_to: filtros.fechaHasta || null,
           page_size: filtros.pageSize,
-          page_number: filtros.pageNumber
+          page_number: filtros.pageNumber,
+          branch_id_filter: filtros.branchId ?? null
         });
 
       if (error) {
@@ -85,98 +86,38 @@ export class CuentasPorCobrarService {
   }
 
   // Obtener todas las cuentas por cobrar con filtros (método original, mantenido para compatibilidad)
+  // NOTA: El RPC get_accounts_receivable_with_customers NO expone branch_id ni lo acepta como
+  // parámetro, por lo que el filtrado por sucursal era frágil (item.branch_id siempre era
+  // undefined y el filtro descartaba todos los registros). Ahora delega en
+  // obtenerCuentasPorCobrarPaginadas que usa get_accounts_receivable_paginated, el cual sí
+  // acepta branch_id_filter y filtra correctamente en el servidor.
   static async obtenerCuentasPorCobrar(filtros: FiltrosCuentasPorCobrar): Promise<CuentaPorCobrar[]> {
-    const organizationId = this.getOrganizationId();
-
-    
     try {
-      // Usar función RPC para bypassear RLS
-      const { data, error } = await supabase
-        .rpc('get_accounts_receivable_with_customers', {
-          org_id: organizationId
+      // Iterar sobre todas las páginas disponibles para no truncar datos.
+      // Antes se usaba un pageSize fijo de 1000 que podía omitir registros
+      // cuando había más de 1000 cuentas por cobrar.
+      const pageSize = filtros.pageSize && filtros.pageSize > 0 ? filtros.pageSize : 100;
+      let pageNumber = 1;
+      let totalPages = 1;
+      const todas: CuentaPorCobrar[] = [];
+
+      // La iteración secuencial (await dentro del while) es intencional: evita
+      // saturar el RPC get_accounts_receivable_paginated con muchas llamadas
+      // concurrentes que podrían degradar el rendimiento de PostgREST/Supabase.
+      // Una optimización futura podría usar Promise.all en lotes (ej. 5 páginas
+      // en paralelo) si el volumen de datos lo justifica.
+      while (pageNumber <= totalPages) {
+        const resultado = await this.obtenerCuentasPorCobrarPaginadas({
+          ...filtros,
+          pageSize,
+          pageNumber,
         });
-
-      if (error) {
-        console.error('Error al obtener cuentas por cobrar:', error);
-        throw error;
+        todas.push(...resultado.data);
+        totalPages = resultado.total_pages || 1;
+        pageNumber += 1;
       }
 
-      // Aplicar filtros en el cliente
-      let filteredData = data || [];
-
-      // Filtrar por búsqueda
-      if (filtros.busqueda) {
-        const searchTerm = filtros.busqueda.toLowerCase();
-        filteredData = filteredData.filter((item: any) => 
-          item.customer_name?.toLowerCase().includes(searchTerm) ||
-          item.customer_email?.toLowerCase().includes(searchTerm) ||
-          item.customer_phone?.toLowerCase().includes(searchTerm)
-        );
-      }
-
-      // Filtrar por estado
-      if (filtros.estado !== 'todos') {
-        filteredData = filteredData.filter((item: any) => item.status === filtros.estado);
-      }
-
-      // Filtrar por aging
-      if (filtros.aging !== 'todos') {
-        const today = new Date();
-        filteredData = filteredData.filter((item: any) => {
-          const dueDate = parseLocalDate(item.due_date);
-          const daysDiff = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          switch (filtros.aging) {
-            case '0-30':
-              return daysDiff >= 0 && daysDiff <= 30;
-            case '31-60':
-              return daysDiff > 30 && daysDiff <= 60;
-            case '61-90':
-              return daysDiff > 60 && daysDiff <= 90;
-            case '90+':
-              return daysDiff > 90;
-            default:
-              return true;
-          }
-        });
-      }
-
-      // Filtrar por cliente
-      if (filtros.cliente) {
-        filteredData = filteredData.filter((item: any) => item.customer_id === filtros.cliente);
-      }
-
-      // Filtrar por fechas
-      if (filtros.fechaDesde) {
-        filteredData = filteredData.filter((item: any) => 
-          new Date(item.created_at) >= new Date(filtros.fechaDesde!)
-        );
-      }
-
-      if (filtros.fechaHasta) {
-        filteredData = filteredData.filter((item: any) => 
-          new Date(item.created_at) <= new Date(filtros.fechaHasta!)
-        );
-      }
-
-      return filteredData.map((item: any) => ({
-        id: item.id,
-        organization_id: item.organization_id,
-        customer_id: item.customer_id,
-        invoice_id: item.invoice_id,
-        sale_id: item.sale_id,
-        amount: parseFloat(item.amount || 0),
-        balance: parseFloat(item.balance || 0),
-        due_date: item.due_date,
-        status: item.status,
-        days_overdue: item.days_overdue || 0,
-        last_reminder_date: item.last_reminder_date,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        customer_name: item.customer_name || 'N/A',
-        customer_email: item.customer_email || '',
-        customer_phone: item.customer_phone || '',
-      }));
+      return todas;
     } catch (error) {
       console.error('Error en obtenerCuentasPorCobrar:', error);
       throw error;
@@ -184,31 +125,47 @@ export class CuentasPorCobrarService {
   }
 
   // Obtener reporte de aging usando RPC como las demás funciones
-  static async obtenerReporteAging(): Promise<AgingBucket[]> {
+  static async obtenerReporteAging(branchId?: number | null): Promise<AgingBucket[]> {
     const organizationId = this.getOrganizationId();
 
     try {
-      // Usar función RPC para bypassear RLS, igual que las otras funciones
-      const { data, error } = await supabase
-        .rpc('get_accounts_receivable_paginated', {
-          org_id: organizationId,
-          search_term: null,
-          status_filter: 'todos', // Obtener todos para procesar aging
-          aging_filter: 'todos',
-          customer_id_filter: null,
-          date_from: null,
-          date_to: null,
-          page_size: 1000, // Número grande para obtener todos los registros
-          page_number: 1
-        });
+      // Iterar sobre todas las páginas disponibles para no truncar datos.
+      // Antes se usaba un pageSize fijo de 1000 que podía omitir registros
+      // cuando había más de 1000 cuentas por cobrar. Ahora se recorren todas
+      // las páginas con el mismo patrón que obtenerCuentasPorCobrar.
+      const pageSize = 100;
+      let pageNumber = 1;
+      let totalPages = 1;
+      const todas: any[] = [];
 
-      if (error) {
-        console.error('Error al obtener datos para aging con RPC:', error);
-        throw error;
+      while (pageNumber <= totalPages) {
+        const { data, error } = await supabase
+          .rpc('get_accounts_receivable_paginated', {
+            org_id: organizationId,
+            search_term: null,
+            status_filter: 'todos', // Obtener todos para procesar aging
+            aging_filter: 'todos',
+            customer_id_filter: null,
+            date_from: null,
+            date_to: null,
+            page_size: pageSize,
+            page_number: pageNumber,
+            branch_id_filter: branchId ?? null
+          });
+
+        if (error) {
+          console.error('Error al obtener datos para aging con RPC:', error);
+          throw error;
+        }
+
+        const result = data as any;
+        const pageData = result.data || [];
+        todas.push(...pageData);
+        totalPages = result.total_pages || 1;
+        pageNumber += 1;
       }
 
-      const result = data as any;
-      const cuentas = result.data || [];
+      const cuentas = todas;
 
       // Procesar los datos para crear buckets de aging
       const customerMap = new Map<string, AgingBucket>();
@@ -372,13 +329,19 @@ export class CuentasPorCobrarService {
   }
 
   // Obtener estadísticas de cuentas por cobrar
-  static async obtenerEstadisticas(): Promise<EstadisticasCxC> {
+  static async obtenerEstadisticas(branchId?: number | null): Promise<EstadisticasCxC> {
     const organizationId = this.getOrganizationId();
-    
-    const { data, error } = await supabase
+
+    let query = supabase
       .from('accounts_receivable')
       .select('amount, balance, status, days_overdue')
       .eq('organization_id', organizationId);
+
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error al obtener estadísticas:', error);
@@ -510,21 +473,22 @@ export class CuentasPorCobrarService {
   }
 
   // Función optimizada para obtener estadísticas usando RPC cuando es posible
-  static async obtenerEstadisticasOptimizadas(): Promise<EstadisticasCxC> {
+  static async obtenerEstadisticasOptimizadas(branchId?: number | null): Promise<EstadisticasCxC> {
     const organizationId = this.getOrganizationId();
 
-    
+
     try {
       // Usar función RPC para bypassear RLS
       const { data, error } = await supabase
         .rpc('get_accounts_receivable_stats', {
-          org_id: organizationId
+          org_id: organizationId,
+          branch_id_filter: branchId ?? null
         });
 
       if (error) {
         console.error('Error al obtener estadísticas:', error);
         // Fallback a la función original
-        return this.obtenerEstadisticas();
+        return this.obtenerEstadisticas(branchId);
       }
 
       // Los datos ya vienen calculados desde la función RPC

@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import categoryService, { type CategoryImportRow } from '@/lib/services/categoryService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import * as XLSX from 'xlsx';
 import { Upload, Download, Loader2, CheckCircle, XCircle, FileSpreadsheet } from 'lucide-react';
 
@@ -141,7 +143,9 @@ function parseXlsxRows(rows: Record<string, unknown>[]): CategoryImportRow[] {
 
 export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: ImportCategoriesDialogProps) {
   const { toast } = useToast();
+  const { selectedBranchId } = useBranch();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [rows, setRows] = useState<CategoryImportRow[]>([]);
   const [fileName, setFileName] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
@@ -240,6 +244,13 @@ export function ImportCategoriesDialog({ open, onOpenChange, onSuccess }: Import
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Sucursal destino de la importación */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={handleDownloadTemplate}>
               <Download className="h-4 w-4 mr-2" />

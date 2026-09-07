@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import { PageHeaderSkeleton, FilterBarSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Wallet, AlertCircle } from 'lucide-react';
@@ -42,7 +43,7 @@ const initialStats: PaymentStats = {
 export default function PagosPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
-  const branchId = getCurrentBranchIdWithFallback();
+  const { branchFilter, selectedBranchId } = useBranch();
 
   const [payments, setPayments] = useState<ParkingPayment[]>([]);
   const [stats, setStats] = useState<PaymentStats>(initialStats);
@@ -71,8 +72,8 @@ export default function PagosPage() {
       };
 
       const [paymentsData, statsData, methodsData] = await Promise.all([
-        parkingPaymentService.getPayments(organization.id, filterParams),
-        parkingPaymentService.getPaymentStats(organization.id, filters.startDate, filters.endDate),
+        parkingPaymentService.getPayments(organization.id, filterParams, branchFilter),
+        parkingPaymentService.getPaymentStats(organization.id, filters.startDate, filters.endDate, branchFilter),
         parkingPaymentService.getPaymentMethods(organization.id),
       ]);
 
@@ -89,7 +90,7 @@ export default function PagosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, filters, toast]);
+  }, [organization?.id, filters, toast, branchFilter]);
 
   useEffect(() => {
     if (organization?.id && !orgLoading) {
@@ -99,6 +100,14 @@ export default function PagosPage() {
 
   // Handlers
   const handleNewPayment = () => {
+    if (!selectedBranchId) {
+      toast({
+        title: 'Sucursal no seleccionada',
+        description: 'Seleccione una sucursal antes de registrar un pago.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setShowFormDialog(true);
   };
 
@@ -228,12 +237,12 @@ export default function PagosPage() {
       )}
 
       {/* Form Dialog */}
-      {organization?.id && (
+      {organization?.id && selectedBranchId && (
         <PaymentFormDialog
           open={showFormDialog}
           onOpenChange={setShowFormDialog}
           organizationId={organization.id}
-          branchId={branchId}
+          branchId={selectedBranchId}
           paymentMethods={paymentMethods}
           onSuccess={loadData}
         />

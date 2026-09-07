@@ -25,6 +25,8 @@ import { Loader2, Package, Plus, Trash2, Box, User, Truck } from 'lucide-react';
 import type { ShipmentWithDetails } from '@/lib/services/shipmentsService';
 import { CustomerSearchSelect, type CustomerSearchResult } from './CustomerSearchSelect';
 import { shippingRatesService, type ShippingRateWithCarrier } from '@/lib/services/shippingRatesService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface Stop {
   id: string;
@@ -94,6 +96,9 @@ export function ShipmentDialog({
   const [shippingRates, setShippingRates] = useState<ShippingRateWithCarrier[]>([]);
   const [loadingRates, setLoadingRates] = useState(false);
   const [showRateSelector, setShowRateSelector] = useState(false);
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
 
   const [formData, setFormData] = useState({
     sender_name: '',
@@ -243,6 +248,7 @@ export function ShipmentDialog({
         total_cost: formData.total_cost,
         payment_status: formData.payment_status as ShipmentWithDetails['payment_status'],
         notes: formData.notes || undefined,
+        branch_id: branchId || undefined,
         metadata,
       });
       onOpenChange(false);
@@ -264,6 +270,13 @@ export function ShipmentDialog({
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Remitente */}
           <div className="border rounded-lg p-4">
             <h4 className="font-medium mb-3 flex items-center gap-2">

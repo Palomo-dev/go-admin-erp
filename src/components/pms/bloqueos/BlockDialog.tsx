@@ -25,6 +25,8 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ReservationBlock, BlockType, CreateBlockData } from '@/lib/services/reservationBlocksService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface Space {
   id: string;
@@ -46,8 +48,8 @@ interface BlockDialogProps {
   block?: ReservationBlock | null;
   spaces: Space[];
   spaceTypes: SpaceType[];
-  organizationId: number;
-  branchId: number;
+  organizationId: number | undefined;
+  branchId: number | undefined;
   onSave: (data: CreateBlockData) => Promise<void>;
 }
 
@@ -78,6 +80,17 @@ export function BlockDialog({
   const [reason, setReason] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Sucursal: se reutiliza el branchId del prop (página) como valor inicial,
+  // pero se permite al usuario cambiarla dentro del formulario.
+  const { selectedBranchId } = useBranch();
+  const [formBranchId, setFormBranchId] = useState<number | null>(
+    branchId ?? selectedBranchId ?? null
+  );
+
+  useEffect(() => {
+    setFormBranchId(branchId ?? selectedBranchId ?? null);
+  }, [branchId, selectedBranchId]);
+
   useEffect(() => {
     if (block) {
       setBlockMode(block.space_id ? 'space' : 'type');
@@ -102,12 +115,13 @@ export function BlockDialog({
     if (!dateFrom || !dateTo) return;
     if (blockMode === 'space' && !spaceId) return;
     if (blockMode === 'type' && !spaceTypeId) return;
+    if (!organizationId || !formBranchId) return;
 
     setIsSaving(true);
     try {
       await onSave({
         organization_id: organizationId,
-        branch_id: branchId,
+        branch_id: formBranchId,
         space_id: blockMode === 'space' ? spaceId : null,
         space_type_id: blockMode === 'type' ? spaceTypeId : null,
         date_from: format(dateFrom, 'yyyy-MM-dd'),
@@ -133,6 +147,13 @@ export function BlockDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={formBranchId}
+            onChange={setFormBranchId}
+            required
+          />
+
           {/* Modo de bloqueo */}
           <div className="space-y-2">
             <Label>Tipo de Bloqueo</Label>

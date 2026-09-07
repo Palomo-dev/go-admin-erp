@@ -9,6 +9,7 @@ import { Card,
 import { Factory, ChefHat, TrendingUp, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
 interface ProduccionKPIsProps {
@@ -26,21 +27,35 @@ interface KPI {
 const ProduccionKPIs: FC<ProduccionKPIsProps> = ({ className }) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [loading, setLoading] = useState(true);
+  const { branchFilter } = useBranch();
 
   useEffect(() => {
     cargarKPIs();
-  }, []);
+  }, [branchFilter]);
 
   const cargarKPIs = async () => {
     try {
       setLoading(true);
       const orgId = getOrganizationId();
 
+      // Construir queries base
+      let ordenesQuery = supabase.from('production_orders').select('id', { count: 'exact', head: true }).eq('organization_id', orgId);
+      let completadasQuery = supabase.from('production_orders').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'completed');
+      let enProgresoQuery = supabase.from('production_orders').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'in_progress');
+
+      // Filtrar por sucursal cuando branchFilter no es null
+      if (branchFilter != null) {
+        ordenesQuery = ordenesQuery.eq('branch_id', branchFilter);
+        completadasQuery = completadasQuery.eq('branch_id', branchFilter);
+        enProgresoQuery = enProgresoQuery.eq('branch_id', branchFilter);
+      }
+
       const [recetasRes, ordenesRes, completadasRes, enProgresoRes] = await Promise.all([
+        // Nota: product_recipes no tiene branch_id, este KPI es organization-wide por diseño
         supabase.from('product_recipes').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('is_active', true),
-        supabase.from('production_orders').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
-        supabase.from('production_orders').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'completed'),
-        supabase.from('production_orders').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).eq('status', 'in_progress'),
+        ordenesQuery,
+        completadasQuery,
+        enProgresoQuery,
       ]);
 
       setKpis([

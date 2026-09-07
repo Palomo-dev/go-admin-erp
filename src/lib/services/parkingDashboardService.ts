@@ -63,25 +63,35 @@ class ParkingDashboardService {
   /**
    * Obtener estadísticas completas del dashboard
    */
-  async getDashboardStats(branchId: number, organizationId: number): Promise<ParkingDashboardStats> {
+  async getDashboardStats(branchId: number | null, organizationId: number): Promise<ParkingDashboardStats> {
     try {
       const today = new Date().toISOString().split('T')[0];
       const now = new Date();
 
       // Consultas en paralelo para mejor rendimiento
+      // Cuando branchId es null, no se filtra por sucursal (datos consolidados)
       const [spacesResult, sessionsResult, passesResult] = await Promise.all([
         // Espacios de parking
-        supabase
-          .from('parking_spaces')
-          .select('id, state')
-          .eq('branch_id', branchId),
+        branchId !== null
+          ? supabase
+              .from('parking_spaces')
+              .select('id, state')
+              .eq('branch_id', branchId)
+          : supabase
+              .from('parking_spaces')
+              .select('id, state'),
 
         // Sesiones de hoy
-        supabase
-          .from('parking_sessions')
-          .select('id, status, entry_at, exit_at, amount')
-          .eq('branch_id', branchId)
-          .gte('created_at', `${today}T00:00:00`),
+        branchId !== null
+          ? supabase
+              .from('parking_sessions')
+              .select('id, status, entry_at, exit_at, amount')
+              .eq('branch_id', branchId)
+              .gte('created_at', `${today}T00:00:00`)
+          : supabase
+              .from('parking_sessions')
+              .select('id, status, entry_at, exit_at, amount')
+              .gte('created_at', `${today}T00:00:00`),
 
         // Pases activos
         supabase
@@ -165,9 +175,10 @@ class ParkingDashboardService {
   /**
    * Obtener sesiones activas con información detallada
    */
-  async getActiveSessions(branchId: number, limit = 20): Promise<ActiveSession[]> {
+  async getActiveSessions(branchId: number | null, limit = 20): Promise<ActiveSession[]> {
     try {
-      const { data, error } = await supabase
+      // Cuando branchId es null, no se filtra por sucursal (datos consolidados)
+      let query = supabase
         .from('parking_sessions')
         .select(`
           id,
@@ -177,8 +188,13 @@ class ParkingDashboardService {
           parking_space_id,
           parking_spaces(label, zone)
         `)
-        .eq('branch_id', branchId)
-        .eq('status', 'open')
+        .eq('status', 'open');
+
+      if (branchId !== null) {
+        query = query.eq('branch_id', branchId);
+      }
+
+      const { data, error } = await query
         .order('entry_at', { ascending: true })
         .limit(limit);
 

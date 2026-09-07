@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { InformacionBasicaForm } from './InformacionBasicaForm';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { ItemsListForm } from './ItemsListForm';
 import { ResumenFactura } from './ResumenFactura';
 import { FormActions } from './FormActions';
@@ -37,6 +38,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { 
   calculateCartTaxes,
   type TaxCalculationItem,
@@ -58,7 +60,14 @@ export function NuevaFacturaForm({
 }: NuevaFacturaFormProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [loading, setLoading] = useState(false);
+
+  // Sincronizar branchId con la sucursal seleccionada en el contexto
+  useEffect(() => {
+    if (selectedBranchId) setBranchId(selectedBranchId);
+  }, [selectedBranchId]);
   
   // Detectar si estamos en inventario o finanzas
   const basePath = pathname?.includes('/inventario/')
@@ -461,7 +470,11 @@ export function NuevaFacturaForm({
           }
         };
         
-        const factura = await FacturasCompraService.crearFactura(facturaConTotales);
+        if (!branchId) {
+          toastError('Error', 'Seleccione una sucursal antes de crear la factura.');
+          return;
+        }
+        const factura = await FacturasCompraService.crearFactura(facturaConTotales, branchId);
         router.push(`${basePath}/${factura.id}`);
       }
     } catch (error) {
@@ -558,6 +571,13 @@ export function NuevaFacturaForm({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+        {/* Sucursal */}
+        <BranchSelectorField
+          value={branchId}
+          onChange={setBranchId}
+          required
+        />
+
         {/* Información básica */}
         <InformacionBasicaForm
           formData={formData}

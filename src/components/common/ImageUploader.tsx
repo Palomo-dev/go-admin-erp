@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/config'
 import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Upload, X, Loader2, Image as ImageIcon } from 'lucide-react'
+import { X, Loader2, Image as ImageIcon } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import Image from 'next/image'
 
@@ -36,6 +36,7 @@ export default function ImageUploader({
   const { toast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImageUrl || null)
+  const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Sincronizar previewUrl cuando currentImageUrl cambia externamente (ej: IA)
@@ -71,6 +72,49 @@ export default function ImageUploader({
     }
 
     await uploadImage(file)
+  }
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+
+    // Validar formato
+    if (!acceptedFormats.includes(file.type)) {
+      toast({
+        title: "Formato no válido",
+        description: `Solo se aceptan: ${acceptedFormats.map(f => f.split('/')[1]).join(', ')}`,
+        variant: "destructive"
+      })
+      return
+    }
+
+    // Validar tamaño
+    const sizeMB = file.size / (1024 * 1024)
+    if (sizeMB > maxSizeMB) {
+      toast({
+        title: "Archivo muy grande",
+        description: `El tamaño máximo es ${maxSizeMB}MB`,
+        variant: "destructive"
+      })
+      return
+    }
+
+    await uploadImage(file)
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
   }
 
   const uploadImage = async (file: File) => {
@@ -172,72 +216,72 @@ export default function ImageUploader({
       )}
 
       <div className="flex flex-col gap-3">
-        {/* Preview */}
-        {previewUrl ? (
-          <div className="relative w-full h-48 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden group">
-            <Image
-              src={previewUrl}
-              alt="Preview"
-              fill
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={handleRemoveImage}
-                disabled={isUploading}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Eliminar
-              </Button>
+        {/* Drop zone + Preview */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
+          className={`relative w-full h-48 border-2 rounded-lg overflow-hidden transition-all cursor-pointer ${
+            isDragging
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.01]'
+              : previewUrl
+                ? 'border-gray-200 dark:border-gray-700 group'
+                : 'border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-blue-400 hover:bg-blue-50/30 dark:hover:bg-blue-900/10'
+          }`}
+        >
+          {previewUrl ? (
+            <>
+              <Image
+                src={previewUrl}
+                alt="Preview"
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); handleRemoveImage(); }}
+                  disabled={isUploading}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Eliminar
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                {isUploading ? (
+                  <Loader2 className="h-12 w-12 mx-auto text-blue-500 mb-2 animate-spin" />
+                ) : (
+                  <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                )}
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {isUploading ? 'Subiendo...' : isDragging ? 'Suelta la imagen aquí' : 'Haz clic o arrastra una imagen'}
+                </p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-800/50">
-            <div className="text-center">
-              <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Sin imagen
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Upload Button */}
-        <div className="flex gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={acceptedFormats.join(',')}
-            onChange={handleFileSelect}
-            className="hidden"
-            disabled={isUploading}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="flex-1"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Subiendo...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-2" />
-                {previewUrl ? 'Cambiar Imagen' : 'Subir Imagen'}
-              </>
-            )}
-          </Button>
+          )}
         </div>
 
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={acceptedFormats.join(',')}
+          onChange={handleFileSelect}
+          className="hidden"
+          disabled={isUploading}
+        />
+
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Formatos: {acceptedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')} • 
+          Formatos: {acceptedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')} •
           Máximo: {maxSizeMB}MB
         </p>
       </div>

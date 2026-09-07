@@ -106,7 +106,7 @@ interface InvoiceSequenceRow {
 
 class FinanzasDashboardService {
   
-  async getKPIs(organizationId: number, filters: DashboardFilters): Promise<KPIData> {
+  async getKPIs(organizationId: number, filters: DashboardFilters, branchId?: number | null): Promise<KPIData> {
     const { fechaInicio, fechaFin } = filters;
     // fechaFin viene como 'YYYY-MM-DD'. Usar lt con el día siguiente para
     // incluir todo el día fechaFin (hasta 23:59:59), ya que los campos
@@ -119,7 +119,7 @@ class FinanzasDashboardService {
     // Ingresos (facturas de venta pagadas)
     // Excluir facturas que ya tienen sale_id (se generaron desde una venta
     // POS que ya se suma más abajo) para evitar doble conteo.
-    const { data: ventasData } = await supabase
+    let ventasQuery = supabase
       .from('invoice_sales')
       .select('total')
       .eq('organization_id', organizationId)
@@ -127,22 +127,26 @@ class FinanzasDashboardService {
       .lt('issue_date', fechaFinExclusive)
       .in('status', ['paid', 'partial'])
       .is('sale_id', null);
+    if (branchId != null) ventasQuery = ventasQuery.eq('branch_id', branchId);
+    const { data: ventasData } = await ventasQuery;
 
     const ingresosFacturas = ventasData?.reduce((sum, v) => sum + (Number(v.total) || 0), 0) || 0;
 
     // Ingresos POS (sales pagadas)
-    const { data: salesData } = await supabase
+    let salesQuery = supabase
       .from('sales')
       .select('total')
       .eq('organization_id', organizationId)
       .gte('sale_date', fechaInicio)
       .lt('sale_date', fechaFinExclusive)
       .eq('payment_status', 'paid');
+    if (branchId != null) salesQuery = salesQuery.eq('branch_id', branchId);
+    const { data: salesData } = await salesQuery;
 
     const ingresosPOS = salesData?.reduce((sum, s) => sum + (Number(s.total) || 0), 0) || 0;
 
     // Ingresos pedidos online (web_orders pagadas, sin sale_id para no duplicar)
-    const { data: webOrdersData } = await supabase
+    let webOrdersQuery = supabase
       .from('web_orders')
       .select('total')
       .eq('organization_id', organizationId)
@@ -150,39 +154,47 @@ class FinanzasDashboardService {
       .lt('created_at', fechaFinExclusive)
       .eq('payment_status', 'paid')
       .is('sale_id', null);
+    if (branchId != null) webOrdersQuery = webOrdersQuery.eq('branch_id', branchId);
+    const { data: webOrdersData } = await webOrdersQuery;
 
     const ingresosWeb = webOrdersData?.reduce((sum, w) => sum + (Number(w.total) || 0), 0) || 0;
 
     const ingresos = ingresosFacturas + ingresosPOS + ingresosWeb;
 
     // Egresos (facturas de compra pagadas)
-    const { data: comprasData } = await supabase
+    let comprasQuery = supabase
       .from('invoice_purchase')
       .select('total')
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
       .lt('issue_date', fechaFinExclusive)
       .in('status', ['paid', 'partial']);
-    
+    if (branchId != null) comprasQuery = comprasQuery.eq('branch_id', branchId);
+    const { data: comprasData } = await comprasQuery;
+
     const egresos = comprasData?.reduce((sum, c) => sum + (Number(c.total) || 0), 0) || 0;
-    
+
     // Cartera vencida (CxC vencidas)
     const hoy = new Date().toISOString().split('T')[0];
-    const { data: carteraVencidaData } = await supabase
+    let carteraQuery = supabase
       .from('accounts_receivable')
       .select('balance')
       .eq('organization_id', organizationId)
       .lt('due_date', hoy)
       .gt('balance', 0);
-    
+    if (branchId != null) carteraQuery = carteraQuery.eq('branch_id', branchId);
+    const { data: carteraVencidaData } = await carteraQuery;
+
     const carteraVencida = carteraVencidaData?.reduce((sum, c) => sum + (Number(c.balance) || 0), 0) || 0;
-    
+
     // Caja (sesiones de caja abiertas: initial_amount + movimientos in - movimientos out)
-    const { data: cajaData } = await supabase
+    let cajaQuery = supabase
       .from('cash_sessions')
       .select('id, initial_amount')
       .eq('organization_id', organizationId)
       .eq('status', 'open');
+    if (branchId != null) cajaQuery = cajaQuery.eq('branch_id', branchId);
+    const { data: cajaData } = await cajaQuery;
 
     let caja = 0;
     if (cajaData && cajaData.length > 0) {
@@ -206,32 +218,38 @@ class FinanzasDashboardService {
     }
 
     // Bancos
-    const { data: bancosData } = await supabase
+    let bancosQuery = supabase
       .from('bank_accounts')
       .select('balance')
       .eq('organization_id', organizationId)
       .eq('is_active', true);
+    if (branchId != null) bancosQuery = bancosQuery.eq('branch_id', branchId);
+    const { data: bancosData } = await bancosQuery;
 
     const bancos = bancosData?.reduce((sum, b) => sum + (Number(b.balance) || 0), 0) || 0;
-    
+
     // Cuentas por cobrar total
-    const { data: cxcData } = await supabase
+    let cxcQuery = supabase
       .from('accounts_receivable')
       .select('balance')
       .eq('organization_id', organizationId)
       .gt('balance', 0);
-    
+    if (branchId != null) cxcQuery = cxcQuery.eq('branch_id', branchId);
+    const { data: cxcData } = await cxcQuery;
+
     const cuentasPorCobrar = cxcData?.reduce((sum, c) => sum + (Number(c.balance) || 0), 0) || 0;
-    
+
     // Cuentas por pagar total
-    const { data: cxpData } = await supabase
+    let cxpQuery = supabase
       .from('accounts_payable')
       .select('balance')
       .eq('organization_id', organizationId)
       .gt('balance', 0);
-    
+    if (branchId != null) cxpQuery = cxpQuery.eq('branch_id', branchId);
+    const { data: cxpData } = await cxpQuery;
+
     const cuentasPorPagar = cxpData?.reduce((sum, c) => sum + (Number(c.balance) || 0), 0) || 0;
-    
+
     return {
       ingresos,
       egresos,
@@ -244,10 +262,10 @@ class FinanzasDashboardService {
     };
   }
   
-  async getTopClientes(organizationId: number, filters: DashboardFilters, limit: number = 5): Promise<TopClienteProveedor[]> {
+  async getTopClientes(organizationId: number, filters: DashboardFilters, limit: number = 5, branchId?: number | null): Promise<TopClienteProveedor[]> {
     const { fechaInicio, fechaFin } = filters;
     
-    const { data } = await supabase
+    let query = supabase
       .from('invoice_sales')
       .select(`
         customer_id,
@@ -257,6 +275,12 @@ class FinanzasDashboardService {
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
       .lte('issue_date', fechaFin);
+    
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data } = await query;
     
     if (!data) return [];
     
@@ -286,10 +310,10 @@ class FinanzasDashboardService {
       .slice(0, limit);
   }
   
-  async getTopProveedores(organizationId: number, filters: DashboardFilters, limit: number = 5): Promise<TopClienteProveedor[]> {
+  async getTopProveedores(organizationId: number, filters: DashboardFilters, limit: number = 5, branchId?: number | null): Promise<TopClienteProveedor[]> {
     const { fechaInicio, fechaFin } = filters;
     
-    const { data } = await supabase
+    let query = supabase
       .from('invoice_purchase')
       .select(`
         supplier_id,
@@ -299,6 +323,12 @@ class FinanzasDashboardService {
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
       .lte('issue_date', fechaFin);
+    
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data } = await query;
     
     if (!data) return [];
     
@@ -328,7 +358,7 @@ class FinanzasDashboardService {
       .slice(0, limit);
   }
   
-  async getVentasVsCompras(organizationId: number, filters: DashboardFilters): Promise<VentasComprasData[]> {
+  async getVentasVsCompras(organizationId: number, filters: DashboardFilters, branchId?: number | null): Promise<VentasComprasData[]> {
     const { fechaInicio, fechaFin } = filters;
 
     // Determinar granularidad: si el rango es ≤31 días → agrupar por día,
@@ -350,39 +380,53 @@ class FinanzasDashboardService {
     // 2. sales pagadas (ventas POS)
     // 3. web_orders pagadas sin sale_id (pedidos web no vinculados a una sale)
     const [ventasFacturasRes, ventasPosRes, ventasWebRes] = await Promise.all([
-      supabase
-        .from('invoice_sales')
-        .select('issue_date, total')
-        .eq('organization_id', organizationId)
-        .gte('issue_date', fechaInicio)
-        .lt('issue_date', fechaFinExclusive)
-        .in('status', ['paid', 'partial'])
-        .is('sale_id', null),
-      supabase
-        .from('sales')
-        .select('sale_date, total')
-        .eq('organization_id', organizationId)
-        .gte('sale_date', fechaInicio)
-        .lt('sale_date', fechaFinExclusive)
-        .eq('payment_status', 'paid'),
-      supabase
-        .from('web_orders')
-        .select('created_at, total')
-        .eq('organization_id', organizationId)
-        .gte('created_at', fechaInicio)
-        .lt('created_at', fechaFinExclusive)
-        .eq('payment_status', 'paid')
-        .is('sale_id', null),
+      (() => {
+        let q = supabase
+          .from('invoice_sales')
+          .select('issue_date, total')
+          .eq('organization_id', organizationId)
+          .gte('issue_date', fechaInicio)
+          .lt('issue_date', fechaFinExclusive)
+          .in('status', ['paid', 'partial'])
+          .is('sale_id', null);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
+      (() => {
+        let q = supabase
+          .from('sales')
+          .select('sale_date, total')
+          .eq('organization_id', organizationId)
+          .gte('sale_date', fechaInicio)
+          .lt('sale_date', fechaFinExclusive)
+          .eq('payment_status', 'paid');
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
+      (() => {
+        let q = supabase
+          .from('web_orders')
+          .select('created_at, total')
+          .eq('organization_id', organizationId)
+          .gte('created_at', fechaInicio)
+          .lt('created_at', fechaFinExclusive)
+          .eq('payment_status', 'paid')
+          .is('sale_id', null);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
     ]);
 
     // Compras: facturas de compra pagadas/parciales (alineado con getKPIs)
-    const { data: comprasData } = await supabase
+    let comprasQuery = supabase
       .from('invoice_purchase')
       .select('issue_date, total')
       .eq('organization_id', organizationId)
       .gte('issue_date', fechaInicio)
       .lt('issue_date', fechaFinExclusive)
       .in('status', ['paid', 'partial']);
+    if (branchId != null) comprasQuery = comprasQuery.eq('branch_id', branchId);
+    const { data: comprasData } = await comprasQuery;
 
     // Agrupar por día o mes según la granularidad
     const bucketMap = new Map<string, { ventas: number; compras: number }>();
@@ -422,14 +466,20 @@ class FinanzasDashboardService {
       .sort((a, b) => a.fecha.localeCompare(b.fecha));
   }
   
-  async getAgingCuentasPorCobrar(organizationId: number): Promise<AgingData[]> {
+  async getAgingCuentasPorCobrar(organizationId: number, branchId?: number | null): Promise<AgingData[]> {
     const hoy = new Date();
     
-    const { data } = await supabase
+    let query = supabase
       .from('accounts_receivable')
       .select('balance, due_date')
       .eq('organization_id', organizationId)
       .gt('balance', 0);
+    
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data } = await query;
     
     if (!data) return [];
     
@@ -469,7 +519,7 @@ class FinanzasDashboardService {
     }));
   }
   
-  async getFlujoProyectado(organizationId: number): Promise<FlujoProyectado[]> {
+  async getFlujoProyectado(organizationId: number, branchId?: number | null): Promise<FlujoProyectado[]> {
     const hoy = new Date();
     const result: FlujoProyectado[] = [];
 
@@ -481,20 +531,28 @@ class FinanzasDashboardService {
     const fechaFinHist = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split('T')[0];
 
     const [ventasHistRes, comprasHistRes] = await Promise.all([
-      supabase
-        .from('invoice_sales')
-        .select('total')
-        .eq('organization_id', organizationId)
-        .gte('issue_date', fechaInicioHist)
-        .lte('issue_date', fechaFinHist)
-        .in('status', ['paid', 'partial']),
-      supabase
-        .from('invoice_purchase')
-        .select('total')
-        .eq('organization_id', organizationId)
-        .gte('issue_date', fechaInicioHist)
-        .lte('issue_date', fechaFinHist)
-        .in('status', ['paid', 'partial']),
+      (() => {
+        let q = supabase
+          .from('invoice_sales')
+          .select('total')
+          .eq('organization_id', organizationId)
+          .gte('issue_date', fechaInicioHist)
+          .lte('issue_date', fechaFinHist)
+          .in('status', ['paid', 'partial']);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
+      (() => {
+        let q = supabase
+          .from('invoice_purchase')
+          .select('total')
+          .eq('organization_id', organizationId)
+          .gte('issue_date', fechaInicioHist)
+          .lte('issue_date', fechaFinHist)
+          .in('status', ['paid', 'partial']);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
     ]);
 
     const ventasHistTotal = ventasHistRes.data?.reduce((sum, v) => sum + (Number(v.total) || 0), 0) || 0;
@@ -508,24 +566,32 @@ class FinanzasDashboardService {
       const mesFin = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0).toISOString().split('T')[0];
 
       // Ingresos proyectados (cuotas CxC pendientes)
-      const { data: ingresosData } = await supabase
+      let ingresosQuery = supabase
         .from('ar_installments')
-        .select('amount, accounts_receivable!inner(organization_id)')
+        .select('amount, accounts_receivable!inner(organization_id, branch_id)')
         .eq('accounts_receivable.organization_id', organizationId)
         .gte('due_date', mesInicio)
         .lte('due_date', mesFin)
         .eq('status', 'pending');
+      if (branchId != null) {
+        ingresosQuery = ingresosQuery.eq('accounts_receivable.branch_id', branchId);
+      }
+      const { data: ingresosData } = await ingresosQuery;
 
       let ingresos = ingresosData?.reduce((sum, inst: ArInstallmentRow) => sum + (Number(inst.amount) || 0), 0) || 0;
 
       // Egresos proyectados (cuotas CxP pendientes)
-      const { data: egresosData } = await supabase
+      let egresosQuery = supabase
         .from('ap_installments')
-        .select('amount, accounts_payable!inner(organization_id)')
+        .select('amount, accounts_payable!inner(organization_id, branch_id)')
         .eq('accounts_payable.organization_id', organizationId)
         .gte('due_date', mesInicio)
         .lte('due_date', mesFin)
         .eq('status', 'pending');
+      if (branchId != null) {
+        egresosQuery = egresosQuery.eq('accounts_payable.branch_id', branchId);
+      }
+      const { data: egresosData } = await egresosQuery;
 
       let egresos = egresosData?.reduce((sum, inst: ApInstallmentRow) => sum + (Number(inst.amount) || 0), 0) || 0;
 
@@ -552,14 +618,14 @@ class FinanzasDashboardService {
     return result;
   }
   
-  async getAlertas(organizationId: number): Promise<Alerta[]> {
+  async getAlertas(organizationId: number, branchId?: number | null): Promise<Alerta[]> {
     const alertas: Alerta[] = [];
     const hoy = new Date();
     const en7Dias = new Date(hoy.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const hoyStr = hoy.toISOString().split('T')[0];
     
     // Facturas por vencer (próximos 7 días)
-    const { data: facturasPorVencer } = await supabase
+    let facturasPorVencerQuery = supabase
       .from('accounts_receivable')
       .select('id, invoice_id, due_date, balance, customers(full_name)')
       .eq('organization_id', organizationId)
@@ -567,6 +633,8 @@ class FinanzasDashboardService {
       .lte('due_date', en7Dias)
       .gt('balance', 0)
       .limit(5);
+    if (branchId != null) facturasPorVencerQuery = facturasPorVencerQuery.eq('branch_id', branchId);
+    const { data: facturasPorVencer } = await facturasPorVencerQuery;
     
     (facturasPorVencer as unknown as FacturaPorVencerRow[])?.forEach((f: FacturaPorVencerRow) => {
       if (!f.due_date) return;
@@ -583,12 +651,14 @@ class FinanzasDashboardService {
     
     // Cartera vencida (más de 30 días)
     const hace30Dias = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const { data: carteraVencida, count: carteraCount } = await supabase
+    let carteraQuery = supabase
       .from('accounts_receivable')
       .select('id, balance', { count: 'exact' })
       .eq('organization_id', organizationId)
       .lt('due_date', hace30Dias)
       .gt('balance', 0);
+    if (branchId != null) carteraQuery = carteraQuery.eq('branch_id', branchId);
+    const { data: carteraVencida, count: carteraCount } = await carteraQuery;
     
     if (carteraCount && carteraCount > 0) {
       const totalVencido = carteraVencida?.reduce((sum, c) => sum + (Number(c.balance) || 0), 0) || 0;
@@ -646,15 +716,15 @@ class FinanzasDashboardService {
     return alertas.sort((a, b) => prioridadOrden[a.prioridad] - prioridadOrden[b.prioridad]);
   }
   
-  async getResumenGeneral(organizationId: number, filters: DashboardFilters) {
+  async getResumenGeneral(organizationId: number, filters: DashboardFilters, branchId?: number | null) {
     const [kpis, topClientes, topProveedores, ventasCompras, aging, flujo, alertas] = await Promise.all([
-      this.getKPIs(organizationId, filters),
-      this.getTopClientes(organizationId, filters),
-      this.getTopProveedores(organizationId, filters),
-      this.getVentasVsCompras(organizationId, filters),
-      this.getAgingCuentasPorCobrar(organizationId),
-      this.getFlujoProyectado(organizationId),
-      this.getAlertas(organizationId)
+      this.getKPIs(organizationId, filters, branchId),
+      this.getTopClientes(organizationId, filters, 5, branchId),
+      this.getTopProveedores(organizationId, filters, 5, branchId),
+      this.getVentasVsCompras(organizationId, filters, branchId),
+      this.getAgingCuentasPorCobrar(organizationId, branchId),
+      this.getFlujoProyectado(organizationId, branchId),
+      this.getAlertas(organizationId, branchId)
     ]);
     
     return {

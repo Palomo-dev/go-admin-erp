@@ -53,6 +53,7 @@ class HousekeepingService {
     status?: string;
     assigned_to?: string;
     space_id?: string;
+    spaceIds?: string[];
   }): Promise<HousekeepingTask[]> {
     try {
       let query = supabase
@@ -94,6 +95,11 @@ class HousekeepingService {
         query = query.eq('space_id', filters.space_id);
       }
 
+      // Filtro por múltiples space_ids (para branch isolation)
+      if (filters?.spaceIds && filters.spaceIds.length > 0) {
+        query = query.in('space_id', filters.spaceIds);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
@@ -126,7 +132,7 @@ class HousekeepingService {
   /**
    * Obtener estadísticas de tareas
    */
-  async getStats(date?: string): Promise<HousekeepingStats> {
+  async getStats(date?: string, spaceIds?: string[]): Promise<HousekeepingStats> {
     try {
       let query = supabase
         .from('housekeeping_tasks')
@@ -134,6 +140,10 @@ class HousekeepingService {
 
       if (date) {
         query = query.eq('task_date', date);
+      }
+
+      if (spaceIds && spaceIds.length > 0) {
+        query = query.in('space_id', spaceIds);
       }
 
       const { data, error } = await query;

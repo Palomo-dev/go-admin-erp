@@ -1,10 +1,11 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useOrgAdmin } from '@/components/organization/useOrgAdmin';
 import { BranchesSkeleton } from '@/components/organization/OrganizationSkeletons';
+import { BRANCHES_UPDATED_EVENT } from '@/lib/context/BranchContext';
 
 const BranchesTab = dynamic(() => import('@/components/organization/BranchesTab'), {
   loading: () => <BranchesSkeleton />
@@ -12,7 +13,14 @@ const BranchesTab = dynamic(() => import('@/components/organization/BranchesTab'
 
 export default function SucursalesPage() {
   const t = useTranslations('org');
-  const { orgId, isOrgAdmin, userBranches, loading, error } = useOrgAdmin();
+  const { orgId, isOrgAdmin, userBranches, loading, error, refresh } = useOrgAdmin();
+
+  // Refrescar cuando BranchesTab dispatcha el evento (crear, editar, eliminar, asignar gerente)
+  useEffect(() => {
+    const handler = () => refresh();
+    window.addEventListener(BRANCHES_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(BRANCHES_UPDATED_EVENT, handler);
+  }, [refresh]);
 
   if (loading) {
     return (

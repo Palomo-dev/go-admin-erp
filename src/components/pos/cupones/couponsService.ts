@@ -29,6 +29,10 @@ export class CouponsService {
             id,
             full_name,
             email
+          ),
+          promotion:promotions (
+            id,
+            branches
           )
         `)
         .eq('organization_id', organizationId)
@@ -54,6 +58,33 @@ export class CouponsService {
         query = query.lte('end_date', filters.dateTo);
       }
 
+      // Filtro por sucursal: los cupones no tienen branch_id directo,
+      // se filtra vía la promoción asociada (que tiene branches JSONB).
+      // Se resuelve en la query (no en cliente): se obtienen los IDs de
+      // promociones que aplican a la sucursal (branches contiene branchId,
+      // o branches es null/vacío = global) y se filtra por promotion_id.
+      // Los cupones sin promoción asociada se consideran globales.
+      if (filters.branchId != null && typeof filters.branchId === 'number') {
+        const branchId = filters.branchId;
+        const nowIso = new Date().toISOString();
+        const { data: matchingPromos } = await supabase
+          .from('promotions')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .eq('is_active', true)
+          .or(`branches.cs.{${branchId}},branches.is.null,branches.eq.[]`)
+          .or(`start_date.is.null,start_date.lte.${nowIso}`)
+          .or(`end_date.is.null,end_date.gte.${nowIso}`);
+
+        const promoIds = (matchingPromos || []).map((p: any) => p.id);
+        if (promoIds.length > 0) {
+          query = query.or(`promotion_id.in.(${promoIds.join(',')}),promotion_id.is.null`);
+        } else {
+          // Ninguna promoción aplica; solo cupones sin promoción (globales)
+          query = query.is('promotion_id', null);
+        }
+      }
+
       const { data, error } = await query;
 
       if (error) {
@@ -61,7 +92,7 @@ export class CouponsService {
         throw new Error(`Error al obtener cupones: ${error.message}`);
       }
 
-      return data || [];
+      return (data || []) as Coupon[];
     } catch (error) {
       console.error('Error in getAll:', error);
       throw error;

@@ -96,6 +96,8 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
   const [initialLoading, setInitialLoading] = useState(true);
   // ID numérico del producto (se obtiene al cargar por UUID)
   const [productoId, setProductoId] = useState<number | undefined>(undefined);
+  // Imágenes originales cargadas de la BD (para comparar al guardar y eliminar las quitadas)
+  const [originalImages, setOriginalImages] = useState<any[]>([]);
   
   // Obtener el ID de la organización activa
   const organization_id = getOrganizationId();
@@ -169,7 +171,6 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         
         // Guardar el ID numérico para operaciones posteriores
         setProductoId(producto.id);
-        
         // 2. Cargar stock actual del producto
         const { data: stockData, error: stockError } = await supabase
           .from('stock_levels')
@@ -301,6 +302,9 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
             is_primary: img.is_primary || false
           };
         });
+
+        // Guardar referencias originales para comparar al guardar
+        setOriginalImages(images);
 
         // 10. Cargar variantes existentes (productos hijos)
         const { data: childrenData } = await supabase
@@ -599,8 +603,69 @@ export default function FormularioEdicionProducto({ productoUuid }: FormularioEd
         }
       }
 
-      // 2. Imágenes se manejan a través de formData (no requiere ref)
-      
+      // 2. Sincronizar imágenes: eliminar las quitadas, subir nuevas, actualizar orden/principal
+      try {
+        const currentImages = data.images || [];
+        // IDs de imágenes que siguen en el formulario
+        const keptImageIds = new Set(
+          currentImages.filter((img: any) => img.id).map((img: any) => img.id)
+        );
+        // Imágenes originales que ya no están en el formulario → eliminar de BD y storage
+        const removedImages = originalImages.filter((img: any) => !keptImageIds.has(img.id));
+        for (const img of removedImages) {
+          if (img.id) {
+            await supabase.from('product_images').delete().eq('id', img.id);
+          }
+          if (img.storagePath && !img.storagePath.startsWith('http')) {
+            const bucket = (img.storagePath.startsWith('products/') || img.storagePath.startsWith('productos/')) ? 'product-images' : 'organization_images';
+            await supabase.storage.from(bucket).remove([img.storagePath]);
+          }
+        }
+
+        // Procesar imágenes actuales: subir nuevas (con file) y actualizar existentes
+        for (let i = 0; i < currentImages.length; i++) {
+          const image = currentImages[i];
+          let storagePath = image.storagePath || '';
+
+          if (image.file) {
+            // Imagen nueva subida por el usuario
+            const fileExt = image.file.name.split('.').pop();
+            const fileName = `${productoUuid}_${Date.now()}_${i}.${fileExt}`;
+            storagePath = `productos/${productoUuid}/${fileName}`;
+            const { error: uploadError } = await supabase.storage
+              .from('product-images')
+              .upload(storagePath, image.file);
+            if (uploadError) throw uploadError;
+          }
+
+          if (image.id) {
+            // Imagen existente: actualizar orden y principal
+            await supabase
+              .from('product_images')
+              .update({
+                display_order: i,
+                is_primary: image.is_primary || false,
+                storage_path: storagePath || undefined,
+              })
+              .eq('id', image.id);
+          } else if (storagePath) {
+            // Imagen nueva (IA o subida): insertar en BD
+            const { error: imageError } = await supabase
+              .from('product_images')
+              .insert({
+                product_id: productoId,
+                storage_path: storagePath,
+                display_order: i,
+                is_primary: image.is_primary || false,
+              });
+            if (imageError) throw imageError;
+          }
+        }
+      } catch (imgError: any) {
+        console.error('Error al sincronizar imágenes:', imgError);
+        // No abortar todo el guardado por un error de imágenes
+      }
+
       // 3. Variantes, notas y etiquetas se manejan a través de formData (no requiere refs)
       
       // 4. Actualizar el stock del producto principal (sin variantes)

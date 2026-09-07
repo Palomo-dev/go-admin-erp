@@ -52,11 +52,10 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5, si
 
   try {
     const results = await Promise.allSettled([
-      withTimeout(supabase.from('organizations').select('id, name').ilike('name', `%${term}%`).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('branches').select('id, name, organization_id').ilike('name', `%${term}%`).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
-      withTimeout(supabase.from('products').select('id, name, sku, description, organization_id').or(`name.ilike.%${term}%, sku.ilike.%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
+      withTimeout(supabase.from('products').select('id, name, sku, description, organization_id').or(`name.ilike.%${term}%, sku.ilike.%${term}%, barcode.ilike.%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('suppliers').select('id, name, nit, email').or(`name.ilike.%${term}%, nit.ilike.%${term}%, email.ilike.%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
-      withTimeout(supabase.from('customers').select('id, first_name, last_name, email, full_name, company_name, trade_name, organization_id, avatar_url').or(`first_name.ilike.%${term}%, last_name.ilike.%${term}%, email.ilike.%${term}%, full_name.ilike.%${term}%, company_name.ilike.%${term}%, trade_name.ilike.%${term}%, phone.ilike.%${term}%, identification_number.ilike.%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
+      withTimeout(supabase.from('customers').select('id, first_name, last_name, email, full_name, company_name, trade_name, organization_id, avatar_url, identification_number').or(`first_name.ilike.%${term}%, last_name.ilike.%${term}%, email.ilike.%${term}%, full_name.ilike.%${term}%, company_name.ilike.%${term}%, trade_name.ilike.%${term}%, phone.ilike.%${term}%, identification_number.ilike.%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('categories').select('id, name, slug').ilike('name', `%${term}%`).eq('organization_id', organizationId).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('invoice_sales').select('id, number, total, status, customer_id, customers(full_name)').or(`number.ilike.%${term}%`).eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
       withTimeout(supabase.from('web_orders').select('id, order_number, customer_name, status, total').or(`order_number.ilike.%${term}%, customer_name.ilike.%${term}%`).eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(resultLimit).abortSignal(signal) as unknown as Promise<any>),
@@ -67,18 +66,18 @@ export const searchData = async (searchTerm: string, resultLimit: number = 5, si
     ]);
 
     return {
-      organizaciones: extractData(results[0], 'organizations'),
-      sucursales: extractData(results[1], 'branches'),
-      productos: extractData(results[2], 'products'),
-      proveedores: extractData(results[3], 'suppliers'),
-      clientes: extractData(results[4], 'customers'),
-      categorias: extractData(results[5], 'categories'),
-      facturas: extractData(results[6], 'invoice_sales'),
-      pedidosOnline: extractData(results[7], 'web_orders'),
-      reservas: extractData(results[8], 'reservations'),
-      espacios: extractData(results[9], 'spaces'),
-      membresias: extractData(results[10], 'memberships'),
-      vehiculosParking: extractData(results[11], 'parking_vehicles'),
+      organizaciones: [],
+      sucursales: extractData(results[0], 'branches'),
+      productos: extractData(results[1], 'products'),
+      proveedores: extractData(results[2], 'suppliers'),
+      clientes: extractData(results[3], 'customers'),
+      categorias: extractData(results[4], 'categories'),
+      facturas: extractData(results[5], 'invoice_sales'),
+      pedidosOnline: extractData(results[6], 'web_orders'),
+      reservas: extractData(results[7], 'reservations'),
+      espacios: extractData(results[8], 'spaces'),
+      membresias: extractData(results[9], 'memberships'),
+      vehiculosParking: extractData(results[10], 'parking_vehicles'),
     };
   } catch (error) {
     console.error('[GlobalSearch] Error general al buscar datos:', error);

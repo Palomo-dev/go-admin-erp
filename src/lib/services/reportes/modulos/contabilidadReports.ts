@@ -22,7 +22,7 @@ export const contabilidadReports: ReportDefinition[] = [
     descripcion: 'Ingresos, costos y gastos → utilidad neta del período',
     categoria: 'contable',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_estado_resultados', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
@@ -58,7 +58,7 @@ export const contabilidadReports: ReportDefinition[] = [
     descripcion: 'Activo, pasivo y patrimonio a la fecha de corte',
     categoria: 'contable',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_balance_general', {
         p_organization_id: orgId,
         p_as_of: periodo.fechaFin,
@@ -92,7 +92,7 @@ export const contabilidadReports: ReportDefinition[] = [
     descripcion: 'Comparativo de presupuestos contra ejecución real',
     categoria: 'contable',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_presupuesto_vs_real', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,

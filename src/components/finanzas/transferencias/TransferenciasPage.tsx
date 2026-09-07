@@ -39,6 +39,7 @@ import { transferenciasService, BankTransfer } from '@/lib/services/transferenci
 import { NuevaTransferenciaDialog } from './NuevaTransferenciaDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 const statusColors: Record<string, string> = {
   completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
@@ -180,6 +181,8 @@ export function TransferenciasPage() {
           </Button>
         </div>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

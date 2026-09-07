@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { ServiceChargeFilters, APPLIES_TO_LABELS, AppliesTo } from './types';
 import { CargosServicioService } from './cargosServicioService';
+import { useBranch } from '@/lib/context/BranchContext';
 import { toast } from 'sonner';
 
 interface ChargesHeaderProps {
@@ -51,13 +52,13 @@ export function ChargesHeader({
   onFiltersChange,
   onRefresh,
   onNewCharge,
-  branches,
   stats,
   loading
 }: ChargesHeaderProps) {
   const [showImport, setShowImport] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { setSelectedBranch, branches: globalBranches } = useBranch();
 
   const handleStatusChange = (value: string) => {
     const newFilter = value === 'all' 
@@ -67,10 +68,7 @@ export function ChargesHeader({
   };
 
   const handleBranchChange = (value: string) => {
-    onFiltersChange({ 
-      ...filters, 
-      branch_id: value === 'all' ? undefined : parseInt(value)
-    });
+    setSelectedBranch(value === 'all' ? 'all' : parseInt(value));
   };
 
   const handleAppliesToChange = (value: string) => {
@@ -223,8 +221,8 @@ export function ChargesHeader({
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                 <SelectItem value="all">Todas las sucursales</SelectItem>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id.toString()}>
+                {globalBranches.map((branch) => (
+                  <SelectItem key={branch.id ?? 0} value={(branch.id ?? 0).toString()}>
                     {branch.name}
                   </SelectItem>
                 ))}

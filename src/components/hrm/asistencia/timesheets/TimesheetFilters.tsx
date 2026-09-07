@@ -10,17 +10,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar, Search, X } from 'lucide-react';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface TimesheetFiltersProps {
   dateFrom: string;
   dateTo: string;
   status: string;
-  branchId: string;
-  branches: { id: number; name: string }[];
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
   onStatusChange: (value: string) => void;
-  onBranchChange: (value: string) => void;
   onClearFilters: () => void;
 }
 
@@ -28,15 +26,14 @@ export function TimesheetFilters({
   dateFrom,
   dateTo,
   status,
-  branchId,
-  branches,
   onDateFromChange,
   onDateToChange,
   onStatusChange,
-  onBranchChange,
   onClearFilters,
 }: TimesheetFiltersProps) {
-  const hasActiveFilters = dateFrom || dateTo || status !== 'all' || branchId !== 'all';
+  // Sincronizar con el contexto global de sucursal
+  const { branchFilter, setSelectedBranch, branches: contextBranches } = useBranch();
+  const hasActiveFilters = dateFrom || dateTo || status !== 'all' || branchFilter !== null;
 
   return (
     <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-3">
@@ -75,14 +72,17 @@ export function TimesheetFilters({
         </SelectContent>
       </Select>
 
-      <Select value={branchId} onValueChange={onBranchChange}>
+      <Select
+        value={branchFilter?.toString() || 'all'}
+        onValueChange={(v) => setSelectedBranch(v === 'all' ? 'all' : parseInt(v))}
+      >
         <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-900">
           <SelectValue placeholder="Sede" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todas las sedes</SelectItem>
-          {branches.map((branch) => (
-            <SelectItem key={branch.id} value={branch.id.toString()}>
+          {contextBranches.map((branch) => (
+            <SelectItem key={branch.id ?? 0} value={(branch.id ?? 0).toString()}>
               {branch.name}
             </SelectItem>
           ))}

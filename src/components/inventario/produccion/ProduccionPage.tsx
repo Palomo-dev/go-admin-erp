@@ -9,7 +9,9 @@ import {
   type ProductionOrderStatus,
 } from '@/lib/services/productionOrderService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { ProductionOrderDialog } from './ProductionOrderDialog';
 import { ProductionOrderHeader } from './ProductionOrderHeader';
 import { ProductionOrderStats } from './ProductionOrderStats';
@@ -20,6 +22,7 @@ import { ProductionOrderDetailDialog } from './ProductionOrderDetailDialog';
 export function ProduccionPage() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,13 +39,13 @@ export function ProduccionPage() {
     if (organizationId) {
       cargarOrders();
     }
-  }, [organizationId]);
+  }, [organizationId, branchFilter]);
 
   const cargarOrders = async () => {
     if (!organizationId) return;
     try {
       setLoading(true);
-      const data = await productionOrderService.getOrders(organizationId);
+      const data = await productionOrderService.getOrders(organizationId, { branch_id: branchFilter ?? undefined });
       setOrders(data);
     } catch (error) {
       console.error('Error cargando órdenes:', error);
@@ -160,6 +163,8 @@ export function ProduccionPage() {
         onRefresh={cargarOrders}
         onNewOrder={() => setShowDialog(true)}
       />
+
+      <BranchBadge />
 
       <ProductionOrderStats orders={orders} />
 

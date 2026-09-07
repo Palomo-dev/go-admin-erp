@@ -32,6 +32,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 
 interface ScrapedProduct {
@@ -123,7 +124,8 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
   onOpenChange,
   onImportComplete,
 }) => {
-  const { organization, branch_id } = useOrganization();
+  const { organization } = useOrganization();
+  const { selectedBranchId } = useBranch();
   const [paso, setPaso] = useState<Paso>('url');
   const [url, setUrl] = useState('');
   const [analizando, setAnalizando] = useState(false);
@@ -367,7 +369,7 @@ const ScrapingProductos: React.FC<ScrapingProductosProps> = ({
           action: 'import',
           products: loteProductos,
           organization_id: organization.id,
-          branch_id: branch_id || null,
+          branch_id: selectedBranchId || null,
           source_url: url,
           duplicate_mode: duplicateMode,
         },

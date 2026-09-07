@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ReportesContablesService, TrialBalanceRow } from '../ReportesContablesService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 const TYPE_LABELS: Record<string, string> = {
   asset: 'Activo',
@@ -101,6 +102,8 @@ export function BalanceComprobacionPage() {
           Exportar CSV
         </Button>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">

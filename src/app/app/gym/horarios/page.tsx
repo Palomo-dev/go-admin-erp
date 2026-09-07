@@ -18,6 +18,7 @@ import {
 import { ScheduleHeader, WeeklyCalendar } from '@/components/gym/horarios';
 import { ClassDialog } from '@/components/gym/clases';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { branchService } from '@/lib/services/branchService';
 import {
   GymClass,
@@ -32,6 +33,7 @@ import { Branch } from '@/types/branch';
 export default function HorariosPage() {
   const router = useRouter();
   const { organization } = useOrganization();
+  const { branchFilter: globalBranchFilter } = useBranch();
   const [classes, setClasses] = useState<GymClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -40,6 +42,11 @@ export default function HorariosPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [instructorFilter, setInstructorFilter] = useState('all');
+
+  // Sincronizar filtro de sede con el BranchContext global
+  useEffect(() => {
+    setBranchFilter(globalBranchFilter != null ? String(globalBranchFilter) : 'all');
+  }, [globalBranchFilter]);
   
   // Datos para filtros
   const [branches, setBranches] = useState<Branch[]>([]);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calculator, Lock, CreditCard, Banknote, Wallet, Smartphone, ArrowUpCircle, ArrowDownCircle, ShoppingCart, UtensilsCrossed, FileText, Receipt, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { createPortal } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
@@ -215,26 +215,33 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button 
-          size="lg"
-          className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-        >
-          <Lock className="h-5 w-5 mr-2" />
-          Cerrar Caja
-        </Button>
-      </DialogTrigger>
-      
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 bg-white">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2 dark:text-white text-gray-900">
-            <Calculator className="h-5 w-5 text-red-600" />
-            <span>Arqueo y Cierre de Caja</span>
-          </DialogTitle>
-        </DialogHeader>
-
-        {loadingSummary ? (
+    <>
+      <Button 
+        size="lg"
+        className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+        onClick={() => setOpen(true)}
+      >
+        <Lock className="h-5 w-5 mr-2" />
+        Cerrar Caja
+      </Button>
+      {open && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+          <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
+              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center space-x-2">
+                  <Calculator className="h-5 w-5 text-red-600" />
+                  <span>Arqueo y Cierre de Caja</span>
+                </h2>
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700" onClick={() => setOpen(false)}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="overflow-y-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-gray-900">
+                <div className="p-4 sm:p-6">
+                  {loadingSummary ? (
           <div className="py-8 space-y-3">
             <Skeleton className="h-5 w-1/2" />
             <Skeleton className="h-4 w-3/4" />
@@ -637,7 +644,13 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
             </div>
           </form>
         )}
-      </DialogContent>
-    </Dialog>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

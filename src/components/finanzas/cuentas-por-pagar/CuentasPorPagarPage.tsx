@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { formatCurrency, parseLocalDate } from '@/utils/Utils';
 
 import { CuentasPorPagarService } from './CuentasPorPagarService';
@@ -41,6 +43,7 @@ import {
 interface CuentasPorPagarPageProps {}
 
 export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
+  const { branchFilter } = useBranch();
   // Estados principales
   const [cuentas, setCuentas] = useState<AccountPayable[]>([]);
   const [pagosProgramados, setPagosProgramados] = useState<PaymentWithRelations[]>([]);
@@ -83,11 +86,11 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
   // Efectos
   useEffect(() => {
     cargarDatos();
-  }, [filtros, currentPage, pageSize]);
+  }, [filtros, currentPage, pageSize, branchFilter]);
 
   useEffect(() => {
     cargarResumen();
-  }, []);
+  }, [branchFilter]);
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
@@ -100,7 +103,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
       setLoading(true);
       
       const response = await CuentasPorPagarService.obtenerCuentasPorPagar(
-        filtros,
+        { ...filtros, branchId: branchFilter },
         currentPage,
         pageSize
       );
@@ -122,7 +125,7 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
 
   const cargarResumen = async () => {
     try {
-      const resumenData = await CuentasPorPagarService.obtenerResumen();
+      const resumenData = await CuentasPorPagarService.obtenerResumen(branchFilter);
       setResumen(resumenData);
     } catch (error) {
       console.error('Error cargando resumen:', error);
@@ -300,6 +303,8 @@ export function CuentasPorPagarPage({}: CuentasPorPagarPageProps) {
           </Button>
         </div>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       {/* Resumen */}
       {resumen && (

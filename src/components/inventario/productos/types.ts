@@ -30,6 +30,7 @@ export interface Producto {
   price?: number; // Campo calculado del precio actual
   compare_price?: number; // Precio de comparación para mostrar descuento
   stock?: number; // Campo calculado de stock
+  stock_branch?: number; // ID de la sucursal a la que pertenece el stock mostrado
   
   // Relaciones optimizadas
   product_prices?: ProductoPrecio[];

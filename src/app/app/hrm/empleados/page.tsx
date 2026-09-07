@@ -72,7 +72,7 @@ interface PositionOption {
 export default function EmpleadosPage() {
   const router = useRouter();
   const { organization, isLoading: orgLoading } = useOrganization();
-  const { isLoading: branchLoading } = useBranch();
+  const { isLoading: branchLoading, branchFilter } = useBranch();
   const { toast } = useToast();
 
   // Estados principales
@@ -159,10 +159,15 @@ export default function EmpleadosPage() {
     }
   }, [getService, filters, toast]);
 
-  // El filtro de sucursal de esta página es independiente del BranchContext
-  // (sede global del header). La mayoría de empleados tienen branch_id=null,
-  // así que sincronizar automáticamente con la sede global los filtraría a
-  // cero. El usuario elige la sede manualmente en el select de filtros.
+  // Sincronizar el filtro de sede local con el BranchContext global (header).
+  // Cuando el usuario cambia la sucursal en el header, esta página refleja
+  // esa selección en su dropdown de filtros. branchFilter === null significa
+  // "Todas las sucursales".
+  useEffect(() => {
+    setFilters((prev) =>
+      prev.branchId === branchFilter ? prev : { ...prev, branchId: branchFilter }
+    );
+  }, [branchFilter]);
 
   useEffect(() => {
     // Esperar a que la organización y el BranchContext terminen de cargar

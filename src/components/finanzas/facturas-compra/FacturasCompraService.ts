@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { obtenerOrganizacionActiva, getOrganizationId, getCurrentBranchId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { obtenerOrganizacionActiva, getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { stockMovementService, describeSkippedItems } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { 
@@ -14,8 +14,11 @@ import {
 } from './types';
 
 export class FacturasCompraService {
-  private static organizationId = getOrganizationId();
-  private static branchId = getCurrentBranchId();
+  // Evaluación diferida: getOrganizationId() se invoca en cada acceso
+  // para reflejar cambios de organización activa durante la sesión.
+  private static get organizationId(): number {
+    return getOrganizationId();
+  }
 
   /**
    * Obtiene todas las facturas de compra con filtros aplicados
@@ -23,7 +26,8 @@ export class FacturasCompraService {
   static async obtenerFacturas(
     filtros: FiltrosFacturasCompra,
     page: number = 1,
-    pageSize: number = 10
+    pageSize: number = 10,
+    branchId?: number | null
   ): Promise<{
     facturas: InvoicePurchase[];
     total: number;
@@ -64,6 +68,10 @@ export class FacturasCompraService {
 
       if (filtros.fechaHasta) {
         query = query.lte('issue_date', filtros.fechaHasta);
+      }
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
       }
 
       // Paginación
@@ -192,7 +200,7 @@ export class FacturasCompraService {
   /**
    * Crea una nueva factura de compra
    */
-  static async crearFactura(formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number }; appliedTaxes?: {[key: string]: boolean} }): Promise<InvoicePurchase> {
+  static async crearFactura(formData: NuevaFacturaCompraForm & { _calculatedTotals?: { subtotal: number; taxTotal: number; total: number }; appliedTaxes?: {[key: string]: boolean} }, branchId: number | null): Promise<InvoicePurchase> {
     try {
       const currentUserId = await getCurrentUserId();
 
@@ -233,7 +241,7 @@ export class FacturasCompraService {
         .from('invoice_purchase')
         .insert({
           organization_id: this.organizationId,
-          branch_id: this.branchId,
+          branch_id: branchId,
           supplier_id: formData.supplier_id,
           number_ext: formData.number_ext,
           issue_date: formData.issue_date,
@@ -324,7 +332,7 @@ export class FacturasCompraService {
               serialInputs.push({
                 product_id: item.product_id,
                 organization_id: this.organizationId,
-                branch_id: this.branchId!,
+                branch_id: branchId,
                 serial,
                 supplier_id: formData.supplier_id ?? undefined,
                 purchase_invoice_id: factura.id,
@@ -390,7 +398,7 @@ export class FacturasCompraService {
             .from('commissions')
             .insert({
               organization_id: this.organizationId,
-              branch_id: this.branchId,
+              branch_id: branchId,
               commission_type: formData.commission_type,
               source_type: 'invoice_purchase',
               source_id: factura.id,
@@ -431,8 +439,9 @@ export class FacturasCompraService {
       // Verificar que la factura existe y se puede editar
       const { data: facturaExistente, error: checkError } = await supabase
         .from('invoice_purchase')
-        .select('id, status')
+        .select('id, status, branch_id')
         .eq('id', facturaId)
+        .eq('organization_id', this.organizationId)
         .single();
 
       if (checkError) {
@@ -576,7 +585,7 @@ export class FacturasCompraService {
               serialInputs.push({
                 product_id: item.product_id,
                 organization_id: this.organizationId,
-                branch_id: this.branchId!,
+                branch_id: facturaExistente.branch_id,
                 serial,
                 supplier_id: formData.supplier_id ?? undefined,
                 purchase_invoice_id: factura.id,
@@ -806,7 +815,7 @@ export class FacturasCompraService {
     reference?: string;
     notes?: string;
     payment_date?: string;
-  }): Promise<any> {
+  }, branchId: number | null): Promise<any> {
     try {
       console.log('=== Registrando pago ===');
       console.log('Factura ID:', facturaId);
@@ -828,7 +837,7 @@ export class FacturasCompraService {
         .from('payments')
         .insert({
           organization_id: this.organizationId,
-          branch_id: this.branchId,
+          branch_id: branchId,
           source: 'invoice_purchase',
           source_id: facturaId,
           method: pagoData.payment_method,
@@ -1071,12 +1080,12 @@ export class FacturasCompraService {
   /**
    * Obtiene facturas próximas a vencer
    */
-  static async obtenerFacturasProximasVencer(diasLimite: number = 15): Promise<InvoicePurchase[]> {
+  static async obtenerFacturasProximasVencer(diasLimite: number = 15, branchId?: number | null): Promise<InvoicePurchase[]> {
     try {
       const fechaLimite = new Date();
       fechaLimite.setDate(fechaLimite.getDate() + diasLimite);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('invoice_purchase')
         .select(`
           *,
@@ -1085,8 +1094,13 @@ export class FacturasCompraService {
         .eq('organization_id', this.organizationId)
         .in('status', ['received', 'partial'])
         .lte('due_date', fechaLimite.toISOString())
-        .gt('balance', 0)
-        .order('due_date');
+        .gt('balance', 0);
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
+
+      const { data, error } = await query.order('due_date');
 
       if (error) {
         console.error('Error obteniendo facturas próximas a vencer:', error);

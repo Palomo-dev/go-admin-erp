@@ -25,6 +25,8 @@ import { Loader2, DollarSign, Wallet, Building2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { movimientosService, BankAccount } from '@/lib/services/movimientosService';
 import { getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface NuevoIngresoDialogProps {
   open: boolean;
@@ -37,6 +39,8 @@ export function NuevoIngresoDialog({
   onOpenChange,
   onSuccess,
 }: NuevoIngresoDialogProps) {
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [isLoading, setIsLoading] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [formData, setFormData] = useState({
@@ -90,6 +94,7 @@ export function NuevoIngresoDialog({
             amount,
             notes: formData.notes,
             source: 'cash',
+            branch_id: branchId,
           },
           userId || ''
         );
@@ -101,6 +106,7 @@ export function NuevoIngresoDialog({
           notes: formData.notes,
           source: 'bank',
           bank_account_id: parseInt(formData.bank_account_id),
+          branch_id: branchId,
         });
       }
 
@@ -138,6 +144,8 @@ export function NuevoIngresoDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <BranchSelectorField value={branchId} onChange={setBranchId} required />
+
           <div className="space-y-2">
             <Label htmlFor="concept" className="text-gray-700 dark:text-gray-300">
               Concepto *

@@ -22,7 +22,7 @@ export const rolesReports: ReportDefinition[] = [
     descripcion: 'Distribución de usuarios por rol y permisos',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('organization_members')
         .select('id, role_id, is_active, roles!inner(name)')
@@ -62,7 +62,7 @@ export const rolesReports: ReportDefinition[] = [
     descripcion: 'Cambios de permisos y roles en el período',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_roles_auditoria', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,

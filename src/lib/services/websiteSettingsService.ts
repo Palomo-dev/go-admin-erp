@@ -1,7 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
-import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';
+import { applyBranchFilterStrict } from '@/lib/services/branchFilterHelper';
 
 // Interfaces
 export interface WebsiteSettings {
@@ -314,25 +314,9 @@ export const DEFAULT_COLORS = {
  * Normaliza undefined → null (global) para evitar multi-fila.
  * Centraliza el patrón repetido `if (branchId != null) .eq() else .is()`.
  *
- * F4 R4 (Issue 2) — Tipado sin `any`: usamos un genérico `T` que extiende
- * PostgrestFilterBuilder. Como el cliente Supabase de este proyecto no usa
- * tipos generados de Database, los parámetros de tipo del builder son
- * `any` (Schema, Row, Result, ...), pero el genérico `T` preserva el tipo
- * concreto del caller y `.eq()`/`.is()` devuelven `this`, manteniendo la
- * cadena de tipos en el callsite.
+ * NOTA: Se usa applyBranchFilterStrict de branchFilterHelper.ts (importado arriba)
+ * en lugar de una función local, para centralizar la lógica de filtrado.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SupabaseFilterBuilder = PostgrestFilterBuilder<any, any, any, any, any>;
-
-function applyBranchFilter<T extends SupabaseFilterBuilder>(
-  query: T,
-  branchId?: number | null,
-): T {
-  if (branchId != null) {
-    return query.eq('branch_id', branchId);
-  }
-  return query.is('branch_id', null);
-}
 
 class WebsiteSettingsService {
   // Obtener configuración de website
@@ -347,7 +331,7 @@ class WebsiteSettingsService {
         .eq('organization_id', organizationId);
 
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
 
       const { data, error } = await query.limit(1).maybeSingle();
 
@@ -384,7 +368,7 @@ class WebsiteSettingsService {
       .select('id')
       .eq('organization_id', organizationId);
     // F4 R3 — Filtrar por ámbito (outlet o global)
-    query = applyBranchFilter(query, branch);
+    query = applyBranchFilterStrict(query, branch);
 
     const { data: existing } = await query.maybeSingle();
 
@@ -547,7 +531,7 @@ class WebsiteSettingsService {
       })
       .eq('organization_id', organizationId);
     // F4 R3 — Filtrar por ámbito (outlet o global)
-    query = applyBranchFilter(query, branchId);
+    query = applyBranchFilterStrict(query, branchId);
 
     const { error } = await query;
 
@@ -582,7 +566,7 @@ class WebsiteSettingsService {
       .update({ ...theme, updated_at: new Date().toISOString() })
       .eq('organization_id', organizationId);
     // F4 R3 — Filtrar por ámbito (outlet o global)
-    query = applyBranchFilter(query, branchId);
+    query = applyBranchFilterStrict(query, branchId);
 
     const { data, error } = await query.select().maybeSingle();
 
@@ -615,7 +599,7 @@ class WebsiteSettingsService {
         .update({ ...hero, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -649,7 +633,7 @@ class WebsiteSettingsService {
         .update({ ...sections, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -679,7 +663,7 @@ class WebsiteSettingsService {
         .update({ ...features, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -711,7 +695,7 @@ class WebsiteSettingsService {
         .update({ ...seo, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -743,7 +727,7 @@ class WebsiteSettingsService {
         .update({ ...content, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -770,7 +754,7 @@ class WebsiteSettingsService {
         .update({ ...advanced, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -797,7 +781,7 @@ class WebsiteSettingsService {
         })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -866,7 +850,7 @@ class WebsiteSettingsService {
         .update({ ...config, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) {
@@ -916,7 +900,7 @@ class WebsiteSettingsService {
         .update({ ...config, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) {
@@ -955,7 +939,7 @@ class WebsiteSettingsService {
         })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -1015,7 +999,7 @@ class WebsiteSettingsService {
         })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;
@@ -1046,7 +1030,7 @@ class WebsiteSettingsService {
         })
         .eq('organization_id', organizationId);
       // F4 R3 — Filtrar por ámbito (outlet o global)
-      query = applyBranchFilter(query, branchId);
+      query = applyBranchFilterStrict(query, branchId);
       const { data, error } = await query.select().maybeSingle();
 
       if (error) throw error;

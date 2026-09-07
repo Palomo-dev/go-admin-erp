@@ -13,6 +13,7 @@ import { StockHeader,
   StockStats,
   StockFilters,
   StockTable } from '@/components/inventario/stock';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
@@ -224,6 +225,9 @@ export default function StockPage() {
         onRefresh={refreshData}
         isLoading={isRefreshing}
       />
+
+      {/* Badge de sucursal activa */}
+      <BranchBadge />
 
       {/* Estadísticas */}
       <StockStats stats={stats} isLoading={isRefreshing} />

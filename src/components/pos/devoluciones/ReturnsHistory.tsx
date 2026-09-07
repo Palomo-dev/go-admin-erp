@@ -19,9 +19,10 @@ import { toast } from 'sonner';
 
 interface ReturnsHistoryProps {
   refreshTrigger?: number;
+  branchFilter?: number | null;
 }
 
-export function ReturnsHistory({ refreshTrigger }: ReturnsHistoryProps) {
+export function ReturnsHistory({ refreshTrigger, branchFilter }: ReturnsHistoryProps) {
   const [returns, setReturns] = useState<Return[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState<Return | null>(null);
@@ -35,12 +36,12 @@ export function ReturnsHistory({ refreshTrigger }: ReturnsHistoryProps) {
 
   useEffect(() => {
     cargarHistorial();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, branchFilter]);
 
   const cargarHistorial = async () => {
     setLoading(true);
     try {
-      const response = await DevolucionesService.obtenerHistorialDevoluciones(filters);
+      const response = await DevolucionesService.obtenerHistorialDevoluciones({ ...filters, branchId: branchFilter });
       setReturns(response.data);
     } catch (error) {
       console.error('Error cargando historial:', error);

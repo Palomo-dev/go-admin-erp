@@ -10,10 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toastSuccess, toastError } from '@/components/ui/use-toast';
-import { getOrganizationId, getCurrentBranchIdWithFallback, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId, getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useCommissionRate } from '@/lib/hooks/useCommissionRate';
 import { generateInvoiceNumber as generateInvoiceNumberUtil } from '@/lib/utils/invoiceUtils';
 import { ClienteSelector } from './ClienteSelector';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { ItemsFactura } from './ItemsFactura';
 import { ImpuestosFactura } from './ImpuestosFactura';
 import { FormaPagoSelector } from './FormaPagoSelector';
@@ -96,7 +98,13 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
   // Estados para el formulario
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [branchId, setBranchId] = useState<number>(getCurrentBranchIdWithFallback()); // Usar branch_id actual del selector
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId); // Usar branch_id actual del selector
+
+  // Sincronizar branchId con la sucursal seleccionada en el contexto global
+  useEffect(() => {
+    if (selectedBranchId) setBranchId(selectedBranchId);
+  }, [selectedBranchId]);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [isDuplicateNumber, setIsDuplicateNumber] = useState<boolean>(false);
   const [isValidatingNumber, setIsValidatingNumber] = useState<boolean>(false);
@@ -347,7 +355,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
       setPaymentMethodCode(facturaInicial.payment_method || '');
       setNotes(facturaInicial.notes || '');
       setTaxIncluded(facturaInicial.tax_included || false);
-      setBranchId(facturaInicial.branch_id || getCurrentBranchIdWithFallback());
+      setBranchId((facturaInicial.branch_id || selectedBranchId) ?? null);
       setSalespersonId(facturaInicial.salesperson_id || '');
       setCommissionRate(Number(facturaInicial.commission_rate) || 0);
       setCommissionType(facturaInicial.commission_type || 'salesperson');
@@ -553,6 +561,11 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
     
     if (!organizationId) {
       toastError("Error", "No se pudo determinar la organización activa.");
+      return;
+    }
+
+    if (!branchId) {
+      toastError("Error", "No se pudo determinar la sucursal activa. Seleccione una sucursal.");
       return;
     }
     
@@ -1116,6 +1129,13 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
         <h3 className="text-sm sm:text-base font-semibold mb-3 text-gray-900 dark:text-gray-100">
           Datos del Cliente
         </h3>
+        <div className="mb-3">
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+        </div>
         <ClienteSelector 
           selectedCustomerId={selectedCustomerId} 
           onCustomerChange={setSelectedCustomerId}
@@ -1175,7 +1195,7 @@ export function NuevaFacturaForm({ facturaInicial, onSubmit, saving, esEdicion }
           items={items}
           onItemsChange={handleItemsChange}
           taxIncluded={taxIncluded}
-          branchId={branchId}
+          branchId={branchId ?? undefined}
           organizationId={organizationId ? Number(organizationId) : undefined}
           serialSelections={serialSelections}
           onSerialSelectionsChange={setSerialSelections}

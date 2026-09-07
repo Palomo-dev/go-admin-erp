@@ -558,7 +558,7 @@ export function CustomerSelector({ selectedCustomer, selectedRoom, onCustomerSel
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
           organizationId={organization.id}
-          branchId={getCurrentBranchIdWithFallback()}
+          branchId={getCurrentBranchIdWithFallback() ?? undefined}
           onCreated={handleCustomerCreated}
         />
       )}

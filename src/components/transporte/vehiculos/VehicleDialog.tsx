@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,6 +24,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { Vehicle, TransportCarrier } from '@/lib/services/transportService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 const vehicleSchema = z.object({
   plate_number: z.string().min(1, 'La placa es requerida'),
@@ -69,6 +71,9 @@ export function VehicleDialog({
   isSaving,
 }: VehicleDialogProps) {
   const isEditing = !!vehicle;
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
 
   const {
     register,
@@ -125,6 +130,7 @@ export function VehicleDialog({
         status: vehicle.status,
         is_active: vehicle.is_active,
       });
+      setBranchId(vehicle.branch_id ?? null);
     } else {
       reset({
         plate_number: '',
@@ -147,22 +153,22 @@ export function VehicleDialog({
         status: 'available',
         is_active: true,
       });
+      setBranchId(selectedBranchId);
     }
-  }, [vehicle, reset]);
+  }, [vehicle, reset, selectedBranchId]);
 
   const onSubmit = async (data: VehicleFormData) => {
     const cleanData = {
       ...data,
       carrier_id: data.carrier_id || null,
-      branch_id: data.branch_id || null,
-    };
+      branch_id: branchId || null,
+    } as Partial<Vehicle>;
     await onSave(cleanData);
   };
 
   const vehicleType = watch('vehicle_type');
   const status = watch('status');
   const carrierId = watch('carrier_id');
-  const branchId = watch('branch_id');
   const isActive = watch('is_active');
 
   return (
@@ -175,6 +181,13 @@ export function VehicleDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="plate_number">Placa *</Label>
@@ -314,25 +327,6 @@ export function VehicleDialog({
                     {carriers.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="branch_id">Sucursal</Label>
-                <Select
-                  value={branchId?.toString() || 'none'}
-                  onValueChange={(v) => setValue('branch_id', v === 'none' ? undefined : Number(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin asignar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin asignar</SelectItem>
-                    {branches.map((b) => (
-                      <SelectItem key={b.id} value={b.id.toString()}>
-                        {b.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { formatCurrency, formatDate } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
+import { useBranch } from '@/lib/context/BranchContext';
 import ModuloSection from '../ModuloSection';
 import {
   GymStats,
@@ -79,6 +80,7 @@ function buildExportData(
 }
 
 export default function GymSection() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<GymStatsType | null>(null);
   const [memberships, setMemberships] = useState<Membership[]>([]);
@@ -103,9 +105,9 @@ export default function GymSection() {
           checkinsData,
           orgData,
         ] = await Promise.all([
-          getGymStats(organizationId),
+          getGymStats(organizationId, branchFilter),
           getMemberships(organizationId),
-          getTodayCheckins(organizationId),
+          getTodayCheckins(organizationId, branchFilter),
           supabase
             .from('organizations')
             .select('name, legal_name, tax_id, city, address, phone, email, logo_url')
@@ -145,7 +147,7 @@ export default function GymSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [branchFilter]);
 
   const expiringMemberships = useMemo(
     () => memberships.filter((m) => {

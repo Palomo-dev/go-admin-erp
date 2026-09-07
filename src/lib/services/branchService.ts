@@ -587,6 +587,44 @@ export const branchService = {
         throw new Error(error.message);
       }
 
+      // Sincronizar member_branches: asignar el gerente como miembro de la sucursal
+      if (managerId) {
+        // Buscar el organization_member_id del usuario en la organización de la sucursal
+        const { data: branch } = await supabase
+          .from('branches')
+          .select('organization_id')
+          .eq('id', branchId)
+          .single();
+
+        if (branch?.organization_id) {
+          const { data: member } = await supabase
+            .from('organization_members')
+            .select('id')
+            .eq('user_id', managerId)
+            .eq('organization_id', branch.organization_id)
+            .maybeSingle();
+
+          if (member?.id) {
+            // Verificar si ya existe la asignación para no duplicar
+            const { data: existing } = await supabase
+              .from('member_branches')
+              .select('id')
+              .eq('organization_member_id', member.id)
+              .eq('branch_id', branchId)
+              .maybeSingle();
+
+            if (!existing) {
+              await supabase
+                .from('member_branches')
+                .insert({
+                  organization_member_id: member.id,
+                  branch_id: branchId,
+                });
+            }
+          }
+        }
+      }
+
       return data;
     } catch (error) {
       console.error('Error assigning manager:', error);

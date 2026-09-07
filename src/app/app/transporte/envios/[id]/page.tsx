@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
-import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
@@ -58,10 +59,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 export default function ShipmentDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const shipmentId = params.id as string;
+  const shipmentId = params?.id as string;
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
+  const { selectedBranchId } = useBranch();
 
   const [shipment, setShipment] = useState<ShipmentWithDetails | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -347,7 +349,10 @@ export default function ShipmentDetailPage() {
 
   const imprimirGuia = async () => {
     if (!shipment) return;
-    const branchId = getCurrentBranchId();
+    if (!selectedBranchId) {
+      toast({ title: 'Error', description: 'Seleccione una sucursal', variant: 'destructive' });
+      return;
+    }
     const result = await printShipmentGuideWithCut(
       shipment,
       {
@@ -360,7 +365,7 @@ export default function ShipmentDetailPage() {
           phone: orgInfo.phone,
         } : undefined,
       },
-      branchId || undefined,
+      selectedBranchId,
     );
     if (result.method === 'agent') {
       toast({ title: 'Guia enviada a impresora termica', description: `${result.enqueued} job(s) encolado(s) con corte automatico` });

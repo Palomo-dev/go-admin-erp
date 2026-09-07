@@ -13,12 +13,13 @@ import {
   type MovementStats as MovementStatsType,
   type MovementFilters as MovementFiltersType
 } from '@/lib/services/stockService';
-import { 
+import {
   MovimientosHeader,
   MovimientosStats,
   MovimientosFilters,
-  MovimientosTable 
+  MovimientosTable
 } from '@/components/inventario/movimientos';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
@@ -276,6 +277,9 @@ export default function MovimientosPage() {
         onRefresh={refreshData}
         isLoading={isRefreshing}
       />
+
+      {/* Badge de sucursal activa */}
+      <BranchBadge />
 
       {/* Estadísticas */}
       <MovimientosStats stats={stats} isLoading={isRefreshing} />

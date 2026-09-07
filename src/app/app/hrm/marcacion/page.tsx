@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useMobileNative } from '@/hooks/useMobileNative';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface BranchOption {
   id: number;
@@ -60,6 +61,10 @@ export default function MarcacionPage() {
   // Filtros
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [branchFilter, setBranchFilter] = useState<string>('all');
+  const { branchFilter: globalBranchFilter } = useBranch();
+  useEffect(() => {
+    setBranchFilter(globalBranchFilter != null ? String(globalBranchFilter) : 'all');
+  }, [globalBranchFilter]);
   const [searchTerm, setSearchTerm] = useState('');
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
 

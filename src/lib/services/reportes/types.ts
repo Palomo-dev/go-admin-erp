@@ -75,7 +75,7 @@ export interface ReportDefinition {
   descripcion: string;
   categoria: CategoriaReporte;
   periodosSugeridos: TipoCierre[];
-  fetch: (orgId: number, periodo: PeriodoCierre) => Promise<ReportData>;
+  fetch: (orgId: number, periodo: PeriodoCierre, branchId?: number | null) => Promise<ReportData>;
 }
 
 /** Agrupación de reportes por módulo para la UI */

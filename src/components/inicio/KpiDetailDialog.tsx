@@ -51,6 +51,7 @@ const periodoLabel: Record<PeriodoDashboard, string> = {
   '30d': '30 días',
   '90d': '90 días',
   año: 'Año',
+  personalizado: 'Personalizado',
 };
 
 const colorStrokeMap: Record<string, string> = {

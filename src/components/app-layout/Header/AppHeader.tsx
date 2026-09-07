@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { AppHeaderProps } from '../types';
 import { Moon, Sun, Menu, Bot } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -22,6 +23,14 @@ export const AppHeader = ({
   onToggleAIAssistant
 }: AppHeaderProps) => {
   const t = useTranslations('nav');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30 mobile-safe-top">
@@ -43,11 +52,13 @@ export const AppHeader = ({
         </div>
         
         {/* Buscador global en el centro - solo desktop */}
-        <div className="hidden md:flex flex-1 justify-center px-2 sm:px-4">
-          <div className="w-full max-w-md">
-            <GlobalSearch />
+        {!isMobile && (
+          <div className="flex flex-1 justify-center px-2 sm:px-4">
+            <div className="w-full max-w-md">
+              <GlobalSearch />
+            </div>
           </div>
-        </div>
+        )}
         
         <div className="flex items-center space-x-1 sm:space-x-3">
           {/* Branch Selector solo en desktop (derecha) */}
@@ -95,9 +106,11 @@ export const AppHeader = ({
         </div>
       </div>
       {/* Buscador global - solo mobile, debajo de la barra de iconos */}
-      <div className="md:hidden px-3 pb-2">
-        <GlobalSearch forceFullBar />
-      </div>
+      {isMobile && (
+        <div className="px-3 pb-2">
+          <GlobalSearch forceFullBar />
+        </div>
+      )}
       <TrialBanner orgId={orgId} />
       <EmailVerificationBanner />
     </div>

@@ -18,9 +18,10 @@ import { cn } from '@/utils/Utils';
 
 interface TicketSearchProps {
   onSaleSelect: (sale: SaleForReturn) => void;
+  branchFilter?: number | null;
 }
 
-export function TicketSearch({ onSaleSelect }: TicketSearchProps) {
+export function TicketSearch({ onSaleSelect, branchFilter }: TicketSearchProps) {
   const [sales, setSales] = useState<SaleForReturn[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleForReturn | null>(null);
@@ -36,12 +37,12 @@ export function TicketSearch({ onSaleSelect }: TicketSearchProps) {
 
   useEffect(() => {
     buscarVentas();
-  }, [filters.page]);
+  }, [filters.page, branchFilter]);
 
   const buscarVentas = async () => {
     setLoading(true);
     try {
-      const response = await DevolucionesService.buscarVentas(filters);
+      const response = await DevolucionesService.buscarVentas({ ...filters, branchId: branchFilter });
       setSales(response.data);
       setTotalPages(response.totalPages);
       setTotal(response.total);

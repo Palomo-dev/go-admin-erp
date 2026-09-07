@@ -20,6 +20,7 @@ import {
 import HRMDashboardService, {
   type DepartmentSummary,
 } from '@/lib/services/hrmDashboardService';
+import { useBranch } from '@/lib/context/BranchContext';
 import type {
   SectionExportData,
   SectionKPI,
@@ -81,6 +82,7 @@ function buildExportData(
 }
 
 export default function HrmSection() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<HRMKPIs | null>(null);
   const [alerts, setAlerts] = useState<HRMAlert[]>([]);
@@ -97,7 +99,7 @@ export default function HrmSection() {
     }
 
     let cancelled = false;
-    const service = new HRMDashboardService(organizationId);
+    const service = new HRMDashboardService(organizationId, branchFilter);
 
     async function loadAll() {
       setIsLoading(true);
@@ -156,7 +158,7 @@ export default function HrmSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [branchFilter]);
 
   const exportData = useMemo(
     () => buildExportData(kpis, departments, currentPeriod),

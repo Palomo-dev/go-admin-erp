@@ -5,6 +5,7 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { getOrgDateRange } from '@/lib/utils/timezone';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -28,14 +29,16 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Facturas vencidas agrupadas por cliente y antigüedad',
     categoria: 'financiero',
     periodosSugeridos: ['diario'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data, error } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+      let query = supabase
         .from('accounts_receivable')
         .select('id, customer_id, invoice_id, amount, balance, due_date, days_overdue, status, branch_id, discount_amount, created_at, customers(first_name, last_name, customer_type, company_name)')
         .eq('organization_id', orgId)
         .not('status', 'in', '("paid","cancelled")')
         .gt('days_overdue', 0)
         .order('days_overdue', { ascending: false });
+      query = applyBranchFilter(query, branchId);
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -134,10 +137,11 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Aging de cartera: corriente, 1-30, 31-60, 61-90, +90 días',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_cxc_aging', {
         p_organization_id: orgId,
         p_as_of: periodo.fechaFin,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -157,12 +161,15 @@ export const finanzasReports: ReportDefinition[] = [
         rango: bucketLabel[String(b.bucket ?? '')] ?? String(b.bucket ?? '—'),
       }));
 
-      const { data: detalleData, error: errDetalle } = await supabase
+      let detalleQuery = supabase
         .from('accounts_receivable')
         .select('id, customer_id, amount, balance, due_date, days_overdue, status, customers(first_name, last_name, customer_type, company_name)')
         .eq('organization_id', orgId)
         .not('status', 'in', '("paid","cancelled")')
         .order('days_overdue', { ascending: false });
+      // Filtrar detalle de accounts_receivable por branch_id cuando branchId != null
+      detalleQuery = applyBranchFilter(detalleQuery, branchId);
+      const { data: detalleData, error: errDetalle } = await detalleQuery;
 
       if (errDetalle) throw errDetalle;
 
@@ -244,10 +251,11 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Aging de cuentas por pagar al proveedor',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_cxp_aging', {
         p_organization_id: orgId,
         p_as_of: periodo.fechaFin,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -267,12 +275,14 @@ export const finanzasReports: ReportDefinition[] = [
         rango: bucketLabel[String(b.bucket ?? '')] ?? String(b.bucket ?? '—'),
       }));
 
-      const { data: detalleData, error: errDetalle } = await supabase
+      let detalleQuery = supabase
         .from('accounts_payable')
         .select('id, supplier_id, invoice_id, amount, balance, due_date, days_overdue, status, branch_id, suppliers(name)')
         .eq('organization_id', orgId)
         .not('status', 'in', '("paid","cancelled")')
         .order('days_overdue', { ascending: false });
+      detalleQuery = applyBranchFilter(detalleQuery, branchId);
+      const { data: detalleData, error: errDetalle } = await detalleQuery;
 
       if (errDetalle) throw errDetalle;
 
@@ -377,7 +387,7 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Flujo operativo, inversión y financiación del período',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -386,6 +396,7 @@ export const finanzasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -419,7 +430,7 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'IVA generado, IVA descontable y retenciones del período',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -428,6 +439,7 @@ export const finanzasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -458,18 +470,22 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Proyección de liquidez basada en CxC y CxP pendientes',
     categoria: 'financiero',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data: cxc } = await supabase
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+      let cxcQuery = supabase
         .from('accounts_receivable')
         .select('balance, due_date')
         .eq('organization_id', orgId)
         .not('status', 'in', '("paid","cancelled")');
+      cxcQuery = applyBranchFilter(cxcQuery, branchId);
+      const { data: cxc } = await cxcQuery;
 
-      const { data: cxp } = await supabase
+      let cxpQuery = supabase
         .from('accounts_payable')
         .select('balance, due_date')
         .eq('organization_id', orgId)
         .not('status', 'in', '("paid","cancelled")');
+      cxpQuery = applyBranchFilter(cxpQuery, branchId);
+      const { data: cxp } = await cxpQuery;
 
       const totalCxC = (cxc ?? []).reduce((s: number, r: Record<string, unknown>) => s + Number(r.balance ?? 0), 0);
       const totalCxP = (cxp ?? []).reduce((s: number, r: Record<string, unknown>) => s + Number(r.balance ?? 0), 0);
@@ -500,17 +516,21 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Gastos por categoría y sucursal',
     categoria: 'financiero',
     periodosSugeridos: ['quincenal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase
+      let gastosQuery = supabase
         .from('journal_lines')
         .select('account_code, debit_base, credit_base, description, journal_entries!inner(entry_date, branch_id)')
         .eq('organization_id', orgId)
         .gte('journal_entries.entry_date', start)
         .lte('journal_entries.entry_date', end);
+      if (branchId != null && Number.isFinite(branchId) && branchId > 0) {
+        gastosQuery = gastosQuery.eq('journal_entries.branch_id', branchId);
+      }
+      const { data, error } = await gastosQuery;
 
       if (error) throw error;
 
@@ -548,18 +568,20 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Resumen de facturas electrónicas emitidas y estado DIAN',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase
+      let facturacionQuery = supabase
         .from('invoice_sales')
         .select('id, subtotal, tax_total, total, balance, status, document_type, issue_date')
         .eq('organization_id', orgId)
         .gte('issue_date', start)
         .lte('issue_date', end)
         .order('issue_date', { ascending: false });
+      facturacionQuery = applyBranchFilter(facturacionQuery, branchId);
+      const { data, error } = await facturacionQuery;
 
       if (error) throw error;
 
@@ -692,7 +714,7 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Margen por producto: ingreso vs costo',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -701,6 +723,7 @@ export const finanzasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -730,7 +753,7 @@ export const finanzasReports: ReportDefinition[] = [
     descripcion: 'Ingresos, costos y margen por sucursal',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -739,6 +762,7 @@ export const finanzasReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 

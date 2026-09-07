@@ -16,10 +16,11 @@ import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QuickCreateDialog } from '@/components/inventario/productos/nuevo/QuickCreateDialog';
 import { NuevoProveedorForm } from '@/components/inventario/proveedores/nuevo';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 import { ProductSearchCombobox, type ProductOption } from '../ProductSearchCombobox';
 import { SearchSelectCombobox, type SearchSelectOption } from '../SearchSelectCombobox';
-import { Store } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -50,10 +51,11 @@ interface OrderItem extends PurchaseOrderItemInput {
 
 export function NuevaOrdenCompraForm() {
   const router = useRouter();
+  const { selectedBranchId } = useBranch();
 
   // Estados del formulario
   const [supplierId, setSupplierId] = useState<string>('');
-  const [branchId, setBranchId] = useState<string>('');
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [expectedDate, setExpectedDate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -215,7 +217,7 @@ export function NuevaOrdenCompraForm() {
         organizationId,
         {
           supplier_id: parseInt(supplierId),
-          branch_id: parseInt(branchId),
+          branch_id: branchId!,
           expected_date: expectedDate || undefined,
           notes: notes || undefined,
           status: sendToSupplier ? 'sent' : 'draft'
@@ -294,6 +296,12 @@ export function NuevaOrdenCompraForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <BranchSelectorField
+                value={branchId}
+                onChange={setBranchId}
+                required
+              />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -316,17 +324,6 @@ export function NuevaOrdenCompraForm() {
                     onSelect={(opt) => setSupplierId(opt ? opt.id.toString() : '')}
                     placeholder="Buscar proveedor..."
                     icon={<Truck className="h-4 w-4 text-gray-400" />}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="dark:text-gray-300">Sucursal Destino *</Label>
-                  <SearchSelectCombobox
-                    options={branches}
-                    value={branchId}
-                    onSelect={(opt) => setBranchId(opt ? opt.id.toString() : '')}
-                    placeholder="Buscar sucursal..."
-                    icon={<Store className="h-4 w-4 text-gray-400" />}
                   />
                 </div>
               </div>
@@ -579,7 +576,7 @@ export function NuevaOrdenCompraForm() {
         onOpenChange={setShowSupplierDialog}
         title="Nuevo Proveedor"
         description="Crea un proveedor y se seleccionará automáticamente para esta orden."
-        maxWidth="max-w-4xl"
+        maxWidth="max-w-7xl"
       >
         <NuevoProveedorForm
           embedded

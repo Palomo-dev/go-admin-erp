@@ -39,6 +39,7 @@ import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosS
 import { NuevoEgresoDialog } from './NuevoEgresoDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export function EgresosPage() {
   const router = useRouter();
@@ -177,6 +178,8 @@ export function EgresosPage() {
           </Button>
         </div>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

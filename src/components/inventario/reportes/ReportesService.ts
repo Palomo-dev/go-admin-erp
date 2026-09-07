@@ -1,12 +1,12 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { StockReport, KardexEntry, RotationReport, SupplierPurchaseReport, ReportFilter } from './types';
 
 export class ReportesService {
   static async obtenerReporteStock(filters?: ReportFilter): Promise<StockReport[]> {
     try {
       const organizationId = getOrganizationId();
-      const branchId = filters?.branchId || getCurrentBranchId();
+      const branchId = filters?.branchId;
 
       let query = supabase
         .from('stock_levels')
@@ -76,7 +76,7 @@ export class ReportesService {
 
   static async obtenerKardex(productId: number, filters?: ReportFilter): Promise<KardexEntry[]> {
     try {
-      const branchId = filters?.branchId || getCurrentBranchId();
+      const branchId = filters?.branchId;
 
       let query = supabase
         .from('stock_movements')
@@ -130,7 +130,7 @@ export class ReportesService {
   static async obtenerReporteRotacion(filters?: ReportFilter): Promise<RotationReport[]> {
     try {
       const organizationId = getOrganizationId();
-      const branchId = filters?.branchId || getCurrentBranchId();
+      const branchId = filters?.branchId;
 
       // Obtener productos
       const { data: products, error: prodError } = await supabase

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
@@ -17,9 +18,11 @@ import {
   type CreateReservationInput,
   type UpdateReservationInput,
 } from '@/components/pos/reservas-mesas';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export default function ReservasMesasPage() {
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   // Estado principal
@@ -57,10 +60,11 @@ export default function ReservasMesasPage() {
       if (dateFrom) filters.date_from = dateFrom;
       if (dateTo) filters.date_to = dateTo;
       if (search.trim()) filters.search = search.trim();
+      filters.branch_id = branchFilter;
 
       const [reservationsData, statsData] = await Promise.all([
         reservasMesasService.getReservations(filters),
-        reservasMesasService.getStats(dateFrom || undefined, dateTo || undefined),
+        reservasMesasService.getStats(dateFrom || undefined, dateTo || undefined, branchFilter),
       ]);
 
       setReservations(reservationsData);
@@ -75,7 +79,7 @@ export default function ReservasMesasPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, statusFilter, sourceFilter, dateFrom, dateTo, search, toast]);
+  }, [organization?.id, statusFilter, sourceFilter, dateFrom, dateTo, search, toast, branchFilter]);
 
   useEffect(() => {
     loadData();
@@ -84,8 +88,17 @@ export default function ReservasMesasPage() {
   // ── Handlers ───────────────────────────────────────────────────────────
 
   const handleCreate = async (data: CreateReservationInput | UpdateReservationInput) => {
+    // Si branchFilter es null (Todas), se requiere una sucursal concreta
+    if (branchFilter == null) {
+      toast({
+        title: 'Sucursal requerida',
+        description: 'Selecciona una sucursal concreta para crear una reserva. No se puede crear con "Todas" seleccionado.',
+        variant: 'destructive',
+      });
+      throw new Error('Se requiere una sucursal concreta para crear una reserva');
+    }
     try {
-      await reservasMesasService.createReservation(data as CreateReservationInput);
+      await reservasMesasService.createReservation(data as CreateReservationInput, branchFilter);
       toast({ title: 'Reserva creada', description: 'La reserva se creó exitosamente' });
       loadData();
     } catch (error: any) {
@@ -169,6 +182,8 @@ export default function ReservasMesasPage() {
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <BranchBadge className="mb-3" />
+
       {/* Header + filtros */}
       <ReservasHeader
         search={search}

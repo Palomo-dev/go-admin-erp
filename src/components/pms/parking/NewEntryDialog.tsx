@@ -23,6 +23,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Car, Bike, Truck, Plus, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import ParkingService, { type ParkingZone } from '@/lib/services/parkingService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface NewEntryDialogProps {
   open: boolean;
@@ -32,6 +34,7 @@ interface NewEntryDialogProps {
 }
 
 export interface EntryData {
+  branch_id: number;
   vehicle_plate: string;
   vehicle_type: string;
   parking_space_id?: string;
@@ -70,10 +73,21 @@ export function NewEntryDialog({
   const [zones, setZones] = useState<ParkingZone[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
 
+  // Sucursal: se reutiliza el branchId del prop (página) como valor inicial,
+  // pero se permite al usuario cambiarla dentro del formulario.
+  const { selectedBranchId } = useBranch();
+  const [formBranchId, setFormBranchId] = useState<number | null>(
+    branchId ?? selectedBranchId ?? null
+  );
+
+  useEffect(() => {
+    setFormBranchId(branchId ?? selectedBranchId ?? null);
+  }, [branchId, selectedBranchId]);
+
   // Cargar espacios de parking y zonas disponibles
   useEffect(() => {
     const loadData = async () => {
-      if (!open || !branchId) return;
+      if (!open || !formBranchId) return;
 
       setIsLoadingSpaces(true);
       try {
@@ -81,7 +95,7 @@ export function NewEntryDialog({
         const { data, error } = await supabase
           .from('parking_spaces')
           .select('id, label, zone, type, state, zone_id')
-          .eq('branch_id', branchId)
+          .eq('branch_id', formBranchId)
           .in('state', ['free', 'reserved'])
           .order('label');
 
@@ -90,7 +104,7 @@ export function NewEntryDialog({
         }
 
         // Cargar zonas del catálogo
-        const zonesData = await ParkingService.getZones(branchId);
+        const zonesData = await ParkingService.getZones(formBranchId);
         setZones(zonesData);
       } catch (error) {
         console.error('Error cargando datos:', error);
@@ -100,7 +114,7 @@ export function NewEntryDialog({
     };
 
     loadData();
-  }, [branchId, open]);
+  }, [formBranchId, open]);
 
   // Limpiar formulario al cerrar
   useEffect(() => {
@@ -121,7 +135,7 @@ export function NewEntryDialog({
       return;
     }
 
-    if (!branchId) {
+    if (!formBranchId) {
       alert('Error: No se encontró la sucursal. Por favor recarga la página e intenta nuevamente.');
       return;
     }
@@ -135,7 +149,7 @@ export function NewEntryDialog({
       const { data, error } = await supabase
         .from('parking_spaces')
         .insert({
-          branch_id: branchId,
+          branch_id: formBranchId,
           label: newSpaceLabel.trim(),
           zone: zoneName,
           zone_id: selectedZoneId || null,
@@ -182,9 +196,14 @@ export function NewEntryDialog({
       return;
     }
 
+    if (!formBranchId) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onConfirm({
+        branch_id: formBranchId,
         vehicle_plate: vehiclePlate.toUpperCase().trim(),
         vehicle_type: vehicleType,
         parking_space_id: parkingSpaceId || undefined,
@@ -208,6 +227,13 @@ export function NewEntryDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={formBranchId}
+            onChange={setFormBranchId}
+            required
+          />
+
           <div className="space-y-2">
             <Label htmlFor="vehicle_plate">Placa del Vehículo *</Label>
             <Input
@@ -248,7 +274,7 @@ export function NewEntryDialog({
             <Label htmlFor="parking_space">
               Espacio de Parqueo (Opcional)
             </Label>
-              {!branchId ? (
+              {!formBranchId ? (
                 <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
                   ⚠️ No se encontró una sucursal configurada. No puedes crear espacios de parqueo sin una sucursal.
                 </div>
@@ -346,7 +372,7 @@ export function NewEntryDialog({
                 <Button
                   type="button"
                   onClick={handleCreateSpace}
-                  disabled={!newSpaceLabel.trim() || isCreatingSpace || !branchId}
+                  disabled={!newSpaceLabel.trim() || isCreatingSpace || !formBranchId}
                   className="w-full"
                   size="sm"
                 >

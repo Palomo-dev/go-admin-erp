@@ -27,6 +27,8 @@ import {
   TransportRoute, 
   ScheduleInput,
 } from '@/lib/services/transportRoutesService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface Vehicle {
   id: string;
@@ -72,6 +74,9 @@ export function ScheduleDialog({
 }: ScheduleDialogProps) {
   const isEditing = !!schedule;
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
 
   const [formData, setFormData] = useState<ScheduleInput>({
     route_id: '',
@@ -143,7 +148,7 @@ export function ScheduleDialog({
 
     setIsSubmitting(true);
     try {
-      await onSave(formData);
+      await onSave({ ...formData, branch_id: branchId || undefined } as ScheduleInput);
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving schedule:', error);
@@ -166,6 +171,13 @@ export function ScheduleDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Ruta y Nombre */}
           <div className="grid grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
@@ -318,7 +330,7 @@ export function ScheduleDialog({
                 value={formData.available_seats || ''}
                 onChange={(e) => setFormData({ 
                   ...formData, 
-                  available_seats: e.target.value ? parseInt(e.target.value) : undefined 
+                  available_seats: e.target.value ? parseInt(e.target.value, 10) : undefined
                 })}
                 placeholder="Según vehículo"
               />

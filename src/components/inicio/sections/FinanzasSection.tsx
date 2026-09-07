@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Banknote } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
@@ -97,6 +98,7 @@ function buildExportData(
 }
 
 export default function FinanzasSection() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<KPIData | null>(null);
   const [clientes, setClientes] = useState<TopClienteProveedor[]>([]);
@@ -132,13 +134,13 @@ export default function FinanzasSection() {
           alertasData,
           orgData,
         ] = await Promise.all([
-          finanzasDashboardService.getKPIs(organizationId, filters),
-          finanzasDashboardService.getTopClientes(organizationId, filters, 5),
-          finanzasDashboardService.getTopProveedores(organizationId, filters, 5),
-          finanzasDashboardService.getVentasVsCompras(organizationId, filters),
-          finanzasDashboardService.getAgingCuentasPorCobrar(organizationId),
-          finanzasDashboardService.getFlujoProyectado(organizationId),
-          finanzasDashboardService.getAlertas(organizationId),
+          finanzasDashboardService.getKPIs(organizationId, filters, branchFilter),
+          finanzasDashboardService.getTopClientes(organizationId, filters, 5, branchFilter),
+          finanzasDashboardService.getTopProveedores(organizationId, filters, 5, branchFilter),
+          finanzasDashboardService.getVentasVsCompras(organizationId, filters, branchFilter),
+          finanzasDashboardService.getAgingCuentasPorCobrar(organizationId, branchFilter),
+          finanzasDashboardService.getFlujoProyectado(organizationId, branchFilter),
+          finanzasDashboardService.getAlertas(organizationId, branchFilter),
           supabase
             .from('organizations')
             .select('name, legal_name, tax_id, city, address, phone, email, logo_url')
@@ -182,7 +184,7 @@ export default function FinanzasSection() {
     return () => {
       cancelled = true;
     };
-  }, [filters]);
+  }, [filters, branchFilter]);
 
   const exportData = useMemo(
     () => buildExportData(kpis, clientes, proveedores, periodoLabel),

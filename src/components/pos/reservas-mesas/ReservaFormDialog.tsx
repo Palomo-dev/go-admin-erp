@@ -29,6 +29,7 @@ import {
   type ReservationSource,
 } from './reservasMesasService';
 import { reservasMesasService } from './reservasMesasService';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface ReservaFormDialogProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function ReservaFormDialog({
   onSubmit,
 }: ReservaFormDialogProps) {
   const isEditing = !!reservation;
+  const { branchFilter } = useBranch();
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -96,9 +98,10 @@ export function ReservaFormDialog({
     }
   }, [open, reservation]);
 
-  // Cargar mesas disponibles cuando cambian fecha, hora o tamaño de grupo
+  // Cargar mesas disponibles cuando cambian fecha, hora, tamaño de grupo o sucursal
+  const reservationId = reservation?.id;
   useEffect(() => {
-    if (!open || !date || !time) return;
+    if (!open || !date || !time || branchFilter == null) return;
 
     const loadTables = async () => {
       setLoadingTables(true);
@@ -107,7 +110,9 @@ export function ReservaFormDialog({
           date,
           time,
           partySize,
-          reservation?.id
+          branchFilter,
+          reservationId,
+          durationMinutes
         );
         setAvailableTables(tables);
       } catch {
@@ -119,7 +124,7 @@ export function ReservaFormDialog({
 
     const debounce = setTimeout(loadTables, 300);
     return () => clearTimeout(debounce);
-  }, [open, date, time, partySize, reservation?.id]);
+  }, [open, date, time, partySize, branchFilter, reservationId, durationMinutes]);
 
   const handleSubmit = async () => {
     if (!customerName.trim() || !date || !time) return;

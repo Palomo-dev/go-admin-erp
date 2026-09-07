@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,6 +24,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { DriverCredential } from '@/lib/services/transportService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 const driverSchema = z.object({
   employment_id: z.string().min(1, 'Selecciona un empleado'),
@@ -56,6 +58,9 @@ export function DriverDialog({
 }: DriverDialogProps) {
   const isEditing = !!driver;
 
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+
   const {
     register,
     handleSubmit,
@@ -83,7 +88,7 @@ export function DriverDialog({
         license_number: driver.license_number,
         license_category: driver.license_category,
         license_expiry: driver.license_expiry,
-        medical_cert_expiry: driver.medical_certificate_expiry || driver.medical_cert_expiry || '',
+        medical_cert_expiry: driver.medical_certificate_expiry || '',
         certifications: driver.metadata?.certifications?.join(', ') || '',
         is_active_driver: driver.is_active,
       });
@@ -113,6 +118,7 @@ export function DriverDialog({
       medical_certificate_expiry: data.medical_cert_expiry || null,
       metadata: certArray.length > 0 ? { certifications: certArray } : null,
       is_active: data.is_active_driver,
+      branch_id: branchId || undefined,
     } as Partial<DriverCredential>);
   };
 
@@ -129,6 +135,13 @@ export function DriverDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           <div className="space-y-2">
             <Label htmlFor="employment_id">Empleado *</Label>
             <Select

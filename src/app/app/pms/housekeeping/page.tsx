@@ -16,11 +16,13 @@ import HousekeepingService, {
 } from '@/lib/services/housekeepingService';
 import SpacesService, { type Space } from '@/lib/services/spacesService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function HousekeepingPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
 
   // Estado de datos
   const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
@@ -49,7 +51,7 @@ export default function HousekeepingPage() {
     if (organization?.id) {
       loadData();
     }
-  }, [organization?.id, selectedDate]);
+  }, [organization?.id, selectedDate, branchFilter]);
 
   const loadData = async () => {
     try {
@@ -63,13 +65,29 @@ export default function HousekeepingPage() {
       const [tasksData, statsData, spacesData, usersData] = await Promise.all([
         HousekeepingService.getTasks({ date: dateFilter }),
         HousekeepingService.getStats(dateFilter),
-        SpacesService.getSpaces({ branchId: organization!.branch_id }),
+        SpacesService.getSpaces({ organizationId: organization!.id, branchId: branchFilter ?? undefined }),
         HousekeepingService.getAvailableUsers(organization!.id),
       ]);
 
-      setTasks(tasksData);
-      setFilteredTasks(tasksData);
-      setStats(statsData);
+      // Filtrar tareas por los spaces de la sucursal seleccionada (branch isolation)
+      const spaceIds = spacesData.map(s => s.id);
+      // Si branchFilter != null y no hay espacios, devolver vacío (no tasksData sin filtrar)
+      const filteredByBranch = branchFilter != null
+        ? (spaceIds.length > 0
+            ? tasksData.filter(t => t.space_id && spaceIds.includes(t.space_id))
+            : [])
+        : tasksData;
+
+      // Recalcular stats filtradas por spaceIds cuando hay sucursal seleccionada
+      const filteredStats = branchFilter != null
+        ? (spaceIds.length > 0
+            ? await HousekeepingService.getStats(dateFilter, spaceIds)
+            : { total: 0, pending: 0, in_progress: 0, done: 0, cancelled: 0 })
+        : statsData;
+
+      setTasks(filteredByBranch);
+      setFilteredTasks(filteredByBranch);
+      setStats(filteredStats);
       setSpaces(spacesData);
       setUsers(usersData);
     } catch (error) {

@@ -25,6 +25,8 @@ import type {
   CreateShippingRateData,
   TransportCarrier,
 } from '@/lib/services/shippingRatesService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface ShippingRateDialogProps {
   open: boolean;
@@ -95,6 +97,9 @@ export function ShippingRateDialog({
 }: ShippingRateDialogProps) {
   const [formData, setFormData] = useState<Partial<CreateShippingRateData> & { show_on_website?: boolean; show_on_pos?: boolean; free_shipping_threshold?: number }>(initialFormData);
 
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+
   useEffect(() => {
     if (rate) {
       setFormData({
@@ -132,7 +137,7 @@ export function ShippingRateDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { ...formData };
+    const payload = { ...formData, branch_id: branchId || undefined };
     if (!payload.carrier_id) delete payload.carrier_id;
     if (!payload.valid_from) delete payload.valid_from;
     if (!payload.valid_until) delete payload.valid_until;
@@ -155,6 +160,13 @@ export function ShippingRateDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Sección: Información General */}
           <div className="space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">

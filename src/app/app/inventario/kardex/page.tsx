@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { format } from 'date-fns';
 import {
   kardexService,
@@ -18,6 +19,7 @@ import {
   KardexFilters,
   KardexTable,
 } from '@/components/inventario/kardex';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 
@@ -25,9 +27,10 @@ export default function KardexPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
+  const { branchFilter: globalBranchFilter, selectedBranchId: globalSelectedBranch } = useBranch();
 
   // Obtener productId del query param
-  const productIdParam = searchParams.get('producto');
+  const productIdParam = searchParams?.get('producto');
   const productId = productIdParam ? parseInt(productIdParam) : null;
 
   // Estados de datos
@@ -44,12 +47,19 @@ export default function KardexPage() {
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Estados de filtros
-  const [branchId, setBranchId] = useState('all');
+  // Estados de filtros — branchId se sincroniza con el contexto global
+  const [branchId, setBranchId] = useState<string>(
+    globalBranchFilter != null ? String(globalBranchFilter) : 'all'
+  );
   const [source, setSource] = useState('all');
   const [direction, setDirection] = useState('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+
+  // Sincronizar filtro local cuando cambia el contexto global
+  useEffect(() => {
+    setBranchId(globalBranchFilter != null ? String(globalBranchFilter) : 'all');
+  }, [globalBranchFilter, globalSelectedBranch]);
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -250,6 +260,9 @@ export default function KardexPage() {
         onExport={handleExport}
         isLoading={isRefreshing}
       />
+
+      {/* Badge de sucursal activa */}
+      <BranchBadge />
 
       {/* Estadísticas */}
       <KardexStats stats={stats} isLoading={isRefreshing} />

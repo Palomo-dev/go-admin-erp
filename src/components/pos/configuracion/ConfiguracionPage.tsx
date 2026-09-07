@@ -51,6 +51,7 @@ import { PrintersSection } from './printers/PrintersSection';
 import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
 import { RecentPrintJobsTable } from './printers/RecentPrintJobsTable';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   getOperatingHours,
   invalidateOperatingHoursCache,
@@ -68,7 +69,8 @@ import {
 
 export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
-  const { branch_id, organization } = useOrganization();
+  const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -147,7 +149,7 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [toast]);
+  }, [toast, branchFilter]);
 
   useEffect(() => {
     loadData();
@@ -939,8 +941,8 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
       <PrintersSection branches={branches} />
 
       {/* Estado del Print Agent y trabajos de impresión recientes (sucursal activa) */}
-      <PrintAgentStatusCard branchId={branch_id} />
-      <RecentPrintJobsTable branchId={branch_id} />
+      <PrintAgentStatusCard branchId={branchFilter} />
+      <RecentPrintJobsTable branchId={branchFilter} />
 
       {/* Modales de configuración avanzada */}
       <ConsecutivosModal open={showConsecutivos} onOpenChange={setShowConsecutivos} />

@@ -9,11 +9,13 @@ import { getReporteById, getReportesVisibles } from './reportesCatalogo';
 /**
  * Ejecuta un reporte individual por su ID.
  * Busca la definición en el catálogo y llama su función `fetch`.
+ * @param branchId Filtro de sucursal opcional (null = Todas las sucursales)
  */
 export async function ejecutarReporte(
   reportId: string,
   orgId: number,
   periodo: PeriodoCierre,
+  branchId?: number | null,
 ): Promise<ReportData> {
   const def = getReporteById(reportId);
 
@@ -22,7 +24,7 @@ export async function ejecutarReporte(
   }
 
   try {
-    const data = await def.fetch(orgId, periodo);
+    const data = await def.fetch(orgId, periodo, branchId);
     return data;
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Error desconocido';
@@ -45,6 +47,7 @@ export async function ejecutarCierre(
   periodo: PeriodoCierre,
   activeModuleCodes: string[],
   concurrencyLimit: number = 4,
+  branchId?: number | null,
 ): Promise<{ resultados: ReportData[]; errores: { reportId: string; titulo: string; error: string }[] }> {
   const modulosVisibles = getReportesVisibles(activeModuleCodes);
   const todasDefiniciones: ReportDefinition[] = modulosVisibles.flatMap((m) => m.reportes);
@@ -58,7 +61,7 @@ export async function ejecutarCierre(
 
     const promesas = lote.map(async (def) => {
       try {
-        const data = await def.fetch(orgId, periodo);
+        const data = await def.fetch(orgId, periodo, branchId);
         return { ok: true as const, data };
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Error desconocido';
@@ -89,6 +92,7 @@ export async function ejecutarReportesSeleccionados(
   orgId: number,
   periodo: PeriodoCierre,
   concurrencyLimit: number = 4,
+  branchId?: number | null,
 ): Promise<{ resultados: ReportData[]; errores: { reportId: string; titulo: string; error: string }[] }> {
   const resultados: ReportData[] = [];
   const errores: { reportId: string; titulo: string; error: string }[] = [];
@@ -102,7 +106,7 @@ export async function ejecutarReportesSeleccionados(
         return { ok: false as const, error: 'Reporte no encontrado', reportId, titulo: reportId };
       }
       try {
-        const data = await def.fetch(orgId, periodo);
+        const data = await def.fetch(orgId, periodo, branchId);
         return { ok: true as const, data };
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Error desconocido';

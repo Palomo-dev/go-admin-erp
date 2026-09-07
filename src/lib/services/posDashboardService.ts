@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrgDayRange, getOrgDateRange, getToday } from '@/lib/utils/timezone';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 
 export interface PosKPIs {
   totalVentasHoy: number;
@@ -89,7 +90,7 @@ async function getMonthStart(organizationId: number): Promise<string> {
 }
 
 class PosDashboardService {
-  async getKPIs(organizationId: number): Promise<PosKPIs> {
+  async getKPIs(organizationId: number, branchId?: number | null): Promise<PosKPIs> {
     const { start: hoyStart, end: hoyEnd } = await getTodayRange(organizationId);
     const mesStart = await getMonthStart(organizationId);
 
@@ -99,28 +100,37 @@ class PosDashboardService {
       ventasWebRes,
     ] = await Promise.all([
       // Ventas POS hoy: alineado con inicioService (status paid/completed)
-      supabase
-        .from('sales')
-        .select('total')
-        .eq('organization_id', organizationId)
-        .in('status', ['paid', 'completed'])
-        .gte('sale_date', hoyStart)
-        .lte('sale_date', hoyEnd),
+      applyBranchFilter(
+        supabase
+          .from('sales')
+          .select('total')
+          .eq('organization_id', organizationId)
+          .in('status', ['paid', 'completed'])
+          .gte('sale_date', hoyStart)
+          .lte('sale_date', hoyEnd),
+        branchId
+      ),
       // Ventas POS del mes: alineado con inicioService (sin filtro de estado)
-      supabase
-        .from('sales')
-        .select('total')
-        .eq('organization_id', organizationId)
-        .gte('sale_date', mesStart),
+      applyBranchFilter(
+        supabase
+          .from('sales')
+          .select('total')
+          .eq('organization_id', organizationId)
+          .gte('sale_date', mesStart),
+        branchId
+      ),
       // Pedidos web del mes: alineado con inicioService (sin sale_id para no duplicar)
-      supabase
-        .from('web_orders')
-        .select('total')
-        .eq('organization_id', organizationId)
-        .gte('created_at', mesStart)
-        .or('payment_status.eq.paid,status.eq.delivered')
-        .not('status', 'in', '("cancelled","rejected")')
-        .is('sale_id', null),
+      applyBranchFilter(
+        supabase
+          .from('web_orders')
+          .select('total')
+          .eq('organization_id', organizationId)
+          .gte('created_at', mesStart)
+          .or('payment_status.eq.paid,status.eq.delivered')
+          .not('status', 'in', '("cancelled","rejected")')
+          .is('sale_id', null),
+        branchId
+      ),
     ]);
 
     if (ventasHoyRes.error) throw ventasHoyRes.error;
@@ -146,14 +156,20 @@ class PosDashboardService {
     };
   }
 
-  async getTopProductos(organizationId: number, limit = 5): Promise<TopProductoPos[]> {
-    const { data, error } = await supabase
+  async getTopProductos(organizationId: number, limit = 5, branchId?: number | null): Promise<TopProductoPos[]> {
+    let query = supabase
       .from('sale_items')
       .select(
-        'quantity, total, product_id, products!inner(id, name, sku), sales!inner(status, organization_id)',
+        'quantity, total, product_id, products!inner(id, name, sku), sales!inner(status, organization_id, branch_id)',
       )
       .eq('sales.organization_id', organizationId)
       .in('sales.status', ['paid', 'completed']);
+
+    if (branchId != null) {
+      query = query.eq('sales.branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -184,12 +200,20 @@ class PosDashboardService {
       .slice(0, limit);
   }
 
-  async getVentasPorSucursal(organizationId: number): Promise<VentaSucursalPos[]> {
-    const { data, error } = await supabase
+  async getVentasPorSucursal(organizationId: number, branchId?: number | null): Promise<VentaSucursalPos[]> {
+    let query = supabase
       .from('sales')
       .select('total, branch_id, branches!inner(id, name)')
       .eq('organization_id', organizationId)
       .in('status', ['paid', 'completed']);
+
+    // Cuando branchId es un número concreto, filtrar la query por esa sucursal.
+    // Cuando es null, mantener comportamiento actual (breakdown por sucursal).
+    if (branchId != null && typeof branchId === 'number') {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -216,18 +240,26 @@ class PosDashboardService {
     return Array.from(mapa.values()).sort((a, b) => b.totalVentas - a.totalVentas);
   }
 
-  async getSesionesCaja(organizationId: number): Promise<SesionCajaPos[]> {
+  async getSesionesCaja(organizationId: number, branchId?: number | null): Promise<SesionCajaPos[]> {
+    let movimientosQuery = supabase
+      .from('cash_movements')
+      .select('cash_session_id, type, amount, cash_sessions!inner(status, organization_id, branch_id)')
+      .eq('cash_sessions.organization_id', organizationId)
+      .eq('cash_sessions.status', 'open');
+    if (branchId != null) {
+      movimientosQuery = movimientosQuery.eq('cash_sessions.branch_id', branchId);
+    }
+
     const [sesionesRes, movimientosRes] = await Promise.all([
-      supabase
-        .from('cash_sessions')
-        .select('id, opened_at, initial_amount, status, branch_id, branches!inner(id, name)')
-        .eq('organization_id', organizationId)
-        .eq('status', 'open'),
-      supabase
-        .from('cash_movements')
-        .select('cash_session_id, type, amount, cash_sessions!inner(status, organization_id)')
-        .eq('cash_sessions.organization_id', organizationId)
-        .eq('cash_sessions.status', 'open'),
+      applyBranchFilter(
+        supabase
+          .from('cash_sessions')
+          .select('id, opened_at, initial_amount, status, branch_id, branches!inner(id, name)')
+          .eq('organization_id', organizationId)
+          .eq('status', 'open'),
+        branchId
+      ),
+      movimientosQuery,
     ]);
 
     if (sesionesRes.error) throw sesionesRes.error;

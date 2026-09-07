@@ -28,6 +28,10 @@ export interface Coupon {
     full_name: string;
     email?: string;
   };
+  promotion?: {
+    id?: string;
+    branches?: number[] | null;
+  };
 }
 
 export interface CouponRedemption {
@@ -78,6 +82,8 @@ export interface CouponFilters {
   discount_type?: DiscountType;
   dateFrom?: string;
   dateTo?: string;
+  /** Filtrar cupones por sucursal (vía promoción asociada). null = todas. */
+  branchId?: number | null;
 }
 
 export const DISCOUNT_TYPE_LABELS: Record<DiscountType, string> = {

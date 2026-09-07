@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
@@ -64,6 +65,7 @@ function buildExportData(
 }
 
 export default function PosSection() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<PosKPIsData | null>(null);
   const [topProductos, setTopProductos] = useState<TopProductoPos[]>([]);
@@ -92,10 +94,10 @@ export default function PosSection() {
           sesionesData,
           orgData,
         ] = await Promise.all([
-          posDashboardService.getKPIs(organizationId),
-          posDashboardService.getTopProductos(organizationId, 5),
-          posDashboardService.getVentasPorSucursal(organizationId),
-          posDashboardService.getSesionesCaja(organizationId),
+          posDashboardService.getKPIs(organizationId, branchFilter),
+          posDashboardService.getTopProductos(organizationId, 5, branchFilter),
+          posDashboardService.getVentasPorSucursal(organizationId, branchFilter),
+          posDashboardService.getSesionesCaja(organizationId, branchFilter),
           supabase
             .from('organizations')
             .select('name, legal_name, tax_id, city, address, phone, email, logo_url')
@@ -136,7 +138,7 @@ export default function PosSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [branchFilter]);
 
   const exportData = useMemo(
     () => buildExportData(kpis, topProductos, periodoLabel),

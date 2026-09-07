@@ -20,6 +20,7 @@ interface ReporteSheetProps {
   reporte: ReportDefinition | null;
   periodo: PeriodoCierre;
   orgId: number | null;
+  branchFilter?: number | null;
   onExportPDF?: (data: ReportData, comparisonData?: ReportData) => void;
 }
 
@@ -29,6 +30,7 @@ export function ReporteSheet({
   reporte,
   periodo,
   orgId,
+  branchFilter,
   onExportPDF,
 }: ReporteSheetProps) {
   const [data, setData] = useState<ReportData | null>(null);
@@ -77,7 +79,7 @@ export function ReporteSheet({
     setComparisonTipo(periodo.tipo);
 
     reporte
-      .fetch(orgId, periodo)
+      .fetch(orgId, periodo, branchFilter)
       .then((result) => {
         if (!cancelled) setData(result);
       })
@@ -91,7 +93,7 @@ export function ReporteSheet({
     return () => {
       cancelled = true;
     };
-  }, [open, reporte, orgId, periodo]);
+  }, [open, reporte, orgId, periodo, branchFilter]);
 
   // Cargar datos de comparación
   const loadComparison = useCallback(async () => {
@@ -123,14 +125,14 @@ export function ReporteSheet({
         const dayBefore = subDays(refDate, 1);
         compPeriodo = resolverPeriodo(comparisonTipo, dayBefore);
       }
-      const result = await reporte.fetch(orgId, compPeriodo);
+      const result = await reporte.fetch(orgId, compPeriodo, branchFilter);
       setComparisonData(result);
     } catch {
       setComparisonData(null);
     } finally {
       setComparisonLoading(false);
     }
-  }, [reporte, orgId, periodo, comparisonTipo, manualMode, manualDate, manualMonth, manualYear, manualQuarter, manualHalf]);
+  }, [reporte, orgId, periodo, branchFilter, comparisonTipo, manualMode, manualDate, manualMonth, manualYear, manualQuarter, manualHalf]);
 
   // Ejecutar comparación cuando se activa o cambia el tipo
   useEffect(() => {

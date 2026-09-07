@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import type { FareWithDetails, CreateFareData } from '@/lib/services/faresService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface FareDialogProps {
   open: boolean;
@@ -84,6 +86,9 @@ export function FareDialog({
     is_active: true,
     display_order: 0,
   });
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
 
   useEffect(() => {
     if (fare) {
@@ -150,7 +155,8 @@ export function FareDialog({
       valid_until: formData.valid_until || undefined,
       applicable_from_time: formData.applicable_from_time || undefined,
       applicable_to_time: formData.applicable_to_time || undefined,
-    };
+      branch_id: branchId || undefined,
+    } as Partial<CreateFareData>;
     
     await onSave(dataToSave);
   };
@@ -180,6 +186,15 @@ export function FareDialog({
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full">
+          {/* Sucursal */}
+          <div className="mb-4">
+            <BranchSelectorField
+              value={branchId}
+              onChange={setBranchId}
+              required
+            />
+          </div>
+
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="pricing">Precios</TabsTrigger>
@@ -305,7 +320,7 @@ export function FareDialog({
                 id="display_order"
                 type="number"
                 value={formData.display_order || 0}
-                onChange={(e) => setFormData(prev => ({ ...prev, display_order: parseInt(e.target.value) || 0 }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, display_order: parseInt(e.target.value, 10) || 0 }))}
                 min="0"
               />
             </div>
@@ -451,7 +466,7 @@ export function FareDialog({
                   id="min_age"
                   type="number"
                   value={formData.min_age || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, min_age: parseInt(e.target.value) || undefined }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, min_age: parseInt(e.target.value, 10) || undefined }))}
                   placeholder="Sin límite"
                   min="0"
                 />
@@ -462,7 +477,7 @@ export function FareDialog({
                   id="max_age"
                   type="number"
                   value={formData.max_age || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, max_age: parseInt(e.target.value) || undefined }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, max_age: parseInt(e.target.value, 10) || undefined }))}
                   placeholder="Sin límite"
                   min="0"
                 />

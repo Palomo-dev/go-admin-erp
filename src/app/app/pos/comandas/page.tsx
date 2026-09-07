@@ -12,11 +12,14 @@ import { Card } from '@/components/ui/card';
 import KitchenService, { type KitchenTicket, type KitchenTicketItem, type ZoneFilter, type StatusFilter, type StationFilter } from '@/lib/services/kitchenService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { playNotificationBeep } from '@/lib/utils/sound';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export default function ComandasPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   
   const [tickets, setTickets] = useState<KitchenTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +44,7 @@ export default function ComandasPage() {
         organizationId: organization.id,
         status: statusFilter,
         zone: zoneFilter,
+        branchId: branchFilter,
       });
       setTickets(data);
       // Semilla inicial de IDs conocidos, sin disparar sonido de notificación
@@ -82,6 +86,7 @@ export default function ComandasPage() {
             organizationId: organization.id,
             status: statusFilter,
             zone: zoneFilter,
+            branchId: branchFilter,
           });
 
           const ticketsNuevos = data.filter(
@@ -108,7 +113,7 @@ export default function ComandasPage() {
     return () => {
       unsubscribe();
     };
-  }, [organization?.id, statusFilter, zoneFilter, soundEnabled]);
+  }, [organization?.id, statusFilter, zoneFilter, soundEnabled, branchFilter]);
 
   // Cambiar estado de ticket (con actualización optimista)
   const handleStatusChange = async (ticketId: number, status: KitchenTicket['status']) => {
@@ -299,6 +304,8 @@ export default function ComandasPage() {
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled((prev) => !prev)}
       />
+
+      <BranchBadge className="px-3 sm:px-6 py-2" />
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">

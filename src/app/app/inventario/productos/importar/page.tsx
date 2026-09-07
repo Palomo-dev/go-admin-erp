@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -138,6 +139,7 @@ export default function ImportarProductosPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { selectedBranchId } = useBranch();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
@@ -917,19 +919,12 @@ export default function ImportarProductosPage() {
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id ?? null;
 
-    // Obtener branch_id principal de la organización
-    const { data: branches } = await supabase
-      .from('branches')
-      .select('id, is_main')
-      .eq('organization_id', orgId)
-      .order('is_main', { ascending: false })
-      .limit(1);
-
-    const branchId = branches?.[0]?.id;
+    // Usar la sucursal seleccionada en el contexto global
+    const branchId = selectedBranchId;
     if (!branchId) {
       toast({
         title: 'Sin sucursal',
-        description: 'La organización no tiene sucursales. Crea una sucursal primero.',
+        description: 'Selecciona una sucursal antes de importar productos.',
         variant: 'destructive',
       });
       setImporting(false);

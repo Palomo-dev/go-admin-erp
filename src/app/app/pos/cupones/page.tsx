@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CouponsList, CouponsHeader, CouponsService } from '@/components/pos/cupones';
 import { Coupon, CouponFilters } from '@/components/pos/cupones/types';
@@ -9,6 +10,7 @@ import { toast } from 'sonner';
 
 export default function CuponesPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<CouponFilters>({});
@@ -18,7 +20,7 @@ export default function CuponesPage() {
     
     setLoading(true);
     try {
-      const data = await CouponsService.getAll(filters);
+      const data = await CouponsService.getAll({ ...filters, branchId: branchFilter });
       setCoupons(data);
     } catch (error: any) {
       console.error('Error loading coupons:', error);
@@ -26,7 +28,7 @@ export default function CuponesPage() {
     } finally {
       setLoading(false);
     }
-  }, [organization?.id, filters]);
+  }, [organization?.id, filters, branchFilter]);
 
   useEffect(() => {
     loadCoupons();

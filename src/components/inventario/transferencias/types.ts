@@ -93,6 +93,7 @@ export interface FiltrosTransferencias {
   destino: string | 'todos';
   fechaDesde: string;
   fechaHasta: string;
+  branchId?: number | null;
 }
 
 export interface StockLevel {

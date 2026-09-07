@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Truck } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toastError } from '@/components/ui/use-toast';
 import ModuloSection from '../ModuloSection';
@@ -89,6 +90,7 @@ function buildExportData(
 }
 
 export default function TransporteSection() {
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<TransportStats | null>(null);
   const [events, setEvents] = useState<TransportEvent[]>([]);
@@ -107,7 +109,7 @@ export default function TransporteSection() {
       setIsLoading(true);
       try {
         const [statsData, eventsData, orgData] = await Promise.all([
-          transportService.getStats(organizationId),
+          transportService.getStats(organizationId, branchFilter),
           transportService.getRecentEvents(organizationId, 10),
           supabase
             .from('organizations')
@@ -147,7 +149,7 @@ export default function TransporteSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [branchFilter]);
 
   const exportData = useMemo(
     () => buildExportData(stats, events),

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { useBranch } from '@/lib/context/BranchContext';
 import { RRule } from 'rrule';
 import { 
   CalendarEvent, 
@@ -154,6 +155,12 @@ export function useCalendar({
     status: 'all',
     sourceTypes: ALL_SOURCE_TYPES,
   });
+
+  // Sincronizar branchId con el contexto global de sucursal
+  const { branchFilter } = useBranch();
+  useEffect(() => {
+    setFiltersState(prev => prev.branchId === branchFilter ? prev : { ...prev, branchId: branchFilter });
+  }, [branchFilter]);
 
   const dateRange = useMemo(() => getDateRange(currentDate, view), [currentDate, view]);
 

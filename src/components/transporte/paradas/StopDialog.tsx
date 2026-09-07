@@ -27,6 +27,8 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { Loader2, Search, MapPin } from 'lucide-react';
 import { TransportStop } from '@/lib/services/transportService';
 import { googleMapsService, PlaceAutocompleteResult } from '@/lib/services/googleMapsService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 const stopSchema = z.object({
   code: z.string().min(1, 'El código es requerido'),
@@ -65,7 +67,10 @@ export function StopDialog({
   isSaving,
 }: StopDialogProps) {
   const isEditing = !!stop;
-  
+
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+
   // Estados para autocompletado de Google Places
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceAutocompleteResult[]>([]);
@@ -118,6 +123,7 @@ export function StopDialog({
         branch_id: stop.branch_id,
         is_active: stop.is_active,
       });
+      setBranchId(stop.branch_id ?? null);
     } else {
       reset({
         code: '',
@@ -135,8 +141,9 @@ export function StopDialog({
         branch_id: undefined,
         is_active: true,
       });
+      setBranchId(selectedBranchId);
     }
-  }, [stop, reset]);
+  }, [stop, reset, selectedBranchId]);
 
   // Buscar sugerencias de lugares
   const searchPlaces = useCallback(async (query: string) => {
@@ -215,7 +222,7 @@ export function StopDialog({
   const onSubmit = async (data: StopFormData) => {
     const cleanData = {
       ...data,
-      branch_id: data.branch_id || undefined,
+      branch_id: branchId || undefined,
       latitude: data.latitude || undefined,
       longitude: data.longitude || undefined,
     };
@@ -223,7 +230,6 @@ export function StopDialog({
   };
 
   const stopType = watch('stop_type');
-  const branchId = watch('branch_id');
   const isActive = watch('is_active');
 
   return (
@@ -236,6 +242,13 @@ export function StopDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="code">Código *</Label>
@@ -277,26 +290,6 @@ export function StopDialog({
                   <SelectItem value="stop">Parada</SelectItem>
                   <SelectItem value="branch">Sucursal</SelectItem>
                   <SelectItem value="customer">Cliente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="branch_id">Sucursal Asociada</Label>
-              <Select
-                value={branchId?.toString() || 'none'}
-                onValueChange={(v) => setValue('branch_id', v === 'none' ? undefined : Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin asociar" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin asociar</SelectItem>
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={b.id.toString()}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -22,7 +22,7 @@ export const chatReports: ReportDefinition[] = [
     descripcion: 'Conversaciones por canal y período',
     categoria: 'sistema',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('conversations')
         .select('id, status, channel_id, created_at')
@@ -62,7 +62,7 @@ export const chatReports: ReportDefinition[] = [
     descripcion: 'Primera respuesta, resolución y volumen por canal',
     categoria: 'sistema',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase.rpc('fn_reporte_chat_sla', {
         p_organization_id: orgId,
         p_from: `${periodo.fechaInicio}T00:00:00Z`,
@@ -94,7 +94,7 @@ export const chatReports: ReportDefinition[] = [
     descripcion: 'Conversaciones atendidas, satisfacción y tiempos',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('conversations')
         .select('id, assigned_member_id, status, message_count, first_response_time_seconds')
@@ -145,7 +145,7 @@ export const chatReports: ReportDefinition[] = [
     descripcion: 'Distribución de conversaciones por tag',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('conversation_tag_relations')
         .select('tag_id, conversation_id, conversation_tags(name)')

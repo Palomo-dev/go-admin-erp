@@ -137,7 +137,7 @@ export function RouteStopDialog({
                 type="number"
                 min={1}
                 value={formData.stop_order}
-                onChange={(e) => setFormData({ ...formData, stop_order: parseInt(e.target.value) || 1 })}
+                onChange={(e) => setFormData({ ...formData, stop_order: parseInt(e.target.value, 10) || 1 })}
               />
             </div>
             <div className="space-y-2">
@@ -147,7 +147,7 @@ export function RouteStopDialog({
                 type="number"
                 min={0}
                 value={formData.dwell_time_minutes}
-                onChange={(e) => setFormData({ ...formData, dwell_time_minutes: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, dwell_time_minutes: parseInt(e.target.value, 10) || 0 })}
               />
             </div>
           </div>
@@ -160,7 +160,7 @@ export function RouteStopDialog({
                 type="number"
                 min={0}
                 value={formData.estimated_arrival_minutes}
-                onChange={(e) => setFormData({ ...formData, estimated_arrival_minutes: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, estimated_arrival_minutes: parseInt(e.target.value, 10) || 0 })}
               />
             </div>
             <div className="space-y-2">
@@ -170,7 +170,7 @@ export function RouteStopDialog({
                 type="number"
                 min={0}
                 value={formData.estimated_departure_minutes}
-                onChange={(e) => setFormData({ ...formData, estimated_departure_minutes: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, estimated_departure_minutes: parseInt(e.target.value, 10) || 0 })}
               />
             </div>
           </div>

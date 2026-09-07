@@ -9,12 +9,15 @@ import { TransferenciasTable } from './TransferenciasTable';
 import { TransferenciasFiltros } from './TransferenciasFiltros';
 import { TransferenciasService } from './TransferenciasService';
 import { InventoryTransfer, FiltrosTransferencias } from './types';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useToast } from '@/components/ui/use-toast';
+import { useBranch } from '@/lib/context/BranchContext';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 export function TransferenciasPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { branchFilter } = useBranch();
   const [transferencias, setTransferencias] = useState<InventoryTransfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,13 +35,13 @@ export function TransferenciasPage() {
 
   useEffect(() => {
     cargarTransferencias();
-  }, [filtros, currentPage, pageSize]);
+  }, [filtros, currentPage, pageSize, branchFilter]);
 
   const cargarTransferencias = async () => {
     try {
       setLoading(true);
       const response = await TransferenciasService.obtenerTransferencias(
-        filtros,
+        { ...filtros, branchId: branchFilter },
         currentPage,
         pageSize
       );
@@ -152,6 +155,9 @@ export function TransferenciasPage() {
           </Button>
         </div>
       </div>
+
+      {/* Badge de sucursal activa */}
+      <BranchBadge />
 
       {/* Contenido */}
       <Card className="p-6 dark:bg-gray-800/50 dark:border-gray-700 bg-white border-gray-200">

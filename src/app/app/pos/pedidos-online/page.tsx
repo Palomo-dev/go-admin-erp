@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   Dialog,
   DialogContent,
@@ -91,6 +92,7 @@ export default function PedidosOnlinePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const orgTypeId = organization?.type_id ?? 3; // default retail
 
   // Defaults de tiempo según tipo de organización:
@@ -226,11 +228,11 @@ export default function PedidosOnlinePage() {
     try {
       const dateRange = getDateRange();
       const comparisonRange = getComparisonRange();
-      const mergedFilters = { ...filters, date_from: dateRange.from, date_to: dateRange.to };
+      const mergedFilters = { ...filters, date_from: dateRange.from, date_to: dateRange.to, branch_id: branchFilter ?? undefined };
       const [ordersData, statsData, prevStatsData] = await Promise.all([
         webOrdersService.getOrders(mergedFilters),
-        webOrdersService.getOrderStats(dateRange.from, dateRange.to),
-        webOrdersService.getOrderStats(comparisonRange.from, comparisonRange.to)
+        webOrdersService.getOrderStats(dateRange.from, dateRange.to, branchFilter ?? undefined),
+        webOrdersService.getOrderStats(comparisonRange.from, comparisonRange.to, branchFilter ?? undefined)
       ]);
       setOrders(ordersData);
       setStats(statsData);
@@ -246,7 +248,7 @@ export default function PedidosOnlinePage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, getDateRange, getComparisonRange, toast]);
+  }, [filters, getDateRange, getComparisonRange, toast, branchFilter]);
 
   useEffect(() => {
     loadOrders();
@@ -290,13 +292,13 @@ export default function PedidosOnlinePage() {
       }
       // Recargar pedidos (con debounce para agrupar cambios)
       scheduleReload();
-    });
+    }, branchFilter);
 
     return () => {
       if (reloadTimer) clearTimeout(reloadTimer);
       webOrdersService.unsubscribeFromOrders();
     };
-  }, [soundEnabled, loadOrders, toast]);
+  }, [soundEnabled, loadOrders, toast, branchFilter]);
 
   const playNotificationSound = () => {
     try {

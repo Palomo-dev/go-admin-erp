@@ -11,11 +11,13 @@ import {
   type ServiceChargeFilters,
 } from '@/components/pos/cargos-servicio';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { toast } from 'sonner';
 
 export function CargosServicioContent({ embedded = false }: { embedded?: boolean }) {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
 
   const [charges, setCharges] = useState<ServiceCharge[]>([]);
   const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
@@ -25,6 +27,11 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
   const [filters, setFilters] = useState<ServiceChargeFilters>({});
   const [showForm, setShowForm] = useState(false);
   const [editingCharge, setEditingCharge] = useState<ServiceCharge | null>(null);
+
+  // Sincronizar filtro local de sucursal con branchFilter global
+  useEffect(() => {
+    setFilters(prev => prev.branch_id === (branchFilter ?? undefined) ? prev : { ...prev, branch_id: branchFilter ?? undefined });
+  }, [branchFilter]);
 
   const loadData = async () => {
     if (!organization?.id) return;
@@ -57,7 +64,7 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
     if (organization?.id) {
       loadData();
     }
-  }, [organization?.id, filters]);
+  }, [organization?.id, filters, branchFilter]);
 
   const handleEdit = (charge: ServiceCharge) => {
     setEditingCharge(charge);

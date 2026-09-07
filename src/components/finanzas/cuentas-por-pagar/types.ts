@@ -116,6 +116,7 @@ export interface FiltrosCuentasPorPagar {
   vencimiento: 'todos' | 'vencidas' | 'proximas' | 'futuras';
   montoMinimo: number | null;
   montoMaximo: number | null;
+  branchId?: number | null;
 }
 
 // Interface para programar pago

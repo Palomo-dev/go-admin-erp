@@ -16,7 +16,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { ProductoFormDialog } from '@/components/shared/form-dialogs';
 import { VariantSelectorDialog, type SelectedModifier } from '@/components/pos/VariantSelectorDialog';
@@ -524,32 +523,45 @@ export function ProductSearchDialog({
   return (
     <>
       <div className="flex gap-2">
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 sm:h-9 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
-            >
-              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Buscar Productos</span>
-              <span className="sm:hidden">Productos</span>
-            </Button>
-          </DialogTrigger>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 sm:h-9 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+          onClick={() => setIsDialogOpen(true)}
+        >
+          <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Buscar Productos</span>
+          <span className="sm:hidden">Productos</span>
+        </Button>
 
-        <DialogContent className="w-full max-w-[95vw] lg:max-w-6xl max-h-[90dvh] h-[80dvh] sm:h-[90dvh] overflow-hidden flex flex-col dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader className="pb-3">
-            <DialogTitle className="flex flex-wrap items-center gap-2 text-lg sm:text-xl text-gray-900 dark:text-white">
-              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="truncate">Catálogo de Productos</span>
-              <Badge variant="outline" className="ml-2 text-xs dark:border-gray-600 dark:text-gray-300">
-                {mode === 'sale' ? 'Venta' : 'Compra'}
-              </Badge>
-            </DialogTitle>
-          </DialogHeader>
+        {isDialogOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+            <div className="min-h-screen px-1 sm:px-4 py-2 sm:py-8 flex items-center justify-center">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[97vh] sm:max-h-[90vh] overflow-hidden relative animate-in fade-in-0 zoom-in-95 duration-300 dark:bg-gray-800">
+                {/* Header */}
+                <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:bg-gray-800 dark:border-gray-700">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-900 dark:text-white" />
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-50 truncate">
+                      Catálogo de Productos
+                    </h2>
+                    <Badge variant="outline" className="ml-2 text-xs dark:border-gray-600 dark:text-gray-300">
+                      {mode === 'sale' ? 'Venta' : 'Compra'}
+                    </Badge>
+                  </div>
+                  <button
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
 
-          <div className="flex flex-col space-y-3 sm:space-y-4 flex-1 min-h-0 overflow-hidden">
+                {/* Contenido */}
+                <div className="flex flex-col space-y-3 sm:space-y-4 p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
             {/* Barra de búsqueda */}
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1">
@@ -878,8 +890,10 @@ export function ProductSearchDialog({
               </div>
             )}
           </div>
-        </DialogContent>
-        </Dialog>
+                </div>
+              </div>
+            </div>
+        )}
 
         {showCreateButton && (
           <Button

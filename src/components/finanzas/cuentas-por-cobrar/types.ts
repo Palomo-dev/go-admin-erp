@@ -28,6 +28,7 @@ export interface FiltrosCuentasPorCobrar {
   // Paginación
   pageSize: number;
   pageNumber: number;
+  branchId?: number | null;
 }
 
 export interface ResultadoPaginado<T> {

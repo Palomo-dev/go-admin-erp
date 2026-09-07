@@ -220,7 +220,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
     setShowConvertDialog(false);
     try {
       setConverting(true);
-      const branchId = cotActual.branch_id || 0;
+      const branchId = cotActual.branch_id;
       if (!branchId) {
         const { data } = await supabase
           .from('branches')

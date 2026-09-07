@@ -822,7 +822,9 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
     let defaultBranchId = null;
     
     if (branchesData.length > 0) {
-      defaultBranchId = branchesData[0].id;
+      // Preferir la sucursal marcada como principal (is_main=true);
+      // si ninguna lo está, usar la primera disponible.
+      defaultBranchId = branchesData.find((b: any) => b.is_main === true)?.id ?? branchesData[0].id;
     } else {
       console.log(`La organización ${orgData.id} no tiene sucursales activas`);
     }

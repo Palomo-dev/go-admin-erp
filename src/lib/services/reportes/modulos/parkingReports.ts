@@ -4,6 +4,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -22,21 +23,16 @@ export const parkingReports: ReportDefinition[] = [
     descripcion: 'Sesiones, tiempo promedio y tasa de ocupación',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data: orgBranches } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('organization_id', orgId);
-      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
-
-      const { data, error } = branchIds.length > 0
-        ? await supabase
-            .from('parking_sessions')
-            .select('id, parking_space_id, entry_at, exit_at, status')
-            .in('branch_id', branchIds)
-            .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
-            .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`)
-        : { data: [], error: null };
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+      const { data, error } = await applyBranchFilter(
+        supabase
+          .from('parking_sessions')
+          .select('id, parking_space_id, entry_at, exit_at, status')
+          .eq('organization_id', orgId)
+          .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
+          .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -70,21 +66,16 @@ export const parkingReports: ReportDefinition[] = [
     descripcion: 'Ingresos por tarifas, abonados y pagos',
     categoria: 'financiero',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data: orgBranches } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('organization_id', orgId);
-      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
-
-      const { data, error } = branchIds.length > 0
-        ? await supabase
-            .from('parking_sessions')
-            .select('id, amount, status, entry_at')
-            .in('branch_id', branchIds)
-            .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
-            .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`)
-        : { data: [], error: null };
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+      const { data, error } = await applyBranchFilter(
+        supabase
+          .from('parking_sessions')
+          .select('id, amount, status, entry_at')
+          .eq('organization_id', orgId)
+          .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
+          .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -114,22 +105,17 @@ export const parkingReports: ReportDefinition[] = [
     descripcion: 'Uso por espacio, rotación y tiempo promedio',
     categoria: 'operativo',
     periodosSugeridos: ['semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const { data: orgBranches } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('organization_id', orgId);
-      const branchIds = (orgBranches ?? []).map((b: Record<string, unknown>) => b.id);
-
-      const { data, error } = branchIds.length > 0
-        ? await supabase
-            .from('parking_sessions')
-            .select('parking_space_id, entry_at, exit_at')
-            .in('branch_id', branchIds)
-            .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
-            .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`)
-            .not('exit_at', 'is', null)
-        : { data: [], error: null };
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
+      const { data, error } = await applyBranchFilter(
+        supabase
+          .from('parking_sessions')
+          .select('parking_space_id, entry_at, exit_at')
+          .eq('organization_id', orgId)
+          .gte('entry_at', `${periodo.fechaInicio}T00:00:00Z`)
+          .lte('entry_at', `${periodo.fechaFin}T23:59:59Z`)
+          .not('exit_at', 'is', null),
+        branchId,
+      );
 
       if (error) throw error;
 

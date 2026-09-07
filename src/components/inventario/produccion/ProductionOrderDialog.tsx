@@ -27,8 +27,10 @@ import {
   type ProductionOrderStatus,
 } from '@/lib/services/productionOrderService';
 import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
-import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface ProductionOrderDialogProps {
   open: boolean;
@@ -43,8 +45,10 @@ export function ProductionOrderDialog({
 }: ProductionOrderDialogProps) {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
+  const { selectedBranchId } = useBranch();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [recipes, setRecipes] = useState<ProductRecipe[]>([]);
   const [loadingRecipes, setLoadingRecipes] = useState(false);
   const [search, setSearch] = useState('');
@@ -68,6 +72,7 @@ export function ProductionOrderDialog({
         qty_to_produce: 1,
         notes: '',
       });
+      setBranchId(selectedBranchId);
     }
   }, [open, organizationId]);
 
@@ -113,14 +118,18 @@ export function ProductionOrderDialog({
       return;
     }
 
-    const branchId = getCurrentBranchId() ?? 2;
+    const branchIdToUse = branchId;
+    if (!branchIdToUse) {
+      toast({ title: 'Error', description: 'Selecciona una sucursal antes de crear la orden', variant: 'destructive' });
+      return;
+    }
 
     try {
       setSaving(true);
 
       const payload: CreateProductionOrderData = {
         organization_id: organizationId!,
-        branch_id: branchId,
+        branch_id: branchIdToUse,
         recipe_id: formData.recipe_id,
         product_id: formData.product_id,
         qty_to_produce: formData.qty_to_produce,
@@ -155,6 +164,13 @@ export function ProductionOrderDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           {/* Receta */}
           <div className="space-y-2">
             <Label className="dark:text-gray-300">Receta *</Label>
@@ -174,7 +190,7 @@ export function ProductionOrderDialog({
                   size="sm"
                   onClick={() => {
                     setFormData((prev) => ({ ...prev, recipe_id: 0, product_id: 0, product_name: '' }));
-                    setShowProductDropdown(true);
+                    setShowDropdown(true);
                   }}
                 >
                   Cambiar

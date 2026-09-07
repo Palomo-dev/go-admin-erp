@@ -137,24 +137,35 @@ const BranchMapModal: React.FC<BranchMapModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Mapa de Sucursales</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {branchesWithCoords.length} de {branches.length} sucursales con ubicación
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-6 border-b border-gray-200 gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-2xl font-bold text-gray-900 truncate">Mapa de Sucursales</h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                {branchesWithCoords.length} de {branches.length} sucursales con ubicación
+              </p>
+            </div>
+            {/* Botón cerrar visible arriba en móvil */}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 sm:hidden"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          
-          <div className="flex items-center gap-3">
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {/* Botón para geocodificar todas */}
             {branchesWithoutCoords.length > 0 && (
               <button
                 onClick={handleGeocodeAll}
                 disabled={isGeocodingAll}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-xs sm:text-sm"
               >
                 {isGeocodingAll ? (
                   <>
@@ -176,7 +187,7 @@ const BranchMapModal: React.FC<BranchMapModalProps> = ({
             {/* Botón para encontrar mi ubicación */}
             <button
               onClick={handleFindMyLocation}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm"
+              className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 text-xs sm:text-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -184,9 +195,10 @@ const BranchMapModal: React.FC<BranchMapModalProps> = ({
               Mi Ubicación
             </button>
 
+            {/* Botón cerrar visible en desktop */}
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors hidden sm:block"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -197,13 +209,13 @@ const BranchMapModal: React.FC<BranchMapModalProps> = ({
 
         {/* Progress Bar para geocodificación */}
         {isGeocodingAll && (
-          <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
-            <div className="flex items-center justify-between text-sm text-blue-700 mb-2">
-              <span>Geocodificando: {geocodingProgress.name}</span>
-              <span>{geocodingProgress.current} de {geocodingProgress.total}</span>
+          <div className="px-3 sm:px-6 py-3 bg-blue-50 border-b border-blue-200">
+            <div className="flex items-center justify-between text-xs sm:text-sm text-blue-700 mb-2">
+              <span className="truncate">Geocodificando: {geocodingProgress.name}</span>
+              <span className="flex-shrink-0">{geocodingProgress.current} de {geocodingProgress.total}</span>
             </div>
             <div className="w-full bg-blue-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${(geocodingProgress.current / geocodingProgress.total) * 100}%` }}
               ></div>
@@ -212,9 +224,9 @@ const BranchMapModal: React.FC<BranchMapModalProps> = ({
         )}
 
         {/* Content */}
-        <div className="flex-1 flex min-h-0">
+        <div className="flex-1 flex flex-col md:flex-row min-h-0">
           {/* Mapa */}
-          <div className="flex-1">
+          <div className="flex-1 min-h-[40vh] md:min-h-0">
             <BranchesMap
               branches={branches}
               selectedBranchId={selectedBranch?.id}
@@ -225,7 +237,7 @@ const BranchMapModal: React.FC<BranchMapModalProps> = ({
           </div>
 
           {/* Panel lateral */}
-          <div className="w-80 border-l border-gray-200 flex flex-col">
+          <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-gray-200 flex flex-col max-h-[40vh] md:max-h-none">
             {/* Información de sucursal seleccionada */}
             {selectedBranch && (
               <div className="p-4 border-b border-gray-200">

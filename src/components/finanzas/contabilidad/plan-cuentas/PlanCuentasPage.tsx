@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ContabilidadService, ChartAccount } from '../ContabilidadService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 const ACCOUNT_TYPES = [
   { value: 'asset', label: 'Activo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -311,6 +312,8 @@ export function PlanCuentasPage() {
           </Button>
         </div>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       {/* Filtros */}
       <Card className="dark:bg-gray-800 dark:border-gray-700">

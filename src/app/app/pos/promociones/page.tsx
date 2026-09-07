@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { 
   PromotionsList, 
@@ -13,16 +14,17 @@ import { toast } from 'sonner';
 
 export default function PromocionesPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<PromotionFilters>({});
 
   const loadPromotions = useCallback(async () => {
     if (!organization?.id) return;
-    
+
     setLoading(true);
     try {
-      const data = await PromotionsService.getAll(filters);
+      const data = await PromotionsService.getAll({ ...filters, branchId: branchFilter });
       setPromotions(data);
     } catch (error: any) {
       console.error('Error loading promotions:', error);
@@ -30,7 +32,7 @@ export default function PromocionesPage() {
     } finally {
       setLoading(false);
     }
-  }, [organization?.id, filters]);
+  }, [organization?.id, filters, branchFilter]);
 
   useEffect(() => {
     loadPromotions();

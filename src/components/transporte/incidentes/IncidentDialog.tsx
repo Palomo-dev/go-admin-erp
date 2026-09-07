@@ -23,6 +23,8 @@ import {
 import { Loader2, AlertTriangle, MapPin, DollarSign, FileText } from 'lucide-react';
 import type { IncidentWithDetails, CreateIncidentData } from '@/lib/services/incidentsService';
 import { INCIDENT_TYPES, SEVERITY_LEVELS, INCIDENT_STATUSES } from '@/lib/services/incidentsService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface IncidentDialogProps {
   open: boolean;
@@ -68,6 +70,9 @@ export function IncidentDialog({
   const [formData, setFormData] = useState<Partial<CreateIncidentData>>(initialFormData);
   const [activeTab, setActiveTab] = useState('general');
 
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
+
   useEffect(() => {
     if (incident) {
       setFormData({
@@ -97,7 +102,7 @@ export function IncidentDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave(formData);
+    await onSave({ ...formData, branch_id: branchId || undefined } as Partial<CreateIncidentData>);
   };
 
   const handleChange = (field: keyof CreateIncidentData, value: unknown) => {
@@ -117,6 +122,13 @@ export function IncidentDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+          {/* Sucursal */}
+          <BranchSelectorField
+            value={branchId}
+            onChange={setBranchId}
+            required
+          />
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">General</TabsTrigger>
@@ -250,7 +262,7 @@ export function IncidentDialog({
                   <Label>Responsable</Label>
                   <Select
                     value={formData.assigned_to?.toString() || 'none'}
-                    onValueChange={(v) => handleChange('assigned_to', v === 'none' ? undefined : parseInt(v))}
+                    onValueChange={(v) => handleChange('assigned_to', v === 'none' ? undefined : parseInt(v, 10))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sin asignar" />
@@ -284,7 +296,7 @@ export function IncidentDialog({
                     type="number"
                     min="1"
                     value={formData.sla_hours || ''}
-                    onChange={(e) => handleChange('sla_hours', e.target.value ? parseInt(e.target.value) : undefined)}
+                    onChange={(e) => handleChange('sla_hours', e.target.value ? parseInt(e.target.value, 10) : undefined)}
                     placeholder="Ej: 24"
                   />
                 </div>

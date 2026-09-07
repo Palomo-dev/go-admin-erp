@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useOrganization, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useToast } from '@/components/ui/use-toast';
 import GroupReservationsService, {
   type Group,
@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function GruposPage() {
-  const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { toast } = useToast();
 
   const [groups, setGroups] = useState<Group[]>([]);
@@ -44,7 +44,7 @@ export default function GruposPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
 
-  const branchId = getCurrentBranchId();
+  const branchId = branchFilter;
 
   const loadData = async () => {
     if (!branchId) return;
@@ -74,7 +74,7 @@ export default function GruposPage() {
     if (branchId) {
       loadData();
     }
-  }, [branchId]);
+  }, [branchId, branchFilter]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

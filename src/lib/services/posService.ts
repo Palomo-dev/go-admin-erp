@@ -164,7 +164,8 @@ export class POSService {
     search = '',
     category_id = null,
     status = 'active',
-    includeVariants = false // Nueva opción para incluir variantes
+    includeVariants = false, // Nueva opción para incluir variantes
+    branchFilter = undefined // null = todas (consolidado), number = sucursal concreta
   }: {
     page?: number;
     limit?: number;
@@ -172,9 +173,13 @@ export class POSService {
     category_id?: number | null;
     status?: string;
     includeVariants?: boolean;
+    branchFilter?: number | null;
   }) {
     try {
-      const currentBranchId = await this.getBranchId();
+      // Si branchFilter viene del caller, usarlo; si no, fallback al legacy
+      const currentBranchId = branchFilter !== undefined
+        ? branchFilter
+        : await this.getBranchId();
 
       // === Ranking vía RPC: ordena por (is_favorite DESC, sales_count_90d DESC, id ASC) ===
       // La función pos_product_ranking devuelve los product_ids ya ordenados + total +
@@ -301,13 +306,20 @@ export class POSService {
           : Promise.resolve({ data: [] as any[], error: null as any }),
 
         // 5. Stock de los productos de la página actual (incluye padres e hijos directos)
-        productIds.length > 0 && currentBranchId
-          ? supabase
-              .from('stock_levels')
-              .select('product_id, qty_on_hand, qty_reserved')
-              .in('product_id', productIds)
-              .eq('branch_id', currentBranchId)
-              .is('lot_id', null)
+        //    Si currentBranchId es null (Todas las sucursales), suma stock de todas.
+        productIds.length > 0
+          ? currentBranchId
+            ? supabase
+                .from('stock_levels')
+                .select('product_id, qty_on_hand, qty_reserved')
+                .in('product_id', productIds)
+                .eq('branch_id', currentBranchId)
+                .is('lot_id', null)
+            : supabase
+                .from('stock_levels')
+                .select('product_id, qty_on_hand, qty_reserved')
+                .in('product_id', productIds)
+                .is('lot_id', null)
           : Promise.resolve({ data: [] as any[], error: null as any }),
 
         // 6. Categorías de los productos de la página actual (query separada, no LATERAL JOIN)
@@ -393,13 +405,17 @@ export class POSService {
 
       // Consultar stock de las variantes hijas (query adicional, solo si hay variantes)
       // Se hace después de Promise.all porque depende de variantIds calculado arriba.
-      if (variantIds.length > 0 && currentBranchId) {
-        const { data: variantStockData } = await supabase
+      // Si currentBranchId es null (Todas), suma stock de todas las sucursales.
+      if (variantIds.length > 0) {
+        const variantStockQuery = supabase
           .from('stock_levels')
           .select('product_id, qty_on_hand, qty_reserved')
           .in('product_id', variantIds)
-          .eq('branch_id', currentBranchId)
           .is('lot_id', null);
+        if (currentBranchId) {
+          variantStockQuery.eq('branch_id', currentBranchId);
+        }
+        const { data: variantStockData } = await variantStockQuery;
         (variantStockData || []).forEach((s: any) => {
           const parentId = variantToParent[s.product_id];
           if (!variantStockMap[parentId]) {
@@ -1350,9 +1366,13 @@ export class POSService {
 
       // Descontar stock por cada item vendido
       try {
+        const fallbackBranchId = getCurrentBranchIdWithFallback();
+        if (!fallbackBranchId) {
+          console.warn('⚠️ No se pudo descontar stock: no hay branch_id seleccionado');
+        } else {
         const stockResult = await stockMovementService.decrementOnSale(
           this.organizationId,
-          getCurrentBranchIdWithFallback(),
+          fallbackBranchId,
           sale.id,
           cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
           'sale'
@@ -1361,6 +1381,7 @@ export class POSService {
           console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
         }
         console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
+        }
       } catch (stockError) {
         console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
       }
@@ -1715,9 +1736,13 @@ export class POSService {
       // Descontar stock por cada item vendido (solo si no es deuda - ya fue descontado)
       if (!isDebtCheckout) {
         try {
+        const fallbackBranchId = getCurrentBranchIdWithFallback();
+        if (!fallbackBranchId) {
+          console.warn('⚠️ No se pudo descontar stock: no hay branch_id seleccionado');
+        } else {
           const stockResult = await stockMovementService.decrementOnSale(
             cart.organization_id,
-            getCurrentBranchIdWithFallback(),
+            fallbackBranchId,
             saleData.id,
             cart.items.map(item => ({ product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price })),
             'sale'
@@ -1726,6 +1751,7 @@ export class POSService {
             console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
           }
           console.log(`📦 Stock descontado: ${cart.items.length - stockResult.skipped} items procesados`);
+        }
         } catch (stockError) {
           console.warn('⚠️ Error descontando stock (no bloquea la venta):', stockError);
         }
@@ -2722,9 +2748,13 @@ export class POSService {
         })).filter(item => item.product_id && item.quantity > 0);
 
         if (stockItems.length > 0) {
+          const fallbackBranchId = originalInvoice.branch_id || getCurrentBranchIdWithFallback();
+          if (!fallbackBranchId) {
+            console.warn('⚠️ No se pudo devolver stock: no hay branch_id disponible');
+          } else {
           const stockResult = await stockMovementService.incrementOnPurchase(
             this.organizationId,
-            originalInvoice.branch_id || getCurrentBranchIdWithFallback(),
+            fallbackBranchId,
             creditNoteData.id,
             stockItems,
             'credit_note'
@@ -2733,6 +2763,7 @@ export class POSService {
             console.warn('⚠️ Algunos items no devolvieron stock:', stockResult.errors);
           }
           console.log(`📦 Stock devuelto: ${stockItems.length - stockResult.skipped} items procesados`);
+          }
         }
       } catch (stockError) {
         console.warn('⚠️ Error devolviendo stock (no bloquea la anulación):', stockError);

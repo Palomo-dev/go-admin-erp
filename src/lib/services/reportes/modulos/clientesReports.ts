@@ -4,7 +4,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
-import { getBranchFilter } from '@/lib/hooks/useOrganization';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import { getDateRange, getOrgDateRange } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
@@ -24,8 +24,7 @@ export const clientesReports: ReportDefinition[] = [
     descripcion: 'Nuevos clientes, total acumulado y crecimiento',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const branchFilter = getBranchFilter();
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -33,21 +32,17 @@ export const clientesReports: ReportDefinition[] = [
 
       // Conteo total exacto (sin límite de 1000)
       const baseEq: Record<string, unknown> = { organization_id: orgId };
-      if (branchFilter !== null) baseEq.branch_id = branchFilter;
 
-      const { count: totalAcumulado } = await supabase
-        .from('customers')
-        .select('*', { count: 'exact', head: true })
-        .match(baseEq)
-        .lte('created_at', end);
+      const { count: totalAcumulado } = await applyBranchFilter(
+        supabase.from('customers').select('*', { count: 'exact', head: true }).match(baseEq),
+        branchId
+      ).lte('created_at', end);
 
       // Nuevos en el período seleccionado
-      const { count: nuevosEnPeriodo } = await supabase
-        .from('customers')
-        .select('*', { count: 'exact', head: true })
-        .match(baseEq)
-        .gte('created_at', start)
-        .lte('created_at', end);
+      const { count: nuevosEnPeriodo } = await applyBranchFilter(
+        supabase.from('customers').select('*', { count: 'exact', head: true }).match(baseEq),
+        branchId
+      ).gte('created_at', start).lte('created_at', end);
 
       // Desglose mensual: últimos 12 meses hasta la fecha fin del período
       // Usar count queries por mes en lugar de paginar todos los registros
@@ -79,10 +74,13 @@ export const clientesReports: ReportDefinition[] = [
         const mesFinStr = `${mesKey.slice(0, 8)}${String(ultimoDia).padStart(2, '0')}`;
         const { start: mesStart, end: mesEnd } = getDateRange(mesInicioStr, mesFinStr, tz);
 
-        return supabase
-          .from('customers')
-          .select('*', { count: 'exact', head: true })
-          .match(baseEq)
+        return applyBranchFilter(
+          supabase
+            .from('customers')
+            .select('*', { count: 'exact', head: true })
+            .match(baseEq),
+          branchId
+        )
           .gte('created_at', mesStart)
           .lte('created_at', mesEnd)
           .then(({ count }) => ({ mesKey, count: count ?? 0 }));
@@ -149,17 +147,14 @@ export const clientesReports: ReportDefinition[] = [
     descripcion: 'Distribución por tipo (persona/empresa), ciudad, segmento',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const branchFilter = getBranchFilter();
-
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       // Conteos exactos con head:true (evita el límite de 1000 filas)
       const baseEq = { 'organization_id': orgId } as Record<string, unknown>;
-      if (branchFilter !== null) baseEq['branch_id'] = branchFilter;
 
       const [totalRes, personRes, companyRes] = await Promise.all([
-        supabase.from('customers').select('*', { count: 'exact', head: true }).match(baseEq),
-        supabase.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'person' }),
-        supabase.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'company' }),
+        applyBranchFilter(supabase.from('customers').select('*', { count: 'exact', head: true }).match(baseEq), branchId),
+        applyBranchFilter(supabase.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'person' }), branchId),
+        applyBranchFilter(supabase.from('customers').select('*', { count: 'exact', head: true }).match({ ...baseEq, customer_type: 'company' }), branchId),
       ]);
 
       const total = totalRes.count ?? 0;
@@ -198,12 +193,12 @@ export const clientesReports: ReportDefinition[] = [
     descripcion: 'Clientes por volumen de compras y valor',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await supabase
+      let ventasQuery = supabase
         .from('sales')
         .select('customer_id, total, customers!inner(first_name, last_name, customer_type, company_name)')
         .eq('organization_id', orgId)
@@ -211,6 +206,8 @@ export const clientesReports: ReportDefinition[] = [
         .lte('sale_date', end)
         .not('status', 'in', '("cancelled","void")')
         .not('customer_id', 'is', null);
+      ventasQuery = applyBranchFilter(ventasQuery, branchId);
+      const { data, error } = await ventasQuery;
 
       if (error) throw error;
 

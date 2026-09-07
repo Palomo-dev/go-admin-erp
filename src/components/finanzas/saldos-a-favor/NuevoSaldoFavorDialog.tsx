@@ -23,6 +23,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { saldosAFavorService, ClienteSimple } from './saldosAFavorService';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface NuevoSaldoFavorDialogProps {
   open: boolean;
@@ -38,6 +40,8 @@ export function NuevoSaldoFavorDialog({
   onSuccess,
 }: NuevoSaldoFavorDialogProps) {
   const { toast } = useToast();
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [isLoading, setIsLoading] = useState(false);
   const [clientes, setClientes] = useState<ClienteSimple[]>([]);
   const [customerId, setCustomerId] = useState('');
@@ -79,6 +83,7 @@ export function NuevoSaldoFavorDialog({
         cashAccount,
         notes,
         expiry: expiry || null,
+        branchId,
       });
       toast({ title: 'Saldo a favor creado', description: 'El saldo a favor se registró correctamente.' });
       onOpenChange(false);
@@ -105,6 +110,8 @@ export function NuevoSaldoFavorDialog({
         </DialogHeader>
 
         <div className="grid gap-3 py-2">
+          <BranchSelectorField value={branchId} onChange={setBranchId} required />
+
           <div className="grid gap-1.5">
             <Label>Cliente</Label>
             <Select value={customerId} onValueChange={setCustomerId}>

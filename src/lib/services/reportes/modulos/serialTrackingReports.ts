@@ -59,7 +59,7 @@ export const serialTrackingReports: ReportDefinition[] = [
     descripcion: 'Seriales recibidos, proveedor, costo, estado actual y ubicación por producto',
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -137,7 +137,7 @@ export const serialTrackingReports: ReportDefinition[] = [
     descripcion: 'Seriales vendidos: producto, cliente, vendedor, canal, precio y fecha',
     categoria: 'comercial',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -216,7 +216,7 @@ export const serialTrackingReports: ReportDefinition[] = [
     descripcion: 'Reclamos de garantía: tipo de resolución, monto y tiempo de resolución',
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -309,7 +309,7 @@ export const serialTrackingReports: ReportDefinition[] = [
     descripcion: 'Seriales comprados, costo total, vendidos y devueltos por proveedor',
     categoria: 'operativo',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;

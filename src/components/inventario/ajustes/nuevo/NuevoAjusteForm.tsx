@@ -45,10 +45,11 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
-import { SearchSelectCombobox, type SearchSelectOption } from '@/components/inventario/ordenes-compra/SearchSelectCombobox';
+import { type SearchSelectOption } from '@/components/inventario/ordenes-compra/SearchSelectCombobox';
 import { ProductSearchCombobox, type ProductOption } from '@/components/inventario/ordenes-compra/ProductSearchCombobox';
-import { Store } from 'lucide-react';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface ProductForAdjustment {
   id: number;
@@ -75,12 +76,13 @@ export function NuevoAjusteForm() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { organization, isLoading: loadingOrg } = useOrganization();
+  const { selectedBranchId } = useBranch();
   const preloadedRef = useRef(false);
 
   // Leer query params de la URL
-  const paramProductId = searchParams.get('productId') || searchParams.get('producto_id');
-  const paramTypeRaw = searchParams.get('type');
-  const paramBranchId = searchParams.get('branchId');
+  const paramProductId = searchParams?.get('productId') || searchParams?.get('producto_id');
+  const paramTypeRaw = searchParams?.get('type');
+  const paramBranchId = searchParams?.get('branchId');
   
   // Mapear tipo del StockTab (entrada/salida) a valores válidos de BD ('gain'/'loss')
   const mapType = (t: string | null): string => {
@@ -91,7 +93,9 @@ export function NuevoAjusteForm() {
   };
 
   // Estados del formulario
-  const [branchId, setBranchId] = useState<string>(paramBranchId || '');
+  const [branchId, setBranchId] = useState<number | null>(
+    paramBranchId ? parseInt(paramBranchId) : selectedBranchId
+  );
   const [type, setType] = useState<string>(mapType(paramTypeRaw));
   const [reason, setReason] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -234,7 +238,9 @@ export function NuevoAjusteForm() {
         
         // Seleccionar sucursal del param o la primera por defecto
         if (branchesData.length > 0 && !branchId) {
-          const defaultBranch = paramBranchId || branchesData[0].id.toString();
+          const defaultBranch = paramBranchId
+            ? parseInt(paramBranchId)
+            : branchesData[0].id;
           setBranchId(defaultBranch);
         }
       } catch (error) {
@@ -302,7 +308,7 @@ export function NuevoAjusteForm() {
           return parseFloat(current?.cost) || parseFloat(costs[0]?.cost) || 0;
         };
 
-        const branchIdNum = parseInt(branchId);
+        const branchIdNum = branchId!;
         const newItems: AdjustmentItemInput[] = [];
 
         if (product.is_parent && product.children && product.children.length > 0) {
@@ -406,7 +412,7 @@ export function NuevoAjusteForm() {
 
     // Si viene del ProductSearchCombobox, obtener stock y costo desde Supabase
     try {
-      const branchIdNum = parseInt(branchId);
+      const branchIdNum = branchId!;
       const { data: stockData } = await supabase
         .from('stock_levels')
         .select('qty_on_hand, avg_cost')
@@ -514,7 +520,7 @@ export function NuevoAjusteForm() {
       const { data: adjustment, error } = await adjustmentService.createAdjustment(
         {
           organization_id: organization.id,
-          branch_id: parseInt(branchId),
+          branch_id: branchId!,
           type,
           reason,
           notes,
@@ -616,18 +622,13 @@ export function NuevoAjusteForm() {
               <CardTitle className="text-lg dark:text-white">Información del Ajuste</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <div>
-                  <Label className="dark:text-gray-300">Sucursal *</Label>
-                  <SearchSelectCombobox
-                    options={branches}
-                    value={branchId}
-                    onSelect={(opt) => setBranchId(opt ? opt.id.toString() : '')}
-                    placeholder="Buscar sucursal..."
-                    icon={<Store className="h-4 w-4 text-gray-400" />}
-                  />
-                </div>
+              <BranchSelectorField
+                value={branchId}
+                onChange={setBranchId}
+                required
+              />
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <Label className="dark:text-gray-300">Tipo de Ajuste *</Label>
                   <Select value={type} onValueChange={setType}>

@@ -21,6 +21,7 @@ class CRMDashboardService {
   async getKPIs(organizationId: number, filters: CRMFilters): Promise<KPIData> {
     const dateFrom = filters.dateRange.from || subDays(new Date(), 30);
     const dateTo = filters.dateRange.to || new Date();
+    const { branchId } = filters;
 
     // Conversaciones abiertas
     let conversationsQuery = supabase
@@ -29,6 +30,9 @@ class CRMDashboardService {
       .eq('organization_id', organizationId)
       .in('status', ['open', 'pending']);
 
+    if (branchId != null) {
+      conversationsQuery = conversationsQuery.eq('branch_id', branchId);
+    }
     if (filters.channelId) {
       conversationsQuery = conversationsQuery.eq('channel_id', filters.channelId);
     }
@@ -47,11 +51,17 @@ class CRMDashboardService {
       : 0;
 
     // Conversaciones pendientes
-    const { count: pendingCount } = await supabase
+    let pendingQuery = supabase
       .from('conversations')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('status', 'pending');
+
+    if (branchId != null) {
+      pendingQuery = pendingQuery.eq('branch_id', branchId);
+    }
+
+    const { count: pendingCount } = await pendingQuery;
 
     // Oportunidades abiertas
     let opportunitiesQuery = supabase
@@ -60,6 +70,9 @@ class CRMDashboardService {
       .eq('organization_id', organizationId)
       .eq('status', 'open');
 
+    if (branchId != null) {
+      opportunitiesQuery = opportunitiesQuery.eq('branch_id', branchId);
+    }
     if (filters.pipelineId) {
       opportunitiesQuery = opportunitiesQuery.eq('pipeline_id', filters.pipelineId);
     }
@@ -71,14 +84,20 @@ class CRMDashboardService {
     // Pronóstico del mes (oportunidades que cierran este mes)
     const monthStart = startOfMonth(new Date());
     const monthEnd = endOfMonth(new Date());
-    
-    const { data: forecastData } = await supabase
+
+    let forecastQuery = supabase
       .from('opportunities')
       .select('amount, stages!inner(probability)')
       .eq('organization_id', organizationId)
       .eq('status', 'open')
       .gte('expected_close_date', format(monthStart, 'yyyy-MM-dd'))
       .lte('expected_close_date', format(monthEnd, 'yyyy-MM-dd'));
+
+    if (branchId != null) {
+      forecastQuery = forecastQuery.eq('branch_id', branchId);
+    }
+
+    const { data: forecastData } = await forecastQuery;
 
     const monthForecast = forecastData?.reduce((sum, o) => {
       const probability = (o.stages as any)?.probability || 0;
@@ -93,18 +112,30 @@ class CRMDashboardService {
       .in('status', ['scheduled', 'sending', 'sent']);
 
     // Clientes nuevos en el periodo
-    const { count: newCustomers } = await supabase
+    let newCustomersQuery = supabase
       .from('customers')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .gte('created_at', format(dateFrom, 'yyyy-MM-dd'))
       .lte('created_at', format(dateTo, 'yyyy-MM-dd'));
 
+    if (branchId != null) {
+      newCustomersQuery = newCustomersQuery.eq('branch_id', branchId);
+    }
+
+    const { count: newCustomers } = await newCustomersQuery;
+
     // Total de clientes
-    const { count: totalCustomers } = await supabase
+    let totalCustomersQuery = supabase
       .from('customers')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId);
+
+    if (branchId != null) {
+      totalCustomersQuery = totalCustomersQuery.eq('branch_id', branchId);
+    }
+
+    const { count: totalCustomers } = await totalCustomersQuery;
 
     // Calcular SLA (% de conversaciones con respuesta < 5 min)
     const slaThreshold = 300; // 5 minutos en segundos
@@ -128,7 +159,13 @@ class CRMDashboardService {
   }
 
   // Obtener datos del embudo de ventas
-  async getFunnelData(organizationId: number, pipelineId?: string): Promise<FunnelData> {
+  async getFunnelData(organizationId: number, filtersOrPipelineId: CRMFilters | string | undefined): Promise<FunnelData> {
+    // Aceptar tanto filters (nuevo) como pipelineId string (compatibilidad)
+    const filters: CRMFilters | null =
+      typeof filtersOrPipelineId === 'string' || filtersOrPipelineId === undefined ? null : filtersOrPipelineId;
+    const pipelineId = typeof filtersOrPipelineId === 'string' ? filtersOrPipelineId : filters?.pipelineId || undefined;
+    const branchId = filters?.branchId ?? null;
+
     // Obtener pipeline (usar default si no se especifica)
     let pipeline = pipelineId;
     if (!pipeline) {
@@ -158,12 +195,18 @@ class CRMDashboardService {
 
     // Consulta batch: obtener todas las oportunidades de las etapas en una sola consulta
     const stageIds = stages.map(s => s.id);
-    const { data: allOpportunities } = await supabase
+    let oppQuery = supabase
       .from('opportunities')
       .select('stage_id, amount')
       .eq('organization_id', organizationId)
       .in('stage_id', stageIds)
       .eq('status', 'open');
+
+    if (branchId != null) {
+      oppQuery = oppQuery.eq('branch_id', branchId);
+    }
+
+    const { data: allOpportunities } = await oppQuery;
 
     // Agrupar oportunidades por etapa en memoria
     const opportunitiesByStage = new Map<string, { count: number; value: number }>();
@@ -198,6 +241,7 @@ class CRMDashboardService {
     const dateTo = filters.dateRange.to || new Date();
     const dateFromStr = format(dateFrom, 'yyyy-MM-dd');
     const dateToStr = format(new Date(dateTo.getTime() + 86400000), 'yyyy-MM-dd');
+    const { branchId } = filters;
 
     // Generar todas las fechas del rango
     const dateMap = new Map<string, ActivityByDay>();
@@ -216,30 +260,46 @@ class CRMDashboardService {
 
     // 4 consultas batch en paralelo (una por tabla) en lugar de 4*N secuenciales
     const [conversationsRes, messagesRes, opportunitiesRes, activitiesRes] = await Promise.all([
-      supabase
-        .from('conversations')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', dateFromStr)
-        .lt('created_at', dateToStr),
-      supabase
-        .from('messages')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', dateFromStr)
-        .lt('created_at', dateToStr),
-      supabase
-        .from('opportunities')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', dateFromStr)
-        .lt('created_at', dateToStr),
-      supabase
-        .from('activities')
-        .select('created_at')
-        .eq('organization_id', organizationId)
-        .gte('created_at', dateFromStr)
-        .lt('created_at', dateToStr),
+      (() => {
+        let q = supabase
+          .from('conversations')
+          .select('created_at')
+          .eq('organization_id', organizationId)
+          .gte('created_at', dateFromStr)
+          .lt('created_at', dateToStr);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
+      (() => {
+        let q = supabase
+          .from('messages')
+          .select('created_at')
+          .eq('organization_id', organizationId)
+          .gte('created_at', dateFromStr)
+          .lt('created_at', dateToStr);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
+      (() => {
+        let q = supabase
+          .from('opportunities')
+          .select('created_at')
+          .eq('organization_id', organizationId)
+          .gte('created_at', dateFromStr)
+          .lt('created_at', dateToStr);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
+      (() => {
+        let q = supabase
+          .from('activities')
+          .select('created_at')
+          .eq('organization_id', organizationId)
+          .gte('created_at', dateFromStr)
+          .lt('created_at', dateToStr);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
     ]);
 
     // Agrupar por fecha en memoria
@@ -268,7 +328,9 @@ class CRMDashboardService {
   }
 
   // Obtener mensajes por canal (optimizado: 2 consultas en lugar de N+1)
-  async getMessagesByChannel(organizationId: number): Promise<MessagesByChannel[]> {
+  async getMessagesByChannel(organizationId: number, filters?: CRMFilters): Promise<MessagesByChannel[]> {
+    const branchId = filters?.branchId ?? null;
+
     const { data: channels } = await supabase
       .from('channels')
       .select('id, name, type')
@@ -277,10 +339,16 @@ class CRMDashboardService {
     if (!channels || channels.length === 0) return [];
 
     // Una sola consulta para contar mensajes por canal_id
-    const { data: messagesData } = await supabase
+    let messagesQuery = supabase
       .from('messages')
       .select('channel_id')
       .eq('organization_id', organizationId);
+
+    if (branchId != null) {
+      messagesQuery = messagesQuery.eq('branch_id', branchId);
+    }
+
+    const { data: messagesData } = await messagesQuery;
 
     // Agrupar por channel_id en memoria
     const countsByChannel = new Map<string, number>();
@@ -308,7 +376,12 @@ class CRMDashboardService {
   }
 
   // Obtener top agentes (optimizado: 2 consultas en lugar de 3*N)
-  async getTopAgents(organizationId: number, limit: number = 5): Promise<TopAgent[]> {
+  async getTopAgents(organizationId: number, filtersOrLimit: CRMFilters | number = 5, limitArg?: number): Promise<TopAgent[]> {
+    // Aceptar filters (nuevo) o limit numérico (compatibilidad)
+    const filters: CRMFilters | null = typeof filtersOrLimit === 'number' ? null : filtersOrLimit;
+    const limit = typeof filtersOrLimit === 'number' ? filtersOrLimit : (limitArg ?? 5);
+    const branchId = filters?.branchId ?? null;
+
     const { data: members } = await supabase
       .from('organization_members')
       .select(`
@@ -323,11 +396,17 @@ class CRMDashboardService {
     const memberIds = members.map(m => m.id);
 
     // Una sola consulta para todas las conversaciones de todos los agentes
-    const { data: allConversations } = await supabase
+    let conversationsQuery = supabase
       .from('conversations')
       .select('assigned_member_id, status, first_response_time_seconds')
       .eq('organization_id', organizationId)
       .in('assigned_member_id', memberIds);
+
+    if (branchId != null) {
+      conversationsQuery = conversationsQuery.eq('branch_id', branchId);
+    }
+
+    const { data: allConversations } = await conversationsQuery;
 
     // Agrupar por miembro en memoria
     const statsByMember = new Map<number, { total: number; resolved: number; responseTimes: number[] }>();
@@ -364,7 +443,12 @@ class CRMDashboardService {
   }
 
   // Obtener top canales (optimizado: 3 consultas en lugar de 2*N+1)
-  async getTopChannels(organizationId: number, limit: number = 5): Promise<TopChannel[]> {
+  async getTopChannels(organizationId: number, filtersOrLimit: CRMFilters | number = 5, limitArg?: number): Promise<TopChannel[]> {
+    // Aceptar filters (nuevo) o limit numérico (compatibilidad)
+    const filters: CRMFilters | null = typeof filtersOrLimit === 'number' ? null : filtersOrLimit;
+    const limit = typeof filtersOrLimit === 'number' ? filtersOrLimit : (limitArg ?? 5);
+    const branchId = filters?.branchId ?? null;
+
     const { data: channels } = await supabase
       .from('channels')
       .select('id, name, type')
@@ -376,16 +460,24 @@ class CRMDashboardService {
 
     // 2 consultas batch en paralelo
     const [messagesRes, conversationsRes] = await Promise.all([
-      supabase
-        .from('messages')
-        .select('channel_id')
-        .eq('organization_id', organizationId)
-        .in('channel_id', channelIds),
-      supabase
-        .from('conversations')
-        .select('channel_id')
-        .eq('organization_id', organizationId)
-        .in('channel_id', channelIds),
+      (() => {
+        let q = supabase
+          .from('messages')
+          .select('channel_id')
+          .eq('organization_id', organizationId)
+          .in('channel_id', channelIds);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
+      (() => {
+        let q = supabase
+          .from('conversations')
+          .select('channel_id')
+          .eq('organization_id', organizationId)
+          .in('channel_id', channelIds);
+        if (branchId != null) q = q.eq('branch_id', branchId);
+        return q;
+      })(),
     ]);
 
     // Agrupar por channel_id en memoria
@@ -412,8 +504,13 @@ class CRMDashboardService {
   }
 
   // Obtener oportunidades próximas a cerrar
-  async getTopOpportunities(organizationId: number, limit: number = 5): Promise<TopOpportunity[]> {
-    const { data: opportunities } = await supabase
+  async getTopOpportunities(organizationId: number, filtersOrLimit: CRMFilters | number = 5, limitArg?: number): Promise<TopOpportunity[]> {
+    // Aceptar filters (nuevo) o limit numérico (compatibilidad)
+    const filters: CRMFilters | null = typeof filtersOrLimit === 'number' ? null : filtersOrLimit;
+    const limit = typeof filtersOrLimit === 'number' ? filtersOrLimit : (limitArg ?? 5);
+    const branchId = filters?.branchId ?? null;
+
+    let oppQuery = supabase
       .from('opportunities')
       .select(`
         id,
@@ -429,6 +526,12 @@ class CRMDashboardService {
       .not('expected_close_date', 'is', null)
       .order('expected_close_date', { ascending: true })
       .limit(limit);
+
+    if (branchId != null) {
+      oppQuery = oppQuery.eq('branch_id', branchId);
+    }
+
+    const { data: opportunities } = await oppQuery;
 
     return (opportunities || []).map(o => ({
       id: o.id,
@@ -455,12 +558,12 @@ class CRMDashboardService {
       topOpportunities,
     ] = await Promise.all([
       this.getKPIs(organizationId, filters),
-      this.getFunnelData(organizationId, filters.pipelineId || undefined),
+      this.getFunnelData(organizationId, filters),
       this.getActivityByDay(organizationId, filters),
-      this.getMessagesByChannel(organizationId),
-      this.getTopAgents(organizationId),
-      this.getTopChannels(organizationId),
-      this.getTopOpportunities(organizationId),
+      this.getMessagesByChannel(organizationId, filters),
+      this.getTopAgents(organizationId, filters),
+      this.getTopChannels(organizationId, filters),
+      this.getTopOpportunities(organizationId, filters),
     ]);
 
     return {

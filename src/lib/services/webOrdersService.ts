@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
@@ -137,10 +137,6 @@ class WebOrdersService {
     return getOrganizationId();
   }
 
-  private get branchId() {
-    return getCurrentBranchId();
-  }
-
   /**
    * Obtener todos los pedidos web con filtros
    */
@@ -177,7 +173,7 @@ class WebOrdersService {
         query = query.in('payment_status', filters.payment_status);
       }
 
-      if (filters?.branch_id) {
+      if (filters?.branch_id != null) {
         query = query.eq('branch_id', filters.branch_id);
       }
 
@@ -662,7 +658,7 @@ class WebOrdersService {
   /**
    * Obtener estadísticas de pedidos
    */
-  async getOrderStats(dateFrom?: string, dateTo?: string): Promise<{
+  async getOrderStats(dateFrom?: string, dateTo?: string, branchId?: number): Promise<{
     total_orders: number;
     pending_orders: number;
     completed_orders: number;
@@ -680,6 +676,7 @@ class WebOrdersService {
 
       if (dateFrom) query = query.gte('created_at', dateFrom);
       if (dateTo) query = query.lte('created_at', dateTo);
+      if (branchId != null) query = query.eq('branch_id', branchId);
 
       const { data: orders, error } = await query;
 
@@ -752,7 +749,13 @@ class WebOrdersService {
   /**
    * Suscribirse a cambios en pedidos (tiempo real)
    */
-  subscribeToOrders(callback: (payload: any) => void) {
+  subscribeToOrders(callback: (payload: any) => void, branchId?: number | null) {
+    // Filtro base por organización. Cuando branchId es un número concreto,
+    // se agrega el filtro branch_id para aislar los eventos por sucursal.
+    const filterParts = [`organization_id=eq.${this.organizationId}`];
+    if (branchId != null && typeof branchId === 'number') {
+      filterParts.push(`branch_id=eq.${branchId}`);
+    }
     return supabase
       .channel('web_orders_changes')
       .on(
@@ -761,7 +764,7 @@ class WebOrdersService {
           event: '*',
           schema: 'public',
           table: 'web_orders',
-          filter: `organization_id=eq.${this.organizationId}`,
+          filter: filterParts.join(','),
         },
         callback
       )

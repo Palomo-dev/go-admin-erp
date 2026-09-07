@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Calendar, LogIn } from 'lucide-react';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
@@ -27,6 +28,7 @@ import { ReservationsPagination } from '@/components/pms/reservas';
 export default function CheckinPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
 
   const [arrivals, setArrivals] = useState<CheckinReservation[]>([]);
   const [stats, setStats] = useState<CheckinStatsType>({
@@ -53,7 +55,7 @@ export default function CheckinPage() {
     if (organization) {
       loadData();
     }
-  }, [organization, datePreset, customDateRange]);
+  }, [organization, datePreset, customDateRange, branchFilter]);
 
   const loadData = async () => {
     if (!organization) return;
@@ -66,8 +68,8 @@ export default function CheckinPage() {
 
       // Cargar llegadas y estadísticas en paralelo
       const [arrivalsData, statsData] = await Promise.all([
-        CheckinService.getArrivals(organization.id, dateRange.startDate, dateRange.endDate),
-        CheckinService.getStats(organization.id, dateRange.startDate, dateRange.endDate),
+        CheckinService.getArrivals(organization.id, dateRange.startDate, dateRange.endDate, branchFilter),
+        CheckinService.getStats(organization.id, dateRange.startDate, dateRange.endDate, branchFilter),
       ]);
 
       setArrivals(arrivalsData);

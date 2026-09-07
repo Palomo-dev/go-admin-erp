@@ -109,6 +109,7 @@ export interface Trip {
   id: string;
   organization_id: number;
   route_id: string;
+  branch_id?: number | null;
   trip_code: string;
   trip_date: string;
   scheduled_departure: string;
@@ -218,6 +219,9 @@ class TransportService {
       ? filters.dateTo.toISOString().split('T')[0] 
       : new Date().toISOString().split('T')[0];
 
+    // branchId: aplicar filtro de sucursal cuando esté definido y no sea 'all'
+    const branchId = filters?.branchId && filters.branchId !== 'all' ? filters.branchId : null;
+
     // Trips stats with filters
     let tripsQuery = supabase
       .from('trips')
@@ -225,6 +229,7 @@ class TransportService {
       .eq('organization_id', organizationId)
       .gte('trip_date', dateFrom)
       .lte('trip_date', dateTo);
+    if (branchId != null) tripsQuery = tripsQuery.eq('branch_id', branchId);
     
     const { data: tripsData, error: tripsError } = await tripsQuery;
     if (tripsError) console.warn('Error fetching trips stats:', tripsError.message);
@@ -256,6 +261,7 @@ class TransportService {
     if (filters?.carrierId && filters.carrierId !== 'all') {
       shipmentsQuery = shipmentsQuery.eq('carrier_id', filters.carrierId);
     }
+    if (branchId != null) shipmentsQuery = shipmentsQuery.eq('branch_id', branchId);
 
     const { data: shipmentsData, error: shipmentsError } = await shipmentsQuery;
     if (shipmentsError) console.warn('Error fetching shipments stats:', shipmentsError.message);
@@ -268,6 +274,8 @@ class TransportService {
     };
 
     // Tickets stats with filters
+    // NOTA: trip_tickets no tiene branch_id → es organization-wide por diseño.
+    // El filtrado por sucursal se aplica indirectamente vía los trips filtrados.
     const { data: ticketsData, error: ticketsError } = await supabase
       .from('trip_tickets')
       .select('total, status')
@@ -284,14 +292,16 @@ class TransportService {
       occupancy_avg: 0,
     };
 
-    // Calculate occupancy
+    // Calculate occupancy — mismo rango de fechas (dateFrom/dateTo) que la query de trips
     if (filteredTrips.length > 0) {
-      const { data: tripsWithSeats } = await supabase
+      let occupancyQuery = supabase
         .from('trips')
         .select('total_seats, available_seats')
         .eq('organization_id', organizationId)
         .gte('trip_date', dateFrom)
         .lte('trip_date', dateTo);
+      if (branchId != null) occupancyQuery = occupancyQuery.eq('branch_id', branchId);
+      const { data: tripsWithSeats } = await occupancyQuery;
       
       if (tripsWithSeats && tripsWithSeats.length > 0) {
         const totalSeats = tripsWithSeats.reduce((sum, t) => sum + (t.total_seats || 0), 0);
@@ -301,6 +311,7 @@ class TransportService {
     }
 
     // Incidents stats
+    // NOTA: transport_incidents no tiene branch_id → es organization-wide por diseño.
     const { data: incidentsData, error: incidentsError } = await supabase
       .from('transport_incidents')
       .select('status, severity, sla_breached')
@@ -318,16 +329,18 @@ class TransportService {
     return { trips, shipments, tickets, incidents };
   }
 
-  async getStats(organizationId: number): Promise<TransportStats> {
+  async getStats(organizationId: number, branchId?: number | null): Promise<TransportStats> {
     const today = new Date().toISOString().split('T')[0];
 
     // Trips stats
-    const { data: tripsData, error: tripsError } = await supabase
+    let tripsQuery = supabase
       .from('trips')
       .select('status')
       .eq('organization_id', organizationId)
       .gte('trip_date', today);
-    
+    if (branchId != null) tripsQuery = tripsQuery.eq('branch_id', branchId);
+    const { data: tripsData, error: tripsError } = await tripsQuery;
+
     if (tripsError) console.warn('Error fetching trips stats:', tripsError.message);
 
     const trips = {
@@ -338,12 +351,14 @@ class TransportService {
     };
 
     // Shipments stats
-    const { data: shipmentsData, error: shipmentsError } = await supabase
+    let shipmentsQuery = supabase
       .from('shipments')
       .select('status')
       .eq('organization_id', organizationId)
       .in('status', ['ready', 'picked', 'in_transit', 'out_for_delivery', 'delivered', 'failed']);
-    
+    if (branchId != null) shipmentsQuery = shipmentsQuery.eq('branch_id', branchId);
+    const { data: shipmentsData, error: shipmentsError } = await shipmentsQuery;
+
     if (shipmentsError) console.warn('Error fetching shipments stats:', shipmentsError.message);
 
     const shipments = {
@@ -354,12 +369,13 @@ class TransportService {
     };
 
     // Tickets stats
+    // NOTA: trip_tickets no tiene branch_id → es organization-wide por diseño.
     const { data: ticketsData, error: ticketsError } = await supabase
       .from('trip_tickets')
       .select('total, status')
       .eq('organization_id', organizationId)
       .gte('created_at', `${today}T00:00:00`);
-    
+
     if (ticketsError) console.warn('Error fetching tickets stats:', ticketsError.message);
 
     const soldTickets = ticketsData?.filter(t => t.status !== 'cancelled') || [];
@@ -369,14 +385,16 @@ class TransportService {
       occupancy_avg: 0,
     };
 
-    // Calculate occupancy
+    // Calculate occupancy — mismo rango de fechas (gte today) que la query de trips
     if (tripsData && tripsData.length > 0) {
-      const { data: tripsWithSeats } = await supabase
+      let occupancyQuery = supabase
         .from('trips')
         .select('total_seats, available_seats')
         .eq('organization_id', organizationId)
-        .eq('trip_date', today);
-      
+        .gte('trip_date', today);
+      if (branchId != null) occupancyQuery = occupancyQuery.eq('branch_id', branchId);
+      const { data: tripsWithSeats } = await occupancyQuery;
+
       if (tripsWithSeats && tripsWithSeats.length > 0) {
         const totalSeats = tripsWithSeats.reduce((sum, t) => sum + t.total_seats, 0);
         const availableSeats = tripsWithSeats.reduce((sum, t) => sum + t.available_seats, 0);
@@ -385,6 +403,7 @@ class TransportService {
     }
 
     // Incidents stats
+    // NOTA: transport_incidents no tiene branch_id → es organization-wide por diseño.
     const { data: incidentsData, error: incidentsError } = await supabase
       .from('transport_incidents')
       .select('status, severity, sla_breached')

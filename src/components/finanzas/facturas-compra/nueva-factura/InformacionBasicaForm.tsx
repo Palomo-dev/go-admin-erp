@@ -9,7 +9,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { parseLocalDate, toLocalDateString } from '@/utils/Utils';
 import {
   Select,
@@ -40,6 +41,7 @@ export function InformacionBasicaForm({
   onInputChange,
   onProveedorCreado
 }: InformacionBasicaFormProps) {
+  const { selectedBranchId } = useBranch();
   // Estado para manejo de términos de pago personalizado
   const [isCustomPaymentTerm, setIsCustomPaymentTerm] = useState<boolean>(false);
   
@@ -102,7 +104,7 @@ export function InformacionBasicaForm({
     try {
       const currentYear = new Date().getFullYear();
       const organizationId = getOrganizationId();
-      const branchId = getCurrentBranchId();
+      const branchId = selectedBranchId;
       const prefix = `COMP-${currentYear}`;
       
       // Obtener el último número de factura del año actual para esta organización

@@ -11,6 +11,7 @@ import { DistribucionTable } from './DistribucionTable';
 import { CrearTransferenciaDialog } from './CrearTransferenciaDialog';
 import { TransferenciasService } from '../transferencias/TransferenciasService';
 import { InventoryTransfer, FiltrosTransferencias } from '../transferencias/types';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useToast } from '@/components/ui/use-toast';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
@@ -134,6 +135,8 @@ export function DistribucionPage() {
           </Button>
         </div>
       </div>
+
+      <BranchBadge />
 
       <DistribucionStats transferencias={transferencias} />
 

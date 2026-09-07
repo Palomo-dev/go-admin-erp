@@ -507,14 +507,18 @@ class TripsService {
 
   // ==================== ESTADÍSTICAS ====================
 
-  async getTripStats(organizationId: number, date?: string) {
+  async getTripStats(organizationId: number, date?: string, branchId?: number | null) {
     const targetDate = date || new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('trips')
       .select('status, total_seats, available_seats')
       .eq('organization_id', organizationId)
       .eq('trip_date', targetDate);
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
+    const { data, error } = await query;
 
     if (error) throw error;
 

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useActiveModules } from '@/hooks/useActiveModules';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -24,6 +25,7 @@ import type { PeriodoCierre, ReportDefinition, ReportData } from '@/lib/services
 
 export default function ReportesPage() {
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const { activeModules } = useActiveModules(organization?.id);
   const { toast } = useToast();
 
@@ -69,7 +71,7 @@ export default function ReportesPage() {
       .filter((def) => activeModuleSet.has(def.modulo));
 
     const resultados = await Promise.allSettled(
-      definiciones.map((def) => ejecutarReporte(def.id, orgId, periodo)),
+      definiciones.map((def) => ejecutarReporte(def.id, orgId, periodo, branchFilter)),
     );
 
     const reportesClave: ReportData[] = [];
@@ -78,7 +80,7 @@ export default function ReportesPage() {
     }
     setGlobalKPIs(reportesClave);
     setKpisLoading(false);
-  }, [orgId, periodo, moduleCodes]);
+  }, [orgId, periodo, moduleCodes, branchFilter]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -111,7 +113,7 @@ export default function ReportesPage() {
         supabase.auth.getUser(),
       ]);
 
-      const { resultados } = await ejecutarCierre(orgId, periodo, moduleCodes);
+      const { resultados } = await ejecutarCierre(orgId, periodo, moduleCodes, 4, branchFilter);
       if (!resultados.length) {
         toast({ title: 'No hay reportes para exportar', description: 'No se encontraron datos en este período', variant: 'destructive' });
         return;
@@ -195,7 +197,7 @@ export default function ReportesPage() {
         generarNumeroDocumento(orgId, periodoCierre),
       ]);
 
-      const { resultados } = await ejecutarCierre(orgId, periodoCierre, modulos);
+      const { resultados } = await ejecutarCierre(orgId, periodoCierre, modulos, 4, branchFilter);
       if (!resultados.length) {
         toast({ title: 'Sin datos', description: 'No se encontraron datos para este período', variant: 'destructive' });
         return;
@@ -290,6 +292,7 @@ export default function ReportesPage() {
         reporte={selectedReporte}
         periodo={periodo}
         orgId={orgId}
+        branchFilter={branchFilter}
         onExportPDF={handleExportIndividual}
       />
 

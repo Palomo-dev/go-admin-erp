@@ -370,7 +370,7 @@ class InventoryDashboardService {
       }
 
       // 4. Transferencias en tránsito
-      const { data: pendingTransfers } = await supabase
+      let transfersQuery = supabase
         .from('inventory_transfers')
         .select(`
           id,
@@ -382,6 +382,13 @@ class InventoryDashboardService {
         `)
         .eq('organization_id', organizationId)
         .in('status', ['pending', 'in_transit']);
+
+      // Filtrar por sucursal: la sucursal seleccionada debe ser origen O destino
+      if (branchId != null) {
+        transfersQuery = transfersQuery.or(`origin_branch_id.eq.${branchId},dest_branch_id.eq.${branchId}`);
+      }
+
+      const { data: pendingTransfers } = await transfersQuery;
 
       if (pendingTransfers) {
         pendingTransfers.forEach((transfer) => {
@@ -400,11 +407,17 @@ class InventoryDashboardService {
       }
 
       // 5. Órdenes de compra pendientes
-      const { data: pendingPurchases } = await supabase
+      let purchasesQuery = supabase
         .from('purchase_orders')
         .select('id, status, expected_date, total, suppliers!inner(name), branches!inner(name)')
         .eq('organization_id', organizationId)
         .in('status', ['draft', 'sent', 'partial']);
+
+      if (branchId != null) {
+        purchasesQuery = purchasesQuery.eq('branch_id', branchId);
+      }
+
+      const { data: pendingPurchases } = await purchasesQuery;
 
       if (pendingPurchases) {
         pendingPurchases.forEach((po) => {
@@ -487,14 +500,21 @@ class InventoryDashboardService {
   /**
    * Obtiene el resumen por sucursal
    */
-  async getBranchSummaries(organizationId: number): Promise<BranchSummary[]> {
+  async getBranchSummaries(organizationId: number, branchId?: number | null): Promise<BranchSummary[]> {
     try {
       // Obtener sucursales activas
-      const { data: branches } = await supabase
+      let branchesQuery = supabase
         .from('branches')
         .select('id, name')
         .eq('organization_id', organizationId)
         .eq('is_active', true);
+
+      // Si se pasa un branchId concreto, filtrar para mostrar solo esa sucursal
+      if (branchId != null) {
+        branchesQuery = branchesQuery.eq('id', branchId);
+      }
+
+      const { data: branches } = await branchesQuery;
 
       if (!branches) return [];
 
@@ -595,7 +615,7 @@ class InventoryDashboardService {
       this.getKPIs(organizationId, branchId),
       this.getAlerts(organizationId, branchId),
       this.getRecentMovements(organizationId, branchId),
-      this.getBranchSummaries(organizationId),
+      this.getBranchSummaries(organizationId, branchId),
     ]);
 
     return {

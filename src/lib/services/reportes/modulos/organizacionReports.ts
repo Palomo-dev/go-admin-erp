@@ -22,7 +22,7 @@ export const organizacionReports: ReportDefinition[] = [
     descripcion: 'Usuarios, roles y estado de membresía',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data, error } = await supabase
         .from('organization_members')
         .select('id, user_id, role_id, is_active, created_at')
@@ -60,7 +60,7 @@ export const organizacionReports: ReportDefinition[] = [
     descripcion: 'Métricas comparativas por sucursal',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data: branches } = await supabase
         .from('branches')
         .select('id, name, is_active')
@@ -114,7 +114,7 @@ export const organizacionReports: ReportDefinition[] = [
     descripcion: 'Métricas de uso: sesiones, módulos activos, storage',
     categoria: 'sistema',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const { data: modules } = await supabase
         .from('organization_modules')
         .select('module_code, is_active')

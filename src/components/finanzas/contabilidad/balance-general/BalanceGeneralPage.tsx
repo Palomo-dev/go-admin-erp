@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ReportesContablesService, BalanceSheetRow } from '../ReportesContablesService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 function formatCurrency(value: number): string {
   if (Math.abs(value) < 0.01) return '-';
@@ -77,6 +78,8 @@ export function BalanceGeneralPage() {
           <p className="text-gray-500 dark:text-gray-400">Estado de situacion financiera</p>
         </div>
       </div>
+
+      <BranchBadge className="mb-3" />
 
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">

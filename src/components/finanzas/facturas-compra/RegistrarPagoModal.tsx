@@ -23,6 +23,7 @@ import { CreditCard, AlertCircle } from 'lucide-react';
 import { FacturasCompraService } from './FacturasCompraService';
 import { InvoicePurchase, OrganizationPaymentMethod } from './types';
 import { formatCurrency } from '@/utils/Utils';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface RegistrarPagoModalProps {
   open: boolean;
@@ -45,6 +46,7 @@ export function RegistrarPagoModal({
   factura,
   onPagoRegistrado
 }: RegistrarPagoModalProps) {
+  const { selectedBranchId } = useBranch();
   const [loading, setLoading] = useState(false);
   const [metodosPago, setMetodosPago] = useState<OrganizationPaymentMethod[]>([]);
   const [montoExcedido, setMontoExcedido] = useState(false);
@@ -168,7 +170,12 @@ export function RegistrarPagoModal({
 
     try {
       setLoading(true);
-      
+
+      if (!selectedBranchId) {
+        alert('Seleccione una sucursal antes de registrar el pago.');
+        return;
+      }
+
       // Registrar el pago usando el servicio
       await FacturasCompraService.registrarPago(factura.id, {
         amount: monto,
@@ -176,8 +183,8 @@ export function RegistrarPagoModal({
         reference: formData.reference,
         notes: formData.notes,
         payment_date: formData.payment_date
-      });
-      
+      }, selectedBranchId);
+
       // Notificar éxito (podrías usar un toast aquí)
       console.log('Pago registrado exitosamente');
       

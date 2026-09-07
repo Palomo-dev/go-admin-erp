@@ -18,6 +18,10 @@ export class TransferenciasService {
     pageSize: number = 10
   ): Promise<{ transferencias: InventoryTransfer[]; total: number; totalPages: number }> {
     const organizationId = getOrganizationId();
+    if (!organizationId || organizationId === 0) {
+      console.warn('[TransferenciasService] obtenerTransferencias: organizationId inválido (0). Retornando vacío.');
+      return { transferencias: [], total: 0, totalPages: 0 };
+    }
     const offset = (page - 1) * pageSize;
 
     let query = supabase
@@ -44,6 +48,12 @@ export class TransferenciasService {
       query = query.eq('dest_branch_id', parseInt(filtros.destino));
     }
 
+    // Filtro de sucursal del contexto global: mostrar transferencias donde
+    // la sucursal seleccionada es origen O destino (solo si origen/destino no están filtrados)
+    if (filtros.branchId != null && filtros.origen === 'todos' && filtros.destino === 'todos') {
+      query = query.or(`origin_branch_id.eq.${filtros.branchId},dest_branch_id.eq.${filtros.branchId}`);
+    }
+
     if (filtros.fechaDesde) {
       query = query.gte('created_at', filtros.fechaDesde);
     }
@@ -67,7 +77,13 @@ export class TransferenciasService {
   }
 
   static async obtenerTransferenciaPorId(id: number): Promise<InventoryTransfer | null> {
-    // Primero obtener la transferencia con branches
+    const orgId = getOrganizationId();
+    if (!orgId || orgId === 0) {
+      console.warn('[TransferenciasService] obtenerTransferenciaPorId: organizationId inválido (0).');
+      return null;
+    }
+
+    // Primero obtener la transferencia con branches (filtrar por organization_id para ownership)
     const { data: transferencia, error: errorTransf } = await supabase
       .from('inventory_transfers')
       .select(`
@@ -76,6 +92,7 @@ export class TransferenciasService {
         dest_branch:branches!inventory_transfers_dest_branch_id_fkey(id, name, address)
       `)
       .eq('id', id)
+      .eq('organization_id', orgId)
       .single();
 
     if (errorTransf) {
@@ -121,6 +138,9 @@ export class TransferenciasService {
 
   static async crearTransferencia(datos: CreateTransferData): Promise<InventoryTransfer> {
     const organizationId = getOrganizationId();
+    if (!organizationId || organizationId === 0) {
+      throw new Error('Organización no válida');
+    }
     const { data: { user } } = await supabase.auth.getUser();
 
     // Crear la transferencia
@@ -171,6 +191,9 @@ export class TransferenciasService {
     nuevoEstado: InventoryTransfer['status']
   ): Promise<InventoryTransfer> {
     const organizationId = getOrganizationId();
+    if (!organizationId || organizationId === 0) {
+      throw new Error('Organización no válida');
+    }
 
     // Si el estado es 'in_transit', crear movimientos de salida
     if (nuevoEstado === 'in_transit') {
@@ -198,6 +221,9 @@ export class TransferenciasService {
 
   static async generarMovimientosSalida(transferId: number): Promise<void> {
     const organizationId = getOrganizationId();
+    if (!organizationId || organizationId === 0) {
+      throw new Error('Organización no válida');
+    }
     const { data: { user } } = await supabase.auth.getUser();
 
     // Obtener la transferencia con items
@@ -241,15 +267,32 @@ export class TransferenciasService {
 
       if (errorStock) {
         console.warn('Error actualizando stock (puede no existir la función RPC):', errorStock);
-        // Fallback: actualizar directamente
-        await supabase
+        // Fallback: hacer SELECT del stock actual, calcular nuevo valor y luego update
+        let stockOriginQuery = supabase
           .from('stock_levels')
-          .update({ 
-            qty_available: supabase.rpc('decrement_qty', { qty: item.quantity })
-          })
+          .select('id, qty_on_hand')
           .eq('organization_id', organizationId)
           .eq('branch_id', transferencia.origin_branch_id)
           .eq('product_id', item.product_id);
+
+        if (item.lot_id) {
+          stockOriginQuery = stockOriginQuery.eq('lot_id', item.lot_id);
+        } else {
+          stockOriginQuery = stockOriginQuery.is('lot_id', null);
+        }
+
+        const { data: existingStock } = await stockOriginQuery.maybeSingle();
+
+        if (existingStock) {
+          const newQty = Math.max(0, (Number(existingStock.qty_on_hand) || 0) - item.quantity);
+          await supabase
+            .from('stock_levels')
+            .update({
+              qty_on_hand: newQty,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existingStock.id);
+        }
       }
     }
   }
@@ -259,6 +302,9 @@ export class TransferenciasService {
     itemsRecibidos: { transfer_item_id: number; received_qty: number }[]
   ): Promise<void> {
     const organizationId = getOrganizationId();
+    if (!organizationId || organizationId === 0) {
+      throw new Error('Organización no válida');
+    }
     const { data: { user } } = await supabase.auth.getUser();
 
     const transferencia = await this.obtenerTransferenciaPorId(transferId);
@@ -317,12 +363,21 @@ export class TransferenciasService {
           '[TransferenciasService] RPC update_stock_level falló en recepción, usando fallback:',
           errorStockDest.message
         );
-        const { data: existingDest } = await supabase
+        let stockDestQuery = supabase
           .from('stock_levels')
           .select('id, qty_on_hand')
+          .eq('organization_id', organizationId)
           .eq('branch_id', transferencia.dest_branch_id)
-          .eq('product_id', item.product_id)
-          .is('lot_id', item.lot_id ? null : null)
+          .eq('product_id', item.product_id);
+
+        // Filtrar por lot_id correctamente: eq si existe, is null si no existe
+        if (item.lot_id) {
+          stockDestQuery = stockDestQuery.eq('lot_id', item.lot_id);
+        } else {
+          stockDestQuery = stockDestQuery.is('lot_id', null);
+        }
+
+        const { data: existingDest } = await stockDestQuery
           .limit(1)
           .maybeSingle();
 
@@ -338,6 +393,7 @@ export class TransferenciasService {
           await supabase
             .from('stock_levels')
             .insert({
+              organization_id: organizationId,
               product_id: item.product_id,
               branch_id: transferencia.dest_branch_id,
               lot_id: item.lot_id || null,
@@ -370,12 +426,16 @@ export class TransferenciasService {
           status: nuevoEstado,
           updated_at: new Date().toISOString()
         })
-        .eq('id', transferId);
+        .eq('id', transferId)
+        .eq('organization_id', organizationId);
     }
   }
 
   static async cancelarTransferencia(id: number): Promise<void> {
     const organizationId = getOrganizationId();
+    if (!organizationId || organizationId === 0) {
+      throw new Error('Organización no válida');
+    }
     
     const { error } = await supabase
       .from('inventory_transfers')
@@ -394,6 +454,10 @@ export class TransferenciasService {
 
   static async obtenerSucursales(): Promise<Branch[]> {
     const organizationId = getOrganizationId();
+    if (!organizationId || organizationId === 0) {
+      console.warn('[TransferenciasService] obtenerSucursales: organizationId inválido (0).');
+      return [];
+    }
 
     const { data, error } = await supabase
       .from('branches')
@@ -412,6 +476,10 @@ export class TransferenciasService {
 
   static async obtenerProductos(): Promise<Product[]> {
     const organizationId = getOrganizationId();
+    if (!organizationId || organizationId === 0) {
+      console.warn('[TransferenciasService] obtenerProductos: organizationId inválido (0).');
+      return [];
+    }
 
     // Cargar todos los productos activos (incluyendo padres para mapeo)
     const { data: allData, error } = await supabase
@@ -519,9 +587,16 @@ export class TransferenciasService {
     branchId: number, 
     productId: number
   ): Promise<number> {
+    const orgId = getOrganizationId();
+    if (!orgId || orgId <= 0) {
+      console.warn('[TransferenciasService] obtenerStockDisponible: organización no válida');
+      return 0;
+    }
+
     const { data, error } = await supabase
       .from('stock_levels')
       .select('qty_on_hand, qty_reserved')
+      .eq('organization_id', orgId)
       .eq('branch_id', branchId)
       .eq('product_id', productId)
       .single();
@@ -542,6 +617,12 @@ export class TransferenciasService {
     productId: number, 
     branchId: number
   ): Promise<{ id: number; lot_code: string; qty_available: number; expiry_date?: string }[]> {
+    const orgId = getOrganizationId();
+    if (!orgId || orgId <= 0) {
+      console.warn('[TransferenciasService] obtenerLotesProducto: organización no válida');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('stock_levels')
       .select(`
@@ -550,6 +631,7 @@ export class TransferenciasService {
         qty_reserved,
         lots!inner(id, lot_code, expiry_date)
       `)
+      .eq('organization_id', orgId)
       .eq('branch_id', branchId)
       .eq('product_id', productId)
       .gt('qty_on_hand', 0)

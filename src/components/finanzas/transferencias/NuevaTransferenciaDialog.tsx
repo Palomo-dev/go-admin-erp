@@ -24,6 +24,8 @@ import { Loader2, ArrowLeftRight, ArrowRight, Building2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { transferenciasService, BankAccount } from '@/lib/services/transferenciasService';
 import { formatCurrency } from '@/utils/Utils';
+import { useBranch } from '@/lib/context/BranchContext';
+import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
 interface NuevaTransferenciaDialogProps {
   open: boolean;
@@ -36,6 +38,8 @@ export function NuevaTransferenciaDialog({
   onOpenChange,
   onSuccess,
 }: NuevaTransferenciaDialogProps) {
+  const { selectedBranchId } = useBranch();
+  const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [isLoading, setIsLoading] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [formData, setFormData] = useState({
@@ -116,6 +120,7 @@ export function NuevaTransferenciaDialog({
         transfer_date: formData.transfer_date,
         reference: formData.reference || undefined,
         notes: formData.notes || undefined,
+        branch_id: branchId,
       });
 
       if (result.success) {
@@ -145,6 +150,8 @@ export function NuevaTransferenciaDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <BranchSelectorField value={branchId} onChange={setBranchId} required />
+
           {/* Cuenta Origen */}
           <div className="space-y-2">
             <Label className="text-gray-700 dark:text-gray-300">

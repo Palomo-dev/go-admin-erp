@@ -10,7 +10,13 @@ import { getOperatingHours } from '@/lib/services/organizationOperatingHoursServ
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-export type PeriodoDashboard = 'hoy' | 'ayer' | '7d' | '30d' | '90d' | 'año';
+export type PeriodoDashboard = 'hoy' | 'ayer' | '7d' | '30d' | '90d' | 'año' | 'personalizado';
+
+/** Fechas concretas para el modo personalizado (formato YYYY-MM-DD) */
+export interface FechasCustomDashboard {
+  fechaInicio: string; // "YYYY-MM-DD"
+  fechaFin: string;   // "YYYY-MM-DD"
+}
 
 /** Horas opcionales para filtrar el dashboard (formato HH:mm) */
 export interface HorasDashboard {
@@ -199,6 +205,7 @@ async function rangoPeriodo(
   organizationId: number,
   periodo: PeriodoDashboard,
   horasOverride?: HorasDashboard | null,
+  fechasCustom?: FechasCustomDashboard | null,
 ): Promise<{
   inicio: string;
   fin: string;
@@ -285,6 +292,34 @@ async function rangoPeriodo(
       const start730d = addDays(operatingToday, -730);
       const { start: inicioAnterior } = await getOrgDateRange(organizationId, start730d, start365d);
       return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
+    }
+    case 'personalizado': {
+      // Requiere fechasCustom; si no llegan, fallback a "hoy"
+      if (!fechasCustom?.fechaInicio || !fechasCustom?.fechaFin) {
+        const range = await getOrgDayRange(organizationId, operatingToday);
+        const yesterday = addDays(operatingToday, -1);
+        const { start: inicioAnterior } = await getOrgDayRange(organizationId, yesterday);
+        const ahora = new Date();
+        const finAnterior = new Date(ahora.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        return { inicio: range.start, fin: ahora.toISOString(), inicioAnterior, finAnterior, operatingToday };
+      }
+      const { start: inicio } = await getOrgDateRange(
+        organizationId, fechasCustom.fechaInicio, fechasCustom.fechaFin, overrideHours ?? null,
+      );
+      // Período anterior = mismo rango de días inmediatamente antes
+      const diasDiff = Math.round(
+        (new Date(fechasCustom.fechaFin).getTime() - new Date(fechasCustom.fechaInicio).getTime()) / 86400000,
+      ) + 1;
+      const fechaInicioAnterior = addDays(fechasCustom.fechaInicio, -diasDiff);
+      const fechaFinAnterior = addDays(fechasCustom.fechaInicio, -1);
+      const { start: inicioAnterior } = await getOrgDateRange(
+        organizationId, fechaInicioAnterior, fechaFinAnterior,
+      );
+      // fin = final del día de fechaFin (no "ahora")
+      const { end: finCustom } = await getOrgDateRange(
+        organizationId, fechasCustom.fechaFin, fechasCustom.fechaFin,
+      );
+      return { inicio, fin: finCustom, inicioAnterior, finAnterior: inicio, operatingToday };
     }
     default: {
       let inicio: string;
@@ -374,6 +409,7 @@ export const inicioService = {
     organizationId: number,
     periodo: PeriodoDashboard = 'hoy',
     horas?: HorasDashboard | null,
+    fechasCustom?: FechasCustomDashboard | null,
   ): Promise<DashboardData> {
     const {
       inicio: inicioPeriodo,
@@ -381,7 +417,7 @@ export const inicioService = {
       inicioAnterior,
       finAnterior,
       operatingToday,
-    } = await rangoPeriodo(organizationId, periodo, horas);
+    } = await rangoPeriodo(organizationId, periodo, horas, fechasCustom);
 
     // Mes calendario actual (del 1 del mes hasta hoy) y mes anterior (mismos días)
     const [year, month, day] = operatingToday.split('-').map(Number);
@@ -639,10 +675,19 @@ export const inicioService = {
     let comprasPorDiaPeriodoCanceladas: SerieDiariaKpi | undefined;
     let comprasPorDiaPeriodoCompletadas: SerieDiariaKpi | undefined;
     if (!isHorario) {
-      const diasPeriodo: Record<PeriodoDashboard, number> = { hoy: 1, ayer: 1, '7d': 7, '30d': 30, '90d': 90, año: 365 };
-      const n = diasPeriodo[periodo];
-      const fechaFinActual = operatingToday;
-      const fechaInicioActual = addDays(operatingToday, -(n - 1));
+      const diasPeriodo: Record<PeriodoDashboard, number> = { hoy: 1, ayer: 1, '7d': 7, '30d': 30, '90d': 90, año: 365, personalizado: 0 };
+      let n = diasPeriodo[periodo];
+      // Para período personalizado, calcular n desde fechasCustom
+      if (periodo === 'personalizado' && fechasCustom) {
+        const diff = Math.round(
+          (new Date(fechasCustom.fechaFin).getTime() - new Date(fechasCustom.fechaInicio).getTime()) / 86400000,
+        ) + 1;
+        n = Math.max(diff, 1);
+      }
+      const fechaFinActual = periodo === 'personalizado' && fechasCustom ? fechasCustom.fechaFin : operatingToday;
+      const fechaInicioActual = periodo === 'personalizado' && fechasCustom
+        ? fechasCustom.fechaInicio
+        : addDays(operatingToday, -(n - 1));
       const fechaFinAnterior = addDays(fechaInicioActual, -1);
       const fechaInicioAnterior = addDays(fechaInicioActual, -n);
       // Ventas: combinar sales + web_orders por día

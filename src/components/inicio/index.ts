@@ -5,6 +5,7 @@ export type {
   OnboardingStep,
   DashboardData,
   PeriodoDashboard,
+  FechasCustomDashboard,
   HorasDashboard,
   PuntoTendencia,
   AlertaDashboard,

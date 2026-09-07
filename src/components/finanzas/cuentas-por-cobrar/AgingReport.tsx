@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingDown, Download, RefreshCw, Phone, Mail } from 'lucide-react';
 import { AgingBucket } from './types';
 import { CuentasPorCobrarService } from './service';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { toast } from 'sonner';
 
@@ -18,15 +19,16 @@ interface AgingReportProps {
 export function AgingReport({ className }: AgingReportProps) {
   const [agingData, setAgingData] = useState<AgingBucket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { branchFilter } = useBranch();
 
   useEffect(() => {
     loadAgingData();
-  }, []);
+  }, [branchFilter]);
 
   const loadAgingData = async () => {
     setIsLoading(true);
     try {
-      const data = await CuentasPorCobrarService.obtenerReporteAging();
+      const data = await CuentasPorCobrarService.obtenerReporteAging(branchFilter);
       setAgingData(data);
     } catch (error) {
       console.error('Error al cargar reporte de aging:', error);

@@ -4,8 +4,8 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
-import { getBranchFilter } from '@/lib/hooks/useOrganization';
 import { getOrgDateRange } from '@/lib/utils/timezone';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 
 function buildReportData(
@@ -54,9 +54,7 @@ export const inventarioReports: ReportDefinition[] = [
     descripcion: 'Productos bajo el mínimo de stock',
     categoria: 'operativo',
     periodosSugeridos: ['diario'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
-      const branchFilter = getBranchFilter();
-
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       let query = supabase
         .from('stock_levels')
         .select(`
@@ -74,9 +72,8 @@ export const inventarioReports: ReportDefinition[] = [
         .eq('products.status', 'active')
         .eq('products.track_stock', true);
 
-      if (branchFilter !== null) {
-        query = query.eq('branch_id', branchFilter);
-      }
+      // Filtrar por branchId del parámetro (no usar getBranchFilter global)
+      query = applyBranchFilter(query, branchId);
 
       const { data, error } = await query;
 
@@ -239,7 +236,7 @@ export const inventarioReports: ReportDefinition[] = [
     descripcion: 'Entradas, salidas y ajustes del período',
     categoria: 'operativo',
     periodosSugeridos: ['diario', 'semanal'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -248,6 +245,7 @@ export const inventarioReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -334,7 +332,7 @@ export const inventarioReports: ReportDefinition[] = [
     descripcion: 'Top vendidos, dead stock y días promedio de inventario',
     categoria: 'operativo',
     periodosSugeridos: ['semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
@@ -343,6 +341,7 @@ export const inventarioReports: ReportDefinition[] = [
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
+        p_branch_id: branchId ?? null,
       });
       if (error) throw error;
 
@@ -371,18 +370,20 @@ export const inventarioReports: ReportDefinition[] = [
     descripcion: 'Margen de ganancia por producto',
     categoria: 'comercial',
     periodosSugeridos: ['mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null): Promise<ReportData> {
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
       const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data: ventas, error: errVentas } = await supabase
+      let ventasQuery = supabase
         .from('sales')
         .select('id')
         .eq('organization_id', orgId)
         .gte('sale_date', start)
         .lte('sale_date', end)
         .not('status', 'in', '("cancelled","void")');
+      ventasQuery = applyBranchFilter(ventasQuery, branchId);
+      const { data: ventas, error: errVentas } = await ventasQuery;
 
       if (errVentas) throw errVentas;
 

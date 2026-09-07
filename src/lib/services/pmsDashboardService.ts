@@ -113,7 +113,8 @@ class PMSDashboardService {
     const { data, error } = await supabase
       .from('branches')
       .select('id')
-      .eq('organization_id', organizationId);
+      .eq('organization_id', organizationId)
+      .eq('is_active', true);
 
     if (error) {
       console.error('Error fetching branch ids:', error);
@@ -123,12 +124,13 @@ class PMSDashboardService {
     return (data || []).map((b) => b.id as number);
   }
 
-  async getDashboardStats(organizationId: number, dateRange?: DateRangeFilter): Promise<DashboardStats> {
+  async getDashboardStats(organizationId: number, dateRange?: DateRangeFilter, branchId?: number | null): Promise<DashboardStats> {
     const fromDate = dateRange ? dateRange.from.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     const toDate = dateRange ? dateRange.to.toISOString().split('T')[0] : fromDate;
 
     // Obtener branch_ids de la organización para filtrar spaces correctamente
-    const branchIds = await this.getBranchIds(organizationId);
+    // Si branchId es específico, filtrar solo por esa sucursal
+    const branchIds = branchId != null ? [branchId] : await this.getBranchIds(organizationId);
 
     // Get total spaces
     let spacesQuery = supabase
@@ -157,7 +159,7 @@ class PMSDashboardService {
     const maintenance = spaces.filter(s => s.status === 'maintenance' || s.status === 'out_of_order').length;
 
     // Get arrivals in date range
-    const { count: arrivalsCount } = await supabase
+    let arrivalsQuery = supabase
       .from('reservations')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
@@ -165,14 +167,26 @@ class PMSDashboardService {
       .lte('checkin', toDate)
       .in('status', ['confirmed', 'tentative']);
 
+    if (branchId != null) {
+      arrivalsQuery = arrivalsQuery.eq('branch_id', branchId);
+    }
+
+    const { count: arrivalsCount } = await arrivalsQuery;
+
     // Get departures in date range
-    const { count: departuresCount } = await supabase
+    let departuresQuery = supabase
       .from('reservations')
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .gte('checkout', fromDate)
       .lte('checkout', toDate)
       .in('status', ['checked_in', 'checked_out']);
+
+    if (branchId != null) {
+      departuresQuery = departuresQuery.eq('branch_id', branchId);
+    }
+
+    const { count: departuresCount } = await departuresQuery;
 
     const occupancy = totalSpaces > 0 ? Math.round((occupied / totalSpaces) * 100) : 0;
 
@@ -187,11 +201,11 @@ class PMSDashboardService {
     };
   }
 
-  async getArrivals(organizationId: number, dateRange?: DateRangeFilter): Promise<TodayArrival[]> {
+  async getArrivals(organizationId: number, dateRange?: DateRangeFilter, branchId?: number | null): Promise<TodayArrival[]> {
     const fromDate = dateRange ? dateRange.from.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     const toDate = dateRange ? dateRange.to.toISOString().split('T')[0] : fromDate;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('reservations')
       .select(`
         id,
@@ -219,8 +233,13 @@ class PMSDashboardService {
       .eq('organization_id', organizationId)
       .gte('checkin', fromDate)
       .lte('checkin', toDate)
-      .in('status', ['confirmed', 'tentative'])
-      .order('checkin', { ascending: true });
+      .in('status', ['confirmed', 'tentative']);
+
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query.order('checkin', { ascending: true });
 
     if (error) {
       console.error('Error fetching arrivals:', error);
@@ -240,11 +259,11 @@ class PMSDashboardService {
     }));
   }
 
-  async getDepartures(organizationId: number, dateRange?: DateRangeFilter): Promise<TodayDeparture[]> {
+  async getDepartures(organizationId: number, dateRange?: DateRangeFilter, branchId?: number | null): Promise<TodayDeparture[]> {
     const fromDate = dateRange ? dateRange.from.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     const toDate = dateRange ? dateRange.to.toISOString().split('T')[0] : fromDate;
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('reservations')
       .select(`
         id,
@@ -270,8 +289,13 @@ class PMSDashboardService {
       .eq('organization_id', organizationId)
       .gte('checkout', fromDate)
       .lte('checkout', toDate)
-      .in('status', ['checked_in', 'checked_out'])
-      .order('checkout', { ascending: true });
+      .in('status', ['checked_in', 'checked_out']);
+
+    if (branchId != null) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query.order('checkout', { ascending: true });
 
     if (error) {
       console.error('Error fetching departures:', error);
@@ -289,13 +313,13 @@ class PMSDashboardService {
     }));
   }
 
-  async getAlerts(organizationId: number): Promise<Alert[]> {
+  async getAlerts(organizationId: number, branchId?: number | null): Promise<Alert[]> {
     const alerts: Alert[] = [];
     const today = new Date().toISOString().split('T')[0];
     const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
     // Reservations without space assignment
-    const { data: unassigned } = await supabase
+    let unassignedQuery = supabase
       .from('reservations')
       .select('id, metadata, checkin')
       .eq('organization_id', organizationId)
@@ -303,6 +327,12 @@ class PMSDashboardService {
       .in('status', ['confirmed', 'tentative'])
       .gte('checkin', today)
       .lte('checkin', tomorrow);
+
+    if (branchId != null) {
+      unassignedQuery = unassignedQuery.eq('branch_id', branchId);
+    }
+
+    const { data: unassigned } = await unassignedQuery;
 
     if (unassigned && unassigned.length > 0) {
       alerts.push({
@@ -317,12 +347,18 @@ class PMSDashboardService {
     }
 
     // Upcoming blocks
-    const { data: blocks } = await supabase
+    let blocksQuery = supabase
       .from('reservation_blocks')
       .select('id, reason, date_from, spaces(label)')
       .eq('organization_id', organizationId)
       .gte('date_from', today)
       .lte('date_from', tomorrow);
+
+    if (branchId != null) {
+      blocksQuery = blocksQuery.eq('branch_id', branchId);
+    }
+
+    const { data: blocks } = await blocksQuery;
 
     if (blocks && blocks.length > 0) {
       alerts.push({
@@ -337,7 +373,7 @@ class PMSDashboardService {
     }
 
     // Pending payments (folios with balance > 0 for today's departures)
-    const { data: pendingPayments } = await supabase
+    let pendingPaymentsQuery = supabase
       .from('reservations')
       .select(`
         id,
@@ -346,6 +382,12 @@ class PMSDashboardService {
       .eq('organization_id', organizationId)
       .eq('checkout', today)
       .eq('status', 'checked_in');
+
+    if (branchId != null) {
+      pendingPaymentsQuery = pendingPaymentsQuery.eq('branch_id', branchId);
+    }
+
+    const { data: pendingPayments } = await pendingPaymentsQuery;
 
     const withBalance = pendingPayments?.filter((r: ReservationPaymentRow) =>
       r.folios?.some((f) => (f.balance ?? 0) > 0)
@@ -366,17 +408,17 @@ class PMSDashboardService {
     return alerts;
   }
 
-  async getWeekCalendarEvents(organizationId: number): Promise<CalendarEvent[]> {
+  async getWeekCalendarEvents(organizationId: number, branchId?: number | null): Promise<CalendarEvent[]> {
     const today = new Date();
     const weekEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
     const todayStr = today.toISOString().split('T')[0];
     const weekEndStr = weekEnd.toISOString().split('T')[0];
 
-    const branchIds = await this.getBranchIds(organizationId);
+    const branchIds = branchId != null ? [branchId] : await this.getBranchIds(organizationId);
     const events: CalendarEvent[] = [];
 
     // Arrivals this week
-    const { data: arrivals } = await supabase
+    let arrivalsQuery = supabase
       .from('reservations')
       .select(`
         id,
@@ -390,6 +432,12 @@ class PMSDashboardService {
       .lte('checkin', weekEndStr)
       .in('status', ['confirmed', 'tentative']);
 
+    if (branchIds.length > 0) {
+      arrivalsQuery = arrivalsQuery.in('branch_id', branchIds);
+    }
+
+    const { data: arrivals } = await arrivalsQuery;
+
     arrivals?.forEach((r: CalendarArrivalRow) => {
       events.push({
         id: `arrival-${r.id}`,
@@ -401,7 +449,7 @@ class PMSDashboardService {
     });
 
     // Departures this week
-    const { data: departures } = await supabase
+    let departuresQuery = supabase
       .from('reservations')
       .select(`
         id,
@@ -415,6 +463,12 @@ class PMSDashboardService {
       .lte('checkout', weekEndStr)
       .eq('status', 'checked_in');
 
+    if (branchIds.length > 0) {
+      departuresQuery = departuresQuery.in('branch_id', branchIds);
+    }
+
+    const { data: departures } = await departuresQuery;
+
     departures?.forEach((r: ReservationDepartureRow) => {
       events.push({
         id: `departure-${r.id}`,
@@ -426,12 +480,18 @@ class PMSDashboardService {
     });
 
     // Blocks this week
-    const { data: blocks } = await supabase
+    let blocksQuery = supabase
       .from('reservation_blocks')
       .select('id, date_from, reason, spaces(label)')
       .eq('organization_id', organizationId)
       .gte('date_from', todayStr)
       .lte('date_from', weekEndStr);
+
+    if (branchIds.length > 0) {
+      blocksQuery = blocksQuery.in('branch_id', branchIds);
+    }
+
+    const { data: blocks } = await blocksQuery;
 
     blocks?.forEach((b: CalendarBlockRow) => {
       events.push({

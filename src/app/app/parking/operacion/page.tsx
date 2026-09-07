@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { supabase } from '@/lib/supabase/config';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Building2, Plus } from 'lucide-react';
@@ -44,6 +45,7 @@ interface PassInfo {
 export default function ParkingOperacionPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
 
   const [isLoading, setIsLoading] = useState(true);
   const [branchId, setBranchId] = useState<number | null>(null);
@@ -96,6 +98,11 @@ export default function ParkingOperacionPage() {
     setRates([]);
     fetchBranch();
   }, [organization?.id]);
+
+  // Sincronizar branch local con el filtro global del BranchContext
+  useEffect(() => {
+    setBranchId(branchFilter);
+  }, [branchFilter]);
 
   // Cargar datos
   const loadData = useCallback(async () => {

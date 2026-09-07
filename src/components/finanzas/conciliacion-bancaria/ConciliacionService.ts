@@ -19,8 +19,51 @@ export class ConciliacionService {
   static async obtenerConciliaciones(filters?: {
     status?: string;
     accountId?: number;
+    branchId?: number | null;
   }): Promise<BankReconciliation[]> {
-    return BancosService.obtenerConciliaciones(filters?.accountId);
+    const organizationId = this.getOrganizationId();
+
+    try {
+      let query = supabase
+        .from('bank_reconciliations')
+        .select(`
+          *,
+          bank_accounts:bank_account_id(id, name, bank_name, account_number)
+        `)
+        .eq('organization_id', organizationId)
+        .order('period_end', { ascending: false });
+
+      if (filters?.accountId) {
+        query = query.eq('bank_account_id', filters.accountId);
+      }
+
+      // Filtrar por sucursal: obtener las cuentas bancarias de la sucursal
+      // y limitar las conciliaciones a esas cuentas.
+      if (filters?.branchId != null) {
+        const accounts = await BancosService.obtenerCuentasBancarias(filters.branchId);
+        const accountIds = accounts.map(a => a.id);
+        if (accountIds.length === 0) {
+          return [];
+        }
+        query = query.in('bank_account_id', accountIds);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      return (data || []).map(rec => ({
+        ...rec,
+        opening_balance: parseFloat(rec.opening_balance),
+        closing_balance: parseFloat(rec.closing_balance),
+        statement_balance: rec.statement_balance ? parseFloat(rec.statement_balance) : null,
+        difference: rec.difference ? parseFloat(rec.difference) : null,
+        bank_account: rec.bank_accounts
+      }));
+    } catch (error) {
+      console.error('Error obteniendo conciliaciones:', error);
+      throw error;
+    }
   }
 
   static async obtenerConciliacion(id: string): Promise<BankReconciliation | null> {
@@ -31,8 +74,8 @@ export class ConciliacionService {
     return BancosService.obtenerItemsConciliacion(id);
   }
 
-  static async obtenerCuentasBancarias(): Promise<BankAccount[]> {
-    return BancosService.obtenerCuentasBancarias();
+  static async obtenerCuentasBancarias(branchId?: number | null): Promise<BankAccount[]> {
+    return BancosService.obtenerCuentasBancarias(branchId);
   }
 
   static async obtenerTransaccionesPendientes(
@@ -139,14 +182,28 @@ export class ConciliacionService {
     return BancosService.unmatchTransaccion(itemId, transactionId);
   }
 
-  static async obtenerEstadisticas(): Promise<ConciliacionStats> {
+  static async obtenerEstadisticas(branchId?: number | null): Promise<ConciliacionStats> {
     const organizationId = this.getOrganizationId();
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('bank_reconciliations')
         .select('id, status')
-        .eq('organization_id', organizationId);
+        .eq('organization_id', organizationId)
+        .in('status', ['draft', 'in_progress', 'closed']);
+
+      // Filtrar por sucursal: limitar a las conciliaciones de las cuentas
+      // bancarias de la sucursal seleccionada.
+      if (branchId != null) {
+        const accounts = await BancosService.obtenerCuentasBancarias(branchId);
+        const accountIds = accounts.map(a => a.id);
+        if (accountIds.length === 0) {
+          return { total: 0, draft: 0, in_progress: 0, closed: 0 };
+        }
+        query = query.in('bank_account_id', accountIds);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

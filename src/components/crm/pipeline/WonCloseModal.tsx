@@ -15,6 +15,7 @@ import { Loader2, CheckCircle2, XCircle, Trophy, AlertCircle } from 'lucide-reac
 import { cn } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { CotizacionesService } from '@/lib/services/cotizacionesService';
 import { commissionService } from '@/lib/services/crm/commissionService';
 import { proposalService } from '@/lib/services/crm/proposalService';
@@ -132,6 +133,11 @@ export function WonCloseModal({
   const [completed, setCompleted] = useState(false);
   const [opportunity, setOpportunity] = useState<OpportunityData | null>(null);
 
+  // Sucursal seleccionada del contexto global (BranchContext).
+  // Si el usuario está en modo "Todas" (isAllSelected), no hay sucursal concreta.
+  const { selectedBranchId, isAllSelected } = useBranch();
+  const contextBranchId = isAllSelected ? null : selectedBranchId;
+
   const loadOpportunity = useCallback(async () => {
     if (!opportunityId) return;
     const { data, error } = await supabase
@@ -182,6 +188,9 @@ export function WonCloseModal({
   // ============== Step executors ==============
 
   const executeInvoice = async (opp: OpportunityData): Promise<string> => {
+    const orgId = getOrganizationId();
+    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
+
     const latestProposal = await proposalService.getLatestProposalForOpportunity(
       opp.id
     );
@@ -189,8 +198,11 @@ export function WonCloseModal({
       return 'Sin cotización vinculada — se omitió la factura';
     }
 
-    const orgId = getOrganizationId();
-    const branchId = latestProposal.branch_id || 1;
+    // Sucursal: preferir la del contexto global; si no hay, usar la de la última propuesta
+    const branchId = contextBranchId ?? latestProposal.branch_id;
+    if (!branchId) {
+      return 'Sin sucursal definida (selecciona una sucursal concreta, no "Todas") — se omitió la factura';
+    }
 
     const invoiceId = await CotizacionesService.convertToInvoice(
       latestProposal.id,
@@ -212,12 +224,16 @@ export function WonCloseModal({
 
     const orgId = getOrganizationId();
     const { data: userData } = await supabase.auth.getUser();
+    const branchIdForSale = contextBranchId;
+    if (!branchIdForSale) {
+      return 'Sin sucursal seleccionada (selecciona una sucursal concreta, no "Todas") — se omitió venta POS';
+    }
 
     const { data: sale, error } = await supabase
       .from('sales')
       .insert({
         organization_id: orgId,
-        branch_id: 1,
+        branch_id: branchIdForSale,
         customer_id: opp.customer_id,
         user_id: userData.user?.id || opp.created_by || '',
         total: opp.amount,
@@ -281,6 +297,9 @@ export function WonCloseModal({
   };
 
   const executeReservations = async (opp: OpportunityData): Promise<string> => {
+    const orgId = getOrganizationId();
+    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
+
     const { data: spaces } = await supabase
       .from('opportunity_spaces')
       .select('space_id, nights, unit_price, checkin_date, checkout_date')
@@ -290,7 +309,12 @@ export function WonCloseModal({
       return 'Sin espacios — se omitieron reservas';
     }
 
-    const orgId = getOrganizationId();
+    // Sucursal: preferir la del contexto global; si no hay, usar la de la última propuesta
+    const latestProposal = await proposalService.getLatestProposalForOpportunity(opp.id);
+    const reservationBranchId = contextBranchId ?? latestProposal?.branch_id ?? null;
+    if (!reservationBranchId) {
+      throw new Error('No se puede crear la reserva: selecciona una sucursal concreta o asegúrate de que la oportunidad tenga una propuesta con sucursal asignada.');
+    }
     let created = 0;
 
     for (const s of spaces as Array<Record<string, unknown>>) {
@@ -306,6 +330,7 @@ export function WonCloseModal({
 
       const { error } = await supabase.from('reservations').insert({
         organization_id: orgId,
+        branch_id: reservationBranchId,
         customer_id: opp.customer_id,
         space_id: s.space_id as string,
         start_date: startDate,
@@ -317,7 +342,8 @@ export function WonCloseModal({
         total_estimated: Number(s.unit_price) * nights,
       });
 
-      if (!error) created++;
+      if (error) throw error;
+      created++;
     }
 
     return `Reservas creadas: ${created}`;
@@ -325,6 +351,7 @@ export function WonCloseModal({
 
   const executeOnboarding = async (opp: OpportunityData): Promise<string> => {
     const orgId = getOrganizationId();
+    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
 
     // Buscar pipeline de onboarding
     const { data: onboardingPipeline } = await supabase
@@ -356,10 +383,18 @@ export function WonCloseModal({
 
     const stageId = (firstStage as { id: string }).id;
 
+    // Sucursal: preferir la del contexto global; si no hay, usar la de la última propuesta
+    const latestProposal = await proposalService.getLatestProposalForOpportunity(opp.id);
+    const onboardingBranchId = contextBranchId ?? latestProposal?.branch_id ?? null;
+    if (!onboardingBranchId) {
+      throw new Error('No se puede crear el onboarding: selecciona una sucursal concreta o asegúrate de que la oportunidad tenga una propuesta con sucursal asignada.');
+    }
+
     const { data: childOpp, error } = await supabase
       .from('opportunities')
       .insert({
         organization_id: orgId,
+        branch_id: onboardingBranchId,
         pipeline_id: pipelineId,
         stage_id: stageId,
         customer_id: opp.customer_id,
@@ -381,16 +416,20 @@ export function WonCloseModal({
   };
 
   const executeRenewal = async (opp: OpportunityData): Promise<string> => {
+    const orgId = getOrganizationId();
+    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
+
     if (!opp.billing_cycle_months || opp.billing_cycle_months <= 0) {
       return 'Sin billing_cycle_months — se omitió renovación';
     }
 
-    const orgId = getOrganizationId();
     const renewalDate = new Date();
     renewalDate.setMonth(renewalDate.getMonth() + opp.billing_cycle_months);
     const renewalIso = renewalDate.toISOString();
 
     // Crear hitos de renovación como tareas
+    // Nota: la tabla `tasks` no tiene columna branch_id (verificado en esquema),
+    // por lo que la sucursal se infiere vía related_to_id → opportunity.
     let created = 0;
     for (const daysBefore of RENEWAL_MILESTONES) {
       const milestoneDate = new Date(renewalDate);
@@ -430,6 +469,8 @@ export function WonCloseModal({
 
   const executeReferral = async (opp: OpportunityData): Promise<string> => {
     const orgId = getOrganizationId();
+    if (!orgId || orgId <= 0) throw new Error('Organización no válida');
+
     const referralDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     // Crear tarea de referido (activada post-30-días)

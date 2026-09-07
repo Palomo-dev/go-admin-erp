@@ -24,7 +24,7 @@ import {
   OnboardingBanner,
   DashboardModulos,
 } from '@/components/inicio';
-import type { DashboardData, PeriodoDashboard, HorasDashboard } from '@/components/inicio';
+import type { DashboardData, PeriodoDashboard, HorasDashboard, FechasCustomDashboard } from '@/components/inicio';
 import { useDynamicGreeting } from '@/components/inicio/useDynamicGreeting';
 import { useDashboardRealtime } from '@/components/inicio/useDashboardRealtime';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
@@ -48,6 +48,7 @@ function InicioContent() {
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
   const [periodo, setPeriodo] = useState<PeriodoDashboard>('hoy');
   const [horas, setHoras] = useState<HorasDashboard | null>(null);
+  const [fechasCustom, setFechasCustom] = useState<FechasCustomDashboard | null>(null);
   const [userName, setUserName] = useState<string>('');
   const greeting = useDynamicGreeting(userName, locale);
 
@@ -89,7 +90,7 @@ function InicioContent() {
     if (!silent) setIsLoading(true);
     try {
       const [data, modules] = await Promise.all([
-        inicioService.getDashboardData(organization.id, periodo, horas),
+        inicioService.getDashboardData(organization.id, periodo, horas, fechasCustom),
         moduleManagementService.getActiveModules(organization.id).catch(() => null),
       ]);
       setDashboardData(data);
@@ -117,7 +118,7 @@ function InicioContent() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [organization?.id, toast, t, periodo, horas]);
+  }, [organization?.id, toast, t, periodo, horas, fechasCustom]);
 
   useEffect(() => {
     loadData();
@@ -204,6 +205,8 @@ function InicioContent() {
             onChange={setPeriodo}
             horas={horas}
             onHorasChange={setHoras}
+            fechasCustom={fechasCustom}
+            onFechasCustomChange={setFechasCustom}
           />
 
           <Link href="/marcar">

@@ -16,10 +16,12 @@ import {
   MisEnviosEmpty,
 } from './components';
 import type { DateFilterPreset } from './components/MisEnviosFilters';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export default function MisEnviosPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const [shipments, setShipments] = useState<DeliveryShipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,7 +99,9 @@ export default function MisEnviosPage() {
             customer:customers(id, full_name, phone, email),
             shipment_items(id, description, qty)
           `)
-          .eq('organization_id', organization.id)
+          .eq('organization_id', organization.id);
+        if (branchFilter != null) query = query.eq('branch_id', branchFilter);
+        query = query
           .order('created_at', { ascending: false })
           .limit(200);
         // Si el admin también es conductor, filtrar por sus envíos
@@ -140,7 +144,7 @@ export default function MisEnviosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, driver?.id, isAdmin, toast]);
+  }, [organization?.id, driver?.id, isAdmin, branchFilter, toast]);
 
   useEffect(() => {
     cargarEnvios();
@@ -164,7 +168,9 @@ export default function MisEnviosPage() {
         if (newStatus === 'picked') updates.picked_at = new Date().toISOString();
         if (newStatus === 'in_transit' || newStatus === 'out_for_delivery') updates.dispatched_at = new Date().toISOString();
         if (newStatus === 'delivered') updates.delivered_at = new Date().toISOString();
-        const { error } = await supabase.from('shipments').update(updates).eq('id', shipmentId);
+        let updateQuery = supabase.from('shipments').update(updates).eq('id', shipmentId);
+        if (branchFilter != null) updateQuery = updateQuery.eq('branch_id', branchFilter);
+        const { error } = await updateQuery;
         if (error) throw error;
       }
 
@@ -189,10 +195,12 @@ export default function MisEnviosPage() {
   const marcarPagado = async (shipmentId: string) => {
     setUpdatingId(shipmentId);
     try {
-      const { error } = await supabase
+      let paidQuery = supabase
         .from('shipments')
         .update({ payment_status: 'paid', updated_at: new Date().toISOString() })
         .eq('id', shipmentId);
+      if (branchFilter != null) paidQuery = paidQuery.eq('branch_id', branchFilter);
+      const { error } = await paidQuery;
       if (error) throw error;
 
       toast({

@@ -9,6 +9,7 @@ import { ArrowLeft, FileX2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toastError } from '@/components/ui/use-toast';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface PageProps {
   params: Promise<{
@@ -24,6 +25,7 @@ export default function FacturaDetallesPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const organizationId = getOrganizationId();
+  const { branchFilter } = useBranch();
 
   useEffect(() => {
     const cargarFactura = async () => {
@@ -34,12 +36,13 @@ export default function FacturaDetallesPage({ params }: PageProps) {
       
       try {
         // Obtener la factura
-        const { data: facturaData, error: facturaError } = await supabase
+        let facturaQuery = supabase
           .from('invoice_sales')
           .select('*, customers(id, full_name, email, phone)')
           .eq('id', invoiceId)
-          .eq('organization_id', organizationId)
-          .single();
+          .eq('organization_id', organizationId);
+        if (branchFilter != null) facturaQuery = facturaQuery.eq('branch_id', branchFilter);
+        const { data: facturaData, error: facturaError } = await facturaQuery.single();
 
         // PGRST116 = no rows found (factura no existe o fue eliminada)
         if (facturaError) {
@@ -105,7 +108,7 @@ export default function FacturaDetallesPage({ params }: PageProps) {
     };
 
     cargarFactura();
-  }, [invoiceId, organizationId]);
+  }, [invoiceId, organizationId, branchFilter]);
 
   if (loading) {
     return (

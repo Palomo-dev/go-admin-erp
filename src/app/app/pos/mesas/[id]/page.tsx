@@ -66,12 +66,14 @@ import type {
 } from '@/components/pos/mesas/id/types';
 import type { Cart, Customer, Sale, CheckoutData } from '@/components/pos/types';
 import type { TableWithSession } from '@/components/pos/mesas/types';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export default function MesaDetallePage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const { organization, branch_id } = useOrganization();
+  const { branchFilter } = useBranch();
   const tableId = params?.id as string; // UUID
   const [currentBranch, setCurrentBranch] = useState<any>(null);
 
@@ -106,7 +108,7 @@ export default function MesaDetallePage() {
   useEffect(() => {
     cargarDatos();
     loadCashSession();
-  }, [tableId]);
+  }, [tableId, branchFilter]);
 
   // Suscripción realtime para kitchen_ticket_items (actualizar estados de cocina)
   useEffect(() => {
@@ -167,11 +169,12 @@ export default function MesaDetallePage() {
         // Si no hay sesión, cargar el nombre de la mesa directamente
         try {
           const { supabase } = await import('@/lib/supabase/config');
-          const { data } = await supabase
+          let tableQuery = supabase
             .from('restaurant_tables')
             .select('name, zone')
-            .eq('id', tableId)
-            .single();
+            .eq('id', tableId);
+          if (branchFilter != null) tableQuery = tableQuery.eq('branch_id', branchFilter);
+          const { data } = await tableQuery.single();
           if (data) {
             setMesaNombre(data.name || 'Mesa');
           }
@@ -181,7 +184,7 @@ export default function MesaDetallePage() {
       }
     };
     cargarNombreMesa();
-  }, [session, tableId]);
+  }, [session, tableId, branchFilter]);
 
   const loadCashSession = async () => {
     try {
@@ -230,11 +233,12 @@ export default function MesaDetallePage() {
         // Si la venta tiene customer_id, cargar el customer
         if (detalles.sales?.customer_id) {
           const { supabase } = await import('@/lib/supabase/config');
-          const { data: customer } = await supabase
+          let customerQuery = supabase
             .from('customers')
             .select('*')
-            .eq('id', detalles.sales.customer_id)
-            .single();
+            .eq('id', detalles.sales.customer_id);
+          if (branchFilter != null) customerQuery = customerQuery.eq('branch_id', branchFilter);
+          const { data: customer } = await customerQuery.single();
           
           if (customer) {
             setSelectedCustomer(customer);
@@ -242,7 +246,7 @@ export default function MesaDetallePage() {
           
           // Si además tiene reservation_id, intentar cargar info del espacio
           if (detalles.sales.reservation_id) {
-            const { data: reservation } = await supabase
+            let reservationQuery = supabase
               .from('reservations')
               .select(`
                 id,
@@ -259,8 +263,9 @@ export default function MesaDetallePage() {
                   id
                 )
               `)
-              .eq('id', detalles.sales.reservation_id)
-              .single();
+              .eq('id', detalles.sales.reservation_id);
+            if (branchFilter != null) reservationQuery = reservationQuery.eq('branch_id', branchFilter);
+            const { data: reservation } = await reservationQuery.single();
             
             if (reservation && reservation.reservation_spaces?.[0]) {
               const reservationSpace = reservation.reservation_spaces[0];
@@ -305,10 +310,12 @@ export default function MesaDetallePage() {
         const { supabase } = await import('@/lib/supabase/config');
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await supabase
+          let sessionUpdateQuery = supabase
             .from('table_sessions')
             .update({ server_id: user.id })
             .eq('id', session.id);
+          if (branchFilter != null) sessionUpdateQuery = sessionUpdateQuery.eq('branch_id', branchFilter);
+          await sessionUpdateQuery;
           // Cargar perfil del usuario
           const { data: profile } = await supabase
             .from('profiles')
@@ -1392,7 +1399,7 @@ export default function MesaDetallePage() {
         console.log('Actualizando venta con reservation_id:', room.reservation_id);
         const { supabase } = await import('@/lib/supabase/config');
         
-        const { error } = await supabase
+        let saleUpdateQuery = supabase
           .from('sales')
           .update({
             customer_id: customer?.id,
@@ -1400,6 +1407,8 @@ export default function MesaDetallePage() {
             updated_at: new Date().toISOString(),
           })
           .eq('id', session.sale_id);
+        if (branchFilter != null) saleUpdateQuery = saleUpdateQuery.eq('branch_id', branchFilter);
+        const { error } = await saleUpdateQuery;
         
         if (error) {
           console.error('Error actualizando venta:', error);

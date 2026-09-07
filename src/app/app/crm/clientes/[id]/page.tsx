@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { CustomerFoliosSection } from '@/components/crm/clientes/CustomerFoliosSection';
 import { ClientHealthCard } from '@/components/crm/health/ClientHealthCard';
 import { DocumentUploader } from '@/components/crm/documents/DocumentUploader';
@@ -66,6 +67,7 @@ export default function ClienteDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [opportunities, setOpportunities] = useState<OpportunitySummary[]>([]);
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
@@ -78,31 +80,40 @@ export default function ClienteDetailPage() {
     const orgId = organization.id;
 
     try {
+      // Construir queries con filtro de sucursal opcional
+      let custQuery = supabase
+        .from('customers')
+        .select('id, full_name, email, phone, address, doc_type, doc_number, customer_type, lifecycle_stage, health_score, health_score_updated_at, created_at')
+        .eq('id', customerId)
+        .eq('organization_id', orgId);
+      if (branchFilter != null) custQuery = custQuery.eq('branch_id', branchFilter);
+
+      let oppQuery = supabase
+        .from('opportunities')
+        .select(`
+          id, name, amount, status, expected_close_date,
+          stage:stages(name, color)
+        `)
+        .eq('customer_id', customerId)
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (branchFilter != null) oppQuery = oppQuery.eq('branch_id', branchFilter);
+
+      let actQuery = supabase
+        .from('activities')
+        .select('id, activity_type, title, occurred_at')
+        .eq('related_id', customerId)
+        .eq('related_type', 'customer')
+        .eq('organization_id', orgId)
+        .order('occurred_at', { ascending: false })
+        .limit(20);
+      if (branchFilter != null) actQuery = actQuery.eq('branch_id', branchFilter);
+
       const [custResult, oppResult, actResult] = await Promise.all([
-        supabase
-          .from('customers')
-          .select('id, full_name, email, phone, address, doc_type, doc_number, customer_type, lifecycle_stage, health_score, health_score_updated_at, created_at')
-          .eq('id', customerId)
-          .eq('organization_id', orgId)
-          .single(),
-        supabase
-          .from('opportunities')
-          .select(`
-            id, name, amount, status, expected_close_date,
-            stage:stages(name, color)
-          `)
-          .eq('customer_id', customerId)
-          .eq('organization_id', orgId)
-          .order('created_at', { ascending: false })
-          .limit(20),
-        supabase
-          .from('activities')
-          .select('id, activity_type, title, occurred_at')
-          .eq('related_id', customerId)
-          .eq('related_type', 'customer')
-          .eq('organization_id', orgId)
-          .order('occurred_at', { ascending: false })
-          .limit(20),
+        custQuery.single(),
+        oppQuery,
+        actQuery,
       ]);
 
       if (custResult.error) throw custResult.error;
@@ -136,7 +147,7 @@ export default function ClienteDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [params?.id, organization?.id]);
+  }, [params?.id, organization?.id, branchFilter]);
 
   useEffect(() => {
     loadAllData();

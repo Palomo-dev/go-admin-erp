@@ -220,6 +220,7 @@ export interface OpportunityFilters {
   dateTo?: string;
   search?: string;
   record_type?: 'lead' | 'deal';
+  branchId?: number | null;
 }
 
 export interface OpportunityStats {

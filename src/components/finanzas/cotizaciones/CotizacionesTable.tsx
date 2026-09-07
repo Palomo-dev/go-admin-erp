@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical, Eye, Pencil, Copy, FileCheck2, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency } from '@/utils/Utils';
 import { CotizacionesService, type Quotation, type QuotationFilters } from '@/lib/services/cotizacionesService';
 import { CopyableId } from '@/components/common/CopyableId';
@@ -59,12 +60,13 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
   const [cotizaciones, setCotizaciones] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const organizationId = getOrganizationId();
+  const { branchFilter } = useBranch();
 
   const cargarCotizaciones = useCallback(async () => {
     if (!organizationId) return;
     try {
       setLoading(true);
-      const data = await CotizacionesService.listQuotations(organizationId, filtros);
+      const data = await CotizacionesService.listQuotations(organizationId, filtros, branchFilter);
       setCotizaciones(data);
     } catch (error) {
       console.error('Error loading quotations:', error);
@@ -76,7 +78,7 @@ export function CotizacionesTable({ filtros }: CotizacionesTableProps) {
     } finally {
       setLoading(false);
     }
-  }, [organizationId, filtros, toast]);
+  }, [organizationId, filtros, toast, branchFilter]);
 
   useEffect(() => {
     cargarCotizaciones();

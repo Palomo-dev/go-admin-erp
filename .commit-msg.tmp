@@ -1,0 +1,50 @@
+feat(branch-isolation): filtros por sucursal en 28 paginas de 9 modulos
+
+Finanzas (11 archivos):
+- facturas-venta/[id]: filtra invoice_sales, sales, customers, reservations, table_sessions por branch_id
+- payfac/cuentas: filtra bank_accounts por branch_id
+- metodos-pago/qr-sessions: filtra payment_qr_sessions por branch_id
+- ingresos: IngresosPage + movimientosService filtran cash_movements, bank_transactions
+- egresos: EgresosPage + movimientosService filtran cash_movements, bank_transactions
+- cotizaciones: CotizacionesTable + cotizacionesService filtran quotations
+- transferencias: TransferenciasPage + transferenciasService filtran bank_transfers
+- saldos-a-favor: SaldosAFavorPage + saldosAFavorService filtran credit_notes
+
+CRM (6 archivos):
+- clientes: filtra customers por branch_id
+- clientes/[id]: filtra customers, opportunities, activities
+- leads: filtra customers
+- oportunidades: opportunitiesService + types filtran customers y opportunities
+
+POS (1 archivo):
+- mesas/[id]: filtra restaurant_tables, customers, reservations, table_sessions, sales
+
+PMS (1 archivo):
+- channel-manager: filtra spaces por branch_id (consolidado mantiene logica de lista de branches)
+
+HRM (2 archivos):
+- asistencia: hook wired para recarga al cambiar sucursal
+- nomina: hook wired (payroll_periods no tiene branch_id, requiere cambio de esquema futuro)
+
+Transporte (2 archivos + 1 servicio):
+- mis-envios: filtra shipments por branch_id
+- direcciones-clientes: customerAddressesService filtra customer_addresses
+
+Parking (2 archivos):
+- tarifas: filtra parking_rates por branch_id
+- sesiones/[id]: filtra parking_sessions, parking_payments por branch_id
+
+Gym (1 archivo):
+- membresias/[id]: filtra member_checkins, membership_freezes, payments por branch_id
+
+BD (via MCP Supabase):
+- Agregada columna branch_id a customer_addresses, parking_rates, parking_payments, membership_freezes
+
+Notas:
+- products y tablas relacionadas (product_prices, product_costs, etc.) NO tienen branch_id (catalogo maestro)
+- payroll_periods no tiene branch_id (requiere cambio de esquema futuro para filtrar nomina)
+- 1 warning preexistente en hrm/nomina (branchFilter en deps sin uso directo, intencional para forzar reload)
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

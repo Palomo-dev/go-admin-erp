@@ -51,9 +51,11 @@ import { NuevoIngresoDialog } from './NuevoIngresoDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export function IngresosPage() {
   const router = useRouter();
+  const { branchFilter } = useBranch();
   const [movements, setMovements] = useState<UnifiedMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,8 +71,8 @@ export function IngresosPage() {
     setIsLoading(true);
     try {
       const [movementsData, statsData] = await Promise.all([
-        movimientosService.getAllMovements('income'),
-        movimientosService.getStats('income'),
+        movimientosService.getAllMovements('income', branchFilter),
+        movimientosService.getStats('income', branchFilter),
       ]);
       setMovements(movementsData);
       setStats(statsData);
@@ -84,7 +86,7 @@ export function IngresosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [branchFilter]);
 
   useEffect(() => {
     loadData();

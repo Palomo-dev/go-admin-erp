@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
+import { useBranch } from '@/lib/context/BranchContext';
 import {
   RefreshCw,
   Loader2,
@@ -118,6 +119,7 @@ function getTemperatureIcon(temperature: string | null) {
 
 export default function LeadsPage() {
   const router = useRouter();
+  const { branchFilter } = useBranch();
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [customers, setCustomers] = useState<Record<string, CustomerRef>>({});
@@ -140,10 +142,12 @@ export default function LeadsPage() {
         new Set(leadsData.map((l) => l.customer_id).filter(Boolean) as string[])
       );
       if (customerIds.length > 0) {
-        const { data: custData } = await supabase
+        let custQuery = supabase
           .from('customers')
           .select('id, full_name')
           .in('id', customerIds);
+        if (branchFilter != null) custQuery = custQuery.eq('branch_id', branchFilter);
+        const { data: custData } = await custQuery;
         if (custData) {
           const map: Record<string, CustomerRef> = {};
           custData.forEach((c) => {
@@ -162,7 +166,7 @@ export default function LeadsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [branchFilter]);
 
   useEffect(() => {
     loadLeads();

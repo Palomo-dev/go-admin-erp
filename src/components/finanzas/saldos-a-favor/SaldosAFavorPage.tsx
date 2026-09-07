@@ -26,6 +26,7 @@ import { saldosAFavorService, SaldoAFavor } from './saldosAFavorService';
 import { NuevoSaldoFavorDialog } from './NuevoSaldoFavorDialog';
 import { AplicarSaldoFavorDialog } from './AplicarSaldoFavorDialog';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useBranch } from '@/lib/context/BranchContext';
 
 const statusMap: Record<string, { label: string; className: string }> = {
   active: { label: 'Activo', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
@@ -35,17 +36,18 @@ const statusMap: Record<string, { label: string; className: string }> = {
 
 export function SaldosAFavorPage() {
   const [organizationId, setOrganizationId] = useState<number>(0);
+  const { branchFilter } = useBranch();
   const [saldos, setSaldos] = useState<SaldoAFavor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogNuevoOpen, setDialogNuevoOpen] = useState(false);
   const [dialogAplicarOpen, setDialogAplicarOpen] = useState(false);
   const [saldoSel, setSaldoSel] = useState<SaldoAFavor | null>(null);
 
-  const cargar = useCallback(async (orgId: number) => {
+  const cargar = useCallback(async (orgId: number, branchId?: number | null) => {
     if (!orgId) return;
     setIsLoading(true);
     try {
-      const data = await saldosAFavorService.listar(orgId);
+      const data = await saldosAFavorService.listar(orgId, branchId);
       setSaldos(data);
     } catch (error) {
       console.error('Error al cargar saldos a favor:', error);
@@ -58,8 +60,8 @@ export function SaldosAFavorPage() {
   useEffect(() => {
     const orgId = getOrganizationId();
     setOrganizationId(orgId);
-    cargar(orgId);
-  }, [cargar]);
+    cargar(orgId, branchFilter);
+  }, [cargar, branchFilter]);
 
   const totalDisponible = saldos
     .filter((s) => s.status === 'active')
@@ -175,7 +177,7 @@ export function SaldosAFavorPage() {
         open={dialogNuevoOpen}
         onOpenChange={setDialogNuevoOpen}
         organizationId={organizationId}
-        onSuccess={() => cargar(organizationId)}
+        onSuccess={() => cargar(organizationId, branchFilter)}
       />
 
       <AplicarSaldoFavorDialog
@@ -183,7 +185,7 @@ export function SaldosAFavorPage() {
         onOpenChange={setDialogAplicarOpen}
         organizationId={organizationId}
         saldo={saldoSel}
-        onSuccess={() => cargar(organizationId)}
+        onSuccess={() => cargar(organizationId, branchFilter)}
       />
     </div>
   );

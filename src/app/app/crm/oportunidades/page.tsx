@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { toast } from '@/components/ui/use-toast';
 import {
   OpportunitiesTable,
@@ -22,6 +23,7 @@ import {
 export default function OportunidadesPage() {
   const router = useRouter();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
 
   const [isLoading, setIsLoading] = useState(true);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -50,12 +52,14 @@ export default function OportunidadesPage() {
 
     setIsLoading(true);
     try {
+      // Filtros con branchId para tablas que tienen branch_id (opportunities, customers)
+      const filtersWithBranch = { ...filters, branchId: branchFilter };
       const [oppsData, pipelinesData, stagesData, customersData, statsData] = await Promise.all([
-        opportunitiesService.getOpportunities(filters),
+        opportunitiesService.getOpportunities(filtersWithBranch),
         opportunitiesService.getPipelines(),
         opportunitiesService.getStages(filters.pipelineId),
-        opportunitiesService.getCustomers(),
-        opportunitiesService.getStats(filters),
+        opportunitiesService.getCustomers(branchFilter),
+        opportunitiesService.getStats(filtersWithBranch),
       ]);
 
       setOpportunities(oppsData);
@@ -73,7 +77,7 @@ export default function OportunidadesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization, filters]);
+  }, [organization, filters, branchFilter]);
 
   useEffect(() => {
     loadData();

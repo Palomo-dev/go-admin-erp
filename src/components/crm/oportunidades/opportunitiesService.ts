@@ -66,13 +66,18 @@ class OpportunitiesService {
     }
   }
 
-  async getCustomers(): Promise<Customer[]> {
+  async getCustomers(branchId?: number | null): Promise<Customer[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('customers')
         .select('id, full_name, email, phone, avatar_url, organization_id')
-        .eq('organization_id', this.getOrganizationId())
-        .order('full_name');
+        .eq('organization_id', this.getOrganizationId());
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
+
+      const { data, error } = await query.order('full_name');
 
       if (error) {
         console.warn('Advertencia obteniendo customers:', error.message);
@@ -151,6 +156,10 @@ class OpportunitiesService {
 
     if (filters?.record_type) {
       query = query.eq('record_type', filters.record_type);
+    }
+
+    if (filters?.branchId != null) {
+      query = query.eq('branch_id', filters.branchId);
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });

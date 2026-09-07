@@ -17,6 +17,7 @@ import {
   ImportedRate,
 } from '@/components/parking/tarifas';
 import { Building2 } from 'lucide-react';
+import { useBranch } from '@/lib/context/BranchContext';
 
 const defaultFilters: RateFilters = {
   search: '',
@@ -36,6 +37,7 @@ const defaultStats: RateStats = {
 export default function ParkingTarifasPage() {
   const { organization } = useOrganization();
   const { toast } = useToast();
+  const { branchFilter } = useBranch();
 
   const [rates, setRates] = useState<ParkingRate[]>([]);
   const [stats, setStats] = useState<RateStats>(defaultStats);
@@ -54,8 +56,9 @@ export default function ParkingTarifasPage() {
       let query = supabase
         .from('parking_rates')
         .select('*')
-        .eq('organization_id', organization.id)
-        .order('rate_name');
+        .eq('organization_id', organization.id);
+      if (branchFilter != null) query = query.eq('branch_id', branchFilter);
+      query = query.order('rate_name');
 
       if (filters.search) {
         query = query.ilike('rate_name', `%${filters.search}%`);
@@ -91,7 +94,7 @@ export default function ParkingTarifasPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, filters, toast]);
+  }, [organization?.id, filters, branchFilter, toast]);
 
   const calculateStats = (allRates: ParkingRate[]) => {
     const newStats: RateStats = {
@@ -145,10 +148,12 @@ export default function ParkingTarifasPage() {
     if (!confirm(`¿Eliminar la tarifa "${rate.rate_name}"?`)) return;
 
     try {
-      const { error } = await supabase
+      let deleteQuery = supabase
         .from('parking_rates')
         .delete()
         .eq('id', rate.id);
+      if (branchFilter != null) deleteQuery = deleteQuery.eq('branch_id', branchFilter);
+      const { error } = await deleteQuery;
 
       if (error) throw error;
 
@@ -167,13 +172,15 @@ export default function ParkingTarifasPage() {
   const handleToggleActive = async (rate: ParkingRate) => {
     try {
       const newActiveState = rate.is_active === false;
-      const { error } = await supabase
+      let toggleQuery = supabase
         .from('parking_rates')
         .update({
           is_active: newActiveState,
           updated_at: new Date().toISOString(),
         })
         .eq('id', rate.id);
+      if (branchFilter != null) toggleQuery = toggleQuery.eq('branch_id', branchFilter);
+      const { error } = await toggleQuery;
 
       if (error) throw error;
 
@@ -197,7 +204,7 @@ export default function ParkingTarifasPage() {
     try {
       if (data.id) {
         // Actualizar
-        const { error } = await supabase
+        let updateQuery = supabase
           .from('parking_rates')
           .update({
             rate_name: data.rate_name,
@@ -210,6 +217,8 @@ export default function ParkingTarifasPage() {
             updated_at: new Date().toISOString(),
           })
           .eq('id', data.id);
+        if (branchFilter != null) updateQuery = updateQuery.eq('branch_id', branchFilter);
+        const { error } = await updateQuery;
 
         if (error) throw error;
         toast({ title: 'Tarifa actualizada' });
@@ -217,6 +226,7 @@ export default function ParkingTarifasPage() {
         // Crear nueva
         const { error } = await supabase.from('parking_rates').insert({
           organization_id: organization.id,
+          branch_id: branchFilter ?? undefined,
           rate_name: data.rate_name,
           vehicle_type: data.vehicle_type,
           unit: data.unit,
@@ -258,6 +268,7 @@ export default function ParkingTarifasPage() {
       try {
         const { error } = await supabase.from('parking_rates').insert({
           organization_id: organization.id,
+          branch_id: branchFilter ?? undefined,
           rate_name: rate.rate_name,
           vehicle_type: rate.vehicle_type,
           unit: rate.unit,

@@ -51,18 +51,20 @@ class TransferenciasService {
   /**
    * Obtener todas las transferencias
    */
-  async getTransfers(): Promise<BankTransfer[]> {
+  async getTransfers(branchId?: number | null): Promise<BankTransfer[]> {
     const organizationId = getOrganizationId();
     if (!organizationId) return [];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('bank_transfers')
       .select(`
         *,
         from_account:bank_accounts!bank_transfers_from_account_id_fkey(id, name, bank_name),
         to_account:bank_accounts!bank_transfers_to_account_id_fkey(id, name, bank_name)
       `)
-      .eq('organization_id', organizationId)
+      .eq('organization_id', organizationId);
+    if (branchId != null) query = query.eq('branch_id', branchId);
+    const { data, error } = await query
       .order('transfer_date', { ascending: false });
 
     if (error) {
@@ -276,7 +278,7 @@ class TransferenciasService {
   /**
    * Obtener estadísticas
    */
-  async getStats(): Promise<{
+  async getStats(branchId?: number | null): Promise<{
     total: number;
     count: number;
     thisMonth: number;
@@ -291,11 +293,13 @@ class TransferenciasService {
     firstOfMonth.setDate(1);
     firstOfMonth.setHours(0, 0, 0, 0);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('bank_transfers')
       .select('amount, transfer_date, status')
       .eq('organization_id', organizationId)
       .eq('status', 'completed');
+    if (branchId != null) query = query.eq('branch_id', branchId);
+    const { data, error } = await query;
 
     if (error || !data) {
       return { total: 0, count: 0, thisMonth: 0, pending: 0 };
@@ -308,11 +312,13 @@ class TransferenciasService {
     );
 
     // Contar pendientes
-    const { count: pendingCount } = await supabase
+    let pendingQuery = supabase
       .from('bank_transfers')
       .select('*', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('status', 'pending');
+    if (branchId != null) pendingQuery = pendingQuery.eq('branch_id', branchId);
+    const { count: pendingCount } = await pendingQuery;
 
     return {
       total,

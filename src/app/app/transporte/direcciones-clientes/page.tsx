@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { googleMapsService } from '@/lib/services/googleMapsService';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface Customer {
   id: string;
@@ -35,6 +36,7 @@ interface Customer {
 export default function DireccionesClientesPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
 
   const [isLoading, setIsLoading] = useState(true);
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -53,7 +55,7 @@ export default function DireccionesClientesPage() {
 
     setIsLoading(true);
     try {
-      const data = await customerAddressesService.getAddresses(organization.id);
+      const data = await customerAddressesService.getAddresses(organization.id, branchFilter);
       setAddresses(data);
     } catch (error) {
       console.error('Error cargando direcciones:', error);
@@ -65,7 +67,7 @@ export default function DireccionesClientesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, toast]);
+  }, [organization?.id, branchFilter, toast]);
 
   useEffect(() => {
     loadData();

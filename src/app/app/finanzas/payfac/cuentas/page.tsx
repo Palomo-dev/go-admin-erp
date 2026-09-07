@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -126,6 +127,7 @@ const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 export default function CuentasDispersionPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const orgId = organization?.id;
+  const { branchFilter } = useBranch();
 
   const [accounts, setAccounts] = useState<PayoutAccount[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -142,11 +144,13 @@ export default function CuentasDispersionPage() {
     if (!orgId) return;
     setLoadingBankAccounts(true);
     try {
-      const { data, error } = await supabase
+      let bankAccountsQuery = supabase
         .from('bank_accounts')
         .select('id, name, bank_name, account_number, account_type')
         .eq('organization_id', orgId)
         .eq('is_active', true);
+      if (branchFilter != null) bankAccountsQuery = bankAccountsQuery.eq('branch_id', branchFilter);
+      const { data, error } = await bankAccountsQuery;
       if (error) {
         console.error('Error cargando cuentas bancarias:', error);
         return;
@@ -157,7 +161,7 @@ export default function CuentasDispersionPage() {
     } finally {
       setLoadingBankAccounts(false);
     }
-  }, [orgId]);
+  }, [orgId, branchFilter]);
 
   // Carga las cuentas de dispersion desde la API
   const loadAccounts = useCallback(async () => {

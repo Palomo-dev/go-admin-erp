@@ -44,10 +44,12 @@ import {
   Play,
   Loader2,
 } from 'lucide-react';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export default function NominaPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  const { branchFilter } = useBranch();
 
   const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
   const [stats, setStats] = useState({
@@ -124,7 +126,7 @@ export default function NominaPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [getService, searchTerm, statusFilter, frequencyFilter, toast]);
+  }, [getService, searchTerm, statusFilter, frequencyFilter, toast, branchFilter]);
 
   useEffect(() => {
     if (organization?.id && !orgLoading) {

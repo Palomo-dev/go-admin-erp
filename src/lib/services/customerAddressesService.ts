@@ -51,8 +51,8 @@ export interface CustomerAddressInput {
 }
 
 export const customerAddressesService = {
-  async getAddresses(organizationId: number) {
-    const { data, error } = await supabase
+  async getAddresses(organizationId: number, branchId?: number | null) {
+    let query = supabase
       .from('customer_addresses')
       .select(`
         *,
@@ -65,8 +65,9 @@ export const customerAddressesService = {
         )
       `)
       .eq('organization_id', organizationId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
+      .eq('is_active', true);
+    if (branchId != null) query = query.eq('branch_id', branchId);
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.warn('Error fetching customer addresses:', error.message);

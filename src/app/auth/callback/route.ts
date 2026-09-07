@@ -42,25 +42,48 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  // Helper: crear redirect con cookies de sesión aplicadas
+  // Helper: crear redirect con cookies de sesión aplicadas.
+  // Incluye chunking para cookies grandes (sesiones con user_metadata extenso
+  // pueden exceder el límite de 4096 bytes por cookie). El cliente (config.ts)
+  // ya lee cookies chunked (name.0, name.1, ...).
   function redirectWithCookies(url: string) {
     const response = NextResponse.redirect(new URL(url, request.url));
+    const cookieOpts = {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 604800
+    };
     pendingCookies.forEach((value, name) => {
       if (value !== null) {
-        // URL-encodear el valor para que sea consistente con el client-side
-        // (config.ts storage setItem usa encodeURIComponent). Sin esto, el
-        // cliente no puede parsear cookies seteadas por el servidor porque
-        // split('=') rompe si el JSON contiene '=' y decodeURIComponent
-        // corrompe '%' literales del JSON raw.
-        response.cookies.set(name, encodeURIComponent(value), {
-          httpOnly: false,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: 604800
-        });
+        // Limpiar chunks anteriores si existían
+        for (let i = 0; i < 20; i++) {
+          response.cookies.delete(`${name}.${i}`);
+        }
+        // NO codificar aquí: Next.js ResponseCookies ya hace encodeURIComponent
+        // del valor al serializar el Set-Cookie header.
+        const estimatedEncodedSize = Math.ceil(value.length * 1.4);
+        if (estimatedEncodedSize < 3600) {
+          response.cookies.set(name, value, cookieOpts);
+        } else {
+          const CHUNK_SIZE = 3500;
+          let chunkIndex = 0;
+          let offset = 0;
+          while (offset < value.length) {
+            const end = Math.min(offset + CHUNK_SIZE, value.length);
+            const chunk = value.substring(offset, end);
+            response.cookies.set(`${name}.${chunkIndex}`, chunk, cookieOpts);
+            offset = end;
+            chunkIndex++;
+          }
+          console.log(`🍪 [CALLBACK] Cookie chunked: ${name} (${chunkIndex} chunks, ${value.length} bytes raw)`);
+        }
       } else {
         response.cookies.delete(name);
+        for (let i = 0; i < 20; i++) {
+          response.cookies.delete(`${name}.${i}`);
+        }
       }
     });
     return response;

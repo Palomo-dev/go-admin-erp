@@ -147,11 +147,34 @@ export async function GET(request: NextRequest) {
       if (verifyError) {
         console.error('Token verification error:', verifyError);
 
-        // Si el token falló para magiclink o invite (típicamente por email prefetch
-        // de Gmail/Outlook que consume el token antes de que el usuario haga clic),
-        // intentar reenviar automáticamente un nuevo magic link.
-        // Anti-bucle: usar cookie para limitar a 1 reenvío automático cada 10 min.
-        if ((type === 'magiclink' || type === 'invite') && emailParam) {
+        // Para type=invite: NO auto-resendear ni mostrar página de error.
+        // El token probablemente fue consumido por prefetch de Gmail/Outlook.
+        // Redirigir directamente a /auth/invite donde el wizard puede funcionar
+        // SIN sesión usando el API server-side (admin key) para crear el usuario
+        // y setear la contraseña. Esto elimina el bucle infinito de emails.
+        if (type === 'invite' && emailParam) {
+          console.log('Token invite falló para', emailParam, '→ redirect directo a /auth/invite');
+          // Buscar el código de invitación pendiente para este email
+          const admin = getSupabaseAdmin();
+          const { data: pendingInvite } = await admin
+            .from('invitations')
+            .select('code')
+            .eq('email', emailParam.toLowerCase().trim())
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (pendingInvite?.code) {
+            return redirectWithCookies(`/auth/invite?invite_code=${pendingInvite.code}`);
+          }
+          // Si no hay invitación pendiente, caer al failed page
+          return redirectWithCookies(`/auth/verify/failed?type=${type}`);
+        }
+
+        // Para magiclink: mantener el auto-resend (usuarios existentes que
+        // necesitan autenticarse para aceptar la invitación)
+        if (type === 'magiclink' && emailParam) {
           const resendCookieName = `ml_resent_${emailParam.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
           const alreadyResent = cookieStore.get(resendCookieName)?.value === '1';
 

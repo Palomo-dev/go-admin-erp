@@ -258,6 +258,7 @@
       "errorTitle": "Error en la invitación",
       "errorValidating": "Error al validar la invitación: {message}",
       "errorAutoSignIn": "Error al iniciar sesión automáticamente: {message}. Por favor, contacta al administrador.",
+      "noSessionHint": "Debes abrir el enlace enviado a tu correo electrónico para acceder. Si ya lo abriste, solicita un reenvío de la invitación.",
       "errorUnexpected": "Error inesperado al iniciar sesión. Por favor, contacta al administrador.",
       "errorProcessing": "Error al procesar la invitación",
       "goToLogin": "Ir al inicio de sesión",

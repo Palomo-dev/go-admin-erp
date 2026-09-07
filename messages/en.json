@@ -258,6 +258,7 @@
       "errorTitle": "Invitation error",
       "errorValidating": "Error validating the invitation: {message}",
       "errorAutoSignIn": "Error signing in automatically: {message}. Please contact the administrator.",
+      "noSessionHint": "You must open the link sent to your email to access. If you already opened it, request a resend of the invitation.",
       "errorUnexpected": "Unexpected error signing in. Please contact the administrator.",
       "errorProcessing": "Error processing the invitation",
       "goToLogin": "Go to login",

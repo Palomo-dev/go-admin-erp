@@ -288,6 +288,17 @@ export const createSupabaseClient = () => {
         const isAuthRequest = urlString.includes('/auth/v1/');
         const method = (options?.method || 'GET').toUpperCase();
 
+        // ── BLOQUEO AGRESIVO: si el refresh token es inválido, NO dejar que
+        // la petición HTTP salga. Retornar una respuesta sintética 400 inmediata.
+        // Esto evita que el SDK haga cientos de POST /token → 429 en Supabase.
+        if (isAuthRequest && urlString.includes('grant_type=refresh_token') && isRefreshBlocked()) {
+          console.warn('🚫 [AUTH] Bloqueando refresh HTTP (cooldown activo)');
+          return new Response(
+            JSON.stringify({ error: { message: 'Invalid Refresh Token: Refresh Token Not Found' } }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
         // ── Offline cache solo en desktop app ──
         const isDesktopApp = typeof window !== 'undefined' && 'goAdminDesktop' in window;
         const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -383,6 +394,23 @@ export const createSupabaseClient = () => {
                   urlString.includes('grant_type=refresh_token')) {
                 console.warn('🚫 [AUTH] Refresh token inválido detectado, activando bloqueo anti-bucle');
                 blockRefresh();
+                // Limpiar storage para que el SDK no tenga token que intentar refrescar
+                if (typeof window !== 'undefined') {
+                  try {
+                    const projectRef = getProjectRef();
+                    const storageKey = projectRef ? `sb-${projectRef}-auth-token` : 'sb-auth-token';
+                    localStorage.removeItem(storageKey);
+                    localStorage.removeItem('sb-session-cache');
+                    // Limpiar cookies chunked
+                    const isProd = process.env.NODE_ENV === 'production';
+                    const domain = isProd ? '; domain=.goadmin.io' : '';
+                    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+                    document.cookie = `${storageKey}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secure}${domain}`;
+                    for (let i = 0; i < 20; i++) {
+                      document.cookie = `${storageKey}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secure}${domain}`;
+                    }
+                  } catch (e) { /* ignore */ }
+                }
               }
 
               if (response.status === 429 && retriesLeft > 0 && !isAuthRequest) {
@@ -589,7 +617,32 @@ export const ensureSessionSynced = async (): Promise<boolean> => {
 };
 
 // Funciones de autenticación
+// Throttle del lado del cliente para evitar que un usuario haga spam de login
+// y dispare el rate limiting de Supabase (429).
+let lastLoginAttempt = 0;
+const LOGIN_THROTTLE_MS = 3_000; // mínimo 3s entre intentos de login
+let lastLoginEmail = '';
+
 export const signInWithEmail = async (email: string, password: string) => {
+  const now = Date.now();
+  const timeSinceLast = now - lastLoginAttempt;
+
+  // Si es el mismo email y han pasado menos de 3s, bloquear
+  if (lastLoginEmail === email && timeSinceLast < LOGIN_THROTTLE_MS) {
+    const waitMs = LOGIN_THROTTLE_MS - timeSinceLast;
+    console.warn(`⏳ [AUTH] Login throttled, espera ${waitMs}ms`);
+    return {
+      data: { session: null, user: null },
+      error: {
+        message: 'Demasiados intentos. Espera unos segundos antes de volver a intentar.',
+        status: 429,
+      } as any,
+    };
+  }
+
+  lastLoginAttempt = now;
+  lastLoginEmail = email;
+
   const result = await supabase.auth.signInWithPassword({ email, password });
   
   // Si el login es exitoso, forzar sincronización

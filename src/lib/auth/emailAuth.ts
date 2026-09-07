@@ -39,7 +39,6 @@ export interface EmailLoginParams {
   proceedWithLogin: (rememberMe: boolean, email: string) => void;
   setEmailNotConfirmed?: (confirmed: boolean) => void;
   setResendingEmail?: (resending: boolean) => void;
-  selectOrganization?: (org: Organization, rememberMe: boolean, email: string) => void;
 }
 
 /**
@@ -57,8 +56,7 @@ export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> 
     setShowOrgPopup,
     proceedWithLogin,
     setEmailNotConfirmed,
-    setResendingEmail,
-    selectOrganization
+    setResendingEmail
   } = params;
 
   setLoading(true);
@@ -155,19 +153,11 @@ export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> 
       organizations: organizations.map(org => ({ id: org.id, name: org.name }))
     });
 
-    // Mostrar selector de organización solo si hay múltiples
-    if (organizations.length > 1) {
+    // Mostrar selector de organización si hay múltiples
+    if (organizations.length >= 1) {
       console.log('📱 [EMAIL AUTH] Mostrando popup de selección de organización');
       setUserOrganizations(organizations);
       setShowOrgPopup(true);
-    } else if (organizations.length === 1) {
-      // Solo 1 organización: seleccionar automáticamente sin mostrar popup
-      console.log('✅ [EMAIL AUTH] Solo 1 organización, auto-seleccionando:', organizations[0].name);
-      if (selectOrganization) {
-        selectOrganization(organizations[0], rememberMe, email);
-      } else {
-        proceedWithLogin(rememberMe, email);
-      }
     } else {
       // 0 organizaciones: verificar si tiene invitación pendiente
       console.log('� [EMAIL AUTH] Sin organizaciones, verificando invitaciones pendientes...');

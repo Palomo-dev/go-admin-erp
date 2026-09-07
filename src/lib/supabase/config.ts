@@ -353,6 +353,15 @@ export const createSupabaseClient = () => {
                 return attemptFetch(retriesLeft - 1, delay * 2);
               }
 
+              // Para requests de auth (login, refresh, getUser): si hay 429,
+              // reintentar una vez con backoff mayor (5s). No reintentar más
+              // de 1 vez para no empeorar el rate limiting.
+              if (response.status === 429 && isAuthRequest && retriesLeft === MAX_RETRIES) {
+                console.log(`Auth rate-limited, reintentando en 5000ms (1 intento)`);
+                await new Promise(res => setTimeout(res, 5000));
+                return attemptFetch(retriesLeft - 1, 10000);
+              }
+
               // Cachear respuestas GET exitosas en desktop app:
               // - Offline: inmediatamente (para fallback de timeout)
               // - Online: diferido con requestIdleCallback para no afectar latencia

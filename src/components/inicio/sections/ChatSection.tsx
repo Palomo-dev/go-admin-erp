@@ -298,6 +298,7 @@ export default function ChatSection() {
       accentColor="text-pink-600 dark:text-pink-400"
       accentBg="bg-pink-100 dark:bg-pink-900/30"
       hasReportes={false}
+      showBranchBadge={false}
       exportData={exportData}
       orgInfo={orgInfo}
       isLoading={isLoading}

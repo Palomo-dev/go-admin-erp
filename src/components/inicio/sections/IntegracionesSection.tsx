@@ -149,6 +149,7 @@ export default function IntegracionesSection() {
       accentColor="text-purple-600 dark:text-purple-400"
       accentBg="bg-purple-100 dark:bg-purple-900/30"
       hasReportes={false}
+      showBranchBadge={false}
       exportData={exportData}
       orgInfo={orgInfo}
       isLoading={isLoading}

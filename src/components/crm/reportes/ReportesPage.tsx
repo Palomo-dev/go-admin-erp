@@ -5,6 +5,7 @@ import { FileDown, RefreshCw, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOrganization, getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { cn } from '@/utils/Utils';
 
 import { ReportesFiltros } from './ReportesFiltros';
@@ -24,6 +25,7 @@ import type {
 
 export function ReportesPage() {
   const { organization } = useOrganization();
+  const { branchFilter } = useBranch();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('atencion');
@@ -51,7 +53,7 @@ export function ReportesPage() {
 
   const loadFilterOptions = useCallback(async () => {
     const orgId = getOrganizationId();
-    const service = createReportesService(orgId);
+    const service = createReportesService(orgId, branchFilter);
 
     const [channelsData, pipelinesData, agentsData] = await Promise.all([
       service.getChannels(),
@@ -62,11 +64,11 @@ export function ReportesPage() {
     setChannels(channelsData);
     setPipelines(pipelinesData);
     setAgents(agentsData);
-  }, []);
+  }, [branchFilter]);
 
   const loadReportData = useCallback(async () => {
     const orgId = getOrganizationId();
-    const service = createReportesService(orgId);
+    const service = createReportesService(orgId, branchFilter);
 
     setRefreshing(true);
     try {
@@ -87,7 +89,7 @@ export function ReportesPage() {
       setRefreshing(false);
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, branchFilter]);
 
   useEffect(() => {
     loadFilterOptions();
@@ -99,7 +101,7 @@ export function ReportesPage() {
 
   const handleExportCSV = async () => {
     const orgId = getOrganizationId();
-    const service = createReportesService(orgId);
+    const service = createReportesService(orgId, branchFilter);
 
     switch (activeTab) {
       case 'atencion':

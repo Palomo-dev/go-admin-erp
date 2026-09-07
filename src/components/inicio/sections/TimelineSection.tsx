@@ -287,6 +287,7 @@ export default function TimelineSection() {
       accentColor="text-slate-600 dark:text-slate-400"
       accentBg="bg-slate-100 dark:bg-slate-900/30"
       hasReportes={false}
+      showBranchBadge={false}
       exportData={exportData}
       orgInfo={orgInfo}
       isLoading={isLoading}

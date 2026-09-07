@@ -27,6 +27,7 @@ import {
 } from '@/lib/services/inicio/dashboardSectionExport';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { ModoCompactoContext } from './DashboardModulos';
+import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export interface ModuloSectionProps {
   /** Código del módulo (ej: 'crm', 'finance') */
@@ -55,6 +56,8 @@ export interface ModuloSectionProps {
   isLoading?: boolean;
   /** Modo compacto: muestra solo header inline sin contenido expandido */
   compacto?: boolean;
+  /** Mostrar badge de sucursal activa (default: true) */
+  showBranchBadge?: boolean;
 }
 
 export default function ModuloSection({
@@ -71,6 +74,7 @@ export default function ModuloSection({
   metricasContent,
   isLoading = false,
   compacto: compactoProp = false,
+  showBranchBadge = true,
 }: ModuloSectionProps) {
   // Consumir modo compacto del context si no se pasa explícitamente
   const compactoContext = React.useContext(ModoCompactoContext);
@@ -256,6 +260,11 @@ export default function ModuloSection({
 
       {/* Contenido */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+        {showBranchBadge && (
+          <div className="mb-4">
+            <BranchBadge />
+          </div>
+        )}
         {isLoading ? (
           <div className="space-y-3">
             <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 animate-pulse" />

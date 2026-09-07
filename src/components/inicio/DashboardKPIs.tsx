@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/utils/Utils';
-import type { DashboardKPIData, PeriodoDashboard, HorasDashboard, PuntoHora, PuntoDiaMes } from './inicioService';
+import type { DashboardKPIData, PeriodoDashboard, HorasDashboard, FechasCustomDashboard, PuntoHora, PuntoDiaMes } from './inicioService';
 import { useLiveVisitors } from './useLiveVisitors';
 import { KpiDetailDialog } from './KpiDetailDialog';
 import { useTranslations, useLocale } from 'next-intl';
@@ -36,6 +36,7 @@ interface DashboardKPIsProps {
   periodo?: PeriodoDashboard;
   organizationId?: number | null;
   horas?: HorasDashboard | null;
+  fechasCustom?: FechasCustomDashboard | null;
 }
 
 export interface KpiConfigItem {
@@ -669,7 +670,7 @@ function ComprasWebMensualSparkline({
   );
 }
 
-export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId, horas }: DashboardKPIsProps) {
+export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId, horas, fechasCustom }: DashboardKPIsProps) {
   const t = useTranslations('home.kpis');
   const locale = useLocale();
   // Visitantes en vivo via Realtime (solo para el KPI visitasWeb)
@@ -987,6 +988,7 @@ export function DashboardKPIs({ data, isLoading, periodo = 'hoy', organizationId
       kpi={selectedKpi}
       periodo={periodo}
       horas={horas}
+      fechasCustom={fechasCustom}
       organizationId={organizationId}
       initialData={data}
     />

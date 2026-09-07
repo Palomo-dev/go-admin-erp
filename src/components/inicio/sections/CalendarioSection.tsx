@@ -297,6 +297,7 @@ export default function CalendarioSection() {
       accentColor="text-teal-600 dark:text-teal-400"
       accentBg="bg-teal-100 dark:bg-teal-900/30"
       hasReportes={false}
+      showBranchBadge={false}
       exportData={exportData}
       orgInfo={orgInfo}
       isLoading={isLoading}

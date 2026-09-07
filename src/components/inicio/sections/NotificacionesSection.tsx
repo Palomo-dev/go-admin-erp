@@ -155,6 +155,7 @@ export default function NotificacionesSection() {
       accentColor="text-yellow-600 dark:text-yellow-400"
       accentBg="bg-yellow-100 dark:bg-yellow-900/30"
       hasReportes={false}
+      showBranchBadge={false}
       exportData={exportData}
       orgInfo={orgInfo}
       isLoading={isLoading}

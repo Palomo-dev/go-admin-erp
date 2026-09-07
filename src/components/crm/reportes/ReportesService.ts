@@ -10,9 +10,11 @@ import type {
 
 class ReportesService {
   private organizationId: number;
+  private branchId?: number | null;
 
-  constructor(organizationId: number) {
+  constructor(organizationId: number, branchId?: number | null) {
     this.organizationId = organizationId;
+    this.branchId = branchId;
   }
 
   async getConversationStats(filters: ReportFilters): Promise<ConversationStats> {
@@ -21,6 +23,9 @@ class ReportesService {
       .select('id, status, created_at, updated_at, first_response_time_seconds, avg_response_time_seconds')
       .eq('organization_id', this.organizationId);
 
+    if (this.branchId != null) {
+      query = query.eq('branch_id', this.branchId);
+    }
     if (filters.dateFrom) {
       query = query.gte('created_at', filters.dateFrom);
     }
@@ -103,6 +108,10 @@ class ReportesService {
         .eq('organization_id', this.organizationId)
         .eq('channel_id', channel.id);
 
+      if (this.branchId != null) {
+        convQuery = convQuery.eq('branch_id', this.branchId);
+        msgQuery = msgQuery.eq('branch_id', this.branchId);
+      }
       if (filters.dateFrom) {
         convQuery = convQuery.gte('created_at', filters.dateFrom);
         msgQuery = msgQuery.gte('created_at', filters.dateFrom);
@@ -160,6 +169,9 @@ class ReportesService {
         .eq('organization_id', this.organizationId)
         .eq('pipeline_id', pipeline.id);
 
+      if (this.branchId != null) {
+        oppQuery = oppQuery.eq('branch_id', this.branchId);
+      }
       if (filters.dateFrom) {
         oppQuery = oppQuery.gte('created_at', filters.dateFrom);
       }
@@ -315,5 +327,5 @@ class ReportesService {
   }
 }
 
-export const createReportesService = (organizationId: number) => new ReportesService(organizationId);
+export const createReportesService = (organizationId: number, branchId?: number | null) => new ReportesService(organizationId, branchId);
 export default ReportesService;

@@ -33,6 +33,7 @@ import type {
   DashboardKPIData,
   PeriodoDashboard,
   HorasDashboard,
+  FechasCustomDashboard,
   PuntoHora,
   PuntoDiaMes,
 } from './inicioService';
@@ -157,6 +158,7 @@ interface KpiDetailDialogProps {
   kpi: KpiConfigItem | null;
   periodo: PeriodoDashboard;
   horas: HorasDashboard | null | undefined;
+  fechasCustom?: FechasCustomDashboard | null;
   organizationId: number | null | undefined;
   // Datos iniciales (los que ya tiene el dashboard) para mostrar al instante
   initialData: DashboardKPIData | null;
@@ -168,6 +170,7 @@ export function KpiDetailDialog({
   kpi,
   periodo,
   horas,
+  fechasCustom,
   organizationId,
   initialData,
 }: KpiDetailDialogProps) {
@@ -188,14 +191,14 @@ export function KpiDetailDialog({
     if (!organizationId) return;
     setIsRefreshing(true);
     try {
-      const dashboardData = await inicioService.getDashboardData(organizationId, periodo, horas);
+      const dashboardData = await inicioService.getDashboardData(organizationId, periodo, horas, fechasCustom);
       setData(dashboardData.kpis);
     } catch (err) {
       console.error('Error refrescando KPI:', err);
     } finally {
       setIsRefreshing(false);
     }
-  }, [organizationId, periodo, horas]);
+  }, [organizationId, periodo, horas, fechasCustom]);
 
   // Carga inicial al abrir
   useEffect(() => {

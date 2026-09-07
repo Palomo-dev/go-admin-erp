@@ -341,9 +341,13 @@ async function tryResendMagicLink(email: string, origin: string): Promise<{ succ
     const normalizedEmail = email.toLowerCase().trim();
 
     // Verificar que haya invitación pendiente para este email
+    // NOTA: la tabla invitations NO tiene organization_name, hay que traerlo
+    // via join con organizations. Si se incluye organization_name en el select
+    // directo, Postgres retorna error 42701 (column does not exist) y el
+    // auto-resend falla silenciosamente → el usuario cae al failed page.
     const { data: pendingInvite, error: inviteError } = await admin
       .from('invitations')
-      .select('code, organization_id, organization_name')
+      .select('code, organization_id, organizations!inner(name)')
       .eq('email', normalizedEmail)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
@@ -351,11 +355,14 @@ async function tryResendMagicLink(email: string, origin: string): Promise<{ succ
       .maybeSingle();
 
     if (inviteError || !pendingInvite) {
-      console.log('Reenvío: no hay invitación pendiente para', normalizedEmail);
+      console.log('Reenvío: no hay invitación pendiente para', normalizedEmail, inviteError?.message || '');
       return { success: false };
     }
 
     const inviteUrl = `${origin}/auth/invite?invite_code=${pendingInvite.code}`;
+    const orgName = Array.isArray(pendingInvite.organizations)
+      ? (pendingInvite.organizations[0] as any)?.name
+      : (pendingInvite.organizations as any)?.name || 'la organización';
 
     // Reenviar magic link (mismo flujo que invite/route.ts)
     const anonClient = createClient(
@@ -371,7 +378,7 @@ async function tryResendMagicLink(email: string, origin: string): Promise<{ succ
         data: {
           invitation_code: pendingInvite.code,
           organization_id: pendingInvite.organization_id,
-          organization_name: pendingInvite.organization_name,
+          organization_name: orgName,
         },
       },
     });

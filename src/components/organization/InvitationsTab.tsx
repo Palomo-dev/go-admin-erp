@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy, Check, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getRoleInfoById, getRoleIdByCode, formatRolesForDropdown, roleDisplayMap } from '@/utils/roleUtils';
 import { InvitationsSkeleton } from './OrganizationSkeletons';
@@ -52,6 +52,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
   const [jobPositionId, setJobPositionId] = useState<string>('');
   const [sendingInvitation, setSendingInvitation] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   // Límite de usuarios del plan
@@ -542,6 +543,19 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
       setResendingId(null);
     }
   };
+  const copyInviteLink = async (invitation: InvitationProps) => {
+    if (!invitation.code) return;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const link = `${origin}/auth/invite?invite_code=${invitation.code}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedId(invitation.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Error copiando link:', err);
+    }
+  };
+
   const getStatusBadge = (invitation: InvitationProps) => {
     if (invitation.status === 'revoked' || invitation.revoked) {
       return (
@@ -997,6 +1011,9 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                   {t('thExpirationDate')}
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {t('thLink')}
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {t('thActions')}
                 </th>
               </tr>
@@ -1005,7 +1022,7 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
               {filteredInvitations.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-6 py-10 text-center text-sm font-medium text-gray-500 dark:text-gray-400"
                   >
                     {invitations.length === 0 ? 
@@ -1036,6 +1053,36 @@ export default function InvitationsTab({ orgId }: { orgId: number }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {invitation.expires_at}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {!invitation.used && !invitation.revoked && invitation.code ? (
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/invite?invite_code=${invitation.code}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center gap-1 text-xs"
+                            title={t('openLink')}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            {t('viewLink')}
+                          </a>
+                          <button
+                            onClick={() => copyInviteLink(invitation)}
+                            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                            title={t('copyLink')}
+                            aria-label={t('copyLink')}
+                          >
+                            {copiedId === invitation.id ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-300 dark:text-gray-600">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {!invitation.used && !invitation.revoked && (

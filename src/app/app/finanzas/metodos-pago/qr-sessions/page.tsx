@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useBranch } from '@/lib/context/BranchContext';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -90,6 +91,7 @@ function formatDate(iso: string | null): string {
 export default function QrSessionsPage() {
   const { organization } = useOrganization();
   const orgId = organization?.id;
+  const { branchFilter } = useBranch();
 
   const [sessions, setSessions] = useState<QrSession[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -101,10 +103,12 @@ export default function QrSessionsPage() {
     if (!orgId) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let sessionsQuery = supabase
         .from('payment_qr_sessions')
         .select('*')
-        .eq('organization_id', orgId)
+        .eq('organization_id', orgId);
+      if (branchFilter != null) sessionsQuery = sessionsQuery.eq('branch_id', branchFilter);
+      const { data, error } = await sessionsQuery
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -116,7 +120,7 @@ export default function QrSessionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, branchFilter]);
 
   // Cargar sesiones al montar o cambiar organizacion
   useEffect(() => {

@@ -80,7 +80,7 @@ const TABS: { id: ViewTab; label: string; icon: React.ReactNode }[] = [
 export default function PMTasksPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialView = (searchParams.get('view') as ViewTab) || 'list';
+  const initialView = (searchParams?.get('view') as ViewTab) || 'list';
 
   const [activeTab, setActiveTab] = useState<ViewTab>(initialView);
   const [tasks, setTasks] = useState<PMTask[]>([]);

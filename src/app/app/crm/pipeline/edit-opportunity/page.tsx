@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 function EditOpportunityRedirect() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const id = searchParams.get("id");
+  const id = searchParams?.get("id") ?? null;
 
   useEffect(() => {
     if (id) {

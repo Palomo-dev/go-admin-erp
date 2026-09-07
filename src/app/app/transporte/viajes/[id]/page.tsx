@@ -60,7 +60,7 @@ interface Incident {
 
 export default function TripDetailPage() {
   const params = useParams();
-  const tripId = params.id as string;
+  const tripId = params?.id as string;
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;

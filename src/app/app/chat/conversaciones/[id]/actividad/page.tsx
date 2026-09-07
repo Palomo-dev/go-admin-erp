@@ -16,7 +16,7 @@ import {
 
 export default function ConversationActivityPage() {
   const params = useParams();
-  const conversationId = params.id as string;
+  const conversationId = params?.id as string;
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;

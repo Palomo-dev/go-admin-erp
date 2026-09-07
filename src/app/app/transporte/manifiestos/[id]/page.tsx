@@ -94,7 +94,7 @@ const SHIPMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> =
 export default function ManifestDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const manifestId = params.id as string;
+  const manifestId = params?.id as string;
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;

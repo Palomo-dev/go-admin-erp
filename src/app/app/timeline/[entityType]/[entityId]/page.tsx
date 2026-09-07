@@ -39,8 +39,8 @@ export default function EntityTimelinePage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const entityType = params.entityType as string;
-  const entityId = params.entityId as string;
+  const entityType = params?.entityType as string;
+  const entityId = params?.entityId as string;
   const organizationId = getOrganizationId();
 
   const [loading, setLoading] = useState(true);
@@ -441,7 +441,7 @@ export default function EntityTimelinePage() {
 
             {/* Lista de eventos */}
             <TimelineEventList
-              events={filteredEvents}
+              events={filteredEvents as TimelineEvent[]}
               loading={loading || loadingMore}
               hasMore={hasMore && activeTab === 'all'}
               totalCount={filteredEvents.length}

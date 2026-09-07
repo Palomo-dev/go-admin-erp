@@ -34,7 +34,7 @@ type FrozenReason = 'trial_expired' | 'suspended' | 'payment_failed' | 'canceled
 export default function CuentaCongeladaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const reason = (searchParams.get('reason') as FrozenReason) || 'trial_expired';
+  const reason = (searchParams?.get('reason') as FrozenReason) || 'trial_expired';
 
   const [orgId, setOrgId] = useState<number | null>(null);
   const [orgName, setOrgName] = useState('');

@@ -16,7 +16,7 @@ import { DetailSkeleton } from '@/components/common/PageSkeletons';
 export default function EventoDetallePage() {
   const params = useParams();
   const router = useRouter();
-  const eventId = params.id as string;
+  const eventId = params?.id as string;
   const { toast } = useToast();
 
   const [event, setEvent] = useState<IntegrationEvent | null>(null);

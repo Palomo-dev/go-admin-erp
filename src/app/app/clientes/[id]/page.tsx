@@ -41,7 +41,8 @@ interface Cliente {
 }
 
 export default function PerfilCliente() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -5,5 +5,5 @@ import { EditarCotizacion } from '@/components/finanzas/cotizaciones/editar/Edit
 
 export default function EditarPage() {
   const params = useParams();
-  return <EditarCotizacion cotizacionId={params.id as string} />;
+  return <EditarCotizacion cotizacionId={params?.id as string} />;
 }

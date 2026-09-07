@@ -26,7 +26,7 @@ export default function PlanPage() {
 
   // Detectar parámetros de checkout
   useEffect(() => {
-    const checkout = searchParams.get('checkout');
+    const checkout = searchParams?.get('checkout') ?? null;
     if (checkout === 'success') {
       setSuccessMessage(t('plan.paymentSuccess'));
       // Limpiar URL sin recargar

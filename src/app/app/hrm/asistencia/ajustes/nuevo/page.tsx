@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase/config';
 export default function NuevoAjustePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preselectedTimesheetId = searchParams.get('timesheet') || undefined;
+  const preselectedTimesheetId = searchParams?.get('timesheet') || undefined;
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 

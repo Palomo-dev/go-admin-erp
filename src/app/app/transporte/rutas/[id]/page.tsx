@@ -38,7 +38,7 @@ export default function RouteDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const routeId = params.id as string;
+  const routeId = params?.id as string;
 
   const [isLoading, setIsLoading] = useState(true);
   const [route, setRoute] = useState<TransportRoute | null>(null);

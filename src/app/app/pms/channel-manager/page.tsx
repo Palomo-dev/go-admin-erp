@@ -18,11 +18,13 @@ import {
 } from '@/components/pms/channel-manager';
 import { supabase } from '@/lib/supabase/config';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export default function ChannelManagerPage() {
   const router = useRouter();
   const { organization } = useOrganization();
   const { toast } = useToast();
+  const { branchFilter } = useBranch();
 
   const [stats, setStats] = useState<ChannelManagerStats | null>(null);
   const [summaries, setSummaries] = useState<SpaceChannelSummary[]>([]);
@@ -68,20 +70,37 @@ export default function ChannelManagerPage() {
 
     // Cargar espacios para el selector del dialog (spaces usa branch_id, no organization_id)
     try {
-      const { data: branchesData } = await supabase
-        .from('branches')
-        .select('id')
-        .eq('organization_id', organization.id);
+      let spacesData: any[] | null = null;
+      let spacesErr: any = null;
 
-      const branchIds = (branchesData || []).map(b => b.id);
+      if (branchFilter != null) {
+        // Filtro por sucursal concreta
+        const result = await supabase
+          .from('spaces')
+          .select('id, label, space_types ( name )')
+          .eq('branch_id', branchFilter)
+          .order('label');
+        spacesData = result.data;
+        spacesErr = result.error;
+      } else {
+        // Modo consolidado: todas las sucursales de la organización
+        const { data: branchesData } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('organization_id', organization.id);
 
-      const { data: spacesData, error: spacesErr } = branchIds.length > 0
-        ? await supabase
+        const branchIds = (branchesData || []).map(b => b.id);
+
+        if (branchIds.length > 0) {
+          const result = await supabase
             .from('spaces')
             .select('id, label, space_types ( name )')
             .in('branch_id', branchIds)
-            .order('label')
-        : { data: [] as any[], error: null };
+            .order('label');
+          spacesData = result.data;
+          spacesErr = result.error;
+        }
+      }
 
       if (spacesErr) {
         console.warn('[ChannelManager] Error cargando espacios:', spacesErr.message);
@@ -134,7 +153,7 @@ export default function ChannelManagerPage() {
     }
 
     setIsLoading(false);
-  }, [organization?.id]);
+  }, [organization?.id, branchFilter]);
 
   useEffect(() => {
     if (organization?.id) {

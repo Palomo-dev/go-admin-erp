@@ -97,7 +97,7 @@ const ARL_RISK_LEVELS = [
 export default function EditarEmpleadoPage() {
   const params = useParams();
   const router = useRouter();
-  const employeeId = params.id as string;
+  const employeeId = params?.id as string;
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 

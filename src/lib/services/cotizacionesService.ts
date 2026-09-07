@@ -91,7 +91,8 @@ export class CotizacionesService {
 
   static async listQuotations(
     organizationId: number,
-    filters?: QuotationFilters
+    filters?: QuotationFilters,
+    branchId?: number | null
   ): Promise<Quotation[]> {
     try {
       let query = supabase
@@ -101,6 +102,10 @@ export class CotizacionesService {
         )
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
+
+      if (branchId != null) {
+        query = query.eq('branch_id', branchId);
+      }
 
       if (filters?.status && filters.status !== 'todos') {
         query = query.eq('status', filters.status);

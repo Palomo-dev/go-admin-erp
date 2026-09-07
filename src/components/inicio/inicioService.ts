@@ -468,6 +468,11 @@ export const inicioService = {
       p_organization_id: organizationId, p_timezone: timezoneOrg, p_start, p_end,
       p_branch_id: branchIdNum,
     });
+    // RPCs web (visitas, compras, revenue) son org-wide: el sitio web es único por organización.
+    // Cuando se implemente multi-outlet (PLAN.md F1+), se revisitará este filtro.
+    const rpcArgsWeb = (p_start: string, p_end: string) => ({
+      p_organization_id: organizationId, p_timezone: timezoneOrg, p_start, p_end,
+    });
 
     const [
       // ─── Queries seguras (head:true, limit, single) ───────────────────────────
@@ -535,28 +540,28 @@ export const inicioService = {
       supabase.from('organization_members').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
       supabase.from('organization_taxes').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId),
       supabase.from('organization_modules').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).eq('is_active', true).not('module_code', 'in', '("clientes","organizations","roles")'),
-      // Visitas web (RPC + count exacto)
+      // Visitas web (RPC + count exacto) — org-wide (sin branch_id)
       isHorario
-        ? supabase.rpc('get_website_visits_by_hour', rpcArgs(inicioPeriodo, finPeriodo))
-        : supabase.rpc('get_website_visits_by_day', rpcArgs(inicioPeriodo, finPeriodo)),
+        ? supabase.rpc('get_website_visits_by_hour', rpcArgsWeb(inicioPeriodo, finPeriodo))
+        : supabase.rpc('get_website_visits_by_day', rpcArgsWeb(inicioPeriodo, finPeriodo)),
       isHorario
-        ? supabase.rpc('get_website_visits_by_hour', rpcArgs(inicioAnterior, finAnterior))
-        : supabase.rpc('get_website_visits_by_day', rpcArgs(inicioAnterior, finAnterior)),
+        ? supabase.rpc('get_website_visits_by_hour', rpcArgsWeb(inicioAnterior, finAnterior))
+        : supabase.rpc('get_website_visits_by_day', rpcArgsWeb(inicioAnterior, finAnterior)),
       supabase.from('website_visits').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).gte('created_at', inicioPeriodo).lt('created_at', finPeriodo),
       supabase.from('website_visits').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).gte('created_at', inicioAnterior).lt('created_at', finAnterior),
       // RPC: período actual
       supabase.rpc(salesFn, rpcArgs(inicioPeriodo, finPeriodo)),
-      supabase.rpc(webOrdersRevFn, rpcArgs(inicioPeriodo, finPeriodo)),
+      supabase.rpc(webOrdersRevFn, rpcArgsWeb(inicioPeriodo, finPeriodo)),
       supabase.rpc(invoicesFn, rpcArgs(inicioPeriodo, finPeriodo)),
-      supabase.rpc(webOrdersAllFn, rpcArgs(inicioPeriodo, finPeriodo)),
+      supabase.rpc(webOrdersAllFn, rpcArgsWeb(inicioPeriodo, finPeriodo)),
       // RPC: período anterior
       supabase.rpc(salesFn, rpcArgs(inicioAnterior, finAnterior)),
-      supabase.rpc(webOrdersRevFn, rpcArgs(inicioAnterior, finAnterior)),
+      supabase.rpc(webOrdersRevFn, rpcArgsWeb(inicioAnterior, finAnterior)),
       supabase.rpc(invoicesFn, rpcArgs(inicioAnterior, finAnterior)),
-      supabase.rpc(webOrdersAllFn, rpcArgs(inicioAnterior, finAnterior)),
+      supabase.rpc(webOrdersAllFn, rpcArgsWeb(inicioAnterior, finAnterior)),
       // RPC: mes calendario actual (by_day)
       supabase.rpc('get_sales_by_day', rpcArgs(inicioMesActual, finPeriodo)),
-      supabase.rpc('get_web_orders_revenue_by_day', rpcArgs(inicioMesActual, finPeriodo)),
+      supabase.rpc('get_web_orders_revenue_by_day', rpcArgsWeb(inicioMesActual, finPeriodo)),
       supabase.rpc('get_customers_by_day', rpcArgs(inicioMesActual, finPeriodo)),
       supabase.rpc('get_products_by_day', rpcArgs(inicioMesActual, finPeriodo)),
       supabase.rpc('get_org_members_by_day', rpcArgs(inicioMesActual, finPeriodo)),
@@ -564,7 +569,7 @@ export const inicioService = {
       supabase.rpc('get_accounts_receivable_by_day', rpcArgs(inicioMesActual, finPeriodo)),
       // RPC: mes calendario anterior (by_day)
       supabase.rpc('get_sales_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
-      supabase.rpc('get_web_orders_revenue_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
+      supabase.rpc('get_web_orders_revenue_by_day', rpcArgsWeb(inicioMesAnterior, finMesAnteriorCal)),
       supabase.rpc('get_customers_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
       supabase.rpc('get_products_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),
       supabase.rpc('get_org_members_by_day', rpcArgs(inicioMesAnterior, finMesAnteriorCal)),

@@ -27,7 +27,7 @@ export default function CorrelationDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const correlationId = params.correlationId as string;
+  const correlationId = params?.correlationId as string;
   const organizationId = getOrganizationId();
 
   const [loading, setLoading] = useState(true);

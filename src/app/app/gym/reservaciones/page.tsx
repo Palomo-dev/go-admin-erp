@@ -51,7 +51,7 @@ import {
 export default function ReservacionesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const classIdParam = searchParams.get('classId');
+  const classIdParam = searchParams?.get('classId') ?? null;
   const { organization } = useOrganization();
   
   const [reservations, setReservations] = useState<ClassReservation[]>([]);

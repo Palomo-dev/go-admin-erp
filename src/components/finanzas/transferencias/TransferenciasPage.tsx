@@ -40,6 +40,7 @@ import { NuevaTransferenciaDialog } from './NuevaTransferenciaDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useBranch } from '@/lib/context/BranchContext';
 
 const statusColors: Record<string, string> = {
   completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
@@ -55,6 +56,7 @@ const statusLabels: Record<string, string> = {
 
 export function TransferenciasPage() {
   const router = useRouter();
+  const { branchFilter } = useBranch();
   const [transfers, setTransfers] = useState<BankTransfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,8 +72,8 @@ export function TransferenciasPage() {
     setIsLoading(true);
     try {
       const [transfersData, statsData] = await Promise.all([
-        transferenciasService.getTransfers(),
-        transferenciasService.getStats(),
+        transferenciasService.getTransfers(branchFilter),
+        transferenciasService.getStats(branchFilter),
       ]);
       setTransfers(transfersData);
       setStats(statsData);
@@ -85,7 +87,7 @@ export function TransferenciasPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [branchFilter]);
 
   useEffect(() => {
     loadData();

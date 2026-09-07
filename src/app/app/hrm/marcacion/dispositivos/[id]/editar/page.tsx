@@ -20,7 +20,7 @@ interface BranchOption {
 export default function EditarDispositivoPage() {
   const params = useParams();
   const router = useRouter();
-  const deviceId = params.id as string;
+  const deviceId = params?.id as string;
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 

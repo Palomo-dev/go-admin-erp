@@ -20,7 +20,7 @@ import Link from 'next/link';
 export default function EditarCargoPage() {
   const params = useParams();
   const router = useRouter();
-  const positionId = params.id as string;
+  const positionId = params?.id as string;
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
 

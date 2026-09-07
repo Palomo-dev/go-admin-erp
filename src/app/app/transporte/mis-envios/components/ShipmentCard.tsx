@@ -200,16 +200,16 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
         )}
 
         {/* COD y costo */}
-        {(shipment.cod_amount > 0 || shipment.shipping_fee > 0) && (
+        {((shipment.cod_amount ?? 0) > 0 || (shipment.shipping_fee ?? 0) > 0) && (
           <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-800 pt-3 text-sm">
-            {shipment.cod_amount > 0 && (
+            {(shipment.cod_amount ?? 0) > 0 && (
               <span className="text-orange-600 dark:text-orange-400 font-medium">
-                COD: {formatCurrency(shipment.cod_amount, shipment.currency)}
+                COD: {formatCurrency(shipment.cod_amount ?? 0, shipment.currency)}
               </span>
             )}
-            {shipment.shipping_fee > 0 && (
+            {(shipment.shipping_fee ?? 0) > 0 && (
               <span className="text-gray-500 dark:text-gray-400">
-                Envío: {formatCurrency(shipment.shipping_fee, shipment.currency)}
+                Envío: {formatCurrency(shipment.shipping_fee ?? 0, shipment.currency)}
               </span>
             )}
           </div>

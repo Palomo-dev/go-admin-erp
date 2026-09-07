@@ -40,9 +40,11 @@ import { NuevoEgresoDialog } from './NuevoEgresoDialog';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export function EgresosPage() {
   const router = useRouter();
+  const { branchFilter } = useBranch();
   const [movements, setMovements] = useState<UnifiedMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,8 +60,8 @@ export function EgresosPage() {
     setIsLoading(true);
     try {
       const [movementsData, statsData] = await Promise.all([
-        movimientosService.getAllMovements('expense'),
-        movimientosService.getStats('expense'),
+        movimientosService.getAllMovements('expense', branchFilter),
+        movimientosService.getStats('expense', branchFilter),
       ]);
       setMovements(movementsData);
       setStats(statsData);
@@ -73,7 +75,7 @@ export function EgresosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [branchFilter]);
 
   useEffect(() => {
     loadData();

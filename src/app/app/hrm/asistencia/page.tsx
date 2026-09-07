@@ -19,16 +19,18 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export default function AsistenciaPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
+  const { branchFilter } = useBranch();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (organization?.id && !orgLoading) {
       setIsLoading(false);
     }
-  }, [organization?.id, orgLoading]);
+  }, [organization?.id, orgLoading, branchFilter]);
 
   if (orgLoading || isLoading) {
     return (

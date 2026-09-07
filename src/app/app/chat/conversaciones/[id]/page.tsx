@@ -26,7 +26,7 @@ import {
 
 export default function ConversationDetailPage() {
   const params = useParams();
-  const conversationId = params.id as string;
+  const conversationId = params?.id as string;
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;

@@ -24,7 +24,7 @@ interface FragmentWithEmbedding extends KnowledgeFragment {
 export default function FragmentDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const fragmentId = params.id as string;
+  const fragmentId = params?.id as string;
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;

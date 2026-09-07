@@ -239,7 +239,7 @@ export async function GET(request: NextRequest) {
       // magiclink: la sesión ya queda establecida (cookies). Si hay invitación
       // pendiente, redirigir a /auth/invite para aceptarla. Si no, a la app.
       if (type === 'magiclink') {
-        const { data: pendingInvite } = await supabase
+        const { data: pendingInvite, error: inviteQueryError } = await supabase
           .from('invitations')
           .select('code')
           .eq('email', user.email)
@@ -248,9 +248,15 @@ export async function GET(request: NextRequest) {
           .limit(1)
           .maybeSingle();
 
+        if (inviteQueryError) {
+          console.error('Error buscando invitación pendiente para magiclink:', inviteQueryError, 'email:', user.email);
+        }
+
         if (pendingInvite?.code) {
+          console.log('✅ Invitación pendiente encontrada para', user.email, '→ /auth/invite');
           return redirectWithCookies(`/auth/invite?invite_code=${pendingInvite.code}`);
         }
+        console.log('No se encontró invitación pendiente para', user.email, '→ /app/inicio');
         return redirectWithCookies('/app/inicio');
       }
 

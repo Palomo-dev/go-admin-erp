@@ -87,6 +87,14 @@ export function guardarOrganizacionActiva(organizacion: Organizacion): void {
     if (!isAlreadySaved) {
       console.log('Organización guardada correctamente:', organizacion.id);
     }
+
+    // Notificar globalmente que la organización cambió (para que BranchProvider
+    // y otros contextos recarguen sus datos sin necesidad de reload manual)
+    try {
+      window.dispatchEvent(new CustomEvent(ORGANIZATION_CHANGED_EVENT, { detail: { id: organizacion.id } }));
+    } catch {
+      /* noop */
+    }
   } catch (error) {
     console.error('Error al guardar organización:', error);
   }
@@ -469,6 +477,9 @@ export function invalidateBranchIdCache(): void {
 
 // Nombre del evento global emitido al cambiar de sucursal o de modo
 export const BRANCH_CHANGED_EVENT = 'branch-changed';
+
+// Nombre del evento global emitido al cambiar de organización activa
+export const ORGANIZATION_CHANGED_EVENT = 'organization-changed';
 
 /**
  * Indica si el usuario tiene activo el modo "Todas las sucursales".

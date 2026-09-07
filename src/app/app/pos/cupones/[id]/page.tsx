@@ -54,8 +54,8 @@ export default function CuponDetallePage() {
   const searchParams = useSearchParams();
   const { isLoading: orgLoading } = useOrganization();
   
-  const couponId = params.id as string;
-  const isEditMode = searchParams.get('edit') === 'true';
+  const couponId = params?.id as string;
+  const isEditMode = searchParams?.get('edit') === 'true';
   
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   const [redemptions, setRedemptions] = useState<CouponRedemption[]>([]);

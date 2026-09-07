@@ -45,7 +45,39 @@ export interface AplicarSaldoInput {
 
 export const saldosAFavorService = {
   /** Lista los saldos a favor de la organización. */
-  async listar(organizationId: number): Promise<SaldoAFavor[]> {
+  async listar(organizationId: number, branchId?: number | null): Promise<SaldoAFavor[]> {
+    if (branchId != null) {
+      // Filtrar por sucursal con query directa (el RPC no soporta branch_id)
+      const { data, error } = await supabase
+        .from('credit_notes')
+        .select(`
+          id,
+          customer_id,
+          amount,
+          balance,
+          status,
+          notes,
+          expiry_date,
+          created_at,
+          customers (full_name)
+        `)
+        .eq('organization_id', organizationId)
+        .eq('branch_id', branchId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map((cn: any) => ({
+        id: cn.id,
+        customer_id: cn.customer_id,
+        customer_name: cn.customers?.full_name ?? null,
+        amount: Number(cn.amount),
+        balance: Number(cn.balance),
+        used: Number(cn.amount) - Number(cn.balance),
+        status: cn.status,
+        notes: cn.notes,
+        expiry_date: cn.expiry_date,
+        created_at: cn.created_at,
+      })) as SaldoAFavor[];
+    }
     const { data, error } = await supabase.rpc('fn_list_customer_credits', {
       p_org: organizationId,
     });

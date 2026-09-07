@@ -9,9 +9,9 @@ import { NuevaReservaWizard } from '@/components/pms/reservas/nueva';
 export default function NuevaReservaPage() {
   const searchParams = useSearchParams();
 
-  const urlSpaceId = searchParams.get('space_id');
-  const urlCheckin = searchParams.get('checkin');
-  const urlCheckout = searchParams.get('checkout');
+  const urlSpaceId = searchParams?.get('space_id') ?? null;
+  const urlCheckin = searchParams?.get('checkin') ?? null;
+  const urlCheckout = searchParams?.get('checkout') ?? null;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

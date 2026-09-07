@@ -59,7 +59,7 @@ export default function ConnectionDetailPage() {
   const organizationId = organization?.id;
   const { toast } = useToast();
 
-  const connectionId = params.id as string;
+  const connectionId = params?.id as string;
 
   // Estados principales
   const [connection, setConnection] = useState<IntegrationConnection | null>(null);

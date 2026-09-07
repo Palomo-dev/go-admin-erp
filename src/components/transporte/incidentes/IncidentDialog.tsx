@@ -30,7 +30,7 @@ interface IncidentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   incident?: IncidentWithDetails | null;
-  trips: Array<{ id: string; trip_code: string; departure_datetime: string }>;
+  trips: Array<{ id: string; trip_code: string; scheduled_departure: string }>;
   shipments: Array<{ id: string; tracking_number: string; status: string }>;
   employees: Array<{ id: number; full_name: string; email?: string }>;
   onSave: (data: Partial<CreateIncidentData>) => Promise<void>;

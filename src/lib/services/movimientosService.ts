@@ -440,7 +440,7 @@ class MovimientosService {
   /**
    * Obtener estadísticas (incluye cash_movements y bank_transactions)
    */
-  async getStats(type: MovementType): Promise<{
+  async getStats(type: MovementType, branchId?: number | null): Promise<{
     total: number;
     count: number;
     today: number;
@@ -460,18 +460,22 @@ class MovimientosService {
     const dbBankType = type === 'income' ? 'deposit' : 'withdrawal';
 
     // Obtener movimientos de caja
-    const { data: cashData } = await supabase
+    let cashQuery = supabase
       .from('cash_movements')
       .select('amount, created_at')
       .eq('organization_id', organizationId)
       .eq('type', dbCashType);
+    if (branchId != null) cashQuery = cashQuery.eq('branch_id', branchId);
+    const { data: cashData } = await cashQuery;
 
     // Obtener transacciones bancarias
-    const { data: bankData } = await supabase
+    let bankQuery = supabase
       .from('bank_transactions')
       .select('amount, created_at')
       .eq('organization_id', organizationId)
       .eq('transaction_type', dbBankType);
+    if (branchId != null) bankQuery = bankQuery.eq('branch_id', branchId);
+    const { data: bankData } = await bankQuery;
 
     // Combinar datos
     const allData = [
@@ -527,7 +531,7 @@ class MovimientosService {
   /**
    * Obtener todos los movimientos unificados (caja + banco)
    */
-  async getAllMovements(type: MovementType): Promise<UnifiedMovement[]> {
+  async getAllMovements(type: MovementType, branchId?: number | null): Promise<UnifiedMovement[]> {
     const organizationId = getOrganizationId();
     if (!organizationId) return [];
 
@@ -536,11 +540,13 @@ class MovimientosService {
     const dbBankType = type === 'income' ? 'deposit' : 'withdrawal';
 
     // Obtener movimientos de caja
-    const { data: cashData, error: cashError } = await supabase
+    let cashQuery = supabase
       .from('cash_movements')
       .select('id, uuid, concept, amount, notes, created_at')
       .eq('organization_id', organizationId)
-      .eq('type', dbCashType)
+      .eq('type', dbCashType);
+    if (branchId != null) cashQuery = cashQuery.eq('branch_id', branchId);
+    const { data: cashData, error: cashError } = await cashQuery
       .order('created_at', { ascending: false });
 
     if (cashError) {
@@ -548,7 +554,7 @@ class MovimientosService {
     }
 
     // Obtener transacciones bancarias
-    const { data: bankData, error: bankError } = await supabase
+    let bankQuery = supabase
       .from('bank_transactions')
       .select(`
         id,
@@ -560,7 +566,9 @@ class MovimientosService {
         bank_account:bank_accounts(name, bank_name)
       `)
       .eq('organization_id', organizationId)
-      .eq('transaction_type', dbBankType)
+      .eq('transaction_type', dbBankType);
+    if (branchId != null) bankQuery = bankQuery.eq('branch_id', branchId);
+    const { data: bankData, error: bankError } = await bankQuery
       .order('created_at', { ascending: false });
 
     if (bankError) {

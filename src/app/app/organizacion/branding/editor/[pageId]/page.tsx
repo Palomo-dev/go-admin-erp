@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 export default function PageEditorRedirect() {
   const params = useParams();
   const router = useRouter();
-  const pageId = params.pageId as string;
+  const pageId = params?.pageId as string;
 
   useEffect(() => {
     router.replace(`/organizacion/branding/editor/${pageId}`);

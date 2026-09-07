@@ -18,6 +18,7 @@ import {
   type SessionNote,
 } from '@/components/parking/sesiones/id';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface ParkingSession {
   id: string;
@@ -44,9 +45,10 @@ interface ParkingSession {
 export default function SessionDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const sessionId = params.id as string;
+  const sessionId = params?.id as string;
   const { organization } = useOrganization();
   const { toast } = useToast();
+  const { branchFilter } = useBranch();
 
   const [session, setSession] = useState<ParkingSession | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -62,7 +64,7 @@ export default function SessionDetailPage() {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      let sessionQuery = supabase
         .from('parking_sessions')
         .select(`
           *,
@@ -73,8 +75,9 @@ export default function SessionDetailPage() {
             type
           )
         `)
-        .eq('id', sessionId)
-        .single();
+        .eq('id', sessionId);
+      if (branchFilter != null) sessionQuery = sessionQuery.eq('branch_id', branchFilter);
+      const { data, error } = await sessionQuery.single();
 
       if (error) throw error;
       setSession(data);
@@ -120,13 +123,13 @@ export default function SessionDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, toast]);
+  }, [sessionId, branchFilter, toast]);
 
   const loadPayments = useCallback(async () => {
     if (!sessionId) return;
 
     try {
-      const { data, error } = await supabase
+      let paymentsQuery = supabase
         .from('parking_payments')
         .select(`
           id,
@@ -142,6 +145,8 @@ export default function SessionDetailPage() {
           )
         `)
         .eq('parking_session_id', sessionId);
+      if (branchFilter != null) paymentsQuery = paymentsQuery.eq('branch_id', branchFilter);
+      const { data, error } = await paymentsQuery;
 
       if (error) throw error;
 
@@ -189,7 +194,7 @@ export default function SessionDetailPage() {
     } catch (err) {
       console.error('Error loading payments:', err);
     }
-  }, [sessionId]);
+  }, [sessionId, branchFilter]);
 
   useEffect(() => {
     loadSession();
@@ -278,6 +283,7 @@ export default function SessionDetailPage() {
         .insert({
           parking_session_id: session.id,
           payment_id: payment.id,
+          branch_id: session.branch_id,
         });
 
       if (linkError) throw linkError;

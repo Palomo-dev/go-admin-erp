@@ -5,7 +5,7 @@ import { EditarProveedorForm } from '@/components/inventario/proveedores/editar'
 
 export default function EditarProveedorPage() {
   const params = useParams();
-  const supplierUuid = params.id as string;
+  const supplierUuid = params?.id as string;
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">

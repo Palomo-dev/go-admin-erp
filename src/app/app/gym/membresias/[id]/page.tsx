@@ -40,13 +40,15 @@ import {
   MembershipFreeze
 } from '@/lib/services/gymService';
 import { supabase } from '@/lib/supabase/config';
+import { useBranch } from '@/lib/context/BranchContext';
 
 export default function MembershipDetailPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const membershipId = Number(params.id);
+  const membershipId = Number(params?.id);
+  const { branchFilter } = useBranch();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -86,37 +88,43 @@ export default function MembershipDetailPage() {
       setEvents(eventsData);
 
       // Cargar check-ins
-      const { data: checkinsData } = await supabase
+      let checkinsQuery = supabase
         .from('member_checkins')
         .select('*, customers (id, first_name, last_name)')
-        .eq('membership_id', membershipId)
+        .eq('membership_id', membershipId);
+      if (branchFilter != null) checkinsQuery = checkinsQuery.eq('branch_id', branchFilter);
+      const { data: checkinsData } = await checkinsQuery
         .order('checkin_at', { ascending: false })
         .limit(50);
 
       setCheckins(checkinsData || []);
 
       // Cargar congelamientos
-      const { data: freezesData } = await supabase
+      let freezesQuery = supabase
         .from('membership_freezes')
         .select('*')
-        .eq('membership_id', membershipId)
+        .eq('membership_id', membershipId);
+      if (branchFilter != null) freezesQuery = freezesQuery.eq('branch_id', branchFilter);
+      const { data: freezesData } = await freezesQuery
         .order('created_at', { ascending: false });
 
       setFreezes(freezesData || []);
 
       // Cargar pagos si hay sale_id
       if (membershipData.sale_id) {
-        const { data: paymentsData } = await supabase
+        let paymentsQuery = supabase
           .from('payments')
           .select('*')
           .eq('source', 'sale')
-          .eq('source_id', membershipData.sale_id)
+          .eq('source_id', membershipData.sale_id);
+        if (branchFilter != null) paymentsQuery = paymentsQuery.eq('branch_id', branchFilter);
+        const { data: paymentsData } = await paymentsQuery
           .order('created_at', { ascending: false });
 
         setPayments(paymentsData || []);
       }
 
-      if (searchParams.get('action') === 'renew') {
+      if (searchParams?.get('action') === 'renew') {
         handleRenew();
       }
     } catch (error) {
@@ -129,7 +137,7 @@ export default function MembershipDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [membershipId, router, toast, searchParams]);
+  }, [membershipId, router, toast, searchParams, branchFilter]);
 
   useEffect(() => {
     if (membershipId) {

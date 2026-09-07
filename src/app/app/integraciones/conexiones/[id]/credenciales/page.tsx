@@ -34,7 +34,7 @@ export default function CredentialsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const connectionId = params.id as string;
+  const connectionId = params?.id as string;
 
   // Estados principales
   const [connection, setConnection] = useState<IntegrationConnection | null>(null);
@@ -124,7 +124,7 @@ export default function CredentialsPage() {
         const newCredential = await integrationsService.createCredential({
           connectionId,
           credentialType: data.credentialType,
-          purpose: data.purpose,
+          purpose: data.purpose as 'primary' | 'backup' | 'rotation' | 'legacy',
           secretRef: data.secretRef,
           keyPrefix: data.keyPrefix,
           expiresAt: data.expiresAt,
@@ -157,7 +157,7 @@ export default function CredentialsPage() {
         const newCredential = await integrationsService.createCredential({
           connectionId,
           credentialType: data.credentialType,
-          purpose: data.purpose,
+          purpose: data.purpose as 'primary' | 'backup' | 'rotation' | 'legacy',
           secretRef: data.secretRef,
           keyPrefix: data.keyPrefix,
           expiresAt: data.expiresAt,

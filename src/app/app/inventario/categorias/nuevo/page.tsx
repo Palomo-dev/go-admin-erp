@@ -6,7 +6,7 @@ import { CategoryForm } from '@/components/inventario/categorias';
 
 export default function NuevaCategoriaPage() {
   const searchParams = useSearchParams();
-  const parentParam = searchParams.get('parent');
+  const parentParam = searchParams?.get('parent') ?? null;
   const defaultParentId = parentParam ? parseInt(parentParam) : null;
 
   return <CategoryForm defaultParentId={defaultParentId} />;

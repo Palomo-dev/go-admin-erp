@@ -30,6 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useBranch } from '@/lib/context/BranchContext';
 
 interface Customer {
   id: string;
@@ -98,6 +99,7 @@ export default function ClientesPage() {
   // Usamos el hook de sesión y organización
   const { session } = useSession();
   const organizationData = useOrganization();
+  const { branchFilter } = useBranch();
   
   // Extraemos el estado de carga de la sesión para mejor manejo
   const { loading: sessionLoading } = useSession();
@@ -157,7 +159,7 @@ export default function ClientesPage() {
     }
     
     loadOrganizationData();
-  }, [session, sessionLoading, organizationData.isLoading, organizationData.error, organizationData.organization?.id]);
+  }, [session, sessionLoading, organizationData.isLoading, organizationData.error, organizationData.organization?.id, branchFilter]);
 
 
   // Función para cargar clientes con paginación y última fecha de compra
@@ -175,6 +177,12 @@ export default function ClientesPage() {
         .from("customers")
         .select("*")
         .eq("organization_id", orgId);
+
+      // Aplicar filtro de sucursal si hay una seleccionada
+      if (branchFilter != null) {
+        countQuery = countQuery.eq("branch_id", branchFilter);
+        dataQuery = dataQuery.eq("branch_id", branchFilter);
+      }
 
       // Aplicar filtro de búsqueda server-side si hay término
       if (searchTerm && searchTerm.trim()) {

@@ -39,7 +39,7 @@ export default function WebsiteChannelSettingsPage() {
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
-  const channelId = params.id as string;
+  const channelId = params?.id as string;
 
   const [channel, setChannel] = useState<ChatChannel | null>(null);
   const [widgetStats, setWidgetStats] = useState<WidgetStats | null>(null);
@@ -450,6 +450,7 @@ export default function WebsiteChannelSettingsPage() {
       primaryColor: '#3B82F6',
       iconColor: '#FFFFFF',
       iconType: 'chat',
+      iconStyle: 'outline',
       buttonSize: 56,
       borderRadius: 28,
       borderWidth: 0,

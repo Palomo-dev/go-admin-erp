@@ -30,7 +30,7 @@
     </tr>
     <tr>
       <td style="padding:0 32px 32px 32px;text-align:center;">
-        <a href="{{ .SiteURL }}/auth/verify?token={{ .TokenHash }}&type=invite"
+        <a href="{{ .SiteURL }}/auth/verify?token={{ .TokenHash }}&type=invite&email={{ .Email }}"
            style="display:inline-block;background-color:#2563EB;color:#FFFFFF !important;font-size:16px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:8px;">
           Aceptar invitación
         </a>
@@ -42,7 +42,7 @@
           Si el botón no funciona, copia y pega este enlace en tu navegador:
         </p>
         <p style="margin:6px 0 0 0;font-size:12px;line-height:18px;word-break:break-all;">
-          <a href="{{ .SiteURL }}/auth/verify?token={{ .TokenHash }}&type=invite" style="color:#2563EB;">{{ .SiteURL }}/auth/verify?token={{ .TokenHash }}&type=invite</a>
+          <a href="{{ .SiteURL }}/auth/verify?token={{ .TokenHash }}&type=invite&email={{ .Email }}" style="color:#2563EB;">{{ .SiteURL }}/auth/verify?token={{ .TokenHash }}&type=invite&email={{ .Email }}</a>
         </p>
       </td>
     </tr>

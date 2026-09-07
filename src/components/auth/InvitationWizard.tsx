@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { PhoneInput } from '@/components/ui/phone-input';
+import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
 
 interface InvitationWizardProps {
   inviteData: {
@@ -214,8 +215,19 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
       console.log('✅ Invitación completada exitosamente:', acceptResult);
 
-      // 4. Cerrar sesión para forzar nuevo login
+      // 4. Cerrar sesión para forzar nuevo login.
+      // IMPORTANTE: signOut() borra currentOrganizationId del localStorage,
+      // así que lo seteamos DESPUÉS del signOut, no antes.
       await supabase.auth.signOut();
+
+      // 5. Setear currentOrganizationId DESPUÉS del signOut para que tras el
+      // nuevo login, la app abra directamente la organización de la invitación
+      // y no la última que el usuario tenía activa (que podría tener el trial
+      // expirado o ser una org distinta).
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentOrganizationId', String(inviteData.organization_id));
+        console.log('📝 currentOrganizationId seteado a:', inviteData.organization_id, '(post-signOut)');
+      }
 
       // 5. Completar el proceso
       setCurrentStep(3); // Paso de éxito
@@ -233,25 +245,25 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {isExistingUser ? 'Confirmar Invitación' : '¡Bienvenido!'}
         </h2>
-        <p className="mt-2 text-gray-600">
-          Has sido invitado a unirte a <span className="font-semibold text-blue-600">{inviteData.organization_name}</span>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          Has sido invitado a unirte a <span className="font-semibold text-blue-600 dark:text-blue-400">{inviteData.organization_name}</span>
         </p>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-500">
           Como <span className="font-medium">{inviteData.role_name}</span>
         </p>
       </div>
 
       {isExistingUser && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-4">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <CheckCircleIcon className="h-5 w-5 text-green-600" />
+              <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <div className="ml-3">
-              <p className="text-sm text-green-800">
+              <p className="text-sm text-green-800 dark:text-green-300">
                 Ya tienes una cuenta en GO Admin. Solo necesitas confirmar tus datos para unirte a esta organización.
               </p>
             </div>
@@ -259,13 +271,13 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
         </div>
       )}
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
         <div className="flex items-center">
           <div className="flex-shrink-0">
-            <CheckCircleIcon className="h-5 w-5 text-blue-600" />
+            <CheckCircleIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="ml-3">
-            <p className="text-sm text-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
               <span className="font-medium">Email:</span> {inviteData.email}
             </p>
           </div>
@@ -274,7 +286,7 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
       <div className="space-y-4">
         <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Nombre *
           </label>
           <input
@@ -282,18 +294,18 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
             id="firstName"
             value={formData.firstName}
             onChange={(e) => handleInputChange('firstName', e.target.value)}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              validationErrors.firstName ? 'border-red-300' : 'border-gray-300'
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 ${
+              validationErrors.firstName ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
             }`}
             placeholder="Ingresa tu nombre"
           />
           {validationErrors.firstName && (
-            <p className="mt-1 text-sm text-red-600">{validationErrors.firstName}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.firstName}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Apellido *
           </label>
           <input
@@ -301,34 +313,34 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
             id="lastName"
             value={formData.lastName}
             onChange={(e) => handleInputChange('lastName', e.target.value)}
-            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              validationErrors.lastName ? 'border-red-300' : 'border-gray-300'
+            className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 ${
+              validationErrors.lastName ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
             }`}
             placeholder="Ingresa tu apellido"
           />
           {validationErrors.lastName && (
-            <p className="mt-1 text-sm text-red-600">{validationErrors.lastName}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.lastName}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Teléfono *
           </label>
           <PhoneInput
             id="phoneNumber"
             value={formData.phoneNumber}
             onChange={(v) => handleInputChange('phoneNumber', v)}
-            className={`mt-1 ${validationErrors.phoneNumber ? '[&_button]:border-red-300 [&_input]:border-red-300' : '[&_button]:border-gray-300 [&_input]:border-gray-300'}`}
+            className={`mt-1 ${validationErrors.phoneNumber ? '[&_button]:border-red-300 [&_input]:border-red-300' : '[&_button]:border-gray-300 [&_input]:border-gray-300 dark:[&_button]:border-gray-600 dark:[&_input]:border-gray-600 dark:[&_input]:bg-gray-700 dark:[&_input]:text-gray-100'}`}
           />
           {validationErrors.phoneNumber && (
-            <p className="mt-1 text-sm text-red-600">{validationErrors.phoneNumber}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.phoneNumber}</p>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+        <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-500 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
@@ -336,7 +348,7 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           </div>
         </div>
@@ -345,7 +357,7 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
       <button
         onClick={handleNextStep}
         disabled={isLoading}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading ? (
           <div className="flex items-center">
@@ -362,15 +374,15 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
   const renderStep2 = () => (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900">Crear Contraseña</h2>
-        <p className="mt-2 text-gray-600">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Crear Contraseña</h2>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
           Establece una contraseña segura para tu cuenta
         </p>
       </div>
 
       <div className="space-y-4">
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Contraseña *
           </label>
           <div className="mt-1 relative">
@@ -379,8 +391,8 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
               id="password"
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
-              className={`block w-full px-3 py-2 pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-                validationErrors.password ? 'border-red-300' : 'border-gray-300'
+              className={`block w-full px-3 py-2 pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 ${
+                validationErrors.password ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Mínimo 8 caracteres"
             />
@@ -390,22 +402,22 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
               {showPassword ? (
-                <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                <EyeSlashIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
               ) : (
-                <EyeIcon className="h-5 w-5 text-gray-400" />
+                <EyeIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
               )}
             </button>
           </div>
           {validationErrors.password && (
-            <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.password}</p>
           )}
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Debe contener al menos una mayúscula, una minúscula y un número
           </p>
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Confirmar Contraseña *
           </label>
           <div className="mt-1 relative">
@@ -414,8 +426,8 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
               id="confirmPassword"
               value={formData.confirmPassword}
               onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-              className={`block w-full px-3 py-2 pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-                validationErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+              className={`block w-full px-3 py-2 pr-10 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100 ${
+                validationErrors.confirmPassword ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Repite tu contraseña"
             />
@@ -425,20 +437,20 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
               {showConfirmPassword ? (
-                <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                <EyeSlashIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
               ) : (
-                <EyeIcon className="h-5 w-5 text-gray-400" />
+                <EyeIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
               )}
             </button>
           </div>
           {validationErrors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{validationErrors.confirmPassword}</p>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+        <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-500 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
@@ -446,7 +458,7 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           </div>
         </div>
@@ -455,14 +467,14 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
       <div className="flex space-x-3">
         <button
           onClick={handlePrevStep}
-          className="flex-1 flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="flex-1 flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800"
         >
           Anterior
         </button>
         <button
           onClick={handleSubmit}
           disabled={isLoading}
-          className="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <div className="flex items-center">
@@ -479,20 +491,20 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
 
   const renderStep3 = () => (
     <div className="text-center space-y-6">
-      <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
-        <CheckCircleIcon className="h-8 w-8 text-green-600" />
+      <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30">
+        <CheckCircleIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
       </div>
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {isExistingUser ? '¡Invitación Aceptada!' : '¡Registro Completado!'}
         </h2>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
           {isExistingUser
-            ? <>Te has unido a <span className="font-semibold text-blue-600">{inviteData.organization_name}</span> exitosamente</>
-            : <>Tu cuenta ha sido creada exitosamente en <span className="font-semibold text-blue-600">{inviteData.organization_name}</span></>
+            ? <>Te has unido a <span className="font-semibold text-blue-600 dark:text-blue-400">{inviteData.organization_name}</span> exitosamente</>
+            : <>Tu cuenta ha sido creada exitosamente en <span className="font-semibold text-blue-600 dark:text-blue-400">{inviteData.organization_name}</span></>
           }
         </p>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
           Serás redirigido al inicio de sesión en unos segundos...
         </p>
       </div>
@@ -522,7 +534,7 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
                 className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
                   currentStep >= s.number
                     ? 'bg-blue-600 border-blue-600 text-white'
-                    : 'border-gray-300 text-gray-500'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
                 }`}
               >
                 {currentStep > s.number ? (
@@ -531,12 +543,12 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
                   <span className="text-sm font-medium">{s.number}</span>
                 )}
               </div>
-              <span className="mt-2 text-xs text-gray-500 text-center w-20">{s.label}</span>
+              <span className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center w-20">{s.label}</span>
             </div>
             {idx < steps.length - 1 && (
               <div
                 className={`flex-1 h-1 mx-2 mt-4 ${
-                  currentStep > s.number ? 'bg-blue-600' : 'bg-gray-300'
+                  currentStep > s.number ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
                 }`}
               />
             )}
@@ -547,11 +559,12 @@ export default function InvitationWizard({ inviteData, onComplete }: InvitationW
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-lg sm:rounded-lg sm:px-10">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black relative overflow-hidden px-4 sm:px-6 py-6 sm:py-8">
+      <AuthSceneBackground />
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="bg-white dark:bg-gray-800 py-6 sm:py-8 px-4 sm:px-6 shadow-xl sm:shadow-2xl rounded-lg sm:rounded-xl border border-gray-100 dark:border-gray-700 sm:px-10">
           {renderProgressBar()}
-          
+
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}

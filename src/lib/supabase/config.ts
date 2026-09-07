@@ -85,12 +85,35 @@ const removeCookie = (name: string) => {
 // Referencia al fetch nativo del navegador antes de cualquier override
 const nativeFetch = globalThis.fetch.bind(globalThis);
 
+// ── Guard global: prevenir bucle infinito de refresh ──
+// Cuando el refresh token es inválido, el SDK de Supabase internamente
+// intenta refrescar en cada getSession() → bucle infinito → 429.
+// Este flag hace que el storage getItem retorne null para el auth-token
+// después de un fallo de refresh, para que el SDK deje de intentar.
+let refreshBlocked = false;
+const REFRESH_BLOCK_DURATION = 60_000; // 60 segundos
+let refreshBlockedAt = 0;
+
+const isRefreshBlocked = () => {
+  if (refreshBlocked && Date.now() - refreshBlockedAt < REFRESH_BLOCK_DURATION) {
+    return true;
+  }
+  refreshBlocked = false;
+  return false;
+};
+
+const blockRefresh = () => {
+  refreshBlocked = true;
+  refreshBlockedAt = Date.now();
+  console.warn(`🚫 [AUTH] Refresh bloqueado por ${REFRESH_BLOCK_DURATION / 1000}s (token inválido)`);
+};
+
 // Creación del cliente de Supabase para el navegador
 export const createSupabaseClient = () => {
   // Configuramos las credenciales, usando valores predeterminados si no hay variables de entorno
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  
+
   if (!supabaseUrl || !supabaseKey) {
     console.error('Faltan variables de entorno: NEXT_PUBLIC_SUPABASE_URL y/o NEXT_PUBLIC_SUPABASE_ANON_KEY')
     if (process.env.NODE_ENV === 'production') {
@@ -110,6 +133,13 @@ export const createSupabaseClient = () => {
       storage: {
         getItem: (key: string) => {
           if (typeof window !== 'undefined') {
+            // Guard anti-bucle: si el refresh está bloqueado por token inválido,
+            // retornar null para que el SDK de Supabase no intente refrescar.
+            // Esto rompe el bucle: getSession() → refresh → 400 → getSession() → ...
+            if (isRefreshBlocked() && key.includes('-auth-token')) {
+              return null;
+            }
+
             // En el cliente, leer de localStorage como fallback y cookies
             const fromLocalStorage = localStorage.getItem(key);
             if (fromLocalStorage) {
@@ -346,6 +376,14 @@ export const createSupabaseClient = () => {
             try {
               const response = await nativeFetch(url, fetchOptions);
               if (timeoutId) clearTimeout(timeoutId);
+
+              // Detectar refresh token inválido (400 en /token?grant_type=refresh_token)
+              // y activar el bloqueo global para prevenir el bucle infinito.
+              if (response.status === 400 && isAuthRequest &&
+                  urlString.includes('grant_type=refresh_token')) {
+                console.warn('🚫 [AUTH] Refresh token inválido detectado, activando bloqueo anti-bucle');
+                blockRefresh();
+              }
 
               if (response.status === 429 && retriesLeft > 0 && !isAuthRequest) {
                 console.log(`Límite de solicitudes alcanzado, reintentando en ${delay}ms (${retriesLeft} intentos restantes)`);

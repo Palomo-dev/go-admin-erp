@@ -246,7 +246,10 @@ function LoginContent() {
       setShowOrgPopup,
       proceedWithLogin: (rememberMe: boolean, email: string) => proceedWithLogin(rememberMe, email),
       setEmailNotConfirmed,
-      setResendingEmail
+      setResendingEmail,
+      selectOrganization: (org: Organization, rememberMe: boolean, email: string) => {
+        onSelectOrganizationFromPopup(org);
+      }
     });
   };
 

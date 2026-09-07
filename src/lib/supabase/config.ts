@@ -527,6 +527,26 @@ export const createSupabaseServerClient = (request?: any) => {
 // Cliente para uso en el lado del cliente
 export const supabase = createSupabaseClient()
 
+// ── Parche anti-bucle: interceptar refreshSession del SDK ──
+// El SDK de Supabase 2.49.x tiene un _recoverAndRefresh() interno que se
+// ejecuta automáticamente cuando detecta sesión expirada en storage.
+// Este método llama a refreshSession() directamente, sin pasar por nuestro
+// global.fetch interceptor. Parcheamos refreshSession para que respete
+// el cooldown y no haga la petición HTTP si estamos bloqueados.
+if (typeof window !== 'undefined') {
+  const originalRefreshSession = supabase.auth.refreshSession.bind(supabase.auth);
+  supabase.auth.refreshSession = async (...args: any[]) => {
+    if (isRefreshBlocked()) {
+      console.warn('🚫 [AUTH] refreshSession() bloqueado por cooldown anti-bucle');
+      return {
+        data: { session: null, user: null },
+        error: { message: 'Invalid Refresh Token: Refresh Token Not Found' } as any,
+      };
+    }
+    return originalRefreshSession(...args);
+  };
+}
+
 // Función para forzar sincronización de sesión y cookies
 export const ensureSessionSynced = async (): Promise<boolean> => {
   try {
